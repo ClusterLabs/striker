@@ -147,6 +147,13 @@ my $conf = {
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.6.0",
 			on_integer	=>	2,
 		},
+		power_off	=>	{
+			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.1.0",
+			off_integer	=>	{
+				immediate	=>	2,
+				delay		=>	3,
+			},
+		},
 		sleep_ups	=>	{
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.3.0",
 			off_integer	=>	3,
@@ -297,76 +304,6 @@ if ($conf->{switches}{cancel})
 	exit($exit);
 }
 
-# If the user has asked for a hard reboot, set the power off delay and sleep
-# time and then exit.
-if ($conf->{switches}{reboot})
-{
-	my $exit = 0;
-	logger($conf, $THIS_FILE, __LINE__, "Cancelling the previous power-off sequence.");
-	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
-	{
-		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
-			$exit = 4;
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
-		}
-	}
-	
-	logger($conf, $THIS_FILE, __LINE__, "- Done.");
-	logger($conf, $THIS_FILE, __LINE__, "- Setting the sleep timer to: [$conf->{sys}{apc}{reboot}{sleep_timer}] seconds.");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Initiating power off...");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
-	logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
-	exit($exit);
-}
-
-# If the user has asked for a complete shutdown, set the disable the sleep 
-# timer, set the power off delay and initiate the power down.
-if ($conf->{switches}{'shutdown'})
-{
-	my $exit = 0;
-	logger($conf, $THIS_FILE, __LINE__, "Cancelling the previous power-off sequence.");
-	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
-	{
-		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
-			$exit = 4;
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
-		}
-	}
-	
-	logger($conf, $THIS_FILE, __LINE__, "- Done.");
-	logger($conf, $THIS_FILE, __LINE__, "- Disabling the sleep timer..");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Setting the shut down timer to: [$conf->{sys}{apc}{'shutdown'}{power_off_delay}] seconds.");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Initiating power off...");
-	### TODO:...
-	logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
-	logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
-	exit($exit);
-}
-
 
 # We're ready to start.
 logger($conf, $THIS_FILE, __LINE__, "Will now attempt to delay the reboot of the following UPS(es):");
@@ -474,35 +411,88 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			# We're good.
 			$conf->{sys}{debug} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "\nBeginning.");
-
+		
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "- Cancelling any pending power off.");
 			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]") if $conf->{sys}{debug};
 			
-			# Set the sleep time for the outlet groups.
-			logger($conf, $THIS_FILE, __LINE__, "  - Setting the outlet groups' sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
-			my ($set_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
-			my ($set_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
-			
-			# Set the power-off delay
-			logger($conf, $THIS_FILE, __LINE__, "  - Setting the power-off delay to: ......... [$conf->{sys}{apc}{ups}{power_off_delay} seconds].");
-			my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
-			my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
-			
-			# Do the needful
-			logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed sleep.");
-			my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
-			$conf->{sys}{debug} = 0;
+			if ($conf->{switches}{reboot})
+			{
+				### If the user has asked for a hard reboot, 
+				### set the power off delay and sleep time and
+				### then exit.
+				
+				# Set the sleep time for the outlet groups.
+				logger($conf, $THIS_FILE, __LINE__, "  - Setting the sleep timer to: [$conf->{sys}{apc}{reboot}{sleep_time}] seconds.");
+				my ($set_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, $conf->{sys}{apc}{reboot}{sleep_time});
+				my ($set_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, $conf->{sys}{apc}{reboot}{sleep_time});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
+				
+				# Set the power-off delay
+				logger($conf, $THIS_FILE, __LINE__, "  - Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
+				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
+				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				
+				# Do the needful
+				logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed sleep.");
+				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				$conf->{sys}{debug} = 0;
+				
+				logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
+			}
+			elsif ($conf->{switches}{'shutdown'})
+			{
+				### If the user has asked for a complete 
+				### shutdown, set the disable the sleep timer, 
+				### set the power off delay and initiate the 
+				### power down.
+				
+				# Set the power-off delay
+				logger($conf, $THIS_FILE, __LINE__, "  - Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
+				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{'shutdown'}{power_off_delay});
+				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{'shutdown'}{power_off_delay});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				
+				# Do the needful
+				logger($conf, $THIS_FILE, __LINE__, "  - Shutting down.");
+				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer}{delay});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				$conf->{sys}{debug} = 0;
+
+				logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
+				logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
+			}
+			else
+			{
+				### Normal loop
+				# Set the sleep time for the outlet groups.
+				logger($conf, $THIS_FILE, __LINE__, "  - Setting the outlet groups' sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
+				my ($set_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
+				my ($set_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
+				
+				# Set the power-off delay
+				logger($conf, $THIS_FILE, __LINE__, "  - Setting the power-off delay to: ......... [$conf->{sys}{apc}{ups}{power_off_delay} seconds].");
+				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
+				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				
+				# Do the needful
+				logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed sleep.");
+				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				$conf->{sys}{debug} = 0;
+				
+				# Add the program to root's crontab, if needed.
+				manage_cron_entry($conf, "add");
+			}
 		}
 	}
 }
 
-# Add the program to root's crontab, if needed.
-manage_cron_entry($conf, "add");
 logger($conf, $THIS_FILE, __LINE__, "Run complete.");
 
 # Only set this to '1' for debugging.
@@ -570,6 +560,15 @@ sub manage_cron_entry
 {
 	my ($conf, $task) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - manage_cron_entry(); task: [$task]") if $conf->{sys}{debug};
+	
+	# If this is a striker dashboard, don't add it.
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - task: [$task], hostname: [".$ENV{HOSTNAME}."]") if $conf->{sys}{debug};
+	if (($task eq "add") && ($ENV{HOSTNAME} =~ /striker/))
+	{
+		# Skip.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Not adding to cron, this is a dashboard.") if $conf->{sys}{debug};
+		return(1);
+	}
 	
 	my $changed  = 0;
 	my $raw_cron = "";
@@ -1251,7 +1250,7 @@ SWITCHES
 
  --reboot
 
-	This tells all UPSes to power off in $conf->{sys}{apc}{reboot}{power_off_delay} seconds, stay off for $conf->{sys}{apc}{reboot}{sleep_timer}
+	This tells all UPSes to power off in $conf->{sys}{apc}{reboot}{power_off_delay} seconds, stay off for $conf->{sys}{apc}{reboot}{sleep_time}
 	seconds, and then power back on. The effect of this is that all
 	equipment powered by the Anvil!'s UPSes will be hard power cycled.
 	
