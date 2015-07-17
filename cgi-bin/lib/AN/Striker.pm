@@ -193,30 +193,6 @@ sub process_task
 			confirm_cold_stop_anvil($conf);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "expire_cold_reset")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			expire_cold_reset_anvil($conf);
-		}
-		else
-		{
-			confirm_expire_cold_reset_anvil($conf);
-		}
-	}
-	elsif ($conf->{cgi}{task} eq "immediate_cold_reset")
-	{
-		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
-		{
-			immediate_cold_reset_anvil($conf);
-		}
-		else
-		{
-			confirm_immediate_cold_reset_anvil($conf);
-		}
-	}
 	elsif ($conf->{cgi}{task} eq "start_vm")
 	{
 		# Confirmed yet?
@@ -5788,40 +5764,21 @@ sub confirm_cold_stop_anvil
 	my $say_message = AN::Common::get_string($conf, {key => "message_0418", variables => {
 		anvil	=>	$conf->{cgi}{cluster},
 	}});
-	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
-		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
-	});
-
-	return (0);
-}
-
-# Confirm that the user wants to cold-reset the Anvil!.
-sub confirm_expire_cold_reset_anvil
-{
-	my ($conf) = @_;
 	
-	# Ask the user to confirm
-	my $say_message = AN::Common::get_string($conf, {key => "message_0435", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
-	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
-		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
-	});
-
-	return (0);
-}
-
-# Confirm that the user wants to immediately cold-reset the rack.
-sub confirm_immediate_cold_reset_anvil
-{
-	my ($conf) = @_;
+	# If there is a subtype, use a different warning.
+	if ($conf->{cgi}{subtask} eq "power_cycle")
+	{
+		$say_message = AN::Common::get_string($conf, {key => "message_0439", variables => {
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
+	}
+	elsif($conf->{cgi}{subtask} eq "power_off")
+	{
+		$say_message = AN::Common::get_string($conf, {key => "message_0440", variables => {
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
+	}
 	
-	# Ask the user to confirm
-	my $say_message = AN::Common::get_string($conf, {key => "message_0439", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
 	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
@@ -7229,30 +7186,6 @@ sub poweroff_node
 	return(0);
 }
 
-# This calls 'cold_stop_anvil' but passes the option to NOT cancel the APC UPS
-# watchdog timer.
-sub expire_cold_reset_anvil
-{
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; expire_cold_reset_anvil()\n");
-	
-	cold_stop_anvil($conf, 0);
-	
-	return(0);
-}
-
-# This calls 'cold_stop_anvil' but passes the option to power cycle the UPSes
-# as soon as the nodes are off and power back on one minute later.
-sub immediate_cold_reset_anvil
-{
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; expire_cold_reset_anvil()\n");
-	
-	cold_stop_anvil($conf, 2);
-	
-	return(0);
-}
-
 # This sequentially stops all servers, withdraws both nodes and powers down the
 # Anvil!.
 sub cold_stop_anvil
@@ -7559,11 +7492,6 @@ poweroff";
 				message		=>	"#!string!message_0423!#",
 			});
 		}
-		
-		# All done.
-		print AN::Common::template($conf, "server.html", "cold-stop-footer", {
-			title		=>	$say_title,
-		});
 	}
 	else
 	{
@@ -7580,20 +7508,54 @@ poweroff";
 		});
 	}
 	
-	# If 'cancel_ups' is '2', go into a loop watching for the nodes to
-	# power off. Once both are off, call out copy of 
-	if ($cancel_ups eq "2")
+	# If I have a sub-task, perform it now.
+	if ($conf->{cgi}{subtask} eq "power_cycle")
 	{
-		# OK, wait for both nodes to be off.
-#		AN::Cluster::read_node_cache($conf, $node);
-=pod
-if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
-then
-    echo 'Cancelling APC UPS watchdog timer.'
-    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel
-fi;
-=cut
+		# Tell the user
+		print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+			row_class	=>	"highlight_warning_bold",
+			row		=>	"#!string!row_0044!#",
+			message_class	=>	"td_hidden_white",
+			message		=>	"#!string!explain_0154!#",
+		});
+		
+		# Nighty night, see you in the morning!
+		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --reboot";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		close $file_handle;
 	}
+	elsif($conf->{cgi}{subtask} eq "power_off")
+	{
+		# Tell the user
+		print AN::Common::template($conf, "server.html", "cold-stop-entry", {
+			row_class	=>	"highlight_warning_bold",
+			row		=>	"#!string!row_0044!#",
+			message_class	=>	"td_hidden_white",
+			message		=>	"#!string!explain_0155!#",
+		});
+		
+		# Do eet!
+		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --shutdown";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		close $file_handle;
+	}
+	
+	# All done.
+	print AN::Common::template($conf, "server.html", "cold-stop-footer");
 	
 	AN::Cluster::footer($conf);
 	return(0);
@@ -8726,8 +8688,8 @@ fi";
 	{
 		# It exists, load the template
 		$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
-			immediate_cycle	=>	"?cluster=$conf->{cgi}{cluster}&task=immediate_cold_reset",
-			expire_timer	=>	"?cluster=$conf->{cgi}{cluster}&task=expire_cold_reset",
+			power_cycle	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop&subtask=power_cycle",
+			power_off	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop&subtask=power_off",
 		}, "", 1);
 		$watchdog_panel =~ s/\n$//;
 	}

@@ -228,6 +228,7 @@ my $conf = {
 				ticks			=>	10,	# ms
 				kick_every_minutes	=>	2,	# Sets the cron job to run this script (kick the UPS) every X minutes
 			},
+			### NOTE: If you change these, also change in Common.pm!
 			reboot		=>	{
 				power_off_delay		=>	60,
 				sleep_time		=>	60,

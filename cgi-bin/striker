@@ -258,6 +258,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"system",
 	"target",
 	"task",
+	"subtask",
 	"update_manifest",
 	"vg_list",
 	"vm",

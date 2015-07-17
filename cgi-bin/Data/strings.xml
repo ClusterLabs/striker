@@ -69,8 +69,8 @@
 		<key name="button_0062">Cold-Stop #!string!brand_0003!#</key>
 		<key name="button_0063">Restart</key>
 		<key name="button_0064">Create</key>
-		<key name="button_0065">Power Cycle Rack</key>
-		<key name="button_0066">Power Off Rack</key>
+		<key name="button_0065">Power Cycle System</key>
+		<key name="button_0066">Power Off System</key>
 		<key name="button_0067"></key>
 		<key name="button_0068"></key>
 		<key name="button_0069"></key>
@@ -354,8 +354,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0151"><![CDATA[This is the brand name for the second <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.<br />This sets which fence agent will be used to control this device if a fence action is required.]]></key>
 		<key name="explain_0152"><![CDATA[This is the brand name for the third <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.<br />This sets which fence agent will be used to control this device if a fence action is required.]]></key>
 		<key name="explain_0153"><![CDATA[This is the brand name for the fourth <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.<br />This sets which fence agent will be used to control this device if a fence action is required.]]></key>
-		<key name="explain_0154"><![CDATA[]]></key>
-		<key name="explain_0155"><![CDATA[]]></key>
+		<key name="explain_0154"><![CDATA[The UPSes will now be told to power cycle.]]></key>
+		<key name="explain_0155"><![CDATA[The UPSes will now be told to power off.]]></key>
 		<key name="explain_0156"><![CDATA[]]></key>
 		<key name="explain_0157"><![CDATA[]]></key>
 		<key name="explain_0158"><![CDATA[]]></key>
@@ -698,7 +698,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0282">Enabling 'Safe #!string!brand_0004!# Start'</key>
 		<key name="row_0283">Enabling APC UPS Watchdog Timer</key>
 		<key name="row_0284">Host Name/IP</key>
-		<key name="row_0285">Cold-Stop #!string!brand_0003!# and Power-Cycle Rack</key>
+		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286"></key>
 		<key name="row_0287"></key>
 		<key name="row_0288"></key>
@@ -1733,25 +1733,24 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0430"><![CDATA[Powering down: [<span class="highlight_detail">#!variable!node!#</span>]...]]></key>
 		<key name="message_0431"><![CDATA[A newly created partition is not aligned properly.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>],<br />start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>].<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].<br />The #!string!brand_0003!# will work, but performance will be sub-optimal.<br />Correcting the partition alignment is advised!<br>#!string!brand_0014!#]]></key>
 		<key name="message_0432"><![CDATA[If you think the problem is now resolved, you can try re-running the install.]]></key>
-		<key name="message_0433"><![CDATA[If you a node was part of an #!string!brand_0003!# before, it might be seeing<br />
-						the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a> signature from the previous install. There is no safe way to determine<br />
-						if this is the case, or if this partition contains real data. So for safety, the<br />
-						install will now abort. If you are sure that there is no data on the partition, you<br />
-						can wipe any data using the 'dd' command. To do this, you need to log into the<br />
-						node(s) and run:<br />
-						<br />
-						<span class="code">dd if=/dev/zero of=/dev/X bs=4M count=1000</span><br />
-						<br />
-						Where '/dev/X' is replaced by the device in the error(s) above.<br />
-						<span class="highlight_dangerous_bold">BE WARNED!</span><br />
-						The above command, if misused, can destroy all data on the node!<br />]]></key>
+		<key name="message_0433"><![CDATA[If you a node was part of an #!string!brand_0003!# before, it might be seeing<br />the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a> signature from the previous install. There is no safe way to determine<br />if this is the case, or if this partition contains real data. So for safety, the<br />install will now abort. If you are sure that there is no data on the partition, you<br />can wipe any data using the 'dd' command. To do this, you need to log into the<br />node(s) and run:<br /><br /><span class="code">dd if=/dev/zero of=/dev/X bs=4M count=1000</span><br /><br />Where '/dev/X' is replaced by the device in the error(s) above.<br /><span class="highlight_dangerous_bold">BE WARNED!</span><br />The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
 		<key name="message_0435"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><span class="highlight_dangerous_bold">The UPS watchdog timer will NOT be stopped!</span><br />Everything powered by the UPSes will lose power for a few minutes!!<br />Power will be restored after the UPS(es) "sleep time" expires.<br />Is this really what you want to do?]]></key>
 		<key name="message_0436"><![CDATA[Power-down initiated. The node should offline in a few moments.<br /><span class="highlight_warning_bold">All devices powered by your UPS(es) will lose power shortly</span>!<br />This likely includes this #!string!brand_0002!#.<br />The UPS(es) will restore power after their configured "sleep time", usually five minutes.<br />You can monitor this by examining the LCD panel on the UPSes (if equipped).If the dashboards are running #!string!brand_0015!# with the 'nodemonitor' scan agent,<br />and if the dashboards are configured to power on when AC is restored,<br />your #!string!brand_0003!# should boot shortly there after.<br />If the nodes are using the #!string!brand_0016!# tool,<br />then your server(s) should come online automatically.]]></key>
 		<key name="message_0437"><![CDATA[Failed to provision the new server: [#!variable!server!#].<br />It is possible that something on the node: [#!variable!node!#] is using too much RAM.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0438"><![CDATA[The provision script: [#!variable!provision_script!#] appears to be incomplete.<br />The error message received when trying to run it was:<br /><span class="highlight_detail">#!variable!error!#</span><br />#!string!brand_0014!#]]></key>
-		<key name="message_0439"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><span class="highlight_dangerous_bold">Both UPSes will turn off within a minute of the last node powering down!</span><br />Power will be restored after the one minute.<br />Is this really what you want to do?]]></key>
-		<key name="message_0440"><![CDATA[]]></key>
+		<key name="message_0439"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_good_bold">Power will be restored after approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::sleep_time!# seconds</span>].</span><br /><br />If properly configured, the system should power back up automatically.<br /><br />Is this really what you want to do?]]></key>
+		<key name="message_0440"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::shutdown::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_warning_bold">Power will remain off until a human restores power!</span><br /><br />Is this really what you want to do?]]></key>
+		<key name="message_0441"><![CDATA[]]></key>
+		<key name="message_0442"><![CDATA[]]></key>
+		<key name="message_0443"><![CDATA[]]></key>
+		<key name="message_0444"><![CDATA[]]></key>
+		<key name="message_0445"><![CDATA[]]></key>
+		<key name="message_0446"><![CDATA[]]></key>
+		<key name="message_0447"><![CDATA[]]></key>
+		<key name="message_0448"><![CDATA[]]></key>
+		<key name="message_0449"><![CDATA[]]></key>
+		<key name="message_0450"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>

@@ -602,6 +602,7 @@ sub initialize_conf
 		path			=>	{
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
+			'call_anvil-kick-apc-ups' =>	"/var/www/tools/call_anvil-kick-apc-ups",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
 			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
 			cat			=>	"/bin/cat",
@@ -715,6 +716,16 @@ sub initialize_conf
 			rsync			=>	"-av --partial",
 		},
 		sys			=>	{
+			### NOTE: If you change these, also change in anvil-kick-apc-ups!
+			apc		=>	{
+				reboot		=>	{
+					power_off_delay		=>	60,
+					sleep_time		=>	60,
+				},
+				'shutdown'	=>	{
+					power_off_delay		=>	60,
+				},
+			},
 			auto_populate_ssh_users	=>	"",
 			backup_url		=>	"/striker-backup_#!hostname!#_#!date!#.txt",
 			clustat_timeout		=>	120,
