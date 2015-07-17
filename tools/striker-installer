@@ -118,6 +118,7 @@ my $conf = {
 		curl			=>	"/usr/bin/curl",
 		dashboard		=>	"/usr/share/striker/bin/dashboard",
 		echo			=>	"/bin/echo",
+		gcc			=>	"/usr/bin/gcc",
 		git			=>	"/usr/bin/git",
 		hostname		=>	"/bin/hostname",
 		htpasswd		=>	"/usr/bin/htpasswd",
@@ -422,6 +423,13 @@ my $conf = {
 		},
 		# The following entries must sort last to ensure the setuid
 		# doesn't get changed by a change to the parent directory.
+		'z_call_anvil-kick-apc-ups' =>	{
+			path			=>	"/var/www/tools/call_anvil-kick-apc-ups",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		z_control_dhcpd		=>	{
 			path			=>	"/var/www/tools/control_dhcpd",
 			owner			=>	"root",
@@ -4641,6 +4649,24 @@ sub set_file_ownership_and_modes
 		my $recursive = $conf->{permissions}{$file}{recursive} ? "-R" : "";
 		my $selinux   = $conf->{permissions}{$file}{selinux};
 		logger($conf, $THIS_FILE, __LINE__, "- Setting ownership and mode to: [$owner:$group] and: [$mode] ($conf->{permissions}{$file}{recursive}) on: [$path]", 1);
+		
+		# Recompile the setuid C-wrappers.
+		my $c_file = $path.".c";
+		if (-e $c_file)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- This is a 'setuid' C-wrapper; recompiling it first.", 1);
+			my $shell_call = "$conf->{executable}{gcc} -o $path $c_file";
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "- gcc output: [$line]", 1);
+			}
+			close $file_handle;
+		}
+		
 		my $shell_call = "$conf->{executable}{chown} $recursive $owner:$group $path";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
