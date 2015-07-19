@@ -56,6 +56,7 @@ reboot
 @core
 @server-policy
 -kdump
+alteeve-repo
 gpm
 perl
 perl-Crypt-SSLeay

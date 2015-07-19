@@ -57,6 +57,7 @@ reboot
 @server-policy
 -kdump
 acpid
+alteeve-repo
 createrepo
 gcc
 glibc-devel
@@ -174,10 +175,6 @@ cp      /mnt/source/Striker/master.zip                             /mnt/sysimage
 cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
 cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
 
-# This will be used later by nodes.
-echo "Creating the Striker tools tarball"
-tar -cvf /mnt/sysimage/var/www/html/rhel6/x86_64/files/striker-tools.tar -C /mnt/source/Striker/striker-master/tools/ .
-
 # Copy the Install RPM Packages into our repo and the tools onto the system.
 echo "Setting up the PXE boot target data"
 if [ ! -e "/mnt/img" ]
@@ -248,10 +245,10 @@ cat > /root/example_striker-installer.txt << EOF
  -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
  -b ${BCNIP}/16 \\
  -p 10.20.10.200:10.20.10.210 \\
+ --router-mode \\
  --gui \\
  -d git \\
- --rhn rhn_user:secret \\
- -r https://alteeve.ca/an-repo/el6/an-el6.repo
+ --rhn rhn_user:secret
 EOF
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
@@ -400,7 +397,7 @@ label memtest86
 
 		Test the RAM in the system for defects.
 	ENDTEXT
-	KERNELmemtest
+	KERNEL memtest
 	APPEND -
 EOF
 

@@ -56,6 +56,7 @@ reboot
 @core
 @server-policy
 -kdump
+alteeve-repo
 acpid
 createrepo
 gcc
@@ -395,7 +396,7 @@ label memtest86
 
 		Test the RAM in the system for defects.
 	ENDTEXT
-	KERNELmemtest
+	KERNEL memtest
 	APPEND -
 EOF
 

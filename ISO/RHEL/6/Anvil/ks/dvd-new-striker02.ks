@@ -57,6 +57,7 @@ reboot
 @server-policy
 -kdump
 acpid
+alteeve-repo
 createrepo
 gcc
 glibc-devel
@@ -173,10 +174,6 @@ echo "Copying the Striker installer and source code into place."
 cp      /mnt/source/Striker/master.zip                             /mnt/sysimage/root/
 cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
 cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
-
-# This will be used later by nodes.
-echo "Creating the Striker tools tarball"
-tar -cvf /mnt/sysimage/var/www/html/rhel6/x86_64/files/striker-tools.tar -C /mnt/source/Striker/striker-master/tools/ .
 
 # Copy the Install RPM Packages into our repo and the tools onto the system.
 echo "Setting up the PXE boot target data"
@@ -400,7 +397,7 @@ label memtest86
 
 		Test the RAM in the system for defects.
 	ENDTEXT
-	KERNELmemtest
+	KERNEL memtest
 	APPEND -
 EOF
 

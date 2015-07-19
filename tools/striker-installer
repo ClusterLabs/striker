@@ -94,6 +94,7 @@ my $conf = {
 		apache			=>	"/etc/httpd",
 		apache_manifests	=>	"/var/www/html/manifests",
 		apache_subdirs		=>	["archive", "cache", "media", "status"],
+		apache_files		=>	"/var/www/html/files",		# Files that will be used to populate /sbin/Striker/ will go here.
 		centos_pxe_web		=>	"html/c6",			# Appeanded to 'document_root' + arch appended after
 		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
 		document_root		=>	"/var/www/",
@@ -116,7 +117,7 @@ my $conf = {
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
 		curl			=>	"/usr/bin/curl",
-		dashboard		=>	"/usr/share/striker/bin/dashboard",
+		dashboard		=>	"/sbin/striker/ScanCore/ScanCore",
 		echo			=>	"/bin/echo",
 		gcc			=>	"/usr/bin/gcc",
 		git			=>	"/usr/bin/git",
@@ -156,6 +157,7 @@ my $conf = {
 		# These get set to '1' when their found to be installed.
 		to_install	=>	{
 			acpid				=>	0,
+			#'alteeve-repo'			=>	0,	# Not sure if I want to force this...
 			ccs				=>	0, 
 			'cim-schema'			=>	0,
 			'cluster-cim'			=>	0,
@@ -507,6 +509,7 @@ my $conf = {
 		# Debug level; 0 == silent except errors, 1 == normal output, 2 == basic debug, 3 == extra debug, 4 == prepare your buffers
 		debug			=>	2,
 		hostname		=>	"",
+		internet_access		=>	0,
 		ipmi_gateway		=>	"",
 		ipmi_ip			=>	"",
 		ipmi_netmask		=>	"",
@@ -519,7 +522,7 @@ my $conf = {
 		mtu			=>	1500,
 		network_map_cache_read	=>	0,
 		reboot_needed		=>	0,
-		repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
+		repositories		=>	"",
 		rhn_user		=>	"",
 		rhn_password		=>	"",
 		skip_hostname		=>	0,
@@ -527,9 +530,9 @@ my $conf = {
 		skip_network		=>	0,
 		ssl_checked		=>	0,
 		stable_version		=>	"1.1.6",
-		striker_database	=>	"scancore",
+		scancore_database	=>	"scancore",
 		striker_user		=>	"admin",
-		striker_pass		=>	"",		# no default password, evar!
+		striker_password	=>	"",		# no default password, evar!
 		switch_count		=>	0,
 		tarball_dir		=>	"striker-#!striker_version!#",
 		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
@@ -610,23 +613,30 @@ if (sanity_check_switches($conf))
 	exit(9);
 }
 
+# Check to see if we have an internet connection so that, if not, we can 
+# disable external repos.
+verify_internet_access($conf, 0);
+
 # Make sure we're on EL6.x
 verify_os($conf);
 
 # Get the hostname if the user didn't.
 get_hostname($conf);
 
-# Check to see if we have an internet connection so that, if not, we can 
-# disable external repos.
-verify_internet_access($conf, 0);
+# Add the AN!Repo (or remove it if the user doesn't want it).
+if ($conf->{switches}{'no-an-repo'})
+{
+	remove_an_repo($conf);
+}
+else
+{
+	# Add our repo to the list of RPMs to install.
+	$conf->{packages}{to_install}{'alteeve-repo'} = 0;
+}
 
 # Add the user's repo if specified
 if ($conf->{switches}{r})
 {
-	if ($conf->{switches}{'no-an-repo'})
-	{
-		remove_an_repo($conf);
-	}
 	add_repo($conf);
 }
 
@@ -856,15 +866,15 @@ fi";
 	
 	# Check to see if this is a re-run of the install. if it appears to be,
 	# create a temporary .pgpass file for postgres
-	my $striker_user = $conf->{sys}{striker_user};
-	my $striker_pass = $conf->{sys}{striker_pass};
-	my $use_password = 0;
+	my $striker_user     = $conf->{sys}{striker_user};
+	my $striker_password = $conf->{sys}{striker_password};
+	my $use_password     = 0;
 	logger($conf, $THIS_FILE, __LINE__, "- Looks like the 'postgres' user's password is set. Creating temporary: [$conf->{path}{postgres_pgpass}]", 1);
 	   $shell_call = "
 if grep -q -P  \"^local.*?md5\$\" $conf->{path}{pg_hba_conf}; 
 then 
 	echo 'use pgpass'
-	echo \"*:*:*:postgres:$striker_pass\" > $conf->{path}{postgres_pgpass} && \
+	echo \"*:*:*:postgres:$striker_password\" > $conf->{path}{postgres_pgpass} && \
 	chown postgres:postgres $conf->{path}{postgres_pgpass} && \
 	chmod 600 $conf->{path}{postgres_pgpass} && \
 	su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.pg_user;'\"
@@ -948,7 +958,7 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	logger($conf, $THIS_FILE, __LINE__, "- Updating or setting database user's passwords.", 1);
 	foreach my $user ("postgres", $striker_user)
 	{
-		my $shell_call = "su - postgres -c \"psql template1 -c \\\"ALTER ROLE $user WITH PASSWORD '$striker_pass';\\\"\"";
+		my $shell_call = "su - postgres -c \"psql template1 -c \\\"ALTER ROLE $user WITH PASSWORD '$striker_password';\\\"\"";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1114,9 +1124,9 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	}
 	
 	# Create the Striker database, if needed.
-	my $striker_database = $conf->{sys}{striker_database};
+	my $scancore_database = $conf->{sys}{scancore_database};
 	my $create_database  = 1;
-	logger($conf, $THIS_FILE, __LINE__, "- Creating database: [$striker_database] if needed.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Creating database: [$scancore_database] if needed.", 1);
 	   $shell_call       = "su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database;'\"";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -1128,9 +1138,9 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 		   $line =~ s/\s+$//;
 		   $line =~ s/\s+/ /g;
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /^$striker_database$/i)
+		if ($line =~ /^$scancore_database$/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$striker_database] already exists.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$scancore_database] already exists.", 1);
 			$create_database = 0;
 			last;
 		}
@@ -1140,7 +1150,7 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Creating Striker database: [$create_database] now.", 1);
 		my $shell_call = "
-su - postgres -c \"createdb --owner $striker_user $striker_database\"
+su - postgres -c \"createdb --owner $striker_user $scancore_database\"
 su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database;'\"";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -1152,9 +1162,9 @@ su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+/ /g;
 			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-			if ($line =~ /^$striker_database$/i)
+			if ($line =~ /^$scancore_database$/i)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$striker_database] created.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- Striker database: [$scancore_database] created.", 1);
 				$create_database = 0;
 				last;
 			}
@@ -1202,9 +1212,6 @@ fi";
 	}
 	close $file_handle;
 	
-	### Write out the scancore config files.
-	# Not needed at the moment, handled by the kickstart files
-	
 	### TODO: Make this enabled via a command line switch... many users
 	###       may not want this.
 	# Add scanner to crontab.
@@ -1231,34 +1238,38 @@ fi";
 	}
 	close $file_handle;
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
-	my $dashboard  = $conf->{executable}{dashboard};
-	my $raw_cron   = "";
-	   $shell_call = "$conf->{path}{cron_root}";
-	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
+	# Disabling ScanCore on boot for now.
+	if (0)
 	{
-		chomp;
-		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /$dashboard/)
+		logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
+		my $dashboard  = $conf->{executable}{dashboard};
+		my $raw_cron   = "";
+		$shell_call = "$conf->{path}{cron_root}";
+		open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
 		{
-			# Skip it as we'll add it back later.
-			logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /$dashboard/)
+			{
+				# Skip it as we'll add it back later.
+				logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
+			}
+			else
+			{
+				$raw_cron .= "$line\n";
+			}
 		}
-		else
-		{
-			$raw_cron .= "$line\n";
-		}
+		close $file_handle;
+		$raw_cron .= "*/5 * * * * $dashboard\n";
+		
+		logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
+		$shell_call = "$conf->{path}{cron_root}";
+		open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $raw_cron;
+		close $file_handle;
 	}
-	close $file_handle;
-	$raw_cron .= "*/5 * * * * $dashboard\n";
-	
-	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
-	$shell_call = "$conf->{path}{cron_root}";
-	open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
-	print $file_handle $raw_cron;
-	close $file_handle;
 	
 	# Delete the .pgpass file, if it was created.
 	if ($use_password)
@@ -1277,7 +1288,7 @@ fi";
 	}
 	
 	# Done.
-	logger($conf, $THIS_FILE, __LINE__, "- Scanner configured.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- ScanCore configured.", 1);
 	
 	return(0);
 }
@@ -1338,19 +1349,12 @@ sub configure_striker_tools
 	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying the USB management tools into place.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/tools/99-striker.rules",    "$conf->{directory}{udev_rules}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-insert",  "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb-remove",  "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/striker-usb.lib",     "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/anvil-kick-apc-ups",  "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/bond_watch",          "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/anvil-self-destruct", "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/disable_boot.sh",     "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/reenable_boot.sh",    "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_shutdown", "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/safe_anvil_start",    "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/tools/populate_remote_authorized_keys", "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/*",  "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/ScanCore", "$conf->{directory}{striker_tools}/");
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	
+	# Create a tarball for downloading by nodes.
+	my $shell_call = "$conf->{executable}{tar} -cvjf $conf->{directory}{apache_files}/striker_tools.tar.bz2 -C $conf->{directory}{apache_files}{striker_tools}/ .";
 	
 	return(0);
 }
@@ -2046,9 +2050,9 @@ sub configure_gui
 	if (1)
 	{
 		# See if the user exists.
-		my $striker_user = $conf->{sys}{striker_user};
-		my $striker_pass = $conf->{sys}{striker_pass};
-		my $create_user  = 1;
+		my $striker_user     = $conf->{sys}{striker_user};
+		my $striker_password = $conf->{sys}{striker_password};
+		my $create_user      = 1;
 		
 		logger($conf, $THIS_FILE, __LINE__, "- Checking if the system user: [$striker_user] exists.", 1);
 		open (my $file_handle, "<", $conf->{path}{passwd}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{passwd}], the error was: $!\n";
@@ -2102,7 +2106,7 @@ sub configure_gui
 		if (1)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Setting the system password for: [$striker_user]", 1);
-			my $shell_call = "$conf->{executable}{echo} \"$striker_pass\" | $conf->{executable}{passwd} $striker_user --stdin";
+			my $shell_call = "$conf->{executable}{echo} \"$striker_password\" | $conf->{executable}{passwd} $striker_user --stdin";
 			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -4757,13 +4761,16 @@ sub install_striker_files
 	}
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Copying HTML files and skins.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/html",    $conf->{directory}{document_root});
+	rsync_files($conf, "$conf->{directory}{source}/html", $conf->{directory}{document_root});
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Copying executable files and languages.", 1);
 	rsync_files($conf, "$conf->{directory}{source}/cgi-bin", $conf->{directory}{document_root});
 	
 	logger($conf, $THIS_FILE, __LINE__, "- Copying tools.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/tools",   $conf->{directory}{document_root});
+	rsync_files($conf, "$conf->{directory}{source}/tools", $conf->{directory}{document_root});
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Copying ScanCore.", 1);
+	rsync_files($conf, "$conf->{directory}{source}/ScanCore", $conf->{directory}{document_root});
 	
 	# Split the directory from the file.
 	my ($striker_conf_dir, $striker_conf_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/);
@@ -4816,8 +4823,8 @@ sub install_striker_files
 		}
 	}
 	
-	# Update the mail settings if the user passed any.
-	if (($conf->{sys}{mail_server}) || ($conf->{sys}{mail_user}) || ($conf->{sys}{mail_password}))
+	# Update /etc/striker/striker.conf if a custom config was not used.
+	if (not $conf->{switches}{'custom-config'})
 	{
 		# Update the striker.conf file with the user's selected mail server
 		# values.
@@ -4845,12 +4852,22 @@ sub install_striker_files
 			my $line = $_;
 			
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] >> line: [$line]", 3);
-			$line =~ s/^smtp::server(\s+)=(\s+).*$/smtp::server$1=$2$mail_server/;
-			$line =~ s/^smtp::port(\s+)=(\s+).*$/smtp::port$1=$2$mail_port/;
+			# Mail stuff
+			$line =~ s/^smtp::server(\s+)=(\s+).*$/smtp::server$1=$2$mail_server/                    if $mail_server;
+			$line =~ s/^smtp::port(\s+)=(\s+).*$/smtp::port$1=$2$mail_port/                          if $mail_port;
 			$line =~ s/^smtp::username(\s+)=(\s+).*$/smtp::username$1=$2$conf->{sys}{mail_user}/     if $conf->{sys}{mail_user};
 			$line =~ s/^smtp::password(\s+)=(\s+).*$/smtp::password$1=$2$conf->{sys}{mail_password}/ if $conf->{sys}{mail_password};
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] << line: [$line]", 3);
 			
+			# Inject this machine's details for the local ScanCore DB.
+			if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
+			{
+				$striker_config .= "scancore::db::1::host			=	localhost\n";
+				$striker_config .= "scancore::db::1::port			=	5432\n";
+				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
+				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
+				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n";
+			}
 			$striker_config .= "$line\n";
 		}
 		close $file_handle;
@@ -5596,10 +5613,10 @@ sub set_root_password
 	my ($conf) = @_;
 	
 	logger($conf, $THIS_FILE, __LINE__, "Setting root user's password.", 1);
-	if ($conf->{sys}{striker_pass})
+	if ($conf->{sys}{striker_password})
 	{
-		$conf->{sys}{striker_pass} =~ s/"/\\"/g;
-		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_pass}\" | $conf->{executable}{passwd} root --stdin";
+		$conf->{sys}{striker_password} =~ s/"/\\"/g;
+		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_password}\" | $conf->{executable}{passwd} root --stdin";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -5638,9 +5655,9 @@ sub create_apache_htpasswd
 	}
 	
 	# Escape any single-quotes in the user's password.
-	$conf->{sys}{striker_pass} =~ s/"/\\\\\\\"/g;
+	$conf->{sys}{striker_password} =~ s/"/\\\\\\\"/g;
 	logger($conf, $THIS_FILE, __LINE__, "- Generating: [$conf->{sys}{striker_user}]'s: [$conf->{path}{apache_htpasswd}] password file.", 1);
-	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_pass}\\\"\"";
+	my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{htpasswd} -cdb $conf->{path}{apache_htpasswd} $conf->{sys}{striker_user} \\\"$conf->{sys}{striker_password}\\\"\"";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -5737,7 +5754,7 @@ sub verify_os
 	# Read the release file and dig out the version.
 	my $major   = -1;
 	my $minor   = -1;
-logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checking version.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checking version.", 1);
 	open (my $file_handle, "<", $conf->{path}{os_release}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{os_release}], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -5802,6 +5819,11 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 		}
 		elsif (($conf->{sys}{rhn_user}) && ($conf->{sys}{rhn_password}))
 		{
+			if (not $conf->{sys}{internet_access})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - RHN credentials given, but no internet access found.", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration will probably fail.", 0);
+			}
 			### TODO: Escape bash special vars in passwords.
 			logger($conf, $THIS_FILE, __LINE__, "- RHN credentials given. Attempting to register now.", 1);
 			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
@@ -5880,11 +5902,11 @@ logger($conf, $THIS_FILE, __LINE__, "- We're on a RHEL (based) OS, good. Checkin
 		{
 			# Only show this warning if there is an internet
 			# connection.
-			if (verify_internet_access($conf, 1))
+			if ($conf->{sys}{internet_access})
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - This system does not appear to be registered with RHN and no RHN", 1);
 				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   credentials have been given. The install will likely fail if any", 1);
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   packages need to be installed and are not locally available!", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   packages need to be installed and are not locally available.", 1);
 				sleep 2;
 			}
 			else
@@ -5923,7 +5945,13 @@ sub verify_internet_access
 			if ($pings_received > 0)
 			{
 				$ok = 1;
+				$conf->{sys}{internet_access} = 1;
 				logger($conf, $THIS_FILE, __LINE__, "ok: [$ok]", 3);
+			}
+			else
+			{
+				$conf->{sys}{internet_access} = 0;
+				logger($conf, $THIS_FILE, __LINE__, "not internet access: [$conf->{sys}{internet_access}]", 3);
 			}
 		}
 	}
@@ -7146,8 +7174,8 @@ sub sanity_check_switches
 	{
 		if ($conf->{switches}{u} =~ /^(.*?):(.*)$/)
 		{
-			$conf->{sys}{striker_user} = $1;
-			$conf->{sys}{striker_pass} = $2;
+			$conf->{sys}{striker_user}     = $1;
+			$conf->{sys}{striker_password} = $2;
 		}
 		else
 		{
@@ -7689,9 +7717,28 @@ sub remove_an_repo
 	logger($conf, $THIS_FILE, __LINE__, "Removing AN! software repository if it exists.", 1);
 	if (-e $conf->{path}{an_repo})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Found it, removing it.", 1);
-		unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
-		logger($conf, $THIS_FILE, __LINE__, "- removed.", 1);
+		my $shell_call = "$conf->{executable}{yum} remove alteeve-repo";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Verifying it is gone...\n", 1);
+		get_list_of_installed_packages($conf);
+		if (not $conf->{packages}{installed}{'alteeve-repo'})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Success!\n", 1);
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Failed! Removing it manually...\n", 1);
+			unlink $conf->{path}{an_repo} or die "Unable to delete: [$conf->{path}{an_repo}]. The error was: $!\n";
+			logger($conf, $THIS_FILE, __LINE__, "- removed.", 1);
+		}
 	}
 	else
 	{

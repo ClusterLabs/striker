@@ -403,7 +403,7 @@ sub configure_striker_tools
 	}
 	
 	# Configure Scancore.
-	#configure_scancore($conf);
+	configure_scancore($conf);
 	
 	return(0);
 }
@@ -415,6 +415,11 @@ sub configure_scancore_on_node
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
 	my $ok = 1;
+	
+	# First, copy the ScanCore files into place.
+	
+	
+	
 	### TODO: Each scan agent has a config file, most of which may not be
 	###       useful to the client. For now, we'll configure them all. 
 	###       Later, these will be configured via Install Manifest.
@@ -10251,6 +10256,10 @@ sub update_nodes
 	# 0 = update attempted
 	# 1 = OS updates disabled in manifest
 	
+	# Remove the priority= from the nodes. We don't care about the output.
+	remove_priority_from_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	remove_priority_from_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvi2_node1_current_password});
+	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0026!#";
 	my $node2_class   = "highlight_good_bold";
@@ -10282,11 +10291,11 @@ sub update_nodes
 	return(0);
 }
 
-# This calls the yum update and flags the node for a reboot if the kernel is
-# updated.
-sub update_node
+# This sed's out the 'priority=' from the striker repos.
+sub remove_priority_from_node
 {
 	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; remove_priority_from_node(); node: [$node]\n");
 	
 	# Remove the 'priority=' line from our repos so that the update hits
 	# the web.
@@ -10305,7 +10314,6 @@ do
     fi
 done
 ";
-	my $shell_call = "yum $conf->{sys}{yum_switches} update";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -10323,12 +10331,22 @@ done
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 	}
 	
+	return(0);
+}
+
+# This calls the yum update and flags the node for a reboot if the kernel is
+# updated.
+sub update_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_node(); node: [$node]\n");
+	
 	# Skip if the user has decided not to run OS updates.
 	return(1) if not $conf->{sys}{update_os};
 	
-	$shell_call = "yum $conf->{sys}{yum_switches} update";
+	my $shell_call = "yum $conf->{sys}{yum_switches} update";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	22,
 		user		=>	"root",
