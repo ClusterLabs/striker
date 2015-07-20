@@ -91,12 +91,22 @@
 		<key name="brand_0012">https://alteeve.ca/w/Support</key> <!-- Support URL -->
 		<key name="brand_0013">anvil</key>
 		<key name="brand_0014"><![CDATA[If you aren't sure what to do, please <a href="#!string!brand_0012!#" target="_new">contact support</a>.]]></key>
-		<key name="brand_0015"><![CDATA[<i>Scan Core</i>]]></key>
+		<key name="brand_0015"><![CDATA[<i>ScanCore</i>]]></key>
 		<key name="brand_0016"><![CDATA[<span class="code">safe-anvil-start</span>]]></key>
 		<key name="brand_0017">APC</key>
 		<key name="brand_0018">Raritan</key>
-		<key name="brand_0019"></key>
-		<key name="brand_0020"></key>
+		<key name="brand_0019">ScanCore</key>
+		<key name="brand_0020"><![CDATA[<i>Striker</i>]]></key>
+		<key name="brand_0021"></key>
+		<key name="brand_0022"></key>
+		<key name="brand_0023"></key>
+		<key name="brand_0024"></key>
+		<key name="brand_0025"></key>
+		<key name="brand_0026"></key>
+		<key name="brand_0027"></key>
+		<key name="brand_0028"></key>
+		<key name="brand_0029"></key>
+		<key name="brand_0030"></key>
 		
 		<!-- Text messages used in config files and such. -->
 		<key name="text_0001">
@@ -253,7 +263,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0050">If this is a USB drive, it may have been unplugged.</key>
 		<key name="explain_0051">This could take over ten minutes, depending on the size of the disc and the speed of your optical drive.</key>
 		<key name="explain_0052"><![CDATA[Uploading image file: <span class="fixed_width">#!variable!name!#</span> to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="explain_0053">This could take a long time, depending on the speed of the connection between Striker and the #!string!brand_0003!#.</key>
+		<key name="explain_0053">This could take a long time, depending on the speed of the connection between #!string!brand_0020!# and the #!string!brand_0003!#.</key>
 		<key name="explain_0054">This process could take quite some time to complete!</key>
 		<key name="explain_0055">This action can not be undone!</key>
 		<key name="explain_0056">It is possible that another user deleted this file already.</key>
@@ -699,7 +709,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0283">Enabling APC UPS Watchdog Timer</key>
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
-		<key name="row_0286"></key>
+		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
 		<key name="row_0287"></key>
 		<key name="row_0288"></key>
 		<key name="row_0289"></key>
@@ -1080,11 +1090,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0108"><![CDATA[Failed to find: [<span class="highlight_detail">#!variable!file!#</span>]]]></key>
 		<key name="state_0109">Failed to create symlink</key>
 		<key name="state_0110">Malformed MAC address found</key>
-		<key name="state_0111"></key>
-		<key name="state_0112"></key>
-		<key name="state_0113"></key>
-		<key name="state_0114"></key>
-		<key name="state_0115"></key>
+		<key name="state_0111">Failed to download</key>
+		<key name="state_0112">Failed to extract files</key>
+		<key name="state_0113">Template #!string!brand_0002!# configuration not found.</key>
+		<key name="state_0114">Failed to create #!string!brand_0002!# configuration file.</key>
+		<key name="state_0115">Failed to enable #!string!brand_0015!#</key>
 		<key name="state_0116"></key>
 		<key name="state_0117"></key>
 		<key name="state_0118"></key>
@@ -1252,7 +1262,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0158">#!string!brand_0003!# Install Manifest Summary</key>
 		<key name="title_0159">Compute Nodes</key>
 		<key name="title_0160">Foundation Pack</key>
-		<key name="title_0161">Striker Dashboards</key>
+		<key name="title_0161">#!string!brand_0020!# Dashboards</key>
 		<key name="title_0162"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">1</span>]]></key>
 		<key name="title_0163"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
 		<key name="title_0164">Install Manifest Created</key>

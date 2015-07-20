@@ -699,7 +699,7 @@ sub initialize_conf
 				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
-				scan_agents		=>	"/etc/striker/Config/",
+				#scan_agents		=>	"/etc/striker/Config/",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99y_safe_anvil_start",
 				shadow			=>	"/etc/shadow",
@@ -708,6 +708,9 @@ sub initialize_conf
 				sn_link1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link1",
 				sn_link2_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_link2",
 				storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
+				striker_config		=>	"/etc/striker/striker.conf",
+				striker_tarball		=>	"/sbin/striker/striker_tools.tar.bz2",
+				tar			=>	"/bin/tar",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 			},
 		},
@@ -823,7 +826,7 @@ sub initialize_conf
 					pool1_size		=>	"50",
 					pool1_unit		=>	"%",
 					prefix			=>	"",
-					repositories		=>	"https://alteeve.ca/an-repo/el6/an-el6.repo",
+					repositories		=>	"",
 					sequence		=>	"01",
 					ssh_keysize		=>	8191,
 					sn_network		=>	"10.10.0.0",
@@ -994,6 +997,10 @@ sub initialize_conf
 			reload_page_timer	=>	0,
 			# These options allow customization of newly provisioned
 			# servers.
+			### If you change these, change the matching values in 
+			### striker-installer so that it stays in sync.
+			scancore_database	=>	"scancore",
+			striker_user		=>	"admin",
 			server			=>	{
 				nic_count		=>	1,
 				alternate_nic_model	=>	"e1000",
@@ -1013,7 +1020,7 @@ sub initialize_conf
 			up_nodes		=>	0,
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
-			use_drbd		=>	"8.3",			# Set to 8.3 if having trouble with 8.4
+			use_drbd		=>	"8.4",			# Set to 8.3 if having trouble with 8.4
 			# If this is set to 1, a second option will be added 
 			# below 'Cold-Stop Anvil!' called 'Hard-Reset Anvil!'.
 			# The 'Hard-Reset' option will do the exact same thing

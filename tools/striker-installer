@@ -67,7 +67,7 @@
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
 #         
-# BUG: - 
+# BUG: - If the BCN isn't 10.20.4.{1,2}, the kickstart files fail.
 # 
 
 my $THIS_FILE =  $0;
@@ -530,6 +530,8 @@ my $conf = {
 		skip_network		=>	0,
 		ssl_checked		=>	0,
 		stable_version		=>	"1.1.6",
+		### If you change these, change the matching values in 
+		### Common.pm so that InstallManifest runs match.
 		scancore_database	=>	"scancore",
 		striker_user		=>	"admin",
 		striker_password	=>	"",		# no default password, evar!
@@ -643,15 +645,6 @@ if ($conf->{switches}{r})
 # Configure existing repos be skipped if they can't be reached.
 #configure_repos_to_skip_if_unavailable($conf);
 
-# If the user requested, map the USB ports.
-if ($conf->{switches}{'map-usb'})
-{
-	# OK, go!
-	map_usb_ports($conf);
-}
-
-#die "$THIS_FILE ".__LINE__."; Testing...\n";
-
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
 if (not $conf->{sys}{skip_network})
@@ -728,6 +721,27 @@ if ($conf->{switches}{'run-rc-local'})
 else
 {
 	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of /etc/rc.local.", 1);
+}
+
+# Warn the user to update their kickstart scripts if they're not using a
+# standard BCN IP address.
+if (($conf->{network}{bcn}{ip} ne "10.20.4.1") && ($conf->{network}{bcn}{ip} ne "10.20.4.2"))
+{
+	logger($conf, $THIS_FILE, __LINE__, "\n##############################################################################", 0);
+	logger($conf, $THIS_FILE, __LINE__, "# WARNING: You're using a non-standard BCN IP address!                       #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          This is OK, but the stock kickstart files will need to be updated #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          to point at this (and the peer) dashboards. Please be sure to     #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          update the kickstart files in;                                    #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{rhel6,c6}/x86_64/ks/*.ks                         #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          You will also need to manually update the PXE server's            #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          configuration file's pointers to the kickstart files in;          #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          - /var/lib/tftpboot/pxelinux.cfg/default                          #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "##############################################################################\n", 0);
+	
+	# Disable reboot so that the user sees this.
+	$conf->{switches}{'no-reboot'} = 1;
 }
 
 # If the user should reboot, tell them.
@@ -1348,13 +1362,23 @@ sub configure_striker_tools
 	}
 	
 	# Now copy the tools we want into place, if they're not already there.
-	logger($conf, $THIS_FILE, __LINE__, "Copying the USB management tools into place.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
 	rsync_files($conf, "$conf->{directory}{source}/tools/*",  "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/ScanCore", "$conf->{directory}{striker_tools}/");
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Create a tarball for downloading by nodes.
-	my $shell_call = "$conf->{executable}{tar} -cvjf $conf->{directory}{apache_files}/striker_tools.tar.bz2 -C $conf->{directory}{apache_files}{striker_tools}/ .";
+	logger($conf, $THIS_FILE, __LINE__, "Creating downloadable '$conf->{directory}{apache_files}' directory for nodes to grab.", 1);
+	my $shell_call = "$conf->{executable}{tar} -cvjf $conf->{directory}{apache_files}/striker_tools.tar.bz2 -C $conf->{directory}{striker_tools}/ .";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+	}
+	close $file_handle;
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }
@@ -4866,7 +4890,7 @@ sub install_striker_files
 				$striker_config .= "scancore::db::1::port			=	5432\n";
 				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
-				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n";
+				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n\n";
 			}
 			$striker_config .= "$line\n";
 		}
@@ -4878,6 +4902,11 @@ sub install_striker_files
 		close $file_handle;
 		logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 	}
+	
+	# Copy the striker.conf file to /sbin/striker/ so that nodes can use it
+	# as a template.
+	logger($conf, $THIS_FILE, __LINE__, "- Copying striker.conf for use as a template by nodes.", 1);
+	rsync_files($conf, "$conf->{path}{striker_config}", "$conf->{directory}{striker_tools}/");
 	
 	# Create an empty log file
 	logger($conf, $THIS_FILE, __LINE__, "- Creating empty Striker log file.", 1);
@@ -8096,18 +8125,6 @@ sub get_switches
 		logger($conf, $THIS_FILE, __LINE__, "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]", 3);
 	}
 	#exit;
-	
-	return(0);
-}
-
-# If the user wants to enable USB mounting and have asked to map the network
-# interfaces.
-sub map_usb_ports
-{
-	my ($conf) = @_;
-	
-	logger($conf, $THIS_FILE, __LINE__, "- Beginning USB identification...", 1);
-	
 	
 	return(0);
 }

@@ -123,24 +123,24 @@ fi
 mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/$ISO /mnt/source/
 
 # Create the /sbin/striker/ directory.
-if [ ! -e "/mnt/sysimage/sbin/striker" ];
-then
-	echo "Creating the '/sbin/striker' directory."
-	mkdir /mnt/sysimage/sbin/striker;
-fi
-
-# Copy all tools into place.
-echo "Copying Striker's tools into /sbin/striker/"
-cp -Rvp /mnt/source/Striker/striker-master/tools/* /mnt/sysimage/sbin/striker/
-
-# For now, safe_anvil_shutdown must be in
-# /var/www/tools/safe_anvil_shutdown, so this copies it into place.
-if [ ! -e "/mnt/sysimage/var/www/tools" ];
-then
-	echo "Creating the '/mnt/sysimage/var/www/tools' directory."
-	mkdir /mnt/sysimage/var/www/tools;
-fi
-cp /mnt/source/Striker/striker-master/tools/safe_anvil_stop /mnt/sysimage/var/www/tools/safe_anvil_stop
+# if [ ! -e "/mnt/sysimage/sbin/striker" ];
+# then
+# 	echo "Creating the '/sbin/striker' directory."
+# 	mkdir /mnt/sysimage/sbin/striker;
+# fi
+# 
+# # Copy all tools into place.
+# echo "Copying Striker's tools into /sbin/striker/"
+# cp -Rvp /mnt/source/Striker/striker-master/tools/* /mnt/sysimage/sbin/striker/
+# 
+# # For now, safe_anvil_shutdown must be in
+# # /var/www/tools/safe_anvil_shutdown, so this copies it into place.
+# if [ ! -e "/mnt/sysimage/var/www/tools" ];
+# then
+# 	echo "Creating the '/mnt/sysimage/var/www/tools' directory."
+# 	mkdir /mnt/sysimage/var/www/tools;
+# fi
+# cp /mnt/source/Striker/striker-master/tools/safe_anvil_stop /mnt/sysimage/var/www/tools/safe_anvil_stop
 
 # Copy the raritan fence agent into place.
 echo "Copying fence_raritan_snmp into /usr/sbin/"

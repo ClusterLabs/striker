@@ -100,11 +100,6 @@ then
 	mkdir /sbin/striker;
 fi
 
-# Download the striker-tools.tar and extract it to '/sbin/striker/'.
-echo "Installing the Dashboard tools."
-curl http://10.20.4.2/rhel6/x86_64/files/striker-tools.tar > /sbin/striker/striker-tools.tar
-tar -xvf /sbin/striker/striker-tools.tar -C /sbin/striker/
-
 # Show details on boot.
 echo "Setting plymouth to use detailed boot screen"
 plymouth-set-default-theme details --rebuild-initrd

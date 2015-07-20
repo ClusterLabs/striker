@@ -7186,6 +7186,7 @@ then
 		echo 'shorewall stopped, starting it'
 		$conf->{path}{control_shorewall} restart
 		$conf->{path}{control_shorewall} status
+		# This is currently broken, status always returns 0...
 		if [ \"\$?\" -eq \"0\" ];
 		then 
 			echo 'shorewall started'

@@ -50,6 +50,7 @@ sub run_new_install_manifest
 	# Some variables we'll need.
 	$conf->{packages}{to_install} = {
 		acpid				=>	0,
+		'alteeve-repo'			=>	0,
 		'bridge-utils'			=>	0,
 		ccs				=>	0,
 		cman 				=>	0,
@@ -160,12 +161,12 @@ sub run_new_install_manifest
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
 	
-	# Make sure both nodes are EL6 nodes.
-	verify_os($conf) or return(1);
-	
 	# Make sure both nodes can get online. We'll try to install even
 	# without Internet access.
 	verify_internet_access($conf);
+	
+	# Make sure both nodes are EL6 nodes.
+	verify_os($conf) or return(1);
 	
 	### NOTE: I might want to move the addition of the an-repo up here.
 	# Beyond here, perl is needed.
@@ -380,11 +381,16 @@ sub run_new_install_manifest
 	return(0);
 }
 
-# 
+# This downloads the '/sbin/striker' tools from one of the dashboards and
+# copies them (Striker tools and ScanCore) into place.
 sub configure_striker_tools
 {
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
+	
+	# Configure Scancore. This includes the download and setup of the 
+	# /sbin/striker files.
+	configure_scancore($conf);
 	
 	# If requested, enable safe_anvil_start.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
@@ -402,9 +408,6 @@ sub configure_striker_tools
 		enable_anvil_kick_apc_ups($conf);
 	}
 	
-	# Configure Scancore.
-	configure_scancore($conf);
-	
 	return(0);
 }
 
@@ -414,54 +417,234 @@ sub configure_scancore_on_node
 	my ($conf, $node, $password, $node_name) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
-	my $ok = 1;
+	my $return_code = 0;
 	
-	# First, copy the ScanCore files into place.
-	
-	
-	
-	### TODO: Each scan agent has a config file, most of which may not be
-	###       useful to the client. For now, we'll configure them all. 
-	###       Later, these will be configured via Install Manifest.
-	my $node_short_name = $node_name;
-	   $node_short_name = s/^(.*?)\..*$/$1/;
-	my $node_bcn_ip     = $node;
-	foreach my $agent (sort {$a cmp $b} keys %{$conf->{scancore}{scan_agents}})
+	# First, copy the ScanCore files into place. Create the striker config
+	# directory if needed, as well.
+	my ($path, $tarball) = ($conf->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
+	my $download_1       = "http://$conf->{cgi}{anvil_striker1_bcn_ip}/files/$tarball";
+	my $download_2       = "http://$conf->{cgi}{anvil_striker2_bcn_ip}/files/$tarball";
+	my $shell_call       = "
+if [ ! -e '$conf->{path}{nodes}{striker_tarball}' ]; 
+then 
+    echo download needed;
+    if [ ! -e '$path' ];
+    then
+        mkdir -p $path
+    fi
+    wget -c $download_1 -O $conf->{path}{nodes}{striker_tarball}
+    if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+    then
+        echo 'downloaded from $download_1 successfully'
+    else
+        echo 'download from $download_1 failed, trying alternate.'
+        wget -c $download_2 -O $conf->{path}{nodes}{striker_tarball}
+        if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+        then
+            echo 'downloaded from $download_2 successfully'
+        else
+            echo 'download from $download_2 failed, giving up.'
+        fi;
+    fi;
+    if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+    then
+        $conf->{path}{nodes}{tar} -xvjf $conf->{path}{nodes}{striker_tarball} -C $path/ .
+        if [ -e '$path/ScanCore/ScanCore' ];
+        then
+            echo 'install succeeded'
+        else
+            echo 'install failed'
+        fi;
+    fi;
+    if [ ! -e '/etc/striker' ];
+    then
+        mkdir /etc/striker
+        echo 'Striker configuration directory created.'
+    fi;
+fi
+";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
 	{
-		next if not $conf->{scancore}{scan_agents}{$agent}{enabled};
-		my $config_file       = "$conf->{path}{nodes}{scan_agents}/$conf->{scancore}{scan_agents}{$agent}{configuration_file}";
-		my $node_config_body = $conf->{scancore}{scan_agents}{$agent}{configuration_body};
-		
-		# Substitute variables.
-		$node_config_body =~ s/#!conf!bcn_ip!#/$node_bcn_ip/gs;
-		$node_config_body =~ s/#!conf!long_hostname!#/$node_name/gs;
-		$node_config_body =~ s/#!conf!short_hostname!#/$node_short_name/gs;
-		
-		### TODO: Backup any existing files.
-		# Write out the config
-		my $shell_call =  "cat > $config_file << EOF\n";
-		   $shell_call .= "$node_config_body\n";
-		   $shell_call .= "EOF";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	22,
-			user		=>	"root",
-			password	=>	$password,
-			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-		foreach my $line (@{$return})
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line =~ /failed, giving up/)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+			$return_code = 1;
+		}
+		if ($line =~ /install failed/)
+		{
+			$return_code = 2;
 		}
 	}
 	
-	# Now make sure scan core is set to start on boot.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
-	my $shell_call = "
+	# Setup striker.conf if we've not hit problem and it doesn't exist.
+	if (($return_code eq "0") && (not -e $conf->{path}{nodes}{striker_config}))
+	{
+		# Read in the base striker.conf from /sbin/striker/
+		my $base_striker_config_file = "$path/striker.conf";
+		my $striker_config           = "";
+		my $skip_db                  = "";
+		
+		# Read in the base striker.conf
+		if (-e $base_striker_config_file)
+		{
+			# Excellent, read it in.
+			my $shell_call = $base_striker_config_file;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				
+				if ($line =~ /^scancore::db::(\d+)::host\s+=\s+localhost/)
+				{
+					$skip_db = $1;
+				}
+				next if ($line =~ /^scancore::db::(\d+)::/);
+				
+				# Find DB IDs already used so I don't duplicate
+				# later when I inject the strikers.
+				if ($line =~ /^scancore::db::(\d+)::host\s+=\s+(.*)$/)
+				{
+					my $db_id   = $1;
+					my $db_host = $2;
+					$conf->{used_db_id}{$db_id}     = $db_host;
+					$conf->{used_db_host}{$db_host} = $db_id;
+				}
+				
+				$striker_config .= $line;
+			}
+			close $file_handle;
+			
+			# Loop through again and inject the striker DBs.
+			my $striker_1_bcn_ip = $conf->{cgi}{anvil_striker1_bcn_ip};
+			my $striker_1_db_id  = 0;
+			my $add_striker_1    = 0;
+			if (not $conf->{used_db_host}{$striker_1_bcn_ip})
+			{
+				# Find the first free DB ID.
+				my $id = 1;
+				while (not $striker_1_db_id)
+				{
+					if ($conf->{used_db_id}{$id})
+					{
+						$id++;
+					}
+					else
+					{
+						$striker_1_db_id                         = $id;
+						$add_striker_1                           = 1;
+						$conf->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
+						$conf->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id
+					}
+				}
+			}
+			my $striker_2_bcn_ip = $conf->{cgi}{anvil_striker2_bcn_ip};
+			my $striker_2_db_id  = 0;
+			my $add_striker_2    = 0;
+			if (not $conf->{used_db_host}{$striker_2_bcn_ip})
+			{
+				# Find the first free DB ID.
+				my $id = 1;
+				while (not $striker_2_db_id)
+				{
+					if ($conf->{used_db_id}{$id})
+					{
+						$id++;
+					}
+					else
+					{
+						$striker_2_db_id                         = $id;
+						$add_striker_2                           = 1;
+						$conf->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
+						$conf->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id
+					}
+				}
+			}
+			
+			# Inject if needed.
+			if (($add_striker_1) or ($add_striker_2))
+			{
+				# Loop through the striker config and inject 
+				# one or both of the striker DBs.
+				my $new_striker_config = "";
+				foreach my $line (split/\n/, $striker_config)
+				{
+					$new_striker_config .= $line;
+					if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
+					{
+						# Inject
+						if ($add_striker_1)
+						{
+							my $db_host = $striker_1_bcn_ip;
+							my $db_id   = $striker_1_db_id;
+							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
+							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
+							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
+							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n";
+						}
+						if ($add_striker_2)
+						{
+							my $db_host = $striker_2_bcn_ip;
+							my $db_id   = $striker_2_db_id;
+							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
+							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
+							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
+							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n";
+						}
+					}
+				}
+				
+				# Copy new over old.
+				$striker_config = $new_striker_config;
+			}
+			
+			# Write out the striker.conf file now.
+			$shell_call = "$conf->{path}{config_file}";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+			open ($file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+			print $file_handle $striker_config;
+			close $file_handle;
+			
+			# if exists, yay
+			if (-e $conf->{path}{config_file})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created Striker config: [$conf->{path}{config_file}]\n");
+			}
+			else
+			{
+				# Failed 
+				$return_code = 4;
+			}
+		}
+		else
+		{
+			# Template striker.conf doesn't exist. Oops.
+			$return_code = 3;
+		}
+	}
+	
+	if (not $return_code)
+	{
+		# Add it to root's crontab.
+=pod
+		# Now make sure scan core is set to start on boot.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
+		my $shell_call = "
 if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
 	echo 'creating empty crontab for root.'
@@ -476,23 +659,31 @@ then
 else
 	echo '#*/5 * * * * /sbin/striker/ScanCore/ScanCore' >> $conf->{path}{nodes}{cron_root}
 fi";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	11,
-		user		=>	"root",
-		password	=>	$password,
-		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-	foreach my $line (@{$return})
-	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+			node		=>	$node,
+			port		=>	11,
+			user		=>	"root",
+			password	=>	$password,
+			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+		foreach my $line (@{$return})
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		}
+=cut
 	}
 	
-	return($ok);
+	# 0 == Success
+	# 1 == Failed to download
+	# 2 == Failed to extract
+	# 3 == Base striker.conf not found.
+	# 4 == Failed to create the striker.conf file.
+	# 5 == Failed to add to root's crontab
+	return($return_code);
 }
 
 
@@ -503,12 +694,104 @@ sub configure_scancore
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
 	
-	my ($node1_ok) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
-	my ($node2_ok) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	my ($node1_rc) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+	my ($node2_rc) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	# 0 == Success
+	# 1 == Failed to download
+	# 2 == Failed to extract
+	# 3 == Base striker.conf not found.
+	# 4 == Failed to create the striker.conf file.
+	# 5 == Failed to add to root's crontab
 	
-	# TODO: Show the user the results.
+	my $ok = 1;
+	# Report
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0005!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0005!#";
+	# Node 1
+	if ($node1_rc eq "1")
+	{
+		# Failed to download
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0111!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "2")
+	{
+		# Failed to extract
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0112!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "3")
+	{
+		# Base striker.conf not found
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0113!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "4")
+	{
+		# Failed to create striker.conf
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0114!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "5")
+	{
+		# Failed to add ScanCore to root's crontab
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0116!#";
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_rc eq "1")
+	{
+		# Failed to download
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0111!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "2")
+	{
+		# Failed to extract
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0112!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "3")
+	{
+		# Base striker.conf not found
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0113!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "4")
+	{
+		# Failed to create striker.conf
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0114!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "5")
+	{
+		# Failed to add ScanCore to root's crontab
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0116!#";
+		$ok            = 0;
+	}
 	
-	return(0);
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0286!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
 }
 
 # This creates the run-level 3 link to enable anvil-kick-apc-ups.
@@ -3450,6 +3733,11 @@ fi;";
 			{
 				my $no_metadata = 0;
 				my $shell_call  = "drbdadm attach r$resource; echo rc:\$?";
+				if ($conf->{sys}{use_drbd} eq "8.4")
+				{
+					# attach and connect are done together in 8.4
+					$shell_call  = "drbdadm up r$resource; echo rc:\$?";
+				}
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -6118,9 +6406,9 @@ else
 fi
 if grep -q gpgcheck=1 /etc/yum.repos.d/$repo_file;
 then 
-	local_file=\$(grep gpgkey /etc/yum.repos.d/an-el6.repo | sed 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
-	file=\$(grep gpgkey /etc/yum.repos.d/an-el6.repo | sed 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
-	url=\$(grep baseurl /etc/yum.repos.d/an-el6.repo | sed 's/baseurl=//');
+	local_file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
+	file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
+	url=\$(grep baseurl /etc/yum.repos.d/$repo_file | sed 's/baseurl=//');
 	echo 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
 	curl \$url/\$file > \$local_file
 fi";
@@ -7572,77 +7860,99 @@ resource r1 {
 # This is the first DRBD resource. It will store the shared file systems and
 # the servers designed to run on node 01.
 resource r0 {
-	# These options here are common to both nodes. If for some reason you
-	# need to set unique values per node, you can move these to the
-	# 'on <name> { ... }' section.
- 
-	# This sets the device name of this DRBD resouce.
-	device /dev/drbd0;
- 
-	# This tells DRBD what the backing device is for this resource.
-	disk /dev/sda4;
- 
-	# This controls the location of the metadata. When 'internal' is used,
-	# as we use here, a little space at the end of the backing devices is
-	# set aside (roughly 32 MB per 1 TB of raw storage). External metadata
-	# can be used to put the metadata on another partition when converting
-	# existing file systems to be DRBD backed, when there is no extra space
-	# available for the metadata.
-	meta-disk internal;
- 
-	# NOTE: Later, make it an option in the dashboard to trigger a manual
-	# 	verify and/or schedule periodic automatic runs
-	net {
-		# TODO: Test performance differences between sha1 and md5
-		# This tells DRBD how to do a block-by-block verification of
-		# the data stored on the backing devices. Any verification
-		# failures will result in the effected block being marked
-		# out-of-sync.
-		#verify-alg md5;
- 
-		# TODO: Test the performance hit of this being enabled.
-		# This tells DRBD to generate a checksum for each transmitted
-		# packet. If the data received data doesn't generate the same
-		# sum, a retransmit request is generated. This protects against
-		# otherwise-undetected errors in transmission, like 
-		# bit-flipping. See:
-		# http://www.drbd.org/users-guide/s-integrity-check.html
-		#data-integrity-alg md5;
+	on $conf->{cgi}{anvil_node1_name} {
+		volume 0 {
+			# This sets the device name of this DRBD resouce.
+			device       /dev/drbd0 minor 0;
+			
+			# This tells DRBD what the backing device is for this
+			# resource.
+			disk         $node1_pool1_partition;
+			
+			# This controls the location of the metadata. When 
+			# 'internal' is used, as we use here, a little space at
+			# the end of the backing devices is set aside (roughly
+			# 32 MiB per 1 TiB of raw storage). 
+			meta-disk    internal;
+		}
+		
+		# This is the address and port to use for DRBD traffic on this
+		# node. Multiple resources can use the same IP but the ports
+		# must differ. By convention, the first resource uses 7788, the
+		# second uses 7789 and so on, incrementing by one for each
+		# additional resource. 
+		address          ipv4 $node1_sn_ip:7788;
 	}
- 
-	# WARNING: Confirm that these are safe when the controller's BBU is
-	#          depleted/failed and the controller enters write-through 
-	#          mode.
+	on $conf->{cgi}{anvil_node2_name} {
+		volume 0 {
+			device       /dev/drbd0 minor 0;
+			disk         $node1_pool1_partition;
+			meta-disk    internal;
+		}
+		address          ipv4 $node2_sn_ip:7788;
+	}
 	disk {
 		# TODO: Test the real-world performance differences gained with
 		#       these options.
 		# This tells DRBD not to bypass the write-back caching on the
 		# RAID controller. Normally, DRBD forces the data to be flushed
 		# to disk, rather than allowing the write-back cachine to 
-		# handle it. Normally this is dangerous, but with BBU-backed
-		# caching, it is safe. The first option disables disk flushing
-		# and the second disabled metadata flushes.
-		disk-flushes no;
-		md-flushes no;
-	}
- 
-	# This sets up the resource on node 01. The name used below must be the
-	# named returned by 'uname -n'.
-	on node1.ccrs.bcn {
-		# This is the address and port to use for DRBD traffic on this
-		# node. Multiple resources can use the same IP but the ports
-		# must differ. By convention, the first resource uses 7788, the
-		# second uses 7789 and so on, incrementing by one for each
-		# additional resource. 
-		address 10.10.10.1:7788;
-	}
-	on node2.ccrs.bcn {
-		address 10.10.10.2:7788;
+		# handle it. Normally this is dangerous, but with 
+		# BBU/FBU-backed caching, it is safe. The first option disables
+		# disk flushing and the second disabled metadata flushes.
+		disk-flushes      no;
+		md-flushes        no;
 	}
 }
 ";
 
 		$conf->{drbd}{r1} = "
+# This is the resource used for the servers designed to run on node 02.
+resource r1 {
+	on $conf->{cgi}{anvil_node1_name} {
+		volume 0 {
+			# This sets the device name of this DRBD resouce.
+			device       /dev/drbd1 minor 1;
+			
+			# This tells DRBD what the backing device is for this
+			# resource.
+			disk         $node1_pool2_partition;
+			
+			# This controls the location of the metadata. When 
+			# 'internal' is used, as we use here, a little space at
+			# the end of the backing devices is set aside (roughly
+			# 32 MiB per 1 TiB of raw storage). 
+			meta-disk    internal;
+		}
+		
+		# This is the address and port to use for DRBD traffic on this
+		# node. Multiple resources can use the same IP but the ports
+		# must differ. By convention, the first resource uses 7788, the
+		# second uses 7789 and so on, incrementing by one for each
+		# additional resource. 
+		address          ipv4 $node1_sn_ip:7789;
+	}
+	on $conf->{cgi}{anvil_node2_name} {
+		volume 0 {
+			device       /dev/drbd1 minor 1;
+			disk         $node1_pool2_partition;
+			meta-disk    internal;
+		}
+		address          ipv4 $node2_sn_ip:7789;
+	}
+	disk {
+		# TODO: Test the real-world performance differences gained with
+		#       these options.
+		# This tells DRBD not to bypass the write-back caching on the
+		# RAID controller. Normally, DRBD forces the data to be flushed
+		# to disk, rather than allowing the write-back cachine to 
+		# handle it. Normally this is dangerous, but with 
+		# BBU/FBU-backed caching, it is safe. The first option disables
+		# disk flushing and the second disabled metadata flushes.
+		disk-flushes      no;
+		md-flushes        no;
+	}
+}
 ";
 	}
 	
@@ -12167,7 +12477,7 @@ sub check_connection
 		
 		# Copy the tools the nodes will need into docroot and update
 		# the URLs we will tell the nodes to download from.
-		copy_tools_to_docroot($conf);
+		#copy_tools_to_docroot($conf);
 	}
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; access: [$access]\n");
@@ -12222,62 +12532,62 @@ sub get_local_bcn_ip
 # If one or both of the nodes failed to connect to the web, this function will
 # move tools to our webserver's docroot and then update paths to find the tools
 # here. The paths will use the BCN for download.
-sub copy_tools_to_docroot
-{
-	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; copy_tools_to_docroot()\n");
-	
-	my $docroot         = $conf->{path}{docroot};
-	my $tools_directory = $conf->{path}{tools_directory};
-	my $bcn_ip          = get_local_bcn_ip($conf);
-	
-	foreach my $tool (@{$conf->{path}{tools}})
-	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copying tool: [$tool] from: [$tools_directory] to: [$docroot]\n");
-		my $source      = "$tools_directory/$tool";
-		my $destination = "$docroot/$tool";
-		if (-e $destination)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; skipping, already exists: [$destination]\n");
-		}
-		elsif (-e $source)
-		{
-			# Copy.
-			my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
-			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			}
-			close $file_handle;
-			if (-e $destination)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copied successfully!\n");
-				# No sense changing the URLs if I didn't find
-				# my BCN IP...
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
-				if ($bcn_ip)
-				{
-					$conf->{url}{$tool} = "http://$bcn_ip/$tool";
-				}
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
-			}
-			else
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to copy! Will try to proceed as the nodes may have these files already.\n");
-			}
-		}
-		else
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The source file: [$source] wasn't found! Will try to proceed as the nodes may have these files already.\n");
-		}
-	}
-	
-	return(0);
-}
+# sub copy_tools_to_docroot
+# {
+# 	my ($conf) = @_;
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; copy_tools_to_docroot()\n");
+# 	
+# 	my $docroot         = $conf->{path}{docroot};
+# 	my $tools_directory = $conf->{path}{tools_directory};
+# 	my $bcn_ip          = get_local_bcn_ip($conf);
+# 	
+# 	foreach my $tool (@{$conf->{path}{tools}})
+# 	{
+# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copying tool: [$tool] from: [$tools_directory] to: [$docroot]\n");
+# 		my $source      = "$tools_directory/$tool";
+# 		my $destination = "$docroot/$tool";
+# 		if (-e $destination)
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; skipping, already exists: [$destination]\n");
+# 		}
+# 		elsif (-e $source)
+# 		{
+# 			# Copy.
+# 			my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
+# 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
+# 			while(<$file_handle>)
+# 			{
+# 				chomp;
+# 				my $line = $_;
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+# 			}
+# 			close $file_handle;
+# 			if (-e $destination)
+# 			{
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copied successfully!\n");
+# 				# No sense changing the URLs if I didn't find
+# 				# my BCN IP...
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
+# 				if ($bcn_ip)
+# 				{
+# 					$conf->{url}{$tool} = "http://$bcn_ip/$tool";
+# 				}
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
+# 			}
+# 			else
+# 			{
+# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to copy! Will try to proceed as the nodes may have these files already.\n");
+# 			}
+# 		}
+# 		else
+# 		{
+# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The source file: [$source] wasn't found! Will try to proceed as the nodes may have these files already.\n");
+# 		}
+# 	}
+# 	
+# 	return(0);
+# }
 
 # This does nothing more than call 'echo 1' to see if the target is reachable.
 sub check_node_access
