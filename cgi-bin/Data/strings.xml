@@ -1095,7 +1095,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0113">Template #!string!brand_0002!# configuration not found.</key>
 		<key name="state_0114">Failed to create #!string!brand_0002!# configuration file.</key>
 		<key name="state_0115">Failed to enable #!string!brand_0015!#</key>
-		<key name="state_0116"></key>
+		<key name="state_0116"><![CDATA[Failed to install '<span class="highlight_detail">wait-for-drbd</span>' into '<span class="highlight_detail">/etc/init.d/</span>'.]]></key>
 		<key name="state_0117"></key>
 		<key name="state_0118"></key>
 		<key name="state_0119"></key>

@@ -181,6 +181,7 @@ my $conf = {
 			mlocate				=>	0, 
 			mod_ssl				=>	0,
 			ntp				=>	0,
+			patch				=>	0,
 			pciutils			=>	0,
 			'perl-CGI'			=>	0, 
 			'perl-CPAN'			=>	0, 
@@ -3058,8 +3059,8 @@ sub configure_shorewall
 #ZONE	TYPE		OPTIONS		IN			OUT
 #					OPTIONS			OPTIONS
 fw	firewall
-net	ipv4
-loc	ipv4
+net     ipv4
+loc     ipv4
 ";
 	
 	# Interfaces - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#interfaces
@@ -3073,7 +3074,7 @@ loc	ipv4
 # http://www.shorewall.net/manpages/shorewall-interfaces.html
 #
 ###############################################################################
-FORMAT 2
+?FORMAT 2
 ###############################################################################
 #ZONE		INTERFACE		OPTIONS
 net		$ifn_interface		dhcp
@@ -3113,13 +3114,15 @@ loc	net	ACCEPT
 # The manpage is also online at
 # http://www.shorewall.net/manpages/shorewall-rules.html
 #
-######################################################################################################################################################################################
-#ACTION		SOURCE		DEST		PROTO	DEST	SOURCE		ORIGINAL	RATE		USER/	MARK	CONNLIMIT	TIME         HEADERS         SWITCH
-#							PORT	PORT(S)		DEST		LIMIT		GROUP
-#SECTION ALL
-#SECTION ESTABLISHED
-#SECTION RELATED
-SECTION NEW
+######################################################################################################################################################################################################
+#ACTION		SOURCE		DEST		PROTO	DEST	SOURCE		ORIGINAL	RATE		USER/	MARK	CONNLIMIT	TIME		HEADERS		SWITCH		HELPER
+#							PORT(S)	PORT(S)		DEST		LIMIT		GROUP
+?SECTION ALL
+?SECTION ESTABLISHED
+?SECTION RELATED
+?SECTION INVALID
+?SECTION UNTRACKED
+?SECTION NEW
 
 # Respond to pings
 Ping(ACCEPT)	net		fw
@@ -3163,9 +3166,9 @@ ACCEPT		loc		fw		tcp	8099
 # The manpage is also online at
 # http://www.shorewall.net/manpages/shorewall-masq.html
 #
-######################################################################################################
-#INTERFACE:DEST		SOURCE		ADDRESS		PROTO	PORT(S)	IPSEC	MARK	USER/	SWITCH
-#											GROUP
+################################################################################################################
+#INTERFACE:DEST		SOURCE		ADDRESS		PROTO	PORT(S)	IPSEC	MARK	USER/	SWITCH	ORIGINAL
+#											GROUP		DEST
 $ifn_interface		$bcn_network/$cidr_bcn_netmask
 ";
 	

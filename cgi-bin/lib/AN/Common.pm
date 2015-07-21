@@ -676,6 +676,8 @@ sub initialize_conf
 			nodes			=>	{
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 				'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99z_anvil-kick-apc-ups",
+				# This is the actual DRBD wait script
+				'anvil-wait-for-drbd'	=>	"/sbin/striker/anvil-wait-for-drbd",
 				backups			=>	"/root/backups",
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
@@ -712,6 +714,9 @@ sub initialize_conf
 				striker_tarball		=>	"/sbin/striker/striker_tools.tar.bz2",
 				tar			=>	"/bin/tar",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+				# This is the LSB wrapper.
+				'wait-for-drbd'		=>	"/sbin/striker/wait-for-drbd",
+				'wait-for-drbd_initd'	=>	"/etc/init.d/wait-for-drbd",
 			},
 		},
 		args			=>	{

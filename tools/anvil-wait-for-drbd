@@ -1,0 +1,119 @@
+#!/usr/bin/perl
+# 
+# This is the finest quality duct tape... It calls 'drbdadm dump', parses out
+# the resources and then waits until all resources have become primary. It is
+# designed to live in cluser.conf between DRBD and clvmd so that clustered LVM
+# doesn't throw a fit when it tries to find it's PVs before the backing device
+# is accessible.
+# 
+# THIS DOES NOT START DRBD!
+# 
+# It only waits for it...
+# 
+# It is meant to be called by an init.d/LSB wrapper so this returns appropriate
+# 'start', 'status' and 'stop' exit codes.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $rc = 0;
+
+my $conf = {
+	path	=>	{
+		drbdadm		=>	'/sbin/drbdadm',
+		initd		=>	'/etc/init.d/drbd',
+		proc		=>	'/proc/drbd',
+	},
+	sys	=>	{
+		# Exits with '1' if this much time passes.
+		stop_time	=>	(time + 60),
+	},
+};
+
+# Wait for drbd module to load.
+my $drbd_loaded = 0;
+until ($drbd_loaded)
+{
+	exit 1 if time > $conf->{sys}{stop_time};
+	
+	if (not -e $conf->{path}{proc})
+	{
+		sleep 1;
+	}
+	else
+	{
+		$drbd_loaded = 1;
+	}
+}
+
+# Get the resources.
+my $shell_call = "$conf->{path}{drbdadm}";
+open (my $file_handle, "$shell_call 2>&1 |") or die "failed to call: [$shell_call]\n";
+while(<$file_handle>)
+{
+	chomp;
+	my $line = $_;
+	#print __LINE__."; line: [$line]\n";
+	if ($line =~ /resource (\S+) {/)
+	{
+		my $resource = $1;
+		$conf->{resource}{$resource}{primary} = 0;
+		#print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
+	}
+}
+
+# OK, now sort out 
+my $all_primary = 0;
+until ($all_primary)
+{
+	exit 1 if time > $conf->{sys}{stop_time};
+	
+	my $shell_call = "$conf->{path}{initd} status";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "failed to call: [$shell_call]\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#print __LINE__."; line: [$line]\n";
+		if ($line =~ /(\d+):(\S+)\s+\S\s+(\S+)\/(\S+)\s+/)
+		{
+			my $minor      = $1;
+			my $resource   = $2;
+			my $this_state = $3;
+			my $peer_state = $4;
+			#print __LINE__."; minor: [$minor], resource: [$resource], this_state: [$this_state], peer_state: [$peer_state]\n";
+			
+			if (($this_state eq "Primary") && ($peer_state eq "Primary"))
+			{
+				$conf->{resource}{$resource}{primary} = 1;
+				#print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
+			}
+		}
+	}
+	
+	# Are all resource Primary/Primary?
+	my $down = 0;
+	foreach my $resource (sort {$a cmp $b} keys %{$conf->{resource}})
+	{
+		#print __LINE__."; resource::${resource}::primary: [$conf->{resource}{$resource}{primary}]\n";
+		if (not $conf->{resource}{$resource}{primary})
+		{
+			$down = 1;
+			#print __LINE__."; down: [$down]\n";
+		}
+	}
+	
+	if ($down)
+	{
+		sleep 1;
+	}
+	else
+	{
+		$all_primary = 1;
+		#print __LINE__."; all_primary: [$all_primary]\n";
+	}
+}
+
+exit($rc);

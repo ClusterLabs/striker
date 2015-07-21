@@ -3018,6 +3018,7 @@ sub drbd_first_start
 	# 1 == Failed to load kernel module
 	# 2 == One of the resources is Diskless
 	# 3 == Attach failed.
+	# 4 == Failed to install 'wait-for-drbd'
 	
 	# Ping variables
 	my $node1_ping_ok = "";
@@ -3111,6 +3112,11 @@ sub drbd_first_start
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to ping peer on SN.\n");
 		}
 	}
+	elsif (($node1_attach_rc eq "4") or ($node2_attach_rc eq "4"))
+	{
+		$return_code = 6;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to install 'wait-for-drbd' into '/etc/init.d/'.\n");
+	}
 	else
 	{
 		$return_code = 1;
@@ -3123,6 +3129,7 @@ sub drbd_first_start
 	# 3 == Connect failed
 	# 4 == Both nodes entered connencted state but didn't actually connect
 	# 5 == Promotion to 'Primary' failed.
+	# 6 == Failed to install 'wait-for-drbd'.
 	my $ok = 1;
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0014!#";
@@ -3151,6 +3158,18 @@ sub drbd_first_start
 			$node1_message = "#!string!state_0088!#";
 			$node2_class   = "highlight_warning_bold";
 			$node2_message = "#!string!state_0088!#";
+			if ($return_code eq "6")
+			{
+				# Unless we failed to install 'wait-for-drbd'.
+				if ($node1_attach_rc eq "4")
+				{
+					$node1_message = "#!string!state_0116!#";
+				}
+				if ($node2_attach_rc eq "4")
+				{
+					$node2_message = "#!string!state_0116!#";
+				}
+			}
 		}
 		$ok = 0;
 	}
@@ -3633,20 +3652,38 @@ sub do_drbd_attach_on_node
 	
 	my $message     = "";
 	my $return_code = 0;
-	# First up, is the DRBD kernel module loaded?
+	# First up, is the DRBD kernel module loaded and is the wait init.d
+	# script in place?
 	my $shell_call = "
 if [ -e '/proc/drbd' ]; 
 then 
-	echo 'DRBD already loaded'; 
+    echo 'DRBD already loaded'; 
 else 
-	modprobe drbd; 
-	if [ -e '/proc/drbd' ]; 
-	then 
-		echo 'loaded DRBD kernel module'; 
-	else 
-		echo 'failed to load drbd' 
-	fi;
-fi;";
+    modprobe drbd; 
+    if [ -e '/proc/drbd' ]; 
+    then 
+        echo 'loaded DRBD kernel module'; 
+    else 
+        echo 'failed to load drbd' 
+    fi;
+fi;
+if [ ! -e '$conf->{path}{nodes}{'wait-for-drbd_initd'}' ];
+then
+    if [ -e '$conf->{path}{nodes}{'wait-for-drbd'}' ];
+    then
+        echo \"need to copy 'wait-for-drbd'\"
+        cp $conf->{path}{nodes}{'wait-for-drbd'} $conf->{path}{nodes}{'wait-for-drbd_initd'};
+        if [ ! -e '$conf->{path}{nodes}{'wait-for-drbd_initd'}' ];
+        then
+           echo \"Failed to copy 'wait-for-drbd' from: [$conf->{path}{nodes}{'wait-for-drbd'}] to: [$conf->{path}{nodes}{'wait-for-drbd_initd'}]\"
+        else
+           echo \"copied 'wait-for-drbd' successfully.\"
+        fi
+    else
+        echo \"Failed to copy 'wait-for-drbd' from: [$conf->{path}{nodes}{'wait-for-drbd'}], source doesn't exist.\"
+    fi
+fi;
+";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -3673,6 +3710,11 @@ fi;";
 		elsif ($line =~ /loaded DRBD/i)
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] 'drbd' kernel was loaded.\n");
+		}
+		elsif ($line =~ /Failed to copy 'wait-for-drbd'/i)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] failed to copy 'wait-for-drbd' to init.d.\n");
+			$return_code = 4;
 		}
 	}
 	
@@ -3787,6 +3829,7 @@ fi;";
 	# 1 == Failed to load kernel module
 	# 2 == One of the resources is Diskless
 	# 3 == Attach failed.
+	# 4 == Failed to install 'wait-for-drbd'.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], message: [$message]\n");
 	return($return_code, $message);
 }
@@ -8457,7 +8500,7 @@ sub summarize_build_plan
 			{
 				# We're good.
 				$say_node2_registered = "#!string!state_0103!#";
-				$say_node2_class      = "highlight_warning";
+				$say_node2_class      = "highlight_detail";
 				$enable_rhn           = 1;
 			}
 			else
@@ -12000,6 +12043,7 @@ sub generate_cluster_conf
 	<rm log_level=\"5\">
 		<resources>
 			<script file=\"/etc/init.d/drbd\" name=\"drbd\"/>
+			<script file=\"/etc/init.d/wait-for-drbd\" name=\"wait-for-drbd\"/>
 			<script file=\"/etc/init.d/clvmd\" name=\"clvmd\"/>
 			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" fstype=\"gfs2\" mountpoint=\"/shared\" name=\"sharedfs\" />
 			<script file=\"/etc/init.d/libvirtd\" name=\"libvirtd\"/>
@@ -12022,15 +12066,19 @@ sub generate_cluster_conf
 		</failoverdomains>
 		<service name=\"storage_n01\" autostart=\"1\" domain=\"only_n01\" exclusive=\"0\" recovery=\"restart\">
 			<script ref=\"drbd\">
-				<script ref=\"clvmd\">
-					<clusterfs ref=\"sharedfs\"/>
+				<script ref=\"wait-for-drbd\">
+					<script ref=\"clvmd\">
+						<clusterfs ref=\"sharedfs\"/>
+					</script>
 				</script>
 			</script>
 		</service>
 		<service name=\"storage_n02\" autostart=\"1\" domain=\"only_n02\" exclusive=\"0\" recovery=\"restart\">
 			<script ref=\"drbd\">
-				<script ref=\"clvmd\">
-					<clusterfs ref=\"sharedfs\"/>
+				<script ref=\"wait-for-drbd\">
+					<script ref=\"clvmd\">
+						<clusterfs ref=\"sharedfs\"/>
+					</script>
 				</script>
 			</script>
 		</service>

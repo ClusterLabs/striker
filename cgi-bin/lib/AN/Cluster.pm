@@ -7133,90 +7133,90 @@ sub control_install_target
 		$shell_call = "
 if [ -e '$conf->{path}{initd_libvirtd}' ];
 then
-	$conf->{path}{control_libvirtd} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'libvirtd running, stopping it'
-		$conf->{path}{control_libvirtd} stop
-		$conf->{path}{control_libvirtd} status
-		if [ \"\$?\" -eq \"3\" ];
-		then 
-			echo 'libvirtd stopped'
-		else
-			echo 'libvirtd failed to stop'
-		fi;
-	else
-		echo 'libvirtd not running'
-	fi;
+    $conf->{path}{control_libvirtd} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'libvirtd running, stopping it'
+        $conf->{path}{control_libvirtd} stop
+        $conf->{path}{control_libvirtd} status
+        if [ \"\$?\" -eq \"3\" ];
+        then 
+            echo 'libvirtd stopped'
+        else
+            echo 'libvirtd failed to stop'
+        fi;
+    else
+        echo 'libvirtd not running'
+    fi;
 else 
-	echo 'libvirtd not installed'; 
+    echo 'libvirtd not installed'; 
 fi
 ";
 		# If we've got shorewall, stop iptables and start it.
 		$shell_call .= "
 if grep -q 'STARTUP_ENABLED=Yes' /etc/shorewall/shorewall.conf
 then
-	echo 'shorewall enabled, stopping iptables and starting shorewall'
-	if [ -e '$conf->{path}{initd_iptables}' ];
-	then
-		$conf->{path}{control_iptables} status;
-		if [ \"\$?\" -eq \"0\" ];
-		then 
-			echo 'iptables running, stopping it'
-			$conf->{path}{control_iptables} stop
-			$conf->{path}{control_iptables} status
-			if [ \"\$?\" -eq \"3\" ];
-			then 
-				echo 'iptables stopped'
-			else
-				echo 'iptables failed to stop'
-			fi;
-		else
-			echo 'iptables not running'
-		fi;
-	else 
-		echo 'iptables not installed'; 
-	fi
+    echo 'shorewall enabled, stopping iptables and starting shorewall'
+    if [ -e '$conf->{path}{initd_iptables}' ];
+    then
+        $conf->{path}{control_iptables} status;
+        if [ \"\$?\" -eq \"0\" ];
+        then 
+            echo 'iptables running, stopping it'
+            $conf->{path}{control_iptables} stop
+            $conf->{path}{control_iptables} status
+            if [ \"\$?\" -eq \"3\" ];
+            then 
+                echo 'iptables stopped'
+            else
+                echo 'iptables failed to stop'
+            fi;
+        else
+            echo 'iptables not running'
+        fi;
+    else 
+        echo 'iptables not installed'; 
+    fi
 
-	$conf->{path}{control_shorewall} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'shorewall running'
-	else
-		echo 'shorewall stopped, starting it'
-		$conf->{path}{control_shorewall} restart
-		$conf->{path}{control_shorewall} status
-		# This is currently broken, status always returns 0...
-		if [ \"\$?\" -eq \"0\" ];
-		then 
-			echo 'shorewall started'
-		else
-			echo 'shorewall failed to start'
-		fi;
-	fi;
+    $conf->{path}{control_shorewall} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'shorewall running'
+    else
+        echo 'shorewall stopped, starting it'
+        $conf->{path}{control_shorewall} restart
+        $conf->{path}{control_shorewall} status
+        # This is currently broken, status always returns 0...
+        if [ \"\$?\" -eq \"0\" ];
+        then 
+            echo 'shorewall started'
+        else
+            echo 'shorewall failed to start'
+        fi;
+    fi;
 else 
-	echo 'shorewall not enabled';
+    echo 'shorewall not enabled';
 fi
 
 if [ -e '$conf->{path}{control_dhcpd}' ];
 then
-	$conf->{path}{control_dhcpd} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'dhcpd running'
-	else
-		echo 'dhcpd running, starting it'
-		$conf->{path}{control_dhcpd} restart
-		$conf->{path}{control_dhcpd} status
-		if [ \"\$?\" -eq \"0\" ];
-		then 
-			echo 'dhcpd started'
-		else
-			echo 'dhcpd failed to start'
-		fi;
-	fi;
+    $conf->{path}{control_dhcpd} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'dhcpd running'
+    else
+        echo 'dhcpd running, starting it'
+        $conf->{path}{control_dhcpd} restart
+        $conf->{path}{control_dhcpd} status
+        if [ \"\$?\" -eq \"0\" ];
+        then 
+            echo 'dhcpd started'
+        else
+            echo 'dhcpd failed to start'
+        fi;
+    fi;
 else 
-	echo 'dhcpd not installed'; 
+    echo 'dhcpd not installed'; 
 fi
 ";
 	}
@@ -7227,77 +7227,77 @@ fi
 		$shell_call .= "
 if [ -e '$conf->{path}{initd_libvirtd}' ];
 then
-	$conf->{path}{control_libvirtd} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'libvirtd running, stopping it'
-		$conf->{path}{control_libvirtd} stop
-		$conf->{path}{control_libvirtd} status
-		if [ \"\$?\" -eq \"3\" ];
-		then 
-			echo 'libvirtd stopped'
-		else
-			echo 'libvirtd failed to stop'
-		fi;
-	else
-		echo 'libvirtd not running'
-	fi;
+    $conf->{path}{control_libvirtd} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'libvirtd running, stopping it'
+        $conf->{path}{control_libvirtd} stop
+        $conf->{path}{control_libvirtd} status
+        if [ \"\$?\" -eq \"3\" ];
+        then 
+            echo 'libvirtd stopped'
+        else
+            echo 'libvirtd failed to stop'
+        fi;
+    else
+        echo 'libvirtd not running'
+    fi;
 else 
-	echo 'libvirtd not installed'; 
+    echo 'libvirtd not installed'; 
 fi
 ";
 		# Cycle shorewall to iptables, stop dhcpd
 		$shell_call .= "
 if grep -q 'STARTUP_ENABLED=Yes' /etc/shorewall/shorewall.conf
 then
-	echo 'shorewall enabled, stopping it and starting iptables'
-	$conf->{path}{control_shorewall} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'shorewall running, stopping it'
-		$conf->{path}{control_shorewall} stop
-		$conf->{path}{control_shorewall} status
-		if [ \"\$?\" -eq \"3\" ];
-		then 
-			echo 'shorewall stopped'
-			echo 'Restarting iptables now'
-			$conf->{path}{control_iptables} stop;
-			$conf->{path}{control_iptables} start;
-			if [ \"\$?\" -eq \"0\" ];
-			then 
-				echo 'iptables started'
-			else
-				echo 'iptables failed to start'
-			fi;
-		else
-			echo 'shorewall failed to stop'
-		fi;
-	else
-		echo 'shorewall not running'
-	fi;
+    echo 'shorewall enabled, stopping it and starting iptables'
+    $conf->{path}{control_shorewall} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'shorewall running, stopping it'
+        $conf->{path}{control_shorewall} stop
+        $conf->{path}{control_shorewall} status
+        if [ \"\$?\" -eq \"3\" ];
+        then 
+            echo 'shorewall stopped'
+            echo 'Restarting iptables now'
+            $conf->{path}{control_iptables} stop;
+            $conf->{path}{control_iptables} start;
+            if [ \"\$?\" -eq \"0\" ];
+            then 
+                echo 'iptables started'
+            else
+                echo 'iptables failed to start'
+            fi;
+        else
+            echo 'shorewall failed to stop'
+        fi;
+    else
+        echo 'shorewall not running'
+    fi;
 else 
-	echo 'shorewall not enabled';
+    echo 'shorewall not enabled';
 fi
 
 if [ -e '$conf->{path}{control_dhcpd}' ];
 then
-	$conf->{path}{control_dhcpd} status;
-	if [ \"\$?\" -eq \"0\" ];
-	then 
-		echo 'dhcpd running, stopping it'
-		$conf->{path}{control_dhcpd} restart
-		$conf->{path}{control_dhcpd} status
-		if [ \"\$?\" -eq \"3\" ];
-		then 
-			echo 'dhcpd stopped'
-		else
-			echo 'dhcpd failed to stop'
-		fi;
-	else
-		echo 'dhcpd not running'
-	fi;
+    $conf->{path}{control_dhcpd} status;
+    if [ \"\$?\" -eq \"0\" ];
+    then 
+        echo 'dhcpd running, stopping it'
+        $conf->{path}{control_dhcpd} restart
+        $conf->{path}{control_dhcpd} status
+        if [ \"\$?\" -eq \"3\" ];
+        then 
+            echo 'dhcpd stopped'
+        else
+            echo 'dhcpd failed to stop'
+        fi;
+    else
+        echo 'dhcpd not running'
+    fi;
 else 
-	echo 'dhcpd not installed'; 
+    echo 'dhcpd not installed'; 
 fi
 ";
 	}

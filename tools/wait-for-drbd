@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# Copyright (C) 2015 Alteeve's Niche! Inc.
+#
+# This copyrighted material is made available to anyone wishing to use,
+# modify, copy, or redistribute it subject to the terms and conditions
+# of the GNU General Public License v.2.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# This file is part of the Anvil! HA stack (https://alteeve.ca/w/Anvil!).
+# 
+# It does nothing but wait for all DRBD resources to become Primary/Primary.
+# It is meant to slow down rgmanager so that it doesn't start clvmd until
+# DRBD resources are ready to be seen as PVs.
+#
+# chkconfig: 12345 25 75
+# description: Waits for all DRBD resource to become Primary/Primary
+#
+### BEGIN INIT INFO
+# Provides: wait-for-drbd
+# Required-Start:
+# Required-Stop:
+# Default-Start: 
+# Default-Stop: 0 6
+# Short-Description: Wait for DRBD
+### END INIT INFO
+
+script=/sbin/striker/anvil-wait-for-drbd
+
+rc=1
+
+case "$1" in
+  start)
+	$script
+	rc=$?
+	;;
+
+  stop)
+        rc=0
+	;;
+
+  status)
+        rc=0
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status}"
+	;;
+esac
