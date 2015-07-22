@@ -1369,6 +1369,12 @@ sub configure_striker_tools
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Create a tarball for downloading by nodes.
+	if (not -e $conf->{directory}{apache_files})
+	{
+		# Create the directory
+		logger($conf, $THIS_FILE, __LINE__, "- Creating the apache-accessible download directory: [$conf->{directory}{apache_files}]", 1);
+		mkdir $conf->{directory}{apache_files} or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$conf->{directory}{apache_files}]. The error was: $!\n";
+	}
 	logger($conf, $THIS_FILE, __LINE__, "Creating downloadable '$conf->{directory}{apache_files}' directory for nodes to grab.", 1);
 	my $shell_call = "$conf->{executable}{tar} -cvjf $conf->{directory}{apache_files}/striker_tools.tar.bz2 -C $conf->{directory}{striker_tools}/ .";
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -3077,8 +3083,8 @@ loc     ipv4
 ?FORMAT 2
 ###############################################################################
 #ZONE		INTERFACE		OPTIONS
-net		$ifn_interface		dhcp
-loc		$bcn_interface
+net		$ifn_interface
+loc		$bcn_interface		dhcp
 ";
 	
 	# Policy - https://alteeve.ca/w/Shorewall_on_RPM-based_Servers#policy

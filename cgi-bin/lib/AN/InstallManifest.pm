@@ -317,6 +317,10 @@ sub run_new_install_manifest
 		# reloading the browser works for as long as possible.
 		set_root_password($conf) or return(1);
 		
+		# This sets up the various Striker tools and ScanCore. It must
+		# run before storage stage2 because DRBD will need it.
+		configure_striker_tools($conf);
+		
 		# If a reboot is needed, now is the time to do it. This will
 		# switch the CGI nodeX IPs to the new ones, too.
 		reboot_nodes($conf) or return(1);
@@ -338,10 +342,6 @@ sub run_new_install_manifest
 		# configures clvmd, sets up the PVs and VGs, creates the
 		# /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
-		
-		# This sets up the various Striker tools like safe_anvil_start
-		# and so on.
-		configure_striker_tools($conf);
 		
 		### If we're not dead, it's time to celebrate!
 		# Is this Anvil! already in the config file?
@@ -433,11 +433,16 @@ then
         mkdir -p $path
     fi
     wget -c $download_1 -O $conf->{path}{nodes}{striker_tarball}
-    if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+    if [ -s '$conf->{path}{nodes}{striker_tarball}' ];
     then
         echo 'downloaded from $download_1 successfully'
     else
         echo 'download from $download_1 failed, trying alternate.'
+        if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+        then
+            echo 'Deleting zero-size file'
+            rm -f $conf->{path}{nodes}{striker_tarball}
+        fi;
         wget -c $download_2 -O $conf->{path}{nodes}{striker_tarball}
         if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
         then
