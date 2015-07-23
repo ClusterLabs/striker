@@ -4893,6 +4893,7 @@ sub install_striker_files
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] << line: [$line]", 3);
 			
 			# Inject this machine's details for the local ScanCore DB.
+			$striker_config .= "$line\n";
 			if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 			{
 				$striker_config .= "scancore::db::1::host			=	localhost\n";
@@ -4901,7 +4902,6 @@ sub install_striker_files
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
 				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n\n";
 			}
-			$striker_config .= "$line\n";
 		}
 		close $file_handle;
 		# Next, write it out.

@@ -123,10 +123,10 @@ sub convert_dotted_decimal_to_cidr
 # This creates an 'expect' script for an rsync call.
 sub create_rsync_wrapper
 {
-	my ($conf, $node) = @_;
+	my ($conf, $node, $password) = @_;
 	
 	my $cluster = $conf->{cgi}{cluster};
-	my $root_pw = $conf->{clusters}{$cluster}{root_pw};
+	my $root_pw = $password ? $password : $conf->{clusters}{$cluster}{root_pw};
 	my $shell_call = "
 echo '#!/usr/bin/expect' > ~/rsync.$node
 echo 'set timeout 3600' >> ~/rsync.$node

@@ -104,7 +104,7 @@ sub cycle_nic
 	my ($vm, $nic) = @_;
 
 	my $shell_call = "virsh domif-setlink $vm $nic down; echo down; sleep 3; virsh domif-setlink $vm $nic up; echo up; sleep 2";
-	#print "[ Debug ] - shell_call: [$shell_call]\n";
+	print "[ Debug ] - shell_call: [$shell_call]\n";
 	open (my $file_handle, '-|', "$shell_call 2>&1") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{

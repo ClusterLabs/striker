@@ -150,7 +150,7 @@ then
 fi
 
 # Create a copy of the install ISO on Striker.
-ISO="Anvil_m2_RHEL-6.6_alpha.iso"
+ISO="Anvil_m2_RHEL-6.7_alpha.iso"
 echo "Copying the install iso image using dd. Be patient"
 dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/rhel6/x86_64/iso/${ISO}
 
@@ -220,7 +220,7 @@ sed -i 's/ quiet//' /boot/grub/grub.conf
 echo "Writing out local yum repository config"
 cat > /etc/yum.repos.d/striker01.repo << EOF
 [striker01-rhel6]
-name=Striker 01 RHEL 6.6 + Custom Repository
+name=Striker 01 RHEL 6.7 + Custom Repository
 baseurl=http://localhost/rhel6/x86_64/img/
 enabled=1
 gpgcheck=0
@@ -386,7 +386,7 @@ label rescue
 	MENU LABEL ^B) Rescue installed system
 	TEXT HELP
 
-		Boot the RHEL 6.6 DVD in rescue mode.
+		Boot the RHEL 6.7 DVD in rescue mode.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	APPEND initrd=boot/rhel6/x86_64/initrd.img rescue

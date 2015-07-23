@@ -417,10 +417,11 @@ sub configure_scancore_on_node
 	my ($conf, $node, $password, $node_name) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
-	my $return_code = 0;
+	my $return_code = 255;
 	
 	# First, copy the ScanCore files into place. Create the striker config
 	# directory if needed, as well.
+	my $generate_config  = 0;
 	my ($path, $tarball) = ($conf->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
 	my $download_1       = "http://$conf->{cgi}{anvil_striker1_bcn_ip}/files/$tarball";
 	my $download_2       = "http://$conf->{cgi}{anvil_striker2_bcn_ip}/files/$tarball";
@@ -451,8 +452,15 @@ then
             echo 'download from $download_2 failed, giving up.'
         fi;
     fi;
-    if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+fi;
+
+if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+then
+    if [ -e '$path/ScanCore/ScanCore' ];
     then
+        echo 'install already completed'
+    else
+        echo 'Extracting tarball'
         $conf->{path}{nodes}{tar} -xvjf $conf->{path}{nodes}{striker_tarball} -C $path/ .
         if [ -e '$path/ScanCore/ScanCore' ];
         then
@@ -461,12 +469,20 @@ then
             echo 'install failed'
         fi;
     fi;
-    if [ ! -e '/etc/striker' ];
-    then
-        mkdir /etc/striker
-        echo 'Striker configuration directory created.'
-    fi;
-fi
+fi;
+
+if [ ! -e '/etc/striker' ];
+then
+    mkdir /etc/striker
+     echo 'Striker configuration directory created.'
+fi;
+
+if [ -e '$conf->{path}{nodes}{striker_config}' ];
+then
+    echo 'striker config exists'
+else
+    echo 'striker config needs to be generated'
+fi;
 ";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -490,12 +506,22 @@ fi
 		{
 			$return_code = 2;
 		}
+		if (($line =~ /install succeeded/) or ($line =~ /install already completed/))
+		{
+			$return_code = 0;
+		}
+		if ($line =~ /config needs to be generated/)
+		{
+			$generate_config = 1;
+		}
 	}
 	
 	# Setup striker.conf if we've not hit problem and it doesn't exist.
-	if (($return_code eq "0") && (not -e $conf->{path}{nodes}{striker_config}))
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], generate_config: [$generate_config]\n");
+	if (($return_code eq "0") && ($generate_config))
 	{
 		# Read in the base striker.conf from /sbin/striker/
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating initial Striker config.\n");
 		my $base_striker_config_file = "$path/striker.conf";
 		my $striker_config           = "";
 		my $skip_db                  = "";
@@ -504,14 +530,21 @@ fi
 		if (-e $base_striker_config_file)
 		{
 			# Excellent, read it in.
-			my $shell_call = $base_striker_config_file;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-			open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-			while(<$file_handle>)
+			my $shell_call = "cat $base_striker_config_file";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
 			{
-				chomp;
-				my $line = $_;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 				
 				if ($line =~ /^scancore::db::(\d+)::host\s+=\s+localhost/)
 				{
@@ -529,9 +562,8 @@ fi
 					$conf->{used_db_host}{$db_host} = $db_id;
 				}
 				
-				$striker_config .= $line;
+				$striker_config .= "$line\n";
 			}
-			close $file_handle;
 			
 			# Loop through again and inject the striker DBs.
 			my $striker_1_bcn_ip = $conf->{cgi}{anvil_striker1_bcn_ip};
@@ -587,7 +619,7 @@ fi
 				my $new_striker_config = "";
 				foreach my $line (split/\n/, $striker_config)
 				{
-					$new_striker_config .= $line;
+					$new_striker_config .= "$line\n";
 					if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 					{
 						# Inject
@@ -599,7 +631,7 @@ fi
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
 							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
 						}
 						if ($add_striker_2)
 						{
@@ -609,7 +641,7 @@ fi
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
 							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
 						}
 					}
 				}
@@ -618,15 +650,64 @@ fi
 				$striker_config = $new_striker_config;
 			}
 			
-			# Write out the striker.conf file now.
-			$shell_call = "$conf->{path}{config_file}";
+			# This is going to be too big, so we need to write the
+			# config to a file and rsync it to the node.
+			my $temp_file  = "/tmp/${node}_striker_".time.".conf";
+			   $shell_call = $temp_file;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-			open ($file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
 			print $file_handle $striker_config;
 			close $file_handle;
 			
-			# if exists, yay
-			if (-e $conf->{path}{config_file})
+			# Now rsync it to the node (using an 'expect' wrapper).
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Ensuring we've recorded: [$node]'s RSA fingerprint.");
+			AN::Common::test_ssh_fingerprint($conf, $node);
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
+			AN::Common::create_rsync_wrapper($conf, $node, $password);
+			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{config_file}";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			my $no_key = 0;
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			}
+			close $file_handle;
+			
+			### TODO: If this gets too big, write it to a local
+			###       /tmp/uuid file and rsync it over.
+			# Write out the striker.conf file now.
+			$shell_call  = "
+if [ -s '$conf->{path}{config_file}' ];
+then
+    echo 'config exists'
+else
+    echo 'config does not exist'
+fi
+";
+			my $generated_ok = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+			($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+				if ($line =~ /config exists/)
+				{
+					$generated_ok = 1;
+				}
+			}
+			if ($generated_ok)
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created Striker config: [$conf->{path}{config_file}]\n");
 			}
@@ -641,6 +722,10 @@ fi
 			# Template striker.conf doesn't exist. Oops.
 			$return_code = 3;
 		}
+	}
+	else
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Striker config already exists, skipping.\n");
 	}
 	
 	if (not $return_code)
