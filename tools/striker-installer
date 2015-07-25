@@ -1364,8 +1364,10 @@ sub configure_striker_tools
 	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/tools/*",  "$conf->{directory}{striker_tools}/");
-	rsync_files($conf, "$conf->{directory}{source}/ScanCore", "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/tools/*",      "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/ScanCore",     "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/AN",           "$conf->{directory}{striker_tools}/");
+	rsync_files($conf, "$conf->{directory}{source}/cgi-bin/Data", "$conf->{directory}{striker_tools}/");
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	# Create a tarball for downloading by nodes.

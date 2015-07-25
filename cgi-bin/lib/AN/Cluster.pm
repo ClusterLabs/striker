@@ -4089,10 +4089,8 @@ sub load_install_manifest
 		### Foundation Pack
 		# Switches
 		my $i = 1;
-		foreach my $switch (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{switch}})
+		foreach my $switch (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{switch}})
 		{
-			# Probably an autovivication bug or something... getting empty hash references.
-			next if $switch =~ /^HASH/;
 			my $name_key = "anvil_switch".$i."_name";
 			my $ip_key   = "anvil_switch".$i."_ip";
 			$conf->{cgi}{$name_key} = $switch;
@@ -4102,10 +4100,8 @@ sub load_install_manifest
 		}
 		# PDUs
 		$i = 1;
-		foreach my $reference (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{pdu}})
+		foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{pdu}})
 		{
-			# Probably an autovivication bug or something... getting empty hash references.
-			next if $reference =~ /^HASH/;
 			my $name_key = "anvil_pdu".$i."_name";
 			my $ip_key   = "anvil_pdu".$i."_ip";
 			my $name     = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{name};
@@ -4117,10 +4113,8 @@ sub load_install_manifest
 		}
 		# UPSes
 		$i = 1;
-		foreach my $ups (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{ups}})
+		foreach my $ups (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{ups}})
 		{
-			# Probably an autovivication bug or something... getting empty hash references.
-			next if $ups =~ /^HASH/;
 			my $name_key = "anvil_ups".$i."_name";
 			my $ip_key   = "anvil_ups".$i."_ip";
 			$conf->{cgi}{$name_key} = $ups;
@@ -4130,10 +4124,8 @@ sub load_install_manifest
 		}
 		# Striker Dashboards
 		$i = 1;
-		foreach my $striker (sort {$a cmp $b} %{$conf->{install_manifest}{$file}{common}{striker}{name}})
+		foreach my $striker (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{striker}{name}})
 		{
-			# Probably an autovivication bug or something... getting empty hash references.
-			next if $striker =~ /^HASH/;
 			my $name_key     =  "anvil_striker".$i."_name";
 			my $bcn_ip_key   =  "anvil_striker".$i."_bcn_ip";
 			my $ifn_ip_key   =  "anvil_striker".$i."_ifn_ip";

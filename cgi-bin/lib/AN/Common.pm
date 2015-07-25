@@ -701,7 +701,7 @@ sub initialize_conf
 				MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
-				#scan_agents		=>	"/etc/striker/Config/",
+				perl_library		=>	"/usr/share/perl5",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99y_safe_anvil_start",
 				shadow			=>	"/etc/shadow",

@@ -462,6 +462,8 @@ then
     else
         echo 'Extracting tarball'
         $conf->{path}{nodes}{tar} -xvjf $conf->{path}{nodes}{striker_tarball} -C $path/ .
+        mv $path/Data $path/ScanCore/
+        mv $path/AN $conf->{path}{nodes}{perl_library}/
         if [ -e '$path/ScanCore/ScanCore' ];
         then
             echo 'install succeeded'

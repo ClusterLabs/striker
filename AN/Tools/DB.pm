@@ -274,6 +274,7 @@ sub connect_to_databases
 			#}};
 			if (not defined $DBI::errstr)
 			{
+				# General error
 				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$@,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -365,7 +366,7 @@ sub connect_to_databases
 				name		=>	$name,
 				id		=>	$id,
 				dbh		=>	$dbh,
-				conf_dbh	=>	$an->data->{dbh}{$id},
+				data_dbh	=>	$an->data->{dbh}{$id},
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Now that I have connected, see if my 'hosts' table exists.
@@ -766,7 +767,8 @@ AND
 	}
 	
 	# Find which DB is most up to date.
-	$an->data->{scancore}{db_to_update} = {};
+	$an->data->{scancore}{db_to_update}     = {};
+	$an->data->{scancore}{db_resync_needed} = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -780,6 +782,9 @@ AND
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
+			
+			# A database is behind, resync
+			$an->data->{scancore}{db_resync_needed} = 1;
 		}
 		else
 		{

@@ -249,10 +249,10 @@ cat > /root/example_striker-installer.txt << EOF
  -i 10.255.4.2/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
  -b ${BCNIP}/16 \\
  -p 10.20.10.211:10.20.10.220 \\
+ --router-mode \\
  --gui \\
  -d git \\
- --rhn rhn_user:secret \\
- -r https://alteeve.ca/an-repo/el6/an-el6.repo
+ --rhn rhn_user:secret
 EOF
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
@@ -498,4 +498,3 @@ part     /     --fstype ext4 --size=100   --asprimary --ondisk=${DRIVE} --grow
 END
 
 %end
-

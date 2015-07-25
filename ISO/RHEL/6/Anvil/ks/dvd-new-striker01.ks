@@ -31,7 +31,7 @@ user --name=admin --plaintext --password=Initial1
 # is expected to change in a (near) future release.
 firewall --service=ssh
 selinux --permissive
-	
+
 # There is no need for the 'first boot' menu system to run, so we will disable
 # it.
 firstboot --disable
@@ -493,4 +493,3 @@ part     /     --fstype ext4 --size=100   --asprimary --ondisk=${DRIVE} --grow
 END
 
 %end
-
