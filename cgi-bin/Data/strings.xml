@@ -1284,12 +1284,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0180"><![CDATA[Cold-Stop of [<span class="fixed_width">#!variable!anvil!#</span>] aborted!]]></key>
 		<key name="title_0181"><![CDATA[Cold-Stop of: [<span class="highlight_detail">#!variable!anvil!#</span>] under way.]]></key>
 		<key name="title_0182">#!string!brand_0003!# Rack Power Control</key>
-		<key name="title_0183"></key>
-		<key name="title_0184"></key>
-		<key name="title_0185"></key>
-		<key name="title_0186"></key>
-		<key name="title_0187"></key>
-		<key name="title_0188"></key>
+		<key name="title_0183">Action aborted, request is too old.</key>
+		<key name="title_0184">Cold-stoping the #!string!brand_0003!# was aborted!</key>
+		<key name="title_0185">Shutting down the server was aborted!</key>
+		<key name="title_0186">Forcing-off the server was aborted!</key>
+		<key name="title_0187">Powering off the node was aborted!</key>
+		<key name="title_0188">Fencing the node was aborted!</key>
 		<key name="title_0189"></key>
 		<key name="title_0190"></key>
 		
@@ -1751,13 +1751,13 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0438"><![CDATA[The provision script: [#!variable!provision_script!#] appears to be incomplete.<br />The error message received when trying to run it was:<br /><span class="highlight_detail">#!variable!error!#</span><br />#!string!brand_0014!#]]></key>
 		<key name="message_0439"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_good_bold">Power will be restored after approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::sleep_time!# seconds</span>].</span><br /><br />If properly configured, the system should power back up automatically.<br /><br />Is this really what you want to do?]]></key>
 		<key name="message_0440"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::shutdown::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_warning_bold">Power will remain off until a human restores power!</span><br /><br />Is this really what you want to do?]]></key>
-		<key name="message_0441"><![CDATA[]]></key>
-		<key name="message_0442"><![CDATA[]]></key>
-		<key name="message_0443"><![CDATA[]]></key>
-		<key name="message_0444"><![CDATA[]]></key>
-		<key name="message_0445"><![CDATA[]]></key>
-		<key name="message_0446"><![CDATA[]]></key>
-		<key name="message_0447"><![CDATA[]]></key>
+		<key name="message_0441"><![CDATA[A timed request was made against the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# which has now expired, so the request was aborted.<br /><br />The purpose of the request is not known, which is an oops on our part.<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a> and tell us; "The abort string was: [<span class="highlight_detail">#!variable!command!#</span>]".<br />Sorry for the hassle.]]></key>
+		<key name="message_0442"><![CDATA[Timed commands are generally commands that do something dramatic, like powering off nodes or servers.<br />To help prevent against accidents caused by reloading an old URL, these risky commands are only valid for: <span class="highlight_detail">#!conf!sys::actime_timeout!#</span>] seconds.<br />Please go back and re-issue the request again, if you still want to perform this action.]]></key>
+		<key name="message_0443"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has timed out.]]></key>
+		<key name="message_0444"><![CDATA[The request to shut down the [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
+		<key name="message_0445"><![CDATA[The request to force-off the [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
+		<key name="message_0446"><![CDATA[The request to power-off the [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
+		<key name="message_0447"><![CDATA[The request to fence the [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0448"><![CDATA[]]></key>
 		<key name="message_0449"><![CDATA[]]></key>
 		<key name="message_0450"><![CDATA[]]></key>

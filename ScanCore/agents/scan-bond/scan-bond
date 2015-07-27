@@ -19,6 +19,7 @@
 #    services.
 # 
 
+# NOTE: Disabled until I redo the s/id/uuid/ thing
 exit(0);
 
 # Determine this file name.
@@ -63,10 +64,7 @@ my $an = AN::Tools->new({data =>
 		},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query		=>	"",
-			# This is set below after we connect to the databases 
-			# because we need 'host_id_query' set.
-		bond_id_query		=>	"",
+			bond_id_query		=>	"",
 			sql			=>	[],
 		},
 	}
@@ -107,7 +105,7 @@ $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_va
 }, file => $THIS_FILE, line => __LINE__});
 
 # Setup some repeatedly used subqueries for easier use later.
-$an->data->{sys}{bond_id_query}           = "SELECT bond_id FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.")";
+$an->data->{sys}{bond_id_query}           = "SELECT bond_id FROM bond WHERE bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."";
 $an->data->{sys}{bond_interface_id_query} = "SELECT b.bond_interface_id FROM bond a, bond_interface b WHERE a.bond_id = b.bond_interface_id AND b.bond_interface_bond_id = (".$an->data->{sys}{bond_id_query}.") AND ";
 
 # Do the loading of the schemas and copying data from more up to date DBs if
@@ -281,7 +279,7 @@ FROM
 WHERE 
     a.bond_interface_bond_id = b.bond_id 
 AND 
-    b.bond_host_id = (".$an->data->{sys}{host_id_query}.") 
+    b.bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < a.modified_date;
 ";
@@ -395,7 +393,7 @@ sub update_db_bond
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the timestamp that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM bond WHERE bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -410,7 +408,7 @@ sub update_db_bond
 	### NOTE: For each bond_cluster_name, check to see if the same name exists
 	###       in the target and decide if it needs an INSERT or UPDATE. So
 	###       first, pull all the existing entries out of the target.
-	   $query   = "SELECT bond_cluster_name, round(extract(epoch from modified_date)) FROM bond WHERE bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+	   $query   = "SELECT bond_cluster_name, round(extract(epoch from modified_date)) FROM bond WHERE bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
@@ -458,7 +456,7 @@ SELECT
 FROM 
     history.bond 
 WHERE 
-    bond_host_id = (".$an->data->{sys}{host_id_query}.") 
+    bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < modified_date 
 ORDER BY
@@ -509,7 +507,7 @@ ORDER BY
 INSERT INTO 
     bond
 (
-    bond_host_id, 
+    bond_host_uuid, 
     bond_name, 
     bond_mode, 
     bond_primary_slave, 
@@ -521,7 +519,7 @@ INSERT INTO
     bond_down_delay, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_mode).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_primary_slave).", 
@@ -552,7 +550,7 @@ SET
     bond_down_delay           = ".$an->data->{sys}{use_db_fh}->quote($bond_down_delay).", 
     modified_date             = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    bond_host_id = (".$an->data->{sys}{host_id_query}.");";
+    bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		}
 	}
 	
@@ -668,7 +666,7 @@ FROM
     bond a, 
     hosts b 
 WHERE 
-    a.bond_host_id = b.host_id 
+    a.bond_host_uuid = b.host_uuid 
 AND 
     b.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";
@@ -711,7 +709,7 @@ FROM
 WHERE 
     a.bond_node_bond_id = b.bond_id 
 AND 
-    b.bond_host_id = c.host_id 
+    b.bond_host_uuid = c.host_uuid 
 AND 
     c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";
@@ -761,7 +759,7 @@ FROM
 WHERE 
     a.bond_interface_bond_id = b.bond_id 
 AND 
-    b.bond_host_id = c.host_id 
+    b.bond_host_uuid = c.host_uuid 
 AND 
     c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";

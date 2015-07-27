@@ -18,6 +18,9 @@
 # - 
 # 
 
+# NOTE: Disabled until I redo the s/id/uuid/ thing
+exit(0);
+
 # Determine this file name.
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -53,7 +56,7 @@ my $an = AN::Tools->new({data =>
 		},
 		sys			=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query		=>	"",
+			host_uuid_query		=>	"",
 			sql			=>	[],
 		},
 		# This is used so that the user can set the language in on
@@ -227,7 +230,7 @@ $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_va
 }, file => $THIS_FILE, line => __LINE__});
 
 # This needs to have the serial number appended when called.
-$an->data->{sys}{apc_ups_id_query} = "SELECT apc_ups_id FROM apc_ups WHERE apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") AND apc_ups_serial_number";
+$an->data->{sys}{apc_ups_id_query} = "SELECT apc_ups_id FROM apc_ups WHERE apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." AND apc_ups_serial_number";
 
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
@@ -2070,7 +2073,7 @@ WHERE
 INSERT INTO 
     apc_ups 
 (
-    apc_ups_host_id, 
+    apc_ups_host_uuid, 
     apc_ups_fqdn, 
     apc_ups_ip, 
     apc_ups_ac_restore_delay, 
@@ -2089,7 +2092,7 @@ INSERT INTO
     apc_ups_nmc_mac_address, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."),
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_fqdn).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ip).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_ac_restore_delay).", 
@@ -2261,7 +2264,7 @@ SELECT
 FROM 
     apc_ups
 WHERE
-    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+    apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
     apc_ups_health != 0
 ";
@@ -2293,7 +2296,7 @@ SET
     apc_ups_health = 0, 
     modified_date  = ".$an->data->{sys}{db_timestamp}."
 WHERE
-    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+    apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($this_apc_ups_serial_number).";
 ";
@@ -2353,7 +2356,7 @@ FROM
     apc_ups_input c, 
     apc_ups_output d 
 WHERE 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
 AND 
@@ -2400,9 +2403,9 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_id = (".$an->data->{sys}{host_id_query}.") 
+    power_host_uuid      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    power_agent_name     = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND 
     power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2464,9 +2467,9 @@ SET
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_battery_percentage_charge).", 
     modified_date           = ".$an->data->{sys}{db_timestamp}."
 WHERE 
-    power_host_id = (".$an->data->{sys}{host_id_query}.") 
+    power_host_uuid      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    power_agent_name     = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND 
     power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).";
 ";
@@ -2490,7 +2493,7 @@ AND
 INSERT INTO  
     power 
 (
-    power_host_id, 
+    power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
     power_ups_fqdn, 
@@ -2499,7 +2502,7 @@ INSERT INTO
     power_charge_percentage, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_fqdn).", 
@@ -2678,7 +2681,7 @@ FROM
     apc_ups_input c, 
     apc_ups_output d 
 WHERE 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND
     a.apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_serial_number)." 
 AND 
@@ -2916,7 +2919,7 @@ sub update_db_apc_ups_battery
 	# Read the UPS serial numbers of the entries we have already. We'll use
 	# this to know when to INSERT vs UPDATE a record.
 	my $existing_serial_numbers = {};
-	my $query = "SELECT DISTINCT a.apc_ups_serial_number FROM apc_ups a, history.apc_ups_battery b AND a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT DISTINCT a.apc_ups_serial_number FROM apc_ups a, history.apc_ups_battery b AND a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -2942,7 +2945,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ORDER BY 
     b.modified_date DESC 
 LIMIT 1;
@@ -2989,7 +2992,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_battery_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
     $old_date < b.modified_date 
 ORDER BY 
@@ -3157,7 +3160,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_output_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ORDER BY 
     b.modified_date DESC 
 LIMIT 1;
@@ -3201,7 +3204,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_output_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < b.modified_date 
 ORDER BY 
@@ -3353,7 +3356,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_input_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ORDER BY 
     b.modified_date DESC 
 LIMIT 1;
@@ -3394,7 +3397,7 @@ FROM
 WHERE 
     a.apc_ups_id = b.apc_ups_input_apc_ups_id 
 AND 
-    a.apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < b.modified_date 
 ORDER BY 
@@ -3518,7 +3521,7 @@ sub update_db_apc_ups
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the timestamp that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM apc_ups WHERE apc_ups_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM apc_ups WHERE apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -3534,7 +3537,7 @@ sub update_db_apc_ups
 	###       serial number exists in the target and decide if it needs an
 	###       INSERT or UPDATE. So first, pull all the existing entries out
 	###       of the target.
-	   $query   = "SELECT apc_ups_serial_number, round(extract(epoch from modified_date)) FROM apc_ups WHERE apc_ups_host_id = (".$an->data->{sys}{host_id_query}.");";
+	   $query   = "SELECT apc_ups_serial_number, round(extract(epoch from modified_date)) FROM apc_ups WHERE apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
@@ -3592,7 +3595,7 @@ SELECT
 FROM 
     history.apc_ups 
 WHERE 
-    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.") 
+    apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < modified_date 
 ORDER BY
@@ -3659,7 +3662,7 @@ ORDER BY
 INSERT INTO 
     apc_ups
 (
-    apc_ups_host_id,
+    apc_ups_host_uuid,
     apc_ups_fqdn, 
     apc_ups_ip, 
     apc_ups_ac_restore_delay, 
@@ -3678,7 +3681,7 @@ INSERT INTO
     apc_ups_nmc_mac_address, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_fqdn).",  
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_ip).",  
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_ac_restore_delay).",  
@@ -3726,7 +3729,7 @@ SET
     apc_ups_nmc_mac_address       = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_nmc_mac_address).", 
     modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    apc_ups_host_id = (".$an->data->{sys}{host_id_query}.")
+    apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
     apc_ups_serial_number = ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number)." 
 ;";

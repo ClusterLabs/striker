@@ -419,12 +419,10 @@ sub connect_to_databases
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->data->{sys}{host_id_query} = "SELECT host_id FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->hostname);
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "sys::read_db_id",    value1 => $an->data->{sys}{read_db_id},
-				name2 => "sys::use_db_fh",     value2 => $an->data->{sys}{use_db_fh},
-				name3 => "sys::host_id_query", value2 => $an->data->{sys}{host_id_query},
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id},
+				name2 => "sys::use_db_fh",  value2 => $an->data->{sys}{use_db_fh},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -446,23 +444,6 @@ sub connect_to_databases
 	# Report any failed DB connections
 	foreach my $id (@{$failed_connections})
 	{
-		# If the node/dashboard is trying to connect for the first time
-		# (thus has no hosts entry), sending the alert will fail.
-		my $query = $an->data->{sys}{host_id_query};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $host_id = $an->DB->do_db_query({query => $query})->[0]->[0];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_id", value1 => $host_id
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $host_id)
-		{
-			# fatal error
-			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0018", code => 3, file => "$THIS_FILE", line => __LINE__});
-		}
-		
 		# Copy my alert hash before I delete the id.
 		my $error_array = [];
 		foreach my $hash (@{$an->data->{scancore}{db}{$id}{connection_error}})
@@ -474,8 +455,8 @@ sub connect_to_databases
 		}
 		
 		# Delete this DB so that we don't try to use it later.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1  => "DELETE id", value1 => $id
+		$an->Log->entry({log_level => 2, message_key => "error_title_0018", message_variables => {
+			name1 => "id", value1 => $id
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
 		
@@ -517,6 +498,7 @@ sub connect_to_databases
 			}
 		}
 	}
+	
 	# Send an 'all clear' message if a now-connected DB previously wasn't.
 	foreach my $id (@{$successful_connections})
 	{
@@ -543,11 +525,32 @@ sub connect_to_databases
 		}
 	}
 	
-	### TODO: This is coming along nicely, but the problem right now is 
-	###       sorting out which tables reference 'hosts -> host_id' and
-	###       which reference other tables (possibly layers deep) that
-	###       reference node_id.
-	#$an->DB->sync_dbs();
+	# This is needed by everything in the database, so read it now.
+	my $shell_call = $an->data->{path}{host_uuid};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$an->data->{sys}{host_uuid} = lc($_);
+		last;
+	}
+	close $file_handle;
+
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# derp
+		$an->Log->entry({log_level => 0, message_key => "scancore_error_0017", file => $THIS_FILE, line => __LINE__});
+		
+		# Disconnect and set the connection count to '0'.
+		$an->DB->disconnect_from_databases();
+		$connections = 0;
+	}
 	
 	# For now, we just find which DBs are behind and let each agent deal
 	# with bringing their tables up to date.
@@ -559,8 +562,8 @@ sub connect_to_databases
 	return($connections);
 }
 
-# This looks up the hosts -> host_id for a given hostname.
-sub get_host_id
+# This looks up the hosts -> host_uuid for a given hostname.
+sub get_host_uuid
 {
 	my $self      = shift;
 	my $parameter = shift;
@@ -569,9 +572,9 @@ sub get_host_id
 	
 	# What's the query?
 	my $id       = $parameter->{id}       ? $parameter->{id}       : $an->data->{sys}{read_db_id};
-	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : die "$THIS_FILE ".__LINE__."; AN::Tools::DB->get_host_id() called without specifying a 'hostname'.\n";
+	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : die "$THIS_FILE ".__LINE__."; AN::Tools::DB->get_host_uuid() called without specifying a 'hostname'.\n";
 	
-	my $query = "SELECT host_id, round(extract(epoch from modified_date)) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
+	my $query = "SELECT host_uuid, round(extract(epoch from modified_date)) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -584,13 +587,13 @@ sub get_host_id
 	# I need to see if 'results' is an array reference. If no records were
 	# found, 'results' will be an empty string, in which case we'll set 
 	# '0' for the two values.
-	my ($host_id, $modified_time) = ref($results) eq "ARRAY" ? @{$results} : (0, 0);
+	my ($host_uuid, $modified_time) = ref($results) eq "ARRAY" ? @{$results} : (0, 0);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "host_id",       value1 => $host_id, 
+		name1 => "host_uuid",       value1 => $host_uuid, 
 		name2 => "modified_time", value2 => $modified_time
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	return($host_id, $modified_time);
+	return($host_uuid, $modified_time);
 }
 
 # This checks to see if the hostname changed and, if so, update the hosts table
@@ -600,7 +603,7 @@ sub check_hostname
 	my $self = shift;
 	my $an   = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#$an->hostname();
 	
@@ -642,7 +645,7 @@ SELECT
 FROM 
     updated 
 WHERE 
-    updated_host_id = (".$an->data->{sys}{host_id_query}.")
+    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
 
@@ -660,11 +663,11 @@ AND
 INSERT INTO 
     updated 
 (
-    updated_host_id, 
+    updated_host_uuid, 
     updated_by, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($file).", 
     ".$an->data->{sys}{db_timestamp}."
 );
@@ -682,7 +685,7 @@ SET
 WHERE 
     updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
 AND
-    updated_host_id = (".$an->data->{sys}{host_id_query}.");
+    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 			$an->DB->do_db_write({id => $id, query => $query});
 		}
@@ -722,7 +725,7 @@ SELECT
 FROM 
     updated 
 WHERE 
-    updated_host_id = (".$an->data->{sys}{host_id_query}.")";
+    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid});
 		if ($file)
 		{
 			$query .= "
@@ -778,231 +781,27 @@ AND
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0031", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0031", message_variables => {
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
+				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# This database is up to date.
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 0;
-		}
-	}
-	
-	return(0);
-}
-
-# This 'checks last_updated -> last_updated_date' for this node on all DBs and
-# if any are behind, it will read in the changes from the most up to date DB
-sub sync_dbs
-{
-	my $self = shift;
-	my $an   = $self->parent;
-	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sync_dbs", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# First, read all databases to see if any are behind and, if so, bring
-	# them up to date.
-	$an->data->{scancore}{sql}{source_db_id}  = 0;
-	$an->data->{scancore}{sql}{source_updated_time} = 0;
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		my $name = $an->data->{scancore}{db}{$id}{name};
-		my $user = $an->data->{scancore}{db}{$id}{user};
-		
-		# First, get a list of the tables in the database
-		my $query   = "SELECT DISTINCT table_name FROM information_schema.columns WHERE table_catalog = ".$an->data->{sys}{use_db_fh}->quote($name)." AND table_schema = 'public';";
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "query",        value1 => $query, 
-			name2 => "results",      value2 => $results, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Read the table's last modified_date
-		$query = "
-SELECT 
-    round (
-        extract (
-            epoch FROM (
-                SELECT 
-                    modified_date 
-                FROM 
-                    ram_used 
-                WHERE 
-                    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
-                AND 
-                    ram_used_host_id = (".$an->data->{sys}{host_id_query}.")
-            )
-        )
-    );
-";
-		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-		   $last_updated = 0 if not defined $last_updated;
-		
-		if ($last_updated > $an->data->{scancore}{sql}{source_updated_time})
-		{
-			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
-			$an->data->{scancore}{sql}{source_db_id}  = $id;
-		}
-		
-		### TODO: Determine if I should be checking per-table... Is it
-		###       possible for one agent's table to fall behind? Maybe,
-		###       if the agent is deleted/recovered...
-		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "scancore::db::${id}::last_updated", value1 => $an->data->{scancore}{db}{$id}{last_updated}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Now see what tables are in each DB.
-		foreach my $row (@{$results})
-		{
-			my $table = $row->[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "id",   value1 => $id, 
-				name2 => "table", value2 => $table, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Record this table in the general list.
-			$an->data->{scancore}{sql}{master_table_list}{$table} = 1;
-			
-			# Record it as a table in this DB.
-			$an->data->{scancore}{sql}{db}{$id}{table}{$table} = 1;
-		}
-	}
-	
-	# Find which DB is most up to date.
-	$an->data->{scancore}{db_to_update} = {};
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
-		{
-			print "The DB with ID: [$id] is behind!\n";
-			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
-		}
-		else
-		{
-			$an->data->{scancore}{db_to_update}{$id}{behind} = 0;
-		}
-	}
-	
-	# Now, loop through all the tables and see if any are missing on any DBs.
-	foreach my $table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{master_table_list}})
-	{
-		# Loop through all DBs and verify the table exists.
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-		{
-			my $exists = $an->data->{scancore}{sql}{db}{$id}{table}{$table} ? $an->data->{scancore}{sql}{db}{$id}{table}{$table} : 0;
-			#print "id: [$id], table: [$table], exists?: [$exists]\n";
-			if (not $exists)
-			{
-				print "Will add the table: [$table] to the DB with ID: [$id]\n";
-				$an->data->{scancore}{db_to_update}{$id}{add_table}{$table} = 1;
-			}
-		}
-	}
-	
-	# Now I know who needs to be updated and what, if any, tables need to
-	# be loaded.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
-	{
-		next if $id eq $an->data->{scancore}{sql}{source_db_id};
-		my $name = $an->data->{scancore}{db}{$id}{name};
-		my $user = $an->data->{scancore}{db}{$id}{user};
-		print "Updating the DB with ID: [$id]\n";
-		
-		# First, make sure all the tables exist.
-		foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}{$id}{add_table}})
-		{
-			print "- Adding table: [$this_table]\n";
-			if (not $an->data->{scancore}{sql}{schema})
-			{
-				print "I need to read in the DB schema.\n";
-				$an->DB->get_sql_schema or die "Failed to read the SQL schema from the database with ID: [$id]!\n";
-			}
-			
-			# The SQL was assembled already, so we can load it directly.
-			$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} =~ s/#!variable!user!#/$user/sg;
-			$an->DB->do_db_write({id => $id, query => $an->data->{scancore}{sql}{schema}{raw_table}{$this_table}});
-		}
-		
-		# Now I know that all tables exist in the target DB, look for
-		# actual data that needs to be copied.
-		foreach my $table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{master_table_list}})
-		{
-			print "Table: [$table]\n";
-			my $subquery = "SELECT ";
-			my $query = "
-SELECT 
-	column_name 
-FROM 
-	information_schema.columns 
-WHERE 
-	table_catalog = ".$an->data->{sys}{use_db_fh}->quote($name)." 
-AND 
-	table_schema = 'public' 
-AND 
-	table_name = ".$an->data->{sys}{use_db_fh}->quote($table)."
-";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "query", value1 => $query, 
+				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 			}, file => $THIS_FILE, line => __LINE__});
-			my $results        = $an->DB->do_db_query({id => $id, query => $query});
-			my $host_id_column = "";
-			my @columns;
-			foreach my $row (@{$results})
-			{
-				my $column = $row->[0];
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "column", value1 => $column, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($column =~ /_host_id$/)
-				{
-					$host_id_column = $column;
-				}
-				else
-				{
-					$subquery .= "$column, ";
-					push @columns, $column;
-				}
-			}
-			my $this_db_last_updated =  $an->data->{scancore}{db}{$id}{last_updated};
-			   $subquery             =~ s/, $/ /;
-			   $subquery             .= "FROM history.$table WHERE $host_id_column = (".$an->data->{sys}{host_id_query}.") AND (SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($this_db_last_updated).")) < modified_date";
-			my $query_id             =  $an->data->{scancore}{sql}{source_db_id};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time},
-				name2 => "this_db_last_updated",            value2 => $this_db_last_updated,
-				name3 => "query_id",                        value3 => $query_id,
-				name4 => "id",                              value4 => $id, 
-				name5 => "subquery",                        value5 => $subquery
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Query the up-to-date DB
 		}
-
 	}
-	
-	# Show all tables in the DB
-	# SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'public' OR table_schema = 'history' ORDER BY table_schema, table_name;
-	
-	# Get the timestamp of the last entry for each table.
-	# SELECT round(extract(epoch from (SELECT modified_date FROM ram_used WHERE ram_used_by = 'ScanCore' AND ram_used_host_id = (SELECT host_id FROM hosts WHERE host_name = 'an-a05n01.alteeve.ca'))));
-	
-	# List all tables and their columns.
-	# SELECT table_schema || '.' || table_name AS table, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_catalog = 'scancore' AND table_schema = 'public' OR table_schema = 'history';
-	
-	# Get this node's ID for each DB with:
-	# 
-	
-	# Cast a timestamp as unixtime
-	# SELECT ram_used_by, ram_used_bytes, extract(epoch from modified_date) FROM history.ram_used WHERE ram_used_host_id = 1;
-	
-	# Read the time as a unix timestamp for easier comparison with:
-	# SELECT round(extract(epoch from now()));
 	
 	return(0);
 }

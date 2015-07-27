@@ -2,8 +2,8 @@
 
 CREATE TABLE ipmitool (
 	ipmitool_id			bigserial			primary key,
-	ipmitool_host_id		bigint				not null,
-	ipmitool_sensor_host		text				not null,	-- The hostname of the machine we pulled the sensor value from. We don't link this to a host_id because it is possible the host doesn't doesn't have an entry (yet)
+	ipmitool_host_uuid		uuid				not null,
+	ipmitool_sensor_host		text				not null,	-- The hostname of the machine we pulled the sensor value from. We don't link this to a host_uuid because it is possible the host doesn't doesn't have an entry (yet)
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,	-- Temperature (°C), vDC, vAC, watt, amp, percent
 	ipmitool_sensor_status		text				not null,
@@ -13,14 +13,14 @@ CREATE TABLE ipmitool (
 	ipmitool_sensor_low_warning	numeric,
 	modified_date			timestamp with time zone	not null,
 	
-	FOREIGN KEY(ipmitool_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(ipmitool_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE ipmitool OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ipmitool (
 	history_id			bigserial,
 	ipmitool_id			bigint,
-	ipmitool_host_id		bigint,
+	ipmitool_host_uuid		uuid,
 	ipmitool_sensor_host		text				not null,
 	ipmitool_sensor_name		text				not null,
 	ipmitool_sensor_units		text				not null,
@@ -41,7 +41,7 @@ BEGIN
 	SELECT INTO history_ipmitool * FROM ipmitool WHERE ipmitool_id=new.ipmitool_id;
 	INSERT INTO history.ipmitool
 		(ipmitool_id,
-		 ipmitool_host_id, 
+		 ipmitool_host_uuid, 
 		 ipmitool_sensor_host, 
 		 ipmitool_sensor_name, 
 		 ipmitool_sensor_units, 
@@ -53,7 +53,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_ipmitool.ipmitool_id,
-		 history_ipmitool.ipmitool_host_id, 
+		 history_ipmitool.ipmitool_host_uuid, 
 		 history_ipmitool.ipmitool_sensor_host, 
 		 history_ipmitool.ipmitool_sensor_name, 
 		 history_ipmitool.ipmitool_sensor_units, 

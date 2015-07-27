@@ -29,6 +29,9 @@ ipmitool sensor thresh "*sensor name*" lower *lnr* *lcr* *lnc*
 ipmitool sensor thresh "*sensor name*" upper *unc* *ucr* *unr*
 =cut
 
+# NOTE: Disabled until I redo the s/id/uuid/ thing
+exit(0);
+
 # Determine this file name.
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -72,9 +75,7 @@ my $an = AN::Tools->new({data =>
 			log_language			=>	"en_CA",
 		},
 		sys			=>	{
-			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query			=>	"",
-			sql				=>	[],
+			sql			=>	[],
 		},
 		# These are values the user might set in striker.conf
 		'scan-ipmitool'		=>	{
@@ -190,7 +191,7 @@ SELECT
 FROM 
     ipmitool 
 WHERE 
-    ipmitool_host_id = (".$an->data->{sys}{host_id_query}.") 
+    ipmitool_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     ipmitool_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine)."
 AND 
@@ -444,7 +445,7 @@ AND
 INSERT INTO 
     ipmitool 
 (
-    ipmitool_host_id, 
+    ipmitool_host_uuid, 
     ipmitool_sensor_host, 
     ipmitool_sensor_name, 
     ipmitool_sensor_units, 
@@ -455,7 +456,7 @@ INSERT INTO
     ipmitool_sensor_low_warning, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($machine).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_sensor_units).",  
@@ -572,7 +573,7 @@ INSERT INTO
 INSERT INTO 
     ipmitool 
 (
-    ipmitool_host_id, 
+    ipmitool_host_uuid, 
     ipmitool_sensor_name, 
     ipmitool_sensor_host, 
     ipmitool_sensor_units, 
@@ -583,7 +584,7 @@ INSERT INTO
     ipmitool_sensor_low_warning, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."),
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).",  
     ".$an->data->{sys}{use_db_fh}->quote($machine).",  
     ".$an->data->{sys}{use_db_fh}->quote($new_ipmitool_sensor_units).",  
@@ -685,9 +686,9 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
@@ -756,11 +757,11 @@ SET
     temperature_is      = ".$an->data->{sys}{use_db_fh}->quote($new_temperature_is).", 
     modified_date       = ".$an->data->{sys}{db_timestamp}."
 WHERE
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
@@ -788,7 +789,7 @@ AND
 INSERT INTO 
     temperature 
 (
-    temperature_host_id, 
+    temperature_host_uuid, 
     temperature_sensor_host, 
     temperature_sensor_name, 
     temperature_agent_name, 
@@ -797,7 +798,7 @@ INSERT INTO
     temperature_is, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($machine).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
@@ -830,11 +831,11 @@ SET
     temperature_state = 'DELETED', 
     modified_date     = ".$an->data->{sys}{db_timestamp}."
 WHERE
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)."
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
+    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
@@ -846,11 +847,11 @@ AND
 DELETE FROM 
     temperature 
 WHERE
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)." 
 AND
-    temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
+    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)."
 AND
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
 ";
@@ -1511,7 +1512,7 @@ FROM
     ipmitool a, 
     ipmitool_value b 
 WHERE 
-    a.ipmitool_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.ipmitool_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     a.ipmitool_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine)." 
 AND 
@@ -1656,7 +1657,7 @@ FROM
 WHERE 
     a.ipmitool_id = b.ipmitool_value_ipmitool_id 
 AND 
-    a.ipmitool_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ORDER BY 
     b.modified_date DESC 
 LIMIT 1;
@@ -1693,7 +1694,7 @@ FROM
 WHERE 
     a.ipmitool_id = b.ipmitool_value_ipmitool_id 
 AND 
-    a.ipmitool_host_id = (".$an->data->{sys}{host_id_query}.") 
+    a.ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < b.modified_date 
 ORDER BY 
@@ -1803,7 +1804,7 @@ sub update_db_ipmitool
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the timestamp that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM ipmitool WHERE ipmitool_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM ipmitool WHERE ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -1819,7 +1820,7 @@ sub update_db_ipmitool
 	###       sensor name exists in the target and decide if it needs an
 	###       INSERT or UPDATE. So first, pull all the existing entries out
 	###       of the target.
-	   $query   = "SELECT ipmitool_sensor_name, round(extract(epoch from modified_date)) FROM ipmitool WHERE ipmitool_host_id = (".$an->data->{sys}{host_id_query}.");";
+	   $query   = "SELECT ipmitool_sensor_name, round(extract(epoch from modified_date)) FROM ipmitool WHERE ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
@@ -1869,7 +1870,7 @@ SELECT
 FROM 
     history.ipmitool 
 WHERE 
-    ipmitool_host_id = (".$an->data->{sys}{host_id_query}.") 
+    ipmitool_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < modified_date 
 ORDER BY
@@ -1920,7 +1921,7 @@ ORDER BY
 INSERT INTO 
     ipmitool
 (
-    ipmitool_host_id,
+    ipmitool_host_uuid,
     ipmitool_sensor_name, 
     ipmitool_sensor_host, 
     ipmitool_sensor_units, 
@@ -1931,7 +1932,7 @@ INSERT INTO
     ipmitool_sensor_low_warning, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_units).",  
@@ -1963,7 +1964,7 @@ SET
     ipmitool_sensor_low_warning   = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_low_warning).", 
     modified_date                 = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    ipmitool_host_id = (".$an->data->{sys}{host_id_query}.")
+    ipmitool_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
     ipmitool_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($ipmitool_sensor_name)." 
 ;";

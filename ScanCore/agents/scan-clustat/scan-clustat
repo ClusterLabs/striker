@@ -15,6 +15,9 @@
 #    services.
 # 
 
+# NOTE: Disabled until I redo the s/id/uuid/ thing
+exit(0);
+
 # Determine this file name.
 my $THIS_FILE =  $0;
    $THIS_FILE =~ s/^.*\///;
@@ -73,9 +76,6 @@ my $an = AN::Tools->new({data =>
 		},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query		=>	"",
-			# This is set below after we connect to the databases 
-			# because we need 'host_id_query' set.
 			clustat_id_query	=>	"",
 			sql			=>	[],
 		},
@@ -117,7 +117,7 @@ $an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_va
 }, file => $THIS_FILE, line => __LINE__});
 
 # Setup some repeatedly used subqueries for easier use later.
-$an->data->{sys}{clustat_id_query}         = "SELECT clustat_id FROM clustat WHERE clustat_host_id = (".$an->data->{sys}{host_id_query}.")";
+$an->data->{sys}{clustat_id_query}         = "SELECT clustat_id FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid});
 $an->data->{sys}{clustat_node_id_query}    = "SELECT clustat_node_id FROM clustat_node WHERE clustat_node_clustat_id = (".$an->data->{sys}{clustat_id_query}.")";
 $an->data->{sys}{clustat_service_id_query} = "SELECT clustat_service_id FROM clustat_service WHERE clustat_service_clustat_id = (".$an->data->{sys}{clustat_id_query}.")";
 
@@ -291,7 +291,7 @@ FROM
 WHERE 
     a.clustat_service_clustat_id = b.clustat_id 
 AND 
-    b.clustat_host_id = (".$an->data->{sys}{host_id_query}.") 
+    b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < a.modified_date;
 ";
@@ -480,7 +480,7 @@ FROM
 WHERE 
     a.clustat_node_clustat_id = b.clustat_id 
 AND 
-    b.clustat_host_id = (".$an->data->{sys}{host_id_query}.") 
+    b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < a.modified_date;
 ";
@@ -583,7 +583,7 @@ sub update_db_clustat
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the timestamp that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM clustat WHERE clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
+	my $query = "SELECT modified_date FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target_db_id", value1 => "$target_db_id", 
 		name2 => "query",        value2 => $query, 
@@ -598,7 +598,7 @@ sub update_db_clustat
 	### NOTE: For each clustat_cluster_name, check to see if the same name exists
 	###       in the target and decide if it needs an INSERT or UPDATE. So
 	###       first, pull all the existing entries out of the target.
-	   $query   = "SELECT clustat_cluster_name, round(extract(epoch from modified_date)) FROM clustat WHERE clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
+	   $query   = "SELECT clustat_cluster_name, round(extract(epoch from modified_date)) FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
@@ -639,7 +639,7 @@ SELECT
 FROM 
     history.clustat 
 WHERE 
-    clustat_host_id = (".$an->data->{sys}{host_id_query}.") 
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     $old_date < modified_date 
 ORDER BY
@@ -676,12 +676,12 @@ ORDER BY
 INSERT INTO 
     clustat
 (
-    clustat_host_id, 
+    clustat_host_uuid, 
     clustat_cluster_name, 
     clustat_quorate, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).",  
     ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
@@ -698,7 +698,7 @@ SET
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
     modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    clustat_host_id = (".$an->data->{sys}{host_id_query}.");";
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		}
 	}
 	
@@ -765,12 +765,12 @@ sub find_changes
 INSERT INTO 
     clustat 
 (
-    clustat_host_id, 
+    clustat_host_uuid, 
     clustat_quorate, 
     clustat_cluster_name, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."),
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
     ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     ".$an->data->{sys}{db_timestamp}."
@@ -836,7 +836,7 @@ SET
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     modified_date        = ".$an->data->{sys}{db_timestamp}."
 WHERE 
-    clustat_host_id = (".$an->data->{sys}{host_id_query}.");
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
@@ -2096,7 +2096,7 @@ FROM
     clustat a, 
     hosts b 
 WHERE 
-    a.clustat_host_id = b.host_id 
+    a.clustat_host_uuid = b.host_uuid 
 AND 
     b.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";
@@ -2139,7 +2139,7 @@ FROM
 WHERE 
     a.clustat_node_clustat_id = b.clustat_id 
 AND 
-    b.clustat_host_id = c.host_id 
+    b.clustat_host_uuid = c.host_uuid 
 AND 
     c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";
@@ -2190,7 +2190,7 @@ FROM
 WHERE 
     a.clustat_service_clustat_id = b.clustat_id 
 AND 
-    b.clustat_host_id = c.host_id 
+    b.clustat_host_uuid = c.host_uuid 
 AND 
     c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
 ";

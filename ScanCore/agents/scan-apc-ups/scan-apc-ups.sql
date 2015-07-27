@@ -2,7 +2,7 @@
 
 CREATE TABLE apc_ups (
 	apc_ups_id			bigserial			primary key,
-	apc_ups_host_id			bigint				not null,
+	apc_ups_host_uuid		uuid				not null,
 	apc_ups_fqdn			text,
 	apc_ups_ip			text,
 	apc_ups_ac_restore_delay	numeric,
@@ -21,14 +21,14 @@ CREATE TABLE apc_ups (
 	apc_ups_nmc_mac_address		text,
 	modified_date			timestamp with time zone	not null,
 	
-	FOREIGN KEY(apc_ups_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(apc_ups_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE apc_ups OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_ups (
 	history_id			bigserial,
 	apc_ups_id			bigint,
-	apc_ups_host_id			bigint,
+	apc_ups_host_uuid		uuid,
 	apc_ups_fqdn			text,
 	apc_ups_ip			text,
 	apc_ups_ac_restore_delay	numeric,
@@ -57,7 +57,7 @@ BEGIN
 	SELECT INTO history_apc_ups * FROM apc_ups WHERE apc_ups_id=new.apc_ups_id;
 	INSERT INTO history.apc_ups
 		(apc_ups_id,
-		 apc_ups_host_id, 
+		 apc_ups_host_uuid, 
 		 apc_ups_fqdn, 
 		 apc_ups_ip, 
 		 apc_ups_ac_restore_delay, 
@@ -77,7 +77,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_apc_ups.apc_ups_id,
-		 history_apc_ups.apc_ups_host_id, 
+		 history_apc_ups.apc_ups_host_uuid, 
 		 history_apc_ups.apc_ups_fqdn,
 		 history_apc_ups.apc_ups_ip,
 		 history_apc_ups.apc_ups_ac_restore_delay, 

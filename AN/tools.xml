@@ -315,7 +315,9 @@ Variables:
 		<key name="error_title_0015">Failed to write to the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0016">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0017">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
-		<key name="error_title_0018">Failed to connect to a database. This machine is not registered in the remaining database(s), so this is a fatal error. Please address the issues raised in the error above and then try running the program again.</key>
+		<key name="error_title_0018">Unable to connect to the database with with configuration ID: [#!variable!id!#].</key>
+		<key name="error_title_0019">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0020"></key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>

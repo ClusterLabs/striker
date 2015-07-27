@@ -106,6 +106,7 @@ sub run_new_install_manifest
 		screen				=>	0,
 		syslinux			=>	0,
 		sysstat				=>	0,
+		'util-linux-ng'			=>	0,
 		'vim-enhanced'			=>	0,
 		'virt-viewer'			=>	0,
 		wget				=>	0,

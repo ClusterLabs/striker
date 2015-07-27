@@ -766,16 +766,16 @@ sub _insert_data
 		if ($id =~ /::/)
 		{
 			# Multi-dimensional hash.
-			my $valueue = $an->_get_hash_reference({
+			my $value = $an->_get_hash_reference({
 				key	=>	$id,
 			});
-			if (not defined $valueue)
+			if (not defined $value)
 			{
 				$parameter->{string} =~ s/#!data!$id!#/!!a[$id]!!/;
 			}
 			else
 			{
-				$parameter->{string} =~ s/#!data!$id!#/$valueue/;
+				$parameter->{string} =~ s/#!data!$id!#/$value/;
 			}
 		}
 		else
@@ -787,7 +787,7 @@ sub _insert_data
 			}
 			else
 			{
-				my $value          =  $an->data->{$id};
+				my $value            =  $an->data->{$id};
 				$parameter->{string} =~ s/#!data!$id!#/$value/;
 			}
 		}

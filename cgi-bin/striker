@@ -215,6 +215,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"disk_address",
 	"do",
 	"driver_iso",
+	"expire",
 	"file",
 	"generate",
 	"host",

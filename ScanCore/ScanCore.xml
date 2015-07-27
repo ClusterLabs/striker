@@ -203,6 +203,10 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_error_0014">It looks like a loop was hit trying to find a unique file name for storing an email. I got to: [#!variable!file!#] before giving up.</key>
 		<key name="scancore_error_0015">The node: [#!variable!node!#] has gone into "emergency stop" and is shutting down!</key>
 		<key name="scancore_error_0016">The node: [#!variable!node!#] has reaches an "emergency stop" threshold, but the automatic shutdown feature has been disabled! Please manually shut down the machine (or fix the problem) as soon as possible.</key>
+		<key name="scancore_error_0017">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
+		<key name="scancore_error_0018"></key>
+		<key name="scancore_error_0019"></key>
+		<key name="scancore_error_0020"></key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>

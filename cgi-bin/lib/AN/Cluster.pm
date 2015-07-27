@@ -4710,6 +4710,8 @@ sub generate_install_manifest
 	my $node1_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node1_ipmi_ip});
 	my $node2_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node2_ipmi_ip});
 	
+	### TODO: Get the node and dashboard UUIDs if not yet set.
+	
 	### KVM-based fencing is supported but not documented. Sample entries
 	### are here for those who might ask for it when building test Anvil!
 	### systems later.
@@ -4722,7 +4724,7 @@ Striker Version: $conf->{sys}{version}
 -->
 
 <config>
-	<node name=\"$conf->{cgi}{anvil_node1_name}\">
+	<node name=\"$conf->{cgi}{anvil_node1_name}\" uuid=\"\">
 		<network>
 			<bcn ip=\"$conf->{cgi}{anvil_node1_bcn_ip}\" />
 			<sn ip=\"$conf->{cgi}{anvil_node1_sn_ip}\" />
@@ -4750,7 +4752,7 @@ Striker Version: $conf->{sys}{version}
 			<interface name=\"ifn_link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
-	<node name=\"$conf->{cgi}{anvil_node2_name}\">
+	<node name=\"$conf->{cgi}{anvil_node2_name}\" uuid=\"\">
 		<network>
 			<bcn ip=\"$conf->{cgi}{anvil_node2_bcn_ip}\" />
 			<sn ip=\"$conf->{cgi}{anvil_node2_sn_ip}\" />
@@ -4863,8 +4865,8 @@ Striker Version: $conf->{sys}{version}
 			no default password!
 			TODO: Make the TCP port configurable
 			-->
-			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" database=\"\" user=\"\" password=\"\" />
-			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" database=\"\" user=\"\" password=\"\" />
+			<striker name=\"$conf->{cgi}{anvil_striker1_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker1_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker1_ifn_ip}\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
+			<striker name=\"$conf->{cgi}{anvil_striker2_name}\" bcn_ip=\"$conf->{cgi}{anvil_striker2_bcn_ip}\" ifn_ip=\"$conf->{cgi}{anvil_striker2_ifn_ip}\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
 		</striker>
 		<update os=\"true\" />
 		<iptables>

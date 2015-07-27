@@ -4,29 +4,10 @@
 SET client_encoding = 'UTF8';
 CREATE SCHEMA IF NOT EXISTS history;
 
--- DO $$
--- BEGIN
---     IF NOT EXISTS
---     (
---         SELECT schema_name
---         FROM information_schema.schemata
---         WHERE schema_name = 'history'
---     )
---     THEN
---       EXECUTE 'CREATE SCHEMA history';
---     END IF;
--- END
--- $$;
--- ALTER SCHEMA history OWNER to #!variable!user!#;
-
--- -------------------------------------------------- --
--- TODO: Make everything below conditional like above --
--- -------------------------------------------------- --
-
 -- This stores information about the host machine running this instance of
 -- ScanCore. All agents will reference this table.
 CREATE TABLE hosts (
-	host_id			bigserial			primary key,
+	host_uuid		uuid				not null	primary key,	-- This is the single most important record in ScanCore. Everything links back to here.
 	host_name		text				not null,
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
@@ -37,7 +18,7 @@ ALTER TABLE hosts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.hosts (
 	history_id		bigserial,
-	host_id			numeric,
+	host_uuid		uuid,
 	host_name		text,
 	host_type		text,
 	host_emergency_stop	boolean				not null,
@@ -51,16 +32,16 @@ AS $$
 DECLARE
 	history_hosts RECORD;
 BEGIN
-	SELECT INTO history_hosts * FROM hosts WHERE host_id = new.host_id;
+	SELECT INTO history_hosts * FROM hosts WHERE host_uuid = new.host_uuid;
 	INSERT INTO history.hosts
-		(host_id,
+		(host_uuid,
 		 host_name,
 		 host_type,
 		 host_emergency_stop,
 		 host_stop_reason, 
 		 modified_date)
 	VALUES
-		(history_hosts.host_id,
+		(history_hosts.host_uuid,
 		 history_hosts.host_name,
 		 history_hosts.host_type,
 		 history_hosts.host_emergency_stop,
@@ -80,7 +61,7 @@ CREATE TRIGGER trigger_hosts
 -- This stores alerts coming in from various agents
 CREATE TABLE alerts (
 	alert_id		bigserial			primary key,
-	alert_host_id		bigint				not null,			-- The name of the node or dashboard that this alert came from.
+	alert_host_uuid		uuid				not null,			-- The name of the node or dashboard that this alert came from.
 	alert_agent_name	text				not null,
 	alert_level		text				not null,			-- debug (log only), info (+ admin email), notice (+ curious users), warning (+ client technical staff), critical (+ all)
 	alert_title_key		text,								-- ScanCore will read in the agents <name>.xml words file and look for this message key
@@ -89,14 +70,14 @@ CREATE TABLE alerts (
 	alert_message_variables	text,								-- List of variables to substitute into the message key. Format is 'var1=val1 #!# var2 #!# val2 #!# ... #!# varN=valN'.
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(alert_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(alert_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE alerts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.alerts (
 	history_id		bigserial,
 	alert_id		bigint,
-	alert_host_id		bigint,
+	alert_host_uuid		uuid,
 	alert_agent_name	text,
 	alert_level		text,
 	alert_title_key		text,
@@ -115,7 +96,7 @@ BEGIN
 	SELECT INTO history_alerts * FROM alerts WHERE alert_id = new.alert_id;
 	INSERT INTO history.alerts
 		(alert_id,
-		 alert_host_id,
+		 alert_host_uuid,
 		 alert_agent_name,
 		 alert_level,
 		 alert_title_key,
@@ -125,7 +106,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_alerts.alert_id,
-		 history_alerts.alert_host_id,
+		 history_alerts.alert_host_uuid,
 		 history_alerts.alert_agent_name,
 		 history_alerts.alert_level,
 		 history_alerts.alert_title_key,
@@ -149,7 +130,7 @@ CREATE TRIGGER trigger_alerts
 -- this table (in addition to any tables they may wish to use)
 CREATE TABLE power (
 	power_id		bigserial			primary key,
-	power_host_id		bigint				not null,			-- The name of the node or dashboard that this power came from.
+	power_host_uuid		uuid				not null,			-- The name of the node or dashboard that this power came from.
 	power_agent_name	text				not null,
 	power_record_locator	text,								-- Optional string used by the agent to identify the UPS
 	power_ups_fqdn		text				not null,			-- This is the full domain name of the UPS. This is used by ScanCore to determine which UPSes are powering a given node so this MUST match the host names used in the node's /etc/hosts file.
@@ -158,14 +139,14 @@ CREATE TABLE power (
 	power_charge_percentage	numeric,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(power_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(power_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE power OWNER TO #!variable!user!#;
 
 CREATE TABLE history.power (
 	history_id		bigserial,
 	power_id		bigint,
-	power_host_id		bigint,
+	power_host_uuid		uuid,
 	power_agent_name	text,
 	power_record_locator	text,
 	power_ups_fqdn		text,
@@ -184,7 +165,7 @@ BEGIN
 	SELECT INTO history_power * FROM power WHERE power_id = new.power_id;
 	INSERT INTO history.power
 		(power_id,
-		 power_host_id,
+		 power_host_uuid,
 		 power_agent_name,
 		 power_record_locator,
 		 power_ups_fqdn, 
@@ -194,7 +175,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_power.power_id,
-		 history_power.power_host_id,
+		 history_power.power_host_uuid,
 		 history_power.power_agent_name,
 		 history_power.power_record_locator,
 		 history_power.power_ups_fqdn, 
@@ -216,7 +197,7 @@ CREATE TRIGGER trigger_power
 -- This stores alerts coming in from various agents
 CREATE TABLE temperature (
 	temperature_id		bigserial			primary key,
-	temperature_host_id	bigint				not null,			-- The name of the node or dashboard that this temperature came from.
+	temperature_host_uuid	uuid				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
 	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text				not null,
@@ -225,14 +206,14 @@ CREATE TABLE temperature (
 	temperature_is		text				not null,			-- high or low
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(temperature_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(temperature_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE temperature OWNER TO #!variable!user!#;
 
 CREATE TABLE history.temperature (
 	history_id		bigserial,
 	temperature_id		bigint,
-	temperature_host_id	bigint,
+	temperature_host_uuid	uuid,
 	temperature_agent_name	text,
 	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text,
@@ -251,7 +232,7 @@ BEGIN
 	SELECT INTO history_temperature * FROM temperature WHERE temperature_id = new.temperature_id;
 	INSERT INTO history.temperature
 		(temperature_id,
-		 temperature_host_id,
+		 temperature_host_uuid,
 		 temperature_agent_name,
 		 temperature_sensor_host, 
 		 temperature_sensor_name,
@@ -261,7 +242,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_temperature.temperature_id,
-		 history_temperature.temperature_host_id,
+		 history_temperature.temperature_host_uuid,
 		 history_temperature.temperature_agent_name,
 		 history_temperature.temperature_sensor_host, 
 		 history_temperature.temperature_sensor_name,
@@ -283,20 +264,20 @@ CREATE TRIGGER trigger_temperature
 -- This stores information about the scan agents on this system
 CREATE TABLE agents (
 	agent_id		bigserial				primary key,
-	agent_host_id		bigint				not null,
+	agent_host_uuid		uuid				not null,
 	agent_name		text				not null,			-- This is the name of the scan agent file name
 	agent_exit_code		int				not null,			-- This is the exit code from the last run
 	agent_runtime		int				not null,			-- This is the number of seconds it took for the agent to run last time.
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(agent_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(agent_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE agents OWNER TO #!variable!user!#;
 
 CREATE TABLE history.agents (
 	history_id		bigserial,
 	agent_id		bigint,
-	agent_host_id		bigint,
+	agent_host_uuid		uuid,
 	agent_name		text				not null,
 	agent_exit_code		int				not null,
 	agent_runtime		int				not null,
@@ -312,14 +293,14 @@ BEGIN
 	SELECT INTO history_agents * FROM agents WHERE agent_id = new.agent_id;
 	INSERT INTO history.agents
 		(agent_id,
-		 agent_host_id,
+		 agent_host_uuid,
 		 agent_name,
 		 agent_exit_code,
 		 agent_runtime,
 		 modified_date)
 	VALUES
 		(history_agents.agent_id,
-		 history_agents.agent_host_id,
+		 history_agents.agent_host_uuid,
 		 history_agents.agent_name,
 		 history_agents.agent_exit_code,
 		 history_agents.agent_runtime,
@@ -344,19 +325,19 @@ CREATE TRIGGER trigger_agents
 -- This stores information about the RAM used by ScanCore and it's agents.
 CREATE TABLE ram_used (
 	ram_used_id		bigserial,
-	ram_used_host_id	bigint				not null,
+	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(ram_used_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(ram_used_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE ram_used OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ram_used (
 	history_id		bigserial,
 	ram_used_id		bigint,
-	ram_used_host_id	bigint,
+	ram_used_host_uuid	uuid,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
 	modified_date		timestamp with time zone	not null
@@ -371,13 +352,13 @@ BEGIN
 	SELECT INTO history_ram_used * FROM ram_used WHERE ram_used_id = new.ram_used_id;
 	INSERT INTO history.ram_used
 		(ram_used_id,
-		 ram_used_host_id,
+		 ram_used_host_uuid,
 		 ram_used_by,
 		 ram_used_bytes,
 		 modified_date)
 	VALUES
 		(history_ram_used.ram_used_id,
-		 history_ram_used.ram_used_host_id,
+		 history_ram_used.ram_used_host_uuid,
 		 history_ram_used.ram_used_by,
 		 history_ram_used.ram_used_bytes,
 		 history_ram_used.modified_date);
@@ -397,11 +378,11 @@ CREATE TRIGGER trigger_ram_used
 
 -- This table records the last time a scan ran.
 CREATE TABLE updated (
-	updated_host_id		bigint				not null,
+	updated_host_uuid	uuid				not null,
 	updated_by		text				not null,			-- The name of the agent (or "ScanCore' itself) that updated.
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(updated_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(updated_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE updated OWNER TO #!variable!user!#;
 
@@ -413,14 +394,14 @@ ALTER TABLE updated OWNER TO #!variable!user!#;
 -- solve that, this table is used by agents to record when a warning message
 -- was sent. 
 CREATE TABLE alert_sent (
-	alert_sent_host_id	bigint				not null,			-- The node associated with this alert
+	alert_sent_host_uuid	uuid				not null,			-- The node associated with this alert
 	alert_sent_id		bigserial			not null,
 	alert_sent_by		text				not null,			-- name of the agent
 	alert_record_locator	text,								-- Optional string used by the agent to identify the source of the alert (ie: UPS serial number)
 	alert_name		text				not null,			-- A free-form name used by the caller to identify this alert.
 	modified_date		timestamp with time zone	not null,
 	
-	FOREIGN KEY(alert_sent_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(alert_sent_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE updated OWNER TO #!variable!user!#;
 

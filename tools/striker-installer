@@ -212,6 +212,7 @@ my $conf = {
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
 			unzip				=>	0,
+			'util-linux-ng'			=>	0,
 			'vim-common'			=>	0, 
 			'vim-enhanced'			=>	0, 
 			wget				=>	0,

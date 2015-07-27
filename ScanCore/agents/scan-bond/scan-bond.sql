@@ -2,7 +2,7 @@
 
 CREATE TABLE bond (
 	bond_id				bigserial			primary key,
-	bond_host_id			bigint,
+	bond_host_uuid			uuid,
 	bond_name			text				not null,
 	bond_mode			numeric				not null,	-- This is the numerical bond type (will translate to the user's language in ScanCore)
 	bond_primary_slave		text				not null,
@@ -14,14 +14,14 @@ CREATE TABLE bond (
 	bond_down_delay			numeric,
 	modified_date			timestamp with time zone	not null,
 	
-	FOREIGN KEY(bond_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(bond_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE bond OWNER TO #!variable!user!#;
 
 CREATE TABLE history.bond (
 	history_id			bigserial,
 	bond_id				bigint,
-	bond_host_id			bigint,
+	bond_host_uuid			uuid,
 	bond_name			text				not null,
 	bond_mode			numeric				not null,
 	bond_primary_slave		text				not null,
@@ -43,7 +43,7 @@ BEGIN
 	SELECT INTO history_bond * FROM bond WHERE bond_id=new.bond_id;
 	INSERT INTO history.bond
 		(bond_id,
-		 bond_host_id,
+		 bond_host_uuid,
 		 bond_name, 
 		 bond_mode, 
 		 bond_primary_slave, 
@@ -56,7 +56,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_bond.bond_id,
-		 history_bond.bond_host_id,
+		 history_bond.bond_host_uuid,
 		 history_bond.bond_name, 
 		 history_bond.bond_mode, 
 		 history_bond.bond_primary_slave, 

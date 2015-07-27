@@ -95,7 +95,6 @@ sub get_peer_node
 sub process_task
 {
 	my ($conf) = @_;
-	
 	if ($conf->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
@@ -5687,6 +5686,8 @@ sub confirm_fence_node
 	my $say_message = AN::Common::get_string($conf, {key => "message_0151", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-fence-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -5708,6 +5709,8 @@ sub confirm_poweroff_node
 	my $say_message = AN::Common::get_string($conf, {key => "message_0156", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-poweroff-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -5779,6 +5782,8 @@ sub confirm_cold_stop_anvil
 		}});
 	}
 	
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-cold-stop", {
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
@@ -5829,6 +5834,8 @@ sub confirm_stop_vm
 	my $say_precaution = AN::Common::get_string($conf, {key => "message_0167", variables => {
 		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
 	}});
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-stop-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -5853,6 +5860,8 @@ sub confirm_force_off_vm
 		server		=>	$conf->{cgi}{vm},
 		host		=>	$conf->{cgi}{host},
 	}});
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-force-off-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6313,7 +6322,22 @@ sub stop_vm
 	my $vm   = $conf->{cgi}{vm};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], node: [$node]\n");
 	
-	# This, more than 
+	# Has the timer expired?
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current time: [".time."], cgi::expire: [$conf->{cgi}{expire}].\n");
+	if (time > $conf->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0185"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0444", variables => {
+			server	=>	$conf->{cgi}{vm},
+		}});
+		print AN::Common::template($conf, "server.html", "request-expired", {
+			title		=>	$say_title,
+			message		=>	$say_message,
+		});
+		return(1);
+	}
+	
 	AN::Cluster::scan_cluster($conf);
 	my $say_title = AN::Common::get_string($conf, {key => "title_0051", variables => {
 		server	=>	$vm,
@@ -6607,7 +6631,22 @@ sub force_off_vm
 	my $vm   = $conf->{cgi}{vm};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in force_off_vm(), vm: [$vm], node: [$node]\n");
 	
-	# This, more than 
+	# Has the timer expired?
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current time: [".time."], cgi::expire: [$conf->{cgi}{expire}].\n");
+	if (time > $conf->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0186"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0445", variables => {
+			server	=>	$conf->{cgi}{vm},
+		}});
+		print AN::Common::template($conf, "server.html", "request-expired", {
+			title		=>	$say_title,
+			message		=>	$say_message,
+		});
+		return(1);
+	}
+	
 	AN::Cluster::scan_cluster($conf);
 	my $say_title = AN::Common::get_string($conf, {key => "title_0056", variables => {
 		server	=>	$vm,
@@ -7112,6 +7151,22 @@ sub poweroff_node
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
+	# Has the timer expired?
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current time: [".time."], cgi::expire: [$conf->{cgi}{expire}].\n");
+	if (time > $conf->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0187"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0446", variables => {
+			node	=>	$conf->{cgi}{node_cluster_name},
+		}});
+		print AN::Common::template($conf, "server.html", "request-expired", {
+			title		=>	$say_title,
+			message		=>	$say_message,
+		});
+		return(1);
+	}
+	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
 	AN::Cluster::scan_cluster($conf);
 	my $proceed = $conf->{node}{$node}{enable_poweroff};
@@ -7196,6 +7251,22 @@ sub cold_stop_anvil
 	my $anvil   = $conf->{cgi}{cluster};
 	my $proceed = 1;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
+	
+	# Has the timer expired?
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current time: [".time."], cgi::expire: [$conf->{cgi}{expire}].\n");
+	if (time > $conf->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0184"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0443", variables => {
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
+		print AN::Common::template($conf, "server.html", "request-expired", {
+			title		=>	$say_title,
+			message		=>	$say_message,
+		});
+		return(1);
+	}
 	
 	# Make sure we've got an up-to-date view of the cluster.
 	AN::Cluster::scan_cluster($conf);
@@ -7873,6 +7944,22 @@ sub fence_node
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $peer              = get_peer_node($conf, $node);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in poweron_node(), node: [$node], peer: [$peer], cluster name: [$node_cluster_name]\n");
+	
+	# Has the timer expired?
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current time: [".time."], cgi::expire: [$conf->{cgi}{expire}].\n");
+	if (time > $conf->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0188"});
+		my $say_message = AN::Common::get_string($conf, {key => "message_0447", variables => {
+			node	=>	$conf->{cgi}{node_cluster_name},
+		}});
+		print AN::Common::template($conf, "server.html", "request-expired", {
+			title		=>	$say_title,
+			message		=>	$say_message,
+		});
+		return(1);
+	}
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
 	AN::Cluster::scan_cluster($conf);
@@ -8687,9 +8774,10 @@ fi";
 	if ($enable)
 	{
 		# It exists, load the template
+		my $expire_time = time + $conf->{sys}{actime_timeout};
 		$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
-			power_cycle	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop&subtask=power_cycle",
-			power_off	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop&subtask=power_off",
+			power_cycle	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_cycle",
+			power_off	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_off",
 		}, "", 1);
 		$watchdog_panel =~ s/\n$//;
 	}
@@ -9699,14 +9787,15 @@ sub display_vm_state_and_controls
 		{
 			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], host node: [$host_node], vm host: [$conf->{vm}{$vm}{host}]\n");
+			my $expire_time = time + $conf->{sys}{actime_timeout};
 			$stop_button      = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=stop_vm&vm=$say_vm&node=$host_node",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=stop_vm&vm=$say_vm&node=$host_node",
 				button_text	=>	"#!string!button_0028!#",
 				id		=>	"stop_vm_$vm",
 			}, "", 1);
 			$force_off_button = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_class	=>	"highlight_dangerous",
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
 				button_text	=>	"#!string!button_0027!#",
 				id		=>	"force_off_vm_$say_vm",
 			}, "", 1);
@@ -10113,6 +10202,7 @@ sub display_node_controls
 	my @say_fence;
 	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
+	my $expire_time = time + $conf->{sys}{actime_timeout};
 	my $disable_join = 0;
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10183,7 +10273,7 @@ sub display_node_controls
 			button_text	=>	"#!string!button_0033!#",
 		}, "", 1);
 		my $say_shutdown_enabled_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0033!#",
 			id		=>	"poweroff_node_$node",
 		}, "", 1);
@@ -10206,9 +10296,11 @@ sub display_node_controls
 		my $say_fence_node_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0037!#",
 		}, "", 1);
+	my $expire_time = time + $conf->{sys}{actime_timeout};
+	# &expire=$expire_time
 		my $say_fence_node_enabled_button = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"highlight_dangerous",
-			button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=fence_node&node=$node&node_cluster_name=$node_long_name",
+			button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=fence_node&node=$node&node_cluster_name=$node_long_name",
 			button_text	=>	"#!string!button_0037!#",
 			id		=>	"fence_node_$node",
 		}, "", 1);
@@ -10230,9 +10322,10 @@ sub display_node_controls
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_stop: [$cold_stop]\n");
 			if ($cold_stop)
 			{
+				my $expire_time = time + $conf->{sys}{actime_timeout};
 				$say_boot_or_stop = AN::Common::template($conf, "common.html", "enabled-button", {
 					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=cold_stop",
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop",
 					button_text	=>	"#!string!button_0062!#",
 					id		=>	"dual_boot",
 				}, "", 1);

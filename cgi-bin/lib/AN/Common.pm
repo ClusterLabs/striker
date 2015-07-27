@@ -724,13 +724,19 @@ sub initialize_conf
 			rsync			=>	"-av --partial",
 		},
 		sys			=>	{
+			# Some actions, like powering off servers and nodes,
+			# have a timeout set so that later, reloading the page
+			# doesn't reload a previous confirmation URL and 
+			# reinitiate the power off when it wasn't desired. This
+			# defines that timeout in seconds.
+			actime_timeout		=>	180,
 			### NOTE: If you change these, also change in anvil-kick-apc-ups!
-			apc		=>	{
-				reboot		=>	{
+			apc			=>	{
+				reboot			=>	{
 					power_off_delay		=>	60,
 					sleep_time		=>	60,
 				},
-				'shutdown'	=>	{
+				'shutdown'		=>	{
 					power_off_delay		=>	60,
 				},
 			},

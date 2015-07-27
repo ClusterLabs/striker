@@ -3,27 +3,27 @@
 --       a 'bigserial'.
 --     - The history schema must have a column called 'history_id' which is a
 --       'bigserial' as well.
---     - There must be a column called 'X_host_id' that is a foreign key to 
---      'hosts -> host_id'.
+--     - There must be a column called 'X_host_uuid' that is a foreign key to 
+--      'hosts -> host_uuid'.
 --     
 
 -- This is the database schema for the 'Clustat' scan agent.
 
 CREATE TABLE clustat (
 	clustat_id			bigserial			primary key,
-	clustat_host_id			bigint,
+	clustat_host_uuid		uuid,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
 	modified_date			timestamp with time zone	not null,
 	
-	FOREIGN KEY(clustat_host_id) REFERENCES hosts(host_id)
+	FOREIGN KEY(clustat_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE clustat OWNER TO #!variable!user!#;
 
 CREATE TABLE history.clustat (
 	history_id			bigserial,
 	clustat_id			bigint,
-	clustat_host_id			bigint,
+	clustat_host_uuid		uuid,
 	clustat_quorate			boolean,							-- Is this node quorate?
 	clustat_cluster_name		text,								-- the cluster name reported by clustat.
 	modified_date			timestamp with time zone	not null
@@ -38,13 +38,13 @@ BEGIN
 	SELECT INTO history_clustat * FROM clustat WHERE clustat_id=new.clustat_id;
 	INSERT INTO history.clustat
 		(clustat_id,
-		 clustat_host_id,
+		 clustat_host_uuid,
 		 clustat_quorate,
 		 clustat_cluster_name,
 		 modified_date)
 	VALUES
 		(history_clustat.clustat_id,
-		 history_clustat.clustat_host_id,
+		 history_clustat.clustat_host_uuid,
 		 history_clustat.clustat_quorate,
 		 history_clustat.clustat_cluster_name,
 		 history_clustat.modified_date);

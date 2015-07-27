@@ -13,6 +13,7 @@
 # 4  - Failed to get an ID when initializing a database.
 # 5  - Used too much RAM, exited to avoid a problem.
 # 6  - Another copy of ScanCore is running.
+# 7  - The UUID for this host was not read (or not read correctly).
 # 
 # TODO:
 # - Record the hostname to a file and check the current host name with the one
@@ -29,7 +30,7 @@
 #       means we can do UPDATE and INSERTs into all DBs with one query, but it
 #       makes those queries... awkward. It also means that the user changing
 #       the hostname *MUST* be caught by ScanCore via a cache file in order to
-#       alter the hosts -> host_name column without losing the host_id.
+#       alter the hosts -> host_name column without losing the host_uuid.
 #       
 #       I'm open to better ideas...
 #       
@@ -103,6 +104,9 @@ my $an = AN::Tools->new({data =>
 			# to indicate to the peer our state and controls how
 			# 'safe_anvil_shutdown' behaves.
 			health_file		=>	"/shared/status",
+			# This stores this node's UUID. It is used to track all
+			# our sensor data in the database.
+			host_uuid		=>	"/etc/striker/host.uuid",
 			log_file		=>	"/var/log/striker.log",
 			mailx			=>	"/bin/mailx",
 			# This is the path to Striker's cache directory. It is
@@ -119,6 +123,7 @@ my $an = AN::Tools->new({data =>
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"$running_directory/Data/strings.xml",
+			uuidgen			=>	"/usr/bin/uuidgen",
 		},
 		# Things set here are meant to be overwritable by the user in
 		# striker.conf.
@@ -166,8 +171,8 @@ my $an = AN::Tools->new({data =>
 		sys		=>	{
 			agents			=>	[],
 			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
-			# This will get set by AN::Tools::DB->connect_to_databases()
-			host_id_query		=>	"",
+			# This stores the local machine's ScanCore UUID.
+			host_uuid		=>	"",
 			# This looks like a lot, but 'pmap' kinda sucks and 
 			# reports shared memory, so to even start a program 
 			# lists 120 MiB+ used. I will make it smarter later.
@@ -197,6 +202,9 @@ avoid_duplicate_run($an);
 # Number 5 is Alive!
 print $an->String->get({key => "scancore_message_0001"}), "\n";
 
+# Get (create if needed) my UUID.
+prep_local_uuid($an);
+
 # Connect to the database(s). This is different from the in-loop connection in
 # that failing to connect to any databases right off the bad will cause the
 # program to bail out.
@@ -220,11 +228,14 @@ if (not $connections)
 # Look to see if any databases need to be updated.
 update_db($an);
 
-# Make sure this node is in the database.
-add_host_to_databases($an);
+# Make sure this node is in the database and the host name is up to date.
+add_hostname_to_databases($an);
+check_hostname_for_changes($an);
 
 # Disconnect from databases... We'll reconnect once the loop starts.
 $an->DB->disconnect_from_databases();
+
+die;
 
 # Run the agents we find.
 $an->Log->entry({
@@ -252,6 +263,9 @@ while (1)
 	{
 		# Look to see if any databases need to be updated.
 		update_db($an);
+		
+		# Has the host name changed?
+		check_hostname_for_changes($an);
 		
 		# Call all agents
 		call_agents($an);
@@ -317,6 +331,89 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# Get (create if needed) my UUID.
+sub prep_local_uuid
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_local_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Does it exist?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::host_uuid", value1 => $an->data->{path}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not -e $an->data->{path}{host_uuid})
+	{
+		# Nope. What about the parent directory? Split the path from 
+		# the file name.
+		my ($directory, $file) = ($an->data->{path}{host_uuid} =~ /^(.*)\/(.*)/);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "directory", value1 => $directory, 
+			name2 => "file",      value2 => $file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Check the directory now
+		if (not -e $directory)
+		{
+			# The directory needs to be created.
+			mkdir $directory or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
+				directory => $directory, 
+				error     => $! 
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			
+			# Set the mode
+			my $directory_mode = 0775;
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
+				directory_mode => sprintf("%04o", $directory_mode), 
+			}, file => $THIS_FILE, line => __LINE__});
+			chmod $directory_mode, $an->data->{path}{email_directory};
+		}
+		
+		# Now create the UUID.
+		my $shell_call = $an->data->{path}{uuidgen}." > ".$an->data->{path}{host_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			# There should never be any output, but just in case...
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	
+	# Now read in the UUID.
+	my $shell_call = $an->data->{path}{host_uuid};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$an->data->{sys}{host_uuid} = lc($_);
+		last;
+	}
+	close $file_handle;
+	
+	# Verify I have a good UUID.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# derp
+		$an->Log->entry({log_level => 0, message_key => "scancore_error_0017", file => $THIS_FILE, line => __LINE__});
+		exit(7);
+	}
+	
+	return($an->data->{sys}{host_uuid});
+}
 
 sub do_post_scan_checks
 {
@@ -644,7 +741,7 @@ sub boot_node
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						# Clear the 'emergency_stop' flag.
-						my $query = "UPDATE hosts SET host_emergency_stop = FALSE WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($node).";";
+						my $query = "UPDATE hosts SET host_emergency_stop = FALSE WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -698,9 +795,9 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_id = (
+    power_host_uuid = (
         SELECT 
-            host_id 
+            host_uuid 
         FROM 
             hosts 
         WHERE 
@@ -780,7 +877,7 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.")
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($node).";
 ";
@@ -1004,8 +1101,9 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_id = (".$an->data->{sys}{host_id_query}.");
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
+	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1017,7 +1115,7 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		my $power_ups_fqdn          = $row->[0];
-		my $power_on_battery        = $row->[1];
+		my $power_on_battery        = $row->[1] ? "TRUE" : "FALSE";
 		my $power_seconds_left      = $row->[2];
 		my $power_charge_percentage = $row->[3];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
@@ -1100,7 +1198,7 @@ SET
     host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($host_stop_reason).", 
     modified_date       = ".$an->data->{sys}{db_timestamp}."
 WHERE 
-    host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1317,7 +1415,7 @@ SELECT
 FROM 
     temperature 
 WHERE 
-    temperature_host_id = (".$an->data->{sys}{host_id_query}.") 
+    temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
 ";
@@ -1439,7 +1537,7 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_id = (".$an->data->{sys}{host_id_query}.");
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1565,7 +1663,7 @@ SELECT
 FROM 
     alerts 
 WHERE 
-    alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+    alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({query => $query});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
@@ -1647,7 +1745,7 @@ WHERE
 		}
 		
 		# All done, delete the public.alerts entries.
-		$query = "DELETE FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
+		$query = "DELETE FROM alerts WHERE alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2321,7 +2419,7 @@ sub check_email_configuration
 			email_directory => $an->data->{path}{email_directory}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		mkdir $an->data->{path}{email_directory} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => {
+		mkdir $an->data->{path}{email_directory} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
 								directory => $an->data->{path}{email_directory}, 
 								error     => $! 
 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -2786,6 +2884,9 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
 	{
 		# Something somewhere is out of sync. So start with updating
@@ -2796,7 +2897,12 @@ sub update_db
 		
 		# Now update the rest of the ScanCore tables.
 		update_db_agents($an);
+		
+		die;
 		update_db_ram_used($an);
+		update_db_alerts($an);
+		update_db_temperature($an);
+		update_db_power($an);
 		
 		# Do the INSERTs now.
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -2813,51 +2919,6 @@ sub update_db
 		die "$THIS_FILE ".__LINE__."; testing...\n";
 	}
 	
-	
-=pod
-	$an->data->{sys}{sql} = [];
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
-	{
-		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db_is_behind", value1 => $db_is_behind, 
-		}, file => $THIS_FILE, line => __LINE__});
-		next if not $db_is_behind;
-		
-		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-		my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0028", message_variables => {
-			id                  => $id, 
-			source_db_id        => $source_db_id, 
-			source_updated_time => $source_updated_time,
-			target_last_updated => $target_last_updated
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $target_last_updated)
-		{
-			# Full recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($source_updated_time ne $target_last_updated)
-		{
-			# Partial recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0030", message_variables => {
-				seconds_behind => ($source_updated_time - $target_last_updated), 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	
-		# Update (and commit) the hosts table
-		update_db_hosts($an, $id);
-		
-		# Now update the rest of the ScanCore tables.
-		update_db_agents($an, $id);
-		update_db_ram_used($an, $id);
-		update_db_alerts($an, $id);
-		#update_db_temperature($an, $id);
-		#update_db_power($an, $id);
-	}
-=cut
-	
 	return(0);
 }
 
@@ -2867,9 +2928,7 @@ sub update_db_ram_used
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_ram_used" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	
-	# Now read in all the 'agents' table records that came from us.
-	# Read in all DB's hosts counts. If any differ, we'll sync.
+	# Read in the 'ram_used' table records that came from this machine.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
 		# This will store the INSERTs for this DB, if needed.
@@ -2884,8 +2943,8 @@ SELECT
 FROM 
     history.ram_used 
 WHERE 
-    ram_used_host_id = (".$an->data->{sys}{host_id_query}.") 
-";
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2903,21 +2962,21 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "ram_used_by",    value1 => $ram_used_by, 
 				name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
-				name2 => "modified_date",  value3 => $modified_date
+				name3 => "modified_date",  value3 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{table}{ram_used}{modified_date}{$modified_date}{column} = {
+			$an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date} = {
 				ram_used_by		=>	$ram_used_by,
 				ram_used_bytes		=>	$ram_used_bytes,
 			};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "db_data::unified::table::ram_used::modified_date::${modified_date}::column::ram_used_by",    value1 => $an->data->{db_data}{unified}{table}{ram_used}{modified_date}{$modified_date}{column}{ram_used_by}, 
-				name2 => "db_data::unified::table::ram_used::modified_date::${modified_date}::column::ram_used_bytes", value2 => $an->data->{db_data}{unified}{table}{ram_used}{modified_date}{$modified_date}{column}{ram_used_bytes}, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "db_data::unified::ram_used::modified_date::${modified_date}::ram_used_by",    value1 => $an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date}{ram_used_by}, 
+				name2 => "db_data::unified::ram_used::modified_date::${modified_date}::ram_used_bytes", value2 => $an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date}{ram_used_bytes}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{db_data}{$id}{existing}{table}{ram_used}{ram_used_by}{$ram_used_by} = 1;
-			$an->data->{db_data}{$id}{existing}{table}{ram_used}{modified_date}{$modified_date}{column} = {
+			$an->data->{db_data}{$id}{ram_used}{ram_used_by}{$ram_used_by} = 1;
+			$an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date} = {
 				ram_used_by		=>	$ram_used_by,
 				ram_used_bytes		=>	$ram_used_bytes,
 			};
@@ -2929,10 +2988,10 @@ WHERE
 	###       record.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{table}{ram_used}{modified_date}})
+	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{ram_used}{modified_date}})
 	{
-		my $ram_used_by    = $an->data->{db_data}{unified}{table}{ram_used}{modified_date}{$modified_date}{column}{ram_used_by};
-		my $ram_used_bytes = $an->data->{db_data}{unified}{table}{ram_used}{modified_date}{$modified_date}{column}{ram_used_bytes};
+		my $ram_used_by    = $an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date}{ram_used_by};
+		my $ram_used_bytes = $an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date}{ram_used_bytes};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "ram_used_by",    value1 => $ram_used_by, 
 			name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
@@ -2941,26 +3000,26 @@ WHERE
 		{
 			# Does the agent name exist?
 			my $this_schema = "history";
-			if (not $an->data->{db_data}{$id}{existing}{table}{ram_used}{ram_used_by}{$ram_used_by})
+			if (not $an->data->{db_data}{$id}{ram_used}{ram_used_by}{$ram_used_by})
 			{
 				# Insert into public.
 				$this_schema = "public";
-				$an->data->{db_data}{$id}{existing}{table}{ram_used}{ram_used_by}{$ram_used_by} = 1;
+				$an->data->{db_data}{$id}{ram_used}{ram_used_by}{$ram_used_by} = 1;
 			}
 			
-			if (not $an->data->{db_data}{$id}{existing}{table}{ram_used}{modified_date}{$modified_date}{column}{ram_used_by})
+			if (not $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_by})
 			{
 				# It's missing, add it to this DB's sql array.
 				my $query = "
 INSERT INTO 
     ${this_schema}.ram_used
 (
-    ram_used_host_id, 
+    ram_used_host_uuid, 
     ram_used_by, 
     ram_used_bytes, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).", 
     ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
@@ -2976,144 +3035,170 @@ INSERT INTO
 	# Don't eat too much memory!
 	delete $an->data->{db_data};
 	
-=pod
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
+	return(0);
+}
+
+# Update the special 'temperature' table.
+sub update_db_temperature
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_temperature" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
+	return(0);
+}
+
+# Update the special 'power' table.
+sub update_db_power
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target_ram_used_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_ram_used_last_updated = 0 if not $target_ram_used_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_ram_used_last_updated", value1 => $target_ram_used_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: For each ram_used_by, check to see if the same name exists
-	###       in the target and decide if it needs an INSERT or UPDATE. So
-	###       first, pull all the existing entries out of the target.
-	   $query   = "SELECT ram_used_by, round(extract(epoch from modified_date)) FROM ram_used WHERE ram_used_host_id = (".$an->data->{sys}{host_id_query}.");";
-	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+	# Read in the 'ram_used' table records that came from this machine.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		my $ram_used_by = $row->[0];
-		my $modified_date = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "ram_used_by", value1 => $ram_used_by, 
-			name2 => "modified_date", value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql} = [];
 		
-		$an->data->{db}{target}{ram_used}{$ram_used_by}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db::target::ram_used::${ram_used_by}::modified_date", value1 => $an->data->{db}{target}{ram_used}{$ram_used_by}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now read in all the newer records from the source DB.
-	my $old_date = $target_ram_used_last_updated;
-	if ($target_ram_used_last_updated =~ /^\d+$/)
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_ram_used_last_updated)."))";
-	}
-	else
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_ram_used_last_updated);
-	}
-	$query = "
+		# Read in the history schema
+		my $query = "
 SELECT 
-    ram_used_by, 
-    ram_used_bytes, 
+    power_agent_name, 
+    power_record_locator, 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left, 
+    power_charge_percentage, 
     modified_date 
 FROM 
-    history.ram_used 
+    history.power 
 WHERE 
-    ram_used_host_id = (".$an->data->{sys}{host_id_query}.") 
-AND 
-    $old_date < modified_date 
-ORDER BY
-    modified_date ASC;
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
-	{
-		my $ram_used_by    = $row->[0];
-		my $ram_used_bytes = $row->[1];
-		my $modified_date  = $row->[2];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "ram_used_by",    value1 => $ram_used_by, 
-			name2 => "ram_used_bytes", value2 => $ram_used_bytes, 
-			name3 => "modified_date",  value3 => $modified_date
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{ram_used}{$ram_used_by})
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
 		{
-			# Insert!
-			$an->data->{db}{target}{ram_used}{$ram_used_by} = {};
-			push @{$an->data->{sys}{sql}}, "
-INSERT INTO 
-    ram_used
-(
-    ram_used_host_id, 
-    ram_used_by, 
-    ram_used_bytes, 
-    modified_date 
-) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).",  
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
-);";
-		}
-		else
-		{
-			# Update
-			push @{$an->data->{sys}{sql}}, "
-UPDATE 
-    ram_used
-SET
-    ram_used_host_id = (".$an->data->{sys}{host_id_query}."), 
-    ram_used_bytes = ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).";
-";
+			my $power_agent_name        = $row->[0]; 
+			my $power_record_locator    = $row->[1]; 
+			my $power_ups_fqdn          = $row->[2]; 
+			my $power_on_battery        = $row->[3] ? "TRUE" : "FALSE"; 
+			my $power_seconds_left      = $row->[4]; 
+			my $power_charge_percentage = $row->[5]; 
+			my $modified_date           = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "power_agent_name",        value1 => $power_agent_name, 
+				name2 => "power_record_locator",    value2 => $power_record_locator, 
+				name3 => "power_ups_fqdn",          value3 => $power_ups_fqdn, 
+				name4 => "power_on_battery",        value4 => $power_on_battery, 
+				name5 => "power_seconds_left",      value5 => $power_seconds_left, 
+				name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
+				name7 => "modified_date",           value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{power}{modified_date}{$modified_date} = {
+				power_agent_name	=>	$power_agent_name,
+				power_record_locator	=>	$power_record_locator,
+				power_ups_fqdn		=>	$power_ups_fqdn,
+				power_on_battery	=>	$power_on_battery,
+				power_seconds_left	=>	$power_seconds_left,
+				power_charge_percentage	=>	$power_charge_percentage,
+			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "db_data::unified::power::modified_date::${modified_date}::power_agent_name",        value1 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}, 
+				name2 => "db_data::unified::power::modified_date::${modified_date}::power_record_locator",    value2 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_record_locator}, 
+				name3 => "db_data::unified::power::modified_date::${modified_date}::power_ups_fqdn",          value3 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_ups_fqdn}, 
+				name4 => "db_data::unified::power::modified_date::${modified_date}::power_on_battery",        value4 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_on_battery}, 
+				name5 => "db_data::unified::power::modified_date::${modified_date}::power_seconds_left",      value5 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_seconds_left}, 
+				name6 => "db_data::unified::power::modified_date::${modified_date}::power_charge_percentage", value6 => $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_charge_percentage}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{power_record_locator}{$power_record_locator} = 1;
+			$an->data->{db_data}{$id}{power}{modified_date}{$modified_date} = {
+				power_agent_name	=>	$power_agent_name,
+				power_record_locator	=>	$power_record_locator,
+				power_ups_fqdn		=>	$power_ups_fqdn,
+				power_on_battery	=>	$power_on_battery,
+				power_seconds_left	=>	$power_seconds_left,
+				power_charge_percentage	=>	$power_charge_percentage,
+			};
 		}
 	}
 	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
+	### TODO: Make sure the newest record is the first to be checked so 
+	###       that the INSERT into public schema doesn't create a duplicate
+	###       record.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{power}{modified_date}})
 	{
-		$an->DB->do_db_write({id => $target_db_id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
+		my $power_agent_name        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name};
+		my $power_record_locator    = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_record_locator};
+		my $power_ups_fqdn          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_ups_fqdn};
+		my $power_on_battery        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_on_battery};
+		my $power_seconds_left      = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_seconds_left};
+		my $power_charge_percentage = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_charge_percentage};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "power_agent_name",        value1 => $power_agent_name, 
+			name2 => "power_record_locator",    value2 => $power_record_locator, 
+			name3 => "power_ups_fqdn",          value3 => $power_ups_fqdn, 
+			name4 => "power_on_battery",        value4 => $power_on_battery, 
+			name5 => "power_seconds_left",      value5 => $power_seconds_left, 
+			name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+		{
+			# Does the agent name exist?
+			my $this_schema = "history";
+			if (not $an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{power_record_locator}{$power_record_locator})
+			{
+				# Insert into public.
+				$this_schema = "public";
+				$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{power_record_locator}{$power_record_locator} = 1;
+			}
+			
+			if ((not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}) && 
+			    (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_record_locator}))
+			{
+				# It's missing, add it to this DB's sql array.
+				my $query = "
+INSERT INTO 
+    ${this_schema}.power
+(
+    power_host_uuid, 
+    power_agent_name, 
+    power_record_locator, 
+    power_ups_fqdn, 
+    power_on_battery, 
+    power_seconds_left, 
+    power_charge_percentage, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1  => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{db_resync}{$id}{sql}}, $query;
+			}
+		}
 	}
-=cut
+	
+	# Don't eat too much memory!
+	delete $an->data->{db_data};
 	
 	return(0);
 }
@@ -3121,55 +3206,17 @@ WHERE
 # Update the alerts table.
 sub update_db_alerts
 {
-	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_alerts" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "id", value1 => "$id" 
-	}, file => $THIS_FILE, line => __LINE__});
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_alerts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the time that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: Alerts are a strange beast... There should never be an entry
-	###       in the public table, except when alerts are pending being
-	###       sent. So we'll read in all the missing records from the
-	###       history schema, INSERT them into target, then delete from the
-	###       public schema all the entries NOT in the source's public
-	###       schema so that a pile of old alarms don't go out.
-	
-	# Read in all the newer records from the source DB.
-	my $old_date = $target_alerts_last_updated;
-	if ($target_alerts_last_updated =~ /^\d+$/)
+	# Read in the 'alerts' table records that came from this machine.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_alerts_last_updated)."))";
-	}
-	else
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_alerts_last_updated);
-	}
-	$query = "
+		# This will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
 SELECT 
     alert_agent_name, 
     alert_level, 
@@ -3181,43 +3228,110 @@ SELECT
 FROM 
     history.alerts 
 WHERE 
-    alert_host_id = (".$an->data->{sys}{host_id_query}.") 
-AND 
-    $old_date < modified_date;
+    alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	my $results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $alert_agent_name        = $row->[0]; 
+			my $alert_level             = $row->[1]; 
+			my $alert_title_key         = $row->[2]; 
+			my $alert_title_variables   = $row->[3]; 
+			my $alert_message_key       = $row->[4]; 
+			my $alert_message_variables = $row->[5]; 
+			my $modified_date           = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "alert_agent_name",        value1 => $alert_agent_name, 
+				name2 => "alert_level",             value2 => $alert_level, 
+				name3 => "alert_title_key",         value3 => $alert_title_key, 
+				name4 => "alert_title_variables",   value4 => $alert_title_variables, 
+				name5 => "alert_message_key",       value5 => $alert_message_key, 
+				name6 => "alert_message_variables", value6 => $alert_message_variables, 
+				name7 => "modified_date",           value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date} = {
+				alert_agent_name	=>	$alert_agent_name,
+				alert_level		=>	$alert_level,
+				alert_title_key		=>	$alert_title_key,
+				alert_title_variables	=>	$alert_title_variables,
+				alert_message_key	=>	$alert_message_key,
+				alert_message_variables	=>	$alert_message_variables,
+			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "db_data::unified::alerts::modified_date::${modified_date}::alert_agent_name",        value1 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_agent_name}, 
+				name2 => "db_data::unified::alerts::modified_date::${modified_date}::alert_level",             value2 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_level}, 
+				name3 => "db_data::unified::alerts::modified_date::${modified_date}::alert_title_key",         value3 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_title_key}, 
+				name4 => "db_data::unified::alerts::modified_date::${modified_date}::alert_title_variables",   value4 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_title_variables}, 
+				name5 => "db_data::unified::alerts::modified_date::${modified_date}::alert_message_key",       value5 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_message_key}, 
+				name6 => "db_data::unified::alerts::modified_date::${modified_date}::alert_message_variables", value6 => $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_message_variables}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{db_data}{$id}{alerts}{alert_agent_name}{$alert_agent_name} = 1;
+			$an->data->{db_data}{$id}{alerts}{modified_date}{$modified_date} = {
+				alert_agent_name	=>	$alert_agent_name,
+				alert_level		=>	$alert_level,
+				alert_title_key		=>	$alert_title_key,
+				alert_title_variables	=>	$alert_title_variables,
+				alert_message_key	=>	$alert_message_key,
+				alert_message_variables	=>	$alert_message_variables,
+			};
+		}
+	}
+	
+	### TODO: Make sure the newest record is the first to be checked so 
+	###       that the INSERT into public schema doesn't create a duplicate
+	###       record.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{alerts}{modified_date}})
 	{
-		my $alert_agent_name        = $row->[0];
-		my $alert_level             = $row->[1];
-		my $alert_title_key         = $row->[2];
-		my $alert_title_variables   = $row->[3];
-		my $alert_message_key       = $row->[4];
-		my $alert_message_variables = $row->[5];
-		my $modified_date           = $row->[6];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		my $alert_agent_name        = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_agent_name}; 
+		my $alert_level             = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_level}; 
+		my $alert_title_key         = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_title_key}; 
+		my $alert_title_variables   = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_title_variables}; 
+		my $alert_message_key       = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_message_key}; 
+		my $alert_message_variables = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_message_variables}; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "alert_agent_name",        value1 => $alert_agent_name, 
 			name2 => "alert_level",             value2 => $alert_level, 
 			name3 => "alert_title_key",         value3 => $alert_title_key, 
 			name4 => "alert_title_variables",   value4 => $alert_title_variables, 
 			name5 => "alert_message_key",       value5 => $alert_message_key, 
 			name6 => "alert_message_variables", value6 => $alert_message_variables, 
-			name7 => "modified_date",           value7 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If there isn't an existing extry in the target, do an insert
-		my $query = "
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+		{
+			### NOTE: Alerts are a strange beast... There should 
+			###       never be an entry in the public table, except
+			###       when alerts are pending being sent. To avoid
+			###       a pile of duplicate/old alerts from going
+			###       out, all alerts go into the history schema,
+			###       no matter what.
+			my $this_schema = "history";
+			#if (not $an->data->{db_data}{$id}{alerts}{alert_agent_name}{$alert_agent_name})
+			#{
+			#	# Insert into public.
+			#	$this_schema = "public";
+			#	$an->data->{db_data}{$id}{alerts}{alert_agent_name}{$alert_agent_name} = 1;
+			#}
+			if (not $an->data->{db_data}{$id}{alerts}{modified_date}{$modified_date}{alert_agent_name})
+			{
+				# It's missing, add it to this DB's sql array.
+				my $query = "
 INSERT INTO 
-    alerts 
+    ${this_schema}.alerts
 (
-    alert_host_id, 
+    alert_host_uuid, 
     alert_agent_name, 
     alert_level, 
     alert_title_key, 
@@ -3226,141 +3340,25 @@ INSERT INTO
     alert_message_variables, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
-    ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).",  
+    ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_title_variables).", 
-    ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).",  
+    ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_message_variables).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$an->data->{sys}{sql}}, $query;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1  => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{db_resync}{$id}{sql}}, $query;
+			}
+		}
 	}
 	
-	# Now read is the remaining alerts from the source and delete
-	# all others from the target.
-	my @save_the_dates;
-	$query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $modified_date = $row->[0];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "modified_date", value1 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
-		push @save_the_dates, $modified_date;
-	}
-	
-	# Now create the DELETE FROM ... query.
-	$query = "
-DELETE FROM 
-    alerts 
-WHERE 
-    alert_host_id = (".$an->data->{sys}{host_id_query}.")";
-	
-	foreach my $modified_date (@save_the_dates)
-	{
-		$query .= "
-AND 
-    modified_date != ".$an->data->{sys}{use_db_fh}->quote($modified_date)." ";
-	}
-	$query .= ";";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	push @{$an->data->{sys}{sql}}, $query;
-	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
-	{
-		$an->DB->do_db_write({id => $target_db_id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
-	}
-	
-	return(0);
-}
-
-# Update the temperature table.
-sub update_db_temperature
-{
-	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_temperature" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "id", value1 => "$id" 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO
-	
-	return(0);
-}
-
-# Update the power table.
-sub update_db_power
-{
-	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_power" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "id", value1 => "$id" 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM alerts WHERE alert_host_id = (".$an->data->{sys}{host_id_query}.");";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_alerts_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_alerts_last_updated = 0 if not $target_alerts_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_alerts_last_updated", value1 => $target_alerts_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO
+	# Don't eat too much memory!
+	delete $an->data->{db_data};
 	
 	return(0);
 }
@@ -3369,7 +3367,7 @@ sub update_db_power
 sub update_db_agents
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'agents' table records that came from us.
 	# Read in all DB's hosts counts. If any differ, we'll sync.
@@ -3388,9 +3386,10 @@ SELECT
 FROM 
     history.agents
 WHERE
-    agent_host_id = (".$an->data->{sys}{host_id_query}.");";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
@@ -3404,7 +3403,7 @@ WHERE
 			my $agent_exit_code = $row->[1];
 			my $agent_runtime   = $row->[2];
 			my $modified_date   = $row->[3];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "agent_name",      value1 => $agent_name, 
 				name2 => "agent_exit_code", value2 => $agent_exit_code, 
 				name3 => "agent_runtime",   value3 => $agent_runtime, 
@@ -3412,219 +3411,96 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{table}{agents}{modified_date}{$modified_date}{column} = {
-				agent_name		=>	$agent_name,
+			$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name} = {
 				agent_exit_code		=>	$agent_exit_code,
 				agent_runtime		=>	$agent_runtime,
 			};
-			$an->data->{db_data}{$id}{existing}{table}{agents}{modified_date}{$modified_date}{column} = {
-				agent_name		=>	$agent_name,
+			$an->data->{db_data}{$id}{agents}{agent_name}{$agent_name} = 1;
+			$an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name} = {
 				agent_exit_code		=>	$agent_exit_code,
 				agent_runtime		=>	$agent_runtime,
 			};
 		}
 	}
 	
-	### TODO: Make sure the newest record is the first to be checked so 
-	###       that the INSERT into public schema doesn't create a duplicate
-	###       record.
+	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{table}{agents}{modified_date}})
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{agents}{modified_date}})
 	{
-		my $agent_name      = $an->data->{db_data}{unified}{table}{agents}{modified_date}{$modified_date}{column}{agent_name};
-		my $agent_exit_code = $an->data->{db_data}{unified}{table}{agents}{modified_date}{$modified_date}{column}{agent_exit_code};
-		my $agent_runtime   = $an->data->{db_data}{unified}{table}{agents}{modified_date}{$modified_date}{column}{agent_runtime};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "agent_name",      value1 => $agent_name, 
-			name2 => "agent_exit_code", value2 => $agent_exit_code, 
-			name3 => "agent_runtime",   value3 => $agent_runtime, 
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+		foreach my $agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}})
 		{
-			# Does the agent name exist?
-			my $this_schema = "history";
-			if (not $an->data->{db_data}{$id}{existing}{table}{agents}{agent_name}{$agent_name})
+			my $agent_exit_code = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name}{agent_exit_code};
+			my $agent_runtime   = $an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name}{agent_runtime};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "modified_date",   value1 => $modified_date,
+				name2 => "agent_name",      value2 => $agent_name, 
+				name3 => "agent_exit_code", value3 => $agent_exit_code, 
+				name4 => "agent_runtime",   value4 => $agent_runtime, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
-				# Insert into public.
-				$this_schema = "public";
-				$an->data->{db_data}{$id}{existing}{table}{agents}{agent_name}{$agent_name} = 1;
-			}
-			
-			if (not $an->data->{db_data}{$id}{existing}{table}{agents}{modified_date}{$modified_date}{column}{agent_name})
-			{
-				# It's missing, add it to this DB's sql array.
-				my $query = "
+				# Does the agent name exist?
+				my $this_schema = "history";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_schema",                                                        value1 => $this_schema,
+					name2 => "db_data::${id}::agents::agent_name::${agent_name}", value2 => $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name})
+				{
+					# Insert into public.
+					$this_schema = "public";
+					$an->data->{db_data}{$id}{agents}{agent_name}{$agent_name} = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "this_schema",                                       value1 => $this_schema,
+						name2 => "db_data::${id}::agents::agent_name::${agent_name}", value2 => $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::agents::modified_date::${modified_date}::agent_name", value1 => $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name})
+				{
+					# It's missing, add it to this DB's sql array.
+					my $query = "
 INSERT INTO 
     ${this_schema}.agents
 (
-    agent_host_id, 
+    agent_host_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1  => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{db_resync}{$id}{sql}}, $query;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "id",    value1 => $id, 
+						name2 => "query", value2 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{db_resync}{$id}{sql}}, $query;
+				}
 			}
 		}
 	}
 	
-	# Don't eat too much memory!
+	# Free up memory by deleting the DB data from the main hash.
 	delete $an->data->{db_data};
 	
-=pod
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.") ORDER BY modified_date DESC LIMIT 1;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_agents_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_agents_last_updated = 0 if not $target_agents_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_agents_last_updated", value1 => $target_agents_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: For each agent_name, check to see if the same name exists in
-	###       the target and decide if it needs an INSERT or UPDATE. So
-	###       first, pull all the existing entries out of the target.
-	   $query   = "SELECT agent_name, round(extract(epoch from modified_date)) FROM agents WHERE agent_host_id = (".$an->data->{sys}{host_id_query}.");";
-	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		my $agent_name    = $row->[0];
-		my $modified_date = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "agent_name",    value1 => $agent_name, 
-			name2 => "modified_date", value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$an->data->{db}{target}{agents}{$agent_name}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db::target::agents::${agent_name}::modified_date", value1 => $an->data->{db}{target}{agents}{$agent_name}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now read in all the newer records from the source DB.
-	my $old_date = $target_agents_last_updated;
-	if ($target_agents_last_updated =~ /^\d+$/)
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_agents_last_updated)."))";
-	}
-	else
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_agents_last_updated);
-	}
-	$query = "
-SELECT 
-    agent_name, 
-    agent_exit_code, 
-    agent_runtime, 
-    modified_date 
-FROM 
-    history.agents 
-WHERE 
-    agent_host_id = (".$an->data->{sys}{host_id_query}.") 
-AND 
-    $old_date < modified_date 
-ORDER BY
-    modified_date ASC;
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
-	{
-		my $agent_name      = $row->[0];
-		my $agent_exit_code = $row->[1];
-		my $agent_runtime   = $row->[2]; 
-		my $modified_date   = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "agent_name",      value1 => $agent_name, 
-			name2 => "agent_exit_code", value2 => $agent_exit_code, 
-			name3 => "agent_runtime",   value3 => $agent_runtime, 
-			name4 => "modified_date",   value4 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{agents}{$agent_name})
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
 		{
-			# Insert!
-			$an->data->{db}{target}{agents}{$agent_name} = {};
-			push @{$an->data->{sys}{sql}}, "
-INSERT INTO 
-    agents
-(
-    agent_host_id, 
-    agent_name, 
-    agent_exit_code, 
-    agent_runtime, 
-    modified_date 
-) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_name).",  
-    ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
-);";
-		}
-		else
-		{
-			# Update
-			push @{$an->data->{sys}{sql}}, "
-UPDATE 
-    agents
-SET
-    agent_host_id   = (".$an->data->{sys}{host_id_query}."), 
-    agent_exit_code = ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name).";
-";
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
 		}
 	}
-	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
-	{
-		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
-	}
-=cut
 	
 	return(0);
 }
@@ -3635,14 +3511,9 @@ sub update_db_hosts
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	#######################################################################
-	# NOTE: Changing the host name while a DB is offline will cause the   #
-	#       target to think it found a new host!                          #
-	#######################################################################
-	
-	# NOTE: The 'hosts' table is special in that everything else depends on
-	#       it. Where all other tables will be sync'ed by the parent
-	#       host_id, here, we have to go on host name.
+	### NOTE: Everything depends on 'hosts' -> 'host_uuid', so we need to 
+	###       update *AND* commit the changes before we leave this 
+	###       function.
 	
 	# Read in all DB's hosts counts. If any differ, we'll sync.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -3651,7 +3522,7 @@ sub update_db_hosts
 		$an->data->{db_resync}{$id}{sql} = [];
 		
 		# Read in the history schema
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",       value1 => $id,
 			name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3665,7 +3536,7 @@ SELECT
     modified_date 
 FROM 
     history.hosts;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3681,7 +3552,7 @@ FROM
 			my $host_emergency_stop = $row->[2] ? "TRUE" : "FALSE";
 			my $host_stop_reason    = $row->[3];
 			my $modified_date       = $row->[4];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "host_name",           value1 => $host_name, 
 				name2 => "host_type",           value2 => $host_type, 
 				name3 => "host_emergency_stop", value3 => $host_emergency_stop,
@@ -3690,33 +3561,33 @@ FROM
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column} = {
+			$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date} = {
 				host_name		=>	$host_name,
 				host_type		=>	$host_type,
 				host_emergency_stop	=>	$host_emergency_stop,
 				host_stop_reason	=>	$host_stop_reason,
 			};
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "db_data::unified::table::hosts::modified_date::${modified_date}::column::host_name",           value1 => $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_name}, 
-				name2 => "db_data::unified::table::hosts::modified_date::${modified_date}::column::host_type",           value2 => $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_type}, 
-				name3 => "db_data::unified::table::hosts::modified_date::${modified_date}::column::host_emergency_stop", value3 => $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_emergency_stop}, 
-				name4 => "db_data::unified::table::hosts::modified_date::${modified_date}::column::host_stop_reason",    value4 => $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_stop_reason}, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "db_data::unified::hosts::modified_date::${modified_date}::host_name",           value1 => $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_name}, 
+				name2 => "db_data::unified::hosts::modified_date::${modified_date}::host_type",           value2 => $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_type}, 
+				name3 => "db_data::unified::hosts::modified_date::${modified_date}::host_emergency_stop", value3 => $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_emergency_stop}, 
+				name4 => "db_data::unified::hosts::modified_date::${modified_date}::host_stop_reason",    value4 => $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_stop_reason}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column} = {
+			$an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date} = {
 				host_name		=>	$host_name,
 				host_type		=>	$host_type,
 				host_emergency_stop	=>	$host_emergency_stop,
 				host_stop_reason	=>	$host_stop_reason,
 			};
-			$an->data->{db_data}{$id}{existing}{table}{hosts}{host_name}{$host_name} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-				name1 => "db_data::${id}::existing::table::hosts::modified_date::${modified_date}::column::host_name",           value1 => $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_name}, 
-				name2 => "db_data::${id}::existing::table::hosts::modified_date::${modified_date}::column::host_type",           value2 => $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_type}, 
-				name3 => "db_data::${id}::existing::table::hosts::modified_date::${modified_date}::column::host_emergency_stop", value3 => $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_emergency_stop}, 
-				name4 => "db_data::${id}::existing::table::hosts::modified_date::${modified_date}::column::host_stop_reason",    value4 => $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_stop_reason}, 
-				name5 => "db_data::${id}::existing::table::hosts::host_name::${host_name}",                                      value5 => $an->data->{db_data}{$id}{existing}{table}{hosts}{host_name}{$host_name}
+			$an->data->{db_data}{$id}{hosts}{host_name}{$host_name} = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "db_data::${id}::hosts::modified_date::${modified_date}::host_name",           value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_name}, 
+				name2 => "db_data::${id}::hosts::modified_date::${modified_date}::host_type",           value2 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_type}, 
+				name3 => "db_data::${id}::hosts::modified_date::${modified_date}::host_emergency_stop", value3 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_emergency_stop}, 
+				name4 => "db_data::${id}::hosts::modified_date::${modified_date}::host_stop_reason",    value4 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_stop_reason}, 
+				name5 => "db_data::${id}::hosts::host_name::${host_name}",                                      value5 => $an->data->{db_data}{$id}{hosts}{host_name}{$host_name}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -3726,60 +3597,53 @@ FROM
 	###       record.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{table}{hosts}{modified_date}})
+	foreach my $modified_date (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}})
 	{
-		
-		if (ref($modified_date) eq "HASH")
-		{
-			use Data::Dumper;
-			print Dumper $modified_date;
-			die;
-		}
-		
-		my $host_name           = $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_name};
-		my $host_type           = $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_type};
-		my $host_emergency_stop = $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_emergency_stop};
-		my $host_stop_reason    = $an->data->{db_data}{unified}{table}{hosts}{modified_date}{$modified_date}{column}{host_stop_reason};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		my $host_name           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_name};
+		my $host_type           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_type};
+		my $host_emergency_stop = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_emergency_stop};
+		my $host_stop_reason    = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_stop_reason};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "modified_date",       value1 => $modified_date, 
 			name2 => "host_name",           value2 => $host_name, 
 			name3 => "host_type",           value3 => $host_type, 
 			name4 => "host_emergency_stop", value4 => $host_emergency_stop,
 			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
 		}, file => $THIS_FILE, line => __LINE__});
-		die "$THIS_FILE ".__LINE__."; testing...\n" if not $host_name;
 		
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 		{
 			# Does the host name exist?
 			my $this_schema = "history";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "db_data::${id}::existing::table::hosts::host_name::${host_name}", value1 => $an->data->{db_data}{$id}{existing}{table}{hosts}{host_name}{$host_name}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "db_data::${id}::hosts::host_name::${host_name}", value1 => $an->data->{db_data}{$id}{hosts}{host_name}{$host_name}
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if (not $an->data->{db_data}{$id}{existing}{table}{hosts}{host_name}{$host_name})
+			if (not $an->data->{db_data}{$id}{hosts}{host_name}{$host_name})
 			{
 				# Insert into public.
 				$this_schema = "public";
-				$an->data->{db_data}{$id}{existing}{table}{hosts}{host_name}{$host_name} = 1;
+				$an->data->{db_data}{$id}{hosts}{host_name}{$host_name} = 1;
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "db_data::${id}::existing::table::hosts::modified_date::${modified_date}::column::host_name", value1 => $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_name}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "db_data::${id}::hosts::modified_date::${modified_date}::host_name", value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_name}
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $an->data->{db_data}{$id}{existing}{table}{hosts}{modified_date}{$modified_date}{column}{host_name})
+			if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_name})
 			{
 				# It's missing, add it to this DB's sql array.
 				my $query = "
 INSERT INTO 
     ${this_schema}.hosts
 (
+    host_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
     host_stop_reason, 
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
@@ -3809,173 +3673,67 @@ INSERT INTO
 	# Don't eat too much memory!
 	delete $an->data->{db_data};
 	
-=pod
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
+	return(0);
+}
+
+# This checks to see if the host name has changed.
+sub check_hostname_for_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname_for_changes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	#######################################################################
-	# NOTE: Changing the host name while a DB is offline will cause the   #
-	#       target to think it found a new host!                          #
-	#######################################################################
-	
-	# This defaults to the last time the target was updated, but will be
-	# changed if newer entries were found in the target's DB.
-	my $target_hosts_last_updated = $target_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_hosts_last_updated", value1 => $target_hosts_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# So first, what is the host_id for the hostname on the source DB?
-	my ($source_host_id) = $an->DB->get_host_id({id => $source_db_id, hostname => $an->hostname});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "source_db_id",   value1 => $source_db_id, 
-		name2 => "an->hostname",   value2 => $an->hostname, 
-		name3 => "source_host_id", value3 => "$source_host_id"
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Now, do I have any more recent entries in the target?
-	my ($target_host_id, $modified_time) = $an->DB->get_host_id({id => $target_db_id, hostname => $an->hostname});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_db_id",   value1 => $target_db_id, 
-		name2 => "an->hostname",   value2 => $an->hostname, 
-		name3 => "target_host_id", value3 => $target_host_id, 
-		name4 => "modified_time",  value4 => $modified_time
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If there is no target host_id, I'll need to read in all the data. If
-	# there is, update the target_hosts_last_updated.
-	if ($target_host_id)
-	{
-		$target_hosts_last_updated = $modified_time;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "target_hosts_last_updated", value1 => $target_hosts_last_updated
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	### NOTE: I convert the DB's timestamp to unixtime because the 
-	###       super-high precision time stored in pgsql can by 
-	###       microseconds newer than the converted timestamp, causing
-	###       and extra record to be returned.
-	# Now read in the source DB's history.hosts starting from when the
-	# target's DB was last updated.
-	my $query = "
-SELECT 
-    host_name, 
-    host_type, 
-    host_status, 
-    modified_date 
-FROM 
-    history.hosts 
-WHERE 
-    host_id = ".$an->data->{sys}{use_db_fh}->quote($source_host_id)." 
-AND
-    ".$an->data->{sys}{use_db_fh}->quote($target_hosts_last_updated)." < round(extract(epoch from modified_date))
-ORDER BY 
-    modified_date ASC;";
+	# What was the last recorded host name?
+	my $query = "SELECT host_name FROM hosts WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Do the query against the source DB and loop through the results.
-	my $results = $an->DB->do_db_query({id => $source_db_id, query => $query});
+	my $host_name = $an->DB->do_db_query({query => $query})->[0]->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
+		name1 => "host_name", value1 => $host_name
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
+	
+	# Has it changed?
+	if ($host_name ne $an->hostname)
 	{
-		my $host_name     = $row->[0];
-		my $host_type     = $row->[1]; 
-		my $host_status   = $row->[2];
-		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "host_name",     value1 => $host_name, 
-			name2 => "host_type",     value2 => $host_type, 
-			name3 => "host_status",   value3 => $host_status, 
-			name4 => "modified_date", value4 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If I don't have a host_id, the first record will need to be
-		# an INSERT.
-		if (not $target_host_id)
-		{
-			# Insert
-			my $query = "
-INSERT INTO 
-    hosts
-(
-    host_name, 
-    host_type, 
-    host_status, 
-    modified_date
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);
-";
-			$an->DB->do_db_write({id => $target_db_id, query => $query});
-			
-			# Now read back the host_id that was set.
-			($target_host_id) = $an->DB->get_host_id({id => $target_db_id, hostname => $an->hostname});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "target_db_id",   value1 => $target_db_id, 
-				name2 => "an->hostname",   value2 => $an->hostname, 
-				name3 => "target_host_id", value3 => $target_host_id
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			# Update
-			my $query = "
+		# Yup, updated.
+		my $query = "
 UPDATE 
     hosts
-SET
+SET 
     host_name     = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).", 
-    host_type     = ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    host_status   = ".$an->data->{sys}{use_db_fh}->quote($host_status).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+    modified_date = ".$an->data->{sys}{db_timestamp}."
 WHERE
-    host_id = ".$an->data->{sys}{use_db_fh}->quote($target_host_id).";
-";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1  => "query", value1 => $query
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->DB->do_db_write({id => $target_db_id, query => $query});
-		}
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->DB->do_db_write({query => $query});
 	}
-=cut
 	
 	return(0);
 }
 
-# This checks to see if this node is in each database and, if not, adds it.
-sub add_host_to_databases
+# This checks to see if this node is in each database and, if not, adds it. It
+# also will update the hostname if it has changed.
+sub add_hostname_to_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_host_to_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_hostname_to_databases" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Check each DB
-	my $query = "SELECT COUNT(*) FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+	# Check for a hostname using our UUID.
+	my $query = "SELECT host_name FROM hosts WHERE host_uuid=".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	#          The actual query -----------------.        .------- Row 0
 	#                                            |        |    .-- Columns 0
-	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
+	my $host_name = $an->DB->do_db_query({query => $query})->[0]->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "count", value1 => $count
+		name1 => "host_name", value1 => $host_name
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($count < 1)
+	
+	# Do I need to add or update?
+	if (not $host_name)
 	{
 		### TODO: For now, we determine if this host is a node
 		###       or dashboard by analyzing it's hostname. We
@@ -3999,11 +3757,13 @@ sub add_host_to_databases
 INSERT INTO 
     hosts 
 (
+    host_uuid, 
     host_name, 
     host_type, 
     host_emergency_stop, 
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($host_name).",
     ".$an->data->{sys}{use_db_fh}->quote($host_type).",
     FALSE, 
@@ -4037,8 +3797,8 @@ SET
     host_stop_reason    = NULL, 
     modified_date       = ".$an->data->{sys}{db_timestamp}."
 WHERE
-    host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
-";
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 			$an->DB->do_db_write({query => $query});
 		}
 	}
@@ -4111,7 +3871,7 @@ FROM
 WHERE 
     agent_name = ".$an->data->{sys}{use_db_fh}->quote($say_agent)." 
 AND
-    agent_host_id = (".$an->data->{sys}{host_id_query}.")
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;
 ";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -4128,13 +3888,13 @@ AND
 INSERT INTO 
     agents 
 (
-    agent_host_id, 
+    agent_host_uuid, 
     agent_name, 
     agent_exit_code, 
     agent_runtime,
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_agent).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_rc).", 
     ".$an->data->{sys}{use_db_fh}->quote($runtime).", 
@@ -4154,7 +3914,7 @@ SET
     agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($runtime).", 
     modified_date   = ".$an->data->{sys}{db_timestamp}."
 WHERE 
-    agent_host_id = (".$an->data->{sys}{host_id_query}.")
+    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
     agent_name = ".$an->data->{sys}{use_db_fh}->quote($say_agent).";
 ";
@@ -4222,7 +3982,7 @@ FROM
 WHERE 
     ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
-    ram_used_host_id = (".$an->data->{sys}{host_id_query}.");
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
@@ -4238,12 +3998,12 @@ AND
 INSERT INTO 
     ram_used 
 (
-    ram_used_host_id, 
+    ram_used_host_uuid, 
     ram_used_by, 
     ram_used_bytes, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name}).", 
     ".$an->data->{sys}{use_db_fh}->quote($used_ram).", 
     ".$an->data->{sys}{db_timestamp}."
@@ -4263,7 +4023,7 @@ SET
 WHERE 
     ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
-    ram_used_host_id = (".$an->data->{sys}{host_id_query}.");
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 		$an->DB->do_db_write({query => $query});
 	}

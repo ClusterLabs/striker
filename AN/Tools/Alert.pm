@@ -76,7 +76,7 @@ SELECT
 FROM 
     alert_sent 
 WHERE 
-    alert_sent_host_id   = (".$an->data->{sys}{host_id_query}.") 
+    alert_sent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     alert_sent_by        = ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by)." 
 AND 
@@ -104,13 +104,13 @@ AND
 INSERT INTO 
     alert_sent 
 (
-    alert_sent_host_id, 
+    alert_sent_host_uuid, 
     alert_sent_by, 
     alert_record_locator, 
     alert_name, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_record_locator).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_name).", 
@@ -131,7 +131,7 @@ INSERT INTO
 DELETE FROM 
     alert_sent 
 WHERE 
-    alert_sent_host_id   = (".$an->data->{sys}{host_id_query}.") 
+    alert_sent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
     alert_sent_by        = ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by)." 
 AND 
@@ -346,7 +346,7 @@ sub register_alert
 INSERT INTO 
     alerts
 (
-    alert_host_id, 
+    alert_host_uuid, 
     alert_agent_name, 
     alert_level, 
     alert_title_key, 
@@ -355,7 +355,7 @@ INSERT INTO
     alert_message_variables, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{host_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_title_key).", 
