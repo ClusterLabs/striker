@@ -18,9 +18,9 @@ ALTER TABLE hosts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.hosts (
 	history_id		bigserial,
-	host_uuid		uuid,
-	host_name		text,
-	host_type		text,
+	host_uuid		uuid				not null,
+	host_name		text				not null,
+	host_type		text				not null,
 	host_emergency_stop	boolean				not null,
 	host_stop_reason	text,
 	modified_date		timestamp with time zone	not null
@@ -76,10 +76,10 @@ ALTER TABLE alerts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.alerts (
 	history_id		bigserial,
-	alert_id		bigint,
-	alert_host_uuid		uuid,
-	alert_agent_name	text,
-	alert_level		text,
+	alert_id		bigint				not null,
+	alert_host_uuid		uuid				not null,
+	alert_agent_name	text				not null,
+	alert_level		text				not null,
 	alert_title_key		text,
 	alert_title_variables	text,
 	alert_message_key	text,
@@ -145,12 +145,12 @@ ALTER TABLE power OWNER TO #!variable!user!#;
 
 CREATE TABLE history.power (
 	history_id		bigserial,
-	power_id		bigint,
-	power_host_uuid		uuid,
-	power_agent_name	text,
+	power_id		bigint				not null,
+	power_host_uuid		uuid				not null,
+	power_agent_name	text				not null,
 	power_record_locator	text,
-	power_ups_fqdn		text,
-	power_on_battery	boolean,
+	power_ups_fqdn		text				not null,
+	power_on_battery	boolean				not null,
 	power_seconds_left	numeric,
 	power_charge_percentage	numeric,
 	modified_date		timestamp with time zone	not null
@@ -201,7 +201,7 @@ CREATE TABLE temperature (
 	temperature_agent_name	text				not null,
 	temperature_sensor_host	text				not null,
 	temperature_sensor_name	text				not null,
-	temperature_celsius	numeric		not null,
+	temperature_celsius	numeric				not null,
 	temperature_state	text				not null,			-- warning, critical
 	temperature_is		text				not null,			-- high or low
 	modified_date		timestamp with time zone	not null,
@@ -212,14 +212,14 @@ ALTER TABLE temperature OWNER TO #!variable!user!#;
 
 CREATE TABLE history.temperature (
 	history_id		bigserial,
-	temperature_id		bigint,
-	temperature_host_uuid	uuid,
-	temperature_agent_name	text,
+	temperature_id		bigint				not null,
+	temperature_host_uuid	uuid				not null,
+	temperature_agent_name	text				not null,
 	temperature_sensor_host	text				not null,
-	temperature_sensor_name	text,
-	temperature_celsius	numeric,
-	temperature_state	text,
-	temperature_is		text,
+	temperature_sensor_name	text				not null,
+	temperature_celsius	numeric				not null,
+	temperature_state	text				not null,
+	temperature_is		text				not null,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.temperature OWNER TO #!variable!user!#;
@@ -263,7 +263,7 @@ CREATE TRIGGER trigger_temperature
 
 -- This stores information about the scan agents on this system
 CREATE TABLE agents (
-	agent_id		bigserial				primary key,
+	agent_id		bigserial			primary key,
 	agent_host_uuid		uuid				not null,
 	agent_name		text				not null,			-- This is the name of the scan agent file name
 	agent_exit_code		int				not null,			-- This is the exit code from the last run
@@ -276,8 +276,8 @@ ALTER TABLE agents OWNER TO #!variable!user!#;
 
 CREATE TABLE history.agents (
 	history_id		bigserial,
-	agent_id		bigint,
-	agent_host_uuid		uuid,
+	agent_id		bigint				not null,
+	agent_host_uuid		uuid				not null,
 	agent_name		text				not null,
 	agent_exit_code		int				not null,
 	agent_runtime		int				not null,
@@ -336,8 +336,8 @@ ALTER TABLE ram_used OWNER TO #!variable!user!#;
 
 CREATE TABLE history.ram_used (
 	history_id		bigserial,
-	ram_used_id		bigint,
-	ram_used_host_uuid	uuid,
+	ram_used_id		bigint				not null,
+	ram_used_host_uuid	uuid				not null,
 	ram_used_by		text				not null,			-- Either 'ScanCore' or the scan agent name
 	ram_used_bytes		numeric				not null,
 	modified_date		timestamp with time zone	not null
