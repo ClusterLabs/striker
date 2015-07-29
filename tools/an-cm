@@ -115,7 +115,7 @@ my $conf = {
 		new_style_network	=>	0,		# This is used to ignore 'bond0' when the new network naming is in place.
 	},
 	mail_data		=>	{
-		debug_to		=>	"debug\@alteeve.ca",
+		debug_to		=>	"debug\@example.com",
 	}
 };
 

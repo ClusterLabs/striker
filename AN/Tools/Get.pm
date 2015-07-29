@@ -2,6 +2,7 @@ package AN::Tools::Get;
 
 use strict;
 use warnings;
+use IO::Handle;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Get.pm";
@@ -40,6 +41,36 @@ sub parent
 	$self->{HANDLE}{TOOLS} = $parent if $parent;
 	
 	return ($self->{HANDLE}{TOOLS});
+}
+
+# Uses 'uuidgen' to generate a UUID and return it to the caller.
+sub uuid
+{
+	my $self  = shift;
+	my $param = shift;
+	my $an    = $self->parent;
+	
+	my $uuid = "";
+	my $shell_call = $an->_uuidgen_path." -r";
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$uuid = lc($_);
+		last;
+	}
+	
+	# Did we get a sane value?
+	if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# derp
+		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => {
+			bad_uuid => $uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$uuid = "";
+	}
+	
+	return ($uuid);
 }
 
 # Sets/returns the "am" suffix.

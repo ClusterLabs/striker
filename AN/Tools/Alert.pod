@@ -356,7 +356,7 @@ The file mentioned in the error failed to open for writing. The error returned b
 
 =head2 C<30>
 
-free
+A system call was attempted which failed. The details of the error will be in the output message.
 
 =head2 C<31>
 

@@ -70,6 +70,7 @@ sub new
 			CONFIG_FILE			=>	'AN::Tools/an.conf',
 			LANGUAGE			=>	'en_CA',
 			SEARCH_DIR			=>	\@INC,
+			UUIDGEN_PATH			=>	'/usr/bin/uuidgen',
 		},
 		ENV_VALUES			=>	{
 			ENVIRONMENT			=>	'cli',
@@ -443,6 +444,17 @@ sub _directory_delimiter
 	$self->{OS_VALUES}{DIRECTORY_DELIMITER} = shift if $_[0];
 	
 	return ($self->{OS_VALUES}{DIRECTORY_DELIMITER});
+}
+
+# This sets or receives the path to the 'uuidgen' program
+sub _uuidgen_path
+{
+	my ($self) = shift;
+	
+	# Pick up the passed path, if any.
+	$self->{DEFAULT}{UUIDGEN_PATH} = shift if $_[0];
+	
+	return ($self->{DEFAULT}{UUIDGEN_PATH});
 }
 
 # This is used to set system-wide error count, used to catch possible run-away

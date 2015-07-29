@@ -317,7 +317,7 @@ Variables:
 		<key name="error_title_0017">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0018">Unable to connect to the database with with configuration ID: [#!variable!id!#].</key>
 		<key name="error_title_0019">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
-		<key name="error_title_0020"></key>
+		<key name="error_title_0020">System call failed</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
@@ -341,6 +341,9 @@ Variables:
 		<key name="error_message_0019">The passed: [size: #!variable!size!#, type: #!variable!type!#] is not recognized. Either an invalid size type was passed or I failed to properly parse the size type. Valid size types are: 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' or 'y'.</key>
 		<key name="error_message_0020">The passed real number: [#!variable!number!#] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.</key>
 		<key name="error_message_0021">Loading the perl module '#!variable!module!#' failed with the error: [#!variable!error!#].</key>
+		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
+		<key name="error_message_0023">Failed to generate a sane UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#].</key>
+		<key name="error_message_0024">Failed to generate UUID.</key>
 	</lang>
 	
 	<!-- 日本語 -->

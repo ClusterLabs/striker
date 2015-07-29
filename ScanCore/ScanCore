@@ -105,8 +105,8 @@ my $an = AN::Tools->new({data =>
 			# to indicate to the peer our state and controls how
 			# 'safe_anvil_shutdown' behaves.
 			health_file		=>	"/shared/status",
-			# This stores this node's UUID. It is used to track all
-			# our sensor data in the database.
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it in the agents, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
 			log_file		=>	"/var/log/striker.log",
 			mailx			=>	"/bin/mailx",
@@ -368,6 +368,8 @@ sub prep_local_uuid
 			chmod $directory_mode, $an->data->{path}{email_directory};
 		}
 		
+		### I don't use AN::Get->uuid() because I need to write to the file anyway, so I can do both
+		### in one step.
 		# Now create the UUID.
 		my $shell_call = $an->data->{path}{uuidgen}." > ".$an->data->{path}{host_uuid};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

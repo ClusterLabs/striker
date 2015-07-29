@@ -8,15 +8,13 @@
 # Exit Codes:
 # 0  - Success
 # 1  - Passed in host name was not found in the database.
+# 2  - Failed to generate a UUID.
 # 
 # NOTE:
 #  - Call: [fence_tool ls | grep master | awk '{print $3}'] to see which node
 #    is the fence master and use this node only to try and recover failed
 #    services.
 # 
-
-# NOTE: Disabled until I redo the s/id/uuid/ thing
-exit(0);
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -33,7 +31,11 @@ $| = 1;
 
 # This allows our XML and SQL files to be found, even if the path the program
 # is in changes.
-my $running_directory  = ($0                 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
 my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
 
 # Get the handle to the AN::Tools and preset some variables I will use.
@@ -47,7 +49,7 @@ my $an = AN::Tools->new({data =>
 			# This holds the data read from the DB to compare when looking for changes.
 			sql		=>	{
 				clustat		=>	{
-					clustat_id		=>	"", 
+					clustat_uuid		=>	"", 
 					clustat_quorate		=>	"",
 					clustat_cluster_name	=>	"",
 				},
@@ -58,6 +60,9 @@ my $an = AN::Tools->new({data =>
 		path		=>	{
 			'anvil-recover-server'	=>	"/sbin/striker/anvil-recover-server",
 			clustat			=>	"/usr/sbin/clustat",
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it ScanCore, too.
+			host_uuid		=>	"/etc/striker/host.uuid",
 			log_file		=>	"/var/log/striker.log",
 			#log_file		=>	"/var/log/$THIS_FILE.log",
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
@@ -65,7 +70,6 @@ my $an = AN::Tools->new({data =>
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"$scancore_directory/Data/strings.xml",
-			
 		},
 		# This is used so that the user can set the language in on
 		# striker.conf variable.
@@ -76,7 +80,7 @@ my $an = AN::Tools->new({data =>
 		},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
-			clustat_id_query	=>	"",
+			clustat_uuid_query	=>	"",
 			sql			=>	[],
 		},
 	}
@@ -117,9 +121,9 @@ $an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_va
 }, file => $THIS_FILE, line => __LINE__});
 
 # Setup some repeatedly used subqueries for easier use later.
-$an->data->{sys}{clustat_id_query}         = "SELECT clustat_id FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid});
-$an->data->{sys}{clustat_node_id_query}    = "SELECT clustat_node_id FROM clustat_node WHERE clustat_node_clustat_id = (".$an->data->{sys}{clustat_id_query}.")";
-$an->data->{sys}{clustat_service_id_query} = "SELECT clustat_service_id FROM clustat_service WHERE clustat_service_clustat_id = (".$an->data->{sys}{clustat_id_query}.")";
+$an->data->{sys}{clustat_uuid_query}         = "SELECT clustat_uuid FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid});
+$an->data->{sys}{clustat_node_id_query}    = "SELECT clustat_node_id FROM clustat_node WHERE clustat_node_clustat_uuid = (".$an->data->{sys}{clustat_uuid_query}.")";
+$an->data->{sys}{clustat_service_id_query} = "SELECT clustat_service_id FROM clustat_service WHERE clustat_service_clustat_uuid = (".$an->data->{sys}{clustat_uuid_query}.")";
 
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
@@ -149,45 +153,14 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# TODO: This should be checking 'apc_ups'
-	$an->data->{sys}{sql} = [];
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db_to_update}})
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
 	{
-		my $db_is_behind = $an->data->{scancore}{db_to_update}{$id}{behind};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db_is_behind", value1 => $db_is_behind, 
-		}, file => $THIS_FILE, line => __LINE__});
-		next if not $db_is_behind;
-		
-		my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-		my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-		my $source_db_id   = $an->data->{scancore}{sql}{source_db_id};
-		next if $id eq $source_db_id;
-		
-		# TODO: Make these proper log messages
-		$an->Log->entry({log_level => 3, message_key => "scancore_log_0028", message_variables => {
-			id                  => $id, 
-			source_db_id        => $source_db_id, 
-			source_updated_time => $source_updated_time,
-			target_last_updated => $target_last_updated
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $target_last_updated)
-		{
-			# Full recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0029", file => $THIS_FILE, line => __LINE__});
-		}
-		elsif (($source_updated_time - $target_last_updated) > 0)
-		{
-			# Partial recovery needed.
-			$an->Log->entry({log_level => 3, message_key => "scancore_log_0030", message_variables => {
-				seconds_behind => ($source_updated_time - $target_last_updated), 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		# Update clustat, clustat_nodes and clustat services.
-		update_db_clustat($an, $id);
-		update_db_clustat_node($an, $id);
-		update_db_clustat_service($an, $id);
+		update_db_clustat($an);
+		update_db_clustat_node($an);
+		update_db_clustat_service($an);
 	}
 	
 	return(0);
@@ -201,184 +174,249 @@ sub update_db_clustat_service
 		name1 => "id", value1 => "$id" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "
-SELECT 
-    modified_date 
-FROM 
-    clustat_service 
-WHERE 
-    clustat_service_clustat_id = (".$an->data->{sys}{clustat_id_query}.") 
-ORDER BY 
-    modified_date ASC 
-LIMIT 1;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_clustat_service_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_clustat_service_last_updated = 0 if not $target_clustat_service_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_clustat_service_last_updated", value1 => $target_clustat_service_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: For each clustat_service_name, check to see if the same name exists
-	###       in the target and decide if it needs an INSERT or UPDATE. So
-	###       first, pull all the existing entries out of the target.
-	   $query   = "
-SELECT 
-    clustat_service_name, 
-    round(extract(epoch from modified_date)) 
-FROM 
-    clustat_service 
-WHERE 
-    clustat_service_clustat_id = (".$an->data->{sys}{clustat_id_query}.");";
-	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+	# Now read in all the 'clustat_service' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		my $clustat_service_name = $row->[0];
-		my $modified_date        = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat_service_name", value1 => $clustat_service_name, 
-			name2 => "modified_date",     value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql} = [];
 		
-		$an->data->{db}{target}{clustat_service}{$clustat_service_name}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db::target::clustat_service::${clustat_service_name}::modified_date", value1 => $an->data->{db}{target}{clustat_service}{$clustat_service_name}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now read in all the newer records from the source DB.
-	my $old_date = $target_clustat_service_last_updated;
-	if ($target_clustat_service_last_updated =~ /^\d+$/)
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_clustat_service_last_updated)."))";
-	}
-	else
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_clustat_service_last_updated);
-	}
-	$query = "
+		# Read in the history schema
+		my $query = "
 SELECT 
     a.clustat_service_name, 
+    a.clustat_service_clustat_uuid, 
     a.clustat_service_host, 
-    a.clustat_service_is_vm, 
     a.clustat_service_status, 
     a.clustat_service_notes, 
+    a.clustat_service_is_vm, 
     a.modified_date 
 FROM 
-    clustat_service a, 
-    clustat b 
+    history.clustat_service a, 
+    public.clustat b
 WHERE 
-    a.clustat_service_clustat_id = b.clustat_id 
-AND 
+    a.clustat_service_clustat_uuid = b.clustat_uuid 
+AND
     b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    $old_date < a.modified_date;
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
-	{
-		my $clustat_service_name   = $row->[0];
-		my $clustat_service_host   = $row->[1];
-		my $clustat_service_is_vm  = $row->[2];
-		my $clustat_service_status = $row->[3];
-		my $clustat_service_notes  = $row->[4]; 
-		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-			name1 => "clustat_service_name",   value1 => $clustat_service_name, 
-			name2 => "clustat_service_host",   value2 => $clustat_service_host, 
-			name3 => "clustat_service_is_vm",  value3 => $clustat_service_is_vm, 
-			name4 => "clustat_service_status", value4 => $clustat_service_status, 
-			name5 => "clustat_service_notes",  value5 => $clustat_service_notes, 
-			name6 => "modified_date",          value6 => $modified_date
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{clustat_service}{$clustat_service_name})
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
 		{
-			# Insert!
-			$an->data->{db}{target}{clustat_service}{$clustat_service_name} = {};
-			push @{$an->data->{sys}{sql}}, "
-INSERT INTO 
-    clustat_service
-(
-    clustat_service_clustat_id, 
-    clustat_service_name, 
-    clustat_service_host, 
-    clustat_service_is_vm, 
-    clustat_service_status, 
-    clustat_service_notes, 
-    modified_date 
-) VALUES (
-    (".$an->data->{sys}{clustat_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name).",  
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
-);";
-		}
-		else
-		{
-			# Update
-			push @{$an->data->{sys}{sql}}, "
-UPDATE 
-    clustat_service 
-SET 
-    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
-    clustat_service_is_vm  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
-    clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).",
-    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).",
-    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    clustat_service_id = (
-        ".$an->data->{sys}{clustat_service_id_query}."
-    AND
-        clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name)."
-    );
-";
+			my $clustat_service_name         = $row->[0];
+			my $clustat_service_clustat_uuid = $row->[1];
+			my $clustat_service_host         = $row->[2];
+			my $clustat_service_status       = $row->[3];
+			my $clustat_service_notes        = $row->[4];
+			my $clustat_service_is_vm        = $row->[5] ? "TRUE" : "FALSE";
+			my $modified_date                = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "clustat_service_name",         value1 => $clustat_service_name, 
+				name2 => "clustat_service_clustat_uuid", value2 => $clustat_service_clustat_uuid, 
+				name3 => "clustat_service_host",         value3 => $clustat_service_host, 
+				name4 => "clustat_service_status",       value4 => $clustat_service_status, 
+				name5 => "clustat_service_notes",        value5 => $clustat_service_notes, 
+				name6 => "clustat_service_is_vm",        value6 => $clustat_service_is_vm, 
+				name7 => "modified_date",                value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name} = {
+				clustat_service_clustat_uuid	=>	$clustat_service_clustat_uuid, 
+				clustat_service_host		=>	$clustat_service_host, 
+				clustat_service_status		=>	$clustat_service_status, 
+				clustat_service_notes		=>	$clustat_service_notes, 
+				clustat_service_is_vm		=>	$clustat_service_is_vm, 
+			};
+			$an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name} = 1;
+			$an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name} = {
+				clustat_service_clustat_uuid	=>	$clustat_service_clustat_uuid, 
+				clustat_service_host		=>	$clustat_service_host, 
+				clustat_service_status		=>	$clustat_service_status, 
+				clustat_service_notes		=>	$clustat_service_notes, 
+				clustat_service_is_vm		=>	$clustat_service_is_vm, 
+			};
 		}
 	}
 	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	my $first_record = 1;
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}})
 	{
-		#foreach my $query (@{$an->data->{sys}{sql}})
-		#{
-		#	print "$THIS_FILE ".__LINE__."; query: [$query]\n";
-		#}
-		#die "$THIS_FILE ".__LINE__."; testing...\n";
-		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+			name2 => "first_record",  value2 => $first_record,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $clustat_service_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}})
+		{
+			my $clustat_service_clustat_uuid = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_clustat_uuid};
+			my $clustat_service_host         = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_host};
+			my $clustat_service_status       = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_status};
+			my $clustat_service_notes        = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_notes};
+			my $clustat_service_is_vm        = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_is_vm};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "clustat_service_name",         value1 => $clustat_service_name, 
+				name2 => "clustat_service_clustat_uuid", value2 => $clustat_service_clustat_uuid, 
+				name3 => "clustat_service_host",         value3 => $clustat_service_host, 
+				name4 => "clustat_service_status",       value4 => $clustat_service_status, 
+				name5 => "clustat_service_notes",        value5 => $clustat_service_notes, 
+				name6 => "clustat_service_is_vm",        value6 => $clustat_service_is_vm, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# If this is the first record, then a little consideration is needed... One 
+				# of three things can happen;
+				# 1. The record doesn't exist at all, INSERT
+				# 2. The record exists, but is old. UPDATE
+				# 3. The record exists and is up to date, ignore it.
+				# Case 1 & 2 go to the public schema.
+				# 
+				# All other records are written directly to the history schema as needed.
+				my $this_schema = "history";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "id",          value1 => $id,
+					name2 => "this_schema", value2 => $this_schema, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "";
+				if ($first_record)
+				{
+					# Now, does this clustat_service_name record exist at all?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_service::clustat_service_name::${clustat_service_name}", value1 => $an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name},
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name})
+					{
+						# It does. Is the most recent instance in this database 
+						# though?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "db_data::${id}::clustat_service::modified_date::${modified_date}::clustat_service_name::${clustat_service_name}", value1 => $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name},
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name})
+						{
+							# No it doesn't, so we need to UPDATE the public 
+							# schema to get it up to date (the trigger will copy
+							# it into the history schema).
+							$query = "
+UPDATE 
+    public.clustat_service
+SET
+    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    clustat_service_is_vm  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    clustat_service_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name)." 
+;";
+						}
+					}
+					else
+					{
+						# This 'clustat_service_name' doesn't exist at all, so
+						# we'll INSERT it into the public schema. The main difference
+						# here from below is that we can't reference the 
+						# clustat_service_id as it doesn't exist yet.
+						$query = "
+INSERT INTO 
+    public.clustat_service
+(
+    clustat_service_clustat_uuid, 
+    clustat_service_host, 
+    clustat_service_status, 
+    clustat_service_notes, 
+    clustat_service_is_vm, 
+    clustat_service_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				
+				# Proceed if the query isn't set yet.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $query)
+				{
+					# No query yet. Do we need to add this record to this databases?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_service::modified_date::${modified_date}::clustat_service_name::${clustat_service_name}", value1 => $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name})
+					{
+						# Insert it.
+						$query = "
+INSERT INTO 
+    history.clustat_service
+(
+    clustat_service_id, 
+    clustat_service_clustat_uuid, 
+    clustat_service_host, 
+    clustat_service_status, 
+    clustat_service_notes, 
+    clustat_service_is_vm, 
+    clustat_service_name, 
+    modified_date 
+) VALUES (
+    (SELECT clustat_service_id FROM public.clustat_service WHERE clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name)."), 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+					}
+				}
+				
+				# Now record the query in the array, if set.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "id",    value1 => $id, 
+					name2 => "query", value2 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($query)
+				{
+					# Push the query into the array.
+					push @{$an->data->{db_resync}{$id}{sql}}, $query;
+				}
+			} # foreach my $id 
+		} # foreach my $clustat_service_name ...
+		$first_record = 0;
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
 	}
 	
 	return(0);
@@ -387,176 +425,234 @@ WHERE
 # Update the clustat_node table
 sub update_db_clustat_node
 {
-	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_node", }, message_key => "tools_log_0003", message_variables => { 
-		name1 => "id", value1 => "$id" 
-	}, file => $THIS_FILE, line => __LINE__});
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_node", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the unix time that this table was last updated for this host.
-	my $query = "
-SELECT 
-    modified_date 
-FROM 
-    clustat_node 
-WHERE 
-    clustat_node_clustat_id = (".$an->data->{sys}{clustat_id_query}.") 
-ORDER BY 
-    modified_date ASC 
-LIMIT 1;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_clustat_node_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_clustat_node_last_updated = 0 if not $target_clustat_node_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_clustat_node_last_updated", value1 => $target_clustat_node_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: For each clustat_node_name, check to see if the same name exists
-	###       in the target and decide if it needs an INSERT or UPDATE. So
-	###       first, pull all the existing entries out of the target.
-	   $query   = "
-SELECT 
-    clustat_node_name, 
-    round(extract(epoch from modified_date)) 
-FROM 
-    clustat_node 
-WHERE 
-    clustat_node_clustat_id = (".$an->data->{sys}{clustat_id_query}.");";
-	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+	# Now read in all the 'clustat_node' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		my $clustat_node_name = $row->[0];
-		my $modified_date        = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat_node_name", value1 => $clustat_node_name, 
-			name2 => "modified_date",     value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql} = [];
 		
-		$an->data->{db}{target}{clustat_node}{$clustat_node_name}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db::target::clustat_node::${clustat_node_name}::modified_date", value1 => $an->data->{db}{target}{clustat_node}{$clustat_node_name}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now read in all the newer records from the source DB.
-	my $old_date = $target_clustat_node_last_updated;
-	if ($target_clustat_node_last_updated =~ /^\d+$/)
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_clustat_node_last_updated)."))";
-	}
-	else
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_clustat_node_last_updated);
-	}
-	$query = "
+		# Read in the history schema
+		my $query = "
 SELECT 
-    a.clustat_node_name, 
+    a.clustat_node_clustat_uuid, 
     a.clustat_node_cluster_id, 
+    a.clustat_node_name, 
     a.clustat_node_status, 
     a.modified_date 
 FROM 
-    clustat_node a, 
-    clustat b 
+    history.clustat_node a, 
+    public.clustat b, 
 WHERE 
-    a.clustat_node_clustat_id = b.clustat_id 
-AND 
+    a.clustat_node_clustat_uuid = b.clustat_uuid 
+AND
     b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    $old_date < a.modified_date;
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
-	{
-		my $clustat_node_name       = $row->[0];
-		my $clustat_node_cluster_id = $row->[1];
-		my $clustat_node_status     = $row->[2];
-		my $modified_date           = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "clustat_node_name",       value1 => $clustat_node_name, 
-			name2 => "clustat_node_cluster_id", value2 => $clustat_node_cluster_id, 
-			name3 => "clustat_node_status",     value3 => $clustat_node_status, 
-			name4 => "modified_date",           value4 => $modified_date
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{clustat_node}{$clustat_node_name})
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
 		{
-			# Insert!
-			$an->data->{db}{target}{clustat_node}{$clustat_node_name} = {};
-			push @{$an->data->{sys}{sql}}, "
+			my $clustat_node_clustat_uuid = $row->[0];
+			my $clustat_node_cluster_id   = $row->[1];
+			my $clustat_node_name         = $row->[2];
+			my $clustat_node_status       = $row->[3];
+			my $modified_date             = $row->[4];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "clustat_node_clustat_uuid", value1 => $clustat_node_clustat_uuid, 
+				name2 => "clustat_node_cluster_id",   value2 => $clustat_node_cluster_id, 
+				name3 => "clustat_node_name",         value3 => $clustat_node_name, 
+				name4 => "clustat_node_status",       value4 => $clustat_node_status, 
+				name5 => "modified_date",             value5 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name} = {
+				clustat_node_clustat_uuid	=>	$clustat_node_clustat_uuid, 
+				clustat_node_cluster_id		=>	$clustat_node_cluster_id, 
+				clustat_node_name		=>	$clustat_node_name, 
+				clustat_node_status		=>	$clustat_node_status, 
+			};
+			$an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name} = 1;
+			$an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name} = {
+				clustat_node_clustat_uuid	=>	$clustat_node_clustat_uuid, 
+				clustat_node_cluster_id		=>	$clustat_node_cluster_id, 
+				clustat_node_name		=>	$clustat_node_name, 
+				clustat_node_status		=>	$clustat_node_status, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	my $first_record = 1;
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat_node}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+			name2 => "first_record",  value2 => $first_record,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $clustat_node_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}})
+		{
+			my $clustat_node_clustat_uuid = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_clustat_uuid};
+			my $clustat_node_cluster_id   = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_cluster_id};
+			my $clustat_node_status       = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_status};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "clustat_node_name",         value1 => $clustat_node_name, 
+				name2 => "clustat_node_clustat_uuid", value2 => $clustat_node_clustat_uuid, 
+				name3 => "clustat_node_cluster_id",   value3 => $clustat_node_cluster_id, 
+				name4 => "clustat_node_status",       value4 => $clustat_node_status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# If this is the first record, then a little consideration is needed... One 
+				# of three things can happen;
+				# 1. The record doesn't exist at all, INSERT
+				# 2. The record exists, but is old. UPDATE
+				# 3. The record exists and is up to date, ignore it.
+				# Case 1 & 2 go to the public schema.
+				# 
+				# All other records are written directly to the history schema as needed.
+				my $this_schema = "history";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "id",          value1 => $id,
+					name2 => "this_schema", value2 => $this_schema, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "";
+				if ($first_record)
+				{
+					# Now, does this clustat_node_name record exist at all?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_node::clustat_node_name::${clustat_node_name}", value1 => $an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name},
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name})
+					{
+						# It does. Is the most recent instance in this database 
+						# though?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "db_data::${id}::clustat_node::modified_date::${modified_date}::clustat_node_name::${clustat_node_name}", value1 => $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name},
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name})
+						{
+							# No it doesn't, so we need to UPDATE the public 
+							# schema to get it up to date (the trigger will copy
+							# it into the history schema).
+							$query = "
+UPDATE 
+    public.clustat_node
+SET
+    clustat_node_cluster_id = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
+    clustat_node_status     = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
+    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    clustat_node_name       = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).", 
+AND 
+    clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid)." 
+;";
+						}
+					}
+					else
+					{
+						# This 'clustat_node_name' doesn't exist at all, so we'll 
+						# INSERT it into the public schema. The main difference here
+						# from below is that we can't reference the clustat_node_id as it
+						# doesn't exist yet.
+						$query = "
 INSERT INTO 
-    clustat_node
+    public.clustat_node
 (
-    clustat_node_clustat_id, 
     clustat_node_name, 
+    clustat_node_clustat_uuid, 
+    clustat_node_host_uuid, 
     clustat_node_cluster_id, 
     clustat_node_status, 
     modified_date 
 ) VALUES (
-    (".$an->data->{sys}{clustat_id_query}."), 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
-		}
-		else
-		{
-			# Update
-			push @{$an->data->{sys}{sql}}, "
-UPDATE 
-    clustat_node 
-SET 
-    clustat_node_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).",
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    clustat_node_id = (
-        ".$an->data->{sys}{clustat_node_id_query}."
-    AND
-        clustat_node_cluster_id = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id)."
-    );
-";
-		}
-	}
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query,
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				
+				# Proceed if the query isn't set yet.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $query)
+				{
+					# No query yet. Do we need to add this record to this databases?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_node::modified_date::${modified_date}::clustat_node_name::${clustat_node_name}", value1 => $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name})
+					{
+						# Insert it.
+						$query = "
+INSERT INTO 
+    history.clustat_node
+(
+    clustat_node_id, 
+    clustat_node_clustat_uuid, 
+    clustat_node_host_uuid, 
+    clustat_node_cluster_id, 
+    clustat_node_name, 
+    clustat_node_status, 
+    modified_date 
+) VALUES (
+    (SELECT clustat_node_id FROM public.clustat_node WHERE clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid)."), 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+					}
+				}
+				
+				# Now record the query in the array, if set.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "id",    value1 => $id, 
+					name2 => "query", value2 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($query)
+				{
+					# Push the query into the array.
+					push @{$an->data->{db_resync}{$id}{sql}}, $query;
+				}
+			} # foreach my $id 
+		} # foreach my $clustat_node_name ...
+		$first_record = 0;
+	} # foreach $modified_date ...
 	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		#foreach my $query (@{$an->data->{sys}{sql}})
-		#{
-		#	print "$THIS_FILE ".__LINE__."; query: [$query]\n";
-		#}
-		#die "$THIS_FILE ".__LINE__."; testing...\n";
-		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
 	}
 	
 	return(0);
@@ -565,148 +661,210 @@ WHERE
 # Update the 'clustat' table.
 sub update_db_clustat
 {
-	my ($an, $id) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat", }, message_key => "tools_log_0003", message_variables => { 
-		name1 => "id", value1 => "$id" 
-	}, file => $THIS_FILE, line => __LINE__});
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Put a few things into local variables for easier reading.
-	my $target_last_updated = $an->data->{scancore}{db}{$id}{last_updated};
-	my $source_updated_time = $an->data->{scancore}{sql}{source_updated_time};
-	my $source_db_id        = $an->data->{scancore}{sql}{source_db_id};
-	my $target_db_id        = $id;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "target_last_updated", value1 => $target_last_updated, 
-		name2 => "source_updated_time", value2 => $source_updated_time, 
-		name3 => "source_db_id",        value3 => $source_db_id, 
-		name4 => "target_db_id",        value4 => $target_db_id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Get the timestamp that this table was last updated for this host.
-	my $query = "SELECT modified_date FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target_db_id", value1 => "$target_db_id", 
-		name2 => "query",        value2 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $target_clustat_last_updated = $an->DB->do_db_query({id => $target_db_id, query => $query})->[0]->[0];
-	   $target_clustat_last_updated = 0 if not $target_clustat_last_updated;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "target_clustat_last_updated", value1 => $target_clustat_last_updated
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### NOTE: For each clustat_cluster_name, check to see if the same name exists
-	###       in the target and decide if it needs an INSERT or UPDATE. So
-	###       first, pull all the existing entries out of the target.
-	   $query   = "SELECT clustat_cluster_name, round(extract(epoch from modified_date)) FROM clustat WHERE clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-	my $results = $an->DB->do_db_query({id => $target_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
+	# Now read in all the 'clustat' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		my $clustat_cluster_name = $row->[0];
-		my $modified_date        = $row->[1];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat_cluster_name", value1 => $clustat_cluster_name, 
-			name2 => "modified_date",        value2 => $modified_date
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql} = [];
 		
-		$an->data->{db}{target}{clustat}{$clustat_cluster_name}{modified_date} = $modified_date;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "db::target::clustat::${clustat_cluster_name}::modified_date", value1 => $an->data->{db}{target}{clustat}{$clustat_cluster_name}{modified_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now read in all the newer records from the source DB.
-	my $old_date = $target_clustat_last_updated;
-	if ($target_clustat_last_updated =~ /\D/)
-	{
-		# Already a SQL time stamp
-		$old_date = $an->data->{sys}{use_db_fh}->quote($target_clustat_last_updated);
-	}
-	else
-	{
-		# It's unix time.
-		$old_date = "(SELECT to_timestamp(".$an->data->{sys}{use_db_fh}->quote($target_clustat_last_updated)."))";
-	}
-	$query = "
+		# Read in the history schema
+		my $query = "
 SELECT 
-    clustat_cluster_name, 
+    clustat_uuid, 
     clustat_quorate, 
+    clustat_cluster_name, 
     modified_date 
 FROM 
-    history.clustat 
-WHERE 
-    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    $old_date < modified_date 
-ORDER BY
-    modified_date ASC;
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	$results = "";
-	$results = $an->DB->do_db_query({id => $source_db_id, query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	# One or more records were found.
-	foreach my $row (@{$results})
-	{
-		# The cluster name can change to OFFLINE, and we don't want to
-		# INSERT that.
-		my $clustat_cluster_name = $row->[0];
-		my $clustat_quorate      = $row->[1];
-		my $modified_date        = $row->[2];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "clustat_cluster_name",    value1 => $clustat_cluster_name, 
-			name2 => "clustat_quorate", value2 => $clustat_quorate, 
-			name3 => "modified_date",  value3 => $modified_date
+    history.clustat
+WHERE
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If there isn't an existing extry in the target, do an insert
-		if (not $an->data->{db}{target}{clustat}{$clustat_cluster_name})
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
 		{
-			# Insert!
-			$an->data->{db}{target}{clustat}{$clustat_cluster_name} = {};
-			push @{$an->data->{sys}{sql}}, "
-INSERT INTO 
-    clustat
-(
-    clustat_host_uuid, 
-    clustat_cluster_name, 
-    clustat_quorate, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).",  
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)." 
-);";
+			my $clustat_uuid         = $row->[0];
+			my $clustat_quorate      = $row->[1] ? "TRUE" : "FALSE";
+			my $clustat_cluster_name = $row->[2];
+			my $modified_date        = $row->[3];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "clustat_uuid",         value1 => $clustat_uuid, 
+				name2 => "clustat_quorate",      value2 => $clustat_quorate, 
+				name3 => "clustat_cluster_name", value3 => $clustat_cluster_name, 
+				name4 => "modified_date",        value4 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date} = {
+				clustat_uuid		=>	$clustat_uuid, 
+				clustat_quorate		=>	$clustat_quorate,
+				clustat_cluster_name	=>	$clustat_cluster_name,
+			};
+			$an->data->{db_data}{$id}{clustat} = 1;
+			$an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date} = {
+				clustat_uuid		=>	$clustat_uuid, 
+				clustat_quorate		=>	$clustat_quorate,
+				clustat_cluster_name	=>	$clustat_cluster_name,
+			};
 		}
-		else
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	my $first_record = 1;
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat}{modified_date}})
+	{
+		my $clustat_uuid         = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_uuid};
+		my $clustat_quorate      = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_quorate};
+		my $clustat_cluster_name = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_cluster_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "modified_date",        value1 => $modified_date, 
+			name2 => "clustat_uuid",         value2 => $clustat_uuid, 
+			name3 => "clustat_quorate",      value3 => $clustat_quorate, 
+			name4 => "clustat_cluster_name", value4 => $clustat_cluster_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 		{
-			# Update
-			push @{$an->data->{sys}{sql}}, "
+			# If this is the first record, then a little consideration is needed... One of three
+			# things can happen;
+			# 1. The record doesn't exist at all, INSERT
+			# 2. The record exists, but is old. UPDATE
+			# 3. The record exists and is up to date, ignore it.
+			# Case 1 & 2 go to the public schema.
+			# 
+			# All other records are written directly to the history schema as needed.
+			my $this_schema = "history";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "id",          value1 => $id,
+				name2 => "this_schema", value2 => $this_schema, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my $query = "";
+			if ($first_record)
+			{
+				# Do we have a clustat record?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat", value1 => $an->data->{db_data}{$id}{clustat},
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{db_data}{$id}{clustat})
+				{
+					# Yup. Is the most recent instance in this database though?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat::modified_date::${modified_date}", value1 => $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date})
+					{
+						# No it doesn't, so we need to UPDATE the public 
+						# schema to get it up to date (the trigger will copy
+						# it into the history schema).
+						$query = "
 UPDATE 
-    clustat
+    public.clustat
 SET
     clustat_quorate      = ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
     clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
     modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-		}
-	}
+    clustat_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND
+    clustat_uuid         = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)." 
+;";
+					}
+				}
+				else
+				{
+					# There is no 'clustat' in the databases at all, so add it.
+					$query = "
+INSERT INTO 
+    public.clustat
+(
+    clustat_uuid, 
+    clustat_host_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "query", value1 => $query,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
+			# Proceed if the query isn't set yet.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $query)
+			{
+				# No query yet. Do we need to add this record to this databases?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat::modified_date::${modified_date}", value1 => $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date},
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date})
+				{
+					# Insert it.
+					$query = "
+INSERT INTO 
+    history.clustat
+(
+    clustat_uuid, 
+    clustat_host_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+				}
+			}
+			
+			# Now record the query in the array, if set.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "id",    value1 => $id, 
+				name2 => "query", value2 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($query)
+			{
+				# Push the query into the array.
+				push @{$an->data->{db_resync}{$id}{sql}}, $query;
+			}
+		} # foreach my $id 
+		$first_record = 0;
+	} # foreach $modified_date ...
 	
-	# Commit the changes (if any).
-	if (@{$an->data->{sys}{sql}})
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 	{
-		$an->DB->do_db_write({id => $id, query => $an->data->{sys}{sql}});
-		$an->data->{sys}{sql} = [];
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
 	}
 	
 	return(0);
@@ -751,7 +909,7 @@ sub prep_databases
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in last scan data (if any).
 	my $id               = $an->data->{sys}{read_db_id};
@@ -761,21 +919,24 @@ sub find_changes
 	if (read_last_scan($an))
 	{
 		# No record found, INSERT everything.
+		   $an->data->{sql}{clustat}{clustat_uuid} = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
 		my $query = "
 INSERT INTO 
     clustat 
 (
+    clustat_uuid, 
     clustat_host_uuid, 
     clustat_quorate, 
     clustat_cluster_name, 
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).",
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
     ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
     ".$an->data->{sys}{db_timestamp}."
 );";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$an->data->{sys}{sql}}, $query;
@@ -794,6 +955,8 @@ INSERT INTO
 	}
 	else
 	{
+		die;
+		
 		### A record was found, so look for changes.
 		# Look for changes in 'clustat'
 		my $old_cluster_name  = $an->data->{clustat}{sql}{clustat}{clustat_cluster_name};
@@ -1925,7 +2088,7 @@ sub insert_into_clustat_service
 INSERT INTO 
     clustat_service 
 (
-    clustat_service_clustat_id, 
+    clustat_service_clustat_uuid, 
     clustat_service_name, 
     clustat_service_host, 
     clustat_service_status, 
@@ -1933,7 +2096,7 @@ INSERT INTO
     clustat_service_is_vm, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{clustat_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($service).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
@@ -1942,7 +2105,7 @@ INSERT INTO
     ".$an->data->{sys}{db_timestamp}."
 );
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2010,20 +2173,20 @@ sub insert_into_clustat_node
 INSERT INTO 
     clustat_node 
 (
-    clustat_node_clustat_id, 
+    clustat_node_clustat_uuid, 
     clustat_node_name, 
     clustat_node_cluster_id, 
     clustat_node_status, 
     modified_date
 ) VALUES (
-    (".$an->data->{sys}{clustat_id_query}."), 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($node).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_cluster_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
     ".$an->data->{sys}{db_timestamp}."
 );
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	push @{$an->data->{sys}{sql}}, $query;
@@ -2098,12 +2261,12 @@ FROM
 WHERE 
     a.clustat_host_uuid = b.host_uuid 
 AND 
-    b.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+    b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 	# TODO: This query should only ever return one row, but this fact
 	#       should be explicitely checked for.
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "query",        value1 => $query, 
 		name2 => "results->[0]", value2 => $results->[0], 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2113,7 +2276,7 @@ AND
 		# for data in the node and services tables.
 		my ($clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "clustat_quorate",      value1 => $clustat_quorate, 
 			name2 => "clustat_cluster_name", value2 => $clustat_cluster_name
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2137,15 +2300,15 @@ FROM
     clustat b, 
     hosts c 
 WHERE 
-    a.clustat_node_clustat_id = b.clustat_id 
+    a.clustat_node_clustat_uuid = b.clustat_uuid 
 AND 
     b.clustat_host_uuid = c.host_uuid 
 AND 
-    c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 		
 		my $results = $an->DB->do_db_query({query => $query});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",   value1 => $query, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2154,7 +2317,7 @@ AND
 			my ($clustat_node_name, $clustat_node_cluster_id, $clustat_node_status) = @{$array_reference};
 			
 			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "clustat_node_name",       value1 => $clustat_node_name, 
 				name2 => "clustat_node_cluster_id", value2 => $clustat_node_cluster_id, 
 				name3 => "clustat_node_status",     value3 => $clustat_node_status
@@ -2188,14 +2351,14 @@ FROM
     clustat b, 
     hosts c 
 WHERE 
-    a.clustat_service_clustat_id = b.clustat_id 
+    a.clustat_service_clustat_uuid = b.clustat_uuid 
 AND 
     b.clustat_host_uuid = c.host_uuid 
 AND 
-    c.host_name = ".$an->data->{sys}{use_db_fh}->quote($host_name).";
+    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 		$results = $an->DB->do_db_query({query => $query});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",   value1 => $query, 
 			name2 => "results", value2 => $results, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2204,7 +2367,7 @@ AND
 			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_notes, $clustat_service_is_vm) = @{$array_reference};
 			
 			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 				name1 => "clustat_service_name",   value1 => $clustat_service_name, 
 				name2 => "clustat_service_host",   value2 => $clustat_service_host, 
 				name3 => "clustat_service_status", value3 => $clustat_service_status, 
@@ -2222,17 +2385,11 @@ AND
 			};
 			
 			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_host",   value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_notes", value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm",  value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 
+				name2 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value2 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
+				name3 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_notes",  value3 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}, 
+				name4 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm",  value4 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
