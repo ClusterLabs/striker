@@ -50,18 +50,45 @@ sub uuid
 	my $param = shift;
 	my $an    = $self->parent;
 	
+	# Set the 'uuidgen' path if set by the user.
+	$an->_uuidgen_path($param->{uuidgen_path}) if $param->{uuidgen_path};
+	
+	# If the user asked for the host UUID, read it in.
 	my $uuid = "";
-	my $shell_call = $an->_uuidgen_path." -r";
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	if ((exists $param->{get}) && ($param->{get} eq "host_uuid"))
 	{
-		chomp;
-		$uuid = lc($_);
-		last;
+		my $shell_call = $an->data->{path}{host_uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			$uuid = lc($_);
+			last;
+		}
+		close $file_handle;
+	}
+	else
+	{
+		my $shell_call = $an->_uuidgen_path." -r";
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			$uuid = lc($_);
+			last;
+		}
 	}
 	
 	# Did we get a sane value?
-	if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# Yup. Set the host UUID if that's what we read.
+		$an->data->{sys}{host_uuid} = $uuid if ((exists $param->{get}) && ($param->{get} eq "host_uuid"));
+	}
+	else
 	{
 		# derp
 		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => {
@@ -70,7 +97,7 @@ sub uuid
 		$uuid = "";
 	}
 	
-	return ($uuid);
+	return($uuid);
 }
 
 # Sets/returns the "am" suffix.

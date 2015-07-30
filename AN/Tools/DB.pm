@@ -117,14 +117,15 @@ sub do_db_write
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
-			#print "$query\n\n";
+			#print "id: [$id], query:\n$query\n\n";
 			#print "id: [$id], query: ============\n$query\n============\n";
-#			$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
+			#$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
 								query    => $query, 
 								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
 								db_error => $DBI::errstr
 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			#print "Done ===============\n\n";
 		}
 		
 		# Commit the changes.
@@ -151,7 +152,7 @@ sub do_db_query
 	# Setup my variables.
 	my ($id, $query);
 	
-	# Values passed in a hash, good.
+	# Where we given a specific ID to use?
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "parameter->{id}", value1 => $parameter->{id}, 
 	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
@@ -190,8 +191,14 @@ sub disconnect_from_databases
 	
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->data->{dbh}{$id}->disconnect;
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id} =~ /^DBI::db=HASH/;
+		delete $an->data->{dbh}{$id};
 	}
+	
+	# Delete the stored DB-related values.
+	delete $an->data->{sys}{db_timestamp};
+	delete $an->data->{sys}{use_db_fh};
+	delete $an->data->{sys}{read_db_id};
 	
 	return(0);
 }
@@ -211,7 +218,10 @@ sub connect_to_databases
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $connections = 0;
+	# We need the host_uuid before we connect.
+	$an->Get->uuid({get => 'host_uuid'}) if not $an->data->{sys}{host_uuid};
+	
+	my $connections            = 0;
 	my $failed_connections     = [];
 	my $successful_connections = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
@@ -352,7 +362,7 @@ sub connect_to_databases
 					dbi_error	=>	$DBI::errstr,
 				}};
 			}
-			$an->Alert->warning({ message_key => "scancore_warning_0006", file => $THIS_FILE, line => __LINE__});
+			$an->Alert->warning({message_key => "scancore_warning_0006", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($dbh =~ /^DBI::db=HASH/)
 		{
@@ -393,7 +403,7 @@ sub connect_to_databases
 			if (not $an->data->{sys}{read_db_id})
 			{
 				$an->data->{sys}{read_db_id} = $id;
-				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id} ;
+				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
@@ -409,20 +419,20 @@ sub connect_to_databases
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-				$an->data->{sys}{db_timestamp} = $an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp});
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id},
-				name2 => "sys::use_db_fh",  value2 => $an->data->{sys}{use_db_fh},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "sys::read_db_id",   value1 => $an->data->{sys}{read_db_id},
+				name2 => "sys::use_db_fh",    value2 => $an->data->{sys}{use_db_fh},
+				name3 => "sys::db_timestamp", value3 => $an->data->{sys}{db_timestamp},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -456,7 +466,7 @@ sub connect_to_databases
 		
 		# Delete this DB so that we don't try to use it later.
 		$an->Log->entry({log_level => 2, message_key => "error_title_0018", message_variables => {
-			name1 => "id", value1 => $id
+			id	=>	$id
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
 		
@@ -669,7 +679,7 @@ INSERT INTO
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($file).", 
-    ".$an->data->{sys}{db_timestamp}."
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
 			$an->DB->do_db_write({id => $id, query => $query});
@@ -681,7 +691,7 @@ INSERT INTO
 UPDATE 
     updated 
 SET
-    modified_date = ".$an->data->{sys}{db_timestamp}."
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
 AND
@@ -979,7 +989,7 @@ sub get_sql_schema
 	# Put the SQL states together by table.
 	foreach my $this_table (sort {$a cmp $b} keys %{$an->data->{scancore}{sql}{schema}{table}})
 	{
-		print "Recording the SQL schema for the table: [$this_table]\n";
+		#print "Recording the SQL schema for the table: [$this_table]\n";
 		my $this_schema = "public";
 		$an->data->{scancore}{sql}{schema}{raw_table}{$this_table} = "
 -- ------------------------------------------------------------------------- --
@@ -1268,8 +1278,8 @@ sub initialize_db
 	
 	# Read in the SQL file and replace #!variable!name!# with the database
 	# owner name.
-	my $user       = $an->data->{scancore}{db}{$id}{user};
-	my $sql        = "";
+	my $user = $an->data->{scancore}{db}{$id}{user};
+	my $sql  = "";
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
@@ -1300,7 +1310,7 @@ sub initialize_db
 	
 	# Now that I am ready, disable autocommit, write and commit.
 	$an->DB->do_db_write({id => $id, query => $sql});
-	
+	$an->data->{sys}{db_initialized}{$id} = 1;
 	
 	return($success);
 };

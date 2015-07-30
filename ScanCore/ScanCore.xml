@@ -126,7 +126,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0047">No changes found.</key>
 		<key name="scancore_log_0048">Writing email file: [#!variable!file!#].</key>
 		<key name="scancore_log_0049">Sending the email stored in the file: [#!variable!file!#] now.</key>
-		<key name="scancore_log_0050">The user: [#!variable!user!#] is not interested in alert ID: [#!variable!alert_id!#] (title: [#!variable!title!#], message: [#!variable!message!#]).</key>
+		<key name="scancore_log_0050">The user: [#!variable!user!#] is not interested in alert ID: [#!variable!alert_uuid!#] (title: [#!variable!title!#], message: [#!variable!message!#]).</key>
 		<key name="scancore_log_0051">One of the 'alerts::recipient::X::...' entries in the configuration file appears to be malformed and was ignored.</key>
 		<key name="scancore_log_0052">*** There were no alerts from this scan. ***</key>
 		<key name="scancore_log_0053">*** One or more alerts were sent this scan. ***</key>

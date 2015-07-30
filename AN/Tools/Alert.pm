@@ -52,7 +52,7 @@ sub parent
 # message was previously sent.
 sub check_alert_sent
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
 	
 	# Clear any prior errors.
@@ -114,10 +114,10 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($alert_sent_by).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_record_locator).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_name).", 
-    ".$an->data->{sys}{db_timestamp}."
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -139,7 +139,7 @@ AND
 AND 
     alert_name           = ".$an->data->{sys}{use_db_fh}->quote($alert_name)."
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -346,6 +346,7 @@ sub register_alert
 INSERT INTO 
     alerts
 (
+    alert_uuid, 
     alert_host_uuid, 
     alert_agent_name, 
     alert_level, 
@@ -355,6 +356,7 @@ INSERT INTO
     alert_message_variables, 
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->Get->uuid()).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_level).", 
@@ -362,7 +364,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($title_variables).", 
     ".$an->data->{sys}{use_db_fh}->quote($alert_message_key).", 
     ".$an->data->{sys}{use_db_fh}->quote($message_variables).",
-    ".$an->data->{sys}{db_timestamp}."
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
 	

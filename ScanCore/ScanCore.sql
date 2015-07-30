@@ -60,7 +60,7 @@ CREATE TRIGGER trigger_hosts
 
 -- This stores alerts coming in from various agents
 CREATE TABLE alerts (
-	alert_id		bigserial			primary key,
+	alert_uuid		uuid				primary key,
 	alert_host_uuid		uuid				not null,			-- The name of the node or dashboard that this alert came from.
 	alert_agent_name	text				not null,
 	alert_level		text				not null,			-- debug (log only), info (+ admin email), notice (+ curious users), warning (+ client technical staff), critical (+ all)
@@ -76,7 +76,7 @@ ALTER TABLE alerts OWNER TO #!variable!user!#;
 
 CREATE TABLE history.alerts (
 	history_id		bigserial,
-	alert_id		bigint				not null,
+	alert_uuid		uuid				not null,
 	alert_host_uuid		uuid				not null,
 	alert_agent_name	text				not null,
 	alert_level		text				not null,
@@ -93,9 +93,9 @@ AS $$
 DECLARE
 	history_alerts RECORD;
 BEGIN
-	SELECT INTO history_alerts * FROM alerts WHERE alert_id = new.alert_id;
+	SELECT INTO history_alerts * FROM alerts WHERE alert_uuid = new.alert_uuid;
 	INSERT INTO history.alerts
-		(alert_id,
+		(alert_uuid,
 		 alert_host_uuid,
 		 alert_agent_name,
 		 alert_level,
@@ -105,7 +105,7 @@ BEGIN
 		 alert_message_variables,
 		 modified_date)
 	VALUES
-		(history_alerts.alert_id,
+		(history_alerts.alert_uuid,
 		 history_alerts.alert_host_uuid,
 		 history_alerts.alert_agent_name,
 		 history_alerts.alert_level,

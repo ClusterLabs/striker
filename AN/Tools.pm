@@ -500,8 +500,8 @@ sub _get_hash_reference
 	my $self  = shift;
 	my $param = shift;
 	
-	die "I didn't get a hash key string, so I can't pull hash reference pointer.\n" if ref($param->{key}) ne "HASH";
-	die "The hash key string: [$param->{key}] doesn't seem to be valid. It should be a string in the format 'foo::bar::baz'.\n" if $param->{key} !~ /::/;
+	die "$THIS_FILE ".__LINE__."; I didn't get a hash key string, so I can't pull hash reference pointer.\n" if ref($param->{key}) ne "HASH";
+	die "$THIS_FILE ".__LINE__."; The hash key string: [$param->{key}] doesn't seem to be valid. It should be a string in the format 'foo::bar::baz'.\n" if $param->{key} !~ /::/;
 	
 	# Split up the keys.
 	my @keys     = split /::/, $param->{key};
