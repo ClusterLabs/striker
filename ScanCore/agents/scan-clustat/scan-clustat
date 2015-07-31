@@ -250,12 +250,10 @@ AND
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $clustat_service_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}})
 		{
@@ -406,7 +404,6 @@ INSERT INTO
 				} # Seen clustat_service_name?
 			} # foreach my $id 
 		} # foreach my $clustat_service_name ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -728,6 +725,8 @@ WHERE
 		}
 	}
 	
+	### TODO: Convert this away from using 'first_record' so that it's closer in style to the rest of 
+	###       ScanCore.
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
@@ -904,6 +903,19 @@ sub prep_databases
 			# Need to load the database schema.
 			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
 		}
 		else
 		{

@@ -661,6 +661,7 @@ sub initialize_conf
 			tools_directory		=>	"/var/www/tools/",
 			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
 			tput			=>	"/usr/bin/tput",
+			uuidgen			=>	"/usr/bin/uuidgen",
 			virsh			=>	"/usr/bin/virsh",
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"Data/strings.xml",
@@ -689,6 +690,9 @@ sub initialize_conf
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
 				fstab			=>	"/etc/fstab",
+				# This stores this node's UUID. It is used to track all our sensor data in the 
+				# database. If you change this here, change it in the ScanCore, too.
+				host_uuid		=>	"/etc/striker/host.uuid",
 				hostname		=>	"/etc/sysconfig/network",
 				hosts			=>	"/etc/hosts",
 				ifcfg_directory		=>	"/etc/sysconfig/network-scripts/",

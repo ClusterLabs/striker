@@ -1,8 +1,8 @@
 -- This is the database schema for the 'bond' scan agent.
 
 CREATE TABLE bond (
-	bond_id				bigserial			primary key,
-	bond_host_uuid			uuid,
+	bond_uuid			uuid				primary key,
+	bond_host_uuid			uuid				not null,
 	bond_name			text				not null,
 	bond_mode			numeric				not null,	-- This is the numerical bond type (will translate to the user's language in ScanCore)
 	bond_primary_slave		text				not null,
@@ -20,8 +20,8 @@ ALTER TABLE bond OWNER TO #!variable!user!#;
 
 CREATE TABLE history.bond (
 	history_id			bigserial,
-	bond_id				bigint,
-	bond_host_uuid			uuid,
+	bond_uuid			uuid				not null,
+	bond_host_uuid			uuid				not null,
 	bond_name			text				not null,
 	bond_mode			numeric				not null,
 	bond_primary_slave		text				not null,
@@ -40,9 +40,9 @@ AS $$
 DECLARE
 	history_bond RECORD;
 BEGIN
-	SELECT INTO history_bond * FROM bond WHERE bond_id=new.bond_id;
+	SELECT INTO history_bond * FROM bond WHERE bond_uuid=new.bond_uuid;
 	INSERT INTO history.bond
-		(bond_id,
+		(bond_uuid,
 		 bond_host_uuid,
 		 bond_name, 
 		 bond_mode, 
@@ -55,7 +55,7 @@ BEGIN
 		 bond_down_delay, 
 		 modified_date)
 	VALUES
-		(history_bond.bond_id,
+		(history_bond.bond_uuid,
 		 history_bond.bond_host_uuid,
 		 history_bond.bond_name, 
 		 history_bond.bond_mode, 
@@ -81,7 +81,7 @@ CREATE TRIGGER trigger_bond
 -- This is where information on interfaces is stored
 CREATE TABLE bond_interface (
 	bond_interface_id		bigserial,
-	bond_interface_bond_id		bigint				not null,
+	bond_interface_bond_uuid	uuid				not null,
 	bond_interface_name		text				not null,
 	bond_interface_mii_status	text				not null,
 	bond_interface_speed		numeric				not null,	-- Speed in bps
@@ -91,14 +91,14 @@ CREATE TABLE bond_interface (
 	bond_interface_slave_queue_id	text,
 	modified_date			timestamp with time zone	not null,
 	
-	FOREIGN KEY(bond_interface_bond_id) REFERENCES bond(bond_id)
+	FOREIGN KEY(bond_interface_bond_uuid) REFERENCES bond(bond_uuid)
 );
 ALTER TABLE bond_interface OWNER TO #!variable!user!#;
 
 CREATE TABLE history.bond_interface (
 	history_id			bigserial,
 	bond_interface_id		bigint				not null,
-	bond_interface_bond_id		bigint				not null,
+	bond_interface_bond_uuid	uuid				not null,
 	bond_interface_name		text				not null,
 	bond_interface_mii_status	text				not null,
 	bond_interface_speed		numeric				not null,	-- Speed in bps
@@ -118,7 +118,7 @@ BEGIN
 	SELECT INTO history_bond_interface * FROM bond_interface WHERE bond_interface_id=new.bond_interface_id;
 	INSERT INTO history.bond_interface
 		(bond_interface_id,
-		 bond_interface_bond_id,
+		 bond_interface_bond_uuid,
 		 bond_interface_name, 
 		 bond_interface_mii_status, 
 		 bond_interface_speed, 
@@ -129,7 +129,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_bond_interface.bond_interface_id,
-		 history_bond_interface.bond_interface_bond_id,
+		 history_bond_interface.bond_interface_bond_uuid,
 		 history_bond_interface.bond_interface_name, 
 		 history_bond_interface.bond_interface_mii_status, 
 		 history_bond_interface.bond_interface_speed, 

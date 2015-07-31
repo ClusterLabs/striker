@@ -3604,6 +3604,11 @@ sub load_install_manifest
 		# Nodes.
 		foreach my $node (keys %{$data->{node}})
 		{
+			#print "<pre>\n";
+			#use Data::Dumper;
+			#print Dumper $data;
+			#print "</pre>\n";
+			#die;
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
 			foreach my $a (keys %{$data->{node}{$node}})
 			{
@@ -3711,6 +3716,12 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
 						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script}]\n");
 					}
+				}
+				elsif ($a eq "uuid")
+				{
+					my $uuid = $data->{node}{$node}{uuid};
+					$conf->{install_manifest}{$file}{node}{$node}{uuid} = $uuid ? $uuid : "";
+					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], uuid: [$uuid], install_manifest::${file}::node::${node}::uuid: [$conf->{install_manifest}{$file}{node}{$node}{uuid}]\n");
 				}
 				else
 				{
@@ -4157,6 +4168,7 @@ sub load_install_manifest
 			my $ifn_ip_key        = "anvil_node".$i."_ifn_ip";
 			my $ifn_link1_mac_key = "anvil_node".$i."_ifn_link1_mac";
 			my $ifn_link2_mac_key = "anvil_node".$i."_ifn_link2_mac";
+			my $uuid_key          = "anvil_node".$i."_uuid";
 			
 			my $ipmi_ip_key       = "anvil_node".$i."_ipmi_ip";
 			my $ipmi_netmask_key  = "anvil_node".$i."_ipmi_netmask",
@@ -4243,7 +4255,8 @@ sub load_install_manifest
 			$conf->{cgi}{$pdu2_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu2_reference}{port};
 			$conf->{cgi}{$pdu3_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu3_reference}{port};
 			$conf->{cgi}{$pdu4_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu4_reference}{port};
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}]\n");
+			$conf->{cgi}{$uuid_key}          = $conf->{install_manifest}{$file}{node}{$node}{uuid}                            ? $conf->{install_manifest}{$file}{node}{$node}{uuid}                            : "";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}], cgi::$uuid_key: [$conf->{cgi}{$uuid_key}]\n");
 			
 			# If the user remapped their network, we don't want to
 			# undo the results.
@@ -4670,6 +4683,32 @@ sub get_netmask_from_ip
 	return($netmask);
 }
 
+# Generates a UUID
+sub generate_uuid
+{
+	my ($conf) = @_;
+	
+	my $uuid = "";
+	my $shell_call = "$conf->{path}{uuidgen} -r";
+	open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		$uuid = lc($_);
+		last;
+	}
+	
+	# Did we get a sane value?
+	if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# derp
+		die "Generated UUID: [$uuid] does not appear to be valie.\n";
+		$uuid = "";
+	}
+	
+	return($uuid);
+}
+
 # This takes the (sanity-checked) form data and generates the XML manifest file
 # and then returns the download URL.
 sub generate_install_manifest
@@ -4699,6 +4738,10 @@ sub generate_install_manifest
 	$conf->{cgi}{anvil_node2_ipmi_password} = $conf->{cgi}{anvil_node2_ipmi_password} ? $conf->{cgi}{anvil_node2_ipmi_password} : $conf->{cgi}{anvil_password};
 	$conf->{cgi}{anvil_node2_ipmi_user}     = $conf->{cgi}{anvil_node2_ipmi_user}     ? $conf->{cgi}{anvil_node2_ipmi_user}     : "admin";
 	
+	# Generate UUIDs if needed.
+	$conf->{cgi}{anvil_node1_uuid}          = generate_uuid($conf) if not $conf->{cgi}{anvil_node1_uuid};
+	$conf->{cgi}{anvil_node2_uuid}          = generate_uuid($conf) if not $conf->{cgi}{anvil_node2_uuid};
+	
 	### TODO: This isn't set for some reason, fix
 	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{install_manifest}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
 	
@@ -4724,7 +4767,7 @@ Striker Version: $conf->{sys}{version}
 -->
 
 <config>
-	<node name=\"$conf->{cgi}{anvil_node1_name}\" uuid=\"\">
+	<node name=\"$conf->{cgi}{anvil_node1_name}\" uuid=\"$conf->{cgi}{anvil_node1_uuid}\">
 		<network>
 			<bcn ip=\"$conf->{cgi}{anvil_node1_bcn_ip}\" />
 			<sn ip=\"$conf->{cgi}{anvil_node1_sn_ip}\" />
@@ -4752,7 +4795,7 @@ Striker Version: $conf->{sys}{version}
 			<interface name=\"ifn_link2\" mac=\"$conf->{cgi}{anvil_node1_ifn_link2_mac}\" />
 		</interfaces>
 	</node>
-	<node name=\"$conf->{cgi}{anvil_node2_name}\" uuid=\"\">
+	<node name=\"$conf->{cgi}{anvil_node2_name}\" uuid=\"$conf->{cgi}{anvil_node2_uuid}\">
 		<network>
 			<bcn ip=\"$conf->{cgi}{anvil_node2_bcn_ip}\" />
 			<sn ip=\"$conf->{cgi}{anvil_node2_sn_ip}\" />

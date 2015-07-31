@@ -298,7 +298,8 @@ Variables:
 		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
 		
 		<!-- notice messages -->
-		<key name="notice_message_0001">The databse: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If other databases exist, this one should now be synchronized.</key>
+		<key name="notice_message_0001">The databse: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
+		<key name="notice_message_0002">The scan agent: [#!variable!agent!#] has initialized it's SQL schema in the databse: [#!variable!name!#] on the host: [#!variable!host!#]. If data from the agent exists on other databases, it should now be loaded on this database.</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>

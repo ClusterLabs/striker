@@ -420,6 +420,19 @@ sub configure_scancore_on_node
 	
 	my $return_code = 255;
 	
+	my $uuid = "";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cgi::anvil_node1_current_ip: [$conf->{cgi}{anvil_node1_current_ip}]\n");
+	if ($node eq $conf->{cgi}{anvil_node1_current_ip})
+	{
+		$uuid = $conf->{cgi}{anvil_node1_uuid} ? $conf->{cgi}{anvil_node1_uuid} : AN::Cluster::generate_uuid($conf);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; uuid: [$uuid], cgi::anvil_node1_uuid: [$conf->{cgi}{anvil_node1_uuid}]\n");
+	}
+	else
+	{
+		$uuid = $conf->{cgi}{anvil_node2_uuid} ? $conf->{cgi}{anvil_node2_uuid} : AN::Cluster::generate_uuid($conf);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; uuid: [$uuid], cgi::anvil_node2_uuid: [$conf->{cgi}{anvil_node2_uuid}]\n");
+	}
+	
 	# First, copy the ScanCore files into place. Create the striker config
 	# directory if needed, as well.
 	my $generate_config  = 0;
@@ -486,6 +499,18 @@ then
 else
     echo 'striker config needs to be generated'
 fi;
+
+if [ ! -e '$conf->{path}{nodes}{host_uuid}' ]
+then
+    echo 'Recording the host UUID'
+    echo $uuid > $conf->{path}{nodes}{host_uuid}
+    if [ -e '$conf->{path}{nodes}{host_uuid}' ]
+    then
+        echo -n 'host_uuid = '; cat /etc/striker/host.uuid 
+    else
+        echo 'failed to create host uuid file'
+    fi
+fi
 ";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -516,6 +541,18 @@ fi;
 		if ($line =~ /config needs to be generated/)
 		{
 			$generate_config = 1;
+		}
+		if ($line =~ /failed to create host uuid file/)
+		{
+			$return_code = 6;
+		}
+		if ($line =~ /host_uuid = (.*)/)
+		{
+			my $uuid = $1;
+			if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+			{
+				$return_code = 7;
+			}
 		}
 	}
 	
@@ -776,6 +813,8 @@ fi";
 	# 3 == Base striker.conf not found.
 	# 4 == Failed to create the striker.conf file.
 	# 5 == Failed to add to root's crontab
+	# 6 == Failed to generate the host UUID file
+	# 7 == Host UUID is invalid
 	return($return_code);
 }
 
@@ -795,6 +834,8 @@ sub configure_scancore
 	# 3 == Base striker.conf not found.
 	# 4 == Failed to create the striker.conf file.
 	# 5 == Failed to add to root's crontab
+	# 6 == Failed to generate the host UUID file
+	# 7 == Host UUID is invalid
 	
 	my $ok = 1;
 	# Report
@@ -838,6 +879,21 @@ sub configure_scancore
 		$node1_message = "#!string!state_0116!#";
 		$ok            = 0;
 	}
+	elsif ($node1_rc eq "6")
+	{
+		# Failed to generate the host UUID file
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0117!#";
+		$ok            = 0;
+	}
+	elsif ($node1_rc eq "7")
+	{
+		# The UUID in the host file is invalid.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0118!#";
+		$ok            = 0;
+	}
+	
 	# Node 2
 	if ($node2_rc eq "1")
 	{
@@ -872,6 +928,20 @@ sub configure_scancore
 		# Failed to add ScanCore to root's crontab
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0116!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "6")
+	{
+		# Failed to generate the host UUID file
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0117!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "7")
+	{
+		# The UUID in the host file is invalid.
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0118!#";
 		$ok            = 0;
 	}
 	

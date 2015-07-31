@@ -3101,7 +3101,16 @@ INSERT INTO
     ram_used_bytes, 
     modified_date 
 ) VALUES (
-    (SELECT ram_used_id FROM public.ram_used WHERE ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($ram_used_by)."), 
+    (
+        SELECT 
+            ram_used_id 
+        FROM 
+            public.ram_used 
+        WHERE 
+            ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($ram_used_by)." 
+        AND 
+            ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ), 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).", 
     ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
@@ -4402,7 +4411,16 @@ INSERT INTO
     agent_runtime, 
     modified_date 
 ) VALUES (
-    (SELECT agent_id FROM public.agents WHERE agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name)."), 
+    (
+        SELECT 
+            agent_id 
+        FROM 
+            public.agents 
+        WHERE 
+            agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name)."
+        AND
+            agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    ), 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
