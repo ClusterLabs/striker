@@ -212,5 +212,6 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>
 		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
 		<key name="scancore_message_0003">Another copy of #!string!scancore_brand_0001!# is running, exiting.</key>
+		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
 	</lang>
 </words>

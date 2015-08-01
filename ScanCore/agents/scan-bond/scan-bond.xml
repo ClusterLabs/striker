@@ -17,13 +17,134 @@ all strings with 'scan_bond_'.
 		<key name="scan_bond_brand_0001">Bonded Network Interface Scan Agent</key>
 		
 		<!-- Log messages -->
-		<key name="scan_bond_log_0001"></key>
+		<key name="scan_bond_log_0001">The DB table [#!variable!table!#] for the bond: [#!variable!bond_name!#] needs to be updated.</key>
+		
+		<!-- Bonding modes. The digit corresponds to the bonding more. See:  
+		     https://www.kernel.org/doc/Documentation/networking/bonding.txt
+		Number | Name          | Long name / Description
+		=======+===============+=====================================================================
+		 0     | balance-rr    | Round-robin
+		 1     | active-backup | Active/Backup
+		 2     | balance-xor   | XOR (boolean XOR'ed source MAC with target MAC)
+		 3     | broadcast     | All packets go down all slaves
+		 4     | 802.3ad       | Dynamic link-aggregation groups according to RFC 802.3ad
+		 5     | balance-tlb   | Adaptive transmit load balancing
+		 6     | balance-alb   | Adaptive load balancing: balance-tlb + receive load balancing (rlb)
+		=======+===============+=====================================================================
+		-->
+		<key name="scan_bond_mode_0">Balance Round-Robin</key>
+		<key name="scan_bond_mode_1">Active/Backup</key>
+		<key name="scan_bond_mode_2">Balaced Source/Target MAC XOR'ed</key>
+		<key name="scan_bond_mode_3">Broadcast</key>
+		<key name="scan_bond_mode_4">Dynamic Link-Aggregation Group (802.3ad)</key>
+		<key name="scan_bond_mode_5">Balanced Transmit Load Balancing</key>
+		<key name="scan_bond_mode_6">Balanced Transmit and Receive Load Balancing</key>
+		
+		<!-- This is the primary reselect options. See:
+		     https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/sec-Specific_Kernel_Module_Capabilities.html#sec-Using_Channel_Bonding
+		Number | Name          | Long name / Description
+		=======+===============+=====================================================================
+		 0     | always        | Always switch back to the primary interface
+		 1     | better        | Switch to the interface with the higher bitrate or duplex
+		 2     | failure       | Use the primary on start, but one switched, stay.
+		=======+===============+=====================================================================
+		-->
+		<key name="scan_bond_reselect_0">Always</key>
+		<key name="scan_bond_reselect_1">If Better (If primary has equal or better speed and duplex)</key>
+		<key name="scan_bond_reselect_2">On Failure (Stay on active interface until it fails)</key>
 		
 		<!-- Notices -->
 		<key name="scan_bond_note_0001"></key>
 		
 		<!-- Warnings. -->
-		<key name="scan_bond_warning_0001"></key>
+		<key name="scan_bond_warning_0001">
+The bond: [#!variable!bond_name!#] mode has gone back to being 'Active/Passive', which is good.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_bond_warning_0002">
+The bond: [#!variable!bond_name!#] mode is not longer 'Active/Passive', which is the only supported mode!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Warning: If this is a production #!string!brand_0004!#, please revert back as soon as possible.
+		</key>
+		<key name="scan_bond_warning_0003">
+The preferred network interface in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This is unusual, but could happen if maintenance is soon expected on the previously preferred network interface.
+		</key>
+		<key name="scan_bond_warning_0004">
+The conditions under which the bond: [#!variable!bond_name!#] will reselect the primary interface has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: Now, once the primary interface has returned to normal operation, it will be selected no matter what.
+		</key>
+		<key name="scan_bond_warning_0005">
+The conditions under which the bond: [#!variable!bond_name!#] will reselect the primary interface has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: Now, once the primary interface will be used when it returns to normal operation *if* it has equal or better speed and duplex. This way, if the primary interface returns but at a lower speed, for example, the backup interface will stay active.
+		</key>
+		<key name="scan_bond_warning_0006">
+The conditions under which the bond: [#!variable!bond_name!#] will reselect the primary interface has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: Now, once the bond fails over to an interface, it will stay on the newly active interface. It will only switch back to the primary if the backup interface should fail.
+		</key>
+		<key name="scan_bond_warning_0007">
+The conditions under which the bond: [#!variable!bond_name!#] will reselect the primary interface has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: #!string!scancore_message_0004!#
+		</key>
+		<key name="scan_bond_warning_0008">
+The active interface in the bond: [#!variable!bond_name!#] has returned to be the link #1.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_bond_warning_0009">
+The active interface in the bond: [#!variable!bond_name!#] has fallen back into link #2.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Warning: This usually is a sign of a failure in the primary link. It can be caused by the cable failing or being removed, the plug in the node or switch failing or the primary switch failing.
+		</key>
+		<key name="scan_bond_warning_0010">
+The active interface in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: #!string!scancore_message_0004!#
+		</key>
+		<key name="scan_bond_warning_0011">
+The bond: [#!variable!bond_name!#] is back UP.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Cleared: This node should now be able to route traffic over this network again.
+		</key>
+		<key name="scan_bond_warning_0012">
+The bond: [#!variable!bond_name!#] has lost both interfaces and is DOWN!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Critical: This node can no longer send or receive data on the effected interface!
+		</key>
+		<key name="scan_bond_warning_0013">
+The bond: [#!variable!bond_name!#]'s connection state is in unknown. It should be '#!string!scan_bond_state_0001!#'. 
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: #!string!scancore_message_0004!#
+		</key>
+		<key name="scan_bond_warning_0014">
+The frequency where in the bond: [#!variable!bond_name!#]'s manually checks the active interface's link state has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#] milliseconds.
+  Note: This should always be set to '100'. Setting a value too high can cause a link failure slow to detect and could leave to a node being declared failed when it otherwise could have recovered.
+		</key>
+		<key name="scan_bond_warning_0015">
+The time that the bond: [#!variable!bond_name!#] waits from a link recovering until it considers using the primary interface ready has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#] milliseconds.
+  Note: This should always be set to '120,000' (120 seconds, 2 minutes). Setting a value too low might cause the primary interface ready before the switch it is plugged into can route traffic if the switch just powered back on. Leaving this to a high number is generally harmless and a good idea.
+		</key>
+		<key name="scan_bond_warning_0016">
+The time that the bond: [#!variable!bond_name!#] waits from a link failing until it switches to the backup interface ready has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#] milliseconds.
+  Critical: If the bond waits too long before switching, the peer might be declared failed when it could have been avoided. This should always be set to '0'!
+		</key>
+		<key name="scan_bond_warning_0017">
+The time that the bond: [#!variable!bond_name!#] waits from a link failing until it switches to the backup interface ready has returned to "no delay".
+- [#!variable!old_value!#] -> [#!variable!new_value!#] milliseconds.
+  Note: Should the active link fail, the bond will no longer wait before switching to the backup interface. This is good.
+		</key>
+		
+		<!-- States -->
+		<key name="scan_bond_state_0001">Up</key>
+		<key name="scan_bond_state_0002">Down</key>
+		<key name="scan_bond_state_0003">Going Back Up (waiting for the 'up' delay to expire)</key>
 		
 		<!-- Errors -->
 		<key name="scan_bond_error_0001"></key>

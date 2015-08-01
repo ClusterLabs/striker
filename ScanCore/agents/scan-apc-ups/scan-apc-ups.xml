@@ -20,7 +20,7 @@ with 'scan_apc_ups_'.
 		<key name="scan_apc_ups_title_0001"></key>
 		
 		<!-- Log messages -->
-		<key name="scan_apc_ups_log_0001">The DB table [#!variable!table!#] for the UPS: [#!variable!ups_name!#] needs to be updated.</key>
+		<key name="scan_apc_ups_log_0001">The DB table [#!variable!table!#] for the UPS with the serial number: [#!variable!ups_name!#] (named: [#!variable!ups_name!#]) needs to be updated.</key>
 		<key name="scan_apc_ups_log_0002">Starting to read the SNMP OIDs for the UPS: [#!variable!ups!#].</key>
 		<key name="scan_apc_ups_log_0003">SNMP OIDs reads for the UPS: [#!variable!ups!#] completed in: [#!variable!time!#].</key>
 		<key name="scan_apc_ups_log_0004">No change in UPS power state, update of 'power' table not needed for UPS: [#!variable!ups_name!#].</key>

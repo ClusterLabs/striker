@@ -279,6 +279,7 @@ Variables:
 		<key name="an_alert_title_0004">Warning</key>
 		<key name="an_alert_title_0005">Critical</key>
 		<key name="an_alert_title_0006">Warning Cleared</key>
+		<key name="an_alert_title_0007">Critical Cleared</key>
 		
 		<!-- These are used when creating an alert email subject. They
 		     map the log level to a name. Eventually, I will delete the

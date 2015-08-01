@@ -6647,7 +6647,7 @@ sub update_network_config_files
 		   $ifcfg_bcn_bond1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
-		   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1\"\n";
+		   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=bcn_link1 primary_reselect=better\"\n";
 		   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{network}{bcn}{ip}\"\n";
 		   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{network}{bcn}{netmask}\"\n";
 		   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
@@ -6682,7 +6682,7 @@ sub update_network_config_files
 		   $ifcfg_ifn_bond1 .= "MTU=\"$conf->{sys}{mtu}\"\n" if $conf->{sys}{mtu} ne "1500";
 		   $ifcfg_ifn_bond1 .= "BOOTPROTO=\"static\"\n";
 		   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
-		   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1\"\n";
+		   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0 primary=ifn_link1 primary_reselect=better\"\n";
 		   $ifcfg_ifn_bond1 .= "IPADDR=\"$conf->{network}{ifn}{ip}\"\n";
 		   $ifcfg_ifn_bond1 .= "NETMASK=\"$conf->{network}{ifn}{netmask}\"\n";
 		   $ifcfg_ifn_bond1 .= "GATEWAY=\"$conf->{network}{ifn}{gateway}\"\n";

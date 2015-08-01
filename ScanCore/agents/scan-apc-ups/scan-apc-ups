@@ -517,8 +517,9 @@ sub find_changes
 				# Something in the 'apc_ups' table changed for
 				# this UPS.
 				$an->Log->entry({log_level => 2, message_key => "scan_apc_ups_log_0001", message_variables => {
-					table         => "apc_ups", 
-					serial_number => $ups_serial_number
+					table		=>	"apc_ups", 
+					serial_number	=>	$ups_serial_number, 
+					ups_name	=>	$ups_name, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				### Log the variables to help see what actually changed.
