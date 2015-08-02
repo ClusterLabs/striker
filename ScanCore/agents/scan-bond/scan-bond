@@ -407,6 +407,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_duplex).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_failure_count).", 
     ".$an->data->{sys}{use_db_fh}->quote($bond_interface_mac).", 
+    ".$an->data->{sys}{use_db_fh}->quote($bond_interface_slave_queue_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
 						# Now record the query in the array

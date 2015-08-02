@@ -1680,7 +1680,7 @@ sub load_agent_strings
 SELECT DISTINCT 
     alert_agent_name
 FROM 
-    alerts 
+    history.alerts 
 WHERE 
     alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({query => $query});
@@ -1715,8 +1715,8 @@ sub process_alerts
 		name1 => "first_run", value1 => $first_run
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Before we can process alerts, we need to make sure we've read in the strings files for any agents
-	# that have registered alerts.
+	# Before we can process or sync alerts, we need to make sure we've read in the strings files for any
+	# agents that have registered alerts (pending or historical).
 	load_agent_strings($an);
 	
 	# Read in all pending alerts
