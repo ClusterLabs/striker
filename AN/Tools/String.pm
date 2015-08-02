@@ -398,6 +398,7 @@ sub read_words
 	{
 		chomp;
 		my $line = $_;
+		#print "$THIS_FILE ".__LINE__."; line: [$line]\n" if $file =~ /scan-bond/;
 		
 		### Deal with comments.
 		# Look for a clozing stanza if I am (still) in a comment.

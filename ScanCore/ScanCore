@@ -87,6 +87,10 @@ SELECT * FROM clustat ORDER BY modified_date DESC, clustat_uuid ASC; SELECT * FR
 SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, history.clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC;
 SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, history.clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC;
 
+scan-bond;
+SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC; SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, history.bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC;
+SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC; SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, history.bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC;
+
 =cut
 # =============================================================================
 
@@ -223,9 +227,8 @@ print $an->String->get({key => "scancore_message_0001"}), "\n";
 # Get (create if needed) my UUID.
 prep_local_uuid($an);
 
-# Connect to the database(s). This is different from the in-loop connection in
-# that failing to connect to any databases right off the bad will cause the
-# program to bail out.
+# Connect to the database(s). This is different from the in-loop connection in that failing to connect to any
+# databases right off the bad will cause the program to bail out.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 if (not $connections)
 {
@@ -242,6 +245,10 @@ if (not $connections)
 	
 	exit(1);
 }
+
+# Check for and process alert that may have not been sent when we last ran. This will also load scan agent
+# strings XML files as needed
+process_alerts($an, 1);
 
 # Update the database before we do anything else.
 update_db($an);
@@ -305,24 +312,12 @@ while (1)
 		
 		# Analyze results and take any necessary actions.
 		analyze_results($an);
-		
-		# Sleep
-		$an->Log->entry({
-			log_level	=>	3,
-			title_key	=>	"scancore_title_0001",
-			message_key	=>	"scancore_log_0012",	# Sleeping for X seconds.
-			message_variables	=>	{
-				sleep_time	=>	$an->data->{scancore}{sleep_time},
-			},
-			file		=>	$THIS_FILE,
-			line		=>	__LINE__,
-			log_to		=>	$an->data->{path}{log_file},
-		});
 	}
 	else
 	{
 		# Failed to connect to any database. This isn't fatal though...
 		# Send an alert email if we haven't already, sleep.
+		print "$THIS_FILE ".__LINE__."; get: [scancore_message_0002]\n";
 		print $an->String->get({
 			key		=>	"scancore_message_0002",
 			variables	=>	{
@@ -332,11 +327,8 @@ while (1)
 		}), "\n";
 	}
 	
-	# Check RAM usage and bail if it looks like we're leaking.
-	check_ram_usage($an);
-	
 	# Check for and process alerts
-	process_alerts($an);
+	process_alerts($an, 0);
 	
 	# Do the end-of-scan checks to see if we need to power off, boot
 	# others, set/alter health flags, etc.
@@ -344,6 +336,9 @@ while (1)
 	
 	# Record the time
 	$an->DB->update_time({file => $THIS_FILE});
+	
+	# Check RAM usage and bail if it looks like we're leaking.
+	check_ram_usage($an);
 	
 	# Disconnect from databases.
 	$an->DB->disconnect_from_databases();
@@ -355,6 +350,17 @@ while (1)
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Sleep.
+	$an->Log->entry({
+		log_level	=>	3,
+		title_key	=>	"scancore_title_0001",
+		message_key	=>	"scancore_log_0012",	# Sleeping for X seconds.
+		message_variables	=>	{
+			sleep_time	=>	$an->data->{scancore}{sleep_time},
+		},
+		file		=>	$THIS_FILE,
+		line		=>	__LINE__,
+		log_to		=>	$an->data->{path}{log_file},
+	});
 	sleep $an->data->{scancore}{sleep_time};
 }
 
@@ -1249,7 +1255,7 @@ WHERE
 		});
 		
 		# Send the email
-		process_alerts($an);
+		process_alerts($an, 0);
 		if ($do_shutdown)
 		{
 			# And now die via 'safe_anvil_shutdown'. We should be dead 
@@ -1311,7 +1317,7 @@ WHERE
 			});
 			
 			# Send the email
-			process_alerts($an);
+			process_alerts($an, 0);
 		}
 	}
 	else
@@ -1349,7 +1355,7 @@ WHERE
 			});
 			
 			# Send the email
-			process_alerts($an);
+			process_alerts($an, 0);
 		}
 	}
 	
@@ -1664,13 +1670,54 @@ WHERE
 	return ($node_power_ok);
 }
 
-
-# This reads in the 'alerts' table and generates the emails/log file entries as
-# needed.
-sub process_alerts
+# This looks at any alerts and, for each agent with a registered alert, reads in it's strings file.
+sub load_agent_strings
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_agent_strings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+SELECT DISTINCT 
+    alert_agent_name
+FROM 
+    alerts 
+WHERE 
+    alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		# One or more records were found.
+		my $alert_agent_name = $row->[0]; 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "alert_agent_name", value1 => $alert_agent_name
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $agent_strings = $alert_agent_name eq "ScanCore" ? $an->data->{path}{scancore_strings} : $an->data->{path}{agents_directory}."/$alert_agent_name/$alert_agent_name.xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "agent_strings", value1 => $agent_strings, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->String->read_words({file => $agent_strings});
+	}
+	
+	return(0);
+}
+
+# This reads in the 'alerts' table and generates the emails/log file entries as needed.
+sub process_alerts
+{
+	my ($an, $first_run) = @_;
+	$first_run = 0 if not defined $first_run;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "first_run", value1 => $first_run
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Before we can process alerts, we need to make sure we've read in the strings files for any agents
+	# that have registered alerts.
+	load_agent_strings($an);
 	
 	# Read in all pending alerts
 	my $query = "
@@ -1688,14 +1735,12 @@ FROM
 WHERE 
     alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $last_agent = "";
-	# One or more records were found.
 	foreach my $row (@{$results})
 	{
+		# One or more records were found.
 		my $alert_uuid              = $row->[0]; 
 		my $alert_agent_name        = $row->[1]; 
 		my $alert_level             = $row->[2]; 
@@ -1704,17 +1749,7 @@ WHERE
 		my $alert_message_key       = $row->[5]; 
 		my $alert_message_variables = $row->[6]; 
 		my $modified_date           = $row->[7]; 
-		
-		# Sometimes alerts are sent by modules. In those cases, ignore
-		# them.
-		if ($last_agent ne $alert_agent_name)
-		{
-			   $last_agent    = $alert_agent_name;
-			my $agent_strings = $alert_agent_name eq "ScanCore" ? $an->data->{path}{scancore_strings} : $an->data->{path}{agents_directory}."/$alert_agent_name/$alert_agent_name.xml";
-			   $an->String->read_words({file => $agent_strings});
-		}
-		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "alert_uuid",              value1 => $alert_uuid, 
 			name2 => "alert_agent_name",        value2 => $alert_agent_name, 
 			name3 => "alert_level",             value3 => $alert_level, 
@@ -1725,6 +1760,7 @@ WHERE
 			name8 => "modified_date",           value8 => $alert_message_variables, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# Sometimes alerts are sent by modules. In those cases, ignore them.
 		$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid} = {
 			alert_level             => $alert_level, 
 			alert_title_key         => $alert_title_key, 
@@ -1733,7 +1769,6 @@ WHERE
 			alert_message_variables => $alert_message_variables,
 			modified_date           => $modified_date
 		};
-		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "db::alerts::agent_name::${alert_agent_name}::alert_uuid::${alert_uuid}::alert_level",             value1 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid}{alert_level},
 			name2 => "db::alerts::agent_name::${alert_agent_name}::alert_uuid::${alert_uuid}::alert_title_key",         value2 => $an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}{$alert_uuid}{alert_title_key},
@@ -1783,7 +1818,7 @@ WHERE
 	else
 	{
 		# No alerts
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "scancore_log_0052", file => $THIS_FILE, line => __LINE__}) if not $first_run;
 	}
 	
 	return(0);
@@ -2485,8 +2520,8 @@ sub get_string_from_double_bang
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
-			die "$THIS_FILE ".__LINE__."; No variable parsed from: [$pair]\n" if not $variable;
-			die "$THIS_FILE ".__LINE__."; No value parsed from: [$pair]\n" if not $value;
+			die "$THIS_FILE ".__LINE__."; No variable parsed from: [$pair]\n" if not defined $variable;
+			die "$THIS_FILE ".__LINE__."; No value parsed from: [$pair]\n"    if not defined $value;
 			
 			# If the value is one of the special sensor name or 
 			# value strings, translate it.
@@ -3124,124 +3159,6 @@ INSERT INTO
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
 				} # Seen ram_used_by?
-				
-=pod
-				# If this is the first record, then a little consideration is needed... One 
-				# of three things can happen;
-				# 1. The record doesn't exist at all, INSERT
-				# 2. The record exists, but is old. UPDATE
-				# 3. The record exists and is up to date, ignore it.
-				# Case 1 & 2 go to the public schema.
-				# 
-				# All other records are written directly to the history schema as needed.
-				my $this_schema = "history";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "id",          value1 => $id,
-					name2 => "this_schema", value2 => $this_schema, 
-				}, file => $THIS_FILE, line => __LINE__});
-				my $query = "";
-				if ($first_record)
-				{
-					# Now, does this ram_used_by record exist at all?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::ram_used::ram_used_by::${ram_used_by}", value1 => $an->data->{db_data}{$id}{ram_used}{ram_used_by}{$ram_used_by},
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{ram_used}{ram_used_by}{$ram_used_by})
-					{
-						# It does. Is the most recent instance in this database 
-						# though?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "db_data::${id}::ram_used::modified_date::${modified_date}::ram_used_by::${ram_used_by}", value1 => $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_by}{$ram_used_by},
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_by}{$ram_used_by})
-						{
-							# No it doesn't, so we need to UPDATE the public 
-							# schema to get it up to date (the trigger will copy
-							# it into the history schema).
-							$query = "
-UPDATE 
-    public.ram_used
-SET
-    ram_used_bytes = ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
-    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    ram_used_host_uuid  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($ram_used_by)." 
-;";
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# This 'ram_used_by' doesn't exist at all, so we'll INSERT it
-						# into the public schema. The main difference here from below
-						# is that we can't reference the 'ram_used_id' as it doesn't 
-						# exist yet.
-						$query = "
-INSERT INTO 
-    public.ram_used
-(
-    ram_used_host_uuid, 
-    ram_used_by, 
-    ram_used_bytes, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).", 
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				
-				# Proceed if the query isn't set yet.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $query)
-				{
-					# No query yet. Do we need to add this record to this databases?
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::ram_used::modified_date::${modified_date}::ram_used_by::${ram_used_by}", value1 => $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_by}{$ram_used_by},
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $an->data->{db_data}{$id}{ram_used}{modified_date}{$modified_date}{ram_used_by}{$ram_used_by})
-					{
-						# Insert it.
-						$query = "
-INSERT INTO 
-    history.ram_used
-(
-    ram_used_id, 
-    ram_used_host_uuid, 
-    ram_used_by, 
-    ram_used_bytes, 
-    modified_date 
-) VALUES (
-    (SELECT ram_used_id FROM public.ram_used WHERE ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($ram_used_by)."), 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_by).", 
-    ".$an->data->{sys}{use_db_fh}->quote($ram_used_bytes).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					}
-				}
-=cut
 			} # foreach my $id 
 		} # foreach my $ram_used_by ...
 		$first_record = 0;
@@ -3500,145 +3417,6 @@ INSERT INTO
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
 				} # Seen temperature_agent_name?
-				
-=pod
-				# If this is the first record, then a little consideration is needed... One 
-				# of three things can happen;
-				# 1. The record doesn't exist at all, INSERT
-				# 2. The record exists, but is old. UPDATE
-				# 3. The record exists and is up to date, ignore it.
-				# Case 1 & 2 go to the public schema.
-				# 
-				# All other records are written directly to the history schema as needed.
-				my $this_schema = "history";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "id",          value1 => $id,
-					name2 => "this_schema", value2 => $this_schema, 
-				}, file => $THIS_FILE, line => __LINE__});
-				my $query = "";
-				if ($first_record)
-				{
-					# Now, does this temperature_agent_name record exist at all?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::temperature::temperature_agent_name::${temperature_agent_name}", value1 => $an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name})
-					{
-						# It does. Is the most recent instance in this database 
-						# though?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "db_data::${id}::temperature::modified_date::${modified_date}::temperature_agent_name::${temperature_agent_name}", value1 => $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name},
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name})
-						{
-							# No it doesn't, so we need to UPDATE the public 
-							# schema to get it up to date (the trigger will copy
-							# it into the history schema).
-							$query = "
-UPDATE 
-    public.temperature
-SET
-    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
-    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
-    temperature_sensor_name = ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_name).", 
-    temperature_celsius     = ".$an->data->{sys}{use_db_fh}->quote($temperature_celsius).", 
-    temperature_state       = ".$an->data->{sys}{use_db_fh}->quote($temperature_state).", 
-    temperature_is          = ".$an->data->{sys}{use_db_fh}->quote($temperature_is).", 
-    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name)." 
-;";
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# This 'temperature_agent_name' doesn't exist at all, so we'll 
-						# INSERT it into the public schema. The main difference here
-						# from below is that we can't reference the agent_id as it
-						# doesn't exist yet.
-						$query = "
-INSERT INTO 
-    public.temperature
-(
-    temperature_agent_name, 
-    temperature_host_uuid, 
-    temperature_sensor_host, 
-    temperature_sensor_name, 
-    temperature_celsius, 
-    temperature_state, 
-    temperature_is, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_celsius).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_state).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_is).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				
-				# Proceed if the query isn't set yet.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $query)
-				{
-					# No query yet. Do we need to add this record to this databases?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::temperature::modified_date::${modified_date}::temperature_agent_name::${temperature_agent_name}", value1 => $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name})
-					{
-						# Insert it.
-						$query = "
-INSERT INTO 
-    history.temperature
-(
-    temperature_id, 
-    temperature_agent_name, 
-    temperature_host_uuid, 
-    temperature_sensor_host, 
-    temperature_sensor_name, 
-    temperature_celsius, 
-    temperature_state, 
-    temperature_is, 
-    modified_date 
-) VALUES (
-    (SELECT temperature_id FROM public.temperature WHERE temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name)."), 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_celsius).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_state).", 
-    ".$an->data->{sys}{use_db_fh}->quote($temperature_is).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					}
-				}
-=cut
 			} # foreach my $id 
 		} # foreach my $temperature_agent_name ...
 		$first_record = 0;
@@ -3895,144 +3673,6 @@ INSERT INTO
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
 				} # Seen power_agent_name?
-				
-=pod
-				# If this is the first record, then a little consideration is needed... One 
-				# of three things can happen;
-				# 1. The record doesn't exist at all, INSERT
-				# 2. The record exists, but is old. UPDATE
-				# 3. The record exists and is up to date, ignore it.
-				# Case 1 & 2 go to the public schema.
-				# 
-				# All other records are written directly to the history schema as needed.
-				my $this_schema = "history";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "id",          value1 => $id,
-					name2 => "this_schema", value2 => $this_schema, 
-				}, file => $THIS_FILE, line => __LINE__});
-				my $query = "";
-				if ($first_record)
-				{
-					# Now, does this power_agent_name record exist at all?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::power::power_agent_name::${power_agent_name}", value1 => $an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name})
-					{
-						# It does. Is the most recent instance in this database 
-						# though?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "db_data::${id}::power::modified_date::${modified_date}::power_agent_name::${power_agent_name}", value1 => $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name},
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name})
-						{
-							# No it doesn't, so we need to UPDATE the public 
-							# schema to get it up to date (the trigger will copy
-							# it into the history schema).
-							$query = "
-UPDATE 
-    public.power
-SET
-    power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    power_ups_fqdn          = ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
-    power_on_battery        = ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
-    power_seconds_left      = ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
-    power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
-    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    power_agent_name      = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)." 
-;";
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# This 'power_agent_name' doesn't exist at all, so we'll INSERT it
-						# into the public schema. The main difference here from below
-						# is that we can't reference the power_id as it doesn't exist
-						# yet.
-						$query = "
-INSERT INTO 
-    public.power
-(
-    power_host_uuid, 
-    power_agent_name, 
-    power_record_locator, 
-    power_ups_fqdn, 
-    power_on_battery, 
-    power_seconds_left, 
-    power_charge_percentage, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				
-				# Proceed if the query isn't set yet.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $query)
-				{
-					# No query yet. Do we need to add this record to this databases?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::power::modified_date::${modified_date}::power_agent_name::${power_agent_name}", value1 => $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name})
-					{
-						# Insert it.
-						$query = "
-INSERT INTO 
-    history.power
-(
-    power_id, 
-    power_host_uuid, 
-    power_agent_name, 
-    power_record_locator, 
-    power_ups_fqdn, 
-    power_on_battery, 
-    power_seconds_left, 
-    power_charge_percentage, 
-    modified_date 
-) VALUES (
-    (SELECT power_id FROM public.power WHERE power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)."), 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					}
-				}
-=cut
 			} # foreach my $id 
 		} # foreach my $power_agent_name ...
 		$first_record = 0;
@@ -4435,133 +4075,6 @@ INSERT INTO
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
 				} # Seen agent_name?
-				
-				
-				
-=pod
-				# If this is the first record, then a little consideration is needed... One 
-				# of three things can happen;
-				# 1. The record doesn't exist at all, INSERT
-				# 2. The record exists, but is old. UPDATE
-				# 3. The record exists and is up to date, ignore it.
-				# Case 1 & 2 go to the public schema.
-				# 
-				# All other records are written directly to the history schema as needed.
-				my $this_schema = "history";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "id",          value1 => $id,
-					name2 => "this_schema", value2 => $this_schema, 
-				}, file => $THIS_FILE, line => __LINE__});
-				my $query = "";
-				if ($first_record)
-				{
-					# Now, does this agent_name record exist at all?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::agents::agent_name::${agent_name}", value1 => $an->data->{db_data}{$id}{agents}{agent_name}{$agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{agents}{agent_name}{$agent_name})
-					{
-						# It does. Is the most recent instance in this database 
-						# though?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "db_data::${id}::agents::modified_date::${modified_date}::agent_name::${agent_name}", value1 => $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name},
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name})
-						{
-							# No it doesn't, so we need to UPDATE the public 
-							# schema to get it up to date (the trigger will copy
-							# it into the history schema).
-							$query = "
-UPDATE 
-    public.agents
-SET
-    agent_exit_code = ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    agent_runtime   = ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-AND 
-    agent_name      = ".$an->data->{sys}{use_db_fh}->quote($agent_name)." 
-;";
-							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# This 'agent_name' doesn't exist at all, so we'll INSERT it
-						# into the public schema. The main difference here from below
-						# is that we can't reference the agent_id as it doesn't exist
-						# yet.
-						$query = "
-INSERT INTO 
-    public.agents
-(
-    agent_host_uuid, 
-    agent_name, 
-    agent_exit_code, 
-    agent_runtime, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				
-				# Proceed if the query isn't set yet.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $query)
-				{
-					# No query yet. Do we need to add this record to this databases?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::agents::modified_date::${modified_date}::agent_name::${agent_name}", value1 => $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name},
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $an->data->{db_data}{$id}{agents}{modified_date}{$modified_date}{agent_name}{$agent_name})
-					{
-						# Insert it.
-						$query = "
-INSERT INTO 
-    history.agents
-(
-    agent_id, 
-    agent_host_uuid, 
-    agent_name, 
-    agent_exit_code, 
-    agent_runtime, 
-    modified_date 
-) VALUES (
-    (SELECT agent_id FROM public.agents WHERE agent_name = ".$an->data->{sys}{use_db_fh}->quote($agent_name)."), 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_exit_code).", 
-    ".$an->data->{sys}{use_db_fh}->quote($agent_runtime).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					}
-				}
-=cut
 			} # foreach my $id 
 		} # foreach my $agent_name ...
 		$first_record = 0;
@@ -4799,129 +4312,6 @@ INSERT INTO
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
 				} # Seen host_uuid?
-				
-=pod
-				# If this is the first record, then a little consideration is needed... One 
-				# of three things can happen;
-				# 1. The record doesn't exist at all, INSERT
-				# 2. The record exists, but is old. UPDATE
-				# 3. The record exists and is up to date, ignore it.
-				# Case 1 & 2 go to the public schema.
-				# 
-				# All other records are written directly to the history schema as needed.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "id", value1 => $id,
-				}, file => $THIS_FILE, line => __LINE__});
-				my $query = "";
-				if ($first_record)
-				{
-					# Now, does this host_uuid record exist at all?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::hosts::host_uuid::${host_uuid}", value1 => $an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid},
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{hosts}{host_uuid}{$host_uuid})
-					{
-						# It does. Is the most recent instance in this database 
-						# though?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "db_data::${id}::hosts::modified_date::${modified_date}::host_uuid::${host_uuid}", value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid},
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid})
-						{
-							# No it doesn't, so we need to UPDATE the public 
-							# schema to get it up to date (the trigger will copy
-							# it into the history schema).
-							$query = "
-UPDATE 
-    public.hosts 
-SET
-    host_name           = ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
-    host_type           = ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    host_emergency_stop = ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
-    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($host_stop_reason).", 
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)." 
-;";
-							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# This host_uuid doesn't exist at all, so we'll INSERT it
-						# into the public schema. 
-						$query = "
-INSERT INTO 
-    public.hosts
-(
-    host_uuid,  
-    host_name, 
-    host_type, 
-    host_emergency_stop, 
-    host_stop_reason, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($host_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_stop_reason).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				
-				# Proceed if the query isn't set yet.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $query)
-				{
-					# No query yet. Do we need to add this record to this databases?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::hosts::modified_date::${modified_date}::host_uuid::${host_uuid}", value1 => $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid},
-					}, file => $THIS_FILE, line => __LINE__});
-					if (not $an->data->{db_data}{$id}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid})
-					{
-						# Insert it.
-						$query = "
-INSERT INTO 
-    history.hosts
-(
-    host_uuid,  
-    host_name, 
-    host_type, 
-    host_emergency_stop, 
-    host_stop_reason, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($host_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_type).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_emergency_stop).", 
-    ".$an->data->{sys}{use_db_fh}->quote($host_stop_reason).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					}
-				}
-=cut
-				
 			} # foreach my $id 
 		} # foreach my $host_uuid ...
 		$first_record = 0;
@@ -4990,14 +4380,14 @@ sub add_hostname_to_databases
 	
 	# Check for a hostname using our UUID.
 	my $query = "SELECT host_name FROM hosts WHERE host_uuid=".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#          The actual query -----------------.        .------- Row 0
-	#                                            |        |    .-- Columns 0
+	#              The actual query -----------------.        .------- Row 0
+	#                                                |        |    .-- Columns 0
 	my $host_name = $an->DB->do_db_query({query => $query})->[0]->[0];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_name", value1 => $host_name
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -5322,7 +4712,7 @@ AND
 sub analyze_results
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "analyze_results" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "analyze_results" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the 'alerts' table, using $an->data->{sys}{scan_time} as the
 	# time to select after. 

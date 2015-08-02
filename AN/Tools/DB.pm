@@ -419,7 +419,7 @@ sub connect_to_databases
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
@@ -429,7 +429,7 @@ sub connect_to_databases
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::read_db_id",   value1 => $an->data->{sys}{read_db_id},
 				name2 => "sys::use_db_fh",    value2 => $an->data->{sys}{use_db_fh},
 				name3 => "sys::db_timestamp", value3 => $an->data->{sys}{db_timestamp},
@@ -549,7 +549,7 @@ sub connect_to_databases
 	}
 	close $file_handle;
 
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)

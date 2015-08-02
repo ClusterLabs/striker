@@ -140,11 +140,152 @@ The time that the bond: [#!variable!bond_name!#] waits from a link failing until
 - [#!variable!old_value!#] -> [#!variable!new_value!#] milliseconds.
   Note: Should the active link fail, the bond will no longer wait before switching to the backup interface. This is good.
 		</key>
+		<key name="scan_bond_warning_0018">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_bond_warning_0019">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has failed!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Warning: The parent bond is now degraded. If the other link fails, the bond itself will fail and traffic will stop flowing.
+		</key>
+		<key name="scan_bond_warning_0020">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has went down and is coming back up!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: If someone is working on the #!string!brand_0004!#'s network, this might be expected. If not, this might be the sign of a flaky network cable or plug.
+		</key>
+		<key name="scan_bond_warning_0021">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] came back up very quickly.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: Normally, a link will take two minutes to recover, more than enough time for #!string!brand_0019!# to see it in the recovery stage. In this case though, the link came back up before it was seen in the recovery stage. If someone is working on the #!string!brand_0004!#'s network, this might be expected. If not, this might be the sign that the other network interface went down (or was taken down) shortly after this link was recovered.
+		</key>
+		<key name="scan_bond_warning_0022">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is now recovering.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This bond's primary link is now in the 'up delay' stage of recovering. It will not yet be used unless the backup network interface fails. Once the delay expires, the link will be deemed healthy and, if it comes up cleanly, the bond will switch to using it.
+		</key>
+		<key name="scan_bond_warning_0023">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is now recovering.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This bond's backup link is now in the 'up delay' stage of recovering. Once the delay expires, the link will be deemed healthy. If the primary interface fails, it will be put into use immediately.
+		</key>
+		<key name="scan_bond_warning_0024">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] failed again during the recovery stage.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: If this interface is plugged into a network switch that was just booted, this behaviour is expected and it is no cause for concern. Otherwise, this could be the sign of a flaky network cable or plug.
+		</key>
+		<key name="scan_bond_warning_0025">
+The link state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is back to full operational state.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: The 'up delay' timer has expired and the interface is again deemed to be healthy and ready for use.
+		</key>
+		<key name="scan_bond_warning_0026">
+The link speed of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: It is normal for the link speed to change when a link fails or recovers. What matters is that it returns to the previous speed.
+		</key>
+		<key name="scan_bond_warning_0027">
+The link speed of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is no longer known.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: When the link state is down, the speed is marked "#!string!scan_bond_state_0004!#".
+		</key>
+		<key name="scan_bond_warning_0028">
+The link speed of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is faster than it was before.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: Normally, the link will recover at the same speed it used to be at. In this case, it is faster so it is likely the network interface was upgraded.
+		</key>
+		<key name="scan_bond_warning_0029">
+The link speed of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is back to normal.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+		</key>
+		<key name="scan_bond_warning_0030">
+The link speed of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is slower than it used to be!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note:    The previous highest speed was: [#!variable!prior_fastest!#].
+  Warning: A link returning at a lower speed is often the sign of a failing network cable or port.
+		</key>
+		<key name="scan_bond_warning_0031">
+The duplex state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: 'Full duplex' indicates that the interface can send and receive data at the same time. 'Half duplex' indicates that it can only send or receive at any given time.
+		</key>
+		<key name="scan_bond_warning_0032">
+The network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is back to full duplex operating.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: 'Full duplex' indicates that the interface can send and receive data at the same time. 'Half duplex' indicates that it can only send or receive at any given time.
+		</key>
+		<key name="scan_bond_warning_0033">
+The network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is only operating at half-duplex!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: 'Full duplex' indicates that the interface can send and receive data at the same time. 'Half duplex' indicates that it can only send or receive at any given time.
+		</key>
+		<key name="scan_bond_warning_0034">
+The duplex state of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] is unknown!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: 'Full duplex' indicates that the interface can send and receive data at the same time. 'Half duplex' indicates that it can only send or receive at any given time.
+  Note: It is normal for the duplex to be unknown when the link itself is down.
+		</key>
+		<key name="scan_bond_warning_0035">
+The failure count of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed!
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: If the cable is unplugged or the switch is reset, this failure count will go up. It is not, itself, a sign of a hardware failure.
+		</key>
+		<key name="scan_bond_warning_0036">
+The failure count of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has reset to zero.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This is normal when the parent bond interface reset or the host is rebooted.
+		</key>
+		<key name="scan_bond_warning_0037">
+The failure count of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has increased.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: If the cable is unplugged or the switch is reset, this failure count will go up. It is not, itself, a sign of a hardware failure.
+		</key>
+		<key name="scan_bond_warning_0038">
+The MAC address of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This usually indicates that the network card itself was changed.
+  Note: See: https://alteeve.ca/w/MAC for more information on what a MAC address is.
+		</key>
+		<key name="scan_bond_warning_0039">
+The "slave queue ID" of the network interface: [#!variable!interface_name!#] in the bond: [#!variable!bond_name!#] has changed.
+- [#!variable!old_value!#] -> [#!variable!new_value!#]
+  Note: This should always be '0'. It is used to provide advanced routing in certain bonding modes which is not supported in the #!string!brand_0004!#.
+  Note: You can learn more about this by reading the "3.6 Overriding Configuration for Special Cases" section here: https://www.kernel.org/doc/Documentation/networking/bonding.txt
+		</key>
+		<key name="scan_bond_warning_0040">
+A new network interface named: [#!variable!interface_name!#] has been added to the bond: [#!variable!bond_name!#].
+- Link (MII) Status: [#!variable!mii_status!#]
+- Link Speed:        [#!variable!speed!#]
+- Duplex:            [#!variable!duplex!#]
+- Failure Count:     [#!variable!failure_count!#]
+- MAC address:       [#!variable!mac!#]
+- Slave Queue ID:    [#!variable!slave_queue_id!#]
+		</key>
+		<key name="scan_bond_warning_0041">
+The network interface named: [#!variable!interface_name!#] that was a member of the bond: [#!variable!bond_name!#] has vanished!
+		</key>
+		<key name="scan_bond_warning_0042">
+A new network bond called: [#!variable!bond_name!#] was found!
+- Mode:                    [#!variable!mode!#]
+- Primary Interface:       [#!variable!primary_slave!#]
+- Primary Reselect Policy: [#!variable!primary_reselect!#]
+- Active Interface:        [#!variable!active_slave!#]
+- Link Status:             [#!variable!mii_status!#]
+- Link Check Interval:     [#!variable!mii_polling_interval!#] milliseconds
+- Link Up Delay:           [#!variable!up_delay!#] milliseconds
+- Link Down Delay:         [#!variable!down_delay!#] milliseconds
+		</key>
+		<key name="scan_bond_warning_0043">
+The network bond: [#!variable!bond_name!#] has vanished!
+		</key>
 		
-		<!-- States -->
+		<!-- States (not the US kind) -->
 		<key name="scan_bond_state_0001">Up</key>
 		<key name="scan_bond_state_0002">Down</key>
-		<key name="scan_bond_state_0003">Going Back Up (waiting for the 'up' delay to expire)</key>
+		<key name="scan_bond_state_0003">Going Back Up</key>
+		<key name="scan_bond_state_0004">Unknown</key>
+		<key name="scan_bond_state_0005">Full Duplex</key>
+		<key name="scan_bond_state_0006">Half Duplex</key>
 		
 		<!-- Errors -->
 		<key name="scan_bond_error_0001"></key>

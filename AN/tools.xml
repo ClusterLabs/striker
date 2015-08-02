@@ -65,6 +65,11 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_suffix_0019">vAC</key>	<!-- volts AC -->
 		<key name="tools_suffix_0020">a</key>	<!-- amps -->
 		<key name="tools_suffix_0021">rpm</key>	<!-- rotations per minute. -->
+		<key name="tools_suffix_0022">#!variable!speed!# bps</key>	<!-- bits per second. -->
+		<key name="tools_suffix_0023">#!variable!speed!# Kbps</key>	<!-- kilobits per second. -->
+		<key name="tools_suffix_0024">#!variable!speed!# Mbps</key>	<!-- megabits per second. -->
+		<key name="tools_suffix_0025">#!variable!speed!# Gbps</key>	<!-- gigabits per second. -->
+		<key name="tools_suffix_0026">#!variable!speed!# Tbps</key>	<!-- terabits per second. -->
 		
 		<!-- Default values -->
 		<key name="tools_default_0001">Debug</key>
