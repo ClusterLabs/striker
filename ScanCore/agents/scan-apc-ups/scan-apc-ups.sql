@@ -1,10 +1,11 @@
 -- This is the database schema for the 'APC UPS Scan Agent'.
 
 CREATE TABLE apc_ups (
-	apc_ups_id			bigserial			primary key,
+	apc_ups_uuid			uuid				primary key,
 	apc_ups_host_uuid		uuid				not null,
-	apc_ups_fqdn			text,
-	apc_ups_ip			text,
+	apc_ups_serial_number		text				not null,
+	apc_ups_name			text				not null,
+	apc_ups_ip			text				not null,
 	apc_ups_ac_restore_delay	numeric,
 	apc_ups_shutdown_delay		numeric,
 	apc_ups_firmware_version	text,
@@ -15,7 +16,6 @@ CREATE TABLE apc_ups (
 	apc_ups_manufactured_date	text,
 	apc_ups_model			text,
 	apc_ups_temperature_units	text,
-	apc_ups_serial_number		text,
 	apc_ups_nmc_firmware_version	text,
 	apc_ups_nmc_serial_number	text,
 	apc_ups_nmc_mac_address		text,
@@ -27,10 +27,11 @@ ALTER TABLE apc_ups OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_ups (
 	history_id			bigserial,
-	apc_ups_id			bigint,
-	apc_ups_host_uuid		uuid,
-	apc_ups_fqdn			text,
-	apc_ups_ip			text,
+	apc_ups_uuid			uuid				not null,
+	apc_ups_host_uuid		uuid				not null,
+	apc_ups_serial_number		text				not null,
+	apc_ups_name			text				not null,
+	apc_ups_ip			text				not null,
 	apc_ups_ac_restore_delay	numeric,
 	apc_ups_shutdown_delay		numeric,
 	apc_ups_firmware_version	text,
@@ -41,7 +42,6 @@ CREATE TABLE history.apc_ups (
 	apc_ups_manufactured_date	text,
 	apc_ups_model			text,
 	apc_ups_temperature_units	text,
-	apc_ups_serial_number		text,
 	apc_ups_nmc_firmware_version	text,
 	apc_ups_nmc_serial_number	text,
 	apc_ups_nmc_mac_address		text,
@@ -54,11 +54,12 @@ AS $$
 DECLARE
 	history_apc_ups RECORD;
 BEGIN
-	SELECT INTO history_apc_ups * FROM apc_ups WHERE apc_ups_id=new.apc_ups_id;
+	SELECT INTO history_apc_ups * FROM apc_ups WHERE apc_ups_uuid=new.apc_ups_uuid;
 	INSERT INTO history.apc_ups
-		(apc_ups_id,
+		(apc_ups_uuid,
 		 apc_ups_host_uuid, 
-		 apc_ups_fqdn, 
+		 apc_ups_serial_number, 
+		 apc_ups_name, 
 		 apc_ups_ip, 
 		 apc_ups_ac_restore_delay, 
 		 apc_ups_shutdown_delay, 
@@ -70,15 +71,15 @@ BEGIN
 		 apc_ups_manufactured_date, 
 		 apc_ups_model, 
 		 apc_ups_temperature_units, 
-		 apc_ups_serial_number, 
 		 apc_ups_nmc_firmware_version,
 		 apc_ups_nmc_serial_number,
 		 apc_ups_nmc_mac_address,
 		 modified_date)
 	VALUES
-		(history_apc_ups.apc_ups_id,
+		(history_apc_ups.apc_ups_uuid,
 		 history_apc_ups.apc_ups_host_uuid, 
-		 history_apc_ups.apc_ups_fqdn,
+		 history_apc_ups.apc_ups_serial_number, 
+		 history_apc_ups.apc_ups_name,
 		 history_apc_ups.apc_ups_ip,
 		 history_apc_ups.apc_ups_ac_restore_delay, 
 		 history_apc_ups.apc_ups_shutdown_delay, 
@@ -90,7 +91,6 @@ BEGIN
 		 history_apc_ups.apc_ups_manufactured_date, 
 		 history_apc_ups.apc_ups_model, 
 		 history_apc_ups.apc_ups_temperature_units, 
-		 history_apc_ups.apc_ups_serial_number, 
 		 history_apc_ups.apc_ups_nmc_firmware_version,
 		 history_apc_ups.apc_ups_nmc_serial_number,
 		 history_apc_ups.apc_ups_nmc_mac_address,
@@ -109,7 +109,7 @@ CREATE TRIGGER trigger_apc_ups
 -- Battery stuff
 CREATE TABLE apc_ups_battery (
 	apc_ups_battery_id			bigserial			primary key,
-	apc_ups_battery_apc_ups_id		bigint				not null,
+	apc_ups_battery_apc_ups_uuid		uuid				not null,
 	apc_ups_battery_replacement_date	text,
 	apc_ups_battery_health			numeric,
 	apc_ups_battery_model			text,
@@ -121,14 +121,14 @@ CREATE TABLE apc_ups_battery (
 	apc_ups_battery_voltage			numeric,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(apc_ups_battery_apc_ups_id) REFERENCES apc_ups(apc_ups_id)
+	FOREIGN KEY(apc_ups_battery_apc_ups_uuid) REFERENCES apc_ups(apc_ups_uuid)
 );
 ALTER TABLE apc_ups_battery OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_ups_battery (
 	history_id				bigserial,
 	apc_ups_battery_id			bigint				not null,
-	apc_ups_battery_apc_ups_id		bigint				not null,
+	apc_ups_battery_apc_ups_uuid		uuid				not null,
 	apc_ups_battery_replacement_date	text,
 	apc_ups_battery_health			numeric,
 	apc_ups_battery_model			text,
@@ -150,7 +150,7 @@ BEGIN
 	SELECT INTO history_apc_ups_battery * FROM apc_ups_battery WHERE apc_ups_battery_id=new.apc_ups_battery_id;
 	INSERT INTO history.apc_ups_battery
 		(apc_ups_battery_id,
-		 apc_ups_battery_apc_ups_id,
+		 apc_ups_battery_apc_ups_uuid,
 		 apc_ups_battery_replacement_date,
 		 apc_ups_battery_health,
 		 apc_ups_battery_model,
@@ -163,7 +163,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_apc_ups_battery.apc_ups_battery_id,
-		 history_apc_ups_battery.apc_ups_battery_apc_ups_id,
+		 history_apc_ups_battery.apc_ups_battery_apc_ups_uuid,
 		 history_apc_ups_battery.apc_ups_battery_replacement_date,
 		 history_apc_ups_battery.apc_ups_battery_health,
 		 history_apc_ups_battery.apc_ups_battery_model,
@@ -188,7 +188,7 @@ CREATE TRIGGER trigger_apc_ups_battery
 -- Input power
 CREATE TABLE apc_ups_input (
 	apc_ups_input_id			bigserial			primary key,
-	apc_ups_input_apc_ups_id		bigint				not null,
+	apc_ups_input_apc_ups_uuid		uuid				not null,
 	apc_ups_input_frequency			numeric,
 	apc_ups_input_sensitivity		numeric,
 	apc_ups_input_voltage			numeric,
@@ -196,14 +196,14 @@ CREATE TABLE apc_ups_input (
 	apc_ups_input_1m_minimum_input_voltage	numeric,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(apc_ups_input_apc_ups_id) REFERENCES apc_ups(apc_ups_id)
+	FOREIGN KEY(apc_ups_input_apc_ups_uuid) REFERENCES apc_ups(apc_ups_uuid)
 );
 ALTER TABLE apc_ups_input OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_ups_input (
 	history_id				bigserial,
 	apc_ups_input_id			bigint				not null,
-	apc_ups_input_apc_ups_id		bigint				not null,
+	apc_ups_input_apc_ups_uuid		uuid				not null,
 	apc_ups_input_frequency			numeric,
 	apc_ups_input_sensitivity		numeric,
 	apc_ups_input_voltage			numeric,
@@ -221,7 +221,7 @@ BEGIN
 	SELECT INTO history_apc_ups_input * FROM apc_ups_input WHERE apc_ups_input_id=new.apc_ups_input_id;
 	INSERT INTO history.apc_ups_input
 		(apc_ups_input_id,
-		 apc_ups_input_apc_ups_id,
+		 apc_ups_input_apc_ups_uuid,
 		 apc_ups_input_frequency, 
 		 apc_ups_input_sensitivity, 
 		 apc_ups_input_voltage, 
@@ -230,7 +230,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_apc_ups_input.apc_ups_input_id,
-		 history_apc_ups_input.apc_ups_input_apc_ups_id,
+		 history_apc_ups_input.apc_ups_input_apc_ups_uuid,
 		 history_apc_ups_input.apc_ups_input_frequency, 
 		 history_apc_ups_input.apc_ups_input_sensitivity, 
 		 history_apc_ups_input.apc_ups_input_voltage, 
@@ -251,7 +251,7 @@ CREATE TRIGGER trigger_apc_ups_input
 -- Output power
 CREATE TABLE apc_ups_output (
 	apc_ups_output_id			bigserial			primary key,
-	apc_ups_output_apc_ups_id		bigint				not null,
+	apc_ups_output_apc_ups_uuid		uuid				not null,
 	apc_ups_output_load_percentage		numeric,
 	apc_ups_output_time_on_batteries	numeric,
 	apc_ups_output_estimated_runtime	numeric,
@@ -260,14 +260,14 @@ CREATE TABLE apc_ups_output (
 	apc_ups_output_total_output		numeric,
 	modified_date				timestamp with time zone	not null,
 	
-	FOREIGN KEY(apc_ups_output_apc_ups_id) REFERENCES apc_ups(apc_ups_id)
+	FOREIGN KEY(apc_ups_output_apc_ups_uuid) REFERENCES apc_ups(apc_ups_uuid)
 );
 ALTER TABLE apc_ups_output OWNER TO #!variable!user!#;
 
 CREATE TABLE history.apc_ups_output (
 	history_id				bigserial,
 	apc_ups_output_id			bigint				not null,
-	apc_ups_output_apc_ups_id		bigint				not null,
+	apc_ups_output_apc_ups_uuid		uuid				not null,
 	apc_ups_output_load_percentage		numeric,
 	apc_ups_output_time_on_batteries	numeric,
 	apc_ups_output_estimated_runtime	numeric,
@@ -286,7 +286,7 @@ BEGIN
 	SELECT INTO history_apc_ups_output * FROM apc_ups_output WHERE apc_ups_output_id=new.apc_ups_output_id;
 	INSERT INTO history.apc_ups_output
 		(apc_ups_output_id,
-		 apc_ups_output_apc_ups_id,
+		 apc_ups_output_apc_ups_uuid,
 		 apc_ups_output_load_percentage, 
 		 apc_ups_output_time_on_batteries, 
 		 apc_ups_output_estimated_runtime, 
@@ -296,7 +296,7 @@ BEGIN
 		 modified_date)
 	VALUES
 		(history_apc_ups_output.apc_ups_output_id,
-		 history_apc_ups_output.apc_ups_output_apc_ups_id,
+		 history_apc_ups_output.apc_ups_output_apc_ups_uuid,
 		 history_apc_ups_output.apc_ups_output_load_percentage, 
 		 history_apc_ups_output.apc_ups_output_time_on_batteries, 
 		 history_apc_ups_output.apc_ups_output_estimated_runtime, 

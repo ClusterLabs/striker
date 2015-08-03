@@ -415,7 +415,7 @@ https://alteeve.ca/w/Support
 - Model:            [#!variable!model!#] (may not be exact)
 - Serial Number:    [#!variable!serial_number!#]
 - Manufactured:     [#!variable!manufactured_date!#] (yyyy/mm/dd)
-- Host Name:        [#!variable!fqdn!#]
+- Host Name:        [#!variable!name!#]
 - IP Address:       [#!variable!ip!#]
 - Firmware Version: [#!variable!firmware_version!#]
 

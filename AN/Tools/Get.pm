@@ -66,6 +66,9 @@ sub uuid
 		{
 			chomp;
 			$uuid = lc($_);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "uuid", value1 => $uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		close $file_handle;
@@ -74,15 +77,24 @@ sub uuid
 	{
 		my $shell_call = $an->_uuidgen_path." -r";
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			$uuid = lc($_);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "uuid", value1 => $uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
 	
 	# Did we get a sane value?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "uuid", value1 => $uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# Yup. Set the host UUID if that's what we read.

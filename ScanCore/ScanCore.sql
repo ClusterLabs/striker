@@ -133,7 +133,7 @@ CREATE TABLE power (
 	power_host_uuid		uuid				not null,			-- The name of the node or dashboard that this power came from.
 	power_agent_name	text				not null,
 	power_record_locator	text,								-- Optional string used by the agent to identify the UPS
-	power_ups_fqdn		text				not null,			-- This is the full domain name of the UPS. This is used by ScanCore to determine which UPSes are powering a given node so this MUST match the host names used in the node's /etc/hosts file.
+	power_ups_name		text				not null,			-- This is the full domain name of the UPS. This is used by ScanCore to determine which UPSes are powering a given node so this MUST match the host names used in the node's /etc/hosts file.
 	power_on_battery	boolean				not null,			-- TRUE == use "time_remaining" to determine if graceful power off is needed. FALSE == power loss NOT imminent, do not power off node. 
 	power_seconds_left	numeric,								-- Should always be set, but not required *EXCEPT* when 'power_on_battery' is TRUE.
 	power_charge_percentage	numeric,						-- Percentage charge in the UPS. Used to determine when the dashboard should boot the node after AC restore
@@ -149,7 +149,7 @@ CREATE TABLE history.power (
 	power_host_uuid		uuid				not null,
 	power_agent_name	text				not null,
 	power_record_locator	text,
-	power_ups_fqdn		text				not null,
+	power_ups_name		text				not null,
 	power_on_battery	boolean				not null,
 	power_seconds_left	numeric,
 	power_charge_percentage	numeric,
@@ -168,7 +168,7 @@ BEGIN
 		 power_host_uuid,
 		 power_agent_name,
 		 power_record_locator,
-		 power_ups_fqdn, 
+		 power_ups_name, 
 		 power_on_battery,
 		 power_seconds_left,
 		 power_charge_percentage,
@@ -178,7 +178,7 @@ BEGIN
 		 history_power.power_host_uuid,
 		 history_power.power_agent_name,
 		 history_power.power_record_locator,
-		 history_power.power_ups_fqdn, 
+		 history_power.power_ups_name, 
 		 history_power.power_on_battery,
 		 history_power.power_seconds_left,
 		 history_power.power_charge_percentage,

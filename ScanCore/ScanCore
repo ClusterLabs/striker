@@ -82,14 +82,28 @@ SELECT * FROM ram_used ORDER BY modified_date DESC, ram_used_by ASC; SELECT * FR
 SELECT * FROM power ORDER BY modified_date DESC, power_agent_name ASC; SELECT * FROM history.power ORDER BY modified_date DESC, power_agent_name ASC;
 SELECT * FROM temperature ORDER BY modified_date DESC, temperature_agent_name ASC; SELECT * FROM history.temperature ORDER BY modified_date DESC, temperature_agent_name ASC;
 
-scan-clustat;
+scan_clustat;
 SELECT * FROM clustat ORDER BY modified_date DESC, clustat_uuid ASC; SELECT * FROM history.clustat ORDER BY modified_date DESC, clustat_uuid ASC;
 SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, history.clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC;
 SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, history.clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC;
 
-scan-bond;
+scan_bond;
 SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC; SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, history.bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC;
 SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC; SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, history.bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC;
+
+scan_apc_ups;
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT b.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, history.apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+
 
 =cut
 # =============================================================================
@@ -821,7 +835,7 @@ sub check_node_power_health
 	# Read in the names of the UPSes watched by this node.
 	my $query = "
 SELECT 
-    power_ups_fqdn 
+    power_ups_name 
 FROM 
     power 
 WHERE 
@@ -840,18 +854,18 @@ WHERE
 	my $results = $an->DB->do_db_query({query => $query});
 	foreach my $row (@{$results})
 	{
-		my $power_ups_fqdn = $row->[0];
+		my $power_ups_name = $row->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "query",                       value1 => $query, 
-			name2 => "ref: power::$power_ups_fqdn", value2 => ref($an->data->{power}{$power_ups_fqdn}),
+			name2 => "ref: power::$power_ups_name", value2 => ref($an->data->{power}{$power_ups_name}),
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do I know about this UPS?
-		if (ref($an->data->{power}{$power_ups_fqdn}))
+		if (ref($an->data->{power}{$power_ups_name}))
 		{
 			# Yup!
-			my $power_on_battery        = $an->data->{power}{$power_ups_fqdn}{power_on_battery};
-			my $power_charge_percentage = $an->data->{power}{$power_ups_fqdn}{power_charge_percentage};
+			my $power_on_battery        = $an->data->{power}{$power_ups_name}{power_on_battery};
+			my $power_charge_percentage = $an->data->{power}{$power_ups_name}{power_charge_percentage};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "power_on_battery",        value1 => $power_on_battery, 
 				name2 => "power_charge_percentage", value2 => $power_charge_percentage,
@@ -1124,7 +1138,7 @@ sub read_power_table
 	# nodes will be stale if they're off so they're not any use to us.
 	my $query = "
 SELECT 
-    power_ups_fqdn, 
+    power_ups_name, 
     power_on_battery, 
     power_seconds_left, 
     power_charge_percentage 
@@ -1144,27 +1158,27 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
-		my $power_ups_fqdn          = $row->[0];
+		my $power_ups_name          = $row->[0];
 		my $power_on_battery        = $row->[1] ? "TRUE" : "FALSE";
 		my $power_seconds_left      = $row->[2];
 		my $power_charge_percentage = $row->[3];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "power_ups_fqdn",          value1 => $power_ups_fqdn, 
+			name1 => "power_ups_name",          value1 => $power_ups_name, 
 			name2 => "power_on_battery",        value2 => $power_on_battery, 
 			name3 => "power_seconds_left",      value3 => $power_seconds_left, 
 			name4 => "power_charge_percentage", value4 => $power_charge_percentage, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Shovel it into the hash
-		$an->data->{power}{$power_ups_fqdn} = {
+		$an->data->{power}{$power_ups_name} = {
 			power_on_battery	=>	$power_on_battery, 
 			power_seconds_left	=>	$power_seconds_left, 
 			power_charge_percentage	=>	$power_charge_percentage 
 		};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "power::${power_ups_fqdn}::power_on_battery",        value1 => $an->data->{power}{$power_ups_fqdn}{power_on_battery}, 
-			name2 => "power::${power_ups_fqdn}::power_seconds_left",      value2 => $an->data->{power}{$power_ups_fqdn}{power_seconds_left}, 
-			name3 => "power::${power_ups_fqdn}::power_charge_percentage", value3 => $an->data->{power}{$power_ups_fqdn}{power_charge_percentage}, 
+			name1 => "power::${power_ups_name}::power_on_battery",        value1 => $an->data->{power}{$power_ups_name}{power_on_battery}, 
+			name2 => "power::${power_ups_name}::power_seconds_left",      value2 => $an->data->{power}{$power_ups_name}{power_seconds_left}, 
+			name3 => "power::${power_ups_name}::power_charge_percentage", value3 => $an->data->{power}{$power_ups_name}{power_charge_percentage}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -1560,7 +1574,7 @@ sub check_node_power
 	#   shut down.
 	my $query = "
 SELECT 
-    power_ups_fqdn, 
+    power_ups_name, 
     power_on_battery, 
     power_seconds_left 
 FROM 
@@ -1594,11 +1608,11 @@ WHERE
 	# One or more records were found.
 	foreach my $row (@{$results})
 	{
-		my $power_ups_fqdn     = $row->[0];
+		my $power_ups_name     = $row->[0];
 		my $power_on_battery   = $row->[1];
 		my $power_seconds_left = $row->[2];
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "power_ups_fqdn",     value1 => $power_ups_fqdn,
+			name1 => "power_ups_name",     value1 => $power_ups_name,
 			name2 => "power_on_battery",   value2 => $power_on_battery,
 			name3 => "power_seconds_left", value3 => $power_seconds_left,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2942,7 +2956,7 @@ sub update_db
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -3028,12 +3042,10 @@ WHERE
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{ram_used}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $ram_used_by (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{ram_used}{modified_date}{$modified_date}{ram_used_by}})
 		{
@@ -3161,7 +3173,6 @@ INSERT INTO
 				} # Seen ram_used_by?
 			} # foreach my $id 
 		} # foreach my $ram_used_by ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -3266,12 +3277,10 @@ WHERE
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{temperature}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $temperature_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}})
 		{
@@ -3419,7 +3428,6 @@ INSERT INTO
 				} # Seen temperature_agent_name?
 			} # foreach my $id 
 		} # foreach my $temperature_agent_name ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -3444,7 +3452,7 @@ INSERT INTO
 sub update_db_power
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_power" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Now read in all the 'power' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
@@ -3459,7 +3467,7 @@ sub update_db_power
 SELECT 
     power_agent_name, 
     power_record_locator, 
-    power_ups_fqdn, 
+    power_ups_name, 
     power_on_battery, 
     power_seconds_left, 
     power_charge_percentage, 
@@ -3483,7 +3491,7 @@ WHERE
 		{
 			my $power_agent_name        = $row->[0]; 
 			my $power_record_locator    = $row->[1]; 
-			my $power_ups_fqdn          = $row->[2]; 
+			my $power_ups_name          = $row->[2]; 
 			my $power_on_battery        = $row->[3] ? "TRUE" : "FALSE"; 
 			my $power_seconds_left      = $row->[4]; 
 			my $power_charge_percentage = $row->[5]; 
@@ -3491,7 +3499,7 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "power_agent_name",        value1 => $power_agent_name, 
 				name2 => "power_record_locator",    value2 => $power_record_locator, 
-				name3 => "power_ups_fqdn",          value3 => $power_ups_fqdn, 
+				name3 => "power_ups_name",          value3 => $power_ups_name, 
 				name4 => "power_on_battery",        value4 => $power_on_battery, 
 				name5 => "power_seconds_left",      value5 => $power_seconds_left, 
 				name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
@@ -3501,7 +3509,7 @@ WHERE
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
 				power_record_locator	=>	$power_record_locator,
-				power_ups_fqdn		=>	$power_ups_fqdn,
+				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
 				power_seconds_left	=>	$power_seconds_left,
 				power_charge_percentage	=>	$power_charge_percentage,
@@ -3511,7 +3519,7 @@ WHERE
 			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen}     = 0;
 			$an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
 				power_record_locator	=>	$power_record_locator,
-				power_ups_fqdn		=>	$power_ups_fqdn,
+				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
 				power_seconds_left	=>	$power_seconds_left,
 				power_charge_percentage	=>	$power_charge_percentage,
@@ -3522,24 +3530,22 @@ WHERE
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{power}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $power_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}})
 		{
 			my $power_record_locator    = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_record_locator};
-			my $power_ups_fqdn          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_ups_fqdn};
+			my $power_ups_name          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_ups_name};
 			my $power_on_battery        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_on_battery};
 			my $power_seconds_left      = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_seconds_left};
 			my $power_charge_percentage = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_charge_percentage};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "power_agent_name",        value1 => $power_agent_name, 
 				name2 => "power_record_locator",    value2 => $power_record_locator, 
-				name3 => "power_ups_fqdn",          value3 => $power_ups_fqdn, 
+				name3 => "power_ups_name",          value3 => $power_ups_name, 
 				name4 => "power_on_battery",        value4 => $power_on_battery, 
 				name5 => "power_seconds_left",      value5 => $power_seconds_left, 
 				name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
@@ -3581,8 +3587,7 @@ WHERE
 UPDATE 
     public.power
 SET
-    power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    power_ups_fqdn          = ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
+    power_ups_name          = ".$an->data->{sys}{use_db_fh}->quote($power_ups_name).", 
     power_on_battery        = ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
     power_seconds_left      = ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
@@ -3590,7 +3595,9 @@ SET
 WHERE 
     power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    power_agent_name      = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)." 
+    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)." 
+AND 
+    power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator)." 
 ;";
 							# Now record the query in the array
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -3610,7 +3617,7 @@ INSERT INTO
     power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
-    power_ups_fqdn, 
+    power_ups_name, 
     power_on_battery, 
     power_seconds_left, 
     power_charge_percentage, 
@@ -3619,7 +3626,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_ups_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
@@ -3649,17 +3656,26 @@ INSERT INTO
     power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
-    power_ups_fqdn, 
+    power_ups_name, 
     power_on_battery, 
     power_seconds_left, 
     power_charge_percentage, 
     modified_date 
 ) VALUES (
-    (SELECT power_id FROM public.power WHERE power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)."), 
+    (
+        SELECT 
+            power_id 
+        FROM 
+            public.power 
+        WHERE 
+            power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)."
+        AND 
+            power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator)."
+    ), 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
-    ".$an->data->{sys}{use_db_fh}->quote($power_ups_fqdn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($power_ups_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
@@ -3675,7 +3691,6 @@ INSERT INTO
 				} # Seen power_agent_name?
 			} # foreach my $id 
 		} # foreach my $power_agent_name ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -3937,12 +3952,10 @@ WHERE
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{agents}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{agents}{modified_date}{$modified_date}{agent_name}})
 		{
@@ -4077,7 +4090,6 @@ INSERT INTO
 				} # Seen agent_name?
 			} # foreach my $id 
 		} # foreach my $agent_name ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -4177,12 +4189,10 @@ FROM
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
-	my $first_record = 1;
 	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
-			name2 => "first_record",  value2 => $first_record,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $host_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
 		{
@@ -4314,7 +4324,6 @@ INSERT INTO
 				} # Seen host_uuid?
 			} # foreach my $id 
 		} # foreach my $host_uuid ...
-		$first_record = 0;
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.

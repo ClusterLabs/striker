@@ -117,7 +117,6 @@ sub do_db_write
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
-			#print "id: [$id], query:\n$query\n\n";
 			#print "id: [$id], query: ============\n$query\n============\n";
 			#$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
@@ -211,7 +210,7 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -220,6 +219,9 @@ sub connect_to_databases
 	
 	# We need the host_uuid before we connect.
 	$an->Get->uuid({get => 'host_uuid'}) if not $an->data->{sys}{host_uuid};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $connections            = 0;
 	my $failed_connections     = [];

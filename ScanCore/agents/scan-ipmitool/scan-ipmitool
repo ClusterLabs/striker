@@ -57,15 +57,18 @@ my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0
 my $an = AN::Tools->new({data => 
 	{
 		path			=>	{
-			'anvil-report-ipmi-details'	=>	"/sbin/striker/anvil-report-ipmi-details",
-			core_strings			=>	"$scancore_directory/ScanCore.xml",
-			ipmitool			=>	"/usr/bin/ipmitool",
-			log_file			=>	"/var/log/striker.log",
-			node_cache			=>	"/var/www/home/cache", 
-			sql				=>	"$running_directory/$THIS_FILE.sql",
-			striker_config			=>	"/etc/striker/striker.conf",
-			striker_strings			=>	"$scancore_directory/Data/strings.xml",
-			strings				=>	"$running_directory/$THIS_FILE.xml",
+			'anvil-report-ipmi-details' =>	"/sbin/striker/anvil-report-ipmi-details",
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it ScanCore, too.
+			host_uuid		=>	"/etc/striker/host.uuid",
+			ipmitool		=>	"/usr/bin/ipmitool",
+			log_file		=>	"/var/log/striker.log",
+			node_cache		=>	"/var/www/home/cache", 
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"$scancore_directory/Data/strings.xml",
+			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
 		# This is used so that the user can set the language in on
 		# striker.conf variable.

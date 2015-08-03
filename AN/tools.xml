@@ -276,6 +276,72 @@ Variables:
 |- #!variable!name16!#: [#!variable!value16!#]
 \- #!variable!name17!#: [#!variable!value17!#]
 		</key>
+		<key name="an_variables_0018">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+|- #!variable!name15!#: [#!variable!value15!#]
+|- #!variable!name16!#: [#!variable!value16!#]
+|- #!variable!name17!#: [#!variable!value17!#]
+\- #!variable!name18!#: [#!variable!value18!#]
+		</key>
+		<key name="an_variables_0019">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+|- #!variable!name15!#: [#!variable!value15!#]
+|- #!variable!name16!#: [#!variable!value16!#]
+|- #!variable!name17!#: [#!variable!value17!#]
+|- #!variable!name18!#: [#!variable!value18!#]
+\- #!variable!name19!#: [#!variable!value19!#]
+		</key>
+		<key name="an_variables_0020">
+Variables:
+|- #!variable!name1!#: [#!variable!value1!#]
+|- #!variable!name2!#: [#!variable!value2!#]
+|- #!variable!name3!#: [#!variable!value3!#]
+|- #!variable!name4!#: [#!variable!value4!#]
+|- #!variable!name5!#: [#!variable!value5!#]
+|- #!variable!name6!#: [#!variable!value6!#]
+|- #!variable!name7!#: [#!variable!value7!#]
+|- #!variable!name8!#: [#!variable!value8!#]
+|- #!variable!name9!#: [#!variable!value9!#]
+|- #!variable!name10!#: [#!variable!value10!#]
+|- #!variable!name11!#: [#!variable!value11!#]
+|- #!variable!name12!#: [#!variable!value12!#]
+|- #!variable!name13!#: [#!variable!value13!#]
+|- #!variable!name14!#: [#!variable!value14!#]
+|- #!variable!name15!#: [#!variable!value15!#]
+|- #!variable!name16!#: [#!variable!value16!#]
+|- #!variable!name17!#: [#!variable!value17!#]
+|- #!variable!name18!#: [#!variable!value18!#]
+|- #!variable!name19!#: [#!variable!value19!#]
+\- #!variable!name20!#: [#!variable!value20!#]
+		</key>
 		
 		<!-- Alert titles -->
 		<key name="an_alert_title_0001">Debug</key>
