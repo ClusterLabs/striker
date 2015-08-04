@@ -92,17 +92,15 @@ SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primar
 SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC; SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, history.bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC;
 
 scan_apc_ups;
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT b.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, history.apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT b.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, history.apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
 
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+scan_ipmitool;
+SELECT a.host_name, b.ipmitool_sensor_host, b.ipmitool_sensor_name AS name, b.ipmitool_sensor_units AS units, b.ipmitool_sensor_status AS state, b.ipmitool_sensor_high_critical AS high_crit, b.ipmitool_sensor_high_warning AS high_warn, b.ipmitool_sensor_low_critical AS low_crit, b.ipmitool_sensor_low_warning AS low_warn, b.modified_date FROM hosts a, ipmitool b WHERE a.host_uuid = b.ipmitool_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.ipmitool_sensor_host ASC, b.ipmitool_sensor_name ASC;
 
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
+SELECT a.host_name, b.ipmitool_sensor_host, b.ipmitool_sensor_name AS name, c.ipmitool_value_sensor_value AS value, b.ipmitool_sensor_units AS units, b.ipmitool_sensor_status AS state, b.ipmitool_sensor_high_critical AS high_crit, b.ipmitool_sensor_high_warning AS high_warn, b.ipmitool_sensor_low_critical AS low_crit, b.ipmitool_sensor_low_warning AS low_warn, b.modified_date FROM hosts a, ipmitool b, ipmitool_value c WHERE a.host_uuid = b.ipmitool_host_uuid AND b.ipmitool_uuid = c.ipmitool_value_ipmitool_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.ipmitool_sensor_host ASC, b.ipmitool_sensor_name ASC;
 
 
 =cut
@@ -124,6 +122,10 @@ $| = 1;
 # This allows our XML and SQL files to be found, even if the path the program
 # is in changes.
 my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
 
 # Get the handle to the AN::Tools and preset some variables I will use.
 my $an = AN::Tools->new({data => 
@@ -260,6 +262,10 @@ if (not $connections)
 	exit(1);
 }
 
+# Before we can process or sync alerts, we need to make sure we've read in the strings files for any
+# agents that have registered alerts (pending or historical).
+load_agent_strings($an);
+
 # Check for and process alert that may have not been sent when we last ran. This will also load scan agent
 # strings XML files as needed
 process_alerts($an, 1);
@@ -283,7 +289,7 @@ $an->Log->entry({
 	line		=>	__LINE__,
 	log_to		=>	$an->data->{path}{log_file},
 });
-while (1)
+while(1)
 {
 	# Re-read the configuration
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
@@ -839,14 +845,8 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_uuid = (
-        SELECT 
-            host_uuid 
-        FROM 
-            hosts 
-        WHERE 
-            host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
-	);";
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1684,38 +1684,37 @@ WHERE
 	return ($node_power_ok);
 }
 
-# This looks at any alerts and, for each agent with a registered alert, reads in it's strings file.
+# This looks at any agents and reads in their strings XML files.
 sub load_agent_strings
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_agent_strings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_agent_strings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $query = "
-SELECT DISTINCT 
-    alert_agent_name
-FROM 
-    history.alerts 
-WHERE 
-    alert_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
-	my $results = $an->DB->do_db_query({query => $query});
+	# Loop through the agents directory and call each agent. Record how long it takes and note the exit 
+	# code, then record the run-data in the database.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
+		name1 => "path::agents_directory", value1 => $an->data->{path}{agents_directory}
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
+	scan_directory($an, $an->data->{path}{agents_directory});
+	
+	# Now loop through the agents I found and try calling them.
+	foreach my $agent (sort {$a cmp $b} @{$an->data->{sys}{agents}})
 	{
-		# One or more records were found.
-		my $alert_agent_name = $row->[0]; 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "alert_agent_name", value1 => $alert_agent_name
+		### TODO: Put a time limit on these...
+		my $strings =  $agent.".xml";
+		   $agent   =~ s/^.*\///;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "agent",   value1 => $agent, 
+			name2 => "strings", value2 => $strings, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $agent_strings = $alert_agent_name eq "ScanCore" ? $an->data->{path}{scancore_strings} : $an->data->{path}{agents_directory}."/$alert_agent_name/$alert_agent_name.xml";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "agent_strings", value1 => $agent_strings, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$an->String->read_words({file => $agent_strings});
+		if ((-e $strings) && (-r $strings))
+		{
+			# Read the strings file.
+			$an->String->read_words({file => $strings});
+		}
 	}
+	$an->data->{sys}{agents} = [];
 	
 	return(0);
 }
@@ -1728,10 +1727,6 @@ sub process_alerts
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_alerts", }, message_key => "tools_log_0003", message_variables => { 
 		name1 => "first_run", value1 => $first_run
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Before we can process or sync alerts, we need to make sure we've read in the strings files for any
-	# agents that have registered alerts (pending or historical).
-	load_agent_strings($an);
 	
 	# Read in all pending alerts
 	my $query = "
@@ -3465,6 +3460,7 @@ sub update_db_power
 		# Read in the history schema
 		my $query = "
 SELECT 
+    power_uuid, 
     power_agent_name, 
     power_record_locator, 
     power_ups_name, 
@@ -3489,25 +3485,28 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $power_agent_name        = $row->[0]; 
-			my $power_record_locator    = $row->[1]; 
-			my $power_ups_name          = $row->[2]; 
-			my $power_on_battery        = $row->[3] ? "TRUE" : "FALSE"; 
-			my $power_seconds_left      = $row->[4]; 
-			my $power_charge_percentage = $row->[5]; 
-			my $modified_date           = $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-				name1 => "power_agent_name",        value1 => $power_agent_name, 
-				name2 => "power_record_locator",    value2 => $power_record_locator, 
-				name3 => "power_ups_name",          value3 => $power_ups_name, 
-				name4 => "power_on_battery",        value4 => $power_on_battery, 
-				name5 => "power_seconds_left",      value5 => $power_seconds_left, 
-				name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
-				name7 => "modified_date",           value7 => $modified_date
+			my $power_uuid              = $row->[0]; 
+			my $power_agent_name        = $row->[1]; 
+			my $power_record_locator    = $row->[2]; 
+			my $power_ups_name          = $row->[3]; 
+			my $power_on_battery        = $row->[4] ? "TRUE" : "FALSE"; 
+			my $power_seconds_left      = $row->[5]; 
+			my $power_charge_percentage = $row->[6]; 
+			my $modified_date           = $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "power_uuid",              value1 => $power_uuid, 
+				name2 => "power_agent_name",        value2 => $power_agent_name, 
+				name3 => "power_record_locator",    value3 => $power_record_locator, 
+				name4 => "power_ups_name",          value4 => $power_ups_name, 
+				name5 => "power_on_battery",        value5 => $power_on_battery, 
+				name6 => "power_seconds_left",      value6 => $power_seconds_left, 
+				name7 => "power_charge_percentage", value7 => $power_charge_percentage, 
+				name8 => "modified_date",           value8 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
+				power_uuid		=>	$power_uuid, 
 				power_record_locator	=>	$power_record_locator,
 				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
@@ -3518,6 +3517,7 @@ WHERE
 			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{'exists'} = 1;
 			$an->data->{db_data}{$id}{power}{power_agent_name}{$power_agent_name}{seen}     = 0;
 			$an->data->{db_data}{$id}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name} = {
+				power_uuid		=>	$power_uuid, 
 				power_record_locator	=>	$power_record_locator,
 				power_ups_name		=>	$power_ups_name,
 				power_on_battery	=>	$power_on_battery,
@@ -3537,19 +3537,21 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $power_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}})
 		{
+			my $power_uuid              = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_uuid};
 			my $power_record_locator    = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_record_locator};
 			my $power_ups_name          = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_ups_name};
 			my $power_on_battery        = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_on_battery};
 			my $power_seconds_left      = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_seconds_left};
 			my $power_charge_percentage = $an->data->{db_data}{unified}{power}{modified_date}{$modified_date}{power_agent_name}{$power_agent_name}{power_charge_percentage};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-				name1 => "power_agent_name",        value1 => $power_agent_name, 
-				name2 => "power_record_locator",    value2 => $power_record_locator, 
-				name3 => "power_ups_name",          value3 => $power_ups_name, 
-				name4 => "power_on_battery",        value4 => $power_on_battery, 
-				name5 => "power_seconds_left",      value5 => $power_seconds_left, 
-				name6 => "power_charge_percentage", value6 => $power_charge_percentage, 
-				name7 => "modified_date",           value7 => $modified_date
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "power_uuid",              value1 => $power_uuid, 
+				name2 => "power_agent_name",        value2 => $power_agent_name, 
+				name3 => "power_record_locator",    value3 => $power_record_locator, 
+				name4 => "power_ups_name",          value4 => $power_ups_name, 
+				name5 => "power_on_battery",        value5 => $power_on_battery, 
+				name6 => "power_seconds_left",      value6 => $power_seconds_left, 
+				name7 => "power_charge_percentage", value7 => $power_charge_percentage, 
+				name8 => "modified_date",           value8 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -3591,13 +3593,13 @@ SET
     power_on_battery        = ".$an->data->{sys}{use_db_fh}->quote($power_on_battery).", 
     power_seconds_left      = ".$an->data->{sys}{use_db_fh}->quote($power_seconds_left).", 
     power_charge_percentage = ".$an->data->{sys}{use_db_fh}->quote($power_charge_percentage).", 
+    power_agent_name        = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
+    power_record_locator    = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
     modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)." 
-AND 
-    power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator)." 
+    power_uuid = ".$an->data->{sys}{use_db_fh}->quote($power_uuid)." 
 ;";
 							# Now record the query in the array
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -3614,6 +3616,7 @@ AND
 INSERT INTO 
     public.power
 (
+    power_uuid, 
     power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
@@ -3623,6 +3626,7 @@ INSERT INTO
     power_charge_percentage, 
     modified_date 
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($power_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
@@ -3652,7 +3656,7 @@ INSERT INTO
 INSERT INTO 
     history.power
 (
-    power_id, 
+    power_uuid, 
     power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
@@ -3662,16 +3666,7 @@ INSERT INTO
     power_charge_percentage, 
     modified_date 
 ) VALUES (
-    (
-        SELECT 
-            power_id 
-        FROM 
-            public.power 
-        WHERE 
-            power_agent_name = ".$an->data->{sys}{use_db_fh}->quote($power_agent_name)."
-        AND 
-            power_record_locator = ".$an->data->{sys}{use_db_fh}->quote($power_record_locator)."
-    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($power_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($power_record_locator).", 
@@ -4483,9 +4478,8 @@ sub call_agents
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "call_agents" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Loop through the agents directory and call each agent. Record how
-	# long it takes and note the exit code, then record the run-data in the
-	# database.
+	# Loop through the agents directory and call each agent. Record how long it takes and note the exit 
+	# code, then record the run-data in the database.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::agents_directory", value1 => $an->data->{path}{agents_directory}
 	}, file => $THIS_FILE, line => __LINE__});

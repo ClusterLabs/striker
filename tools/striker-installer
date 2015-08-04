@@ -86,9 +86,25 @@ my $conf = {
 		# 'disable' is processes.
 		# NOTE: 'haldaemon' needs to restart before 'acpid' will work,
 		#       if 'acpid' was just installed.
-		enable			=>	["iptables", "httpd", "haldaemon", "acpid", "network", "ntpd", "xinetd"],
+		enable			=>	[
+			"acpid", 
+			"haldaemon", 
+			"httpd", 
+			"iptables", 
+			"irqbalance", 
+			"ksmtuned", 
+			"ktune", 
+			"network", 
+			"ntpd", 
+			"numad", 
+			"tuned", 
+			"xinetd"
+		],
 		# These will be both chkconfig off'ed and stopped.
-		disable			=>	["ip6tables", "NetworkManager"],
+		disable			=>	[
+			"ip6tables", 
+			"NetworkManager"
+		],
 	},
 	directory	=>	{
 		apache			=>	"/etc/httpd",
@@ -170,7 +186,8 @@ my $conf = {
 			'fence-agents'			=>	0,
 			gcc				=>	0,
 			'gcc-c++'			=>	0,
-			httpd				=>	0, 
+			httpd				=>	0,
+			irqbalance			=>	0,
 			'kernel-devel'			=>	0,
 			'kernel-headers'		=>	0,
 			libcdio				=>	0, 
@@ -211,6 +228,7 @@ my $conf = {
 			'syslinux-tftpboot'		=>	0,
 			'openssl-devel'			=>	0,
 			'tftp-server'			=>	0,
+			tuned				=>	0,
 			unzip				=>	0,
 			'util-linux-ng'			=>	0,
 			'vim-common'			=>	0, 

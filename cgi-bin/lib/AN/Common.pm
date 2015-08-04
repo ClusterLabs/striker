@@ -149,8 +149,9 @@ chmod 755 ~/rsync.$node;";
 # fingerprint to known_hosts
 sub test_ssh_fingerprint
 {
-	my ($conf, $node) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node]\n");
+	my ($conf, $node, $silent) = @_;
+	$silent = 0 if not defined $silent;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node], silent: [$silent]\n");
 	
 	### TODO: This won't detect when the target's SSH key changed after a
 	###       node was replaced! Need to fix this.
@@ -188,14 +189,17 @@ sub test_ssh_fingerprint
 				}
 				# Add fingerprint to known_hosts
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
-				my $message = get_string($conf, {key => "message_0279", variables => {
-					node	=>	$node,
-				}});
-				print template($conf, "common.html", "generic-note", {
-					message	=>	$message,
-				});
-				#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
-				#print template($conf, "common.html", "shell-output-header");
+				if (not $silent)
+				{
+					my $message = get_string($conf, {key => "message_0279", variables => {
+						node	=>	$node,
+					}});
+					print template($conf, "common.html", "generic-note", {
+						message	=>	$message,
+					});
+					#print "Trying to add the node: <span class=\"fixed_width\">$node</span>'s ssh fingerprint to my list of known hosts...<br />";
+					#print template($conf, "common.html", "shell-output-header");
+				}
 				my $shell_call = "$conf->{path}{'ssh-keyscan'} $node 2>&1 >> ~/.ssh/known_hosts";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
 				open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -754,11 +758,16 @@ sub initialize_conf
 					"gpm",		# LSB compliant
 					"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
 					"iptables",	# LSB compliant
+					"irqbalance",	# LSB compliant
+					"ksmtuned",	# LSB compliant
+					"ktune",	# LSB compliant
 					"modclusterd",	# LSB compliant
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
 					"ntpd",		# LSB compliant
+					"numad",	# LSB compliant
 					"ricci",	# LSB compliant
 					"snmpd",
+					"tuned",	# LSB compliant
 				],
 				disable		=>	[
 					"acpid",

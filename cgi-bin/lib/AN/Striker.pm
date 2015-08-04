@@ -22,6 +22,11 @@ package AN::Striker;
 # Alteeve's Niche!  -  https://alteeve.com
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
+# TODO:
+# - Do not allow a node to withdraw if it is UpToDate and the peer is not!
+# - When cold-stopping, check if one node is UpToDate and the other not. In such a case, stop the 
+#   Inconsistent one FIRST.
+# 
 
 use strict;
 use warnings;

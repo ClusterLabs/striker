@@ -14,7 +14,7 @@ with 'scan_ipmitool_'.
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the ipmitool Scan Agent.</key>
 		
 		<!-- Strings that can change by rebranding -->
-		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using</key>
+		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using 'ipmitool' to read sensor data over the network.</key>
 		
 		<!-- Log strings -->
 		<key name="scan_ipmitool_log_0001">Starting to read the IPMI sensor values for: [#!variable!machine!#].</key>

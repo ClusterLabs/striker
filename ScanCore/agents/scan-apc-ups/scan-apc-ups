@@ -34,7 +34,11 @@ $| = 1;
 
 # This allows our XML and SQL files to be found, even if the path the program
 # is in changes.
-my $running_directory  = ($0                 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
 my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
 
 # Get the handle to the AN::Tools and preset some variables I will use.
@@ -229,9 +233,6 @@ $an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_va
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 
-# This needs to have the serial number appended when called.
-$an->data->{sys}{apc_ups_uuid_query} = "SELECT apc_ups_uuid FROM apc_ups WHERE apc_ups_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." AND apc_ups_serial_number";
-
 # Do the loading of the schemas and copying data from more up to date DBs if
 # the DB was loaded.
 prep_databases($an);
@@ -382,12 +383,6 @@ sub find_changes
 			name6 => "new_apc_ups_output_total_output",      value6 => $new_apc_ups_output_total_output,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# I need to setup the 'apc_ups_uuid' for this UPS's serial number.
-		my $this_apc_ups_uuid_query = $an->data->{sys}{apc_ups_uuid_query}." = ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_serial_number);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "this_apc_ups_uuid_query",   value1 => $this_apc_ups_uuid_query,
-		}, file => $THIS_FILE, line => __LINE__});
-		
 		# This returns the 'apc_ups_uuid' if the UPS is found.
 		if (read_last_scan($an, $new_apc_ups_serial_number))
 		{
@@ -495,9 +490,6 @@ sub find_changes
 				name5 => "old_apc_ups_output_voltage",           value5 => $old_apc_ups_output_voltage, 
 				name6 => "old_apc_ups_output_total_output",      value6 => $old_apc_ups_output_total_output, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Create the apc_ups_uuid query for this serial number.
-			my $this_apc_ups_uuid_query = $an->data->{sys}{apc_ups_uuid_query}." = ".$an->data->{sys}{use_db_fh}->quote($ups_serial_number);
 			
 			### Start comparing!
 			# Start with the core values;
@@ -2541,10 +2533,12 @@ AND
 		else
 		{
 			# No existing entry, do an INSERT.
-			my $query = "
+			my $power_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});
+			my $query      = "
 INSERT INTO  
     power 
 (
+    power_uuid, 
     power_host_uuid, 
     power_agent_name, 
     power_record_locator, 
@@ -2554,6 +2548,7 @@ INSERT INTO
     power_charge_percentage, 
     modified_date
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($power_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE).", 
     ".$an->data->{sys}{use_db_fh}->quote($apc_ups_serial_number).", 

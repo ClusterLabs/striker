@@ -129,7 +129,7 @@ CREATE TRIGGER trigger_alerts
 -- when the system needs to be powered off. All UPS-type scan agents must use
 -- this table (in addition to any tables they may wish to use)
 CREATE TABLE power (
-	power_id		bigserial			primary key,
+	power_uuid		uuid				primary key,
 	power_host_uuid		uuid				not null,			-- The name of the node or dashboard that this power came from.
 	power_agent_name	text				not null,
 	power_record_locator	text,								-- Optional string used by the agent to identify the UPS
@@ -145,7 +145,7 @@ ALTER TABLE power OWNER TO #!variable!user!#;
 
 CREATE TABLE history.power (
 	history_id		bigserial,
-	power_id		bigint				not null,
+	power_uuid		uuid				not null,
 	power_host_uuid		uuid				not null,
 	power_agent_name	text				not null,
 	power_record_locator	text,
@@ -162,9 +162,9 @@ AS $$
 DECLARE
 	history_power RECORD;
 BEGIN
-	SELECT INTO history_power * FROM power WHERE power_id = new.power_id;
+	SELECT INTO history_power * FROM power WHERE power_uuid = new.power_uuid;
 	INSERT INTO history.power
-		(power_id,
+		(power_uuid,
 		 power_host_uuid,
 		 power_agent_name,
 		 power_record_locator,
@@ -174,7 +174,7 @@ BEGIN
 		 power_charge_percentage,
 		 modified_date)
 	VALUES
-		(history_power.power_id,
+		(history_power.power_uuid,
 		 history_power.power_host_uuid,
 		 history_power.power_agent_name,
 		 history_power.power_record_locator,
@@ -196,7 +196,7 @@ CREATE TRIGGER trigger_power
 
 -- This stores alerts coming in from various agents
 CREATE TABLE temperature (
-	temperature_id		bigserial			primary key,
+	temperature_uuid	uuid				primary key,
 	temperature_host_uuid	uuid				not null,			-- The name of the node or dashboard that this temperature came from.
 	temperature_agent_name	text				not null,
 	temperature_sensor_host	text				not null,
@@ -212,7 +212,7 @@ ALTER TABLE temperature OWNER TO #!variable!user!#;
 
 CREATE TABLE history.temperature (
 	history_id		bigserial,
-	temperature_id		bigint				not null,
+	temperature_uuid	uuid				not null,
 	temperature_host_uuid	uuid				not null,
 	temperature_agent_name	text				not null,
 	temperature_sensor_host	text				not null,
@@ -229,9 +229,9 @@ AS $$
 DECLARE
 	history_temperature RECORD;
 BEGIN
-	SELECT INTO history_temperature * FROM temperature WHERE temperature_id = new.temperature_id;
+	SELECT INTO history_temperature * FROM temperature WHERE temperature_uuid = new.temperature_uuid;
 	INSERT INTO history.temperature
-		(temperature_id,
+		(temperature_uuid,
 		 temperature_host_uuid,
 		 temperature_agent_name,
 		 temperature_sensor_host, 
@@ -241,7 +241,7 @@ BEGIN
 		 temperature_is,
 		 modified_date)
 	VALUES
-		(history_temperature.temperature_id,
+		(history_temperature.temperature_uuid,
 		 history_temperature.temperature_host_uuid,
 		 history_temperature.temperature_agent_name,
 		 history_temperature.temperature_sensor_host, 

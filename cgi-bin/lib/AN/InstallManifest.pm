@@ -70,6 +70,7 @@ sub run_new_install_manifest
 		'gfs2-utils'			=>	0,
 		gpm				=>	0,
 		ipmitool			=>	0,
+		irqbalance			=>	0,
 		'kernel-headers'		=>	0,
 		'kernel-devel'			=>	0,
 		'libstdc++.i686' 		=>	0,
@@ -106,6 +107,7 @@ sub run_new_install_manifest
 		screen				=>	0,
 		syslinux			=>	0,
 		sysstat				=>	0,
+		tuned				=>	0,
 		'util-linux-ng'			=>	0,
 		'vim-enhanced'			=>	0,
 		'virt-viewer'			=>	0,
@@ -701,7 +703,7 @@ fi
 			
 			# Now rsync it to the node (using an 'expect' wrapper).
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Ensuring we've recorded: [$node]'s RSA fingerprint.");
-			AN::Common::test_ssh_fingerprint($conf, $node);
+			AN::Common::test_ssh_fingerprint($conf, $node, 1);	# 1 == silent
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
 			AN::Common::create_rsync_wrapper($conf, $node, $password);
 			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{config_file}";
