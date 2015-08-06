@@ -558,7 +558,7 @@ fi
 		}
 	}
 	
-	# Setup striker.conf if we've not hit problem and it doesn't exist.
+	# Setup striker.conf if we've not hit a problem and if it doesn't exist already.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], generate_config: [$generate_config]\n");
 	if (($return_code eq "0") && ($generate_config))
 	{
@@ -602,6 +602,16 @@ fi
 					my $db_host = $2;
 					$conf->{used_db_id}{$db_id}     = $db_host;
 					$conf->{used_db_host}{$db_host} = $db_id;
+				}
+				
+				# Enable safe_anvil_start if enabled in the InstallManifest.
+				if ($line =~ /^tools::safe_anvil_start::enabled\s/)
+				{
+					if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+					{
+						$striker_config .= "tools::safe_anvil_start::enabled	=	1\n";
+						next;
+					}
 				}
 				
 				$striker_config .= "$line\n";
@@ -10767,8 +10777,8 @@ sub update_nodes
 	# The OS update is good, but not fatal if it fails.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	$conf->{node}{$node1}{os_updated}    = 0;
-	$conf->{node}{$node2}{os_updated}    = 0;
+	   $conf->{node}{$node1}{os_updated} = 0;
+	   $conf->{node}{$node2}{os_updated} = 0;
 	my ($node1_rc) = update_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_rc) = update_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvi2_node1_current_password});
 	# 0 = update attempted
@@ -10818,18 +10828,9 @@ sub remove_priority_from_node
 	# Remove the 'priority=' line from our repos so that the update hits
 	# the web.
 	my $shell_call = "
-for repo in striker01.repo striker02.repo; 
+for repo in \$(ls /etc/yum.repos.d/);
 do 
-    if [ -e \"/etc/yum.repos.d/\$repo\" ];
-    then
-        if $(grep -q 'priority=' /etc/yum.repos.d/\$repo);
-        then 
-            echo Removing 'priority=' from /etc/yum.repos.d/\${repo}; 
-            sed '/priority=/d' /etc/yum.repos.d/\${repo} > /etc/yum.repos.d/\${repo}
-        else 
-            echo Priority not set in /etc/yum.repos.d/\${repo} 
-        fi
-    fi
+    sed -i '/priority=/d' /etc/yum.repos.d/\${repo};
 done
 ";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");

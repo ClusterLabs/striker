@@ -83,10 +83,12 @@ my $conf =  {
 		ls		=>	"/bin/ls",
 		lvs		=>	"/sbin/lvs",
 		ssh		=>	"/usr/bin/ssh",
+		striker_conf	=>	"/etc/striker/striker.conf",
 	},
 	services	=>	{},
 	sys		=>	{
-		debug		=>	1,
+		debug		=>	0,
+		enabled		=>	0,
 		node2_sleep	=>	120,
 		bad_ipmi	=>	0,
 	},
@@ -99,6 +101,13 @@ my $conf =  {
 };
 
 logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
+read_configuration($conf);
+if (not $conf->{tools}{safe_anvil_start}{enabled})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
+	exit(0);
+}
+
 read_hostname($conf);
 read_cluster_conf($conf);
 
@@ -1606,4 +1615,76 @@ sub read_hostname
 	}
 	
 	return($conf->{nodes}{me}{hostname});
+}
+
+# This reads in the configuration file.
+sub read_configuration
+{
+	my ($conf) = @_;
+	
+	my $fh = IO::Handle->new();
+	my $sc = "$conf->{path}{striker_conf}";
+	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
+	while (<$fh>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		next if $line !~ /=/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		next if $line =~ /^#/;
+		next if not $line;
+		my ($var, $val) = (split/=/, $line, 2);
+		$var =~ s/^\s+//;
+		$var =~ s/\s+$//;
+		$val =~ s/^\s+//;
+		$val =~ s/\s+$//;
+		next if (not $var);
+		_make_hash_reference($conf, $var, $val);
+	}
+	$fh->close();
+	
+	return(0);
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
 }
