@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This strings file is for the LSI RAID controller Scan Agent. Please be careful not to use names used by the 
+main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'.
+-->
+<words>
+	<!-- Canadian English -->
+	<name>scan-apc-ups.xml</name>
+	<version>0.0.001</version>
+	<langs>en_CA</langs>
+	<!-- Canadian English -->
+	<lang name="en_CA" long_name="English (Canadian)">
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the storcli Scan Agent.</key>
+		
+		<!-- Strings that can change by rebranding -->
+		<key name="scan_storcli_brand_0001">IPMI Scan Agent using the LSI/Avago 'storcli64' tool</key>
+		
+		<!-- Log strings -->
+		<key name="scan_storcli_log_0001">Found: [#!variable!count!#] controller(s).</key>
+		
+		<!-- Notices -->
+		<key name="scan_storcli_note_0001"></key>
+		
+		<!-- Warnings -->
+		<key name="scan_storcli_warning_0001"></key>
+		
+		<!-- Errors -->
+		<key name="scan_storcli_error_0001">The 'storcli64' program was not found at: [#!variable!path!#], exiting.</key>
+		<key name="scan_storcli_error_0002">The 'storcli64' program was found at: [#!variable!path!#], but it is not executable. exiting.</key>
+		<key name="scan_storcli_error_0003">No LSI/Avago-based RAID controllers were found, exiting.</key>
+		
+		<!-- IPMI Agent-specific messages -->
+		<key name="scan_storcli_message_0001">Starting #!string!scan_storcli_brand_0001!#:</key>
+		<key name="scan_storcli_message_0002"><![CDATA[
+ -=] IPMI Scan Agent
+
+DESCRIPTION
+
+This program is a "scan agent" for the ScanCore alert, monitoring and recovery
+tool for the Anvil! high-availabiltiy platform.
+
+It monitors health of LSI-based RAID controllers using the 'storcli64' command
+line tool. 
+
+On Anvil! nodes, the thermal information returned by the controller, BBU/FBU 
+and individual physical drives will be used by ScanCore to help determine when
+a node is getting dangerously hot. This information (along with thermal sensor
+data from other scan agents) will be used to decide when a node needs to be 
+powered down to avoid a dangerous over-temperature excursion.
+
+
+SWITCHES
+
+
+ -h, -?, --help
+
+	Show this dialog and exit.
+
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+							      Alteeve's Niche!
+		]]></key>
+		<key name="scan_storcli_message_0003"></key>
+		
+		<!-- These keys convert the often-cryptic control details into plain-language strings. The 
+		     key word matches the ScanCore database column name. Each entry has four prefixes;
+		     'name_' Is the straight name for the entry
+		     'info_' Is a short summary of the entry
+		     'long_' Is a longer explanation of the entry.
+		     'link_' Is an optional URL to further explain the entry.
+		-->
+		<key name="name_storcli_adapter_sas_address">SAS Address</key>
+		<key name="info_storcli_adapter_sas_address">SAS Address to identify the controller on the SAS domain</key>
+		<key name="long_storcli_adapter_sas_address">A SAS address is assigned by the manufacturer and is unique in the world, much like a MAC address in a network card or a VIN in a car. It use used to identify the controller amoungst all the other devices in the SAS domain.</key>
+		<key name="link_storcli_adapter_sas_address">https://en.wikipedia.org/wiki/Serial_attached_SCSI#Identification_and_addressing</key>
+		<key name="name_storcli_adapter_pci_address">PCI Address</key>
+		<key name="info_storcli_adapter_pci_address">Enumerated PCI bus address</key>
+		<key name="long_storcli_adapter_pci_address">On boot, the system probes the PCI bus looking for devices and sets an address for that device which drivers and other software can use to communicate with the device. This address may change when the system reboots.</key>
+		<key name="link_storcli_adapter_pci_address">https://en.wikipedia.org/wiki/PCI_configuration_space#Bus_enumeration</key>
+		<key name="name_storcli_adapter_manufacture_date">Date Manufactured</key>
+		<key name="info_storcli_adapter_manufacture_date">Date Manufactured (yyyy/mm/dd)</key>
+		<key name="long_storcli_adapter_manufacture_date">The date when the controller was manufactured.</key>
+		<key name="link_storcli_adapter_manufacture_date"></key>
+		<key name="name_storcli_adapter_rework_date">Rework Date</key>
+		<key name="info_storcli_adapter_rework_date">Rework Date (yyyy/mm/dd)</key>
+		<key name="long_storcli_adapter_rework_date">(unconfirmed) The date the controller was repaired or reworked. A value of '00/00/00' means the card was never reworked.</key>
+		<key name="link_storcli_adapter_rework_date"></key>
+		<key name="name_storcli_adapter_revision_number">Revision Number</key>
+		<key name="info_storcli_adapter_revision_number">Adapter Model Revision Number</key>
+		<key name="long_storcli_adapter_revision_number">On occasion, a manufacturer will make small changes to the design on a controller in the middle of a model's production. These changes are usually transparent to the user. To track these changes, a controller may be assigned a "revision number" to indicate what exact model of controller is in use.</key>
+		<key name="link_storcli_adapter_revision_number"></key>
+		<!-- Firmware info -->
+		<key name="name_storcli_firmware_package_build">Firmware Package Build</key>
+		<key name="info_storcli_firmware_package_build">Firmware Package Build</key>
+		<key name="long_storcli_firmware_package_build">(unconfirmed) This is the build number for the collection of various firmware types available for install on the various subcomponents of the controller.</key>
+		<key name="link_storcli_firmware_package_build"></key>
+		<key name="name_storcli_firmware_version">Firmware Version</key>
+		<key name="info_storcli_firmware_version">Firmware Version</key>
+		<key name="long_storcli_firmware_version">The "Firmware" is the software installed into the hardware that is used to control the operation of the controller. It is like a mini operating system specifically designed to manage and control the hardware.</key>
+		<key name="link_storcli_firmware_version">https://en.wikipedia.org/wiki/Firmware</key>
+		<key name="name_storcli_firmware_bios_version">BIOS Version</key>
+		<key name="info_storcli_firmware_bios_version">Controller BIOS Version</key>
+		<key name="long_storcli_firmware_bios_version">The BIOS is the component of the controller used to initialize the controller.</key>
+		<key name="link_storcli_firmware_bios_version">https://en.wikipedia.org/wiki/BIOS</key>
+		<key name="name_storcli_firmware_webbios_version">WebBIOS Version</key>
+		<key name="info_storcli_firmware_webbios_version">WebBIOS Version</key>
+		<key name="long_storcli_firmware_webbios_version">The WebBIOS is the graphical management tool built into the controller and accessible by pressing 'ctrl' + 'h' during the boot sequence. It provides a method of managing the controller's configuration and virtual disks without a higher level operating system. Instructions on how to use WebBIOS can be found in chapter 4 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_firmware_webbios_version"></key>
+		<key name="name_storcli_firmware_preboot_cli_version">Preboot CLI Version</key>
+		<key name="info_storcli_firmware_preboot_cli_version">Preboot Command Line Interface Version</key>
+		<key name="long_storcli_firmware_preboot_cli_version">The Preboot command line interface is accesible at boot time by pressing 'ctrl' + 'y'. It provides a command-line method of managing the controller using the same arguments as is used with the 'MegaCli64' command line tool, but without an operating system being available. Instructions on how to use WebBIOS can be found in chapter 7, section 7 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_firmware_preboot_cli_version"></key>
+		<key name="name_storcli_firmware_nvdata_version">NVData Version</key>
+		<key name="info_storcli_firmware_nvdata_version">Non-Volatime Data Version</key>
+		<key name="long_storcli_firmware_nvdata_version">(unconfirmed) The non-volatime data is where static information about the controller, like serial and model numbers, is stored.</key>
+		<key name="link_storcli_firmware_nvdata_version">https://en.wikipedia.org/wiki/Non-volatile_memory</key>
+		<key name="name_storcli_firmware_boot_block_version">Boot Block Version</key>
+		<key name="info_storcli_firmware_boot_block_version">Boot Block Version</key>
+		<key name="long_storcli_firmware_boot_block_version">The boot block is the section of code that the system's BIOS reads for instructions on how to boot the operating system.</key>
+		<key name="link_storcli_firmware_boot_block_version">https://en.wikipedia.org/wiki/Boot_sector</key>
+		<key name="name_storcli_firmware_bootloader_version">Bootloader Version</key>
+		<key name="info_storcli_firmware_bootloader_version">Bootloader Version</key>
+		<key name="long_storcli_firmware_bootloader_version">The bootloader is a small program used to initiate the controller's boot sequence.</key>
+		<key name="link_storcli_firmware_bootloader_version">https://en.wikipedia.org/wiki/Booting#BOOT-LOADER</key>
+		<key name="name_storcli_firmware_driver_name">Driver Name</key>
+		<key name="info_storcli_firmware_driver_name">Driver Name</key>
+		<key name="long_storcli_firmware_driver_name">The driver is the specialized application that allows the operating system to make use of the controller.</key>
+		<key name="link_storcli_firmware_driver_name">https://en.wikipedia.org/wiki/Device_driver</key>
+		<key name="name_storcli_firmware_driver_version">Driver Version</key>
+		<key name="info_storcli_firmware_driver_version">Driver Version</key>
+		<key name="long_storcli_firmware_driver_version">This is the version of the device driver used by the operating system to communicate with the controller.</key>
+		<key name="link_storcli_firmware_driver_version">https://en.wikipedia.org/wiki/Device_driver</key>
+		<key name="name_storcli_firmware_pending_images_in_flash">Pending Images in Flash</key>
+		<key name="info_storcli_firmware_pending_images_in_flash">Pending Firmware Image(s) in Flash</key>
+		<key name="long_storcli_firmware_pending_images_in_flash">(unconfirmed) The file name(s) of the firmware images in flash waiting to be written to memory.</key>
+		<key name="link_storcli_firmware_pending_images_in_flash"></key>
+		<!-- Bus info -->
+		<key name="name_storcli_bus_vendor_id">Vendor ID</key>
+		<key name="info_storcli_bus_vendor_id">PCI Bus Vendor ID</key>
+		<key name="long_storcli_bus_vendor_id">The PCI bus vendor ID is a unique 2-byte (16-bit) string allocated by the PCI-SIG (https://en.wikipedia.org/wiki/PCI-SIG) and used to uniquely identify manufacturer of computer equipment that uses the PCI bus in PC computers. This ID is used to identify the controller manufacturer and may differ from the branded manufacturer.</key>
+		<key name="link_storcli_bus_vendor_id">http://www.pcidatabase.com/vendor_details.php?id=239</key>
+		<key name="name_storcli_bus_device_id">Device ID</key>
+		<key name="info_storcli_bus_device_id">PCI Bus Device ID</key>
+		<key name="long_storcli_bus_device_id">The PCI bus device ID is a unique 2-byte (16-bit) string allocated by the hardware manufacturer to identify the device on the PCI bus. The operating system will use the Vendor ID and Device ID to determine which driver is needed to operate the device.</key>
+		<key name="link_storcli_bus_device_id">https://en.wikipedia.org/wiki/PCI_configuration_space#Standardized_registers</key>
+		<key name="name_storcli_bus_subvendor_id">Subsystem Vendor ID</key>
+		<key name="info_storcli_bus_subvendor_id">PCI Bus Subsystem Vendor ID</key>
+		<key name="long_storcli_bus_subvendor_id">The PCI bus subsystem vendor ID is used to identify the manufacturer of the installed device and may differ from the Vendor ID. For example, a Fujitsu branded RAID controller with an LSI-based RAID on Chip processor will have an LSI vendor ID and a Fujitsu subsystem ID. This information can be used by an operating system or driver to tweak how the device is operated and to present additional information to the user.</key>
+		<key name="link_storcli_bus_subvendor_id">https://en.wikipedia.org/wiki/PCI_configuration_space#Standardized_registers</key>
+		<key name="name_storcli_bus_subdevice_id">Subdevice ID</key>
+		<key name="info_storcli_bus_subdevice_id">PCI Bus Subdevice ID</key>
+		<key name="long_storcli_bus_subdevice_id">The PCI bus subdevice ID is used to identify variations of the same device. For example, an add-in controller versus a built-in version, or a hardware revision will have different subdevice ID numbers.</key>
+		<key name="link_storcli_bus_subdevice_id">https://en.wikipedia.org/wiki/PCI_configuration_space#Standardized_registers</key>
+		<key name="name_storcli_bus_host_interface">Host Interface</key>
+		<key name="info_storcli_bus_host_interface">Host Bus Interface Type</key>
+		<key name="long_storcli_bus_host_interface">The type of host bus used to connect the controller to the system.</key>
+		<key name="link_storcli_bus_host_interface">https://en.wikipedia.org/wiki/Bus_%28computing%29</key>
+		<key name="name_storcli_bus_device_interface">Device Interface</key>
+		<key name="info_storcli_bus_device_interface">Storage Device Interface</key>
+		<key name="long_storcli_bus_device_interface">The interface type and speed used to connect storage devices to the controller.</key>
+		<key name="link_storcli_bus_device_interface">https://en.wikipedia.org/wiki/Serial_attached_SCSI</key>
+		<key name="name_storcli_bus_bus_number">Bus Number</key>
+		<key name="info_storcli_bus_bus_number">PCI Bus Number</key>
+		<key name="long_storcli_bus_bus_number">This is the PCI bus number assigned to this controller by the system BIOS. This is the 'B' in 'BDF (Bus/Device/Function) Notation'.</key>
+		<key name="link_storcli_bus_bus_number">https://en.wikipedia.org/wiki/PCI_configuration_space#Technical_information</key>
+		<key name="name_storcli_bus_device_number">Device Number</key>
+		<key name="info_storcli_bus_device_number">PCI Device Number</key>
+		<key name="long_storcli_bus_device_number">This is the device number assigned to the device on its given bus by the system BIOS. This is the 'D' in 'BDF (Bus/Device/Function) Notation'.</key>
+		<key name="link_storcli_bus_device_number">https://en.wikipedia.org/wiki/PCI_configuration_space#Technical_information</key>
+		<key name="name_storcli_bus_function_number">Function Number</key>
+		<key name="info_storcli_bus_function_number">PCI Function Number</key>
+		<key name="long_storcli_bus_function_number">This number indicates the function number on the PCI bus used to access this device. Some devices, like combination modem and sound cards, will identify the different functions by each having a different PCI bus function number. In most cases, this is '0', as defined in the PCI specification. This is the 'F' in 'BDF (Bus/Device/Function) Notation'.</key>
+		<key name="link_storcli_bus_function_number">https://en.wikipedia.org/wiki/PCI_configuration_space#Technical_information</key>
+		
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		
+		<key name="scan_storcli_message_0003"></key>
+		<!-- Sensor message titles -->
+		<key name="scan_storcli_title_0001"></key>
+	</lang>
+</words>

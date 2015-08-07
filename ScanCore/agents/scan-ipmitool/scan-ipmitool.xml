@@ -17,7 +17,7 @@ with 'scan_ipmitool_'.
 		<key name="scan_ipmitool_brand_0001">IPMI Scan Agent using 'ipmitool' to read sensor data over the network.</key>
 		
 		<!-- Log strings -->
-		<key name="scan_ipmitool_log_0001">Starting to read the IPMI sensor values for: [#!variable!machine!#].</key>
+		<key name="scan_ipmitool_log_0001">Starting to read the IPMI sensor values for: [#!variable!machine!#]</key>
 		<key name="scan_ipmitool_log_0002">IPMI sensor values read from: [#!variable!machine!#] in: [#!variable!time!#].</key>
 		<key name="scan_ipmitool_log_0003">Failed to query node: [#!variable!machine!#]'s IPMI interface using the call: [#!variable!call!#]. Is the password correct?</key>
 		<key name="scan_ipmitool_log_0004">The thermal sensor named: [#!variable!sensor_name!#] has not changed.</key>
