@@ -17,7 +17,26 @@ CREATE TABLE storcli_adapter (
 );
 ALTER TABLE storcli OWNER TO #!variable!user!#;
 
+-- Supported Operations
+CREATE TABLE storcli_supported_ops (
+	storcli_supported_ops_id				uuid				primary key,
+	storcli_supported_ops_storcli_adapter_uuid		uuid				not null,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	storcli_supported_ops_		boolean,
+	
+	modified_date					timestamp with time zone	not null,
 
+	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
 	
 	
 	
@@ -158,6 +177,30 @@ CREATE TABLE storcli_bus (
 	modified_date				timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_bus_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+
+-- Status information
+CREATE TABLE storcli_status (
+	storcli_status_id				uuid				primary key,
+	storcli_status_storcli_adapter_uuid		uuid				not null,
+	storcli_status_controller_status		text,
+	storcli_status_memory_correctable_errors	numeric,
+	storcli_status_memory_uncorrectable_errors	numeric,
+	storcli_status_ecc_bucket_count			numeric,
+	storcli_status_any_offline_vd_cache_preserved	boolean,
+	storcli_status_bbu_status			numeric,
+	storcli_status_support_pd_firmware_download	boolean,
+	storcli_status_lock_key_assigned		boolean,
+	storcli_status_failed_to_get_lock_key_on_bootup	boolean,
+	storcli_status_bios_not_detected_during_boot	boolean,
+	storcli_status_rebooted_for_security_operation	boolean,
+	storcli_status_rollback_operation_in_progress	boolean,
+	storcli_status_at_least_one_pfk_exists_in_nvram	boolean,
+	storcli_status_ssc_policy_is_wb			boolean,
+	storcli_status_controller_booted_into_safe_mode	boolean,
+	modified_date					timestamp with time zone	not null,
+
+	FOREIGN KEY(storcli_status_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
 
 

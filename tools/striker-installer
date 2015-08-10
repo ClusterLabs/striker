@@ -92,7 +92,7 @@ my $conf = {
 			"httpd", 
 			"iptables", 
 			"irqbalance", 
-			"ksmtuned", 
+			#"ksmtuned", 
 			"ktune", 
 			"network", 
 			"ntpd", 

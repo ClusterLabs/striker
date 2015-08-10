@@ -65,12 +65,24 @@ https://alteeve.ca/w/Support
 		]]></key>
 		<key name="scan_storcli_message_0003"></key>
 		
-		<!-- These keys convert the often-cryptic control details into plain-language strings. The 
-		     key word matches the ScanCore database column name. Each entry has four prefixes;
+		<!-- 
+		These keys convert the often-cryptic control details into plain-language strings. The key 
+		word matches the ScanCore database column name. Each entry has four prefixes;
 		     'name_' Is the straight name for the entry
 		     'info_' Is a short summary of the entry
 		     'long_' Is a longer explanation of the entry.
 		     'link_' Is an optional URL to further explain the entry.
+		
+		In some cases, a variable will have a preset number of values. In those cases, the keys will
+		be in the format:
+		     'state_<db_column_name>_<state>'
+		In these cases, the 'state' is the string returned by storcli, made lower case, with '_' in
+		the place of spaces. For example;
+		     'state_storcli_status_controller_status_needs_attention' 
+		Is the 'Needs Attention' state for the 'storcli_status_controller_status' database column. 
+		This provides a predictable mechanism for translating a variable's state information into the
+		chosen language without needing to manuall map a state sequence number to a particular 
+		variable, though it admittedly does create very long key names.
 		-->
 		<key name="name_storcli_adapter_sas_address">SAS Address</key>
 		<key name="info_storcli_adapter_sas_address">SAS Address to identify the controller on the SAS domain</key>
@@ -174,7 +186,112 @@ https://alteeve.ca/w/Support
 		<key name="info_storcli_bus_function_number">PCI Function Number</key>
 		<key name="long_storcli_bus_function_number">This number indicates the function number on the PCI bus used to access this device. Some devices, like combination modem and sound cards, will identify the different functions by each having a different PCI bus function number. In most cases, this is '0', as defined in the PCI specification. This is the 'F' in 'BDF (Bus/Device/Function) Notation'.</key>
 		<key name="link_storcli_bus_function_number">https://en.wikipedia.org/wiki/PCI_configuration_space#Technical_information</key>
+		<!-- Status information -->
+		<key name="name_storcli_status_controller_status">Controller Status</key>
+		<key name="info_storcli_status_controller_status">General Controller Status</key>
+		<key name="long_storcli_status_controller_status">This reflects the overall health of the controller, its battery or capacitor bank, attached drives, NVData and enclosure. It will report one of three states; "Optimal" when all is well, "Needs Attention" when any component has an issue and "Safe Mode" when the controller itself encounters a critical error. More information can be found in chapter 5, section 4 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_status_controller_status"></key>
+		<key name="state_storcli_status_controller_status_optimal">Optimal</key>
+		<key name="state_storcli_status_controller_status_needs_attention">Needs Attention</key>
+		<key name="state_storcli_status_controller_status_safe_mode">Safe Mode</key>
+		<key name="name_storcli_status_memory_correctable_errors">Correctable Memory Errors</key>
+		<key name="info_storcli_status_memory_correctable_errors">Correctable Memory Error Counter</key>
+		<key name="long_storcli_status_memory_correctable_errors">(unconfirmed) This tracks how many times a recoverable memory error occured. Vary occassional recoverable errors are generally not a big cause for concern. If they happen repeatedly or too often, however, the controller should be serviced.</key>
+		<key name="link_storcli_status_memory_correctable_errors"></key>
+		<key name="name_storcli_status_memory_uncorrectable_errors">Uncorrectable Memory Errors</key>
+		<key name="info_storcli_status_memory_uncorrectable_errors">Uncorrectable Memory Error Counter</key>
+		<key name="long_storcli_status_memory_uncorrectable_errors">(unconfirmed) This tracks how many times an unrecoverable memory error has occured. These errors should be taken seriously and the controller should be serviced or replaced at the earliest opportunity.</key>
+		<key name="link_storcli_status_memory_uncorrectable_errors"></key>
+		<key name="name_storcli_status_ecc_bucket_count">ECC Bucket Count</key>
+		<key name="info_storcli_status_ecc_bucket_count">ECC Single-bit-error Bucket Count</key>
+		<key name="long_storcli_status_ecc_bucket_count">(guess, could be totally wrong) When a correctable error is detected, the bucket counter goes up by one. Over time, the bucket will 'leak' and effectively forget the error occured. If too many errors happen in a short time, the bucket will 'overflow' and an event will be logged.</key>
+		<key name="link_storcli_status_ecc_bucket_count"></key>
+		<key name="name_storcli_status_any_offline_vd_cache_preserved">Offline VD Cache Preserved</key>
+		<key name="info_storcli_status_any_offline_vd_cache_preserved">Any Offline VD Cache Preserved</key>
+		<key name="long_storcli_status_any_offline_vd_cache_preserved">(unconfirmed) This indicates if unwritted data exists in cache for a virtual disk that the controller currently can't find. This can occure if the server is powered off uncleanly and then the controller or the drives are (re)moved before being powered back on. If this is true and if you know the old virtual disk will not come back, the old cached data can be cleared manually in the boot controller or via the 'storcli' program.</key>
+		<key name="link_storcli_status_any_offline_vd_cache_preserved"></key>
+		<key name="name_storcli_status_bbu_status">BBU Status</key>
+		<key name="info_storcli_status_bbu_status">Battery Backup Unit Status</key>
+		<key name="long_storcli_status_bbu_status">(confirm) This indicates the current status (also referred to as the 'BBU mode') of the lithium ion battery pack used to protect unwritten data still in cache after an unexpected power loss. The mode indicates the estimated amount of time that the data can be protected for at a given battery pack temperature. The mode set impacts how long the battery can be expected to be useful for before needing to be replaced. More information can be found in chapter 6, section 6.9 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_status_bbu_status"></key>
+		<key name="state_storcli_status_bbu_status_0">Data can be stored in the controller's RAM (cache) for 48 hours at 60°C with an approximate service life of 1 year.</key>
+		<key name="state_storcli_status_bbu_status_1">Data can be stored in the controller's RAM (cache) for 12 hours at 45°C with an approximate service life of 5 years. The battery will be transparently tested periodically.</key>
+		<key name="state_storcli_status_bbu_status_2">Data can be stored in the controller's RAM (cache) for 12 hours at 55°C with an approximate service life of 3 years. The battery will be transparently tested periodically.</key>
+		<key name="state_storcli_status_bbu_status_3">Data can be stored in the controller's RAM (cache) for 24 hours at 45°C with an approximate service life of 3 years. The battery will be transparently tested periodically.</key>
+		<key name="state_storcli_status_bbu_status_4">Data can be stored in the controller's RAM (cache) for 48 hours at 45°C with an approximate service life of 3 years.</key>
+		<key name="state_storcli_status_bbu_status_5">Data can be stored in the controller's RAM (cache) for 48 hours at 55°C with an approximate service life of 1 year.</key>
+		<key name="state_storcli_status_bbu_status_6">Data can be stored in the controller's RAM (cache) for 48 hours at 55°C with an approximate service life of 1 year. Alerts will be generated when the battery capacity drops the sub-optimal and again when the battery reaches critically low levels.</key>
+		<key name="name_storcli_status_support_pd_firmware_download">Supports Updating PD Firmware</key>
+		<key name="info_storcli_status_support_pd_firmware_download">Supports Updating Firmware on Physical Drives</key>
+		<key name="long_storcli_status_support_pd_firmware_download">(unconfirmed) This indicates whether or not the controller supports updating the firmware on the attached physical disk drives.</key>
+		<key name="link_storcli_status_support_pd_firmware_download"></key>
+		<key name="name_storcli_status_lock_key_assigned">Lock Key Assigned</key>
+		<key name="info_storcli_status_lock_key_assigned">Lock Key has been Assigned</key>
+		<key name="long_storcli_status_lock_key_assigned">(unconfirmed) This indicates whether an encryption lock key has been assigned to the controller for use with SafeStore when using encrypted virtual disks.</key>
+		<key name="link_storcli_status_lock_key_assigned"></key>
+		<key name="name_storcli_status_failed_to_get_lock_key_on_bootup">Failed to get Lock Key on Boot Up</key>
+		<key name="info_storcli_status_failed_to_get_lock_key_on_bootup">Failed to get the Lock Key on Boot Up</key>
+		<key name="long_storcli_status_failed_to_get_lock_key_on_bootup">(unconfirmed) This indicates whether the key used to unlock the encrypted virtual disk was received properly on the last boot up.</key>
+		<key name="link_storcli_status_failed_to_get_lock_key_on_bootup"></key>
+		<key name="name_storcli_status_bios_not_detected_during_boot">Bios Not Detected During Boot</key>
+		<key name="info_storcli_status_bios_not_detected_during_boot">The BIOS was not Detected During Boot Up</key>
+		<key name="long_storcli_status_bios_not_detected_during_boot">(unconfirmed) (how could this happen?) This indicates whether the controller's BIOS was detected during the boot up sequence. This may occur if the controller's BIOS was disabled when another controller in the same system has the bootable virtual disk.</key>
+		<key name="link_storcli_status_bios_not_detected_during_boot"></key>
+		<key name="name_storcli_status_rebooted_for_security_operation">Reboot Required to Complete Security Operation</key>
+		<key name="info_storcli_status_rebooted_for_security_operation">Reboot Required to Complete Security Operation</key>
+		<key name="long_storcli_status_rebooted_for_security_operation">(unconfirmed) (when might this be required?) Indicated whether a reboot of the host is required to complete a pending security operation.</key>
+		<key name="link_storcli_status_rebooted_for_security_operation"></key>
+		<key name="name_storcli_status_rollback_operation_in_progress">A Rollback Operation is in Progress</key>
+		<key name="info_storcli_status_rollback_operation_in_progress">A Rollback Operation is in Progress</key>
+		<key name="long_storcli_status_rollback_operation_in_progress">(unconfirmed) (what is a snapshot in this context?) Indicates if a snapshot is currently being rolled back.</key>
+		<key name="link_storcli_status_rollback_operation_in_progress"></key>
+		<key name="name_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one PFK Exists in NVRAM</key>
+		<key name="info_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one PFK Exists in NVRAM</key>
+		<key name="long_storcli_status_at_least_one_pfk_exists_in_nvram">(I have no idea what a 'PFK' is...)</key>
+		<key name="link_storcli_status_at_least_one_pfk_exists_in_nvram"></key>
+		<key name="name_storcli_status_ssc_policy_is_wb">SSC Policy is WB</key>
+		<key name="info_storcli_status_ssc_policy_is_wb">SSC Policy is Write-Back</key>
+		<key name="long_storcli_status_ssc_policy_is_wb">(I have no idea what 'SSC' is...)</key>
+		<key name="link_storcli_status_ssc_policy_is_wb"></key>
+		<key name="name_storcli_status_controller_booted_into_safe_mode">Controller has Booted Into Safe Mode</key>
+		<key name="info_storcli_status_controller_booted_into_safe_mode">Controller has Booted Into Safe Mode</key>
+		<key name="long_storcli_status_controller_booted_into_safe_mode">Indicates whether the controller has encountered a significant error and booted into 'safe mode'.</key>
+		<key name="link_storcli_status_controller_booted_into_safe_mode"></key>
+		<!-- Supported Operations -->
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
 		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
 		
 		<key name="name_"></key>
 		<key name="info_"></key>

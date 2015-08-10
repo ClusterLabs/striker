@@ -367,32 +367,128 @@ sub gather_data
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		# Status
-=pod
-		elsif ($line =~ //i)
+		elsif ($line =~ /^Controller Status = (.*)?/i)
 		{
-			# 
-			$an->data->{storcli}{$adapter}{adapter}{} = $1;
+			# storcli_status -> storcli_bus_function_number
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::function_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number}
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-Status :
-======
-Controller Status = Optimal
-Memory Correctable Errors = 0
-Memory Uncorrectable Errors = 0
-ECC Bucket Count = 0
-Any Offline VD Cache Preserved = No
-BBU Status = 0
-Support PD Firmware Download = No
-Lock Key Assigned = No
-Failed to get lock key on bootup = No
-Lock key has not been backed up = No
-Bios was not detected during boot = No
-Controller must be rebooted to complete security operation = No
-A rollback operation is in progress = No
-At least one PFK exists in NVRAM = No
-SSC Policy is WB = No
-Controller has booted into safe mode = No
-
-
+		elsif ($line =~ /^Memory Correctable Errors = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_memory_correctable_errors
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{memory_correctable_errors} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::memory_correctable_errors", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{memory_correctable_errors}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Memory Uncorrectable Errors = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_memory_uncorrectable_errors
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{memory_uncorrectable_errors} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::memory_uncorrectable_errors", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{memory_uncorrectable_errors}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^ECC Bucket Count = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_ecc_bucket_count
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ecc_bucket_count} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::ecc_bucket_count", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ecc_bucket_count}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Any Offline VD Cache Preserved = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_any_offline_vd_cache_preserved
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{any_offline_vd_cache_preserved} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::any_offline_vd_cache_preserved", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{any_offline_vd_cache_preserved}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^BBU Status = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_bbu_status
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bbu_status} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::bbu_status", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bbu_status}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support PD Firmware Download = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_support_pd_firmware_download
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{support_pd_firmware_download} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::support_pd_firmware_download", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{support_pd_firmware_download}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Lock Key Assigned = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_lock_key_assigned
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{lock_key_assigned} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::lock_key_assigned", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{lock_key_assigned}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Failed to get lock key on bootup = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_failed_to_get_lock_key_on_bootup
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{failed_to_get_lock_key_on_bootup} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::failed_to_get_lock_key_on_bootup", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{failed_to_get_lock_key_on_bootup}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Bios was not detected during boot = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_bios_not_detected_during_boot
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bios_not_detected_during_boot} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::bios_not_detected_during_boot", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bios_not_detected_during_boot}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Controller must be rebooted to complete security operation = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_rebooted_for_security_operation
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rebooted_for_security_operation} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::rebooted_for_security_operation", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rebooted_for_security_operation}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^A rollback operation is in progress = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_rollback_operation_in_progress
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rollback_operation_in_progress} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::rollback_operation_in_progress", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rollback_operation_in_progress}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^At least one PFK exists in NVRAM = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_at_least_one_pfk_exists_in_nvram
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::at_least_one_pfk_exists_in_nvram", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^SSC Policy is WB = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_ssc_policy_is_wb
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ssc_policy_is_wb} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::ssc_policy_is_wb", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ssc_policy_is_wb}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Controller has booted into safe mode = (.*)?/i)
+		{
+			# storcli_status -> storcli_status_controller_booted_into_safe_mode
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{controller_booted_into_safe_mode} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::controller_booted_into_safe_mode", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{controller_booted_into_safe_mode}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Supported Operations
+=pod
 Supported Adapter Operations :
 ============================
 Rebuild Rate = Yes
