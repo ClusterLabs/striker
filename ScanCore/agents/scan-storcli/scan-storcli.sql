@@ -19,13 +19,13 @@ ALTER TABLE storcli OWNER TO #!variable!user!#;
 
 -- Supported Operations
 CREATE TABLE storcli_supported_ops (
-	storcli_supported_ops_id				uuid				primary key,
-	storcli_supported_ops_storcli_adapter_uuid		uuid				not null,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
+	storcli_supported_ops_id			uuid				primary key,
+	storcli_supported_ops_storcli_adapter_uuid	uuid				not null,
+	storcli_supported_ops_rebuild_rate		boolean,
+	storcli_supported_ops_cc_rate			boolean,
+	storcli_supported_ops_bgi_rate			boolean,
+	storcli_supported_ops_reconstruct_rate		boolean,
+	storcli_supported_ops_patrol_read_rate		boolean,
 	storcli_supported_ops_		boolean,
 	storcli_supported_ops_		boolean,
 	storcli_supported_ops_		boolean,

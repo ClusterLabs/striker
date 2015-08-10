@@ -243,45 +243,41 @@ https://alteeve.ca/w/Support
 		<key name="link_storcli_status_rebooted_for_security_operation"></key>
 		<key name="name_storcli_status_rollback_operation_in_progress">A Rollback Operation is in Progress</key>
 		<key name="info_storcli_status_rollback_operation_in_progress">A Rollback Operation is in Progress</key>
-		<key name="long_storcli_status_rollback_operation_in_progress">(unconfirmed) (what is a snapshot in this context?) Indicates if a snapshot is currently being rolled back.</key>
+		<key name="long_storcli_status_rollback_operation_in_progress">Indicates if a 'MegaRAID Restore' snapshot is currently being rolled back.</key>
 		<key name="link_storcli_status_rollback_operation_in_progress"></key>
 		<key name="name_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one PFK Exists in NVRAM</key>
-		<key name="info_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one PFK Exists in NVRAM</key>
-		<key name="long_storcli_status_at_least_one_pfk_exists_in_nvram">(I have no idea what a 'PFK' is...)</key>
-		<key name="link_storcli_status_at_least_one_pfk_exists_in_nvram"></key>
+		<key name="info_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one Premium Feature Key Exists in NVRAM</key>
+		<key name="long_storcli_status_at_least_one_pfk_exists_in_nvram">Indicate whether one or more "premium feature" keys are installed on this controller. Premium features include 'Safestore', 'Cachecade', 'Fastpath' and the retired 'MegaRAID Recovery' (also called 'Snapshot').</key>
+		<key name="link_storcli_status_at_least_one_pfk_exists_in_nvram">http://www.avagotech.com/products/server-storage/raid-controllers/#tab-Adva3</key>
 		<key name="name_storcli_status_ssc_policy_is_wb">SSC Policy is WB</key>
-		<key name="info_storcli_status_ssc_policy_is_wb">SSC Policy is Write-Back</key>
-		<key name="long_storcli_status_ssc_policy_is_wb">(I have no idea what 'SSC' is...)</key>
-		<key name="link_storcli_status_ssc_policy_is_wb"></key>
+		<key name="info_storcli_status_ssc_policy_is_wb">Solid-State Cache Policy is Write-Back</key>
+		<key name="long_storcli_status_ssc_policy_is_wb">When using Avago's 'CacheCade' option, where solid state drives are used as a second level of high-speed cache, this will indicate whether that cache is configured as 'Write-Back' caching or not.</key>
+		<key name="link_storcli_status_ssc_policy_is_wb">http://www.avagotech.com/products/server-storage/raid-controllers/megaraid-cachecade-pro-software</key>
 		<key name="name_storcli_status_controller_booted_into_safe_mode">Controller has Booted Into Safe Mode</key>
 		<key name="info_storcli_status_controller_booted_into_safe_mode">Controller has Booted Into Safe Mode</key>
 		<key name="long_storcli_status_controller_booted_into_safe_mode">Indicates whether the controller has encountered a significant error and booted into 'safe mode'.</key>
 		<key name="link_storcli_status_controller_booted_into_safe_mode"></key>
 		<!-- Supported Operations -->
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
+		<key name="name_storcli_supported_ops_rebuild_rate">Configurable Rebuild Rate</key>
+		<key name="info_storcli_supported_ops_rebuild_rate">Configurable Rebuild Rate Percentage</key>
+		<key name="long_storcli_supported_ops_rebuild_rate">(unconfirmed) Indicates whether the replacement drive rebuild rate percentage can be configured by the user or not.</key>
+		<key name="link_storcli_supported_ops_rebuild_rate"></key>
+		<key name="name_storcli_supported_ops_cc_rate">Configurable CC Rate</key>
+		<key name="info_storcli_supported_ops_cc_rate">Configurable Consistency Check Rate Percentage</key>
+		<key name="long_storcli_supported_ops_cc_rate">Indicates whether the consistency check rate percentage can be configured by the user or not.</key>
+		<key name="link_storcli_supported_ops_cc_rate"></key>
+		<key name="name_storcli_supported_ops_bgi_rate">Configurable BGI Rate</key>
+		<key name="info_storcli_supported_ops_bgi_rate">Configurable Background Initialization Rate Percentage</key>
+		<key name="long_storcli_supported_ops_bgi_rate">Indicates whether the background initialization rate percentage of new virtual disks can be configured by the user or not.</key>
+		<key name="link_storcli_supported_ops_bgi_rate"></key>
+		<key name="name_storcli_supported_ops_reconstruct_rate">Configurable Reconstruction Rate</key>
+		<key name="info_storcli_supported_ops_reconstruct_rate">Configurable Reconstruction Rate Percentage</key>
+		<key name="long_storcli_supported_ops_reconstruct_rate">(unconfirmed) Indicate whether the rate percentage at which virtual disks are rebuilt after growing or changing RAID levels can be configured by the user or not.</key>
+		<key name="link_storcli_supported_ops_reconstruct_rate"></key>
+		<key name="name_storcli_supported_ops_patrol_read_rate">Configurable Patrol Read Rate</key>
+		<key name="info_storcli_supported_ops_patrol_read_rate">Configurable Patrol Read Rate Percentage</key>
+		<key name="long_storcli_supported_ops_patrol_read_rate">Indicates whether the percentage rate at which the drives are scanned for errors can be configured by the user or not.</key>
+		<key name="link_storcli_supported_ops_patrol_read_rate"></key>
 		
 		<key name="name_"></key>
 		<key name="info_"></key>

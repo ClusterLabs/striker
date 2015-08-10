@@ -488,14 +488,55 @@ sub gather_data
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		# Supported Operations
+		elsif ($line =~ /^Rebuild Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_rebuild_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{rebuild_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::rebuild_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{rebuild_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^CC Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_cc_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cc_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::cc_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cc_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^BGI Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_bgi_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bgi_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::bgi_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bgi_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Reconstruct Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_reconstruct_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reconstruct_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::reconstruct_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reconstruct_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Patrol Read Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_patrol_read_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::patrol_read_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Patrol Read Rate = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_patrol_read_rate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::patrol_read_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 =pod
-Supported Adapter Operations :
-============================
-Rebuild Rate = Yes
-CC Rate = Yes
-BGI Rate  = Yes
-Reconstruct Rate = Yes
-Patrol Read Rate = Yes
 Alarm Control = Yes
 Cluster Support = No
 BBU  = Yes
