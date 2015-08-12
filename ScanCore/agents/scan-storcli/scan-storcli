@@ -528,24 +528,79 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::patrol_read_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($line =~ /^Patrol Read Rate = (.*)?/i)
+		elsif ($line =~ /^Alarm Control = (.*)?/i)
 		{
-			# storcli_supported_ops -> storcli_supported_ops_patrol_read_rate
-			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate} = $1;
+			# storcli_supported_ops -> storcli_supported_ops_alarm_control
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{alarm_control} = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::patrol_read_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate}
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::alarm_control", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{alarm_control}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Cluster Support = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_cluster_support
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cluster_support} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::cluster_support", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cluster_support}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^BBU = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_bbu
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bbu} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::bbu", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bbu}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Spanning = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_spanning
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{spanning} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::spanning", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{spanning}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Dedicated Hot Spare = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_dedicated_hot_spare
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hot_spare} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::dedicated_hot_spare", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hot_spare}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Revertible Hot Spares = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_revertible_hot_spares
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{revertible_hot_spares} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::revertible_hot_spares", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{revertible_hot_spares}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Foreign Config Import = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_foreign_config_import
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{foreign_config_import} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::foreign_config_import", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{foreign_config_import}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Self Diagnostic = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_self_diagnostic
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{self_diagnostic} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::self_diagnostic", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{self_diagnostic}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Allow Mixed Redundancy on Array = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_allow_mixed_redundancy
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allow_mixed_redundancy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 =pod
-Alarm Control = Yes
-Cluster Support = No
-BBU  = Yes
-Spanning = Yes
-Dedicated Hot Spare = Yes
-Revertible Hot Spares = Yes
-Foreign Config Import = Yes
-Self Diagnostic = Yes
-Allow Mixed Redundancy on Array = No
 Global Hot Spares = Yes
 Deny SCSI Passthrough = No
 Deny SMP Passthrough = No
