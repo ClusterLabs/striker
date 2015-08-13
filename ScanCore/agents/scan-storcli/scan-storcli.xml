@@ -246,7 +246,7 @@ https://alteeve.ca/w/Support
 		<key name="long_storcli_status_rollback_operation_in_progress">Indicates if a 'MegaRAID Restore' snapshot is currently being rolled back.</key>
 		<key name="link_storcli_status_rollback_operation_in_progress"></key>
 		<key name="name_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one PFK Exists in NVRAM</key>
-		<key name="info_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one Premium Feature Key Exists in NVRAM</key>
+		<key name="info_storcli_status_at_least_one_pfk_exists_in_nvram">At Least one Premium Feature Key Exists in Non-Volatile RAM</key>
 		<key name="long_storcli_status_at_least_one_pfk_exists_in_nvram">Indicate whether one or more "premium feature" keys are installed on this controller. Premium features include 'Safestore', 'Cachecade', 'Fastpath' and the retired 'MegaRAID Recovery' (also called 'Snapshot').</key>
 		<key name="link_storcli_status_at_least_one_pfk_exists_in_nvram">http://www.avagotech.com/products/server-storage/raid-controllers/#tab-Adva3</key>
 		<key name="name_storcli_status_ssc_policy_is_wb">SSC Policy is WB</key>
@@ -311,9 +311,71 @@ https://alteeve.ca/w/Support
 		<key name="long_storcli_supported_ops_self_diagnostic">Indicates whether the controller supports running self-diagnostics or not.</key>
 		<key name="link_storcli_supported_ops_self_diagnostic"></key>
 		<key name="name_storcli_supported_ops_allow_mixed_redundancy">Allow Mixed Redundancy on Array</key>
-		<key name="info_storcli_supported_ops_allow_mixed_redundancy"></key>
-		<key name="long_storcli_supported_ops_allow_mixed_redundancy"></key>
+		<key name="info_storcli_supported_ops_allow_mixed_redundancy">Allow Mixed Redundancy on Array</key>
+		<key name="long_storcli_supported_ops_allow_mixed_redundancy">(unknown, possible refers to mixing SAS/SATA drives, see 1.7.1 in "SAS Software Users Guide")</key>
 		<key name="link_storcli_supported_ops_allow_mixed_redundancy"></key>
+		<key name="name_storcli_supported_ops_global_hot_spares">Global Hot Spares</key>
+		<key name="info_storcli_supported_ops_global_hot_spares">Global Hot Spares Supported</key>
+		<key name="long_storcli_supported_ops_global_hot_spares">This indicates whether the controller supports global hot-spare disks. These are disks that are not assigned to any particular virtual disk and are unused until an active drive in an array fails. In such a case, regardless of which virtual disk suffered a drive loss, the global host spare will be automatically brought into the virtual disk to replace the failed drive, returning it to optimal state as soon as the rebuild process completes.</key>
+		<key name="link_storcli_supported_ops_global_hot_spares"></key>
+		<key name="name_storcli_supported_ops_deny_scsi_passthrough">Deny SCSI Pass-Through</key>
+		<key name="info_storcli_supported_ops_deny_scsi_passthrough">Deny SCSI Pass-Through (SPT)</key>
+		<key name="long_storcli_supported_ops_deny_scsi_passthrough">(unconfirmed) This indicates whether SCSI commands are blocked or allowed to pass through the controller to the drives directly. More information on SCSI Pass-Through can be found in chapter 1, section 6 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_supported_ops_deny_scsi_passthrough">https://en.wikipedia.org/wiki/SCSI_Pass_Through_Interface</key>
+		<key name="name_storcli_supported_ops_deny_smp_passthrough">Deny SMP Pass-Through</key>
+		<key name="info_storcli_supported_ops_deny_smp_passthrough">Deny Serial Management Protocol Pass-Through</key>
+		<key name="long_storcli_supported_ops_deny_smp_passthrough">Indicates whether the serial management protocol (SMP), which allows for management of SAS fabric, is blocked on the controller or not.</key>
+		<key name="link_storcli_supported_ops_deny_smp_passthrough">https://en.wikipedia.org/wiki/Serial_attached_SCSI#Technical_details</key>
+		<key name="name_storcli_supported_ops_deny_stp_passthrough">Deny STP Passthrough</key>
+		<key name="info_storcli_supported_ops_deny_stp_passthrough">Deny Serial ATA Tunneling Protocol Passthrough</key>
+		<key name="long_storcli_supported_ops_deny_stp_passthrough">Indicates whether SATA tunneling (STP), which enables SATA drives to work on SAS controllers, is blocked on the controller or not.</key>
+		<key name="link_storcli_supported_ops_deny_stp_passthrough">https://en.wikipedia.org/wiki/Serial_attached_SCSI#Technical_details</key>
+		<key name="name_storcli_supported_ops_support_more_than_8_pd">Support More Than 8 PDs</key>
+		<key name="info_storcli_supported_ops_support_more_than_8_pd">Support More Than 8 Physical Disks</key>
+		<key name="long_storcli_supported_ops_support_more_than_8_pd">Indicates whether the controller can use more than eight physical disks or not.</key>
+		<key name="link_storcli_supported_ops_support_more_than_8_pd"></key>
+		<key name="name_storcli_supported_ops_fw_and_event_time_in_gmt">FW and Event Time in GMT</key>
+		<key name="info_storcli_supported_ops_fw_and_event_time_in_gmt">Firmware and Event Log Times in GMT Time Zone</key>
+		<key name="long_storcli_supported_ops_fw_and_event_time_in_gmt">This indicates whether or not the date and times used in the firmware and the timestamps used in log entries are using GMT.</key>
+		<key name="link_storcli_supported_ops_fw_and_event_time_in_gmt">https://en.wikipedia.org/wiki/Greenwich_Mean_Time</key>
+		<key name="name_storcli_supported_ops_enhanced_foreign_import">Support Enhanced Foreign Import</key>
+		<key name="info_storcli_supported_ops_enhanced_foreign_import">Support Enhanced Foreign Configuration Import</key>
+		<key name="long_storcli_supported_ops_enhanced_foreign_import">(unconfirmed) This indicates whether enhanced foreign configurations, such as clusterd configurations, can be imported or not.</key>
+		<key name="link_storcli_supported_ops_enhanced_foreign_import"></key>
+		<key name="name_storcli_supported_ops_enclosure_enumeration">Support Enclosure Enumeration</key>
+		<key name="info_storcli_supported_ops_enclosure_enumeration"></key>
+		<key name="long_storcli_supported_ops_enclosure_enumeration"></key>
+		<key name="link_storcli_supported_ops_enclosure_enumeration"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
 		
 		<key name="name_"></key>
 		<key name="info_"></key>

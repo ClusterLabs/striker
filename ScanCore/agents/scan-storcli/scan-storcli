@@ -600,15 +600,71 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allow_mixed_redundancy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Global Hot Spares = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_global_hot_spares
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allow_mixed_redundancy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny SCSI Passthrough = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_deny_scsi_passthrough
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_scsi_passthrough} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_scsi_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_scsi_passthrough}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny SMP Passthrough = (.*)?/i)	# Serial Management Protocol
+		{
+			# storcli_supported_ops -> storcli_supported_ops_deny_smp_passthrough
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_smp_passthrough} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_smp_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_smp_passthrough}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny STP Passthrough = (.*)?/i)	# Serial Tunneling Protocol
+		{
+			# storcli_supported_ops -> storcli_supported_ops_deny_stp_passthrough
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_stp_passthrough} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_stp_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_stp_passthrough}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support more than 8 Phys = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_support_more_than_8_pd
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{support_more_than_8_pd} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::support_more_than_8_pd", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{support_more_than_8_pd}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^FW and Event Time in GMT = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_fw_and_event_time_in_gmt
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{fw_and_event_time_in_gmt} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::fw_and_event_time_in_gmt", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{fw_and_event_time_in_gmt}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Enhanced Foreign Import = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_enhanced_foreign_import
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enhanced_foreign_import} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::enhanced_foreign_import", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enhanced_foreign_import}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Enclosure Enumeration = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_enclosure_enumeration
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enclosure_enumeration} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::enclosure_enumeration", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enclosure_enumeration}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 =pod
-Global Hot Spares = Yes
-Deny SCSI Passthrough = No
-Deny SMP Passthrough = No
-Deny STP Passthrough = No
-Support more than 8 Phys = Yes
-FW and Event Time in GMT = No
-Support Enhanced Foreign Import = Yes
-Support Enclosure Enumeration = Yes
 Support Allowed Operations = Yes
 Abort CC on Error = Yes
 Support Multipath = Yes
