@@ -759,7 +759,7 @@ sub initialize_conf
 					"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
 					"iptables",	# LSB compliant
 					"irqbalance",	# LSB compliant
-					"ksmtuned",	# LSB compliant
+					#"ksmtuned",	# LSB compliant
 					"ktune",	# LSB compliant
 					"modclusterd",	# LSB compliant
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'

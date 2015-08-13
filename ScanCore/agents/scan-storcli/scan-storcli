@@ -664,10 +664,40 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::enclosure_enumeration", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enclosure_enumeration}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Support Allowed Operations = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_allowed_operations
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allowed_operations} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allowed_operations", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allowed_operations}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Abort CC on Error = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_abort_cc_on_error
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{abort_cc_on_error} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::abort_cc_on_error", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{abort_cc_on_error}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Multipath = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_multipath
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{multipath} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::multipath", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{multipath}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Odd & Even Drive count in RAID1E = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_odd_even_pd_count_raid1e
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{odd_even_pd_count_raid1e} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::odd_even_pd_count_raid1e", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{odd_even_pd_count_raid1e}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+
 =pod
-Support Allowed Operations = Yes
-Abort CC on Error = Yes
-Support Multipath = Yes
 Support Odd & Even Drive count in RAID1E = No
 Support Security = No
 Support Config Page Model = Yes
