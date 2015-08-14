@@ -463,7 +463,7 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::rollback_operation_in_progress", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rollback_operation_in_progress}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($line =~ /^At least one PFK exists in NVRAM = (.*)?/i)
+		elsif ($line =~ /^At least one PFK exists in NVRAM = (.*)?/i)	# Premium Feature Key
 		{
 			# storcli_status -> storcli_status_at_least_one_pfk_exists_in_nvram
 			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram} = $1;
@@ -471,7 +471,7 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::at_least_one_pfk_exists_in_nvram", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($line =~ /^SSC Policy is WB = (.*)?/i)
+		elsif ($line =~ /^SSC Policy is WB = (.*)?/i)	# Solid State Cache policy
 		{
 			# storcli_status -> storcli_status_ssc_policy_is_wb
 			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ssc_policy_is_wb} = $1;
@@ -696,16 +696,64 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::odd_even_pd_count_raid1e", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{odd_even_pd_count_raid1e}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Support Security = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_security
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{security} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::security", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{security}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Config Page Model = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_config_page_model
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{config_page_model} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::config_page_model", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{config_page_model}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support the OCE without adding drives = (.*)?/i)	# Online Capacity Expansion
+		{
+			# storcli_supported_ops -> storcli_supported_ops_oce_without_adding_drives
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{oce_without_adding_drives} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::oce_without_adding_drives", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{oce_without_adding_drives}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support EKM = (.*)?/i)	# External Key Management
+		{
+			# storcli_supported_ops -> storcli_supported_ops_external_key_management
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{external_key_management} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::external_key_management", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{external_key_management}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Snapshot Enabled = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_snapshot_enabled
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{snapshot_enabled} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::snapshot_enabled", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{snapshot_enabled}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support PFK = (.*)?/i)	# Premium Feature Key
+		{
+			# storcli_supported_ops -> storcli_supported_ops_premium_feature_key
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{premium_feature_key} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::premium_feature_key", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{premium_feature_key}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support PI = (.*)?/i)	# Protection Information
+		{
+			# storcli_supported_ops -> storcli_supported_ops_protection_information
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{protection_information} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::protection_information", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{protection_information}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 
 =pod
-Support Odd & Even Drive count in RAID1E = No
-Support Security = No
-Support Config Page Model = Yes
-Support the OCE without adding drives = Yes
-Support EKM = No
-Snapshot Enabled = No
-Support PFK = Yes
-Support PI = Yes
 Support LDPI Type1 = No
 Support LDPI Type2 = No
 Support LDPI Type3 = No

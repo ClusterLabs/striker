@@ -361,41 +361,35 @@ https://alteeve.ca/w/Support
 		<key name="name_storcli_supported_ops_odd_even_pd_count_raid1e">Support Odd and Even Drive Count in RAID1E</key>
 		<key name="info_storcli_supported_ops_odd_even_pd_count_raid1e">Support Odd and Even Drive Count in RAID Level 1 Enhanced</key>
 		<key name="long_storcli_supported_ops_odd_even_pd_count_raid1e">Indicates whether the controller supports RAID level 1E arrays (arrays that mix striping and mirroring to gain performance without the overhead of parity) using both even number of disks or only odd number of disks per array. Different implementations of 1E require odd numbers of disks in the array while others can use an even or odd number of disks.</key>
-		<key name="link_storcli_supported_ops_odd_even_pd_count_raid1e">https://en.wikipedia.org/wiki/Non-standard_RAID_levels#RAID_1E</key>
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
+		<key name="link_storcli_supported_ops_odd_even_pd_count_raid1e">https://www.datarecoup.com/blog/raid-data-recovery/the-differences-between-raid-1e-raid-5e-raid-5ee</key>
+		<key name="name_storcli_supported_ops_security">Support Security</key>
+		<key name="info_storcli_supported_ops_security">Support SafeStore Security</key>
+		<key name="long_storcli_supported_ops_security">This indicates whether or not the controller supports the 'Safestore' advanced security functions. When enabled via the purchase of a Safestore license of hardware key, and when using self-encryption disks (SED), virtual disks can be encrypted to add at-rest security for your data. If the disks support instant secure erase (ISE), the data on the drives can be very quickly rendered unrecoverable, even if the old keys are re-entered.</key>
+		<key name="link_storcli_supported_ops_security">http://www.avagotech.com/products/server-storage/raid-controllers/megaraid-safestore-software</key>
+		<key name="name_storcli_supported_ops_config_page_model">Support Config Page Model</key>
+		<key name="info_storcli_supported_ops_config_page_model">Support Config Page Model</key>
+		<key name="long_storcli_supported_ops_config_page_model">(unknown)</key>
+		<key name="link_storcli_supported_ops_config_page_model"></key>
+		<key name="name_storcli_supported_ops_oce_without_adding_drives">Support the OCE Without Adding Drives</key>
+		<key name="info_storcli_supported_ops_oce_without_adding_drives">Support the Online Capacity Expansion Without Adding Drives</key>
+		<key name="long_storcli_supported_ops_oce_without_adding_drives">(ambiguous; is this when the existing drives were replaced with larger drives, so space is available while the drive count is unchanged or when unallocated space exists in a drive group?) Indicates whether or not virtual drives can be expanded without adding new drives.</key>
+		<key name="link_storcli_supported_ops_oce_without_adding_drives"></key>
+		<key name="name_storcli_supported_ops_external_key_management">Support EKM</key>
+		<key name="info_storcli_supported_ops_external_key_management">Support External Key Management</key>
+		<key name="long_storcli_supported_ops_external_key_management">(unconfirmed) This indicates whether or not external key management is supported. This provides support for external management of security keys when 'Safestore' is used to encrypt virtual disks, which allows decrypting of an a virtual disk when the node is booted.</key>
+		<key name="link_storcli_supported_ops_external_key_management">http://www.avagotech.com/products/server-storage/raid-controllers/megaraid-safestore-software</key>
+		<key name="name_storcli_supported_ops_snapshot_enabled">Snapshot Enabled</key>
+		<key name="info_storcli_supported_ops_snapshot_enabled">Snapshot Enabled</key>
+		<key name="long_storcli_supported_ops_snapshot_enabled">(unconfirmed) Indicates whether or not the snapshot function, also called 'MegaRAID Recovery', is enabled on this controller.</key>
+		<key name="link_storcli_supported_ops_snapshot_enabled"></key>
+		<key name="name_storcli_supported_ops_premium_feature_key">Support PFK</key>
+		<key name="info_storcli_supported_ops_premium_feature_key">Support for Premium Feature Keys</key>
+		<key name="long_storcli_supported_ops_premium_feature_key">This indicates whether or not premium feature keys to extend the controller's capabilities. Premium features include 'Safestore', 'Cachecade', 'Fastpath' and the retired 'MegaRAID Recovery' (also called 'Snapshot').</key>
+		<key name="link_storcli_supported_ops_premium_feature_key"></key>
+		<key name="name_storcli_supported_ops_protection_information">Support PI</key>
+		<key name="info_storcli_supported_ops_protection_information">Support Protection Information</key>
+		<key name="long_storcli_supported_ops_protection_information">(unconfirmed) This indicates whether or not the controller supports drives with data protection. Drives that support the T10 protection information (T10-PI) extend their 512-byte sector sizes to 520-bytes and use the additional space to store crc data to help detect when the contents of a sector go bad.</key>
+		<key name="link_storcli_supported_ops_protection_information">https://en.wikipedia.org/wiki/Data_Integrity_Field</key> <!--Originally found at http://serverfault.com/a/471656 -->
 		
 		<key name="name_"></key>
 		<key name="info_"></key>
