@@ -688,7 +688,7 @@ ORDER BY
 						node => $host_name, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				elsif (not $conf->{tools}{boot_nodes}{enabled})
+				elsif (not $an->data->{tools}{boot_nodes}{enabled})
 				{
 					# Booting nodes was disabled by the user.
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0064", message_variables => {

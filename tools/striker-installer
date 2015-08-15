@@ -116,6 +116,8 @@ my $conf = {
 		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
 		document_root		=>	"/var/www/",
 		media			=>	"/var/www/home/media",
+		perl_library		=>	"/usr/share/perl5",
+		perl_source		=>	"/sbin/striker/AN",
 		pxelinux_config		=>	"/var/lib/tftpboot/pxelinux.cfg",
 		pxelinux_boot		=>	"/var/lib/tftpboot/boot",	# TODO: Make this and _config subdirtories of 'pxelinux'
 		pxelinux		=>	"/var/lib/tftpboot/",
@@ -149,6 +151,7 @@ my $conf = {
 		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 		MegaCli64_link		=>	"/sbin/MegaCli64",
 		mount			=>	"/bin/mount",
+		mv			=>	"/bin/mv",
 		passwd			=>	"/usr/bin/passwd",
 		ping			=>	"/bin/ping",
 		restorecon		=>	"/sbin/restorecon",
@@ -712,7 +715,8 @@ if (not $conf->{sys}{skip_network})
 	if (not $conf->{sys}{bonds_exist})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "-=] Configuring network to enable access to Anvil! systems.", 1);
-		load_network_map_cache($conf);
+		### BUG: Caching is broken... probably worth a re-write
+		#load_network_map_cache($conf);
 		until(select_nics($conf))
 		{
 			sleep 1;
@@ -770,7 +774,7 @@ if ($conf->{switches}{'run-rc-local'})
 }
 else
 {
-	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of /etc/rc.local.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "User did not request invocation of /etc/rc.local.", 3);
 }
 
 # Warn the user to update their kickstart scripts if they're not using a
@@ -1277,26 +1281,19 @@ fi";
 	close $file_handle;
 	
 	# Copy AN::Tools into place.
-	if ((not -e $conf->{path}{perl_library}) && (-e $conf->{path}{perl_source}))
+	logger($conf, $THIS_FILE, __LINE__, "directory::perl_library: [$conf->{directory}{perl_library}], directory::perl_source: [$conf->{directory}{source}/AN].", 3);
+	if ((not -e "$conf->{directory}{perl_library}/AN") && (-e "$conf->{directory}{source}/AN"))
 	{
-		my $shell_call = "$conf->{path}{mv} -f $conf->{path}{perl_source} $conf->{path}{perl_library}/";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 2);
-		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
-		while (<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		}
-		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Copying AN::Tools perl modules to: [$conf->{directory}{perl_library}/].", 1);
+		rsync_files($conf, "$conf->{directory}{source}/AN", "$conf->{directory}{perl_library}/");
 	}
-	elsif (-e $conf->{path}{perl_library})
+	elsif (-e "$conf->{directory}{perl_library}/AN")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- AN::Tools perl module already exists in: [$conf->{path}{perl_library}], skipping installing it.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- AN::Tools perl modules already exists in: [$conf->{directory}{perl_library}/AN], skipping installing it.", 1);
 	}
-	elsif (not -e $conf->{path}{perl_source})
+	elsif (not -e "$conf->{directory}{source}/AN")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - AN::Tools perl module source: [$conf->{path}{perl_source}] doesn't exist nor is it in the target directory: [$conf->{path}{perl_library}], skipping installing it. This will cause Striker to fail!", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - AN::Tools perl modules source: [$conf->{directory}{source}/AN] doesn't exist nor is it in the target directory: [$conf->{directory}{perl_library}/AN], skipping installing it. This will cause Striker to fail!", 1);
 		exit(41);
 	}
 	
@@ -1328,7 +1325,7 @@ fi";
 	my $dashboard  = $conf->{executable}{scancore};
 	my $raw_cron   = "";
 	$shell_call = "$conf->{path}{cron_root}";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 2);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 3);
 	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
@@ -1375,7 +1372,7 @@ fi";
 	}
 	
 	# Done.
-	logger($conf, $THIS_FILE, __LINE__, "- ScanCore configured.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }
@@ -1456,7 +1453,7 @@ sub configure_striker_tools
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 	}
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
@@ -1971,7 +1968,7 @@ sub configure_repos_to_skip_if_unavailable
 			logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 		}
 	}
-	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.\n", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.", 1);
 	
 	return(0);
 }
@@ -3070,11 +3067,13 @@ sub configure_pxe
 		{
 			logger($conf, $THIS_FILE, __LINE__, "Auto-starting 'dhcpd' on start.", 1);
 			push @{$conf->{daemons}{enable}}, "dhcpd";
+			logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 		}
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "Disabling auto-start of 'dhcpd'.", 1);
 			push @{$conf->{daemons}{disable}}, "dhcpd";
+			logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 		}
 	}
 	
@@ -3095,7 +3094,7 @@ sub configure_shorewall
 	logger($conf, $THIS_FILE, __LINE__, "bcn_interface: [$bcn_interface], ifn_interface: [$ifn_interface]", 3);
 	if (not $bcn_interface)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}], sys::bonds_exist: [$conf->{sys}{bonds_exist}]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "sys::create_bonds: [$conf->{sys}{create_bonds}], sys::bonds_exist: [$conf->{sys}{bonds_exist}]", 3);
 		if (($conf->{sys}{create_bonds}) || ($conf->{sys}{bonds_exist}))
 		{
 			$bcn_interface = "bcn_bond1";
@@ -3330,7 +3329,7 @@ $ifn_interface		$bcn_network/$cidr_bcn_netmask
 		close $file_handle;
 		logger($conf, $THIS_FILE, __LINE__, "- Wrote: [$shell_call].", 1);
 	}
-	logger($conf, $THIS_FILE, __LINE__, "Done.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);
 }
@@ -4935,8 +4934,8 @@ sub install_striker_files
 	{
 		# Update the striker.conf file with the user's selected mail server
 		# values.
-		my $mail_server;
-		my $mail_port;
+		my $mail_server = "example.com";
+		my $mail_port   = "587";
 		if ($conf->{sys}{mail_server} =~ /^(.*?):(\d+)$/)
 		{
 			$mail_server = $1;
@@ -6363,7 +6362,7 @@ sub get_list_of_installed_packages
 {
 	my ($conf) = @_;
 	
-	logger($conf, $THIS_FILE, __LINE__, "Getting a list of currently installed packages.\n- ", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Getting a list of currently installed packages.", 1);
 	my $shell_call = "$conf->{executable}{yum} list installed";
 	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -6423,7 +6422,7 @@ sub get_list_of_installed_packages
 		}
 	}
 	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "\nDone!\n", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done!\n", 1);
 	
 	return(0);
 }
@@ -6873,7 +6872,7 @@ sub write_udev_persistent_net
 	
 	my $shell_call = "$conf->{path}{persistent_net}";
 	logger($conf, $THIS_FILE, __LINE__, "Writing the new udev rules file: [$conf->{path}{persistent_net}]", 1);
-	open (my $file_handle, '>', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	print $file_handle "# Generated by: [$THIS_FILE] on: [".get_date($conf)."].\n";
 	foreach my $nic (@{$conf->{nics}})
 	{
@@ -8225,10 +8224,11 @@ sub select_nics
 {
 	my ($conf, $cache_read) = @_;
 	
-	# If a cache file exists, read it and see if we've got the same MAC
-	# addresses.
+	# If a cache file exists, read it and see if we've got the same MAC addresses.
 	logger($conf, $THIS_FILE, __LINE__, "sys::network_map_cache_read: [$conf->{sys}{network_map_cache_read}]", 3);
-	if (not $conf->{sys}{network_map_cache_read})
+	### BUG: Cache is broken, fix it. 'Til then...
+	#if (not $conf->{sys}{network_map_cache_read})
+	if (1)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Beginning NIC identification...", 1);
 		foreach my $nic (@{$conf->{nics}})
@@ -8353,6 +8353,7 @@ sub select_nics
 			{
 				$conf->{sys}{network_map_cache_read} = 0;
 				logger($conf, $THIS_FILE, __LINE__, "- Ok, we will map the network.", 1);
+				$conf->{nic}{mac} = {};
 			}
 			else
 			{
@@ -8400,13 +8401,16 @@ sub load_network_map_cache
 			chomp;
 			my $line =  $_;
 			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-			if ($line =~ /^(\w.*?):(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)/)
+			if ($line =~ /^(\w.*?),(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)/)
 			{
 				my $nic = $1;
 				my $mac = $2;
-				$conf->{cache}{nic}{name}{$nic} = lc($mac);
-				$conf->{cache}{nic}{mac}{$mac}  = $nic;
-				logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic ($conf->{cache}{nic}{name}{$nic})] to use: [$mac ($conf->{cache}{nic}{mac}{$mac})].", 1);
+				$conf->{cache}{nic}{$nic}{mac} = $mac;
+				$conf->{cache}{mac}{$mac}{nic} = $nic;
+				logger($conf, $THIS_FILE, __LINE__, "- Cached interface called: [$nic ($conf->{cache}{mac}{$mac}{nic})] uses mac: [$conf->{cache}{nic}{$nic}{mac} ($mac)].", 1);
+				#$conf->{cache}{nic}{name}{$nic} = lc($mac);
+				#$conf->{cache}{nic}{mac}{$mac}  = $nic;
+				#logger($conf, $THIS_FILE, __LINE__, "- Cached interface: [$nic ($conf->{cache}{nic}{name}{$nic})] to use: [$mac ($conf->{cache}{nic}{mac}{$mac})].", 1);
 			}
 		}
 		close $file_handle;
@@ -8430,8 +8434,8 @@ sub load_network_map_cache
 			next if not $this_iface;
 			next if $this_iface eq "lo";
 			next if $this_iface =~ /wlan/;
-			# If the user is re-running the install, bridge interfaces will
-			# exist, we ignore those.
+			# If the user is re-running the install, bridge interfaces will exist. If this 
+			# happens, we won't use the cache.
 			if ($this_iface =~ /bond/)
 			{
 				# We're not going to bother configuring the network, so just bail out now.
@@ -8446,14 +8450,21 @@ sub load_network_map_cache
 			if ($line =~ /ether ([0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})/)
 			{
 				$this_mac = lc($1);
-				#logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [$conf->{cache}{nic}{mac}{$this_mac}]", 3);
-				if ($conf->{cache}{nic}{mac}{$this_mac})
+				logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac], this_iface: [$this_iface], nic: [$conf->{cache}{mac}{$this_mac}{nic}]", 3);
+				
+				# Is this MAC cached?
+				if ($conf->{cache}{mac}{$this_mac}{nic})
 				{
-					push @{$conf->{cache}{nics}}, $conf->{cache}{nic}{mac}{$this_mac};
+					# Yes.
+					push @{$conf->{cache}{nics}}, $conf->{cache}{mac}{$this_mac}{nic};
 					logger($conf, $THIS_FILE, __LINE__, ": this_mac: [$this_mac], this_iface: [$this_iface]", 3);
 					$conf->{nic}{name}{$this_iface}            = $this_mac;
 					$conf->{nic}{mac}{$this_mac}{current_name} = $this_iface;
 					logger($conf, $THIS_FILE, __LINE__, ": nic::name::$this_iface: [$conf->{nic}{name}{$this_iface}], nic::mac::${this_mac}::current_name: [$conf->{nic}{mac}{$this_mac}{current_name}]", 3);
+					
+					# Find the NIC we want this mac to be.
+					#my $new_nic = $conf->{cache}{mac}{$mac}{nic};
+					#$conf->{nic}{name}{$new_nic} = $this_mac;
 				}
 				else
 				{
@@ -8471,6 +8482,8 @@ sub load_network_map_cache
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Cache read successfully, remap not required.", 1);
 			logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+			
+			#$conf->{nic}{name}{$nic}
 		}
 	}
 	else
@@ -8496,7 +8509,7 @@ sub record_network_map
 	{
 		my $this_mac = $conf->{nic}{name}{$nic};
 		next if not $this_mac;
-		$cache_data .= "$nic:".lc($this_mac)."\n";
+		$cache_data .= "$nic,".lc($this_mac)."\n";
 	}
 	if ($cache_data)
 	{
