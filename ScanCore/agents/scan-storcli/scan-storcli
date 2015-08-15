@@ -752,12 +752,48 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::protection_information", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{protection_information}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Support LDPI Type1 = (.*)?/i)	# 
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ldpi_type1
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type1} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type1", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type1}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support LDPI Type2 = (.*)?/i)	# 
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ldpi_type2
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type2} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type2", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type2}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support LDPI Type3 = (.*)?/i)	# 
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ldpi_type3
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type3} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type3", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type3}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Ld BBM Info = (.*)?/i)	# Logical Disk Bad Block Management
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ld_bbm_info
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ld_bbm_info", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Shield State = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ld_bbm_info
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ld_bbm_info", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 
 =pod
-Support LDPI Type1 = No
-Support LDPI Type2 = No
-Support LDPI Type3 = No
-Support Ld BBM Info = No
 Support Shield State = Yes
 Block SSD Write Disk Cache Change = No
 Support Suspend Resume BG ops = Yes

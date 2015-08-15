@@ -138,7 +138,9 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0059">The node: [#!variable!node!#] was booted back up successfully.</key>
 		<key name="scancore_log_0060">Failed to boot the node: [#!variable!node!#]. Tried using the shell call: [#!variable!shell_call!#] which should have returned the code '0' but: [#!variable!rc!#] was returned.</key>
 		<key name="scancore_log_0061">Post-scan checks and tasks completed.</key>
-		<key name="scancore_log_0062">The node: [#!variable!node!#], which went into an emergency-stop, is not ready to boot yet.</key>
+		<key name="scancore_log_0062">The node: [#!variable!node!#] is not ready to boot yet.</key>
+		<key name="scancore_log_0063">The node: [#!variable!node!#] was cleanly shut off so it will be left off.</key>
+		<key name="scancore_log_0064">The node: [#!variable!node!#] will not be booted because 'tools::boot_nodes::enabled' is set to '0' in [#!data!path::striker_config!#].</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

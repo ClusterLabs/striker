@@ -52,24 +52,97 @@ sub mark_node_as_clean_off
 	my ($conf, $node) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node]\n");
 	
-	# Connect to the databases.
+	# Put the '$an' handle into the variable for cleaner access.
+	my $an = $conf->{handle}{an};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
 	
-	### TODO:
+	# Connect to the databases.
+	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connections: [$connections]\n");
+	if ($connections)
+	{
+		# Update the hosts entry.
+		if (-e $an->data->{path}{host_uuid})
+		{
+			# Now read in the UUID.
+			$an->Get->uuid({get => 'host_uuid'});
+		}
+		
+		my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason = 'clean'
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query});
+		
+		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
+		###       node...
+		# Disconnect from databases.
+		$an->DB->disconnect_from_databases();
+	}
+	else
+	{
+		# Tell the user we failed to connect to the database.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to connect to any databases. Node: [$node] NOT marked as cleanly off.\n");
+	}
 	
 	return(0);
 }
 
-# Update the ScanCore database(s) to mark the node's 
-# (hosts -> host_stop_reason = NULL) so that they turn on if they're suddenly 
-# found to be off.
+# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = NULL) so that they turn on
+# if they're suddenly found to be off.
 sub mark_node_as_clean_on
 {
 	my ($conf, $node) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_on(); node: [$node]\n");
 	
-	# Connect to the databases.
+	# Put the '$an' handle into the variable for cleaner access.
+	my $an = $conf->{handle}{an};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
 	
-	### TODO:
+	# Connect to the databases.
+	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connections: [$connections]\n");
+	if ($connections)
+	{
+		# Update the hosts entry.
+		if (-e $an->data->{path}{host_uuid})
+		{
+			# Now read in the UUID.
+			$an->Get->uuid({get => 'host_uuid'});
+		}
+		
+		my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason = NULL
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query});
+		
+		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
+		###       node...
+		# Disconnect from databases.
+		$an->DB->disconnect_from_databases();
+	}
+	else
+	{
+		# Tell the user we failed to connect to the database.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to connect to any databases. Node: [$node] NOT marked as cleanly off.\n");
+	}
 	
 	return(0);
 }
@@ -7225,6 +7298,10 @@ sub poweroff_node
 				message	=>	$message,
 			});
 		}
+		
+		# Tell ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
+		mark_node_as_clean_off($conf, $node);
+		
 		print AN::Common::template($conf, "server.html", "poweroff-node-footer");
 	}
 	else
@@ -7490,9 +7567,8 @@ sub cold_stop_anvil
 					});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
 					
-					# The ScanCore that we're cleanly 
-					# shutting down so we don't auto-reboot
-					# the node.
+					# Tell ScanCore that we're cleanly shutting down so we don't 
+					# auto-reboot the node.
 					mark_node_as_clean_off($conf, $node);
 					
 					# If 'cancel_ups' is '1' or '2', I will
@@ -7852,7 +7928,8 @@ sub poweron_node
 					}});
 				AN::Cluster::error($conf, "$error\n");
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+			my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 				node		=>	$peer,
 				port		=>	$conf->{node}{$peer}{port},
@@ -7860,7 +7937,7 @@ sub poweron_node
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	1,
-				shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o on",
+				shell_call	=>	$shell_call,
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			foreach my $line (@{$output})
@@ -7870,6 +7947,9 @@ sub poweron_node
 					message	=>	$line,
 				});
 			}
+			
+			# Update ScanCore to tell it that the nodes should now be booted.
+			mark_node_as_clean_on($conf, $node);
 			print AN::Common::template($conf, "server.html", "poweron-node-close-tr");
 		}
 		else

@@ -57,6 +57,7 @@
 #      converted to CIDR notation.
 # 40 - Failed to install perl-Crypt-SSLeay, unable to download a repository
 #      at an HTTPS URL.
+# 41 - Failed to install AN::Tools
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -133,7 +134,6 @@ my $conf = {
 		'chmod'			=>	"/bin/chmod",
 		'chown'			=>	"/bin/chown",
 		curl			=>	"/usr/bin/curl",
-		dashboard		=>	"/sbin/striker/ScanCore/ScanCore",
 		echo			=>	"/bin/echo",
 		gcc			=>	"/usr/bin/gcc",
 		git			=>	"/usr/bin/git",
@@ -159,6 +159,7 @@ my $conf = {
 		semanage		=>	"/usr/sbin/semanage",
 		setenforce		=>	"/usr/sbin/setenforce",
 		setsebool		=>	"/usr/sbin/setsebool",
+		scancore		=>	"/sbin/striker/ScanCore/ScanCore",
 		storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
 		storcli64_link		=>	"/sbin/storcli64",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
@@ -347,7 +348,6 @@ my $conf = {
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
 		iptables		=>	"/etc/sysconfig/iptables",
-		merged_sql		=>	"/tmp/striker_all.sql",
 		network_configs		=>	"/etc/sysconfig/network-scripts",
 		network_map_cache	=>	"/root/.striker-network-map.cache",
 		ntp_conf		=>	"/etc/ntp.conf",
@@ -518,6 +518,36 @@ my $conf = {
 				enabled			=>	1,
 			},
 		},
+	},
+	switches	=>	{
+		'autostart-dhcpd'	=>	"",
+		'b'			=>	"", # <ip_address/netmask>
+		'c'			=>	"", # <customer/owner>
+		'centos-iso'		=>	"", # <'none', 'dvd', local path or URL>
+		'custom-config'		=>	"", # /path/to/striker.conf
+		'd'			=>	"", # <version>
+		'disable-scancore'	=>	"",
+		'e'			=>	"", # <user:password>
+		gui			=>	"",
+		'h'			=>	"",
+		help			=>	"",
+		'i'			=>	"", # <ip_address/netmask>,dg=<ip_address>[,dns1=<ip_address>,dns2=<ip_address>]
+		'ipmi-user'		=>	"", # <user:password>
+		'ipmi-ip'		=>	"", # <ip_address/netmask>[,gw=<ip_address>]
+		'use-lsi'		=>	"",
+		'm'			=>	"", # <mail server:port>
+		'n'			=>	"", # <hostname>
+		'no-an-repo'		=>	"",
+		'no-reboot'		=>	"",
+		ntp			=>	"", # <ip[,ip]>
+		'p'			=>	"", # <start_ip:end_ip>
+		'r'			=>	"", # <repo>
+		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
+		rhn			=>	"", # <user:password>
+		'router-mode'		=>	"",
+		'run-rc-local'		=>	"",
+		'u'			=>	"", # <user:password>
+		'y'			=>	"",
 	},
 	sys		=>	{
 		apache_group		=>	"apache",
@@ -1246,9 +1276,40 @@ fi";
 	}
 	close $file_handle;
 	
-	### TODO: Make this enabled via a command line switch... many users
-	###       may not want this.
-	# Add scanner to crontab.
+	# Copy AN::Tools into place.
+	if ((not -e $conf->{path}{perl_library}) && (-e $conf->{path}{perl_source}))
+	{
+		my $shell_call = "$conf->{path}{mv} -f $conf->{path}{perl_source} $conf->{path}{perl_library}/";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 2);
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /$dashboard/)
+			{
+				# Skip it as we'll add it back later.
+				logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
+			}
+			else
+			{
+				$raw_cron .= "$line\n";
+			}
+		}
+		close $file_handle;
+	}
+	elsif (-e $conf->{path}{perl_library})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- AN::Tools perl module already exists in: [$conf->{path}{perl_library}], skipping installing it.", 1);
+	}
+	elsif (not -e $conf->{path}{perl_source})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - AN::Tools perl module source: [$conf->{path}{perl_source}] doesn't exist nor is it in the target directory: [$conf->{path}{perl_library}], skipping installing it. This will cause Striker to fail!", 1);
+		exit(41);
+	}
+	
+	# Add scanCore to crontab.
 	logger($conf, $THIS_FILE, __LINE__, "- Enabling ScanCore.", 1);
 	$shell_call = "
 if [ ! -e '$conf->{path}{cron_root}' ]
@@ -1272,38 +1333,39 @@ fi";
 	}
 	close $file_handle;
 	
-	# Disabling ScanCore on boot for now.
-	if (0)
+	logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
+	my $dashboard  = $conf->{executable}{scancore};
+	my $raw_cron   = "";
+	$shell_call = "$conf->{path}{cron_root}";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call].", 2);
+	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Reading in 'root's cron table.", 1);
-		my $dashboard  = $conf->{executable}{dashboard};
-		my $raw_cron   = "";
-		$shell_call = "$conf->{path}{cron_root}";
-		open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
-		while (<$file_handle>)
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /$dashboard/)
 		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-			if ($line =~ /$dashboard/)
-			{
-				# Skip it as we'll add it back later.
-				logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
-			}
-			else
-			{
-				$raw_cron .= "$line\n";
-			}
+			# Skip it as we'll add it back later.
+			logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
 		}
-		close $file_handle;
-		$raw_cron .= "*/5 * * * * $dashboard\n";
-		
-		logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
-		$shell_call = "$conf->{path}{cron_root}";
-		open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
-		print $file_handle $raw_cron;
-		close $file_handle;
+		else
+		{
+			$raw_cron .= "$line\n";
+		}
 	}
+	close $file_handle;
+	
+	# Whether this is enabled or not depends on whether the 'disable-scancore' switch is set.
+	my $crontab_string =  $conf->{switches}{'disable-scancore'} ? "#" : "";
+	   $crontab_string .= "*/5 * * * * $dashboard";
+	   $raw_cron       .= "$crontab_string\n";
+	
+	logger($conf, $THIS_FILE, __LINE__, "- Writing out 'root's updated cron table.", 1);
+	$shell_call = "$conf->{path}{cron_root}";
+	open ($file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle $raw_cron;
+	close $file_handle;
 	
 	# Delete the .pgpass file, if it was created.
 	if ($use_password)
@@ -4917,7 +4979,7 @@ sub install_striker_files
 			$striker_config .= "$line\n";
 			if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 			{
-				$striker_config .= "scancore::db::1::host			=	localhost\n";
+				$striker_config .= "scancore::db::1::host			=	$conf->{network}{bcn}{ip}\n";
 				$striker_config .= "scancore::db::1::port			=	5432\n";
 				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
@@ -7835,7 +7897,7 @@ SWITCHES
 	enable the "Install Target" when needed.
 	
 	If you know that your BCN is VLAN isolated, then you can use this
-	switch to auto-start the DHCP server on boot.	
+	switch to auto-start the DHCP server on boot.
 
  -b <ip_address/netmask>
 	
@@ -7873,6 +7935,13 @@ SWITCHES
 	The default is to download the latest stable version. If set to 'git',
 	the latest version in github will be installed. You probably don't want
 	this unless you're a developer.
+
+ --disable-scancore
+
+	By default, ScanCore will not run boot. This may not be desired in some
+	environments, so this switch can be used to disable ScanCore from 
+	running when the Striker dashboard starts. When used, an entry is still
+	added to root's cron table, but it will be commented out.
 
  -e <user:password>
 

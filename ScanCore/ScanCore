@@ -161,8 +161,7 @@ my $an = AN::Tools->new({data =>
 			striker_strings		=>	"$running_directory/Data/strings.xml",
 			uuidgen			=>	"/usr/bin/uuidgen",
 		},
-		# Things set here are meant to be overwritable by the user in
-		# striker.conf.
+		# Things set here are meant to be overwritable by the user in striker.conf.
 		scancore			=>	{
 			# Set to '1' to add the footer warning that the email
 			# did not come from alteeve.ca
@@ -171,27 +170,23 @@ my $an = AN::Tools->new({data =>
 				power_shutdown		=>	0,
 				thermal_shutdown	=>	0,
 			},
-			# This gets set to 'dashboard' if we determine this is
-			# a dashboard machine.
+			# This gets set to 'dashboard' if we determine this is a dashboard machine.
 			i_am_a			=>	"",
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
 			maximum_ram		=>	(512 * 1048576),
-			# When both/all UPSes powering a node switch to 
-			# batteries, their remaining hold-up time will be 
-			# checked and the strongest will be compared against
-			# this value. If the remaining runtime of the strongest
-			# ups is below this time, 'safe_anvil_shutdown' will be
-			# invoked.
+			# When both/all UPSes powering a node switch to batteries, their remaining hold-up 
+			# time will be checked and the strongest will be compared against this value. If the
+			# remaining runtime of the strongest ups is below this time, 'safe_anvil_shutdown' 
+			# will be invoked.
 			minimum_ups_runtime	=>	600,
 			minimum_safe_charge	=>	45,
 			temperature		=>	{
-				# This is the weight given to each thermal 
-				# sensor by default.
+				# This is the weight given to each thermal sensor by default.
 				default_sensor_weight	=>	1,
-				# The sum of the critical temperature weights
-				# must exceed this value to cause a shut down.
+				# The sum of the critical temperature weights must exceed this value to cause
+				# a shut down.
 				shutdown_limit		=>	5,
 			},
 			thermal_reboot_delay	=>	{
@@ -217,6 +212,11 @@ my $an = AN::Tools->new({data =>
 			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
 			use_db_fh		=>	"",
+		},
+		tools		=>	{
+			boot_nodes	=>	{
+				enabled		=>	1,
+			},
 		},
 	}
 });
@@ -530,14 +530,24 @@ sub do_post_scan_dashboard_tasks
 	# is nothing further for us to do. We order by host name to be sure to
 	# boot node 1 first, when both are recoverable. 'Tis but a minor thing,
 	# but hey, why not.
-	my $query = "SELECT host_name FROM hosts WHERE host_type = 'node' AND host_emergency_stop = TRUE ORDER BY host_name";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	my $query = "
+SELECT 
+    host_name, 
+    host_emergency_stop, 
+    host_stop_reason 
+FROM 
+    hosts 
+WHERE 
+    host_type = 'node' 
+ORDER BY 
+    host_name;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -548,7 +558,7 @@ sub do_post_scan_dashboard_tasks
 		
 		# First step is to read in any/all cache files. If we don't
 		# have a cache directory, then we're done.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
 		}, file => $THIS_FILE, line => __LINE__});
 		if (-d $an->data->{path}{node_cache})
@@ -563,7 +573,7 @@ sub do_post_scan_dashboard_tasks
 				next if $file eq "..";
 				next if $file !~ /cache_.*?\.striker/;
 				my $full_path = $an->data->{path}{node_cache}."/$file";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "full_path", value1 => "$full_path"
 				}, file => $THIS_FILE, line => __LINE__});
 				if (-r $full_path)
@@ -584,7 +594,7 @@ sub do_post_scan_dashboard_tasks
 						chomp;
 						my $line =  $_;
 						   $line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "line", value1 => "$line"
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -642,44 +652,60 @@ sub do_post_scan_dashboard_tasks
 			# at the nodes that are down.
 			foreach my $row (@{$results})
 			{
-				my $node = $row->[0];
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "node",                value1 => $node, 
-					name2 => "path::node_cache",    value2 => $an->data->{path}{node_cache}, 
-					name3 => "ref: cache::${node}", value3 => ref($an->data->{cache}{$node}),
+				#my $node = $row->[0];
+				my $host_name           = $row->[0];
+				my $host_emergency_stop = $row->[1];
+				my $host_stop_reason    = $row->[2];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+					name1 => "host_name",                value1 => $host_name, 
+					name2 => "host_emergency_stop",      value2 => $host_emergency_stop, 
+					name3 => "host_stop_reason",         value3 => $host_stop_reason, 
+					name4 => "path::node_cache",         value4 => $an->data->{path}{node_cache}, 
+					name5 => "ref: cache::${host_name}", value5 => ref($an->data->{cache}{$host_name}),
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				### TODO: Should we make it a config option to
-				###       let the usee decide if they want to
-				###       boot a node while a dashboard is in 
-				###       'warning'?
+				### TODO: Should we make it a config option to let the user decide if they
+				###       want to boot a node while a dashboard is in 'warning'?
 				
 				# Make sure our own temperature is good.
 				my $my_temperature_is_ok = check_node_temperature_health($an, $an->hostname);
 				
-				# See if the power is safe enough to boot this
-				# node.
-				my $power_is_safe       = check_node_power_health      ($an, $node);
-				my $temperature_is_safe = check_node_temperature_health($an, $node);
+				# See if the power is safe enough to boot this node.
+				my $power_is_safe       = check_node_power_health      ($an, $host_name);
+				my $temperature_is_safe = check_node_temperature_health($an, $host_name);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "power_is_safe",        value1 => $power_is_safe, 
 					name2 => "temperature_is_safe",  value2 => $temperature_is_safe, 
 					name3 => "my_temperature_is_ok", value3 => $my_temperature_is_ok
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				# Now, if the power and temperature is good,
-				# try to boot the node!
-				if (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
+				# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
+				# temperature is good, try to boot the node!
+				if ($host_stop_reason eq "clean")
+				{
+					# Leave it off.
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0063", message_variables => {
+						node => $host_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif (not $conf->{tools}{boot_nodes}{enabled})
+				{
+					# Booting nodes was disabled by the user.
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0064", message_variables => {
+						node => $host_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
 				{
 					# Okie!
 					#print "I would have booted the node, but I'm lazy.\n";
-					boot_node($an, $node);
+					boot_node($an, $host_name);
 				}
 				else
 				{
 					# Not ready to boot yet.
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0062", message_variables => {
-						node => $node, 
+						node => $host_name, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -791,7 +817,15 @@ sub boot_node
 						}, file => $THIS_FILE, line => __LINE__});
 						
 						# Clear the 'emergency_stop' flag.
-						my $query = "UPDATE hosts SET host_emergency_stop = FALSE WHERE host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";";
+						my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason = NULL
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
 						}, file => $THIS_FILE, line => __LINE__});
@@ -822,9 +856,8 @@ sub boot_node
 	return(0);
 }
 
-
-# This pulls in the list of UPSes powering the given node and checks to see if
-# they are healthy enough to power the node.
+# This pulls in the list of UPSes powering the given node and checks to see if they are healthy enough to 
+# power the node.
 sub check_node_power_health
 {
 	my ($an, $node) = @_;
@@ -855,9 +888,8 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		my $power_ups_name = $row->[0];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "query",                       value1 => $query, 
-			name2 => "ref: power::$power_ups_name", value2 => ref($an->data->{power}{$power_ups_name}),
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "power_ups_name", value1 => $power_ups_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do I know about this UPS?
@@ -869,6 +901,12 @@ WHERE
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "power_on_battery",        value1 => $power_on_battery, 
 				name2 => "power_charge_percentage", value2 => $power_charge_percentage,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$power_on_battery = 1 if $power_on_battery eq "TRUE";
+			$power_on_battery = 0 if $power_on_battery eq "FALSE";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "power_on_battery", value1 => $power_on_battery, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ((not $power_on_battery) && ($power_charge_percentage > $highest_charge))

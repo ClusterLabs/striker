@@ -783,9 +783,18 @@ fi
 	if (not $return_code)
 	{
 		# Add it to root's crontab.
-=pod
-		# Now make sure scan core is set to start on boot.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
+		my $crontab_line = "";
+		if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
+		}
+		else
+		{
+			# Don't fail on this, yet. Maybe later.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Adding ScanCore to root's cron table but commenting it out.\n");
+			$crontab_line .= "#";
+		}
+		$crontab_line .= "*/5 * * * * /sbin/striker/ScanCore/ScanCore";
 		my $shell_call = "
 if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
@@ -799,7 +808,7 @@ if [ \"\$?\" -eq '0' ];
 then
 	echo 'exits'
 else
-	echo '#*/5 * * * * /sbin/striker/ScanCore/ScanCore' >> $conf->{path}{nodes}{cron_root}
+	echo '$crontab_line' >> $conf->{path}{nodes}{cron_root}
 fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -816,7 +825,6 @@ fi";
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 		}
-=cut
 	}
 	
 	# 0 == Success
@@ -12741,67 +12749,6 @@ sub get_local_bcn_ip
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bcn_ip: [$bcn_ip]\n");
 	return($bcn_ip);
 }
-
-### Deprecated; Everything should be copied to each node's /sbin/striker/ now.
-# If one or both of the nodes failed to connect to the web, this function will
-# move tools to our webserver's docroot and then update paths to find the tools
-# here. The paths will use the BCN for download.
-# sub copy_tools_to_docroot
-# {
-# 	my ($conf) = @_;
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; copy_tools_to_docroot()\n");
-# 	
-# 	my $docroot         = $conf->{path}{docroot};
-# 	my $tools_directory = $conf->{path}{tools_directory};
-# 	my $bcn_ip          = get_local_bcn_ip($conf);
-# 	
-# 	foreach my $tool (@{$conf->{path}{tools}})
-# 	{
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copying tool: [$tool] from: [$tools_directory] to: [$docroot]\n");
-# 		my $source      = "$tools_directory/$tool";
-# 		my $destination = "$docroot/$tool";
-# 		if (-e $destination)
-# 		{
-# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; skipping, already exists: [$destination]\n");
-# 		}
-# 		elsif (-e $source)
-# 		{
-# 			# Copy.
-# 			my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source $destination";
-# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sc: [$shell_call]\n");
-# 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call]\n";
-# 			while(<$file_handle>)
-# 			{
-# 				chomp;
-# 				my $line = $_;
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-# 			}
-# 			close $file_handle;
-# 			if (-e $destination)
-# 			{
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Copied successfully!\n");
-# 				# No sense changing the URLs if I didn't find
-# 				# my BCN IP...
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
-# 				if ($bcn_ip)
-# 				{
-# 					$conf->{url}{$tool} = "http://$bcn_ip/$tool";
-# 				}
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << bcn_ip: [$bcn_ip], tool: [$tool], url: [$conf->{url}{$tool}]\n");
-# 			}
-# 			else
-# 			{
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to copy! Will try to proceed as the nodes may have these files already.\n");
-# 			}
-# 		}
-# 		else
-# 		{
-# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The source file: [$source] wasn't found! Will try to proceed as the nodes may have these files already.\n");
-# 		}
-# 	}
-# 	
-# 	return(0);
-# }
 
 # This does nothing more than call 'echo 1' to see if the target is reachable.
 sub check_node_access

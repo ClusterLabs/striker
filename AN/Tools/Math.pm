@@ -66,6 +66,9 @@ sub round
 		$places = defined $_[0] ? shift : 0;
 	}
 	
+	# Return if the user passed a double-dash.
+	return('--') if $num eq "--";
+	
 	# Make a copy of the passed number that I can manipulate.
 	my $rounded_num = $num;
 	

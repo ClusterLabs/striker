@@ -604,6 +604,7 @@ sub initialize_conf
 			'log'			=>	"",
 		},
 		path			=>	{
+			agents_directory	=>	"/var/www/ScanCore/ScanCore/agents",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
 			'call_anvil-kick-apc-ups' =>	"/var/www/tools/call_anvil-kick-apc-ups",
@@ -614,7 +615,7 @@ sub initialize_conf
 			check_dvd		=>	"/var/www/tools/check_dvd",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
-			config_file		=>	"/etc/striker/striker.conf",
+			config_file		=>	"/etc/striker/striker.conf",	# TODO: Phase this out in favour of 'striker_config' below.
 			control_dhcpd		=>	"/var/www/tools/control_dhcpd",
 			control_iptables	=>	"/var/www/tools/control_iptables",
 			control_libvirtd	=>	"/var/www/tools/control_libvirtd",
@@ -631,6 +632,9 @@ sub initialize_conf
 			gethostip		=>	"/bin/gethostip",
 			'grep'			=>	"/bin/grep",
 			home			=>	"/var/www/home/",
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it in the agents, too.
+			host_uuid		=>	"/etc/striker/host.uuid",
 			hostname		=>	"/bin/hostname",
 			hosts			=>	"/etc/hosts",
 			ifconfig		=>	"/sbin/ifconfig",
@@ -640,8 +644,16 @@ sub initialize_conf
 			ip			=>	"/sbin/ip",
 			log_file		=>	"/var/log/striker.log",
 			lvdisplay		=>	"/sbin/lvdisplay",
+			mailx			=>	"/bin/mailx",
 			media			=>	"/var/www/home/media/",
+			mv			=>	"/bin/mv",
+			perl_library		=>	"/usr/share/perl5",
+			perl_source		=>	"/sbin/striker/AN",
 			ping			=>	"/usr/bin/ping",
+			postfix_init		=>	"/etc/init.d/postfix",
+			postfix_main		=>	"/etc/postfix/main.cf",
+			postfix_relay_file	=>	"/etc/postfix/relay_password",
+			postmap			=>	"/usr/sbin/postmap",
 			'redhat-release'	=>	"/etc/redhat-release",
 			repo_centos		=>	"/var/www/html/centos6/x86_64/img/repodata",
 			repo_centos_path	=>	"/centos6/x86_64/img/",
@@ -652,6 +664,8 @@ sub initialize_conf
 			rhn_check		=>	"/usr/sbin/rhn_check",
 			rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 			rsync			=>	"/usr/bin/rsync",
+			scancore_strings	=>	"/var/www/ScanCore/ScanCore.xml",
+			scancore_sql		=>	"/var/www/ScanCore/ScanCore.sql",
 			screen			=>	"/usr/bin/screen",
 			shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
 			shorewall_init		=>	"/etc/init.d/shorewall",
@@ -659,8 +673,10 @@ sub initialize_conf
 			ssh_config		=>	"/etc/ssh/ssh_config",
 			'ssh-keyscan'		=>	"/usr/bin/ssh-keyscan",
 			status			=>	"/var/www/home/status/",
-			'striker_files'		=>	"/var/www/home",
-			'striker_cache'		=>	"/var/www/home/cache",
+			striker_cache		=>	"/var/www/home/cache",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_files		=>	"/var/www/home",
+			striker_strings		=>	"/var/www/cgi-bin/Data/strings.xml",
 			sync			=>	"/bin/sync",
 			tools_directory		=>	"/var/www/tools/",
 			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
@@ -730,6 +746,12 @@ sub initialize_conf
 		args			=>	{
 			check_dvd		=>	"--dvd --no-cddb --no-device-info --no-disc-mode --no-vcd",
 			rsync			=>	"-av --partial",
+		},
+		# Things set here are meant to be overwritable by the user in striker.conf.
+		scancore			=>	{
+			language		=>	"en_CA",
+			log_level		=>	2,
+			log_language		=>	"en_CA",
 		},
 		sys			=>	{
 			# Some actions, like powering off servers and nodes,
@@ -875,6 +897,7 @@ sub initialize_conf
 					ups2_name		=>	"",
 					'use_anvil-kick-apc-ups' =>	0,
 					use_safe_anvil_start	=>	1,
+					use_scancore		=>	0,
 				},
 				# If the user wants to build install manifests for
 				# environments with 4 PDUs, this will be set to '4'.
@@ -927,9 +950,10 @@ sub initialize_conf
 				},
 				# This sets anvil-kick-apc-ups to start on boot
 				'use_anvil-kick-apc-ups' =>	0,
-				# This controls whether safe_anvil_start is
-				# enabled or not.
+				# This controls whether safe_anvil_start is enabled or not.
 				use_safe_anvil_start	=>	1,
+				# This controls whether ScanCore will run on boot or not.
+				use_scancore		=>	1,
 			},
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",

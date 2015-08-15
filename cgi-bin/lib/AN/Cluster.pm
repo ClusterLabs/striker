@@ -3808,18 +3808,19 @@ sub load_install_manifest
 				}
 				elsif ($b eq "tools")
 				{
-					# Used to control which Anvil! tools 
-					# are used and how to use them.
-					#<use safe_anvil_start=\"true\" anvil-kick-apc-ups=\"false\" />
+					# Used to control which Anvil! tools are used and how to use them.
 					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
+					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
 					
 					$safe_anvil_start   = 1 if $safe_anvil_start   eq "true";
 					$anvil_kick_apc_ups = 1 if $anvil_kick_apc_ups eq "true";
+					$scancore           = 1 if $scancore           eq "true";
 					
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
-					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
-					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}]\n");
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             = defined $scancore           ? $scancore           : $conf->{sys}{install_manifest}{'default'}{use_scancore};
+					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}], use: 'scancore': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}]\n");
 				}
 				elsif ($b eq "media_library")
 				{
@@ -4085,8 +4086,9 @@ sub load_install_manifest
 		
 		# Tools
 		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
-		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'anvil-kick-apc-ups'};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
+		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
+		$conf->{sys}{install_manifest}{'use_scancore'}           = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             : $conf->{sys}{install_manifest}{'default'}{use_scancore};
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
@@ -4881,10 +4883,11 @@ Striker Version: $conf->{sys}{version}
 			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
 	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
-	record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start]\n");
+	my $say_use_scancore           = $conf->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
+	record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start], say_use_scancore: [$say_use_scancore]\n");
 	
 	$xml .= "
 		</pdu>
@@ -4920,7 +4923,7 @@ Striker Version: $conf->{sys}{version}
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 		<tools>
-			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" />
+			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" ScanCore=\"$say_use_scancore\" />
 		</tools>
 	</common>
 </config>
