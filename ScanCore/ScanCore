@@ -206,9 +206,10 @@ my $an = AN::Tools->new({data =>
 			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
 			# This stores the local machine's ScanCore UUID.
 			host_uuid		=>	"",
-			# This looks like a lot, but 'pmap' kinda sucks and 
-			# reports shared memory, so to even start a program 
-			# lists 120 MiB+ used. I will make it smarter later.
+			# This gets set to '1' once we know this host is in the DB.
+			host_is_in_db		=>	0,
+			# This looks like a lot, but 'pmap' kinda sucks and reports shared memory, so to even
+			# start a program lists 120 MiB+ used. I will make it smarter later.
 			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
 			use_db_fh		=>	"",
@@ -4506,6 +4507,7 @@ WHERE
 			$an->DB->do_db_write({query => $query});
 		}
 	}
+	$an->data->{sys}{host_is_in_db} = 1;
 	
 	return(0);
 }

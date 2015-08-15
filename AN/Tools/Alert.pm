@@ -98,7 +98,46 @@ AND
 	# If it is type=clear, remove the alert if it exists.
 	if (($type eq "warning") && (not $count))
 	{
-		# New alert
+		### New alert
+		# Make sure this host is in the database... It might not be on the very first run of ScanCore
+		# before the peer exists (tried to connect to the peer, fails, tries to send an alert, but
+		# this host hasn't been added because it's the very first attempt to connect...)
+		if (not $an->data->{sys}{host_is_in_db})
+		{
+			my $query = "
+SELECT 
+    COUNT(*)
+FROM 
+    hosts 
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "count", value1 => $count, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $count)
+			{
+				# Too early, we can't set an alert.
+				$an->Alert->warning({message_key => "scancore_error_0018", message_variables => {
+					type			=>	$type, 
+					alert_sent_by		=>	$alert_sent_by, 
+					alert_record_locator	=>	$alert_record_locator, 
+					alert_name		=>	$alert_name, 
+					modified_date		=>	$modified_date,
+				}, file => $THIS_FILE, line => __LINE__});
+				return(0);
+			}
+			else
+			{
+				$an->data->{sys}{host_is_in_db} = 1;
+			}
+		}
+		
 		   $set   = 1;
 		my $query = "
 INSERT INTO 

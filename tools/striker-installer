@@ -4970,7 +4970,7 @@ sub install_striker_files
 			$striker_config .= "$line\n";
 			if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 			{
-				$striker_config .= "scancore::db::1::host			=	$conf->{network}{bcn}{ip}\n";
+				$striker_config .= "scancore::db::1::host			=	$conf->{sys}{hostname}\n";
 				$striker_config .= "scancore::db::1::port			=	5432\n";
 				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";

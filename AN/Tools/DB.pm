@@ -274,16 +274,6 @@ sub connect_to_databases
 			# Something went wrong...
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
-			#$an->Alert->warning({ title_key => "scancore_title_0002", message_key => "scancore_warning_0001", message_variables => {
-			#	name		=>	$name,
-			#	host		=>	$host,
-			#	port		=>	$port,
-			#}, file => $THIS_FILE, line => __LINE__});
-			#push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0001", message_variables => {
-			#	name		=>	$name,
-			#	host		=>	$host,
-			#	port		=>	$port,
-			#}};
 			if (not defined $DBI::errstr)
 			{
 				# General error
