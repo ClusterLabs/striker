@@ -1287,15 +1287,6 @@ fi";
 			chomp;
 			my $line = $_;
 			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-			if ($line =~ /$dashboard/)
-			{
-				# Skip it as we'll add it back later.
-				logger($conf, $THIS_FILE, __LINE__, "- Existing dashboard entry found in 'root's cron, removing it.", 1);
-			}
-			else
-			{
-				$raw_cron .= "$line\n";
-			}
 		}
 		close $file_handle;
 	}
