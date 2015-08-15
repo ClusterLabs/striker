@@ -256,7 +256,7 @@ sub hostname
 {
 	my $self = shift;
 	
-	my $an = $self->parent;
+	my $an = $self;
 	my $hostname = "";
 	if ($ENV{HOSTNAME})
 	{

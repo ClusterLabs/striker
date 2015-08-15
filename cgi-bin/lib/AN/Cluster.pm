@@ -9835,21 +9835,21 @@ sub get_rsa_public_key
 sub get_hostname
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
+	record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
 
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		$hostname = $_;
-		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	}
 	close $file_handle;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	return($hostname);
 }
 

@@ -1459,7 +1459,7 @@ sub read_cluster_conf
 		# will check later to determine health.
 		if ($line =~ /<script file="(.*?)"/)
 		{
-			my $script_path = $1;
+			my $script_path   = $1;
 			my ($script_name) = ($script_path =~ /.*?\/(\w+)$/);
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - script_path: [$script_path], script_name: [$script_name]", 3);
 			$conf->{daemons}{$script_name} = $script_path;
