@@ -544,6 +544,7 @@ my $conf = {
 		'no-reboot'		=>	"",
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
+		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
 		'r'			=>	"", # <repo>
 		'rhel-iso'		=>	"", # <'none', 'dvd', local path or URL>
 		rhn			=>	"", # <user:password>
@@ -4974,6 +4975,23 @@ sub install_striker_files
 				$striker_config .= "scancore::db::1::name			=	$conf->{sys}{scancore_database}\n";
 				$striker_config .= "scancore::db::1::user			=	$conf->{sys}{striker_user}\n";
 				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n\n";
+				
+				# If they told us about the peer, add it.
+				logger($conf, $THIS_FILE, __LINE__, "- switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 2);
+				if ($conf->{switches}{'peer-dashboard'})
+				{
+					my $peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
+					   $peer_hostname =~ s/,bcn_ip.*//;
+					logger($conf, $THIS_FILE, __LINE__, "- peer_hostname: [$peer_hostname]", 2);
+					if ($peer_hostname)
+					{
+						$striker_config .= "scancore::db::2::host			=	$peer_hostname\n";
+						$striker_config .= "scancore::db::2::port			=	5432\n";
+						$striker_config .= "scancore::db::2::name			=	$conf->{sys}{scancore_database}\n";
+						$striker_config .= "scancore::db::2::user			=	$conf->{sys}{striker_user}\n";
+						$striker_config .= "scancore::db::2::password			=	$conf->{sys}{striker_password}\n\n";
+					}
+				}
 			}
 		}
 		close $file_handle;
@@ -6603,11 +6621,32 @@ sub update_hosts
 {
 	my ($conf) = @_;
 	
-	# Read in the hosts file and look for previous entries with our
-	# hostname.
 	logger($conf, $THIS_FILE, __LINE__, "- Updating: [$conf->{path}{hosts}]", 1);
-	my $new_hosts = "";
-	my $hostname  = $conf->{sys}{hostname};
+	
+	# See if the user passed the peer dashboard info.
+	my $peer_short_name = "";
+	my $peer_hostname   = "";
+	my $peer_bcn_ip     = "";
+	logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 2);
+	if ($conf->{switches}{'peer-dashboard'})
+	{
+		$peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
+		$peer_hostname =~ s/,bcn_ip.*//;
+		$peer_bcn_ip   =  ($conf->{switches}{'peer-dashboard'} =~ /bcn_ip=(.*)$/)[0];
+		$peer_bcn_ip   =~ s/,hostname.*//;
+		
+		if ($peer_hostname)
+		{
+			$peer_short_name = ($peer_hostname =~ /^(.*?)\./)[0];
+		}
+		logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip], peer_short_name: [$peer_short_name]", 2);
+	}
+	
+	# Read in the hosts file and look for previous entries with our hostname.
+	my $new_hosts  = "";
+	my $hostname   = $conf->{sys}{hostname};
+	my $short_name = ($hostname =~ /^(.*?)\./)[0];
+	   $short_name = $hostname if not $short_name;
 	open (my $file_handle, "<", $conf->{path}{hosts}) or die "$THIS_FILE ".__LINE__."; Failed to read: [$conf->{path}{hosts}], the error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -6615,6 +6654,12 @@ sub update_hosts
 		my $line = $_;
 		
 		next if $line =~ /$hostname/;
+		next if $line =~ /$short_name/;
+		
+		if ($peer_hostname)
+		{
+			next if $line =~ /$peer_hostname/;
+		}
 		
 		$new_hosts .= "$line\n";
 	}
@@ -6625,18 +6670,30 @@ sub update_hosts
 	if ($conf->{network}{bcn}{ip})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Using the BCN IP for the hostname: [$hostname]", 1);
-		$new_hosts .= "$conf->{network}{bcn}{ip}\t$hostname\n";
+		$new_hosts .= "$conf->{network}{bcn}{ip}\t$hostname $short_name ${short_name}.bcn\n";
 		$updated   =  1;
 	}
-	elsif ($conf->{network}{ifn}{ip})
+	if ($conf->{network}{ifn}{ip})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Using the IFN IP for the hostname: [$hostname]", 1);
-		$new_hosts .= "$conf->{network}{ifn}{ip}\t$hostname\n";
+		$new_hosts .= "$conf->{network}{ifn}{ip}\t${short_name}.ifn\n";
 		$updated   =  1;
 	}
-	else
+	# See if I need to inject the peer's details.
+	logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip]", 2);
+	if (($peer_hostname) && ($peer_bcn_ip))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Neither the BCN or IFN IP was known, skipping.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Adding peer dashboard's hostname: [$peer_hostname]", 1);
+		my $new_line = "$peer_bcn_ip\t$peer_hostname\n";
+		logger($conf, $THIS_FILE, __LINE__, "peer_short_name: [$peer_short_name]", 2);
+		if ($peer_short_name)
+		{
+			$new_line = "$peer_bcn_ip\t$peer_hostname $peer_short_name ${peer_short_name}.bcn\n";
+		}
+		logger($conf, $THIS_FILE, __LINE__, "new_line: [$new_line]", 2);
+		$new_hosts .= $new_line;
+		$updated   =  1;
+		
 	}
 	
 	if ($updated)
@@ -8025,6 +8082,18 @@ SWITCHES
 
 	NOTE: This lease range must be in the BCN subet. We do not want to
 	      interfere with existing DHCP servers on the IFN!
+
+ --peer-dashboard <hostname=x,bcn_ip=y>
+
+	This allows you to tell this Striker dashboard about its peer. When 
+	set, the installer will configure the other dashboard as a ScanCore
+	database host and record its data to the peer as well.
+	
+	NOTE: This only works if the ScanCore database configuration and 
+	      Striker password is the same as this dashboard! If you have
+	      a differing configuration or password, please manually add the
+	      peer information to striker.conf and /etc/hosts after the install
+	      completes.
 
  -r <repo>
 

@@ -244,6 +244,7 @@ cat > /root/example_striker-installer.txt << EOF
  -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
  -b ${BCNIP}/16 \\
  -p 10.20.10.200:10.20.10.210 \\
+ --peer-dashboard hostname=an-striker02.alteeve.ca,bcn_ip=10.20.4.2 \\
  --router-mode \\
  --gui \\
  -d git \\
