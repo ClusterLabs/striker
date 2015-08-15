@@ -16,6 +16,7 @@ BEGIN
 
 use strict;
 use warnings;
+use IO::Handle;
 my $THIS_FILE = "Tools.pm";
 
 # Setup for UTF-8 mode.
@@ -159,11 +160,12 @@ sub new
 	}
 	
 	# Set some system paths
-	$an->data->{path}{pg_dump} = "/usr/bin/pg_dump";
-	$an->data->{path}{pgrep}   = "/usr/bin/pgrep";
-	$an->data->{path}{psql}    = "/usr/bin/psql";
-	$an->data->{path}{pmap}    = "/usr/bin/pmap";
-	$an->data->{path}{ps}      = "/bin/ps";
+	$an->data->{path}{hostname} = "/etc/sysconfig/network";
+	$an->data->{path}{pg_dump}  = "/usr/bin/pg_dump";
+	$an->data->{path}{pgrep}    = "/usr/bin/pgrep";
+	$an->data->{path}{psql}     = "/usr/bin/psql";
+	$an->data->{path}{pmap}     = "/usr/bin/pmap";
+	$an->data->{path}{ps}       = "/bin/ps";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	#print "$THIS_FILE ".__LINE__."; Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
@@ -254,7 +256,36 @@ sub hostname
 {
 	my $self = shift;
 	
-	return($ENV{HOSTNAME});
+	my $hostname = "";
+	if ($ENV{HOSTNAME})
+	{
+		$hostname = $ENV{HOSTNAME};
+	}
+	else
+	{
+		if (-r $an->data->{path}{hostname})
+		{
+			my $shell_call = $an->data->{path}{hostname};
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => ">> line", value1 => "$line"
+				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				if ($line =~ /HOSTNAME=(.*)$/)
+				{
+					$hostname = $1;
+					last;
+				}
+			}
+			close $file_handle;
+		}
+	}
+	
+	
+	return($hostname);
 }
 
 # This returns the short hostname for the machine this is running on. That is

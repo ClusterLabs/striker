@@ -4923,7 +4923,7 @@ Striker Version: $conf->{sys}{version}
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 		<tools>
-			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" ScanCore=\"$say_use_scancore\" />
+			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
 		</tools>
 	</common>
 </config>
