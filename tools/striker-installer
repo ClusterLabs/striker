@@ -58,6 +58,7 @@
 # 40 - Failed to install perl-Crypt-SSLeay, unable to download a repository
 #      at an HTTPS URL.
 # 41 - Failed to install AN::Tools
+# 42 - Failed to enable or disable ScanCore.
 # 
 # TODO: - Create an init script that deletes anything in the media directory on
 #         boot. Can't use /tmp as it's usually too small.
@@ -1299,7 +1300,7 @@ fi";
 	}
 	
 	# Add scanCore to crontab.
-	logger($conf, $THIS_FILE, __LINE__, "- Enabling ScanCore.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Adding ScanCore to root's cron table.", 1);
 	$shell_call = "
 if [ ! -e '$conf->{path}{cron_root}' ]
 then
@@ -1371,24 +1372,24 @@ fi";
 	}
 	
 	# Enable ScanCore in striker.conf, unless requested not to, in which case, disable it..
-	   $shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\(\s*\)=\(\s*\)0/scancore::enabled\1=\21/' $conf->{path}{striker_config}\n";
+	   $shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
 	my $message    = "Enabling ScanCore.\n";
 	if ($conf->{switches}{'disable-scancore'})
 	{
 		# Disable it
-		$shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\(\s*\)=\(\s*\)0/scancore::enabled\1=\21/' $conf->{path}{striker_config}\n";
+		$shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
 		$message    = "Disabling ScanCore.\n";
 	}
 	logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 	$shell_call .= "
-if \$(grep -q '^scancore::enabled\s*=\s*1' /etc/striker/striker.conf);
+if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
 then 
     echo enabled; 
 else 
     echo disabled;
 fi
 ";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 1);
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
@@ -1399,14 +1400,15 @@ fi
 			if ($conf->{switches}{'disable-scancore'})
 			{
 				# Failed to disable.
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to disable ScanCore!", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to disable ScanCore!\n", 0);
+				exit(42);
 			}
 			else
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- ScanCore is now enabled.", 1);
 			}
 		}
-		elsif ($line eq "Disabled")
+		elsif ($line eq "disabled")
 		{
 			if ($conf->{switches}{'disable-scancore'})
 			{
@@ -1415,7 +1417,8 @@ fi
 			else
 			{
 				# Failed to enable!
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to enable ScanCore!", 0);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to enable ScanCore!\n", 0);
+				exit(42);
 			}
 		}
 		else
