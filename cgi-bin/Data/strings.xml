@@ -710,9 +710,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
-		<key name="row_0287"></key>
-		<key name="row_0288"></key>
-		<key name="row_0289"></key>
+		<key name="row_0287"><![CDATA[Configuring <span class="highlight_detail">safe_anvil_start</span>]]></key>
+		<key name="row_0288"><![CDATA[Configuring <span class="highlight_detail">anvil-kick-apc-ups</span>]]></key>
+		<key name="row_0289">Configuring #!string!brand_0015!#</key>
 		<key name="row_0290"></key>
 		
 		<!-- Program names -->
@@ -1098,8 +1098,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0116"><![CDATA[Failed to install '<span class="highlight_detail">wait-for-drbd</span>' into '<span class="highlight_detail">/etc/init.d/</span>'.]]></key>
 		<key name="state_0117"><![CDATA[Failed to generate the host UUID file: [<span class="highlight_detail">#!conf!path::nodes::host_uuid!#</span>].]]></key>
 		<key name="state_0118"><![CDATA[The host UUID file: [<span class="highlight_detail">#!conf!path::nodes::host_uuid!#</span>] contains an invalid UUID.]]></key>
-		<key name="state_0119"></key>
-		<key name="state_0120"></key>
+		<key name="state_0119">Successfully enabled</key>
+		<key name="state_0120">Successfully disabled</key>
+		<key name="state_0121">Failed to enable!</key>
+		<key name="state_0122">Failed to disable!</key>
+		<key name="state_0123">Failed to start</key>
+		<key name="state_0124"></key>
+		<key name="state_0125"></key>
+		<key name="state_0126"></key>
+		<key name="state_0127"></key>
+		<key name="state_0128"></key>
+		<key name="state_0129"></key>
+		<key name="state_0130"></key>
 		
 		<!-- Titles used in tables -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>

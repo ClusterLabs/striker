@@ -68,7 +68,7 @@ my $an = AN::Tools->new({data =>
 			node_cache		=>	"/var/www/home/cache", 
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"$scancore_directory/Data/strings.xml",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
 		# This is used so that the user can set the language in on

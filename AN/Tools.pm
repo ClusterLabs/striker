@@ -260,10 +260,12 @@ sub hostname
 	my $hostname = "";
 	if ($ENV{HOSTNAME})
 	{
+		# We have an environment variable, so use it.
 		$hostname = $ENV{HOSTNAME};
 	}
 	else
 	{
+		# The environment variable isn't set. Can we read the host name from the network file?
 		if (-r $an->data->{path}{hostname})
 		{
 			my $shell_call = $an->data->{path}{hostname};
@@ -277,6 +279,7 @@ sub hostname
 				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 				if ($line =~ /HOSTNAME=(.*)$/)
 				{
+					# Got it!
 					$hostname = $1;
 					last;
 				}
@@ -284,7 +287,6 @@ sub hostname
 			close $file_handle;
 		}
 	}
-	
 	
 	return($hostname);
 }
@@ -295,7 +297,8 @@ sub short_hostname
 {
 	my $self = shift;
 	
-	my $short_host_name =  $ENV{HOSTNAME};
+	my $an              =  $self;
+	my $short_host_name =  $an->hostname;
 	   $short_host_name =~ s/\..*$//;
 	
 	return($short_host_name);

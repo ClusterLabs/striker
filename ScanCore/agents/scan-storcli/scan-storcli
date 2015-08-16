@@ -53,7 +53,7 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/striker.log",
 			storcli			=>	"/sbin/storcli64",
 			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"$scancore_directory/Data/strings.xml",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
 		# This is used so that the user can set the language in on

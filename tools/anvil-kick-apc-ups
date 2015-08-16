@@ -274,6 +274,11 @@ $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 
 # Read the Striker config.
 read_configuration($conf);
+if (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been disabled, exiting.");
+	exit(0);
+}
 
 # Figure out what UPS(es) we're using.
 get_ups_ips($conf);
@@ -311,59 +316,6 @@ logger($conf, $THIS_FILE, __LINE__, "Will now attempt to delay the reboot of the
 foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 {
 	logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
-	
-=pod
-	# Reboot (.1.3.6.1.4.1.318.1.1.1.6.2.2.0 i 3) seems to be the best option.
-	
-	my ($model_number)           = read_oid_string($conf, $ups, $conf->{snmp}{model_number}{oid});
-	my ($power_off_delay_ups)    = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{ups}{oid});
-	my ($power_off_delay_group1) = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid});
-	my ($power_off_delay_group2) = read_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid});
-	my ($shut_off_delay)         = read_oid_ticks($conf, $ups, $conf->{snmp}{shut_off_delay}{oid});
-	my ($sleep_time_group1)      = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid});
-	my ($sleep_time_group2)      = read_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid});
-	my ($sleep_time_ups)         = read_oid_ticks($conf, $ups, $conf->{snmp}{sleep_time}{ups}{oid});
-	logger($conf, $THIS_FILE, __LINE__, "Model Number: [$model_number]");
-	logger($conf, $THIS_FILE, __LINE__, "-=] Shut down timers");
-	logger($conf, $THIS_FILE, __LINE__, "- Power off delay; UPS:    [$power_off_delay_ups] seconds.");
-	logger($conf, $THIS_FILE, __LINE__, "- Power off delay; Group1: [$power_off_delay_group1] seconds.");
-	logger($conf, $THIS_FILE, __LINE__, "- Power off delay; Group2: [$power_off_delay_group2] seconds.");
-	logger($conf, $THIS_FILE, __LINE__, "- Shut off delay:          [".convert_ticks_to_seconds($conf, $shut_off_delay)."] seconds ($shut_off_delay ticks).");
-	logger($conf, $THIS_FILE, __LINE__, "- Sleep Time; UPS:         [".convert_ticks_to_seconds($conf, $sleep_time_ups)."] seconds ($sleep_time_ups ticks) (automatically rounds to 6-minute increments).");
-	logger($conf, $THIS_FILE, __LINE__, "- Sleep Time; Group 1:     [$sleep_time_group1] seconds.");
-	logger($conf, $THIS_FILE, __LINE__, "- Sleep Time; Group 2:     [$sleep_time_group2] seconds.");
-	
-	my ($return_delay)      = read_oid_ticks($conf, $ups, $conf->{snmp}{return_delay}{oid});
-	logger($conf, $THIS_FILE, __LINE__, "-=] Restart timers");
-	logger($conf, $THIS_FILE, __LINE__, "- Return delay:            [".convert_ticks_to_seconds($conf, $return_delay)."] seconds ($return_delay ticks).");
-	
-	
-	# Set the shutdown delay to 60 seconds and both outlet groups to startup in 30 seconds.
-# 	my ($new_power_off_delay)    = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{oid}, 60);
-# 	my ($new_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, 30);
-# 	my ($new_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, 30);
-# 	logger($conf, $THIS_FILE, __LINE__, "- New Power off delay: [$new_power_off_delay] seconds.") if $conf->{sys}{debug};
-# 	logger($conf, $THIS_FILE, __LINE__, "- New Sleep Time; Group 1: [$new_sleep_time_group1] seconds.") if $conf->{sys}{debug};
-# 	logger($conf, $THIS_FILE, __LINE__, "- New Sleep Time; Group 2: [$new_sleep_time_group2] seconds.") if $conf->{sys}{debug};
-	
-# 	
-# 	# Tel the UPS to shut off.
-# 	logger($conf, $THIS_FILE, __LINE__, "- Initiating timed power off!");
-# 	my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer});
-	
-	# Watch the state.
-	while (1)
-	{
-		my ($current_state)        = read_oid_integer($conf, $ups, $conf->{snmp}{current_state}{oid});
-		my ($group1_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group1_current_state}{oid});
-		my ($group2_current_state) = read_oid_integer($conf, $ups, $conf->{snmp}{group2_current_state}{oid});
-		my ($ups_time)             = read_oid_string($conf, $ups, $conf->{snmp}{ups_time}{oid});
-
-		logger($conf, $THIS_FILE, __LINE__, "- Time: [$ups_time], UPS State: [$conf->{snmp}{current_state}{values}{$current_state}], Group 1 current state: [$conf->{snmp}{group1_current_state}{values}{$group1_current_state}], Group 2 current state: [$conf->{snmp}{group2_current_state}{values}{$group2_current_state}]");
-		sleep 1;
-	}
-	
-=cut
 	
 	# Report/record the current values
 	if (get_current_settings($conf, $ups, "old"))

@@ -346,6 +346,9 @@ sub run_new_install_manifest
 		# /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
 		
+		# Enable (or disable) tools.
+		enable_tools($conf) or return(1);
+		
 		### If we're not dead, it's time to celebrate!
 		# Is this Anvil! already in the config file?
 		my ($anvil_configured) = check_config_for_anvil($conf);
@@ -384,6 +387,440 @@ sub run_new_install_manifest
 	return(0);
 }
 
+# This enables (or disables) selected tools by flipping their enable variables to '1' (or '0') i striker.conf.
+sub enable_tools
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
+	
+	# sas_rc  == safe_anvil_start, return code
+	# akau_rc == anvil-kick-apc-ups, return code
+	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_sas_rc: [$node1_sas_rc], node1_akau_rc: [$node1_akau_rc], node1_sc_rc: [$node1_sc_rc], node2_sas_rc: [$node2_sas_rc], node2_akau_rc: [$node2_akau_rc], node2_sc_rc: [$node2_sc_rc]\n");
+	# 0 == No changes made
+	# 1 == Enabled successfully
+	# 2 == Disabled successfully
+	# 3 == Failed to enable
+	# 4 == Failed to disable
+	
+	my $ok = 1;
+	
+	# Report on safe_anvil_start, first.
+	my $node1_class   = "highlight_warning_bold";
+	my $node1_message = "#!string!state_0001!#";
+	my $node2_class   = "highlight_warning_bold";
+	my $node2_message = "#!string!state_0001!#";
+	# Node 1
+	if ($node1_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node1_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0119!#";
+	}
+	elsif ($node1_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node1_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node1_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node2_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0119!#";
+	}
+	elsif ($node2_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node2_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node2_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0287!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	# Next, anvil-kick-apc-ups
+	$node1_class   = "highlight_warning_bold";
+	$node1_message = "#!string!state_0001!#";
+	$node2_class   = "highlight_warning_bold";
+	$node2_message = "#!string!state_0001!#";
+	# Node 1
+	if ($node1_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node1_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0119!#";
+	}
+	elsif ($node1_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node1_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node1_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node2_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0119!#";
+	}
+	elsif ($node2_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node2_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node2_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0288!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	# And finally, ScanCore
+	$node1_class   = "highlight_warning_bold";
+	$node1_message = "#!string!state_0001!#";
+	$node2_class   = "highlight_warning_bold";
+	$node2_message = "#!string!state_0001!#";
+	# Node 1
+	if ($node1_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node1_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0119!#";
+	}
+	elsif ($node1_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node1_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node1_class   = "highlight_good_bold";
+		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node1_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	# Node 2
+	if ($node2_sas_rc eq "0")
+	{
+		# Unknown state.
+		$ok = 0;
+	}
+	elsif ($node2_sas_rc eq "1")
+	{
+		# Enabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0119!#";
+	}
+	elsif ($node2_sas_rc eq "2")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
+	}
+	elsif ($node2_sas_rc eq "3")
+	{
+		# Disabled successfully.
+		$node2_class   = "highlight_good_bold";
+		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_sas_rc eq "4")
+	{
+		# Failed to disable!
+		$node2_message = "#!string!state_0122!#";
+		$ok            = 0;
+	}
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0289!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
+}
+
+# This handles enabling/disabling tools on a given node.
+sub enable_tools_on_node
+{
+	my ($conf, $node, $password, $node_name) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
+	
+	### safe_anvil_start
+	# If requested, enable safe_anvil_start, otherwise, disable it.
+	my $sas_rc     = 0;
+	my $shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::safe_anvil_start::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
+	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+	{
+		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::safe_anvil_start::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	}
+	$shell_call .= "
+if \$(grep -q '^tools::safe_anvil_start::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi
+";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line eq "enabled")
+		{
+			if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+			{
+				# Good.
+				$sas_rc = 1;
+			}
+			else
+			{
+				# Not good... should have been disabled.
+				$sas_rc = 3;
+			}
+		}
+		elsif ($line eq "disabled")
+		{
+			if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+			{
+				# Not good, should have been disabled
+				$sas_rc = 2;
+			}
+			else
+			{
+				# Good
+				$sas_rc = 4;
+			}
+		}
+	}
+	
+	### anvil-kick-apc-ups
+	# If requested, enable anvil-kick-apc-ups, otherwise, disable it.
+	my $akau_rc    = 0;
+	   $shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::anvil-kick-apc-ups::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
+	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+	{
+		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::anvil-kick-apc-ups::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	}
+	$shell_call .= "
+if \$(grep -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi
+";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line eq "enabled")
+		{
+			if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+			{
+				# Good.
+				$akau_rc = 1;
+			}
+			else
+			{
+				# Not good... should have been disabled.
+				$akau_rc = 3;
+			}
+		}
+		elsif ($line eq "disabled")
+		{
+			if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+			{
+				# Not good, should have been disabled
+				$akau_rc = 2;
+			}
+			else
+			{
+				# Good
+				$akau_rc = 4;
+			}
+		}
+	}
+	
+	### ScanCore
+	# If requested, enable ScanCore, otherwise, disable it.
+	my $sc_rc      = 0;
+	   $shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)1/scancore::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+	if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+	{
+		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	}
+	$shell_call .= "
+if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi
+";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+	($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+		if ($line eq "enabled")
+		{
+			if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+			{
+				# Good.
+				$sc_rc = 1;
+			}
+			else
+			{
+				# Not good... should have been disabled.
+				$sc_rc = 3;
+			}
+		}
+		elsif ($line eq "disabled")
+		{
+			if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+			{
+				# Not good, should have been disabled
+				$sc_rc = 2;
+			}
+			else
+			{
+				# Good
+				$sc_rc = 4;
+			}
+		}
+	}
+	
+	# 0 == No changes made
+	# 1 == Enabled successfully
+	# 2 == Disabled successfully
+	# 3 == Failed to enable
+	# 4 == Failed to disable
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sas_rc: [$sas_rc], akau_rc: [$akau_rc], sc_rc: [$sc_rc]\n");
+	return($sas_rc, $akau_rc, $sc_rc);
+}
+
 # This downloads the '/sbin/striker' tools from one of the dashboards and
 # copies them (Striker tools and ScanCore) into place.
 sub configure_striker_tools
@@ -394,22 +831,8 @@ sub configure_striker_tools
 	# Configure Scancore. This includes the download and setup of the 
 	# /sbin/striker files.
 	configure_scancore($conf);
-	
-	# If requested, enable safe_anvil_start.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
-	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
-	{
-		# Don't fail on this, yet. Maybe later.
-		enable_safe_anvil_start($conf);
-	}
-	
-	# If requested, enable anvil-kick-apc-ups
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
-	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
-	{
-		# Don't fail on this, yet. Maybe later.
-		enable_anvil_kick_apc_ups($conf);
-	}
+	enable_safe_anvil_start($conf);
+	enable_anvil_kick_apc_ups($conf);
 	
 	return(0);
 }
@@ -783,18 +1206,6 @@ fi
 	if (not $return_code)
 	{
 		# Add it to root's crontab.
-		my $crontab_line = "";
-		if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Enabling ScanCore on boot.\n");
-		}
-		else
-		{
-			# Don't fail on this, yet. Maybe later.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Adding ScanCore to root's cron table but commenting it out.\n");
-			$crontab_line .= "#";
-		}
-		$crontab_line .= "*/5 * * * * /sbin/striker/ScanCore/ScanCore";
 		my $shell_call = "
 if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
@@ -808,7 +1219,7 @@ if [ \"\$?\" -eq '0' ];
 then
 	echo 'exits'
 else
-	echo '$crontab_line' >> $conf->{path}{nodes}{cron_root}
+	echo '*/5 * * * * /sbin/striker/ScanCore/ScanCore' >> $conf->{path}{nodes}{cron_root}
 fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -1776,9 +2187,8 @@ sub watch_clustat
 	my ($conf, $node, $password) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watch_clustat(); node: [$node]\n");
 	
-	# If a service comes up 'failed', we will try to restart it because, if
-	# it failed in a previous run, it will stay failed until it is disabled
-	# so this provides something of an ability to self-heal.
+	# If a service comes up 'failed', we will try to restart it because, if it failed in a previous run,
+	# it will stay failed until it is disabled so this provides something of an ability to self-heal.
 	my $restarted_n01_storage  = 0;
 	my $restarted_n02_storage  = 0;
 	my $restarted_n01_libvirtd = 0;
@@ -2722,7 +3132,7 @@ sub setup_lvm_pv_and_vgs
 	{
 		# Failed to start clvmd
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0079!#";
+		$node1_message = "#!string!state_0123!#";
 		$ok            = 0;
 	}
 	if ($node2_rc eq "1")
@@ -2733,7 +3143,7 @@ sub setup_lvm_pv_and_vgs
 	{
 		# Failed to start clvmd
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0079!#";
+		$node2_message = "#!string!state_0123!#";
 		$ok            = 0;
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {

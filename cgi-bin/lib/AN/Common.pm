@@ -676,7 +676,7 @@ sub initialize_conf
 			striker_cache		=>	"/var/www/home/cache",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_files		=>	"/var/www/home",
-			striker_strings		=>	"/var/www/cgi-bin/Data/strings.xml",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			sync			=>	"/bin/sync",
 			tools_directory		=>	"/var/www/tools/",
 			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
@@ -684,7 +684,7 @@ sub initialize_conf
 			uuidgen			=>	"/usr/bin/uuidgen",
 			virsh			=>	"/usr/bin/virsh",
 			words_common		=>	"Data/common.xml",
-			words_file		=>	"Data/strings.xml",
+			words_file		=>	"/sbin/striker/Data/strings.xml",	# TODO: This should be phased out in favour of 'striker_strings'
 			
 			# These are the tools that will be copied to 'docroot'
 			# if either node doesn't have an internet connection.
@@ -728,6 +728,7 @@ sub initialize_conf
 				perl_library		=>	"/usr/share/perl5",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99y_safe_anvil_start",
+				sed			=>	"/bin/sed",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",

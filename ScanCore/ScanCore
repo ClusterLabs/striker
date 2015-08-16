@@ -158,7 +158,7 @@ my $an = AN::Tools->new({data =>
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
-			striker_strings		=>	"$running_directory/Data/strings.xml",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			uuidgen			=>	"/usr/bin/uuidgen",
 		},
 		# Things set here are meant to be overwritable by the user in striker.conf.
@@ -232,6 +232,11 @@ $an->Log->level($an->data->{scancore}{log_level});
 
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Has the user disabled ScanCore?
+exit(0) if not $conf->{scancore}{enabled};
+
+# Read in strings now.
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
