@@ -359,6 +359,7 @@ my $conf = {
 		passwd			=>	"/etc/passwd",
 		persistent_net		=>	"/etc/udev/rules.d/70-persistent-net.rules",
 		pg_hba_conf		=>	"/var/lib/pgsql/9.4/data/pg_hba.conf",
+		pgsql_log		=>	"/var/lib/pgsql/9.4/data/pg_log/postgresql-<weekday>.log",
 		postgresql_conf		=>	"/var/lib/pgsql/9.4/data/postgresql.conf",
 		postgres_pgpass		=>	"/var/lib/pgsql/9.4/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
@@ -667,7 +668,12 @@ logger($conf, $THIS_FILE, __LINE__, " ##########################################
 # any problems were found.
 if (sanity_check_switches($conf))
 {
+	logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Exiting on command line switch error(s).\n", 1);
 	exit(9);
+}
+else
+{
+	logger($conf, $THIS_FILE, __LINE__, "Command line switches appear sane, proceeding.", 3);
 }
 
 # Check to see if we have an internet connection so that, if not, we can 
@@ -839,8 +845,7 @@ sub configure_scancore
 {
 	my ($conf) = @_;
 	
-	# First, see if we need to initialize the DB. If so, the 'pg_hba.conf'
-	# won't exist yet.
+	# First, see if we need to initialize the DB. If so, the 'pg_hba.conf' won't exist yet.
 	my $initialized = 0;
 	logger($conf, $THIS_FILE, __LINE__, "Setting up the ScanCore database.", 1);
 	logger($conf, $THIS_FILE, __LINE__, "path::pg_hba_conf: [$conf->{path}{pg_hba_conf}]", 3);
@@ -896,6 +901,121 @@ sub configure_scancore
 	}
 	close $file_handle;
 	
+	# Prep some variables we will use to update pg_hba.conf.
+	logger($conf, $THIS_FILE, __LINE__, "- Checking database access security.", 1);
+	my $bcn_network  = $conf->{network}{bcn}{ip};
+	my $bcn_subnet   = $conf->{network}{bcn}{netmask};
+	my $ifn_network  = $conf->{network}{ifn}{ip};
+	my $ifn_subnet   = $conf->{network}{ifn}{netmask};
+	
+	# Convert (crudely) the IPs into network ranges and the subnets into CIDR.
+	my $cidr_bcn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{bcn}{netmask});
+	if    ($cidr_bcn_netmask eq "8")  { $bcn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
+	elsif ($cidr_bcn_netmask eq "16") { $bcn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
+	elsif ($cidr_bcn_netmask eq "24") { $bcn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
+	else
+	{
+		# Ya, this is where I need to get smarter
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the BCN.", 1);
+	}
+	my $cidr_ifn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{ifn}{netmask});
+	if    ($cidr_ifn_netmask eq "8")  { $ifn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
+	elsif ($cidr_ifn_netmask eq "16") { $ifn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
+	elsif ($cidr_ifn_netmask eq "24") { $ifn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
+	else
+	{
+		# here, too
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the IFN.", 1);
+	}
+	logger($conf, $THIS_FILE, __LINE__, "bcn_network: [$bcn_network], ifn_network: [$ifn_network].", 3);
+	
+	# Now update the pg_hba.conf.
+	logger($conf, $THIS_FILE, __LINE__, "cidr_bcn_netmask: [$cidr_bcn_netmask], cidr_ifn_netmask: [$cidr_ifn_netmask]", 3);
+	my $add_bcn           = $cidr_bcn_netmask eq "#!INVALID!#" ? 0 : 1;
+	my $add_ifn           = $cidr_ifn_netmask eq "#!INVALID!#" ? 0 : 1;
+	logger($conf, $THIS_FILE, __LINE__, "add_bcn: [$add_bcn], add_ifn: [$add_ifn]", 3);
+	my $secure_local      = 0;
+	my $raw_pg_hba_config = "";
+	   $shell_call        = "<$conf->{path}{pg_hba_conf}";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /^host\s+all\s+all\s+$bcn_network\/$cidr_bcn_netmask\s+md5$/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The BCN network is already configured.", 1);
+			$add_bcn = 0;
+		}
+		if ($line =~ /^host\s+all\s+all\s+$ifn_network\/$cidr_ifn_netmask\s+md5$/)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The IFN network is already configured.", 1);
+			$add_ifn = 0;
+		}
+		if ($line =~ /local\s+all\s+all\s+(.*)$/)
+		{
+			my $security = $1;
+			if ($security eq "md5")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- The local connection is already secured.", 1);
+			}
+			elsif ($security eq "ident")
+			{
+				$line =~ s/ident/md5/;
+				logger($conf, $THIS_FILE, __LINE__, "- The local connection will be secured.", 1);
+				$secure_local = 1;
+			}
+		}
+		$raw_pg_hba_config .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Rewrite the config if something changed.
+	if (($add_bcn) || ($add_ifn) || ($secure_local))
+	{
+		# Loop through the raw config and insert the missing network
+		my $new_config = "";
+		foreach my $line (split/\n/, $raw_pg_hba_config)
+		{
+			logger($conf, $THIS_FILE, __LINE__, ">> line: [$line]", 3);
+			if ($line =~ /# TYPE  DATABASE/)
+			{
+				$new_config .= "$line\n";
+				if ($add_bcn)
+				{
+					my $new_line = "host    all         all         $bcn_network/$cidr_bcn_netmask  md5";
+					$new_config .= "$new_line\n";
+					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
+				}
+				if ($add_ifn)
+				{
+					my $new_line = "host    all         all         $ifn_network/$cidr_ifn_netmask  md5";
+					$new_config .= "$new_line\n";
+					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
+				}
+			}
+			else
+			{
+				$new_config .= "$line\n";
+				logger($conf, $THIS_FILE, __LINE__, "<< line: [$line]", 3);
+			}
+		}
+		
+		# Write out the new file.
+		my $shell_call = ">$conf->{path}{pg_hba_conf}";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+		print $file_handle $new_config;
+		close $file_handle;
+		logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Database server security already configured.", 1);
+	}
+	
 	# Now start the DB, if needed.
 	$shell_call = "
 /etc/init.d/postgresql-9.4 status;
@@ -929,13 +1049,14 @@ fi";
 		elsif ($line =~ /Failed/i)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Database server is not running and failed to start! Unable to proceed.", 0);
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ]   The cause of the error may be found in: [$conf->{path}{pgsql_log}].", 0);
 			exit(31);
 		}
 	}
 	close $file_handle;
 	
-	# Check to see if this is a re-run of the install. if it appears to be,
-	# create a temporary .pgpass file for postgres
+	# Check to see if this is a re-run of the install. if it appears to be, create a temporary .pgpass 
+	# file for postgres
 	my $striker_user     = $conf->{sys}{striker_user};
 	my $striker_password = $conf->{sys}{striker_password};
 	my $use_password     = 0;
@@ -1044,33 +1165,6 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 		close $file_handle;
 	}
 	
-	# Update pg_hba.conf.
-	logger($conf, $THIS_FILE, __LINE__, "- Checking database access security.", 1);
-	my $bcn_network  = $conf->{network}{bcn}{ip};
-	my $bcn_subnet   = $conf->{network}{bcn}{netmask};
-	my $ifn_network  = $conf->{network}{ifn}{ip};
-	my $ifn_subnet   = $conf->{network}{ifn}{netmask};
-	
-	# Convert (crudely) the IPs into network ranges and the subnets into CIDR.
-	my $cidr_bcn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{bcn}{netmask});
-	if    ($cidr_bcn_netmask eq "8")  { $bcn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
-	elsif ($cidr_bcn_netmask eq "16") { $bcn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
-	elsif ($cidr_bcn_netmask eq "24") { $bcn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
-	else
-	{
-		# Ya, this is where I need to get smarter
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the BCN.", 1);
-	}
-	my $cidr_ifn_netmask = convert_dotted_decimal_to_cidr($conf, $conf->{network}{ifn}{netmask});
-	if    ($cidr_ifn_netmask eq "8")  { $ifn_network =~ s/^(\d+)\.\d+\.\d+\.\d+$/$1.0.0.0/; }
-	elsif ($cidr_ifn_netmask eq "16") { $ifn_network =~ s/^(\d+\.\d+)\.\d+\.\d+$/$1.0.0/; }
-	elsif ($cidr_ifn_netmask eq "24") { $ifn_network =~ s/^(\d+\.\d+\.\d+)\.\d+$/$1.0/; }
-	else
-	{
-		# here, too
-		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Currently, only /8, /16 and /24 netmasks are supported for the IFN.", 1);
-	}
-	
 	# Update the main postgresql.conf to listen on all interfaces.
 	my $raw_postgresql_config = "";
 	my $updated               = 0;
@@ -1106,93 +1200,6 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 		logger($conf, $THIS_FILE, __LINE__, "- Database server was already listening on all interfaces.", 1);
 	}
 	
-	# Now update the pg_hba.conf.
-	logger($conf, $THIS_FILE, __LINE__, "cidr_bcn_netmask: [$cidr_bcn_netmask], cidr_ifn_netmask: [$cidr_ifn_netmask]", 3);
-	my $add_bcn           = $cidr_bcn_netmask eq "#!INVALID!#" ? 0 : 1;
-	my $add_ifn           = $cidr_ifn_netmask eq "#!INVALID!#" ? 0 : 1;
-	logger($conf, $THIS_FILE, __LINE__, "add_bcn: [$add_bcn], add_ifn: [$add_ifn]", 3);
-	my $secure_local      = 0;
-	my $raw_pg_hba_config = "";
-	   $shell_call        = "<$conf->{path}{pg_hba_conf}";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
-		if ($line =~ /^host\s+all\s+all\s+$bcn_network\/$cidr_bcn_netmask\s+md5$/)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The BCN network is already configured.", 1);
-			$add_bcn = 0;
-		}
-		if ($line =~ /^host\s+all\s+all\s+$ifn_network\/$cidr_ifn_netmask\s+md5$/)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- The IFN network is already configured.", 1);
-			$add_ifn = 0;
-		}
-		if ($line =~ /local\s+all\s+all\s+(.*)$/)
-		{
-			my $security = $1;
-			if ($security eq "md5")
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- The local connection is already secured.", 1);
-			}
-			elsif ($security eq "ident")
-			{
-				$line =~ s/ident/md5/;
-				logger($conf, $THIS_FILE, __LINE__, "- The local connection will be secured.", 1);
-				$secure_local = 1;
-			}
-		}
-		$raw_pg_hba_config .= "$line\n";
-	}
-	close $file_handle;
-	
-	# Rewrite the config if something changed.
-	if (($add_bcn) || ($add_ifn) || ($secure_local))
-	{
-		# Loop through the raw config and insert the missing network
-		my $new_config = "";
-		foreach my $line (split/\n/, $raw_pg_hba_config)
-		{
-			logger($conf, $THIS_FILE, __LINE__, ">> line: [$line]", 3);
-			if ($line =~ /# TYPE  DATABASE/)
-			{
-				$new_config .= "$line\n";
-				if ($add_bcn)
-				{
-					my $new_line = "host    all         all         $bcn_network/$cidr_bcn_netmask  md5";
-					$new_config .= "$new_line\n";
-					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
-				}
-				if ($add_ifn)
-				{
-					my $new_line = "host    all         all         $ifn_network/$cidr_ifn_netmask  md5";
-					$new_config .= "$new_line\n";
-					logger($conf, $THIS_FILE, __LINE__, "<< new_line: [$new_line]", 3);
-				}
-			}
-			else
-			{
-				$new_config .= "$line\n";
-				logger($conf, $THIS_FILE, __LINE__, "<< line: [$line]", 3);
-			}
-		}
-		
-		# Write out the new file.
-		my $shell_call = ">$conf->{path}{pg_hba_conf}";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open ($file_handle, "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
-		print $file_handle $new_config;
-		close $file_handle;
-		logger($conf, $THIS_FILE, __LINE__, "- Database server security configured.", 1);
-	}
-	else
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- Database server security already configured.", 1);
-	}
-	
 	# Create the Striker database, if needed.
 	my $scancore_database = $conf->{sys}{scancore_database};
 	my $create_database  = 1;
@@ -1218,7 +1225,7 @@ su - postgres -c \"psql template1 -c 'SELECT usename, usesysid FROM pg_catalog.p
 	close $file_handle;
 	if ($create_database)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Creating Striker database: [$create_database] now.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Creating Striker database: [$scancore_database] now.", 1);
 		my $shell_call = "
 su - postgres -c \"createdb --owner $striker_user $scancore_database\"
 su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database;'\"";
@@ -1373,12 +1380,12 @@ fi";
 	
 	# Enable ScanCore in striker.conf, unless requested not to, in which case, disable it..
 	   $shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
-	my $message    = "Enabling ScanCore.\n";
+	my $message    = "Enabling ScanCore.";
 	if ($conf->{switches}{'disable-scancore'})
 	{
 		# Disable it
 		$shell_call = "$conf->{executable}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
-		$message    = "Disabling ScanCore.\n";
+		$message    = "Disabling ScanCore.";
 	}
 	logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 	$shell_call .= "
@@ -1387,9 +1394,8 @@ then
     echo enabled; 
 else 
     echo disabled;
-fi
-";
-	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 1);
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
@@ -6151,7 +6157,7 @@ sub verify_internet_access
 		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
 		logger($conf, $THIS_FILE, __LINE__, "- No internet access detected, disabling external repositories.", 1);
 	}
-	logger($conf, $THIS_FILE, __LINE__, "- done.\n", 1);
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	logger($conf, $THIS_FILE, __LINE__, "ok: [$ok]", 3);
 	return($ok);
@@ -6683,7 +6689,7 @@ sub update_hosts
 	my $peer_short_name = "";
 	my $peer_hostname   = "";
 	my $peer_bcn_ip     = "";
-	logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 3);
 	if ($conf->{switches}{'peer-dashboard'})
 	{
 		$peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
@@ -6695,7 +6701,7 @@ sub update_hosts
 		{
 			$peer_short_name = ($peer_hostname =~ /^(.*?)\./)[0];
 		}
-		logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip], peer_short_name: [$peer_short_name]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip], peer_short_name: [$peer_short_name]", 3);
 	}
 	
 	# Read in the hosts file and look for previous entries with our hostname.
@@ -6736,7 +6742,7 @@ sub update_hosts
 		$updated   =  1;
 	}
 	# See if I need to inject the peer's details.
-	logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip]", 2);
+	logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname], peer_bcn_ip: [$peer_bcn_ip]", 3);
 	if (($peer_hostname) && ($peer_bcn_ip))
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Adding peer dashboard's hostname: [$peer_hostname]", 1);
@@ -6746,7 +6752,7 @@ sub update_hosts
 		{
 			$new_line = "$peer_bcn_ip\t$peer_hostname $peer_short_name ${peer_short_name}.bcn\n";
 		}
-		logger($conf, $THIS_FILE, __LINE__, "new_line: [$new_line]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "new_line: [$new_line]", 3);
 		$new_hosts .= $new_line;
 		$updated   =  1;
 		
@@ -7369,7 +7375,7 @@ sub sanity_check_switches
 	}
 	elsif ((not $conf->{switches}{e}) && (not $conf->{switches}{m}))
 	{
-		logger($conf, $THIS_FILE, __LINE__, "- Mail server information not provided.", 1);
+		logger($conf, $THIS_FILE, __LINE__, "- Mail server information not provided, mail configuration will be skipped.", 1);
 		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - If mail sending was not previously configured, you may encounter", 1);
 		#logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   problems later!", 1);
 		$conf->{sys}{skip_mail} = 1;
@@ -7852,7 +7858,7 @@ sub validate_ip_address
 {
 	my ($conf, $ip) = @_;
 
-	if ($ip =~ /(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/)
+	if ($ip =~ /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
 	{
 		my $first_octal  = $1;
 		my $second_octal = $2;
