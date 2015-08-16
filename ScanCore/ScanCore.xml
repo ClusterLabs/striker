@@ -141,6 +141,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0062">The node: [#!variable!node!#] is not ready to boot yet.</key>
 		<key name="scancore_log_0063">The node: [#!variable!node!#] was cleanly shut off so it will be left off.</key>
 		<key name="scancore_log_0064">The node: [#!variable!node!#] will not be booted because 'tools::boot_nodes::enabled' is set to '0' in [#!data!path::striker_config!#].</key>
+		<key name="scancore_log_0065">#!string!scancore_brand_0001!# has been disabled in: [#!data!path::striker_config!#] ('scancore::enabled = 0'), so we will now exit. The program will restart automatically within five minutes of being re-enabled.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

@@ -9846,8 +9846,11 @@ sub get_hostname
 	while(<$file_handle>)
 	{
 		chomp;
-		$hostname = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+		my $line = $_;
+		next if $line =~ /NETWORKING=/;
+		$hostname =  $line;
+		$hostname =~ s/HOSTNAME=//;
+		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	}
 	close $file_handle;
 	

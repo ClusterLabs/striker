@@ -299,12 +299,19 @@ while(1)
 {
 	# Re-read the configuration
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+	
+	# Has the user disabled ScanCore?
+	if (not $an->data->{scancore}{enabled})
+	{
+		# Log that we're exiting on being disabled.
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0065", file => $THIS_FILE, line => __LINE__});
+		exit(0);
+	}
 	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
 	$an->String->read_words({file => $an->data->{path}{striker_strings}});
 	
-	# TODO: Calc the md5s of ScanCore's core files and if they change, exit
-	#       when the scan runs at x:x4 or x:x9 minutes so that it restarts
-	#       and misses the fewest possible scans.
+	# TODO: Calc the md5s of ScanCore's core files and if they change, exit when the scan runs at x:x4
+	#       or x:x9 minutes so that it restarts and misses the fewest possible scans.
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
