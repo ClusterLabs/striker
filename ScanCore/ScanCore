@@ -272,6 +272,13 @@ if (not $connections)
 # agents that have registered alerts (pending or historical).
 load_agent_strings($an);
 
+# Update the database before we do anything else.
+update_db($an);
+
+# Make sure this node is in the database and the host name is up to date.
+add_hostname_to_databases($an);
+check_hostname_for_changes($an);
+
 # Tell the user we've started.
 $an->Alert->register_alert({
 	alert_level		=>	"notice", 
@@ -284,13 +291,6 @@ $an->Log->entry({log_level => 1, message_key => "scancore_log_0066", file => $TH
 # Check for and process alert that may have not been sent when we last ran as well as the 'we've started'
 # alert above.
 process_alerts($an, 1);
-
-# Update the database before we do anything else.
-update_db($an);
-
-# Make sure this node is in the database and the host name is up to date.
-add_hostname_to_databases($an);
-check_hostname_for_changes($an);
 
 # Run the agents we find.
 $an->Log->entry({
