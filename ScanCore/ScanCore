@@ -234,7 +234,7 @@ $an->Log->level($an->data->{scancore}{log_level});
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 
 # Has the user disabled ScanCore?
-exit(0) if not $conf->{scancore}{enabled};
+exit(0) if not $an->data->{scancore}{enabled};
 
 # Read in strings now.
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
