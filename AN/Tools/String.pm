@@ -761,15 +761,18 @@ sub _insert_data
 	my $an    = $self->parent;
 	
 	my $i = 0;
+	#print "$THIS_FILE ".__LINE__."; string: [$parameter->{string}]\n";
 	while ($parameter->{string} =~ /#!data!(.+?)!#/)
 	{
 		my $id = $1;
 		if ($id =~ /::/)
 		{
 			# Multi-dimensional hash.
+			#print "$THIS_FILE ".__LINE__."; id: [$id]\n";
 			my $value = $an->_get_hash_reference({
 				key	=>	$id,
 			});
+			#print "$THIS_FILE ".__LINE__."; value: [$value]\n";
 			if (not defined $value)
 			{
 				$parameter->{string} =~ s/#!data!$id!#/!!a[$id]!!/;

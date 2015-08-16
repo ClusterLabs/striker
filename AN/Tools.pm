@@ -525,17 +525,17 @@ sub _fcntl_loaded
 	return ($self->{LOADED}{Fcntl});
 }
 
-# This is called when I need to parse a double-colon seperated string into two
-# or more elements which represent keys in the 'conf' hash. Once suitably split
-# up, the 'value' is read. For example, passing ('conf', 'foo::bar') will
-# return the previously-set value 'baz'.
+# This is called when I need to parse a double-colon seperated string into two or more elements which 
+# represent keys in the 'conf' hash. Once suitably split up, the 'value' is read. For example, passing
+# ('conf', 'foo::bar') will return the previously-set value 'baz'.
 sub _get_hash_reference
 {
 	# 'href' is the hash reference I am working on.
 	my $self  = shift;
 	my $param = shift;
+	my $an    = $self;
 	
-	die "$THIS_FILE ".__LINE__."; I didn't get a hash key string, so I can't pull hash reference pointer.\n" if ref($param->{key}) ne "HASH";
+	#print "$THIS_FILE ".__LINE__."; hash: [".$an."], key: [$param->{key}]\n";
 	die "$THIS_FILE ".__LINE__."; The hash key string: [$param->{key}] doesn't seem to be valid. It should be a string in the format 'foo::bar::baz'.\n" if $param->{key} !~ /::/;
 	
 	# Split up the keys.
@@ -543,7 +543,7 @@ sub _get_hash_reference
 	my $last_key = pop @keys;
 	
 	# Re-order the array.
-	my $_chref   = $self->data;
+	my $_chref   = $an->data;
 	foreach my $key (@keys)
 	{
 		$_chref = $_chref->{$key};

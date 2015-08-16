@@ -272,6 +272,11 @@ sub connect_to_databases
 		if ($@)
 		{
 			# Something went wrong...
+			$an->Alert->warning({message_key => "scancore_warning_0006", message_variables => {
+				id	=>	$id,
+				host	=>	$host,
+				name	=>	$name,
+			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
 			if (not defined $DBI::errstr)
@@ -354,7 +359,6 @@ sub connect_to_databases
 					dbi_error	=>	$DBI::errstr,
 				}};
 			}
-			$an->Alert->warning({message_key => "scancore_warning_0006", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($dbh =~ /^DBI::db=HASH/)
 		{
