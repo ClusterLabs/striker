@@ -466,8 +466,41 @@ sub connect_to_databases
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
 		
-		# If I've not sent an alert about this DB loss before, send
-		# one now.
+		### BUG: When we're (re)connecting to a Database for the first ever, this causes an error like:
+=pod
+scancore=# BEGIN TRANSACTION ;
+BEGIN
+scancore=# INSERT INTO 
+scancore-#     alerts
+scancore-# (
+scancore(#     alert_uuid, 
+scancore(#     alert_host_uuid, 
+scancore(#     alert_agent_name, 
+scancore(#     alert_level, 
+scancore(#     alert_title_key, 
+scancore(#     alert_title_variables, 
+scancore(#     alert_message_key, 
+scancore(#     alert_message_variables, 
+scancore(#     modified_date
+scancore(# ) VALUES (
+scancore(#     '490243cd-b238-4ca4-8458-7f55667b6fb0', 
+scancore(#     'cf60ca8b-1d37-4ad0-8184-7e626f073c16', 
+scancore(#     'ScanCore', 
+scancore(#     'warning', 
+scancore(#     'an_alert_title_0006', 
+scancore(#     '', 
+scancore(#     'scancore_cleared_0001', 
+scancore(#     '!!host!an-striker04.alteeve.ca!!,!!name!scancore!!,!!port!5432!!,',
+scancore(#     '2015-08-17 01:10:03.983205-04'
+scancore(# );
+ERROR:  duplicate key value violates unique constraint "alerts_pkey"
+DETAIL:  Key (alert_uuid)=(490243cd-b238-4ca4-8458-7f55667b6fb0) already exists.
+scancore=# ROLLBACK ;
+ROLLBACK
+=cut
+		###      So we need a way to distinguish a returning DB from a totally new DB. For now 
+		###      though, ScanCore will abort and then next start will properly run.
+		# If I've not sent an alert about this DB loss before, send one now.
 		my $set = $an->Alert->check_alert_sent({
 			type			=>	"warning",
 			alert_sent_by		=>	$THIS_FILE,
