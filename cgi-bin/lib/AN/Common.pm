@@ -153,8 +153,8 @@ sub test_ssh_fingerprint
 	$silent = 0 if not defined $silent;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node], silent: [$silent]\n");
 	
-	### TODO: This won't detect when the target's SSH key changed after a
-	###       node was replaced! Need to fix this.
+	### TODO: This won't detect when the target's SSH key changed after a node was replaced! Need to fix
+	###       this.
 	my $failed     = 0;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $root_pw    = $conf->{clusters}{$cluster}{root_pw};
@@ -188,7 +188,7 @@ sub test_ssh_fingerprint
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [$node].\n");
 				}
 				# Add fingerprint to known_hosts
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; authenticity of host message\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; silent: [$silent]\n");
 				if (not $silent)
 				{
 					my $message = get_string($conf, {key => "message_0279", variables => {
@@ -215,7 +215,8 @@ sub test_ssh_fingerprint
 		}
 	}
 	close $file_handle;
-
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failed: [$failed]\n");
 	return($failed);
 }
 
@@ -477,7 +478,6 @@ sub get_languages
 sub get_string
 {
 	my ($conf, $vars) = @_;
-	#print __LINE__."; vars: [$vars]\n";
 	
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
@@ -497,18 +497,18 @@ sub get_string
 		hard_die($conf, $THIS_FILE, __LINE__, 4, "The language key: [$language] does not exist in the 'strings.xml' file.\n");
 	}
 	my $say_language = $language;
-	#print __LINE__."; 2. say_language: [$say_language]\n";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_language: [$say_language]\n");
 	if ($conf->{string}{lang}{$language}{lang}{long_name})
 	{
 		$say_language = "$language ($conf->{string}{lang}{$language}{lang}{long_name})";
-		#print __LINE__."; 2. say_language: [$say_language]\n";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 2. say_language: [$say_language]\n");
 	}
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
 		hard_die($conf, $THIS_FILE, __LINE__, 5, "The 'variables' string passed into common.lib's 'get_string()' function is not a hash reference. The string's data is: [$variables].\n");
 	}
 	
-	#print "$THIS_FILE ".__LINE__."; string::lang::${language}::key::${key}::content: [$conf->{string}{lang}{$language}{key}{$key}{content}]\n";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; string::lang::${language}::key::${key}::content: [$conf->{string}{lang}{$language}{key}{$key}{content}]\n");
 	if (not exists $conf->{string}{lang}{$language}{key}{$key}{content})
 	{
 		#use Data::Dumper; print Dumper %{$conf->{string}{lang}{$language}};
@@ -518,21 +518,18 @@ sub get_string
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{string}{lang}{$language}{key}{$key}{content};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 1. string: [$string]\n");
-	#print __LINE__."; 3. string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
 	# indenting of the '</key>' field in the words XML file when printing
 	# to the command line.
 	$string =~ s/^\n//;
 	$string =~ s/\n(\s+)$//;
-	#print __LINE__."; 4. string: [$string]\n";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 2. string: [$string]\n");
 	
 	# Process all the #!...!# escape variables.
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	($string) = process_string($conf, $string, $variables);
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 3. string: [$string]\n");
 	
-	#print "$THIS_FILE ".__LINE__."; key: [$key], language: [$language]\n";
 	return($string);
 }
 

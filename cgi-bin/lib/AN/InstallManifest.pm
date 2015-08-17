@@ -316,16 +316,16 @@ sub run_new_install_manifest
 		# Configure storage stage 1 (partitioning.
 		configure_storage_stage1($conf) or return(1);
 		
-		# Set the root user's passwords as the last step to ensure
-		# reloading the browser works for as long as possible.
+		# Set the root user's passwords as the last step to ensure reloading the browser works for 
+		# as long as possible.
 		set_root_password($conf) or return(1);
 		
-		# This sets up the various Striker tools and ScanCore. It must
-		# run before storage stage2 because DRBD will need it.
-		configure_striker_tools($conf);
+		# This sets up the various Striker tools and ScanCore. It must run before storage stage2 
+		# because DRBD will need it.
+		configure_striker_tools($conf) or return(1);
 		
-		# If a reboot is needed, now is the time to do it. This will
-		# switch the CGI nodeX IPs to the new ones, too.
+		# If a reboot is needed, now is the time to do it. This will switch the CGI nodeX IPs to the 
+		# new ones, too.
 		reboot_nodes($conf) or return(1);
 		
 		# Configure storage stage 2 (drbd)
@@ -334,16 +334,13 @@ sub run_new_install_manifest
 		# Start cman up
 		start_cman($conf) or return(1);
 		
-		### TODO: Test migration! After rebuilding node 1, migration 
-		###       from 2 -> 1 failed because ~/.ssh/known_hosts wasn't
-		###       properly populated.
-		# Live migration won't work until we've populated
-		#  ~/.ssh/known_hosts, so do so now.
+		### TODO: Test migration! After rebuilding node 1, migration from 2 -> 1 failed because 
+		###       ~/.ssh/known_hosts wasn't properly populated.
+		# Live migration won't work until we've populated ~/.ssh/known_hosts, so do so now.
 		configure_ssh($conf) or return(1);
 		
-		# This manually starts DRBD, forcing one to primary if needed,
-		# configures clvmd, sets up the PVs and VGs, creates the
-		# /shared LV, creates the GFS2 partition and configures fstab.
+		# This manually starts DRBD, forcing one to primary if needed, configures clvmd, sets up the 
+		# PVs and VGs, creates the /shared LV, creates the GFS2 partition and configures fstab.
 		configure_storage_stage3($conf) or return(1);
 		
 		# Enable (or disable) tools.
@@ -828,13 +825,18 @@ sub configure_striker_tools
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
 	
-	# Configure Scancore. This includes the download and setup of the 
-	# /sbin/striker files.
-	configure_scancore($conf);
-	enable_safe_anvil_start($conf);
-	enable_anvil_kick_apc_ups($conf);
+	# Configure Striker tools and Scancore.
+	my ($ok) = configure_scancore($conf);
+	if ($ok)
+	{
+		($ok) = configure_safe_anvil_start($conf);
+		if ($ok)
+		{
+			($ok) = enable_anvil_kick_apc_ups($conf);
+		}
+	}
 	
-	return(0);
+	return($ok);
 }
 
 # This does the actual work of configuring ScanCore on a given node.
@@ -844,6 +846,7 @@ sub configure_scancore_on_node
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
 	my $return_code = 255;
+	my $message     = "";
 	
 	my $uuid = "";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cgi::anvil_node1_current_ip: [$conf->{cgi}{anvil_node1_current_ip}]\n");
@@ -901,7 +904,7 @@ then
     else
         echo 'Extracting tarball'
         $conf->{path}{nodes}{tar} -xvjf $conf->{path}{nodes}{striker_tarball} -C $path/ .
-        mv $path/Data $path/ScanCore/
+        mv $path/Data $path/
         mv $path/AN $conf->{path}{nodes}{perl_library}/
         if [ -e '$path/ScanCore/ScanCore' ];
         then
@@ -990,13 +993,14 @@ fi
 		my $base_striker_config_file = "$path/striker.conf";
 		my $striker_config           = "";
 		my $skip_db                  = "";
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; base_striker_config_file: [$base_striker_config_file]\n");
 		
 		# Read in the base striker.conf
 		if (-e $base_striker_config_file)
 		{
 			# Excellent, read it in.
 			my $shell_call = "cat $base_striker_config_file";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
 				port		=>	22,
@@ -1014,6 +1018,7 @@ fi
 				if ($line =~ /^scancore::db::(\d+)::host\s+=\s+localhost/)
 				{
 					$skip_db = $1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; skip_db: [$skip_db]\n");
 				}
 				next if ($line =~ /^scancore::db::(\d+)::/);
 				
@@ -1025,16 +1030,7 @@ fi
 					my $db_host = $2;
 					$conf->{used_db_id}{$db_id}     = $db_host;
 					$conf->{used_db_host}{$db_host} = $db_id;
-				}
-				
-				# Enable safe_anvil_start if enabled in the InstallManifest.
-				if ($line =~ /^tools::safe_anvil_start::enabled\s/)
-				{
-					if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
-					{
-						$striker_config .= "tools::safe_anvil_start::enabled	=	1\n";
-						next;
-					}
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; used_db_id::$db_id: [$conf->{used_db_id}{$db_id}], used_db_host::$db_host: [$conf->{used_db_host}{$db_host}]\n");
 				}
 				
 				$striker_config .= "$line\n";
@@ -1044,6 +1040,7 @@ fi
 			my $striker_1_bcn_ip = $conf->{cgi}{anvil_striker1_bcn_ip};
 			my $striker_1_db_id  = 0;
 			my $add_striker_1    = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; used_db_host::$striker_1_bcn_ip: [$conf->{used_db_host}{$striker_1_bcn_ip}]\n");
 			if (not $conf->{used_db_host}{$striker_1_bcn_ip})
 			{
 				# Find the first free DB ID.
@@ -1059,13 +1056,16 @@ fi
 						$striker_1_db_id                         = $id;
 						$add_striker_1                           = 1;
 						$conf->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
-						$conf->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id
+						$conf->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id; 
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; used_db_id::$striker_1_db_id: [$conf->{used_db_id}{$striker_1_db_id}], used_db_host::$striker_1_bcn_ip: [$conf->{used_db_host}{$striker_1_bcn_ip}]\n");
 					}
 				}
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; striker_1_db_id: [$striker_1_db_id]\n");
 			}
 			my $striker_2_bcn_ip = $conf->{cgi}{anvil_striker2_bcn_ip};
 			my $striker_2_db_id  = 0;
 			my $add_striker_2    = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; used_db_host::$striker_2_bcn_ip: [$conf->{used_db_host}{$striker_2_bcn_ip}]\n");
 			if (not $conf->{used_db_host}{$striker_2_bcn_ip})
 			{
 				# Find the first free DB ID.
@@ -1081,12 +1081,15 @@ fi
 						$striker_2_db_id                         = $id;
 						$add_striker_2                           = 1;
 						$conf->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
-						$conf->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id
+						$conf->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; used_db_id::$striker_2_db_id: [$conf->{used_db_id}{$striker_2_db_id}], used_db_host::$striker_2_bcn_ip: [$conf->{used_db_host}{$striker_2_bcn_ip}]\n");
 					}
 				}
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; striker_2_db_id: [$striker_2_db_id]\n");
 			}
 			
 			# Inject if needed.
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_striker_1: [$add_striker_1], add_striker_2: [$add_striker_2]\n");
 			if (($add_striker_1) or ($add_striker_2))
 			{
 				# Loop through the striker config and inject 
@@ -1098,20 +1101,24 @@ fi
 					if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 					{
 						# Inject
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_striker_1: [$add_striker_1]\n");
 						if ($add_striker_1)
 						{
 							my $db_host = $striker_1_bcn_ip;
 							my $db_id   = $striker_1_db_id;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; db_host: [$db_host], db_id: [$db_id]\n");
 							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
 							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
 							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
 						}
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_striker_2: [$add_striker_2]\n");
 						if ($add_striker_2)
 						{
 							my $db_host = $striker_2_bcn_ip;
 							my $db_id   = $striker_2_db_id;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; db_host: [$db_host], db_id: [$db_id]\n");
 							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
 							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
@@ -1135,11 +1142,15 @@ fi
 			close $file_handle;
 			
 			# Now rsync it to the node (using an 'expect' wrapper).
+			my $bad_file = "";
+			my $bad_line = "";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Ensuring we've recorded: [$node]'s RSA fingerprint.");
 			AN::Common::test_ssh_fingerprint($conf, $node, 1);	# 1 == silent
+			
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
 			AN::Common::create_rsync_wrapper($conf, $node, $password);
-			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{config_file}";
+			
+			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{striker_config}";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $no_key = 0;
@@ -1148,48 +1159,68 @@ fi
 				chomp;
 				my $line = $_;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				
+				# If the user is re-running the install, this could fail because the target's
+				# key changed.
+				if ($line =~ /REMOTE HOST IDENTIFICATION HAS CHANGED/i)
+				{
+					$return_code = 8;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+				}
+				if ($line =~ /Offending key in (\/.*?\/known_hosts):(\d+)/)
+				{
+					$bad_file = $1;
+					$bad_line = $2;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; bad_file: [$bad_file], bad_line: [$bad_line]\n");
+					$message  = AN::Common::get_string($conf, {key => "message_0448", variables => {
+						bad_file	=>	$bad_file,
+						bad_line	=>	$bad_line,
+					}});
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+				}
 			}
 			close $file_handle;
 			
-			### TODO: If this gets too big, write it to a local
-			###       /tmp/uuid file and rsync it over.
-			# Write out the striker.conf file now.
-			$shell_call  = "
-if [ -s '$conf->{path}{config_file}' ];
+			if (not $return_code)
+			{
+				# Write out the striker.conf file now.
+				$shell_call  = "
+if [ -s '$conf->{path}{striker_config}' ];
 then
     echo 'config exists'
 else
     echo 'config does not exist'
 fi
 ";
-			my $generated_ok = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
-			($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	22,
-				user		=>	"root",
-				password	=>	$password,
-				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-			foreach my $line (@{$return})
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
-				if ($line =~ /config exists/)
+				my $generated_ok = 0;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
+				($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
 				{
-					$generated_ok = 1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
+					if ($line =~ /config exists/)
+					{
+						$generated_ok = 1;
+					}
 				}
-			}
-			if ($generated_ok)
-			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created Striker config: [$conf->{path}{config_file}]\n");
-			}
-			else
-			{
-				# Failed 
-				$return_code = 4;
+				if ($generated_ok)
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created Striker config: [$conf->{path}{striker_config}]\n");
+				}
+				else
+				{
+					# Failed 
+					$return_code = 4;
+				}
 			}
 		}
 		else
@@ -1238,6 +1269,9 @@ fi";
 		}
 	}
 	
+	# Delete this so it doesn't interfere with node2
+	delete $conf->{used_db_host};
+	
 	# 0 == Success
 	# 1 == Failed to download
 	# 2 == Failed to extract
@@ -1246,7 +1280,9 @@ fi";
 	# 5 == Failed to add to root's crontab
 	# 6 == Failed to generate the host UUID file
 	# 7 == Host UUID is invalid
-	return($return_code);
+	# 8 == Target's ssh fingerprint changed.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code], message: [$message]\n");
+	return($return_code, $message);
 }
 
 
@@ -1257,8 +1293,9 @@ sub configure_scancore
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
 	
-	my ($node1_rc) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
-	my ($node2_rc) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc], node1_rc_message: [$node1_rc_message], node2_rc_message: [$node2_rc_message]\n");
 	# 0 == Success
 	# 1 == Failed to download
 	# 2 == Failed to extract
@@ -1267,6 +1304,7 @@ sub configure_scancore
 	# 5 == Failed to add to root's crontab
 	# 6 == Failed to generate the host UUID file
 	# 7 == Host UUID is invalid
+	# 8 == Target's ssh fingerprint changed.
 	
 	my $ok = 1;
 	# Report
@@ -1324,6 +1362,13 @@ sub configure_scancore
 		$node1_message = "#!string!state_0118!#";
 		$ok            = 0;
 	}
+	elsif ($node1_rc eq "8")
+	{
+		# The node's ssh fingerprint has changed.
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = $node1_rc_message;
+		$ok            = 0;
+	}
 	
 	# Node 2
 	if ($node2_rc eq "1")
@@ -1373,6 +1418,13 @@ sub configure_scancore
 		# The UUID in the host file is invalid.
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0118!#";
+		$ok            = 0;
+	}
+	elsif ($node2_rc eq "8")
+	{
+		# The node's ssh fingerprint has changed.
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = $node2_rc_message;
 		$ok            = 0;
 	}
 	
@@ -1455,10 +1507,10 @@ fi";
 } 
 
 # This creates the run-level 3 link to enable safe_anvil_start.
-sub enable_safe_anvil_start_on_node
+sub configure_safe_anvil_start_on_node
 {
 	my ($conf, $node, $password) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_safe_anvil_start_on_node(); node: [$node]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start_on_node(); node: [$node]\n");
 	
 	my $return_code = 0;
 	
@@ -1466,21 +1518,21 @@ sub enable_safe_anvil_start_on_node
 	my $shell_call = "
 if [ -e '$conf->{path}{nodes}{safe_anvil_start}' ];
 then 
-	echo '$conf->{path}{nodes}{safe_anvil_start} exists, creating symlink';
-	if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
-	then
-		echo '$conf->{path}{nodes}{safe_anvil_start_link} already exists.'
-	else
-		ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}
-		if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
-		then
-			echo '$conf->{path}{nodes}{safe_anvil_start_link} link created.'
-		else
-			echo 'Failed to create $conf->{path}{nodes}{safe_anvil_start_link}.'
-		fi
-	fi
+    echo '$conf->{path}{nodes}{safe_anvil_start} exists, creating symlink';
+    if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
+    then
+        echo '$conf->{path}{nodes}{safe_anvil_start_link} already exists.'
+    else
+        ln -s $conf->{path}{nodes}{safe_anvil_start} $conf->{path}{nodes}{safe_anvil_start_link}
+        if [ -e '$conf->{path}{nodes}{safe_anvil_start_link}' ];
+        then
+            echo '$conf->{path}{nodes}{safe_anvil_start_link} link created.'
+        else
+            echo 'Failed to create $conf->{path}{nodes}{safe_anvil_start_link}.'
+        fi
+    fi
 else 
-	echo '$conf->{path}{nodes}{safe_anvil_start} not found'
+    echo '$conf->{path}{nodes}{safe_anvil_start} not found'
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -1595,14 +1647,14 @@ sub enable_anvil_kick_apc_ups
 }
 
 # This creates a symlink in run-level 3 to run safe_anvil_start on boot.
-sub enable_safe_anvil_start
+sub configure_safe_anvil_start
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_safe_anvil_start()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start()\n");
 	
 	my $ok = 1;
-	my ($node1_rc) = enable_safe_anvil_start_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = enable_safe_anvil_start_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_rc) = configure_safe_anvil_start_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = configure_safe_anvil_start_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
 	# 0 = Link created.
 	# 1 = Symlink already exists
