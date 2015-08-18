@@ -134,6 +134,7 @@ my $an = AN::Tools->new({data =>
 			agents_directory	=>	"$running_directory/agents",
 			cp			=>	"/bin/cp",
 			email_directory		=>	"/var/log/alert_emails",
+			fence_agents		=>	"/usr/sbin",
 			# under this directory will be a file called 
 			# ".<node_name>" for each node. This contains the 
 			# string 'health = [ok,warning,critical]. This is used
@@ -311,6 +312,9 @@ while(1)
 	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
 	$an->String->read_words({file => $an->data->{path}{striker_strings}});
 	load_agent_strings($an);
+	
+	# Calculate the sum and see if it has changed.
+	#calculate_scancore_sum($an);
 	
 	# Has the user disabled ScanCore?
 	if (not $an->data->{scancore}{enabled})
@@ -599,8 +603,10 @@ ORDER BY
 		}, file => $THIS_FILE, line => __LINE__});
 		if (-d $an->data->{path}{node_cache})
 		{
-			# So we do have a cache directory. What about actual
-			# cache files?
+			# This will be stuck onto the start of fence agents that don't have a full path.
+			my $fence_path = $an->data->{path}{fence_agents};
+			
+			# So we do have a cache directory. What about actual cache files?
 			local(*DIRECTORY);
 			opendir(DIRECTORY, $an->data->{path}{node_cache});
 			while(my $file = readdir(DIRECTORY))
@@ -662,8 +668,14 @@ ORDER BY
 							$value    =~ s/^\s+//;
 							$value    =~ s/\s+$//;
 							
+							# Stick the full path onto the 'power_check_command'.
+							if ($variable eq "power_check_command")
+							{
+								$value =~ s/^fence/$fence_path\/fence/;
+							}
+							
 							$an->data->{cache}{$node}{info}{$variable} = $value;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 								name1 => "cache::${node}::info::${variable}", value1 => $an->data->{cache}{$node}{info}{$variable}
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -3286,6 +3298,7 @@ sub update_db_temperature
 		# Read in the history schema
 		my $query = "
 SELECT 
+    temperature_uuid, 
     temperature_agent_name, 
     temperature_sensor_host, 
     temperature_sensor_name, 
@@ -3310,25 +3323,28 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $temperature_agent_name  = $row->[0]; 
-			my $temperature_sensor_host = $row->[1]; 
-			my $temperature_sensor_name = $row->[2];
-			my $temperature_celsius     = $row->[3];
-			my $temperature_state       = $row->[4];
-			my $temperature_is          = $row->[5];
-			my $modified_date           = $row->[6];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-				name1 => "temperature_agent_name",  value1 => $temperature_agent_name, 
-				name2 => "temperature_sensor_host", value2 => $temperature_sensor_host, 
-				name3 => "temperature_sensor_name", value3 => $temperature_sensor_name, 
-				name4 => "temperature_celsius",     value4 => $temperature_celsius, 
-				name5 => "temperature_state",       value5 => $temperature_state, 
-				name6 => "temperature_is",          value6 => $temperature_is, 
-				name7 => "modified_date",           value7 => $modified_date
+			my $temperature_uuid        = $row->[0];
+			my $temperature_agent_name  = $row->[1]; 
+			my $temperature_sensor_host = $row->[2]; 
+			my $temperature_sensor_name = $row->[3];
+			my $temperature_celsius     = $row->[4];
+			my $temperature_state       = $row->[5];
+			my $temperature_is          = $row->[6];
+			my $modified_date           = $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "temperature_uuid",        value1 => $temperature_uuid, 
+				name2 => "temperature_agent_name",  value2 => $temperature_agent_name, 
+				name3 => "temperature_sensor_host", value3 => $temperature_sensor_host, 
+				name4 => "temperature_sensor_name", value4 => $temperature_sensor_name, 
+				name5 => "temperature_celsius",     value5 => $temperature_celsius, 
+				name6 => "temperature_state",       value6 => $temperature_state, 
+				name7 => "temperature_is",          value7 => $temperature_is, 
+				name8 => "modified_date",           value8 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name} = {
+				temperature_uuid	=>	$temperature_uuid, 
 				temperature_sensor_host	=>	$temperature_sensor_host,
 				temperature_sensor_name	=>	$temperature_sensor_name,
 				temperature_celsius	=>	$temperature_celsius,
@@ -3338,6 +3354,7 @@ WHERE
 			$an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{'exists'} = 1;
 			$an->data->{db_data}{$id}{temperature}{temperature_agent_name}{$temperature_agent_name}{seen}     = 0;
 			$an->data->{db_data}{$id}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name} = {
+				temperature_uuid	=>	$temperature_uuid, 
 				temperature_sensor_host	=>	$temperature_sensor_host,
 				temperature_sensor_name	=>	$temperature_sensor_name,
 				temperature_celsius	=>	$temperature_celsius,
@@ -3357,18 +3374,20 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $temperature_agent_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}})
 		{
+			my $temperature_uuid        = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_uuid};
 			my $temperature_sensor_host = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_sensor_host};
 			my $temperature_sensor_name = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_sensor_name};
 			my $temperature_celsius     = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_celsius};
 			my $temperature_state       = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_state};
 			my $temperature_is          = $an->data->{db_data}{unified}{temperature}{modified_date}{$modified_date}{temperature_agent_name}{$temperature_agent_name}{temperature_is};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "temperature_agent_name",  value1 => $temperature_agent_name, 
-				name2 => "temperature_sensor_host", value2 => $temperature_sensor_host, 
-				name3 => "temperature_sensor_name", value3 => $temperature_sensor_name, 
-				name4 => "temperature_celsius",     value4 => $temperature_celsius, 
-				name5 => "temperature_state",       value5 => $temperature_state, 
-				name6 => "temperature_is",          value6 => $temperature_is, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "temperature_uuid",        value1 => $temperature_uuid, 
+				name2 => "temperature_agent_name",  value2 => $temperature_agent_name, 
+				name3 => "temperature_sensor_host", value3 => $temperature_sensor_host, 
+				name4 => "temperature_sensor_name", value4 => $temperature_sensor_name, 
+				name5 => "temperature_celsius",     value5 => $temperature_celsius, 
+				name6 => "temperature_state",       value6 => $temperature_state, 
+				name7 => "temperature_is",          value7 => $temperature_is, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -3416,7 +3435,7 @@ SET
 WHERE 
     temperature_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name)." 
+    temperature_uuid        = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid)." 
 ;";
 							# Now record the query in the array
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -3433,6 +3452,7 @@ AND
 INSERT INTO 
     public.temperature
 (
+    temperature_uuid, 
     temperature_agent_name, 
     temperature_host_uuid, 
     temperature_sensor_host, 
@@ -3442,6 +3462,7 @@ INSERT INTO
     temperature_is, 
     modified_date 
 ) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
@@ -3481,7 +3502,7 @@ INSERT INTO
     temperature_is, 
     modified_date 
 ) VALUES (
-    (SELECT temperature_id FROM public.temperature WHERE temperature_agent_name = ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name)."), 
+    (SELECT temperature_id FROM public.temperature WHERE temperature_uuid = ".$an->data->{sys}{use_db_fh}->quote($temperature_uuid)."), 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_agent_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($temperature_sensor_host).", 
