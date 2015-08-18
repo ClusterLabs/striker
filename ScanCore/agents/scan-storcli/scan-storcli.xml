@@ -3,7 +3,7 @@
 This strings file is for the LSI RAID controller Scan Agent. Please be careful not to use names used by the 
 main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>scan-apc-ups.xml</name>
 	<version>0.0.001</version>
@@ -461,4 +461,4 @@ https://alteeve.ca/w/Support
 		<!-- Sensor message titles -->
 		<key name="scan_storcli_title_0001"></key>
 	</lang>
-</words>
+</strings>

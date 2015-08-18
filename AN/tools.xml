@@ -4,7 +4,7 @@
 This is the AN::Tools master 'words' file.
 -->
 
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>tools.xml</name>
 	<version>0.0.001</version>
@@ -439,4 +439,4 @@ Variables:
 		<key name="an_0005">メッセージはありません</key>
 		<key name="an_0006">不明なファイル</key>
 	</lang>
-</words>
+</strings>

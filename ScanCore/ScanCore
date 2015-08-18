@@ -703,7 +703,7 @@ ORDER BY
 				#my $node = $row->[0];
 				my $host_name           = $row->[0];
 				my $host_emergency_stop = $row->[1];
-				my $host_stop_reason    = $row->[2];
+				my $host_stop_reason    = $row->[2] ? $row->[2] : "";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 					name1 => "host_name",                value1 => $host_name, 
 					name2 => "host_emergency_stop",      value2 => $host_emergency_stop, 

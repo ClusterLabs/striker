@@ -4,7 +4,7 @@ This strings file is for the rgmanager 'clustat' Scan Agent. Please be careful
 not to use names used by the main Striker strings file. Do this by prefixing
 all strings with 'scan_clustat_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>scan-clustat.xml</name>
 	<version>0.0.001</version>
@@ -152,4 +152,4 @@ https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
 		<key name="scan_clustat_message_0003">It looks like 'rgmanager' is not in installed, exiting.</key>
 	</lang>
-</words>
+</strings>

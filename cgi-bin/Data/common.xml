@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<string>
+<strings>
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for Anvil! Dashboard.</key>
@@ -19544,4 +19544,4 @@
 		<!-- These are not found in the official OUI list -->
 		<key name="oui_525400">Red Hat KVM virtual NIC</key>
 	</common>
-</string>
+</strings>

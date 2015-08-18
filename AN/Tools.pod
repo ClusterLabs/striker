@@ -223,7 +223,7 @@ print "The value of 'foo::bar' is: [$data->{foo}{bar}]\n";  # prints "The value 
 
 Another example, though not realistic, would be to access the word string 'an_0000' in the language 'en_CA':
 
-my $word = $an->data()->{words}{lang}{en_CA}{key}{an_0000}{content};
+my $word = $an->data()->{strings}{lang}{en_CA}{key}{an_0000}{content};
 print "Word: [$word].\n"; # prints "Word: [AN::Tools rapid development suite.]."
 
 Realistically though, you'll probably want to access strings via 'AN::Tools::String's 'get_word()' method.

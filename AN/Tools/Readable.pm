@@ -147,6 +147,8 @@ sub time
 		$time = $param ? $param : 0;
 	}
 	
+	return('--') if $param->{'time'} eq "--";
+	
 	my $old_time =  $time;
 	my $float    =  0;
 	my $sign     =  $time =~ /^-/ ? "-" : "";

@@ -4,7 +4,7 @@ This strings file is for the APC UPS Scan Agent. Please be careful not to use
 names used by the main Striker strings file. Do this by prefixing all strings
 with 'scan_ipmitool_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>scan-apc-ups.xml</name>
 	<version>0.0.001</version>
@@ -157,4 +157,4 @@ The new sensor: [#!variable!sensor_name!#] has been found.
 		<!-- Sensor message titles -->
 		<key name="scan_ipmitool_title_0001">New sensor found on: [#!variable!machine!#]</key>
 	</lang>
-</words>
+</strings>

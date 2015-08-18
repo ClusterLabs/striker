@@ -127,8 +127,8 @@ is($an->error_code(), 0, "error_code(); Set back to '0' after last error.");
 ### Failure tests.
 # is($an->String->read_words("./test.xml", $hash), 1, "read_words(); Read in 'test.xml' into a new hash reference for next set of tests.");
 
-# my $conf=$an->data()->{words}{lang}{en_CA}{key}{an_0000}{content};
-# my $confj=$an->data()->{words}{lang}{jp}{key}{an_0000}{content};
+# my $conf=$an->data()->{strings}{lang}{en_CA}{key}{an_0000}{content};
+# my $confj=$an->data()->{strings}{lang}{jp}{key}{an_0000}{content};
 # print "Data: [$conf] ($confj)\n";
 # use IO::Handle;
 # my $test=IO::Handle->new();

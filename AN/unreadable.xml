@@ -6,7 +6,7 @@ data strings should be added here and this file should not be modified unless
 t/String.t is also updated.
 -->
 
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>test.xml</name>
 	<version>0.0.001</version>
@@ -21,4 +21,4 @@ t/String.t is also updated.
 	<lang name="jp" long_name="日本語">
 		<key name="ta_0000">代りのテスト: [#!variable!0!#]。</key>
 	</lang>
-</words>
+</strings>

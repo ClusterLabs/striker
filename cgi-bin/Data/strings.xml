@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<string>
+<strings>
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
 		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the Striker.</key>
@@ -1842,4 +1842,4 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 	<lang name="fr" long_name="Français">
 		<lang_comment>Géré par Madison Kelly (mkelly@alteeve.ca) pour Striker.</lang_comment>
 	</lang>
-</string>
+</strings>

@@ -136,13 +136,13 @@ This is an optional alternate hash reference to read the requested words key fro
 This reads in an XML words file with your program's words. By default, the data is fed into the '$an->data' hash reference under the 'words' key. This data is meant to be accessed and manipulated by the C<get_word> method, but if you have a need to directly access it, it is in the following format:
 
 # Get the 'an_0000' keyed word under the Canadian English (en_CA) language.
-my $word = $an->data()->{words}{lang}{en_CA}{key}{an_0000}{content};
+my $word = $an->data()->{strings}{lang}{en_CA}{key}{an_0000}{content};
 print "Word: [$word].\n"; # prints "Word: [AN::Tools rapid development suite.]."
 
 If you pass your own hash reference, AN::Tools will not have access to the words you read by default. To let C<get_word> access your words you will need to pass the C<hash> param when calling it (and other) methods in the future. Using the example above, you would access data fed into your hash file this way:
 
 # Get the 'an_0000' keyed word under the Canadian English (en_CA) language.
-my $word = $hash->{words}{lang}{en_CA}{key}{an_0000}{content};
+my $word = $hash->{strings}{lang}{en_CA}{key}{an_0000}{content};
 print "Word: [$word].\n"; # prints "Word: [AN::Tools rapid development suite.]."
 
 =head3 Parameters
@@ -164,7 +164,7 @@ This describes the format of the XML word files used by AN::Tools. Please see th
 The "word" file is structured like this:
 
  <?xml version="1.0" encoding="UTF-8"?>
- <words>
+ <strings>
  	<!-- Canadian English -->
  	<langs>en_CA,jp</langs>
  	<lang name="en_CA" long_name="Canadian English">
@@ -178,7 +178,7 @@ The "word" file is structured like this:
  		<key name="comment">Created by Madison Kelly (mkelly@alteeve.ca) for the AN::Tools suite of perl modules.</key>
  		<key name="an_0000">テスト単語</key>
  	</lang>
- </words>
+ </strings>
 
 All languages are within the 'words' block. The first argument, C<langs>, is a comma-seperated list of enabled languages. This allows you to have a work-in-progress language without making it available to users of the program by simply leaving out of this list.
 

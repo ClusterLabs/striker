@@ -9,7 +9,10 @@
 # Author:  mkelly@alteeve.ca
 # Version: v0.0.1
 # 
-# TODO: Check if the peer is off before checking the health file.
+# TODO: 
+# - Check if the peer is off before checking the health file.
+# - Don't shutdown if I am UpToDate and the peer is Inconsistent
+# - Stop anvil-kick-apc-ups
 # 
 
 

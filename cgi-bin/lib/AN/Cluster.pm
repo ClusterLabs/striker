@@ -10080,7 +10080,7 @@ sub remote_call
 	if ($close)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
-		$ssh_fh->disconnect();
+		$ssh_fh->disconnect() if $ssh_fh;
 		
 		# For good measure, blank both variables.
 		$conf->{node}{$node}{ssh_fh} = "";

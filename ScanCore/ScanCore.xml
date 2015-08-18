@@ -4,7 +4,7 @@ This strings file is for ScanCore. Please be careful not to use names used by
 the main Striker strings file. Do this by prefixing all strings with
 'scancore_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>ScanCore.xml</name>
 	<version>0.0.001</version>
@@ -226,4 +226,4 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0003">Another copy of #!string!scancore_brand_0001!# is running, exiting.</key>
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
 	</lang>
-</words>
+</strings>

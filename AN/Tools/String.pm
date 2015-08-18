@@ -130,7 +130,7 @@ sub get
 	}
 	
 	# Make sure we got a key.
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
+	#print "$THIS_FILE ".__LINE__."; key: [$key]\n";
 	if (not $key)
 	{
 		#print "$THIS_FILE ".__LINE__."; The 'hash' string does not contain a hash.\n";
@@ -188,7 +188,7 @@ sub get
 	}
 	
 	# Make sure that the request language exists in the hash.
-	if (ref($hash->{words}{lang}{$language}) ne "HASH")
+	if (ref($hash->{strings}{lang}{$language}) ne "HASH")
 	{
 		# If not, I have to just 'die' because calling Alert->error()
 		# would trigger an infite loop.
@@ -203,7 +203,7 @@ sub get
 	}
 	
 	# Make sure that the request key is in the language hash.
-	if (not exists $hash->{words}{lang}{$language}{key}{$key}{content})
+	if (not exists $hash->{strings}{lang}{$language}{key}{$key}{content})
 	{
 		print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], no string key.\n";
 		$an->Alert->error({
@@ -222,7 +222,7 @@ sub get
 	}
 	
 	# Now pick out my actual string.
-	my $string =  $hash->{words}{lang}{$language}{key}{$key}{content};
+	my $string =  $hash->{strings}{lang}{$language}{key}{$key}{content};
 	$string    =~ s/^\n//;
 	#print "$THIS_FILE ".__LINE__."; string: [$string]\n";
 	

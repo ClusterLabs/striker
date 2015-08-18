@@ -4,7 +4,7 @@ This strings file is for the APC UPS Scan Agent. Please be careful not to use
 names used by the main Striker strings file. Do this by prefixing all strings
 with 'scan_apc_ups_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>scan-apc-ups.xml</name>
 	<version>0.0.001</version>
@@ -463,4 +463,4 @@ https://alteeve.ca/w/Support
 		<key name="scan_apc_ups_message_0007">The UPS has been running on batteries for: [#!variable!output_time_on_batteries!#]</key>
 		<key name="scan_apc_ups_message_0008">A new UPS named: [#!variable!name!#] has been found</key>
 	</lang>
-</words>
+</strings>

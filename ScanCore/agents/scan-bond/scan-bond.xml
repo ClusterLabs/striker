@@ -4,7 +4,7 @@ This strings file is for the rgmanager 'bond' Scan Agent. Please be careful
 not to use names used by the main Striker strings file. Do this by prefixing
 all strings with 'scan_bond_'.
 -->
-<words>
+<strings>
 	<!-- Canadian English -->
 	<name>scan-bond.xml</name>
 	<version>0.0.001</version>
@@ -315,4 +315,4 @@ https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
 		<key name="scan_bond_message_0003">It looks like this system has no bonded network interfaces, exiting.</key>
 	</lang>
-</words>
+</strings>
