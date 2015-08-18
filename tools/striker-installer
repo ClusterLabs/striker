@@ -1519,6 +1519,10 @@ sub configure_striker_tools
 		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 	}
 	close $file_handle;
+	
+	# Copy the tools into /var/www/html/files/ so that InstallManifest can grab what it needs, as needed.
+	rsync_files($conf, "$conf->{directory}{source}/tools/*", "$conf->{directory}{apache_files}/");
+	
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	
 	return(0);

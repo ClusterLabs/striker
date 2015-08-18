@@ -683,8 +683,8 @@ sub initialize_conf
 			words_common		=>	"Data/common.xml",
 			words_file		=>	"/sbin/striker/Data/strings.xml",	# TODO: This should be phased out in favour of 'striker_strings'
 			
-			# These are the tools that will be copied to 'docroot'
-			# if either node doesn't have an internet connection.
+			# These are the tools that will be copied to 'docroot' if either node doesn't have 
+			# an internet connection.
 			tools			=>	[
 				"anvil-map-network",
 				"anvil-self-destruct",

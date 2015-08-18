@@ -466,40 +466,6 @@ sub connect_to_databases
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
 		
-		### BUG: When we're (re)connecting to a Database for the first ever, this causes an error like:
-=pod
-scancore=# BEGIN TRANSACTION ;
-BEGIN
-scancore=# INSERT INTO 
-scancore-#     alerts
-scancore-# (
-scancore(#     alert_uuid, 
-scancore(#     alert_host_uuid, 
-scancore(#     alert_agent_name, 
-scancore(#     alert_level, 
-scancore(#     alert_title_key, 
-scancore(#     alert_title_variables, 
-scancore(#     alert_message_key, 
-scancore(#     alert_message_variables, 
-scancore(#     modified_date
-scancore(# ) VALUES (
-scancore(#     '490243cd-b238-4ca4-8458-7f55667b6fb0', 
-scancore(#     'cf60ca8b-1d37-4ad0-8184-7e626f073c16', 
-scancore(#     'ScanCore', 
-scancore(#     'warning', 
-scancore(#     'an_alert_title_0006', 
-scancore(#     '', 
-scancore(#     'scancore_cleared_0001', 
-scancore(#     '!!host!an-striker04.alteeve.ca!!,!!name!scancore!!,!!port!5432!!,',
-scancore(#     '2015-08-17 01:10:03.983205-04'
-scancore(# );
-ERROR:  duplicate key value violates unique constraint "alerts_pkey"
-DETAIL:  Key (alert_uuid)=(490243cd-b238-4ca4-8458-7f55667b6fb0) already exists.
-scancore=# ROLLBACK ;
-ROLLBACK
-=cut
-		###      So we need a way to distinguish a returning DB from a totally new DB. For now 
-		###      though, ScanCore will abort and then next start will properly run.
 		# If I've not sent an alert about this DB loss before, send one now.
 		my $set = $an->Alert->check_alert_sent({
 			type			=>	"warning",
@@ -541,26 +507,40 @@ ROLLBACK
 	# Send an 'all clear' message if a now-connected DB previously wasn't.
 	foreach my $id (@{$successful_connections})
 	{
-		my $cleared = $an->Alert->check_alert_sent({
-			type			=>	"clear",
-			alert_sent_by		=>	$THIS_FILE,
-			alert_record_locator	=>	$id,
-			alert_name		=>	"connect_to_db",
-			modified_date		=>	$an->data->{sys}{db_timestamp},
-		});
-		if ($cleared)
+		# Query to see if the newly connected host is in the DB yet. If it isn't, don't send an
+		# alert as it'd cause a duplicate UUID error.
+		my $query = "SELECT COUNT(*) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($an->data->{scancore}{db}{$id}{host}).";";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($count > 0)
 		{
-			$an->Alert->register_alert({
-				alert_level		=>	"warning", 
-				alert_agent_name	=>	"ScanCore",
-				alert_title_key		=>	"an_alert_title_0006",
-				alert_message_key	=>	"scancore_cleared_0001",
-				alert_message_variables	=>	{
-					name			=>	$an->data->{scancore}{db}{$id}{name},
-					host			=>	$an->data->{scancore}{db}{$id}{host},
-					port			=>	$an->data->{scancore}{db}{$id}{port} ? $an->data->{scancore}{db}{$id}{port} : 5432,
-				},
+			my $cleared = $an->Alert->check_alert_sent({
+				type			=>	"clear",
+				alert_sent_by		=>	$THIS_FILE,
+				alert_record_locator	=>	$id,
+				alert_name		=>	"connect_to_db",
+				modified_date		=>	$an->data->{sys}{db_timestamp},
 			});
+			if ($cleared)
+			{
+				$an->Alert->register_alert({
+					alert_level		=>	"warning", 
+					alert_agent_name	=>	"ScanCore",
+					alert_title_key		=>	"an_alert_title_0006",
+					alert_message_key	=>	"scancore_cleared_0001",
+					alert_message_variables	=>	{
+						name			=>	$an->data->{scancore}{db}{$id}{name},
+						host			=>	$an->data->{scancore}{db}{$id}{host},
+						port			=>	$an->data->{scancore}{db}{$id}{port} ? $an->data->{scancore}{db}{$id}{port} : 5432,
+					},
+				});
+			}
 		}
 	}
 	

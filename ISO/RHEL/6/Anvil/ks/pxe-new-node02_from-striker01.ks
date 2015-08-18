@@ -28,7 +28,6 @@ rootpw Initial1
 user --name=admin --plaintext --password=Initial1
 
 # Security!
-# is expected to change in a future release.
 firewall --service=ssh
 selinux --enforcing
 	
@@ -78,7 +77,6 @@ sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
 sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
 
-### This will go away when Raritan PDU support gets into 'fence-agents'.
 # Save the raritan fence agent.
 echo "Installing the fence_raritan agent."
 curl http://10.20.4.1/rhel6/x86_64/files/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
@@ -134,9 +132,9 @@ EOF
 %post --nochroot
 echo "Copying all the anaconda related log files to /root/install/"
 
-if [ ! -e '/root/install' ]
+if [ ! -e '/mnt/sysimage/root/install' ]
 then
-	mkdir /root/install
+	mkdir /mnt/sysimage/root/install
 fi
 cp -p /tmp/nochroot*   /mnt/sysimage/root/install/
 cp -p /tmp/kernel*     /mnt/sysimage/root/install/
@@ -185,7 +183,7 @@ fi
 
 # Now write the partition script
 echo "Done! Now creating and formatting partitions."
-cat >> /tmp/part-include <<END
+cat > /tmp/part-include <<END
 
 zerombr
 clearpart --all --drives=${DRIVE}

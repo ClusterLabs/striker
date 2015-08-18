@@ -67,7 +67,6 @@ perl
 perl-Crypt-SSLeay
 perl-libwww-perl
 rsync
-#Scanner
 screen 
 syslinux 
 syslinux-tftpboot
@@ -76,36 +75,36 @@ yum-plugin-priorities
 
 ### Needed to keep virt-manager from complaining. Will be removed when NoVNC
 ### support is completed.
+augeas-libs
+dnsmasq
+ebtables
+glusterfs
+glusterfs-api
 glusterfs-libs
+gpxe-roms-qemu
+iscsi-initiator-utils
+keyutils
 libgssglue
 libtirpc
-rpcbind
-glusterfs-api
-glusterfs
-qemu-img
-spice-server
-ebtables
-augeas-libs
-netcf-libs
-gpxe-roms-qemu
-keyutils
-radvd
-lzop
-seabios
-dnsmasq
-numad
-iscsi-initiator-utils
-sgabios-bin
-vgabios
 libevent
-nfs-utils-lib
-nfs-utils
 libvirt
+lzop
+netcf-libs
+nfs-utils
+nfs-utils-lib
+numad
+qemu-img
+radvd
+rpcbind
+seabios
+sgabios-bin
+spice-server
+vgabios
 %end
 
 
 # Copy source into place.
-%post --nochroot  --log=/tmp/nochroot-post-install.log
+%post --nochroot --log=/tmp/nochroot-post-install.log
 #!/bin/bash
 
 # Make sure our USB source is mounted.
@@ -115,26 +114,6 @@ then
 	mkdir /mnt/source;
 	mount /dev/sdb1 /mnt/source;
 fi
-
-# Create the /sbin/striker/ directory.
-# if [ ! -e "/mnt/sysimage/sbin/striker" ];
-# then
-# 	echo "Creating the '/sbin/striker' directory."
-# 	mkdir /mnt/sysimage/sbin/striker;
-# fi
-# 
-# # Copy all tools into place.
-# echo "Copying Striker's tools into /sbin/striker/"
-# cp -Rvp /mnt/source/Striker/striker-master/tools/* /mnt/sysimage/sbin/striker/
-# 
-# # For now, safe_anvil_shutdown must be in
-# # /var/www/tools/safe_anvil_shutdown, so this copies it into place.
-# if [ ! -e "/mnt/sysimage/var/www/tools" ];
-# then
-# 	echo "Creating the '/mnt/sysimage/var/www/tools' directory."
-# 	mkdir /mnt/sysimage/var/www/tools;
-# fi
-# cp /mnt/source/Striker/striker-master/tools/safe_anvil_stop /mnt/sysimage/var/www/tools/safe_anvil_stop
 
 # Copy the raritan fence agent into place.
 echo "Copying fence_raritan_snmp into /usr/sbin/"
@@ -203,7 +182,7 @@ rsync -av /mnt/img/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
 # Tell the machine to save downloaded RPM updates (for possible distribution to
 # other machines for low-bandwidth users). It also makes sure all NICs start on
 # boot.
-%post
+%post --log=/tmp/post-install_chroot-1.log
 echo "Setting yum to keep its cache."
 sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
 #for nic in $(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT="yes"/' $nic; done
@@ -245,6 +224,8 @@ cat > /root/example_striker-installer.txt << EOF
 ./striker-installer \\
  -c "Alteeve's Niche\\!" \\
  -n "an-striker01.alteeve.ca" \\
+ -e alert@example.com:secret \\
+ -m mail.example.com:587 \\
  -u "admin:Initial1" \\
  -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
  -b ${BCNIP}/16 \\
