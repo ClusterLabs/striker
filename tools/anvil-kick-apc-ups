@@ -285,6 +285,9 @@ $conf->{sys}{apc}{ups}{power_off_delay} = $conf->{switches}{power_off_delay} if 
 # Enable debugging if requested.
 $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 
+# Read the Striker config.
+read_configuration($conf);
+
 # Enable the program if 'force' used.
 if ($conf->{switches}{force})
 {
@@ -292,8 +295,7 @@ if ($conf->{switches}{force})
 	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been forced, ignoring 'tools::anvil-kick-apc-ups::enabled'.");
 }
 
-# Read the Striker config.
-read_configuration($conf);
+# Exit if disabled.
 if (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
 {
 	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been disabled, exiting.");
