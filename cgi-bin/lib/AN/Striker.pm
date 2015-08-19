@@ -7672,7 +7672,7 @@ poweroff";
 		});
 		
 		# Nighty night, see you in the morning!
-		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --reboot";
+		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --reboot --force";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -7694,7 +7694,7 @@ poweroff";
 		});
 		
 		# Do eet!
-		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --shutdown";
+		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --shutdown --force";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)

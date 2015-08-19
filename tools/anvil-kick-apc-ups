@@ -218,7 +218,20 @@ my $conf = {
 			'write'		=>	"private",
 		},
 	},
-	sys	=>	{
+	switches	=>	{
+		cancel		=>	"",
+		debug		=>	"",
+		disable		=>	"",
+		force		=>	"",
+		'h'		=>	"",
+		help		=>	"",
+		power_off_delay	=>	"", # <seconds>
+		reboot		=>	"",
+		'shutdown'	=>	"",
+		sleep_time	=>	"", # <seconds>
+		ups		=>	"", # <ups1>[,<ups2>,...,<upsN>]
+	},
+	sys		=>	{
 		apc		=>	{
 			ups		=>	{
 				device			=>	{},
@@ -271,6 +284,13 @@ $conf->{sys}{apc}{ups}{power_off_delay} = $conf->{switches}{power_off_delay} if 
 
 # Enable debugging if requested.
 $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
+
+# Enable the program if 'force' used.
+if ($conf->{switches}{force})
+{
+	$conf->{tools}{'anvil-kick-apc-ups'}{enabled} = 1;
+	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been forced, ignoring 'tools::anvil-kick-apc-ups::enabled'.");
+}
 
 # Read the Striker config.
 read_configuration($conf);
@@ -1188,6 +1208,11 @@ SWITCHES
 
 	This disables the 'auto-off after X seconds' function. This should be
 	used on both nodes before power the entire system down for a cold-stop.
+
+ --force
+
+	This tells the program to run, even if 
+	'tools::anvil-kick-apc-ups::enabled = 0' is set. 
 
  -h, -?, --help
 

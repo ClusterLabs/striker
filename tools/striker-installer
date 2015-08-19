@@ -69,7 +69,10 @@
 #       - When installing without --rhel-iso or --centos-iso, look for existing
 #         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
 #         
-# BUG: - If the BCN isn't 10.20.4.{1,2}, the kickstart files fail.
+# BUG: 
+# - If the BCN isn't 10.20.4.{1,2}, the kickstart files fail.
+# - If the installer re-runs with a new subnet (IFN, at least) and shorewall is configured, shorewall breaks
+#   access to the dashboard.     
 # 
 
 my $THIS_FILE =  $0;

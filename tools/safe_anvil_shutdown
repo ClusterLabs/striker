@@ -51,6 +51,7 @@ my $conf = {
 		health_file		=>	"/shared/status",	# under this directory will be a file called ".<node_name>" for each node.
 		lvdisplay		=>	"/sbin/lvdisplay",
 		lvs			=>	"/sbin/lvs",
+		'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 		virsh			=>	"/usr/bin/virsh",
 	},
 	sys		=>	{
@@ -104,7 +105,7 @@ sub withdraw_and_poweroff
 	
 	### TODO: Break these up into steps and add code to handle faults.
 	print "- Withdrawing from the cluster and shutting down:\n";
-	my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop && poweroff";
+	my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop && $conf->{path}{'anvil-kick-apc-ups'} --cancel; poweroff";
 	print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";# if $conf->{sys}{debug};
 	open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
