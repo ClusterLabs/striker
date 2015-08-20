@@ -505,4 +505,70 @@ sub get_ram_used_by_pid
 	return($total_bytes);
 }
 
+# This reads in command line switches.
+sub switches
+{
+	my $self  = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$an->data->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything after it to 'raw'.
+			$an->data->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$an->data->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$an->data->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$an->data->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$an->data->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			else
+			{
+				# Got a value without an argument.
+				$an->data->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($an->data->{switches}{raw})
+	{
+		$an->data->{switches}{raw} =~ s/^ //;
+	}
+	
+	return(0);
+}
+
 1;

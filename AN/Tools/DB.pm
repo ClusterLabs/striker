@@ -217,11 +217,11 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file  = $parameter->{file};
 	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "file",  value1 => $file, 
 		name2 => "quiet", value2 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});

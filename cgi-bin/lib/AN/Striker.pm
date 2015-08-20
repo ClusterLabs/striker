@@ -54,7 +54,7 @@ sub mark_node_as_clean_off
 	
 	# Put the '$an' handle into the variable for cleaner access.
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({
@@ -70,6 +70,7 @@ sub mark_node_as_clean_off
 			# Now read in the UUID.
 			$an->Get->uuid({get => 'host_uuid'});
 		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::host_uuid: [".$an->data->{path}{host_uuid}."], delay: [$delay]\n");
 		
 		my $say_off = "clean";
 		if ($delay)
