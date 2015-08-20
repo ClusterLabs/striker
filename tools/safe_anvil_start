@@ -74,6 +74,7 @@ my $conf =  {
 		df		=>	"/bin/df",
 		drbdadm		=>	"/sbin/drbdadm",
 		echo		=>	"/bin/echo",
+		fence_path	=>	"/usr/sbin/fence_ipmilan",
 		hostname	=>	"/bin/hostname",
 		ls		=>	"/bin/ls",
 		lvs		=>	"/sbin/lvs",
@@ -237,6 +238,8 @@ sub power_on_peer
 	my ($conf) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "power_on_peer();", 3);
 	
+	my $fence_path = $conf->{path}{fence_path};
+	$conf->{nodes}{peer}{fence} =~ s/^fence/$fence_path\/fence/;
 	#print "nodes::me::fence:   [$conf->{nodes}{me}{fence}]\n";
 	#print "nodes::peer::fence: [$conf->{nodes}{peer}{fence}]\n";
 	my $boot_peer   = 0;

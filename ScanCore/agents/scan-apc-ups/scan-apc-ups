@@ -2235,13 +2235,12 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($new_apc_ups_output_total_output).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
-			### TODO: Send an email/alert notifying of this new UPS
-			###       being found.
+			### TODO: Send an email/alert notifying of this new UPS being found.
 			my $say_time_on_batteries = $new_apc_ups_output_time_on_batteries ? "#!string!scan_apc_ups_message_0007!#" : "#!string!scan_apc_ups_message_0006!#";
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
@@ -4246,9 +4245,9 @@ sub gather_ups_data
 		
 		# If the UPS is an SURTD model, we may need to adjust some of
 		# the OIDs we use.
-		if ($an->data->{ups}{$ups_name}{model} =~ /SURTD/i)
+		if ($an->data->{ups}{$ups_name}{model} =~ /SRT/i)
 		{
-			# Do stuff...
+			# Do things...
 		}
 		
 		# Now that I can trust my OIDs, lets start gathering data!
@@ -4522,10 +4521,12 @@ sub gather_ups_data
 			name1 => "ups::${ups_name}::apc_ups_input_frequency", value1 => $an->data->{ups}{$ups_name}{apc_ups_input_frequency}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		### The input sensitivity is an integer that maps to
-		### 'scan_apc_ups_sensitivity_000x'.
+		### The input sensitivity is an integer that maps to 'scan_apc_ups_sensitivity_000x'. If the
+		### UPS is an 'online' (dual-conversion model), this will return '0'.
 		# 1 => Auto,	2 => Low,	3 => Medium,	4 => High
+		# We set this to '0' if no value was returned to indicate an 'Online' UPS.
 		$an->data->{ups}{$ups_name}{apc_ups_input_sensitivity} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{input}{sensitivity});
+		$an->data->{ups}{$ups_name}{apc_ups_input_sensitivity} = 0 if $an->data->{ups}{$ups_name}{apc_ups_input_sensitivity} eq "--";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_input_sensitivity", value1 => $an->data->{ups}{$ups_name}{apc_ups_input_sensitivity}, 
 		}, file => $THIS_FILE, line => __LINE__});
