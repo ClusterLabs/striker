@@ -11231,7 +11231,7 @@ sub parse_cluster_conf
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}           = $login;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password}        = $password;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password_script} = $password_script;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}], address: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}], login: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}], password: [".length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long], password_script: [$password_script]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}], address: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}], login: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}], password: [".length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long], password_script: [$password_script]\n");
 			$device_count++;
 		}
 		
@@ -11263,7 +11263,7 @@ sub parse_cluster_conf
 			$conf->{fence}{$name}{login}           = $login;
 			$conf->{fence}{$name}{password}        = $password;
 			$conf->{fence}{$name}{password_script} = $password_script;
-			record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}], action: [$conf->{fence}{$name}{action}], password_script: [$conf->{fence}{$name}{password_script}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}], action: [$conf->{fence}{$name}{action}], password_script: [$conf->{fence}{$name}{password_script}]\n");
 		}
 		
 		# Find VMs.
@@ -11287,7 +11287,7 @@ sub parse_cluster_conf
 	
 	# See if I got the fence details for both nodes.
 	my $peer = AN::Striker::get_peer_node($conf, $node);
-	record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
 	foreach my $this_node ($node, $peer)
 	{
 		# This will contain possible fence methods.
@@ -11297,15 +11297,15 @@ sub parse_cluster_conf
 		# power.
 		$conf->{node}{$this_node}{info}{power_check_command} = "";
 		
-		record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node]\n");
 		foreach my $in_method (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method]\n");
 			my $fence_command = "$in_method: ";
 			foreach my $device_count (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}{$in_method}{device}})
 			{
 				#$fence_command .= " [$device_count]";
-				record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
 				#Find the matching fence device entry.
 				foreach my $name (sort {$a cmp $b} keys %{$conf->{fence}})
 				{
@@ -11345,7 +11345,7 @@ sub parse_cluster_conf
 						{
 							# Convert the script to a password.
 							my $shell_call = $password_script;
-							record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 							my ($error, $ssh_fh, $output) = remote_call($conf, {
 								node		=>	$node,
 								port		=>	$conf->{node}{$node}{port},
@@ -11355,11 +11355,11 @@ sub parse_cluster_conf
 								'close'		=>	0,
 								shell_call	=>	$shell_call,
 							});
-							record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 							foreach my $line (@{$output})
 							{
 								$password = $line;
-								record($conf, "$THIS_FILE ".__LINE__."; password: [$password]\n");
+								#record($conf, "$THIS_FILE ".__LINE__."; password: [$password]\n");
 								last;
 							}
 						}
@@ -11372,11 +11372,11 @@ sub parse_cluster_conf
 						   $command .= "-n $port "            if $port;
 						   $command =~ s/ $//;
 						$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], fence command: [$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], fence command: [$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command}]\n");
 						if (($agent eq "fence_ipmilan") || ($agent eq "fence_virsh"))
 						{
 							$conf->{node}{$this_node}{info}{power_check_command} = $command;
-							record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}]\n");
 						}
 						$fence_command .= "$command -o #!action!#; ";
 					}

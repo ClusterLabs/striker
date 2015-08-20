@@ -572,6 +572,7 @@ sub do_post_scan_dashboard_tasks
 	# but hey, why not.
 	my $query = "
 SELECT 
+    host_uuid, 
     host_name, 
     host_emergency_stop, 
     host_stop_reason 
@@ -700,16 +701,17 @@ ORDER BY
 			# at the nodes that are down.
 			foreach my $row (@{$results})
 			{
-				#my $node = $row->[0];
-				my $host_name           = $row->[0];
-				my $host_emergency_stop = $row->[1];
-				my $host_stop_reason    = $row->[2] ? $row->[2] : "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-					name1 => "host_name",                value1 => $host_name, 
-					name2 => "host_emergency_stop",      value2 => $host_emergency_stop, 
-					name3 => "host_stop_reason",         value3 => $host_stop_reason, 
-					name4 => "path::node_cache",         value4 => $an->data->{path}{node_cache}, 
-					name5 => "ref: cache::${host_name}", value5 => ref($an->data->{cache}{$host_name}),
+				my $host_uuid           = $row->[0];
+				my $host_name           = $row->[1];
+				my $host_emergency_stop = $row->[2];
+				my $host_stop_reason    = $row->[3] ? $row->[2] : "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+					name1 => "host_uuid",                value1 => $host_uuid, 
+					name2 => "host_name",                value2 => $host_name, 
+					name3 => "host_emergency_stop",      value3 => $host_emergency_stop, 
+					name4 => "host_stop_reason",         value4 => $host_stop_reason, 
+					name5 => "path::node_cache",         value5 => $an->data->{path}{node_cache}, 
+					name6 => "ref: cache::${host_name}", value6 => ref($an->data->{cache}{$host_name}),
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				### TODO: Should we make it a config option to let the user decide if they
@@ -721,10 +723,11 @@ ORDER BY
 				# See if the power is safe enough to boot this node.
 				my $power_is_safe       = check_node_power_health      ($an, $host_name);
 				my $temperature_is_safe = check_node_temperature_health($an, $host_name);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "power_is_safe",        value1 => $power_is_safe, 
-					name2 => "temperature_is_safe",  value2 => $temperature_is_safe, 
-					name3 => "my_temperature_is_ok", value3 => $my_temperature_is_ok
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "power_is_safe",              value1 => $power_is_safe, 
+					name2 => "temperature_is_safe",        value2 => $temperature_is_safe, 
+					name3 => "my_temperature_is_ok",       value3 => $my_temperature_is_ok, 
+					name4 => "tools::boot_nodes::enabled", value4 => $an->data->{tools}{boot_nodes}{enabled}
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
@@ -738,6 +741,34 @@ ORDER BY
 				}
 				elsif (not $an->data->{tools}{boot_nodes}{enabled})
 				{
+					# Booting is disabled.
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0069", message_variables => {
+						node => $host_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($host_stop_reason =~ /^\d+$/)
+				{
+					# Timed reboot. See if the timer has expired.
+					if (time > $host_stop_reason)
+					{
+						# Time to boot.
+						$an->Log->entry({log_level => 2, message_key => "scancore_log_0067", message_variables => {
+							node => $host_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						boot_node($an, $host_name, $host_uuid);
+					}
+					else
+					{
+						# Not yet time to boot.
+						my $time_left = $host_stop_reason - time;
+						$an->Log->entry({log_level => 2, message_key => "scancore_log_0068", message_variables => {
+							node		=>	$host_name, 
+							time_left	=>	$time_left
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				elsif (not $an->data->{tools}{boot_nodes}{enabled})
+				{
 					# Booting nodes was disabled by the user.
 					$an->Log->entry({log_level => 2, message_key => "scancore_log_0064", message_variables => {
 						node => $host_name, 
@@ -747,7 +778,7 @@ ORDER BY
 				{
 					# Okie!
 					#print "I would have booted the node, but I'm lazy.\n";
-					boot_node($an, $host_name);
+					boot_node($an, $host_name, $host_uuid);
 				}
 				else
 				{
@@ -778,9 +809,10 @@ ORDER BY
 # and we can reach the node's IPMI, we'll boot it.
 sub boot_node
 {
-	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => "$node" 
+	my ($an, $node, $host_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",      value1 => "$node", 
+		name2 => "host_uuid", value2 => "$host_uuid",
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do I have the node's 'power_check_command'?
@@ -872,7 +904,7 @@ SET
     host_emergency_stop = FALSE, 
     host_stop_reason = NULL
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query
@@ -4541,19 +4573,22 @@ INSERT INTO
 	{
 		# A record exists. Check to see if the 'host_emergency_stop' 
 		# has been set and clear it, if so.
-		my $query = "SELECT host_emergency_stop FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		my $query = "SELECT host_emergency_stop, host_stop_reason FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		#          The actual query -----------------.        .------- Row 0
-		#                                            |        |    .-- Columns 0
+		#                        The actual query -----------------.        .------- Row 0
+		#                                                          |        |    .-- Columns 0
 		my $host_emergency_stop = $an->DB->do_db_query({query => $query})->[0]->[0];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_emergency_stop", value1 => $host_emergency_stop
+		my $host_stop_reason    = $an->DB->do_db_query({query => $query})->[0]->[1];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "host_emergency_stop", value1 => $host_emergency_stop, 
+			name2 => "host_stop_reason",    value2 => $host_stop_reason
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($host_emergency_stop)
+		if (($host_emergency_stop) or ($host_stop_reason))
 		{
+			# Clear the stop data.
 			my $query = "
 UPDATE 
     hosts

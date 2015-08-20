@@ -164,6 +164,13 @@ sub do_db_query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Prepare the query
+	if (not defined $an->data->{dbh}{$id})
+	{
+		# Can't proceed on an undefined connection...
+		$an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0019", message_variables => {
+			server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
+		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
 	# Execute on the query
@@ -212,9 +219,11 @@ sub connect_to_databases
 	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
-	my $file = $parameter->{file};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "file", value1 => $file, 
+	my $file  = $parameter->{file};
+	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "file",  value1 => $file, 
+		name2 => "quiet", value2 => $quiet, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# We need the host_uuid before we connect.
@@ -265,8 +274,8 @@ sub connect_to_databases
 		###       the bulk write, then commit when done.
 		# We connect with fatal errors, autocommit and UTF8 enabled.
 		eval { $dbh = DBI->connect($db_connect_string, $user, $password, {
-			RaiseError => 1,
-			AutoCommit => 1,
+			RaiseError     => 1,
+			AutoCommit     => 1,
 			pg_enable_utf8 => 1
 		}); };
 		if ($@)
@@ -276,6 +285,7 @@ sub connect_to_databases
 				id	=>	$id,
 				host	=>	$host,
 				name	=>	$name,
+				quiet	=>	$quiet,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
@@ -284,6 +294,7 @@ sub connect_to_databases
 				# General error
 				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$@,
+					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$@,
@@ -293,6 +304,7 @@ sub connect_to_databases
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0002", message_variables => {
 					port	=>	$port,
+					quiet	=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0002", message_variables => {
 					port	=>	$port,
@@ -303,6 +315,7 @@ sub connect_to_databases
 				$an->Alert->warning({ message_key => "scancore_warning_0003", message_variables => {
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
+					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0003", message_variables => {
 					id		=>	$id,
@@ -317,6 +330,7 @@ sub connect_to_databases
 					user		=>	$user,
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
+					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0004", message_variables => {
 					user		=>	$user,
@@ -330,6 +344,7 @@ sub connect_to_databases
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
+					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0011", message_variables => {
 					name		=>	$name,
@@ -343,6 +358,7 @@ sub connect_to_databases
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
+					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0014", message_variables => {
 					name		=>	$name,
@@ -354,6 +370,7 @@ sub connect_to_databases
 			{
 				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$DBI::errstr,
+					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
 					dbi_error	=>	$DBI::errstr,
@@ -454,7 +471,7 @@ sub connect_to_databases
 		my $error_array = [];
 		foreach my $hash (@{$an->data->{scancore}{db}{$id}{connection_error}})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1  => "hash", value1 => $hash
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$error_array}, $hash;
@@ -474,9 +491,10 @@ sub connect_to_databases
 			alert_name		=>	"connect_to_db",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1  => "set", value1 => $set
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($set)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -486,7 +504,7 @@ sub connect_to_databases
 			{
 				my $message_key       = $hash->{message_key};
 				my $message_variables = $hash->{message_variables};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "hash",              value1 => $hash, 
 					name2 => "message_key",       value2 => $message_key, 
 					name3 => "message_variables", value3 => $message_variables, 

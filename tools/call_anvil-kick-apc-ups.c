@@ -1,5 +1,5 @@
 /* Compile by entering 'gcc -o call_anvil-kick-apc-ups call_anvil-kick-apc-ups.c' */
-#define REAL_PATH "/var/www/tools/anvil-kick-apc-ups"
+#define REAL_PATH "/sbin/striker/anvil-kick-apc-ups"
 main(ac, av)
 char **av;
 {

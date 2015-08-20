@@ -9,28 +9,23 @@
 # 0  - OK
 # 1  - Couldn't find peer's host name.
 # 2  - Daemon status returned unhandled return code.
-# 3  - This node is not healthy, but the peer node is healthy. Exiting to let
-#      the peer's 'safe_anvil_start' boot the servers.
-# 4  - Both nodes have either failed services, badly mounted cluster
-#      filesystems or a combination of the two.
-# 5  - Local node is not in a failed state, but it timed out waiting to become
-#      healthy.
-# 6  - Failed to connect to my peer within the timeout. To proceed would risk a
-#      fence loop.
+# 3  - This node is not healthy, but the peer node is healthy. Exiting to let the peer's 'safe_anvil_start'
+#      boot the servers.
+# 4  - Both nodes have either failed services, badly mounted cluster filesystems or a combination of the two.
+# 5  - Local node is not in a failed state, but it timed out waiting to become healthy.
+# 6  - Failed to connect to my peer within the timeout. To proceed would risk a fence loop.
 # 7  - Failed to find a daemon's init.d script
 # 
 # Bugs:
-# - It would seem that, in some case (which I don't yet have a reproducer for),
-#   there is a timing-based conflict starting cman/rgmanager. When this
-#   happens, cman or drbd (via rgmanager failing to start) will lead to a fence
-#   of the effected peer.
-# - If /shared's dm device differs on the two nodes, VMs won't start is both
-#   nodes will think the other is not healthy.
+# - It would seem that, in some case (which I don't yet have a reproducer for), there is a timing-based 
+#   conflict starting cman/rgmanager. When this happens, cman or drbd (via rgmanager failing to start) will 
+#   lead to a fence of the effected peer.
+# - If /shared's dm device differs on the two nodes, VMs won't start is both nodes will think the other is not
+#   healthy.
 #
 # TODO:
-# - Check the health status file and do not initiate start up until the health
-#   is "OK" on at least one node. When deciding which node to power a server
-#   on, check if one node is "warning" and do not use it if so.
+# - Check the health status file and do not initiate start up until the health is "OK" on at least one node. 
+#   When deciding which node to power a server on, check if one node is "warning" and do not use it if so.
 #
 
 use strict;
@@ -82,8 +77,9 @@ my $conf =  {
 		hostname	=>	"/bin/hostname",
 		ls		=>	"/bin/ls",
 		lvs		=>	"/sbin/lvs",
+		sed		=>	"/bin/sed",
 		ssh		=>	"/usr/bin/ssh",
-		striker_conf	=>	"/etc/striker/striker.conf",
+		striker_config	=>	"/etc/striker/striker.conf",
 	},
 	services	=>	{},
 	sys		=>	{
@@ -100,13 +96,24 @@ my $conf =  {
 	vms		=>	{},
 };
 
-logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
 read_configuration($conf);
-if (not $conf->{tools}{safe_anvil_start}{enabled})
+
+# If called with 'start', enable 'safe_anvil_start' in crontab.
+my $input = $ARGV[0] ? $ARGV[0] : "";
+if ($input eq "start")
 {
-	logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
+	logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been enabled.");
+	my $input = $ARGV[0] ? $ARGV[0] : "";
+	my $return_code = update_configuration($conf, "enable");
 	exit(0);
 }
+elsif (not $conf->{tools}{safe_anvil_start}{enabled})
+{
+	#logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
+	exit(0);
+}
+
+logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
 
 read_hostname($conf);
 read_cluster_conf($conf);
@@ -151,6 +158,9 @@ wait_for_drbd_sync($conf);
 # If I am still alive, I am healthy. Time to start the servers!
 start_servers($conf);
 
+# Disable it so it doesn't run again.
+my $return_code = update_configuration($conf, "disable");
+
 # All done.
 logger($conf, $THIS_FILE, __LINE__, "- Finished, exiting.\n", 1);
 exit(0);
@@ -158,6 +168,67 @@ exit(0);
 ###############################################################################
 # Here be Functions!                                                          #
 ###############################################################################
+
+# This updates striker.conf to enable or disable safe_anvil_start.
+sub update_configuration
+{
+	my ($conf, $do) = @_;
+	
+	my $return_code = 0;
+	my $shell_call  = "$conf->{path}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::safe_anvil_start::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	if ($do eq "enable")
+	{
+		$shell_call = "$conf->{path}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::safe_anvil_start::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	}
+	$shell_call .= "
+if \$(grep -q '^tools::safe_anvil_start::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if ($line =~ /enabled/)
+		{
+			# Did I want this?
+			if ($do eq "enable")
+			{
+				# Good!
+				logger($conf, $THIS_FILE, __LINE__, "Enabled successfully.", 2);
+			}
+			else
+			{
+				# Woops...
+				logger($conf, $THIS_FILE, __LINE__, "Failed to enable!", 0);
+				$return_code = 1;
+			}
+		}
+		elsif ($line =~ /disabled/)
+		{
+			# Did I want this?
+			if ($do eq "disable")
+			{
+				# Good!
+				logger($conf, $THIS_FILE, __LINE__, "Disabled successfully.", 2);
+			}
+			else
+			{
+				# Woops...
+				logger($conf, $THIS_FILE, __LINE__, "Failed to disable!", 0);
+				$return_code = 1;
+			}
+		}
+	}
+	close $file_handle;
+	
+	return($return_code);
+}
 
 # This uses the information from cluster.conf to determine how to check the
 # peer's power state and power it on if needed.
@@ -172,7 +243,6 @@ sub power_on_peer
 	my $file_handle = IO::Handle->new();
 	my $shell_call  = "$conf->{nodes}{peer}{fence} -o status; echo rc:\$?";
 	logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]", 2);
-	
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1688,7 +1758,7 @@ sub read_configuration
 	my ($conf) = @_;
 	
 	my $fh = IO::Handle->new();
-	my $sc = "$conf->{path}{striker_conf}";
+	my $sc = "$conf->{path}{striker_config}";
 	open ($fh, "<$sc") or die "Failed to read: [$sc], error was: $!\n";
 	while (<$fh>)
 	{

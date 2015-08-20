@@ -143,6 +143,9 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0064">The node: [#!variable!node!#] will not be booted because 'tools::boot_nodes::enabled' is set to '0' in [#!data!path::striker_config!#].</key>
 		<key name="scancore_log_0065">#!string!scancore_brand_0001!# has been disabled in: [#!data!path::striker_config!#] ('scancore::enabled = 0'); Exiting. The program will restart automatically within five minutes of being re-enabled.</key>
 		<key name="scancore_log_0066">#!string!scancore_brand_0001!# has started.</key>
+		<key name="scancore_log_0067">The node: [#!variable!node!#] is set to a timed reboot which has now expired, booting it back up.</key>
+		<key name="scancore_log_0068">The node: [#!variable!node!#] is set to a timed reboot which is: [#!variable!time_left!#] in the future. Leaving it off.</key>
+		<key name="scancore_log_0069">The node: [#!variable!node!#] is off but booting nodes has been disabled via: 'tools::boot_nodes::enabled = 0' in: [#!data!path::striker_config!#] so it will be left off.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -217,7 +220,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 - Name:           [#!variable!alert_name!#]
 - Timestamp:      [#!variable!modified_date!#]
 		</key>
-		<key name="scancore_error_0019"></key>
+		<key name="scancore_error_0019">I was asked to query the database: [#!variable!server!#], but the connection is down. This should never happen and is probably a bug.</key>
 		<key name="scancore_error_0020"></key>
 		
 		<!-- ScanCore-specific messages -->

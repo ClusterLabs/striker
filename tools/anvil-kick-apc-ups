@@ -25,6 +25,8 @@
 # 3  = Exited on SIGnal.
 # 4  = One or more UPSes didn't cancel their shutdown timer.
 # 5  = The program was not run as root.
+# 6  = Disable was called and the cancel succeeded, but failed to update striker.conf
+# 7  = Failed to enable in striker.conf.
 # 
 
 # Play safe!
@@ -53,13 +55,14 @@ my $conf = {
 		by_ip		=>	{},
 	},
 	path		=>	{
-		cron_root	=>	"/var/spool/cron/root",
 		gethostip	=>	"/usr/bin/gethostip",
+		'grep'		=>	"/bin/grep",
 		hosts		=>	"/etc/hosts",
 		logger		=>	"/bin/logger",
+		sed		=>	"/bin/sed",
 		snmpget		=>	"/usr/bin/snmpget",
 		snmpset		=>	"/usr/bin/snmpset",
-		striker_conf	=>	"/etc/striker/striker.conf",
+		striker_config	=>	"/etc/striker/striker.conf",
 	},
 	snmp		=>	{
 		model_number	=>	{
@@ -288,50 +291,62 @@ $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 # Read the Striker config.
 read_configuration($conf);
 
+# Cancel is always allowed.
+if ($conf->{switches}{cancel})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling the UPS power-off sequence.");
+	get_ups_ips($conf);
+	my $ok   = cancel_countdown($conf);
+	my $exit = $ok ? 0 : 4;
+	exit($exit);
+}
+
+# Disabling is also always allowed.
+if ($conf->{switches}{disable})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling and disabling the UPS power-off sequence.");
+	get_ups_ips($conf);
+	my $ok   = cancel_countdown($conf);
+	my $exit = 0;
+	if ($ok)
+	{
+		my $ok = update_configuration($conf, "disable");
+		if (not $ok)
+		{
+			$exit = 6;
+		}
+	}
+	exit($exit);
+}
+
+# If the user enabled the program, update the cron table and exit so that it starts in the background.
+if ($conf->{switches}{enable})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Enabling the UPS power-off sequence.");
+	my $exit = 0;
+	my $ok   = update_configuration($conf, "enable");
+	if (not $ok)
+	{
+		$exit = 7;
+	}
+	exit($exit);
+}
+
 # Enable the program if 'force' used.
 if ($conf->{switches}{force})
 {
 	$conf->{tools}{'anvil-kick-apc-ups'}{enabled} = 1;
 	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been forced, ignoring 'tools::anvil-kick-apc-ups::enabled'.");
 }
-
-# Exit if disabled.
-if (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
+elsif (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
 {
-	logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been disabled, exiting.");
+	# We're disabled, exit.
+	#logger($conf, $THIS_FILE, __LINE__, "- Anvil! Kick APC UPS has been disabled, exiting.");
 	exit(0);
 }
 
 # Figure out what UPS(es) we're using.
 get_ups_ips($conf);
-
-# If I've been called with --cancel, send only to 'power-on' call.
-if ($conf->{switches}{cancel})
-{
-	my $exit = 0;
-	logger($conf, $THIS_FILE, __LINE__, "Cancelling the UPS power-off sequence.");
-	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
-	{
-		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
-			$exit = 4;
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
-		}
-	}
-	manage_cron_entry($conf, "remove");
-	logger($conf, $THIS_FILE, __LINE__, "- Done.");
-	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Make sure you cancel on the other node, too!");
-	exit($exit);
-}
-
 
 # We're ready to start.
 logger($conf, $THIS_FILE, __LINE__, "Will now attempt to delay the reboot of the following UPS(es):");
@@ -390,7 +405,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "- Cancelling any pending power off.");
 			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]") if $conf->{sys}{debug};
 			
 			if ($conf->{switches}{reboot})
 			{
@@ -402,18 +417,18 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 				logger($conf, $THIS_FILE, __LINE__, "  - Setting the sleep timer to: [$conf->{sys}{apc}{reboot}{sleep_time}] seconds.");
 				my ($set_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, $conf->{sys}{apc}{reboot}{sleep_time});
 				my ($set_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, $conf->{sys}{apc}{reboot}{sleep_time});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
 				
 				# Set the power-off delay
 				logger($conf, $THIS_FILE, __LINE__, "  - Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
 				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
 				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{reboot}{power_off_delay});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
 				
 				# Do the needful
 				logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed sleep.");
 				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
 				$conf->{sys}{debug} = 0;
 				
 				logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
@@ -429,14 +444,14 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 				logger($conf, $THIS_FILE, __LINE__, "  - Setting the shut down timer to: [$conf->{sys}{apc}{reboot}{power_off_delay}] seconds.");
 				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{'shutdown'}{power_off_delay});
 				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{'shutdown'}{power_off_delay});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
 				
 				# Do the needful
 				logger($conf, $THIS_FILE, __LINE__, "  - Shutting down.");
 				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off}{oid}, $conf->{snmp}{power_off}{off_integer}{delay});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
 				$conf->{sys}{debug} = 0;
-
+				
 				logger($conf, $THIS_FILE, __LINE__, "- Done.\n");
 				logger($conf, $THIS_FILE, __LINE__, "- NOTE: Nodes will be rebooted when power is restored.\n");
 			}
@@ -447,22 +462,19 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 				logger($conf, $THIS_FILE, __LINE__, "  - Setting the outlet groups' sleep time to: [$conf->{sys}{apc}{ups}{sleep_time} seconds].");
 				my ($set_sleep_time_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group1}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
 				my ($set_sleep_time_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_time}{group2}{oid}, $conf->{sys}{apc}{ups}{sleep_time});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_sleep_time_group1: [$set_sleep_time_group1], set_sleep_time_group2: [$set_sleep_time_group2]") if $conf->{sys}{debug};
 				
 				# Set the power-off delay
 				logger($conf, $THIS_FILE, __LINE__, "  - Setting the power-off delay to: ......... [$conf->{sys}{apc}{ups}{power_off_delay} seconds].");
 				my ($set_power_off_delay_group1) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group1}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
 				my ($set_power_off_delay_group2) = set_oid_integer($conf, $ups, $conf->{snmp}{power_off_delay}{group2}{oid}, $conf->{sys}{apc}{ups}{power_off_delay});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_power_off_delay_group1: [$set_power_off_delay_group1], set_power_off_delay_group2: [$set_power_off_delay_group2]") if $conf->{sys}{debug};
 				
 				# Do the needful
 				logger($conf, $THIS_FILE, __LINE__, "  - Initiating timed sleep.");
 				my ($power_off) = set_oid_integer($conf, $ups, $conf->{snmp}{sleep_ups}{oid}, $conf->{snmp}{sleep_ups}{off_integer});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - power_off: [$power_off]") if $conf->{sys}{debug};
 				$conf->{sys}{debug} = 0;
-				
-				# Add the program to root's crontab, if needed.
-				manage_cron_entry($conf, "add");
 			}
 		}
 	}
@@ -500,6 +512,100 @@ logger($conf, $THIS_FILE, __LINE__, "Exiting.");
 exit(0);
 
 
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# This cancels the pending count-down.
+sub cancel_countdown
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cancel_countdown();");
+	
+	my $ok = 1;
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
+	{
+		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Critical ] - Failed to cancel the shutdown sequence on the UPS: [$ups]!");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
+			$ok = 0;
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- UPS: [$ups] power-off cancelled.");
+		}
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- Done.");
+	logger($conf, $THIS_FILE, __LINE__, "[ Note ] - Make sure you cancel on the other node, too!");
+	
+	return($ok);
+}
+
+# This updates striker.conf to enable or disable anvil-kick-apc-ups.
+sub update_configuration
+{
+	my ($conf, $do) = @_;
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - update_configuration(); do: [$do]");
+	
+	my $ok = 1;
+	my $shell_call  = "$conf->{path}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::anvil-kick-apc-ups::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	if ($do eq "enable")
+	{
+		$shell_call = "$conf->{path}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::anvil-kick-apc-ups::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+	}
+	$shell_call .= "
+if \$($conf->{path}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $conf->{path}{striker_config});
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi";
+	#logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+		if ($line =~ /enabled/)
+		{
+			# Did I want this?
+			if ($do eq "enable")
+			{
+				# Good!
+				logger($conf, $THIS_FILE, __LINE__, "Enabled successfully (it will start in the next two minutes).");
+			}
+			else
+			{
+				# Woops...
+				logger($conf, $THIS_FILE, __LINE__, "Failed to disable!");
+				$ok = 0;
+			}
+		}
+		elsif ($line =~ /disabled/)
+		{
+			# Did I want this?
+			if ($do eq "disable")
+			{
+				# Good!
+				logger($conf, $THIS_FILE, __LINE__, "Disabled successfully.");
+			}
+			else
+			{
+				# Woops...
+				logger($conf, $THIS_FILE, __LINE__, "Failed to enable!");
+				$ok = 0;
+			}
+		}
+	}
+	close $file_handle;
+	
+	return($ok);
+}
 
 # This returns the current date and time in 'YYYY/MM/DD HH:MM:SS' format. It
 # always uses 24-hour time and it zero-pads single digits.
@@ -529,135 +635,29 @@ sub get_date
 	return($date);
 }
 
-# This reads in the root user's cron table file and if the program isn't there,
-# adds it or removes it, depending on the $task ("add" or "remove").
-sub manage_cron_entry
-{
-	my ($conf, $task) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - manage_cron_entry(); task: [$task]") if $conf->{sys}{debug};
-	
-	# If this is a striker dashboard, don't add it.
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - task: [$task], hostname: [".$ENV{HOSTNAME}."]") if $conf->{sys}{debug};
-	if (($task eq "add") && ($ENV{HOSTNAME} =~ /striker/))
-	{
-		# Skip.
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Not adding to cron, this is a dashboard.") if $conf->{sys}{debug};
-		return(1);
-	}
-	
-	my $changed  = 0;
-	my $raw_cron = "";
-	
-	# Make sure the cron file exists.
-	my $shell_call = "
-if [ ! -e '$conf->{path}{cron_root}' ]
-then
-	touch $conf->{path}{cron_root}
-	chown root:root $conf->{path}{cron_root}
-	chmod 600 $conf->{path}{cron_root}
-fi";
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
-	}
-	close $file_handle;
-	
-	# Now read the file (even if it's blank).
-	$shell_call = "$conf->{path}{cron_root}";
-	open ($file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
-		if ($line =~ /$THIS_FILE/)
-		{
-			# Skip it as we'll add it back later.
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found existing root cron table entry: [$line]. Removing it.") if $conf->{sys}{debug};
-			$changed = 1;
-		}
-		else
-		{
-			$raw_cron .= "$line\n";
-		}
-	}
-	close $file_handle;
-	
-	# If the line wasn't found, add it.
-	if ($task eq "add")
-	{
-		# $0 contains the actual path and program name in use at runtime
-		my $call = $0;
-		if ($call =~ /^\.\//)
-		{
-			# Prepend the PWD environment variable.
-			my $pwd = $ENV{PWD};
-			$call =~ s/^\.\//$pwd\//;
-		}
-		if ($conf->{switches}{ups})
-		{
-			$call .= " --ups $conf->{switches}{ups}";
-		}
-		if ($conf->{switches}{sleep_time})
-		{
-			$call .= " --sleep_time $conf->{switches}{sleep_time}";
-		}
-		if ($conf->{switches}{power_off_delay})
-		{
-			$call .= " --power_off_delay $conf->{switches}{power_off_delay}";
-		}
-		$raw_cron .= "*/$conf->{sys}{apc}{ups}{kick_every_minutes} * * * * $call\n";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added entry: [$call].") if $conf->{sys}{debug};
-		$changed = 1;
-	}
-	
-	# Write out the updated crontab.
-	if ($changed)
-	{
-		# Tell the user.
-		if ($task eq "add")
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- Adding $THIS_FILE to run every five minutes in the 'root' user's cron table.");
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "- Removing $THIS_FILE from root's cron table.");
-		}
-		my $shell_call = "$conf->{path}{cron_root}";
-		open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
-		print $file_handle $raw_cron;
-		close $file_handle;
-	}
-	
-	return(0);
-}
-
 # This sets an OID with to an integer value.
 sub set_oid_integer
 {
 	my ($conf, $ups, $oid, $value) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_integer(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_integer(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
 	
 	my $shell_call = "$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community}{'write'} $ups $oid i $value";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
 		if ($line =~ /INTEGER: (\d+)$/i)
 		{
 			$value = $1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], set to value: [$value]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], set to value: [$value]") if $conf->{sys}{debug};
 		}
 	}
 	close $file_handle;
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
 	return($value, $shell_call);
 }
 
@@ -665,30 +665,30 @@ sub set_oid_integer
 sub set_oid_ticks
 {
 	my ($conf, $ups, $oid, $value) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_ticks(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_ticks(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
 	
 	my $shell_call = "$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community}{'write'} $ups $oid t $value";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
 		if ($line =~ /Timeticks: \((\d+)\)/i)
 		{
 			   $value     = $1;
 			my $say_value = ($value / 100);
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], set to value: [$value] ($say_value seconds)") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], set to value: [$value] ($say_value seconds)") if $conf->{sys}{debug};
 		}
 		if ($line =~ /Failed object/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], not set! Does this OID exist on your UPS?");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], not set! Does this OID exist on your UPS?");
 		}
 	}
 	close $file_handle;
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
 	return($value, $shell_call);
 }
 
@@ -696,7 +696,7 @@ sub set_oid_ticks
 sub get_current_settings
 {
 	my ($conf, $ups, $type) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_current_settings(); ups: [$ups], type: [$type]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_current_settings(); ups: [$ups], type: [$type]") if $conf->{sys}{debug};
 	
 	# First, main UPS outlet group. This is our first call, so verify we
 	# got a returned value.
@@ -746,12 +746,12 @@ sub convert_ticks_to_seconds
 sub convert_seconds_to_ticks
 {
 	my ($conf, $seconds) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "convert_seconds_to_ticks(); seconds: [$seconds]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - convert_seconds_to_ticks(); seconds: [$seconds]") if $conf->{sys}{debug};
 	
 	my $ticks_per_second = (1000 / $conf->{sys}{apc}{ups}{ticks});
 	my $ticks            = ($seconds * $ticks_per_second);
 	
-	logger($conf, $THIS_FILE, __LINE__, "ticks: [$ticks]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ticks: [$ticks]") if $conf->{sys}{debug};
 	return($ticks);
 }
 
@@ -761,37 +761,37 @@ sub convert_seconds_to_ticks
 sub read_oid_ticks
 {
 	my ($conf, $ups, $oid) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_oid_ticks(); ups: [$ups], oid: [$oid]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_oid_ticks(); ups: [$ups], oid: [$oid]") if $conf->{sys}{debug};
 	
 	my $value      = "#!no_value!#";
 	my $shell_call = "$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community}{'read'} $ups $oid";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
 		
 		if ($line =~ /No Response/i)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
 			$value = "#!no_connection!#";
 		}
 		if ($line =~ /Timeticks: \((\d+)\)/i)
 		{
 			$value = $1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
 		}
 		if ($line =~ /No Such Instance/i)
 		{
 			$value = "--";
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
 		}
 	}
 	close $file_handle;
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - return; Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
 	return($value);
 }
 
@@ -805,7 +805,7 @@ sub read_oid_integer
 	
 	my $value      = "#!no_value!#";
 	my $shell_call = "$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community}{'read'} $ups $oid";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -815,13 +815,13 @@ sub read_oid_integer
 		
 		if ($line =~ /No Response/i)
 		{
-			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
 			$value = "#!no_connection!#";
 		}
 		if ($line =~ /INTEGER: (\d+)$/i)
 		{
 			$value = $1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)], value: [$value]") if $conf->{sys}{debug};
 		}
 		if ($line =~ /No Such Instance/i)
 		{
@@ -855,7 +855,7 @@ sub read_oid_string
 		
 		if ($line =~ /No Response/i)
 		{
-			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
 			$value = "#!no_connection!#";
 		}
 		if ($line =~ /STRING: "(.*)"$/i)
@@ -866,7 +866,7 @@ sub read_oid_string
 		if ($line =~ /No Such Instance/i)
 		{
 			$value = "--";
-			#logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Variable: [$conf->{snmp}{oid_name}{$oid} ($oid)] not found! Is this OID supported by your UPS?") if $conf->{sys}{debug};
 		}
 	}
 	close $file_handle;
@@ -879,22 +879,22 @@ sub read_oid_string
 sub get_ups_ips
 {
 	my ($conf) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_ups_ips()") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_ups_ips()") if $conf->{sys}{debug};
 	
 	# Did the user specify the UPSes?
 	$conf->{switches}{ups} = "" if not defined $conf->{switches}{ups};
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - switches::ups: [$conf->{switches}{ups}]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - switches::ups: [$conf->{switches}{ups}]") if $conf->{sys}{debug};
 	if ($conf->{switches}{ups})
 	{
 		# Yup!
 		foreach my $ups (split/,/, $conf->{switches}{ups})
 		{
 			next if not $ups;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ups: [$ups]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ups: [$ups]") if $conf->{sys}{debug};
 			if (is_string_ipv4($conf, $ups))
 			{
 				# It's already an IP.
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP address given, recording.") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP address given, recording.") if $conf->{sys}{debug};
 				push @{$conf->{sys}{apc}{ups}{devices}}, $ups;
 			}
 			else
@@ -903,7 +903,7 @@ sub get_ups_ips
 				my ($ip) = get_host_ip($conf, $ups);
 				if ($ip)
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] has IP: [$ip], recording.") if $conf->{sys}{debug};
+					#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] has IP: [$ip], recording.") if $conf->{sys}{debug};
 					push @{$conf->{sys}{apc}{ups}{devices}}, $ups;
 				}
 				else
@@ -935,7 +935,7 @@ sub get_ups_ips
 sub parse_hosts
 {
 	my ($conf) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parse_hosts()") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parse_hosts()") if $conf->{sys}{debug};
 	
 	my $shell_call = "$conf->{path}{hosts}";
 	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
@@ -947,17 +947,17 @@ sub parse_hosts
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]") if $conf->{sys}{debug};
 		if ($line =~ /ups/)
 		{
 			# Oh looky looky!
 			my ($ip, $names) = ($line =~ /^(\d+\.\d+\.\d+\.\d+) (.*)/);
 			next if ((not $ip) || (not $names));
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip], names: [$names]") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip], names: [$names]") if $conf->{sys}{debug};
 			foreach my $name (split/ /, $names)
 			{
 				next if not $name;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip], name: [$name]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip], name: [$name]") if $conf->{sys}{debug};
 				$conf->{hosts}{by_name}{$name} = $ip;
 				push @{$conf->{hosts}{by_ip}{$ip}}, $name;
 			}
@@ -970,14 +970,14 @@ sub parse_hosts
 	{
 		if (@{$conf->{hosts}{by_ip}{$ip}} == 1)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP: [$ip], recorded with name: [$conf->{hosts}{by_ip}{$ip}->[0]].") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP: [$ip], recorded with name: [$conf->{hosts}{by_ip}{$ip}->[0]].") if $conf->{sys}{debug};
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP: [$ip], recorded with names:") if $conf->{sys}{debug};
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - IP: [$ip], recorded with names:") if $conf->{sys}{debug};
 			foreach my $name (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$ip}})
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - name: [$name]") if $conf->{sys}{debug};
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - name: [$name]") if $conf->{sys}{debug};
 			}
 		}
 		push @{$conf->{sys}{apc}{ups}{devices}}, $ip;
@@ -990,12 +990,12 @@ sub parse_hosts
 sub get_host_ip
 {
 	my ($conf, $host) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_host_ip(); host: [$host]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - get_host_ip(); host: [$host]") if $conf->{sys}{debug};
 	
 	my $ip = 0;
 	
 	my $shell_call = "$conf->{path}{gethostip} -d $host";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1003,20 +1003,20 @@ sub get_host_ip
 		$ip = $_;
 		# This should only ever print the IP address. Anything else
 		# will be treated as a failure.
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$ip]") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$ip]") if $conf->{sys}{debug};
 	}
 	close $file_handle;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip]") if $conf->{sys}{debug};
 	
 	# Make sure the IP is sane.
 	if (not is_string_ipv4($conf, $ip))
 	{
 		# It's already an IP.
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Returned IP address is not valid.") if $conf->{sys}{debug};
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Returned IP address is not valid.") if $conf->{sys}{debug};
 		$ip = 0;
 	}
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip]") if $conf->{sys}{debug};
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ip: [$ip]") if $conf->{sys}{debug};
 	return($ip);
 }
 
@@ -1068,8 +1068,7 @@ sub get_switches
 		}
 		elsif ($argument =~ /^-/)
 		{
-			# If the argument is just '--', appeand everything
-			# after it to 'raw'.
+			# If the argument is just '--', appeand everything after it to 'raw'.
 			$conf->{sys}{switch_count}++;
 			if ($argument eq "--")
 			{
@@ -1112,7 +1111,13 @@ sub get_switches
 	}
 	
 	# Debug
-	#foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}}) { print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n"; } exit;
+	if ($conf->{sys}{debug})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
+		{
+			print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n";
+		}
+	}
 	
 	return(0);
 }
@@ -1122,13 +1127,13 @@ sub read_configuration
 {
 	my ($conf) = @_;
 	
-	if (not -e $conf->{path}{striker_conf})
+	if (not -e $conf->{path}{striker_config})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Striker configuration file not found.") if $conf->{sys}{debug};
 	}
 	else
 	{
-		my $shell_call = "$conf->{path}{striker_conf}";
+		my $shell_call = "$conf->{path}{striker_config}";
 		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
 		while (<$file_handle>)
 		{
@@ -1184,7 +1189,7 @@ Further; The dashboards must be running the Scanner 'nodemonitor' scan agent.
 This way, when the nodes boot, they will check the UPS and environmental
 temperatures and if/when good, boot the nodes.
 
-Further; The nodes must be configured to run the 'safe_anvil_start' tool. This
+Further; The nodes must be configured to run the 'anvil-kick-apc-ups' tool. This
 way, when the nodes boot, they will autonomously form the cluster and boot the
 servers.
 
@@ -1198,9 +1203,7 @@ SWITCHES
 	you plan to do maintenance that would interrupt the connection to the
 	UPS(es).
 	
-	NOTE: Remember to cancel on the other node(s) and to remove or disable
-	      this program in your cron table! Failure to do so could cause
-	      the power-off timer to restart!
+	NOTE: Remember to cancel on the other node!
 
  --debug
 
@@ -1210,6 +1213,14 @@ SWITCHES
 
 	This disables the 'auto-off after X seconds' function. This should be
 	used on both nodes before power the entire system down for a cold-stop.
+	This cancels the current kick counter and then exits.
+
+ --enable
+
+	This enables the program. It will start up within two minutes of being
+	enabled. It does the same thing as manually editing 
+	$conf->{path}{striker_config} and changing setting:
+	tools::anvil-kick-apc-ups::enabled = 1
 
  --force
 

@@ -78,10 +78,9 @@ sub entry
 	$an->Alert->_set_error;
 	
 	# Setup my variables.
-	my ($string, $log_level, $file, $line, $title_key, $title_variables, $message_key, $message_variables, $language, $log_to, $raw);
+	my ($string, $log_level, $file, $line, $title_key, $title_variables, $message_key, $message_variables, $language, $log_to, $raw, $debug);
 	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
+	# Now see if the user passed the values in a hash reference or directly.
 	#print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
 	if (ref($parameter) eq "HASH")
 	{
@@ -96,7 +95,8 @@ sub entry
 		$language          = $parameter->{language}                         ? $parameter->{language}          : $an->default_log_language;
 		$raw               = $parameter->{raw}                              ? $parameter->{raw}               : "";
 		$log_to            = $parameter->{log_to}                           ? $parameter->{log_to}            : $an->default_log_file;
-		#print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to]\n";
+		$debug             = $parameter->{debug}                            ? $parameter->{debug}             : 0;
+		print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to], debug: [$debug]\n" if $debug;
 	}
 	else
 	{
@@ -111,7 +111,7 @@ sub entry
 		$language          = defined $_[6] ? $_[6] : $an->default_language;
 		$log_to            = defined $_[7] ? $_[7] : "";
 		$raw               = defined $_[8] ? $_[8] : $an->default_log_file;
-		#print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to]\n";
+		print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to]\n" if $debug;
 		#if ($message_variables)
 		#{
 		#	use Data::Dumper;
@@ -144,15 +144,15 @@ sub entry
 		#if ($message_variables)
 		#{
 		#	use Data::Dumper;
-		#	print Dumper $message_variables;
-		#	print "$THIS_FILE ".__LINE__."; message_key: [$message_key], message_variables: [$message_variables]\n";
+		#	print Dumper $message_variables if $debug;
+		#	print "$THIS_FILE ".__LINE__."; message_key: [$message_key], message_variables: [$message_variables]\n" if $debug;
 		#}
 		my $message = $message_key ? $an->String->get({
 			key		=>	$message_key,
 			variables	=>	$message_variables,
 			languages	=>	$language,
 		}) : "";
-		#print "$THIS_FILE ".__LINE__."; message: [$message]\n";
+		#print "$THIS_FILE ".__LINE__."; message: [$message]\n" if $debug;
 		
 		if ($title)
 		{
@@ -167,12 +167,12 @@ sub entry
 	### TODO: Record the file handles so we don't incure the overhead of 
 	###       opening the file for every message.
 	# Write the entry
-	#print $filehandle $string, "\n";
-	#print "$THIS_FILE ".__LINE__."; string: [$string]\n";
+	#print $filehandle $string, "\n" if $debug;
+	#print "$THIS_FILE ".__LINE__."; string: [$string]\n" if $debug;
 	if ($log_to)
 	{
 		my $shell_call = ">>$log_to";
-		#print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call], string: [$string]\n";
+		#print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call], string: [$string]\n" if $debug;
 		$string .= "\n" if $string !~ /\n$/;
 		open (my $filehandle, "$shell_call") or die "Failed to write: [$log_to]. Error: $!\n";
 		print $filehandle $string;
@@ -188,18 +188,18 @@ sub entry
 			# This is needed to make logger print an empty line.
 			$line = "' '" if $line eq "";
 			
-			#print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n";
+			#print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $debug;
 			my $shell_call = "logger -- '$line'";
 			if ($file)
 			{
 				$shell_call =~ s/logger /logger -t $file /;
 			}
 			if ($shell_call =~ /^(logger .*)$/) { $shell_call = $1; }
-			#print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
+			#print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n" if $debug;
 			open (my $filehandle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 			while (<$filehandle>)
 			{
-				print $_;
+				print $_ if $debug;
 			}
 			close $filehandle;
 		}

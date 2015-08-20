@@ -577,8 +577,9 @@ sub initialize
 	initialize_http($conf);
 
 	# First up, read in the default strings file.
-	read_strings($conf, $conf->{path}{words_common});
-	read_strings($conf, $conf->{path}{words_file});
+	read_strings($conf, $conf->{path}{common_strings});
+	read_strings($conf, $conf->{path}{striker_strings});
+	read_strings($conf, $conf->{path}{scancore_strings});
 
 	# Read in the configuration file. If the file doesn't exist, initial 
 	# setup will be triggered.
@@ -603,26 +604,26 @@ sub initialize_conf
 			agents_directory	=>	"/var/www/ScanCore/ScanCore/agents",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
-			'call_anvil-kick-apc-ups' =>	"/var/www/tools/call_anvil-kick-apc-ups",
+			'call_anvil-kick-apc-ups' =>	"/sbin/striker/call_anvil-kick-apc-ups",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
-			'call_gather-system-info'	=>	"/var/www/tools/call_gather-system-info",
+			'call_gather-system-info' =>	"/sbin/striker/call_gather-system-info",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
-			check_dvd		=>	"/var/www/tools/check_dvd",
+			check_dvd		=>	"/sbin/striker/check_dvd",
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			clusvcadm		=>	"/usr/sbin/clusvcadm",
+			common_strings		=>	"Data/common.xml",
 			config_file		=>	"/etc/striker/striker.conf",	# TODO: Phase this out in favour of 'striker_config' below.
-			control_dhcpd		=>	"/var/www/tools/control_dhcpd",
-			control_iptables	=>	"/var/www/tools/control_iptables",
-			control_libvirtd	=>	"/var/www/tools/control_libvirtd",
-			control_shorewall	=>	"/var/www/tools/control_shorewall",
+			control_dhcpd		=>	"/sbin/striker/control_dhcpd",
+			control_iptables	=>	"/sbin/striker/control_iptables",
+			control_libvirtd	=>	"/sbin/striker/control_libvirtd",
+			control_shorewall	=>	"/sbin/striker/control_shorewall",
 			cp			=>	"/bin/cp",
 			default_striker_manifest	=>	"/var/www/html/manifests/striker-default.xml",
 			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
-			do_dd			=>	"/var/www/tools/do_dd",
+			do_dd			=>	"/sbin/striker/do_dd",
 			docroot			=>	"/var/www/html/",
 			echo			=>	"/bin/echo",
-			email_password_file	=>	"/var/www/tools/email_pw.txt",
 			expect			=>	"/usr/bin/expect",
 			fence_ipmilan		=>	"/sbin/fence_ipmilan",
 			gethostip		=>	"/bin/gethostip",
@@ -660,8 +661,8 @@ sub initialize_conf
 			rhn_check		=>	"/usr/sbin/rhn_check",
 			rhn_file		=>	"/etc/sysconfig/rhn/systemid",
 			rsync			=>	"/usr/bin/rsync",
-			scancore_strings	=>	"/var/www/ScanCore/ScanCore.xml",
-			scancore_sql		=>	"/var/www/ScanCore/ScanCore.sql",
+			scancore_strings	=>	"/sbin/striker/ScanCore/ScanCore.xml",
+			scancore_sql		=>	"/sbin/striker/ScanCore/ScanCore.sql",
 			screen			=>	"/usr/bin/screen",
 			shared			=>	"/shared/files/",	# This is hard-coded in the file delete function.
 			shorewall_init		=>	"/etc/init.d/shorewall",
@@ -674,13 +675,11 @@ sub initialize_conf
 			striker_files		=>	"/var/www/home",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			sync			=>	"/bin/sync",
-			tools_directory		=>	"/var/www/tools/",
-			'touch_striker.log'	=>	"/var/www/tools/touch_striker.log",
+			tools_directory		=>	"/sbin/striker/",
+			'touch_striker.log'	=>	"/sbin/striker/touch_striker.log",
 			tput			=>	"/usr/bin/tput",
 			uuidgen			=>	"/usr/bin/uuidgen",
 			virsh			=>	"/usr/bin/virsh",
-			words_common		=>	"Data/common.xml",
-			words_file		=>	"/sbin/striker/Data/strings.xml",	# TODO: This should be phased out in favour of 'striker_strings'
 			
 			# These are the tools that will be copied to 'docroot' if either node doesn't have 
 			# an internet connection.
@@ -692,7 +691,7 @@ sub initialize_conf
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
-				'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99z_anvil-kick-apc-ups",
+				'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99_anvil-kick-apc-ups",	# Phasing out.
 				# This is the actual DRBD wait script
 				'anvil-wait-for-drbd'	=>	"/sbin/striker/anvil-wait-for-drbd",
 				backups			=>	"/root/backups",
@@ -706,6 +705,7 @@ sub initialize_conf
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
 				fstab			=>	"/etc/fstab",
+				'grep'			=>	"/bin/grep",
 				# This stores this node's UUID. It is used to track all our sensor data in the 
 				# database. If you change this here, change it in the ScanCore, too.
 				host_uuid		=>	"/etc/striker/host.uuid",
@@ -723,7 +723,8 @@ sub initialize_conf
 				ntp_conf		=>	"/etc/ntp.conf",
 				perl_library		=>	"/usr/share/perl5",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
-				safe_anvil_start_link	=>	"/etc/rc3.d/S99y_safe_anvil_start",
+				safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
+				scancore		=>	"/sbin/striker/ScanCore/ScanCore",
 				sed			=>	"/bin/sed",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
@@ -954,7 +955,7 @@ sub initialize_conf
 			},
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
-			log_level		=>	3,
+			log_level		=>	2,
 			lvm_conf		=>	"",
 			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			# This allows for custom MTU sizes in an Install Manifest
@@ -1035,6 +1036,14 @@ sub initialize_conf
 			],
 			output			=>	"web",
 			pool1_shrunk		=>	0,
+			# When shutting down the nodes prior to power-cycling or powering off the entire
+			# rack, instead of the nodes being marked 'clean' off (which would leave them off
+			# until a human turned them on), the 'host_stop_reason' is set to unix-time + this
+			# number of seconds. When the dashboard sees this time set, it will not boot the
+			# nodes until time > host_stop_reason. This way, the nodes will not be powered on
+			# before the UPS shuts off.
+			# NOTE: Be sure that this time is greater than the UPS shutdown delay!
+			power_off_delay		=>	300,
 			reboot_timeout		=>	600,
 			root_password		=>	"",
 			# Set this to an integer to have the main Striker page
@@ -1066,27 +1075,6 @@ sub initialize_conf
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			use_drbd		=>	"8.4",			# Set to 8.3 if having trouble with 8.4
-			# If this is set to 1, a second option will be added 
-			# below 'Cold-Stop Anvil!' called 'Hard-Reset Anvil!'.
-			# The 'Hard-Reset' option will do the exact same thing
-			# that 'Cold-Stop' normally does, but an additional
-			# step will be added to 'Cold-Stop' which will cancel
-			# the APC UPS watchdog timer function. The result is 
-			# that 'Cold-Stop' will leave the cluster offline and 
-			# the power enabled where 'Hard-Reset' will *NOT* 
-			# cancel the UPS watchdog timer, causing full power 
-			# loss a few minutes after the nodes are powered off.
-			# In this way, 'Hard-Reset' will cause everything 
-			# powered by the UPSes to be power cycled. Assuming 
-			# that 'safe-anvil-start' is configured to run on boot
-			# on the nodes and that ScanCore is set to run the 
-			# 'nodemonitor' scan agent, the full cluster will 
-			# automatically restart after the UPS's configured
-			# sleep time (typically 5 minutes) plus boot time 
-			# overhead.
-			# NOTE: This will be ignored if the 'anvil-kick-apc-ups'
-			#       script is NOT found in /root/ on both nodes!
-			use_apc_ups_watchdog	=>	0,
 			username		=>	getpwuid( $< ),
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!

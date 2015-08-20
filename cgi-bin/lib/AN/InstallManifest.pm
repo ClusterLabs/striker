@@ -754,7 +754,7 @@ fi
 	# If requested, enable ScanCore, otherwise, disable it.
 	my $sc_rc      = 0;
 	   $shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)1/scancore::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 	if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
 	{
 		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
@@ -829,11 +829,20 @@ sub configure_striker_tools
 	my ($ok) = configure_scancore($conf);
 	if ($ok)
 	{
+		# This sets up an rc3.d link. When called, it will enable safe_anvil_start in striker.conf
+		# if called with the argument 'start'. This will let the crontab entry run once, and then
+		# safe_anvil_start will disable itself again. This way, it will run on boot without blocking
+		# the boot process.
 		($ok) = configure_safe_anvil_start($conf);
-		if ($ok)
-		{
-			($ok) = enable_anvil_kick_apc_ups($conf);
-		}
+		
+		### Disabled, moving to having it always run and simply disable/enable it via striker.conf.
+		### So the rc3.d link shouldn't be needed anymore.
+		#if ($ok)
+		#{
+		#	# This does the same this for 'anvil-kick-apc-ups'. The only main difference is that
+		#	# it keeps running until it is disabled.
+		#	($ok) = enable_anvil_kick_apc_ups($conf);
+		#}
 	}
 	
 	return($ok);
@@ -1245,13 +1254,28 @@ then
 	chown root:root $conf->{path}{nodes}{cron_root}
 	chmod 600 $conf->{path}{nodes}{cron_root}
 fi
-grep -q ScanCore /var/spool/cron/root
+grep -q ScanCore $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-	echo 'exits'
+	echo 'ScanCore exits'
 else
-	echo '*/5 * * * * /sbin/striker/ScanCore/ScanCore' >> $conf->{path}{nodes}{cron_root}
-fi";
+	echo '*/5 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
+fi
+grep -q safe_anvil_start $conf->{path}{nodes}{cron_root}
+if [ \"\$?\" -eq '0' ];
+then
+	echo 'safe_anvil_start exits'
+else
+	echo '*/5 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
+fi
+grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
+if [ \"\$?\" -eq '0' ];
+then
+	echo 'anvil-kick-apc-ups exits'
+else
+	echo '*/2 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
+fi
+";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,

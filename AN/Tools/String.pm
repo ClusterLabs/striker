@@ -224,7 +224,7 @@ sub get
 	# Now pick out my actual string.
 	my $string =  $hash->{strings}{lang}{$language}{key}{$key}{content};
 	$string    =~ s/^\n//;
-	#print "$THIS_FILE ".__LINE__."; string: [$string]\n";
+	#print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], string: [$string]\n";
 	
 	# This clears off the new-line and trailing white-spaces caused by the
 	# indenting of the '</key>' field in the words XML file when printing

@@ -70,6 +70,7 @@ sub new
 			STRINGS				=>	'./AN/tools.xml',
 			CONFIG_FILE			=>	'AN::Tools/an.conf',
 			LANGUAGE			=>	'en_CA',
+			LOG_FILE			=>	'',
 			SEARCH_DIR			=>	\@INC,
 			UUIDGEN_PATH			=>	'/usr/bin/uuidgen',
 		},
@@ -133,7 +134,7 @@ sub new
 		# Set the default languages.
 		$an->default_language		($param->{default_language}) 		if $param->{default_language};
 		$an->default_log_language	($param->{default_log_language}) 	if $param->{default_log_language};
-		$an->default_log_file		($param->{default_log_file}) 		if $param->{default_log_file};
+		$an->default_log_file		($param->{default_log_file}) 		if $param->{default_log_file};	# TODO: Phase this out
 		
 		### AN::Tools::Readable parameters
 		# Readable needs to be set before Log so that changes to

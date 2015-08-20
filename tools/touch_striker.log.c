@@ -1,5 +1,5 @@
 /* Compile by entering 'gcc -o touch_striker.log touch_striker.log.c' */
-#define REAL_PATH "/var/www/tools/touch_striker.log.sh"
+#define REAL_PATH "/sbin/dashboard/touch_striker.log.sh"
 main(ac, av)
 char **av;
 {

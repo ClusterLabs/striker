@@ -284,7 +284,7 @@ sub register_alert
 	my $alert_title_variables   = $parameter->{alert_title_variables}   ? $parameter->{alert_title_variables}   : "";
 	my $alert_message_key       = $parameter->{alert_message_key}       ? $parameter->{alert_message_key}       : die "$THIS_FILE ".__LINE__." 'alert_message_key' parameter not passed to AN::Tools::Alert->register_alert()\n";
 	my $alert_message_variables = $parameter->{alert_message_variables} ? $parameter->{alert_message_variables} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "alert_agent_name",        value1 => $alert_agent_name,
 		name2 => "alert_level",             value2 => $alert_level,
 		name3 => "alert_title_key",         value3 => $alert_title_key,
@@ -567,6 +567,8 @@ sub warning
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
+	return(1);
+	
 	# Clear any prior errors.
 	$self->_set_error;
 	
@@ -578,19 +580,21 @@ sub warning
 	my $file              = $parameter->{file}              ? $parameter->{file}              : "";
 	my $line              = $parameter->{line}              ? $parameter->{line}              : "";
 	my $log_to            = $parameter->{log_to}            ? $parameter->{log_to}            : $an->default_log_file();
+	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
 	my $code              = 1;
-	
-	if (0)
-	{
-		print "$THIS_FILE ".__LINE__."; title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], file: [$file], line: [$line], log_to: [$log_to]\n";
-		use Data::Dumper;
-		if ($title_variables)   { print "$THIS_FILE ".__LINE__."; Title variables hash:\n"; print Dumper $title_variables; }
-		if ($message_variables) { print "$THIS_FILE ".__LINE__."; Message variables hash:\n"; print Dumper $message_variables; }
-	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		name1 => 'title_key',         value1 => $title_key, 
+		name2 => 'title_variables',   value2 => $title_variables, 
+		name3 => 'message_key',       value3 => $message_key, 
+		name4 => 'message_variables', value4 => $message_variables, 
+		name5 => 'file',              value5 => $file, 
+		name6 => 'line',              value6 => $line, 
+		name7 => 'log_to',            value7 => $log_to, 
+		name8 => 'quiet',             value8 => $quiet, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Turn the arguments into strings.
-	# It is possible for this to become a run-away call, so this helps
-	# catch when that happens.
+	# It is possible for this to become a run-away call, so this helps catch when that happens.
 	$an->_error_count($an->_error_count + 1);
 	if ($an->_error_count > $an->_error_limit)
 	{
@@ -665,11 +669,12 @@ sub warning
 		log_to		=>	$log_to,
 	});
 	
+	# If not quieted, print to stdout.
 	if ($title_key)
 	{
-		print "\n";
+		print "\n" if not $quiet;
 	}
-	print "$warning\n";
+	print "$warning\n" if not $quiet;
 	
 	return (1);
 }

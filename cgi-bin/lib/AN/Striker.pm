@@ -49,15 +49,18 @@ my $THIS_FILE = "AN::Striker.pm";
 # on.
 sub mark_node_as_clean_off
 {
-	my ($conf, $node) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node]\n");
+	my ($conf, $node, $delay) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node], delay: [$delay]\n");
 	
 	# Put the '$an' handle into the variable for cleaner access.
 	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
 	
 	# Connect to the databases.
-	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	my $connections = $an->DB->connect_to_databases({
+		file	=>	$THIS_FILE,
+		quiet	=>	1
+	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connections: [$connections]\n");
 	if ($connections)
 	{
@@ -68,12 +71,21 @@ sub mark_node_as_clean_off
 			$an->Get->uuid({get => 'host_uuid'});
 		}
 		
+		my $say_off = "clean";
+		if ($delay)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::power_off_delay: [$conf->{sys}{power_off_delay}]\n");
+			$conf->{sys}{power_off_delay} = 300 if not $conf->{sys}{power_off_delay};
+			$say_off = time + $conf->{sys}{power_off_delay};
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_off: [$say_off]\n");
+		
 		my $query = "
 UPDATE 
     hosts 
 SET 
     host_emergency_stop = FALSE, 
-    host_stop_reason = 'clean'
+    host_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($say_off)."
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
 ;";
@@ -108,7 +120,10 @@ sub mark_node_as_clean_on
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
 	
 	# Connect to the databases.
-	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	my $connections = $an->DB->connect_to_databases({
+		file	=>	$THIS_FILE,
+		quiet	=>	1
+	});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connections: [$connections]\n");
 	if ($connections)
 	{
@@ -7265,7 +7280,7 @@ sub poweroff_node
 		
 		# The ScanCore that we're cleanly shutting down so we don't 
 		# auto-reboot the node.
-		mark_node_as_clean_off($conf, $node);
+		mark_node_as_clean_off($conf, $node, 0);	# 0 == no delay reboot time
 		
 		my $shell_call = "poweroff && echo \"Power down initiated. Please return to the main page now.\"";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
@@ -7298,10 +7313,6 @@ sub poweroff_node
 				message	=>	$message,
 			});
 		}
-		
-		# Tell ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
-		mark_node_as_clean_off($conf, $node);
-		
 		print AN::Common::template($conf, "server.html", "poweroff-node-footer");
 	}
 	else
@@ -7543,7 +7554,20 @@ sub cold_stop_anvil
 			# Safe to power off?
 			if ($proceed)
 			{
-				# Yup!
+				### Yup!
+				# Tell ScanCore that we're cleanly shutting down so we don't 
+				# auto-reboot the node. If we're powering off or power cycling the
+				# system, tell 'mark_node_as_clean_off()' to set a delay instead of
+				# "clean" (off).
+				my $delay = 0;
+				if (($conf->{cgi}{subtask} eq "power_cycle") or ($conf->{cgi}{subtask} eq "power_off"))
+				{
+					# Set the delay. This will set the hosts -> host_stop_reason
+					# to be time + sys::power_off_delay.
+					$delay = 1;
+				}
+				mark_node_as_clean_off($conf, $node, $delay);
+				
 				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 					row_class	=>	"highlight_good_bold",
 					row		=>	"#!string!row_0083!#",
@@ -7567,14 +7591,8 @@ sub cold_stop_anvil
 					});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
 					
-					# Tell ScanCore that we're cleanly shutting down so we don't 
-					# auto-reboot the node.
-					mark_node_as_clean_off($conf, $node);
-					
-					# If 'cancel_ups' is '1' or '2', I will
-					# stop the UPS timer. In '2', we'll
-					# call the poweroff from here once the
-					# nodes are down.
+					# If 'cancel_ups' is '1' or '2', I will stop the UPS timer. In '2', 
+					# we'll call the poweroff from here once the nodes are down.
 					my $shell_call = "poweroff";
 					if ($cancel_ups)
 					{
@@ -7582,7 +7600,7 @@ sub cold_stop_anvil
 if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
 then
     echo 'Cancelling APC UPS watchdog timer.'
-    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel
+    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel --force
 fi;
 poweroff";
 					}
@@ -7661,6 +7679,7 @@ poweroff";
 	}
 	
 	# If I have a sub-task, perform it now.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::subtask: [$conf->{cgi}{subtask}]\n");
 	if ($conf->{cgi}{subtask} eq "power_cycle")
 	{
 		# Tell the user
@@ -7808,6 +7827,9 @@ sub dual_boot
 			chomp;
 			my $line = $_;
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			
+			# If I can't contact the peer's database, I will get an error message. 
+			
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -8776,7 +8798,7 @@ sub display_details
 			#print $free_resources_panel;
 			
 			# This generates a panel below 'Available Resources' 
-			# *if* the user has enabled 'sys::use_apc_ups_watchdog'
+			# *if* the user has enabled 'tools::anvil-kick-apc-ups::enabled'
 			$watchdog_panel = display_watchdog_panel($conf);
 		}
 		else
@@ -8803,8 +8825,7 @@ sub display_details
 	return (0);
 }
 
-# This returns a panel for controlling hard-resets via the 'APC UPS Watchdog'
-# tools
+# This returns a panel for controlling hard-resets via the 'APC UPS Watchdog' tools
 sub display_watchdog_panel
 {
 	my ($conf) = @_;
@@ -8824,17 +8845,18 @@ sub display_watchdog_panel
 	}
 	
 	# Return nothing if this feature is disabled or if neither node is up.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::use_apc_ups_watchdog: [$conf->{sys}{use_apc_ups_watchdog}], use_node: [$use_node].\n");
-	return("") if ((not $conf->{sys}{use_apc_ups_watchdog}) or (not $use_node));
+# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; tools::anvil-kick-apc-ups::enabled: [$conf->{tools}{'anvil-kick-apc-ups'}{enabled}], use_node: [$use_node].\n");
+# 	return("") if ((not $conf->{tools}{'anvil-kick-apc-ups'}{enabled}) or (not $use_node));
+	return("") if (not $use_node);
 	my $node = $use_node;
 
 	# Check that 'anvil-kick-apc-ups' exists.
 	my $shell_call = "
-if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ];
+if \$($conf->{path}{nodes}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $conf->{path}{nodes}{striker_config});
 then 
-    echo ok; 
+    echo enabled; 
 else 
-    echo not found; 
+    echo disabled;
 fi";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -8850,7 +8872,7 @@ fi";
 	foreach my $line (@{$output})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line eq "ok")
+		if ($line eq "enabled")
 		{
 			$enable = 1;
 		}

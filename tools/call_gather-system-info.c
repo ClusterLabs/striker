@@ -1,5 +1,5 @@
 /* Compile by entering 'gcc -o call_gather-system-info call_gather-system-info.c' */
-#define REAL_PATH "/var/www/tools/gather-system-info"
+#define REAL_PATH "/sbin/striker/gather-system-info"
 main(ac, av)
 char **av;
 {

@@ -59,16 +59,18 @@ use AN::Striker;
 use AN::InstallManifest;
 use AN::Tools;
 
-# Turn off buffering so that the pinwheel will display while waiting
-# for the SSH call(s) to complete.
+# Turn off buffering so that the pinwheel will display while waiting for the SSH call(s) to complete.
 $| = 1;
 
 my ($conf) = AN::Common::initialize($THIS_FILE);
 
-# Open my handle to AN::Tools and use the $conf hash ref for $an->data.
+# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
 my $an = AN::Tools->new({data => $conf});
+$an->default_log_file    ($conf->{path}{log_file});
+$an->default_log_language($conf->{sys}{log_language});
+$an->Log->level          ($conf->{sys}{log_level});
 $conf->{handle}{an} = $an;
-AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."], handle::an: [$conf->{handle}{an}]\n");
+AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."], handle::an: [$conf->{handle}{an}], log file: [".$an->default_log_file."], log language: [".$an->default_log_language."]\n");
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -79,6 +81,13 @@ $an->default_log_file    ($an->data->{path}{log_file});
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+# Connect to the databases.
+my $connections = $an->DB->connect_to_databases({
+	file	=>	$THIS_FILE,
+	quiet	=>	1
+});
+AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DB connections: [$connections]\n");
 
 AN::Cluster::find_executables($conf);
 AN::Cluster::read_hosts($conf);
