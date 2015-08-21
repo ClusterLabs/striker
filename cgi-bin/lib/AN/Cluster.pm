@@ -10185,7 +10185,7 @@ sub parse_vm_defs_in_mem
 	my $this_array = [];
 	foreach my $line (@{$array})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		# Find the start of a domain.
 		if ($line =~ /<domain/)
 		{

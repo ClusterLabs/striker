@@ -15,6 +15,8 @@
 # 6  - Another copy of ScanCore is running.
 # 7  - The UUID for this host was not read (or not read correctly).
 # 8  - Bad alert config in striker.conf
+# 9  - Failed to enable ScanCore.
+# 10 - Failed to disable ScanCore.
 # 
 # TODO:
 # - Record the hostname to a file and check the current host name with the one
@@ -23,88 +25,7 @@
 #         
 # BUG:
 # - 
-# 
-# NOTE: Because each DB may use different serial IDs for various DBs, they 
-#       can't be used to directly UPDATE or reference when INSERTing values. So
-#       instead, we use the hostname as the "global" common variable amoungst 
-#       DBs and then divine each DB's individual table/column IDs from it. This
-#       means we can do UPDATE and INSERTs into all DBs with one query, but it
-#       makes those queries... awkward. It also means that the user changing
-#       the hostname *MUST* be caught by ScanCore via a cache file in order to
-#       alter the hosts -> host_name column without losing the host_uuid.
 #       
-#       I'm open to better ideas...
-#       
-# =============================================================================
-=pod
-Steps to setup ScanCore DB:
-
-# Striker
-yum install postgresql94-server
-
-# Database setup
-/etc/init.d/postgresql-9.4 initdb
-/etc/init.d/postgresql-9.4 start
-chkconfig postgresql-9.4 on
-su - postgres -c "psql template1 -c \"ALTER ROLE postgres WITH PASSWORD 'secret';\""
-echo *:*:*:postgres:secret > /var/lib/pgsql/.pgpass
-chown postgres:postgres /var/lib/pgsql/.pgpass
-chmod 600 /var/lib/pgsql/.pgpass
-sed -i.bak '/# TYPE  DATABASE/a host\tall\tall\t10.20.0.0\/16\tmd5\nhost\tall\tall\t10.250.0.0\/16\tmd5' /var/lib/pgsql/9.4/data/pg_hba.conf 
-sed -i 's/local   all         all                               ident/local   all         all                               md5/' /var/lib/pgsql/9.4/data/pg_hba.conf 
-sed -i.bak "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /var/lib/pgsql/9.4/data/postgresql.conf
-chown postgres:postgres /var/lib/pgsql/9.4/data/*
-/etc/init.d/postgresql-9.4 restart
-su - postgres -c "createuser --no-superuser --createdb --no-createrole striker"
-su - postgres -c "psql template1 -c \"ALTER ROLE striker WITH PASSWORD 'secret';\""
-su - postgres -c "createdb --owner striker scancore"
-su postgres -c "psql scancore"
-
-# ScanCore clients
-yum install perl-DBI perl-DBD-Pg perl-CGI perl-TermReadKey perl-XML-Simple perl-Net-SSH2 
-
-
-----
-
-# Reset DB
-su - postgres -c "dropdb scancore"
-su - postgres -c "createdb --owner admin scancore"
-su postgres -c "psql scancore"
-
-
-Sync checks;
-
-Base:
-SELECT * FROM hosts ORDER BY modified_date DESC, host_name ASC; SELECT * FROM history.hosts ORDER BY modified_date DESC, host_name ASC;
-SELECT * FROM agents ORDER BY modified_date DESC, agent_name ASC; SELECT * FROM history.agents ORDER BY modified_date DESC, agent_name ASC;
-SELECT * FROM alerts ORDER BY modified_date DESC, alert_uuid ASC; SELECT alert_uuid, alert_host_uuid, alert_agent_name AS name, alert_level AS level, alert_title_key, alert_title_variables AS title_vars, alert_message_key, alert_message_variables, modified_date FROM history.alerts ORDER BY modified_date DESC, alert_uuid ASC;
-SELECT * FROM ram_used ORDER BY modified_date DESC, ram_used_by ASC; SELECT * FROM history.ram_used ORDER BY modified_date DESC, ram_used_by ASC;
-SELECT * FROM power ORDER BY modified_date DESC, power_agent_name ASC; SELECT * FROM history.power ORDER BY modified_date DESC, power_agent_name ASC;
-SELECT * FROM temperature ORDER BY modified_date DESC, temperature_agent_name ASC; SELECT * FROM history.temperature ORDER BY modified_date DESC, temperature_agent_name ASC;
-
-scan_clustat;
-SELECT * FROM clustat ORDER BY modified_date DESC, clustat_uuid ASC; SELECT * FROM history.clustat ORDER BY modified_date DESC, clustat_uuid ASC;
-SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_node_name, c.clustat_node_cluster_id, c.clustat_node_status, c.modified_date  FROM hosts a, clustat b, history.clustat_node c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_node_clustat_uuid ORDER BY c.modified_date DESC, clustat_node_name ASC;
-SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC; SELECT a.host_name, b.clustat_uuid, c.clustat_service_name, c.clustat_service_host, c.clustat_service_status, c.clustat_service_notes AS notes, c.modified_date  FROM hosts a, clustat b, history.clustat_service c WHERE a.host_uuid = b.clustat_host_uuid AND b.clustat_uuid = c.clustat_service_clustat_uuid ORDER BY c.modified_date DESC, clustat_service_name ASC;
-
-scan_bond;
-SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC; SELECT a.host_name, b.bond_uuid, b.bond_name, b.bond_mode AS mode, b.bond_primary_slave AS primary, b.bond_primary_reselect AS reselect, b.bond_active_slave AS active, b.bond_mii_status AS mii, b.bond_mii_polling_interval AS poll, b.bond_up_delay AS updelay, b.bond_down_delay AS downdelay, b.modified_date FROM hosts a, history.bond b WHERE a.host_uuid = b.bond_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.bond_name ASC;
-SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC; SELECT a.host_name, b.bond_name, c.bond_interface_id AS id, c.bond_interface_name AS name, c.bond_interface_mii_status AS mii, c.bond_interface_speed AS speed, c.bond_interface_duplex AS duplex, c.bond_interface_failure_count AS fail, c.bond_interface_mac, c.bond_interface_slave_queue_id AS queueid, c.modified_date FROM hosts a, bond b, history.bond_interface c WHERE a.host_uuid = b.bond_host_uuid AND b.bond_uuid = c.bond_interface_bond_uuid ORDER BY c.modified_date DESC, b.bond_name ASC, c.bond_interface_name ASC;
-
-scan_apc_ups;
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT b.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, b.apc_ups_ip, b.apc_ups_ac_restore_delay AS acdelay, b.apc_ups_shutdown_delay AS offdelay, b.apc_ups_firmware_version AS firmware, b.apc_ups_health AS health, b.apc_ups_high_transfer_voltage AS highv, b.apc_ups_low_transfer_voltage AS lowv, b.apc_ups_last_transfer_reason AS xfer, b.apc_ups_manufactured_date AS oemdate, b.apc_ups_model AS model, b.apc_ups_temperature_units AS tunit, b.apc_ups_nmc_firmware_version AS nmcfw, b. apc_ups_nmc_serial_number AS nmcsn, b.apc_ups_nmc_mac_address AS mac, b.modified_date FROM hosts a, history.apc_ups b WHERE a.host_uuid = b.apc_ups_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_battery_id AS id, c.apc_ups_battery_replacement_date AS replace, c.apc_ups_battery_health AS health, c.apc_ups_battery_model AS mn, c.apc_ups_battery_percentage_charge AS charge, c. apc_ups_battery_last_replacement_date AS replaced, c.apc_ups_battery_state AS state, c.apc_ups_battery_temperature AS temp, c.apc_ups_battery_alarm_temperature AS hightemp, c.apc_ups_battery_voltage AS volt, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_battery c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_battery_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_input_frequency AS freq, c.apc_ups_input_sensitivity AS sensitivity, c.apc_ups_input_voltage AS inv, apc_ups_input_1m_maximum_input_voltage AS max1mvin, c.apc_ups_input_1m_minimum_input_voltage AS min1mvin, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_input c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_input_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-SELECT a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC; SELECT c.history_id AS hid, a.host_name, b.apc_ups_serial_number AS sn, b.apc_ups_name, c.apc_ups_output_load_percentage AS loadpct, c.apc_ups_output_time_on_batteries AS timeonbat, c.apc_ups_output_estimated_runtime AS runtime, c.apc_ups_output_frequency AS freq, c.apc_ups_output_voltage AS volt, c.apc_ups_output_total_output AS totalkwh, c.modified_date FROM hosts a, apc_ups b, history.apc_ups_output c WHERE a.host_uuid = b.apc_ups_host_uuid AND b.apc_ups_uuid = c.apc_ups_output_apc_ups_uuid ORDER BY c.modified_date DESC, a.host_name ASC, b.apc_ups_name ASC;
-
-scan_ipmitool;
-SELECT a.host_name, b.ipmitool_sensor_host, b.ipmitool_sensor_name AS name, b.ipmitool_sensor_units AS units, b.ipmitool_sensor_status AS state, b.ipmitool_sensor_high_critical AS high_crit, b.ipmitool_sensor_high_warning AS high_warn, b.ipmitool_sensor_low_critical AS low_crit, b.ipmitool_sensor_low_warning AS low_warn, b.modified_date FROM hosts a, ipmitool b WHERE a.host_uuid = b.ipmitool_host_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.ipmitool_sensor_host ASC, b.ipmitool_sensor_name ASC;
-
-SELECT a.host_name, b.ipmitool_sensor_host, b.ipmitool_sensor_name AS name, c.ipmitool_value_sensor_value AS value, b.ipmitool_sensor_units AS units, b.ipmitool_sensor_status AS state, b.ipmitool_sensor_high_critical AS high_crit, b.ipmitool_sensor_high_warning AS high_warn, b.ipmitool_sensor_low_critical AS low_crit, b.ipmitool_sensor_low_warning AS low_warn, b.modified_date FROM hosts a, ipmitool b, ipmitool_value c WHERE a.host_uuid = b.ipmitool_host_uuid AND b.ipmitool_uuid = c.ipmitool_value_ipmitool_uuid ORDER BY b.modified_date DESC, a.host_name ASC, b.ipmitool_sensor_host ASC, b.ipmitool_sensor_name ASC;
-
-
-=cut
-# =============================================================================
 
 # Determine this file name.
 my $THIS_FILE =  $0;
@@ -135,6 +56,7 @@ my $an = AN::Tools->new({data =>
 			cp			=>	"/bin/cp",
 			email_directory		=>	"/var/log/alert_emails",
 			fence_agents		=>	"/usr/sbin",
+			'grep'			=>	"/bin/grep",
 			# under this directory will be a file called 
 			# ".<node_name>" for each node. This contains the 
 			# string 'health = [ok,warning,critical]. This is used
@@ -158,6 +80,7 @@ my $an = AN::Tools->new({data =>
 			safe_anvil_shutdown	=>	"/sbin/striker/safe_anvil_shutdown",
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
+			sed			=>	"/bin/sed",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			uuidgen			=>	"/usr/bin/uuidgen",
@@ -238,16 +161,28 @@ $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
-# Should I live?
-avoid_duplicate_run($an);
-
 # See if the user is forcing the issue
 $an->Get->switches();
-if ($an->data->{switches}{force})
+if ($an->data->{switches}{enable})
+{
+	my $rc   = update_configuration($an, "enable");
+	my $exit = $rc ? 0 : 9;
+	exit($exit);
+}
+elsif ($an->data->{switches}{disable})
+{
+	my $rc   = update_configuration($an, "disable");
+	my $exit = $rc ? 0 : 10;
+	exit($exit);
+}
+elsif ($an->data->{switches}{force})
 {
 	$an->Log->entry({log_level => 1, message_key => "scancore_log_0070", file => $THIS_FILE, line => __LINE__});
 	$an->data->{scancore}{enabled} = 1;
 }
+
+# Should I live?
+avoid_duplicate_run($an);
 
 # Has the user disabled ScanCore?
 exit(0) if not $an->data->{scancore}{enabled};
@@ -440,6 +375,74 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# This updates striker.conf to enable or disable ScanCore.
+sub update_configuration
+{
+	my ($an, $do) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_configuration" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "do", value1 => $do,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $ok = 1;
+	my $shell_call  = $an->data->{path}{sed}." -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)1/scancore::enabled\\1=\\20/' ".$an->data->{path}{striker_config}."\n";
+	if ($do eq "enable")
+	{
+		$shell_call = $an->data->{path}{sed}." -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' ".$an->data->{path}{striker_config}."\n";
+	}
+	$shell_call .= "
+if \$(".$an->data->{path}{'grep'}." -q '^scancore::enabled\\s*=\\s*1' ".$an->data->{path}{striker_config}.");
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /enabled/)
+		{
+			# Did I want this?
+			if ($do eq "enable")
+			{
+				# Good!
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0071", file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Woops...
+				$an->Alert->warning({message_key => "scancore_warning_0015", file => $THIS_FILE, line => __LINE__});
+				$ok = 0;
+			}
+		}
+		elsif ($line =~ /disabled/)
+		{
+			# Did I want this?
+			if ($do eq "disable")
+			{
+				# Good!
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0072", file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Woops...
+				$an->Alert->warning({message_key => "scancore_warning_0016", file => $THIS_FILE, line => __LINE__});
+				$ok = 0;
+			}
+		}
+	}
+	close $file_handle;
+	
+	return($ok);
+}
 
 # Get (create if needed) my UUID.
 sub prep_local_uuid
@@ -1051,8 +1054,8 @@ FROM
 WHERE 
     temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND 
-    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($node).";
-";
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($node)."
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1141,8 +1144,8 @@ AND
 AND 
     modified_date > (now() - interval '6h')
 ORDER BY 
-    modified_date ASC;
-";
+    modified_date ASC
+;";
 		# There should always be at least one.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
@@ -1588,8 +1591,8 @@ FROM
 WHERE 
     temperature_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
 AND 
-    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($an->hostname).";
-";
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($an->hostname)."
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4686,8 +4689,7 @@ WHERE
     agent_name = ".$an->data->{sys}{use_db_fh}->quote($say_agent)." 
 AND
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;
-";
+;";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4730,8 +4732,8 @@ SET
 WHERE 
     agent_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 AND
-    agent_name = ".$an->data->{sys}{use_db_fh}->quote($say_agent).";
-";
+    agent_name = ".$an->data->{sys}{use_db_fh}->quote($say_agent)."
+;";
 			$an->DB->do_db_write({query => $query});
 		}
 	}
@@ -4796,8 +4798,8 @@ FROM
 WHERE 
     ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4837,8 +4839,8 @@ SET
 WHERE 
     ram_used_by = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{program_name})." 
 AND
-    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
+    ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
 		$an->DB->do_db_write({query => $query});
 	}
 	else

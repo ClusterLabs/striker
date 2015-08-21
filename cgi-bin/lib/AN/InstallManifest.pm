@@ -388,7 +388,7 @@ sub run_new_install_manifest
 sub enable_tools
 {
 	my ($conf) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_tools()\n");
 	
 	# sas_rc  == safe_anvil_start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
@@ -635,14 +635,14 @@ sub enable_tools_on_node
 	### safe_anvil_start
 	# If requested, enable safe_anvil_start, otherwise, disable it.
 	my $sas_rc     = 0;
-	my $shell_call = "$conf->{path}{nodes}{safe_anvil_start} --disable; echo rc:\$?\n";
+	my $shell_call = "$conf->{path}{nodes}{safe_anvil_start} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
 	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
 	{
-		$shell_call = "$conf->{path}{nodes}{safe_anvil_start} --enable; echo rc:\$?\n";
+		$shell_call = "$conf->{path}{nodes}{safe_anvil_start} --enable\n";
 	}
 	$shell_call .= "
-if \$(grep -q '^tools::safe_anvil_start::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+if [ -e $conf->{path}{nodes}{safe_anvil_start_link} ];
 then 
     echo enabled; 
 else 
@@ -694,11 +694,11 @@ fi
 	### anvil-kick-apc-ups
 	# If requested, enable anvil-kick-apc-ups, otherwise, disable it.
 	my $akau_rc    = 0;
-	   $shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --enable\n";
+	   $shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
 	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
 	{
-		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::anvil-kick-apc-ups::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+		$shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --enable\n";
 	}
 	$shell_call .= "
 if \$(grep -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
@@ -753,11 +753,11 @@ fi
 	### ScanCore
 	# If requested, enable ScanCore, otherwise, disable it.
 	my $sc_rc      = 0;
-	   $shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)1/scancore::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	   $shell_call = "$conf->{path}{nodes}{scancore} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 	if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
 	{
-		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^scancore::enabled\\(\\s*\\)=\\(\\s*\\)0/scancore::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+		$shell_call = "$conf->{path}{nodes}{scancore} --enable\n";
 	}
 	$shell_call .= "
 if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
@@ -1170,7 +1170,8 @@ fi
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				
 				# If the user is re-running the install, this could fail because the target's
-				# key changed.
+				# key changed. We won't clear it because that would open up a security 
+				# vulnerability... Sorry users. :(
 				if ($line =~ /REMOTE HOST IDENTIFICATION HAS CHANGED/i)
 				{
 					$return_code = 8;
