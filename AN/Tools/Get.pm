@@ -526,7 +526,7 @@ sub switches
 		}
 		elsif (($argument eq "start") or ($argument eq "stop") or ($argument eq "status"))
 		{
-			$conf->{switches}{$argument} = 1;
+			$an->data->{switches}{$argument} = 1;
 		}
 		elsif ($argument =~ /^-/)
 		{

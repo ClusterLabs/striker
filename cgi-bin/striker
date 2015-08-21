@@ -82,6 +82,9 @@ $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
+# Get (create if needed) my UUID.
+$an->Storage->prep_local_uuid($an);
+
 # Connect to the databases.
 my $connections = $an->DB->connect_to_databases({
 	file	=>	$THIS_FILE,

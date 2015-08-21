@@ -31,6 +31,84 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# Get (create if needed) my UUID.
+sub prep_local_uuid
+{
+	my $self  = shift;
+	my $param = shift;
+	
+	# Clear any prior errors.
+	my $an    = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Does it exist?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::host_uuid", value1 => $an->data->{path}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not -e $an->data->{path}{host_uuid})
+	{
+		# Nope. What about the parent directory? Split the path from 
+		# the file name.
+		my ($directory, $file) = ($an->data->{path}{host_uuid} =~ /^(.*)\/(.*)/);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "directory", value1 => $directory, 
+			name2 => "file",      value2 => $file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Check the directory now
+		if (not -e $directory)
+		{
+			# The directory needs to be created.
+			mkdir $directory or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
+				directory => $directory, 
+				error     => $! 
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			
+			# Set the mode
+			my $directory_mode = 0775;
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
+				directory_mode => sprintf("%04o", $directory_mode), 
+			}, file => $THIS_FILE, line => __LINE__});
+			chmod $directory_mode, $an->data->{path}{email_directory};
+		}
+		
+		### I don't use AN::Get->uuid() because I need to write to the file anyway, so I can do both
+		### in one step.
+		# Now create the UUID.
+		my $shell_call = $an->data->{path}{uuidgen}." > ".$an->data->{path}{host_uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			# There should never be any output, but just in case...
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	
+	# Now read in the UUID.
+	$an->Get->uuid({get => 'host_uuid'});
+	
+	# Verify I have a good UUID.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# derp
+		$an->Log->entry({log_level => 0, message_key => "scancore_error_0017", file => $THIS_FILE, line => __LINE__});
+		exit(7);
+	}
+	
+	return($an->data->{sys}{host_uuid});
+}
+
 ### MADI: Add a function to create a list of searchable directories that starts
 ###       with @INC so that a CSV of directories can be added to it after
 ###       reading a config file. Make this method take an array reference to
