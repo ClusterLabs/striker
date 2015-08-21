@@ -1158,6 +1158,7 @@ sub read_configuration
 	
 	return(0);
 }
+
 # Print the usage information.
 sub print_usage
 {

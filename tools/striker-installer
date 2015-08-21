@@ -763,12 +763,6 @@ if (not $conf->{sys}{skip_network})
 	reconfigure_network($conf);
 }
 
-# Configure the various dashboard tools, like the striker-usb tools.
-configure_striker_tools($conf);
-
-# This sets up the dashboard to be a ScanCore database server.
-configure_scancore($conf);
-
 # If requested, run the contents of rc.local. This is sometimes needed if the
 # user has customizations that might get clobbered by a --gui install.
 if ($conf->{switches}{'run-rc-local'})
@@ -1930,6 +1924,12 @@ sub setup_striker
 	
 	# Configure PXE and dhcpd stuff
 	configure_pxe($conf);
+
+	# Configure the various dashboard tools, like the striker-usb tools.
+	configure_striker_tools($conf);
+
+	# This sets up the dashboard to be a ScanCore database server.
+	configure_scancore($conf);
 	
 	# Set owners and file modes.
 	set_file_ownership_and_modes($conf);
@@ -4943,14 +4943,14 @@ sub install_striker_files
 	logger($conf, $THIS_FILE, __LINE__, "- Copying executable files and languages.", 1);
 	rsync_files($conf, "$conf->{directory}{source}/cgi-bin", $conf->{directory}{document_root});
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Copying tools.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/tools", $conf->{directory}{document_root});
+	#logger($conf, $THIS_FILE, __LINE__, "- Copying tools.", 1);
+	#rsync_files($conf, "$conf->{directory}{source}/tools", $conf->{directory}{document_root});
 	
-	logger($conf, $THIS_FILE, __LINE__, "- Copying ScanCore.", 1);
-	rsync_files($conf, "$conf->{directory}{source}/ScanCore", $conf->{directory}{document_root});
+	#logger($conf, $THIS_FILE, __LINE__, "- Copying ScanCore.", 1);
+	#rsync_files($conf, "$conf->{directory}{source}/ScanCore", $conf->{directory}{document_root});
 	
 	# Split the directory from the file.
-	my ($striker_conf_dir, $striker_conf_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/);
+	my ($striker_config_directory, $striker_config_file) = ($conf->{path}{striker_config} =~ /^(.*)\/(.*)$/);
 	if (-e "$conf->{path}{striker_config}")
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Existing Striker configuration file found, not replacing it.", 1);
@@ -4958,15 +4958,15 @@ sub install_striker_files
 	else
 	{
 		# Make sure the striker /etc/ directory exists.
-		my $parent_dir = ($striker_conf_dir =~ /^.*\/(.*)$/)[0];
-		if (-d $striker_conf_dir)
+		my $parent_dir = ($striker_config_directory =~ /^.*\/(.*)$/)[0];
+		if (-d $striker_config_directory)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Striker configuration directory already exists.", 1);
 		}
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating the Striker configuration directory.", 1);
-			mkdir $striker_conf_dir or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$striker_conf_dir], error was: $!\n";
+			mkdir $striker_config_directory or die "$THIS_FILE ".__LINE__."; Failed to create the directory: [$striker_config_directory], error was: $!\n";
 		}
 		
 		# If the user has specified a custom config file, use it.
@@ -4992,8 +4992,8 @@ sub install_striker_files
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Copying base Striker configuration file.", 1);
-			my $source      = "$conf->{directory}{source}/$striker_conf_file";
-			my $destination = "$striker_conf_dir/";
+			my $source      = "$conf->{directory}{source}/$striker_config_file";
+			my $destination = "$striker_config_directory/";
 			logger($conf, $THIS_FILE, __LINE__, "- Copying: [$source]", 1);
 			logger($conf, $THIS_FILE, __LINE__, "       to: [$destination]", 1);
 			copy_file($conf, $source, $destination);
@@ -5005,7 +5005,7 @@ sub install_striker_files
 	{
 		# Update the striker.conf file with the user's selected mail server
 		# values.
-		my $mail_server = "example.com";
+		my $mail_server = "mail.example.com";
 		my $mail_port   = "587";
 		if ($conf->{sys}{mail_server} =~ /^(.*?):(\d+)$/)
 		{
@@ -5075,8 +5075,8 @@ sub install_striker_files
 	
 	# Copy the striker.conf file to /sbin/striker/ so that nodes can use it
 	# as a template.
-	logger($conf, $THIS_FILE, __LINE__, "- Copying striker.conf for use as a template by nodes.", 1);
-	rsync_files($conf, "$conf->{path}{striker_config}", "$conf->{directory}{striker_tools}/");
+	#logger($conf, $THIS_FILE, __LINE__, "- Copying striker.conf for use as a template by nodes.", 1);
+	#rsync_files($conf, "$conf->{path}{striker_config}", "$conf->{directory}{striker_tools}/");
 	
 	# Create an empty log file
 	logger($conf, $THIS_FILE, __LINE__, "- Creating empty Striker log file.", 1);

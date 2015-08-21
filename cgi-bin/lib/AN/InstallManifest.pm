@@ -635,11 +635,11 @@ sub enable_tools_on_node
 	### safe_anvil_start
 	# If requested, enable safe_anvil_start, otherwise, disable it.
 	my $sas_rc     = 0;
-	my $shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::safe_anvil_start::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	my $shell_call = "$conf->{path}{nodes}{safe_anvil_start} --disable; echo rc:\$?\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
 	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
 	{
-		$shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::safe_anvil_start::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::safe_anvil_start::enabled\\1=\\21/' $conf->{path}{striker_config}\n";
+		$shell_call = "$conf->{path}{nodes}{safe_anvil_start} --enable; echo rc:\$?\n";
 	}
 	$shell_call .= "
 if \$(grep -q '^tools::safe_anvil_start::enabled\\s*=\\s*1' /etc/striker/striker.conf);
@@ -690,11 +690,11 @@ fi
 			}
 		}
 	}
-	
+
 	### anvil-kick-apc-ups
 	# If requested, enable anvil-kick-apc-ups, otherwise, disable it.
 	my $akau_rc    = 0;
-	   $shell_call = "$conf->{path}{nodes}{sed} -i 's/^tools::anvil-kick-apc-ups::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::anvil-kick-apc-ups::enabled\\1=\\20/' $conf->{path}{striker_config}\n";
+	   $shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --enable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
 	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
 	{

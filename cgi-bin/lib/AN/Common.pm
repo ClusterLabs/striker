@@ -691,7 +691,7 @@ sub initialize_conf
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
-				'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99_anvil-kick-apc-ups",	# Phasing out.
+				#'anvil-kick-apc-ups_link' =>	"/etc/rc3.d/S99_anvil-kick-apc-ups",	# Phasing out.
 				# This is the actual DRBD wait script
 				'anvil-wait-for-drbd'	=>	"/sbin/striker/anvil-wait-for-drbd",
 				backups			=>	"/root/backups",
@@ -723,7 +723,7 @@ sub initialize_conf
 				ntp_conf		=>	"/etc/ntp.conf",
 				perl_library		=>	"/usr/share/perl5",
 				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
-				safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
+				#safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
 				scancore		=>	"/sbin/striker/ScanCore/ScanCore",
 				sed			=>	"/bin/sed",
 				shadow			=>	"/etc/shadow",

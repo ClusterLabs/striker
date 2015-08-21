@@ -524,6 +524,10 @@ sub switches
 			# Don't process anything.
 			$an->data->{switches}{raw} .= " $argument";
 		}
+		elsif (($argument eq "start") or ($argument eq "stop") or ($argument eq "status"))
+		{
+			$conf->{switches}{$argument} = 1;
+		}
 		elsif ($argument =~ /^-/)
 		{
 			# If the argument is just '--', appeand everything after it to 'raw'.
