@@ -1,18 +1,23 @@
+### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+# License: GPLv2
+# Built:   2015-08-22 01:24:16
+# Target:  Network Install (PXE)
+# OS:      RHEL
+# Machine: Striker Dashboard #02
+
 ### Setup values.
-# Doing a full install.
+# Run a text-based install
 install
-#cmdline
 text
 
-### Note: Remember, Striker 2 installs off of Striker 1
-# Installing from Striker 01's PXE server.
+# Installing from Striker 02's PXE server.
 url --url=http://10.20.4.1/rhel6/x86_64/img/
 
-# Set the language and keyboard to en_US, UTF-8. Adjust as needed.
+# Set the language and keyboard type.
 lang en_CA.UTF-8
 keyboard us
 
-# Set the timezone to UTC.
+# Set the system clock to UTC and then define the timezone.
 timezone --utc America/Toronto
 
 # This sets the (first) ethernet device. There is currently no way to map
@@ -32,7 +37,7 @@ user --name=admin --plaintext --password=Initial1
 # is expected to change in a (near) future release.
 firewall --service=ssh
 selinux --permissive
-	
+
 # There is no need for the 'first boot' menu system to run, so we will disable
 # it.
 firstboot --disable
@@ -50,6 +55,7 @@ reboot
 # This runs a script (below) that generates the partitioning information
 # depending on a rudamentary test for available storage devices.
 %include /tmp/part-include
+
 
 # This is a fairly minimal installation. It is enough for 'striker-installer'
 # to run properly later
@@ -95,6 +101,7 @@ nfs-utils
 nfs-utils-lib
 numad
 qemu-img
+qemu-kvm
 radvd
 rpcbind
 seabios
@@ -104,45 +111,48 @@ vgabios
 %end
 
 
-# Copy source into place.
+# First non-chroot steps
 %post --nochroot --log=/tmp/nochroot-post-install.log
 #!/bin/bash
 
-# Download the ISO and mount it.
-echo "Downloading the source ISO and mounting it"
-ISO="Anvil_m2_RHEL-6.7_alpha.iso"
-mkdir -p /mnt/sysimage/var/www/html/rhel6/x86_64/{img,iso,ks,files}
-wget http://10.20.4.1/rhel6/x86_64/iso/$ISO -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/$ISO
+# Create the install repo and PXE boot directories.
+echo 'Creating the apache docroot and PXE directories.'
 
-# Make sure our USB source is mounted.
-if [ ! -e "/mnt/source" ];
+# Apache directories
+mkdir -p /mnt/sysimage/var/www/html/rhel6/x86_64/{img,iso,ks,files}
+
+# PXE/tftp directories
+mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
+mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
+
+# Create the source mount point.
+if [ ! -e '/mnt/source' ];
 then
 	echo "Creating the '/mnt/source' directory."
 	mkdir /mnt/source;
 fi
-mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/$ISO /mnt/source/
+
+# Download the ISO and mount it.
+echo 'Downloading the source ISO and mounting it'
+wget http://10.20.4.1/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso
+
+# Make sure our source is mounted.
+mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/rhel6 /mnt/source/
+
 
 # Copy the raritan fence agent into place.
-echo "Copying fence_raritan_snmp into /usr/sbin/"
+echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 
-# Create the install repo and PXE boot directories.
-echo "Creating the apache docroot and PXE directories."
-mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
-if [ ! -e "/mnt/sysimage/var/lib/tftpboot/pxelinux.cfg" ]
-then
-	mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
-fi
-
-# Copy the node KS into place */
-echo "Copying the KS scripts into place"
-cp /mnt/source/ks/pxe-new-node01_from-striker01.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node01.ks
-cp /mnt/source/ks/pxe-new-node02_from-striker01.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node02.ks
+# Copy the node KS into place
+echo 'Copying the KS scripts into place.'
+cp /mnt/source/ks/pxe-new-node01_from-striker02.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node01.ks
+cp /mnt/source/ks/pxe-new-node02_from-striker02.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node02.ks
 cp /mnt/source/ks/pxe-new-striker01.ks             /mnt/sysimage/var/www/html/rhel6/x86_64/ks/
 cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/rhel6/x86_64/ks/
 
 # A little flair...
-echo "Setting the PXE wallpaper."
+echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/splash.jpg /mnt/sysimage/var/lib/tftpboot/
 
 # I'll need this later for the admin-owned setuid wrapper
@@ -150,57 +160,50 @@ echo "Copying the 'admin' user's copy of 'populate_remote_authorized_keys' into 
 cp /mnt/source/Striker/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/admin/
 
 # Copy the Striker source files and installer into place
-echo "Copying the Striker installer and source code into place."
+echo 'Copying the Striker installer and source code into place.'
 cp      /mnt/source/Striker/master.zip                             /mnt/sysimage/root/
 cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
 cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
 
-# This will be used by the nodes to setup Tools and Scanner
-echo "Copying the dashboard source to /mnt/sysimage/var/www/html/rhel6/x86_64/files/"
-cp /mnt/source/Striker/master.zip /mnt/sysimage/var/www/html/rhel6/x86_64/files/
-
-# This will be used by the nodes to setup tools and ScanCore
-echo "Creating the Striker tools tarball"
-tar -cvf /mnt/sysimage/var/www/html/rhel6/x86_64/files/striker-tools.tar -C /mnt/source/Striker/striker-master/tools/ .
-
 echo "Copying 'Tools' into /mnt/sysimage/var/www/html/rhel6/x86_64/files/"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/rhel6/x86_64/files/
 
-echo "Configuring /etc/fstab to mount the ISO on boot."
-echo "/var/www/html/rhel6/x86_64/iso/$ISO	/var/www/html/rhel6/x86_64/img	iso9660	loop	0 0" >> /mnt/sysimage/etc/fstab
+echo 'Configuring /etc/fstab to mount the ISO on boot.'
+echo '/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso	/var/www/html/rhel6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
 
-echo "rsync'ing isolinux to /var/lib/tftpboot/boot/rhel6/x86_64/"
+echo 'Copying isolinux to /var/lib/tftpboot/boot/rhel6/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
-
-echo "non-'chroot'ed post install complete."
 %end
+
+
+# Now it's time for the first chroot'ed configuration steps.
+%post --log=/tmp/post-install_chroot.log
 
 
 # Tell the machine to save downloaded RPM updates (for possible distribution to
 # other machines for low-bandwidth users). It also makes sure all NICs start on
 # boot.
-%post --log=/tmp/post-install_chroot-1.log
-echo "Setting yum to keep its cache."
+echo 'Configuring yum to keep its cache.'
 sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
-#for nic in $(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT="yes"/' $nic; done
 
 # Disable DNS lookup for SSH so that logins are quick when there is not Internet
 # access.
-echo "Setting sshd to not do DNS lookup on incoming connections"
+echo 'Configuring sshd to not use DNS or GSSAPI authentication for fast logins without internet connections.'
 sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config 
 sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
 
 # Show details on boot.
-echo "Setting plymouth to use detailed boot screen"
+echo 'Setting plymouth to use detailed boot screen'
 plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
-echo "Writing out local yum repository config"
-cat > /etc/yum.repos.d/striker01.repo << EOF
-[striker01-rhel6]
-name=Striker 01 RHEL 6.7 + Custom Repository
+
+echo 'Writing out local yum repository config'
+cat > /etc/yum.repos.d/striker02.repo << EOF
+[striker02-rhel6]
+name=Striker 02 rhel6 v6.7 + Custom Repository
 baseurl=http://localhost/rhel6/x86_64/img/
 enabled=1
 gpgcheck=0
@@ -208,8 +211,7 @@ priority=1
 EOF
 
 # Now setup the script for the user to call once booted.
-echo "Writing out the sample striker-installer script"
-BCNIP="10.20.4.2"
+echo 'Writing out the sample striker-installer script'
 cat > /root/example_striker-installer.txt << EOF
 # This is an example 'striker-installer' call. Feel free to edit this file
 # here and then call it with 'sh /root/example_striker-installer.txt' to
@@ -219,24 +221,24 @@ cat > /root/example_striker-installer.txt << EOF
 # switches and the help will be displayed.
 # 
 ./striker-installer \\
- -c "Alteeve's Niche\\!" \\
+ -c "Alteeve's Niche!" \\
  -n "an-striker02.alteeve.ca" \\
- -e alert@example.com:secret \\
- -m mail.example.com:587 \\
+ -e alert@alteeve.ca:secret \\
+ -m mail.alteeve.ca:587 \\
  -u "admin:Initial1" \\
  -i 10.255.4.2/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
- -b ${BCNIP}/16 \\
- -p 10.20.10.211:10.20.10.220 \\
+ -b 10.20.4.2/16 \\
+ -p 10.20.10.210:10.20.10.219 \\
  --peer-dashboard hostname=an-striker01.alteeve.ca,bcn_ip=10.20.4.1 \\
  --router-mode \\
  --gui \\
  -d git \\
- --rhn rhn_user:secret
+ --rhn "rhn_admin:rhn_Initial1"
 EOF
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
 # from this system.
-echo "Writing out the default PXE menu"
+echo 'Writing out the default PXE menu'
 cat > /var/lib/tftpboot/pxelinux.cfg/default << EOF
 # Use the high-colour menu system.
 UI vesamenu.c32
@@ -291,7 +293,7 @@ MENU COLOR pwdentry    0  #80ffffff #20ffffff std      # Password entry field
 MENU COLOR help        0  #c0ffffff #00000000 std      # Help text, if set via 'TEXT HELP ... ENDTEXT'
  
 ### Now define the menu options
- 
+
 # It is safest to return booting to the client as the first and default option.
 # This entry below will do just that.
 LABEL next
@@ -300,76 +302,76 @@ LABEL next
 	localboot -1
 
 LABEL pxe-new-node01
-	MENU LABEL ^1) New Anvil! Node 01 - RHEL 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^1) New Anvil! Node 01 - rhel6 v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		/------------------------------------------------------------------\
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ------------------------------------------------------------------/
 
 	            To prevent traces of previous installs interrupting the 
-		    Install Manifest run, this boot option starts by "zeroing
-		    out" the first 100 GiB of the drive. There is no output
+		    Install Manifest run, this boot option starts by 'zeroing
+		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 01 using RHEL 6. Will create a traditional 
+		Installs a new Anvil! Node 01 using rhel6 v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://${BCNIP}/rhel6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
+	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
 
 LABEL pxe-new-node02
-	MENU LABEL ^2) New Anvil! Node 02 - RHEL 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^2) New Anvil! Node 02 - rhel6 v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		/------------------------------------------------------------------\
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ------------------------------------------------------------------/
 
 	            To prevent traces of previous installs interrupting the 
-		    Install Manifest run, this boot option starts by "zeroing
-		    out" the first 100 GiB of the drive. There is no output
+		    Install Manifest run, this boot option starts by 'zeroing
+		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 02 using RHEL 6. Will create a traditional 
+		Installs a new Anvil! Node 02 using rhel6 v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://${BCNIP}/rhel6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
+	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
 
 LABEL pxe-new-striker01
-	MENU LABEL ^3) New Striker 01 dashboard - RHEL 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^3) New Striker 01 dashboard - rhel6 v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 	
-		Installs a new Striker 01 using RHEL 6. Will create a traditional
+		Installs a new Striker 01 using rhel6 v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://${BCNIP}/rhel6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
+	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
 	
 LABEL pxe-new-striker02
-	MENU LABEL ^4) New Striker 02 dashboard - RHEL 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^4) New Striker 02 dashboard - rhel6 v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		Installs a new Striker 02 using RHEL 6. Will create a traditional
+		Installs a new Striker 02 using rhel6 v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://${BCNIP}/rhel6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
+	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
 
 label rescue
 	MENU LABEL ^B) Rescue installed system
 	TEXT HELP
 
-		Boot the RHEL 6.7 DVD in rescue mode.
+		Boot the rhel6 v6.7 DVD in rescue mode.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	APPEND initrd=boot/rhel6/x86_64/initrd.img rescue
@@ -413,16 +415,18 @@ echo "'chroot'ed post install script complete."
 %end
 
 
+
 # This is set to run at the end. It copies all of the kickstart logs into the
 # root user's home page.
-%post --nochroot --log=/tmp/post-install_no-chroot-2.log
-echo "Copying all the anaconda related log files to /root/install/"
+%post --nochroot
+echo 'Copying all the anaconda related log files to /root/install/'
 
 if [ ! -e '/mnt/sysimage/root/install' ]
 then
 	mkdir /mnt/sysimage/root/install
 fi
 cp -p /tmp/nochroot*   /mnt/sysimage/root/install/
+cp -p /tmp/kernel*     /mnt/sysimage/root/install/
 cp -p /tmp/anaconda*   /mnt/sysimage/root/install/
 cp -p /tmp/ks*         /mnt/sysimage/root/install/
 cp -p /tmp/program.log /mnt/sysimage/root/install/
@@ -433,19 +437,17 @@ cp -p /tmp/syslog      /mnt/sysimage/root/install/
 %end
 
 
+
 ### Script to setup partitions.
 %pre --log=/tmp/ks-preinstall.log
 
 #!/bin/sh
 
 # Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It's obviously just a basic script, and should 
-# be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
-# 1 TB... etc.
+# what configuration to use.
 
 ###############################################################################
-# Below is for 40 GiB / partitions with the balance of free space to be       #
-# configured later.                                                           #
+# Creates a 512 MiB /boot, 4 GiB <swap> and the balance to /                  #
 ###############################################################################
 
 # Default is to use /dev/sda. At this time, software arrays are not supported.
@@ -463,7 +465,6 @@ fi
 
 # Now write the partition script
 cat >> /tmp/part-include <<END
-
 zerombr
 clearpart --all --drives=${DRIVE}
 ignoredisk --only-use=${DRIVE}

@@ -157,8 +157,11 @@ my $conf = {
 		keyboard	=>	"us",
 		background	=>	"splash.jpg",
 		prefix		=>	"an",
+		output_dir	=>	"/tmp",
 	},
 };
+
+print get_date($conf);
 
 print "Generating Anvil! kickstart scripts\n";
 
@@ -178,14 +181,32 @@ foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 					{
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name} = "pxe-new-node0${number}_from-striker0${source}.ks";
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, $source);
-						print "  - ks::${distro}::${target}::${machine}::${number}::source::${source}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}]\n";
+						#print "  - ks::${distro}::${target}::${machine}::${number}::source::${source}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}]\n";
+						if (not -e "$conf->{sys}{output_dir}/$distro")
+						{
+							mkdir "$conf->{sys}{output_dir}/$distro" or die "Failed to create: [$conf->{sys}{output_dir}/$distro], error: $!\n";
+						}
+						my $shell_call = "$conf->{sys}{output_dir}/$distro/$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}";
+						open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
+						print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents};
+						close $file_handle;
+						print "  - Wrote: [$shell_call]\n";
 					}
 				}
 				else
 				{
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name} = "${target}-new-${machine}0${number}.ks";
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, 0);
-					print "  - ks::${distro}::${target}::${machine}::${number}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}]\n";
+					#print "  - ks::${distro}::${target}::${machine}::${number}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}]\n";
+					if (not -e "$conf->{sys}{output_dir}/$distro")
+					{
+						mkdir "$conf->{sys}{output_dir}/$distro" or die "Failed to create: [$conf->{sys}{output_dir}/$distro], error: $!\n";
+					}
+					my $shell_call = "$conf->{sys}{output_dir}/$distro/$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}";
+					open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
+					print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{contents};
+					close $file_handle;
+					print "  - Wrote: [$shell_call]\n";
 				}
 			}
 		}
@@ -235,8 +256,7 @@ sub generate_ks
 	my $copy_logs      = get_copy_logs($conf);
 	
 	# (De)branding doesn't apply to the kickstart comment header.
-	my $content = "
-### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+	my $content = "### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
 # Built:   ".get_date($conf)."
 # Target:  $say_target
@@ -247,7 +267,6 @@ sub generate_ks
 # Run a text-based install
 install
 text
-
 ";
 	if ($target eq "pxe")
 	{
@@ -271,7 +290,6 @@ cdrom
 	}
 	
 	$content .= "
-
 # Set the language and keyboard type.
 lang $language
 keyboard $keyboard
@@ -316,7 +334,6 @@ reboot
 \%include /tmp/part-include
 
 $packages
-
 ";
 	
 	# From here, it starts to depend a lot on what we're building the KS for.
@@ -334,7 +351,6 @@ echo \"Installing the fence_raritan agent.\"
 curl http://${striker_bcn}.${source}/$os_dir/x86_64/files/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
-
 
 # Setup 'list-ips', which will display the node's post-stage-1 IP address
 # without the user having to log in.
@@ -375,9 +391,7 @@ priority=1
 EOF
 \%end
 
-
 $copy_logs
-
 
 ### Script to setup partitions.
 \%pre --log=/tmp/ks-preinstall.log
@@ -452,7 +466,6 @@ then
 	echo \"Creating the '/mnt/source' directory.\"
 	mkdir /mnt/source;
 fi
-
 ";
 		# Where we get the source ISO depends entirely on how this install is running.
 		if ($target eq "pxe")
@@ -821,8 +834,7 @@ sub get_packages
 	my ($conf, $machine) = @_;
 
 	my $striker_name = $conf->{sys}{striker_name};
-	my $packages     = "
-# This is a very minimal installation. It is just enough to get the nodes ready
+	my $packages     = "# This is a very minimal installation. It is just enough to get the nodes ready
 # for the Stage-2 'Install Manifest' run from the $striker_name dashboard.
 \%packages
 \@core
@@ -957,7 +969,7 @@ cp -p /tmp/syslog      /mnt/sysimage/root/install/
 
 sub get_date
 {
-	my ($time) = @_;
+	my ($conf, $time) = @_;
 	$time = time if not defined $time;
 	
 	my @time   = localtime($time);
