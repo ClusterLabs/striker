@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 01:58:13
+# Built:   2015-08-22 03:16:40
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Anvil! Node #02
@@ -10,7 +10,7 @@
 install
 text
 
-# Installing from Striker 02's PXE server.
+# Installing from Striker 01's PXE server.
 url --url=http://10.20.4.1/rhel6/x86_64/img/
 
 # Set the language and keyboard type.

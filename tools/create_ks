@@ -265,10 +265,21 @@ text
 ";
 	if ($target eq "pxe")
 	{
-		$content .= "
+		# If it's a dashboard, install from the peer. If it's a node, install from the source.
+		if ($machine eq "node")
+		{
+			$content .= "
+# Installing from $striker_name 0${source}'s PXE server.
+url --url=http://$striker_bcn.${source}/$os_dir/x86_64/img/
+";
+		}
+		else
+		{
+			$content .= "
 # Installing from $striker_name 0${number}'s PXE server.
 url --url=http://$peer_ip/$os_dir/x86_64/img/
 ";
+		}
 	}
 	elsif ($target eq "dvd")
 	{
@@ -456,11 +467,7 @@ mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
 mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
 
 # Create the source mount point.
-if [ ! -e '/mnt/source' ];
-then
-	echo \"Creating the '/mnt/source' directory.\"
-	mkdir /mnt/source;
-fi
+mkdir /mnt/source;
 ";
 		# Where we get the source ISO depends entirely on how this install is running.
 		if ($target eq "pxe")
@@ -472,7 +479,7 @@ echo 'Downloading the source ISO and mounting it'
 wget http://$peer_ip/$os_dir/x86_64/iso/$iso_name -O /mnt/sysimage/var/www/html/$os_dir/x86_64/iso/$iso_name
 
 # Make sure our source is mounted.
-mount -o loop /mnt/sysimage/var/www/html/$os_dir/x86_64/iso/$os_dir /mnt/source/
+mount -o loop /mnt/sysimage/var/www/html/$os_dir/x86_64/iso/$iso_name /mnt/source/
 ";
 		}
 		elsif ($target eq "dvd")

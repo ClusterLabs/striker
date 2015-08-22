@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 01:58:13
+# Built:   2015-08-22 03:16:40
 # Target:  Optical Media (DVD)
 # OS:      RHEL
 # Machine: Striker Dashboard #01
@@ -126,11 +126,7 @@ mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
 mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
 
 # Create the source mount point.
-if [ ! -e '/mnt/source' ];
-then
-	echo "Creating the '/mnt/source' directory."
-	mkdir /mnt/source;
-fi
+mkdir /mnt/source;
 
 # Make sure the optical drive is mounted.
 mount /dev/cdrom /mnt/source;

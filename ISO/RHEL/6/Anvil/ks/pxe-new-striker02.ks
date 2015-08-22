@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 01:58:13
+# Built:   2015-08-22 03:16:40
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -126,18 +126,14 @@ mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
 mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
 
 # Create the source mount point.
-if [ ! -e '/mnt/source' ];
-then
-	echo "Creating the '/mnt/source' directory."
-	mkdir /mnt/source;
-fi
+mkdir /mnt/source;
 
 # Download the ISO and mount it.
 echo 'Downloading the source ISO and mounting it'
 wget http://10.20.4.1/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso
 
 # Make sure our source is mounted.
-mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/rhel6 /mnt/source/
+mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso /mnt/source/
 
 
 # Copy the raritan fence agent into place.
