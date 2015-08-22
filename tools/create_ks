@@ -138,26 +138,26 @@ my $conf = {
 		},
 	},
 	sys	=>	{
+		admin_user	=>	"admin",
 		anvil_name	=>	"Anvil!",
-		striker_name	=>	"Striker",
-		company_name	=>	"Alteeve's Niche!",
-		os_version	=>	"6.7",
-		striker_bcn	=>	"10.20.4",
-		striker_ifn	=>	"10.255.4",
+		background	=>	"splash.jpg",
 		bcn_netmask	=>	"16",
-		ifn_netmask	=>	"16",
-		ifn_gateway	=>	"10.255.255.254",
+		company_name	=>	"Alteeve's Niche!",
+		domain		=>	"alteeve.ca",
 		ifn_dns1	=>	"8.8.8.8",
 		ifn_dns2	=>	"8.8.4.4",
-		admin_user	=>	"admin",
-		password	=>	"Initial1",	# User and 'root'.
-		timezone	=>	"America/Toronto",
-		language	=>	"en_CA.UTF-8",
-		domain		=>	"alteeve.ca",
+		ifn_gateway	=>	"10.255.255.254",
+		ifn_netmask	=>	"16",
 		keyboard	=>	"us",
-		background	=>	"splash.jpg",
+		language	=>	"en_CA.UTF-8",
+		os_version	=>	"6.7",
+		output_dir	=>	"/data0/ISO/Anvil-m2/",
+		password	=>	"Initial1",	# User and 'root'.
 		prefix		=>	"an",
-		output_dir	=>	"/tmp",
+		striker_bcn	=>	"10.20.4",
+		striker_ifn	=>	"10.255.4",
+		striker_name	=>	"Striker",
+		timezone	=>	"America/Toronto",
 	},
 };
 
@@ -168,6 +168,11 @@ print "Generating Anvil! kickstart scripts\n";
 foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 {
 	print "- Distro: [$distro]\n";
+	my $directory = "$conf->{sys}{output_dir}/$distro/$conf->{sys}{os_version}/Anvil/ks";
+	if (not -e $directory)
+	{
+		mkdir $directory or die "Failed to create: [$directory], error: $!\n";
+	}
 	foreach my $target (sort {$a cmp $b} keys %{$conf->{ks}{$distro}})
 	{
 		foreach my $machine (sort {$a cmp $b} keys %{$conf->{ks}{$distro}{$target}})
@@ -181,12 +186,7 @@ foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 					{
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name} = "pxe-new-node0${number}_from-striker0${source}.ks";
 						$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, $source);
-						#print "  - ks::${distro}::${target}::${machine}::${number}::source::${source}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}]\n";
-						if (not -e "$conf->{sys}{output_dir}/$distro")
-						{
-							mkdir "$conf->{sys}{output_dir}/$distro" or die "Failed to create: [$conf->{sys}{output_dir}/$distro], error: $!\n";
-						}
-						my $shell_call = "$conf->{sys}{output_dir}/$distro/$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}";
+						my $shell_call = "$directory/$conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{file_name}";
 						open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
 						print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{source}{$source}{contents};
 						close $file_handle;
@@ -197,12 +197,7 @@ foreach my $distro (sort {$a cmp $b} keys %{$conf->{ks}})
 				{
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name} = "${target}-new-${machine}0${number}.ks";
 					$conf->{ks}{$distro}{$target}{$machine}{$number}{contents}  = generate_ks($conf, $distro, $target, $machine, $number, 0);
-					#print "  - ks::${distro}::${target}::${machine}::${number}::file_name: [$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}]\n";
-					if (not -e "$conf->{sys}{output_dir}/$distro")
-					{
-						mkdir "$conf->{sys}{output_dir}/$distro" or die "Failed to create: [$conf->{sys}{output_dir}/$distro], error: $!\n";
-					}
-					my $shell_call = "$conf->{sys}{output_dir}/$distro/$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}";
+					my $shell_call = "$directory/$conf->{ks}{$distro}{$target}{$machine}{$number}{file_name}";
 					open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
 					print $file_handle $conf->{ks}{$distro}{$target}{$machine}{$number}{contents};
 					close $file_handle;
@@ -225,7 +220,7 @@ sub generate_ks
 			     "USB Drive";
 	my $say_machine    = $machine eq "striker" ? "Striker Dashboard" : "Anvil! Node";
 	   $say_machine   .= " #0".$number;
-	my $peer_number    = $number eq "1" ? 0 : 1;
+	my $peer_number    = $number eq "1" ? 2 : 1;
 	my $hostname       = "new-${machine}0${number}";
 	my $striker_bcn    = $conf->{sys}{striker_bcn};
 	my $striker_ifn    = $conf->{sys}{striker_ifn};
@@ -541,6 +536,7 @@ echo '/var/www/html/$os_dir/x86_64/iso/$iso_name	/var/www/html/$os_dir/x86_64/im
 
 echo 'Copying isolinux to /var/lib/tftpboot/boot/$os_dir/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/$os_dir/x86_64/
+# */ # Ignore me, I am unbreaking syntax highlighting in vim...
 \%end
 
 
@@ -566,13 +562,13 @@ cat > /root/example_striker-installer.txt << EOF
 # here and then call it with 'sh /root/example_striker-installer.txt' to
 # save typing all this out.
 # 
-# To understand what all these switches do, run './striker-installer' without
-# switches and the help will be displayed.
+# To understand what all these switches do, run './striker-installer --help' 
+# and the help will be displayed.
 # 
 ./striker-installer \\\\
  -c \"$company_name\" \\\\
  -n \"${prefix}-striker0${number}.$domain\" \\\\
- -e alert\@$domain:secret \\\\
+ -e \"$admin_user\@$domain:$password\" \\\\
  -m mail.$domain:587 \\\\
  -u \"$admin_user:$password\" \\\\
  -i $my_ifn_ip/$ifn_netmask,dg=$ifn_gateway,dns1=$ifn_dns1,dns2=$ifn_dns2 \\\\
@@ -584,6 +580,7 @@ cat > /root/example_striker-installer.txt << EOF
  -d git \\\\
  --rhn \"rhn_$admin_user:rhn_$password\"
 EOF
+
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
 # from this system.

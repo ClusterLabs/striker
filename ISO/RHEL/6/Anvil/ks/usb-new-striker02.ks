@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 01:24:16
+# Built:   2015-08-22 01:58:13
 # Target:  USB Drive
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -172,6 +172,7 @@ echo '/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso	/var/www/html/
 
 echo 'Copying isolinux to /var/lib/tftpboot/boot/rhel6/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
+# */ # Ignore me, I am unbreaking syntax highlighting in vim...
 %end
 
 
@@ -216,13 +217,13 @@ cat > /root/example_striker-installer.txt << EOF
 # here and then call it with 'sh /root/example_striker-installer.txt' to
 # save typing all this out.
 # 
-# To understand what all these switches do, run './striker-installer' without
-# switches and the help will be displayed.
+# To understand what all these switches do, run './striker-installer --help' 
+# and the help will be displayed.
 # 
 ./striker-installer \\
  -c "Alteeve's Niche!" \\
  -n "an-striker02.alteeve.ca" \\
- -e alert@alteeve.ca:secret \\
+ -e "admin@alteeve.ca:Initial1" \\
  -m mail.alteeve.ca:587 \\
  -u "admin:Initial1" \\
  -i 10.255.4.2/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
@@ -234,6 +235,7 @@ cat > /root/example_striker-installer.txt << EOF
  -d git \\
  --rhn "rhn_admin:rhn_Initial1"
 EOF
+
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
 # from this system.
