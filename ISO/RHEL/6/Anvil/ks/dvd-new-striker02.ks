@@ -66,8 +66,6 @@ httpd
 perl
 perl-Crypt-SSLeay
 perl-libwww-perl
-qemu-kvm
-perl
 rsync
 screen 
 syslinux 
@@ -96,6 +94,7 @@ nfs-utils
 nfs-utils-lib
 numad
 qemu-img
+qemu-kvm
 radvd
 rpcbind
 seabios

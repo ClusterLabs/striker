@@ -114,7 +114,7 @@ ISO="Anvil_m2_RHEL-6.7_alpha.iso"
 mkdir -p /mnt/sysimage/var/www/html/rhel6/x86_64/{img,iso,ks,files}
 wget http://10.20.4.2/rhel6/x86_64/iso/$ISO -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/$ISO
 
-# Make sure our USB source is mounted.
+# Make sure our source is mounted.
 if [ ! -e "/mnt/source" ];
 then
 	echo "Creating the '/mnt/source' directory."

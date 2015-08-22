@@ -66,8 +66,6 @@ httpd
 perl
 perl-Crypt-SSLeay
 perl-libwww-perl
-qemu-kvm
-perl
 rsync
 screen 
 syslinux 
@@ -96,6 +94,7 @@ nfs-utils
 nfs-utils-lib
 numad
 qemu-img
+qemu-kvm
 radvd
 rpcbind
 seabios
@@ -123,7 +122,6 @@ cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 
 # Create the install repo and PXE boot directories.
 echo "Creating the apache docroot and PXE directories."
-mkdir -p /mnt/sysimage/var/www/html/rhel6/x86_64/{img,iso,ks,files}
 mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/
 if [ ! -e "/mnt/sysimage/var/lib/tftpboot/pxelinux.cfg" ]
 then
