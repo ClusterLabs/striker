@@ -1387,7 +1387,7 @@ fi";
 	}
 	logger($conf, $THIS_FILE, __LINE__, "- $message", 1);
 	$shell_call .= "
-if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+if \$(grep -q '^scancore::enabled\\s*=\\s*1' $conf->{path}{striker_config});
 then 
     echo enabled; 
 else 
@@ -1494,6 +1494,7 @@ sub configure_striker_tools
 	
 	# Now copy the tools we want into place, if they're not already there.
 	logger($conf, $THIS_FILE, __LINE__, "Copying Striker tools and ScanCore into place.", 1);
+	rsync_files($conf, "$conf->{directory}{source}/striker.conf", "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/tools/*",      "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/ScanCore",     "$conf->{directory}{striker_tools}/");
 	rsync_files($conf, "$conf->{directory}{source}/AN",           "$conf->{directory}{striker_tools}/");
