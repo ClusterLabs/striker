@@ -218,7 +218,7 @@ sub generate_ks
 	my $say_target     = $target eq "pxe" ? "Network Install (PXE)" : 
 			     $target eq "dvd" ? "Optical Media (DVD)" : 
 			     "USB Drive";
-	my $say_machine    = $machine eq "striker" ? "Striker Dashboard" : "Anvil! Node";
+	my $say_machine    = $machine eq "striker" ? "$conf->{sys}{striker_name} Dashboard" : "$conf->{sys}{anvil_name} Node";
 	   $say_machine   .= " #0".$number;
 	my $peer_number    = $number eq "1" ? 2 : 1;
 	my $hostname       = "new-${machine}0${number}";
@@ -352,22 +352,24 @@ $packages
 
 $common_post
 
-# Save the raritan fence agent.
-echo \"Installing the fence_raritan agent.\"
-curl http://${striker_bcn}.${source}/$os_dir/x86_64/files/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
+# Download 'list-ips' from the Striker we're installing from.
+echo \"Downloading 'list-ips'.\"
+mkdir /sbin/striker
+curl http://${striker_bcn}.${source}/rhel6/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
+# Download 'fence_raritan_snmp' from the Striker we're installing from.
+echo \"Downloading 'fence_raritan_snmp'.\"
+curl http://${striker_bcn}.${source}/rhel6/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
 
-# Setup 'list-ips', which will display the node's post-stage-1 IP address
-# without the user having to log in.
-echo \"Downloading and installing 'list-ips'.\"
-curl http://${striker_bcn}.${source}/$os_dir/x86_64/img/Striker/striker-master/tools/list-ips > /root/list-ips
-chown root:root /root/list-ips
-chmod 755 /root/list-ips
-echo /root/list-ips >> /etc/rc.local
-
-# Create the /sbin/striker/ directory.
-mkdir /sbin/striker;
+# Download 'anvil-map-network' from the Striker we're installing from.
+echo \"Downloading 'anvil-map-network'.\"
+curl http://${striker_bcn}.${source}/rhel6/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
+chown root:root /sbin/striker/hap-map-network
+chmod 755 /sbin/striker/anvil-map-network
 
 # Show details on boot.
 echo \"Setting plymouth to use detailed boot screen\"
@@ -375,11 +377,11 @@ plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
-# Setup the Dashboard repos.
+# Setup the Striker repos.
 cat > /etc/yum.repos.d/striker01.repo << EOF
 [striker01]
 name=$striker_name 01 Repository
-baseurl=http://${striker_bcn}.${source}/$os_dir/x86_64/img/
+baseurl=http://${striker_bcn}.1/$os_dir/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -389,7 +391,7 @@ EOF
 cat > /etc/yum.repos.d/striker02.repo << EOF
 [striker02]
 name=$striker_name 02 Repository
-baseurl=http://${striker_bcn}.${source}/$os_dir/x86_64/img/
+baseurl=http://${striker_bcn}.2/$os_dir/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -510,11 +512,18 @@ cp -v /mnt/source/*.iso /mnt/sysimage/var/www/html/$os_dir/x86_64/iso/
 		# Now the common bits.
 		$content .= "
 
+# Setup 'list-ips'.
+echo \"Setting up 'list-ips'.\"
+mkdir /mnt/sysimage/sbin/striker
+cp /mnt/source/Striker/striker-master/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
 # Copy the raritan fence agent into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 
-# Copy the node KS into place
+# Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'
 cp /mnt/source/ks/pxe-new-node01_from-striker0${number}.ks /mnt/sysimage/var/www/html/$os_dir/x86_64/ks/pxe-new-node01.ks
 cp /mnt/source/ks/pxe-new-node02_from-striker0${number}.ks /mnt/sysimage/var/www/html/$os_dir/x86_64/ks/pxe-new-node02.ks
@@ -527,13 +536,13 @@ cp /mnt/source/syslinux/$background /mnt/sysimage/var/lib/tftpboot/
 
 # I'll need this later for the $admin_user-owned setuid wrapper
 echo \"Copying the '$admin_user' user's copy of 'populate_remote_authorized_keys' into place.\"
-cp /mnt/source/Striker/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/$admin_user/
+cp /mnt/source/$conf->{sys}{striker_name}/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/$admin_user/
 
 # Copy the $striker_name source files and installer into place
 echo 'Copying the $striker_name installer and source code into place.'
-cp      /mnt/source/Striker/master.zip                             /mnt/sysimage/root/
-cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
-cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
+cp      /mnt/source/$conf->{sys}{striker_name}/master.zip                             /mnt/sysimage/root/
+cp -Rvp /mnt/source/$conf->{sys}{striker_name}/striker-master                         /mnt/sysimage/root/
+cp      /mnt/source/$conf->{sys}{striker_name}/striker-master/tools/striker-installer /mnt/sysimage/root/
 
 echo \"Copying 'Tools' into /mnt/sysimage/var/www/html/$os_dir/x86_64/files/\"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/$os_dir/x86_64/files/
@@ -936,6 +945,10 @@ echo 'Setting plymouth to use detailed boot screen'
 plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
+
+# Setup 'list-ips', which will display the node's post-stage-1 IP address
+# without the user having to log in.
+echo /sbin/striker/list-ips >> /etc/rc.local
 ";
 	
 	return($common_post);

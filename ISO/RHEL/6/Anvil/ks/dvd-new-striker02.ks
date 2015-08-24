@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 03:16:40
+# Built:   2015-08-23 19:05:04
 # Target:  Optical Media (DVD)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -136,11 +136,18 @@ echo 'Copying the install iso image using dd. Be patient'
 dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso
 
 
+# Setup 'list-ips'.
+echo "Setting up 'list-ips'."
+mkdir /mnt/sysimage/sbin/striker
+cp /mnt/source/Striker/striker-master/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
 # Copy the raritan fence agent into place.
 echo 'Copying fence_raritan_snmp into /usr/sbin/'
 cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 
-# Copy the node KS into place
+# Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'
 cp /mnt/source/ks/pxe-new-node01_from-striker02.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node01.ks
 cp /mnt/source/ks/pxe-new-node02_from-striker02.ks /mnt/sysimage/var/www/html/rhel6/x86_64/ks/pxe-new-node02.ks
@@ -195,6 +202,10 @@ echo 'Setting plymouth to use detailed boot screen'
 plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
+
+# Setup 'list-ips', which will display the node's post-stage-1 IP address
+# without the user having to log in.
+echo /sbin/striker/list-ips >> /etc/rc.local
 
 
 echo 'Writing out local yum repository config'

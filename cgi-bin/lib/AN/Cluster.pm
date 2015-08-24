@@ -3815,9 +3815,17 @@ sub load_install_manifest
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
 					
-					$safe_anvil_start   = 1 if $safe_anvil_start   eq "true";
-					$anvil_kick_apc_ups = 1 if $anvil_kick_apc_ups eq "true";
-					$scancore           = 1 if $scancore           eq "true";
+					# Make sure we're using digits.
+					$safe_anvil_start   =~ s/true/1/i;  $safe_anvil_start   =~ s/yes/1/i;
+					$safe_anvil_start   =~ s/false/0/i; $safe_anvil_start   =~ s/no/1/i;
+					$anvil_kick_apc_ups =~ s/true/1/i;  $anvil_kick_apc_ups =~ s/yes/1/i;
+					$anvil_kick_apc_ups =~ s/false/0/i; $anvil_kick_apc_ups =~ s/no/1/i;
+					$scancore           =~ s/true/1/i;  $scancore           =~ s/yes/1/i;
+					$scancore           =~ s/false/0/i; $scancore           =~ s/no/1/i;
+					
+					$safe_anvil_start   = $safe_anvil_start   eq "true" ? 1 : 0;
+					$anvil_kick_apc_ups = $anvil_kick_apc_ups eq "true" ? 1 : 0;
+					$scancore           = $scancore           eq "true" ? 1 : 0;
 					
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};

@@ -3033,6 +3033,9 @@ sub update_db
 		update_db_alerts($an);
 		update_db_temperature($an);
 		update_db_power($an);
+		
+		# Record the time
+		$an->DB->update_time({file => $THIS_FILE});
 	}
 	
 	return(0);

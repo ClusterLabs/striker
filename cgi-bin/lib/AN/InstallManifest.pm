@@ -637,7 +637,7 @@ sub enable_tools_on_node
 	my $sas_rc     = 0;
 	my $shell_call = "$conf->{path}{nodes}{safe_anvil_start} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}]\n");
-	if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+	if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
 	{
 		$shell_call = "$conf->{path}{nodes}{safe_anvil_start} --enable\n";
 	}
@@ -665,7 +665,7 @@ fi
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 		if ($line eq "enabled")
 		{
-			if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+			if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
 			{
 				# Good.
 				$sas_rc = 1;
@@ -678,7 +678,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if (($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "true") or ($conf->{sys}{install_manifest}{use_safe_anvil_start} eq "1"))
+			if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
 			{
 				# Not good, should have been disabled
 				$sas_rc = 2;
@@ -696,7 +696,7 @@ fi
 	my $akau_rc    = 0;
 	   $shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}]\n");
-	if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 	{
 		$shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --enable\n";
 	}
@@ -724,7 +724,7 @@ fi
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 		if ($line eq "enabled")
 		{
-			if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
 				# Good.
 				$akau_rc = 1;
@@ -737,7 +737,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if (($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "true") or ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} eq "1"))
+			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
 				# Not good, should have been disabled
 				$akau_rc = 2;
@@ -755,7 +755,7 @@ fi
 	my $sc_rc      = 0;
 	   $shell_call = "$conf->{path}{nodes}{scancore} --disable\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
-	if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+	if ($conf->{sys}{install_manifest}{use_scancore})
 	{
 		$shell_call = "$conf->{path}{nodes}{scancore} --enable\n";
 	}
@@ -783,7 +783,7 @@ fi
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return: [$line]\n");
 		if ($line eq "enabled")
 		{
-			if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+			if ($conf->{sys}{install_manifest}{use_scancore})
 			{
 				# Good.
 				$sc_rc = 1;
@@ -796,7 +796,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if (($conf->{sys}{install_manifest}{use_scancore} eq "true") or ($conf->{sys}{install_manifest}{use_scancore} eq "1"))
+			if ($conf->{sys}{install_manifest}{use_scancore})
 			{
 				# Not good, should have been disabled
 				$sc_rc = 2;
@@ -829,11 +829,12 @@ sub configure_striker_tools
 	my ($ok) = configure_scancore($conf);
 	if ($ok)
 	{
+		### NOTE: No longer needed, simply calling '--enable' or '--disable' in needed now.
 		# This sets up an rc3.d link. When called, it will enable safe_anvil_start in striker.conf
 		# if called with the argument 'start'. This will let the crontab entry run once, and then
 		# safe_anvil_start will disable itself again. This way, it will run on boot without blocking
 		# the boot process.
-		($ok) = configure_safe_anvil_start($conf);
+		#($ok) = configure_safe_anvil_start($conf);
 		
 		### Disabled, moving to having it always run and simply disable/enable it via striker.conf.
 		### So the rc3.d link shouldn't be needed anymore.
@@ -1260,6 +1261,7 @@ if [ \"\$?\" -eq '0' ];
 then
 	echo 'ScanCore exits'
 else
+	echo \"Adding ScanCore to root's cron table.\"
 	echo '*/5 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q safe_anvil_start $conf->{path}{nodes}{cron_root}
@@ -1267,6 +1269,7 @@ if [ \"\$?\" -eq '0' ];
 then
 	echo 'safe_anvil_start exits'
 else
+	echo \"Adding 'safe_anvil_start' to root's cron table.\"
 	echo '*/5 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
@@ -1274,6 +1277,7 @@ if [ \"\$?\" -eq '0' ];
 then
 	echo 'anvil-kick-apc-ups exits'
 else
+	echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
 	echo '*/2 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
 fi
 ";
@@ -1317,6 +1321,8 @@ sub configure_scancore
 {
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
+	
+	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
@@ -1539,7 +1545,7 @@ sub configure_safe_anvil_start_on_node
 	
 	my $return_code = 0;
 	
-	# Make sure the '/shared' directory exists.
+	# Use enable or disabke safe_anvil_start
 	my $shell_call = "
 if [ -e '$conf->{path}{nodes}{safe_anvil_start}' ];
 then 

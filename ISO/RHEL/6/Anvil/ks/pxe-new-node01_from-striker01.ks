@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-22 03:16:40
+# Built:   2015-08-23 19:05:04
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Anvil! Node #01
@@ -93,23 +93,29 @@ plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
+# Setup 'list-ips', which will display the node's post-stage-1 IP address
+# without the user having to log in.
+echo /sbin/striker/list-ips >> /etc/rc.local
 
-# Save the raritan fence agent.
-echo "Installing the fence_raritan agent."
-curl http://10.20.4.1/rhel6/x86_64/files/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
+
+# Download 'list-ips' from the Striker we're installing from.
+echo "Downloading 'list-ips'."
+mkdir /sbin/striker
+curl http://10.20.4.1/rhel6/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
+# Download 'fence_raritan_snmp' from the Striker we're installing from.
+echo "Downloading 'fence_raritan_snmp'."
+curl http://10.20.4.1/rhel6/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
 
-# Setup 'list-ips', which will display the node's post-stage-1 IP address
-# without the user having to log in.
-echo "Downloading and installing 'list-ips'."
-curl http://10.20.4.1/rhel6/x86_64/img/Striker/striker-master/tools/list-ips > /root/list-ips
-chown root:root /root/list-ips
-chmod 755 /root/list-ips
-echo /root/list-ips >> /etc/rc.local
-
-# Create the /sbin/striker/ directory.
-mkdir /sbin/striker;
+# Download 'anvil-map-network' from the Striker we're installing from.
+echo "Downloading 'anvil-map-network'."
+curl http://10.20.4.1/rhel6/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
+chown root:root /sbin/striker/hap-map-network
+chmod 755 /sbin/striker/anvil-map-network
 
 # Show details on boot.
 echo "Setting plymouth to use detailed boot screen"
@@ -117,7 +123,7 @@ plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
-# Setup the Dashboard repos.
+# Setup the Striker repos.
 cat > /etc/yum.repos.d/striker01.repo << EOF
 [striker01]
 name=Striker 01 Repository
@@ -131,7 +137,7 @@ EOF
 cat > /etc/yum.repos.d/striker02.repo << EOF
 [striker02]
 name=Striker 02 Repository
-baseurl=http://10.20.4.1/rhel6/x86_64/img/
+baseurl=http://10.20.4.2/rhel6/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
