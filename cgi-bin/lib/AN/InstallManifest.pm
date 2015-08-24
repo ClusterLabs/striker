@@ -130,7 +130,7 @@ sub run_new_install_manifest
 		$conf->{packages}{to_install}{'drbd84-utils'} = 0;
 	}
 	
-	$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
+	#$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/sbin/striker/anvil-map-network";
 	
 	if ($conf->{perform_install})
@@ -482,60 +482,60 @@ sub enable_tools
 	$node2_class   = "highlight_warning_bold";
 	$node2_message = "#!string!state_0001!#";
 	# Node 1
-	if ($node1_sas_rc eq "0")
+	if ($node1_akau_rc eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
 	}
-	elsif ($node1_sas_rc eq "1")
+	elsif ($node1_akau_rc eq "1")
 	{
 		# Enabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0119!#";
 	}
-	elsif ($node1_sas_rc eq "2")
+	elsif ($node1_akau_rc eq "2")
 	{
 		# Failed to enabled!
 		$node1_message = "#!string!state_0121!#";
 		$ok            = 0;
 	}
-	elsif ($node1_sas_rc eq "3")
+	elsif ($node1_akau_rc eq "3")
 	{
 		# Disabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0120!#";
 	}
-	elsif ($node1_sas_rc eq "4")
+	elsif ($node1_akau_rc eq "4")
 	{
 		# Failed to disable!
 		$node1_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
 	# Node 2
-	if ($node2_sas_rc eq "0")
+	if ($node2_akau_rc eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
 	}
-	elsif ($node2_sas_rc eq "1")
+	elsif ($node2_akau_rc eq "1")
 	{
 		# Enabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0119!#";
 	}
-	elsif ($node2_sas_rc eq "2")
+	elsif ($node2_akau_rc eq "2")
 	{
 		# Failed to enabled!
 		$node2_message = "#!string!state_0121!#";
 		$ok            = 0;
 	}
-	elsif ($node2_sas_rc eq "3")
+	elsif ($node2_akau_rc eq "3")
 	{
 		# Disabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0120!#";
 	}
-	elsif ($node2_sas_rc eq "4")
+	elsif ($node2_akau_rc eq "4")
 	{
 		# Failed to disable!
 		$node2_message = "#!string!state_0122!#";
@@ -555,60 +555,60 @@ sub enable_tools
 	$node2_class   = "highlight_warning_bold";
 	$node2_message = "#!string!state_0001!#";
 	# Node 1
-	if ($node1_sas_rc eq "0")
+	if ($node1_sc_rc eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
 	}
-	elsif ($node1_sas_rc eq "1")
+	elsif ($node1_sc_rc eq "1")
 	{
 		# Enabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0119!#";
 	}
-	elsif ($node1_sas_rc eq "2")
+	elsif ($node1_sc_rc eq "2")
 	{
 		# Failed to enabled!
 		$node1_message = "#!string!state_0121!#";
 		$ok            = 0;
 	}
-	elsif ($node1_sas_rc eq "3")
+	elsif ($node1_sc_rc eq "3")
 	{
 		# Disabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0120!#";
 	}
-	elsif ($node1_sas_rc eq "4")
+	elsif ($node1_sc_rc eq "4")
 	{
 		# Failed to disable!
 		$node1_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
 	# Node 2
-	if ($node2_sas_rc eq "0")
+	if ($node2_sc_rc eq "0")
 	{
 		# Unknown state.
 		$ok = 0;
 	}
-	elsif ($node2_sas_rc eq "1")
+	elsif ($node2_sc_rc eq "1")
 	{
 		# Enabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0119!#";
 	}
-	elsif ($node2_sas_rc eq "2")
+	elsif ($node2_sc_rc eq "2")
 	{
 		# Failed to enabled!
 		$node2_message = "#!string!state_0121!#";
 		$ok            = 0;
 	}
-	elsif ($node2_sas_rc eq "3")
+	elsif ($node2_sc_rc eq "3")
 	{
 		# Disabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0120!#";
 	}
-	elsif ($node2_sas_rc eq "4")
+	elsif ($node2_sc_rc eq "4")
 	{
 		# Failed to disable!
 		$node2_message = "#!string!state_0122!#";
@@ -739,12 +739,12 @@ fi
 		{
 			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
-				# Not good, should have been disabled
+				# Good
 				$akau_rc = 2;
 			}
 			else
 			{
-				# Good
+				# Not good, should have been disabled
 				$akau_rc = 4;
 			}
 		}
@@ -928,7 +928,7 @@ fi;
 if [ ! -e '/etc/striker' ];
 then
     mkdir /etc/striker
-     echo 'Striker configuration directory created.'
+    echo 'Striker configuration directory created.'
 fi;
 
 if [ -e '$conf->{path}{nodes}{striker_config}' ];
