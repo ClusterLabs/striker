@@ -7567,7 +7567,6 @@ sub cold_stop_anvil
 					# to be time + sys::power_off_delay.
 					$delay = 1;
 				}
-				mark_node_as_clean_off($conf, $node, $delay);
 				
 				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 					row_class	=>	"highlight_good_bold",
@@ -7580,6 +7579,8 @@ sub cold_stop_anvil
 				# up.
 				foreach my $node (@{$conf->{up_nodes}})
 				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Marking node: [$node] as 'off' ($delay) in ScanCore...\n");
+					mark_node_as_clean_off($conf, $node, $delay);
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Powering down node: [$node]...\n");
 					my $say_message = AN::Common::get_string($conf, {key => "message_0430", variables => {
 						node	=>	$node,

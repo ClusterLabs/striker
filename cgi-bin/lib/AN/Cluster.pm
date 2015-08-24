@@ -4912,7 +4912,7 @@ Striker Version: $conf->{sys}{version}
 			<ipmi reference=\"ipmi_n02\" agent=\"fence_ipmilan\" />
 		</ipmi>
 		<kvm>
-			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password_script=\"\" agent=\"fence_virsh\" />
+			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password=\"\" password_script=\"\" agent=\"fence_virsh\" />
 		</kvm>
 		<striker>
 			<!-- 

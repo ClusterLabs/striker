@@ -904,52 +904,70 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query});
-	foreach my $row (@{$results})
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $count)
 	{
-		my $power_ups_name = $row->[0];
+		# We treat no UPSes as OK power.
+		$power_is_safe = 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "power_ups_name", value1 => $power_ups_name, 
+			name1 => "power_is_safe", value1 => $power_is_safe
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Do I know about this UPS?
-		if (ref($an->data->{power}{$power_ups_name}))
+	}
+	else
+	{
+		foreach my $row (@{$results})
 		{
-			# Yup!
-			my $power_on_battery        = $an->data->{power}{$power_ups_name}{power_on_battery};
-			my $power_charge_percentage = $an->data->{power}{$power_ups_name}{power_charge_percentage};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "power_on_battery",        value1 => $power_on_battery, 
-				name2 => "power_charge_percentage", value2 => $power_charge_percentage,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$power_on_battery = 1 if $power_on_battery eq "TRUE";
-			$power_on_battery = 0 if $power_on_battery eq "FALSE";
+			my $power_ups_name = $row->[0];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "power_on_battery", value1 => $power_on_battery, 
+				name1 => "power_ups_name", value1 => $power_ups_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ((not $power_on_battery) && ($power_charge_percentage > $highest_charge))
+			# Do I know about this UPS?
+			if (ref($an->data->{power}{$power_ups_name}))
 			{
-				$highest_charge = $power_charge_percentage;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "highest_charge", value1 => $highest_charge, 
+				# Yup!
+				my $power_on_battery        = $an->data->{power}{$power_ups_name}{power_on_battery};
+				my $power_charge_percentage = $an->data->{power}{$power_ups_name}{power_charge_percentage};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "power_on_battery",        value1 => $power_on_battery, 
+					name2 => "power_charge_percentage", value2 => $power_charge_percentage,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				$power_on_battery = 1 if $power_on_battery eq "TRUE";
+				$power_on_battery = 0 if $power_on_battery eq "FALSE";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "power_on_battery", value1 => $power_on_battery, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ((not $power_on_battery) && ($power_charge_percentage > $highest_charge))
+				{
+					$highest_charge = $power_charge_percentage;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "highest_charge", value1 => $highest_charge, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
+		}
+		
+		# Now, do I have a UPS above the minimum charge percentage?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "scancore::minimum_safe_charge", value1 => $an->data->{scancore}{minimum_safe_charge}, 
+			name2 => "highest_charge",                value2 => $highest_charge, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($highest_charge > $an->data->{scancore}{minimum_safe_charge})
+		{
+			# Yup, bueno!
+			$power_is_safe = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "power_is_safe", value1 => $power_is_safe
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	# Now, do I have a UPS above the minimum charge percentage?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "scancore::minimum_safe_charge", value1 => $an->data->{scancore}{minimum_safe_charge}, 
-		name2 => "highest_charge",                value2 => $highest_charge, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($highest_charge > $an->data->{scancore}{minimum_safe_charge})
-	{
-		# Yup, bueno!
-		$power_is_safe = 1;
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "power_is_safe", value1 => $power_is_safe
 	}, file => $THIS_FILE, line => __LINE__});
 	return($power_is_safe);
@@ -1639,13 +1657,15 @@ FROM
 WHERE 
     power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If there are no results, then mark power as always OK because #yolo

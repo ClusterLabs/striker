@@ -412,12 +412,17 @@ https://alteeve.ca/w/Support
 		<key name="link_storcli_supported_ops_shield_state"></key>
 		<key name="name_storcli_supported_ops_block_ssd_wdc_change">Block SSD Write Disk Cache Change</key>
 		<key name="info_storcli_supported_ops_block_ssd_wdc_change">Block Solid State Disk Write Disk Cache Change</key>
-		<key name="long_storcli_supported_ops_block_ssd_wdc_change">(unconfirmed. 9.6.10 is confusing) This indicates whether or not the user can change the individual SSD drive's write caching policy.  More information on the SSD Disk Cache Policy can be found in chapter 9, section 6.10 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="long_storcli_supported_ops_block_ssd_wdc_change">(unconfirmed. 9.6.10 is confusing) This indicates whether or not the user can change the individual SSD drive's write caching policy. It is blocked if the SSD cache policy is enabled. More information on the SSD Disk Cache Policy can be found in chapter 9, section 6.10 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
 		<key name="link_storcli_supported_ops_block_ssd_wdc_change"></key>
-		<key name="name_">Support Suspend Resume BG ops</key>
+		<key name="name_storcli_supported_ops_suspend_resume_bg_ops">Support Suspend Resume BG ops</key>
+		<key name="info_storcli_supported_ops_suspend_resume_bg_ops">Support Suspend Resume Background Operations</key>
+		<key name="long_storcli_supported_ops_suspend_resume_bg_ops">This indicates whether or not background processes, like consistency-check, rebuild, replace, and background initialization, can be "paused". When available, this allows the temporary suspension of tasks to maximize available throughput for user-level applications. When the workload reduces, these processes can be resumed. More information on pausing background operations can be found in chapter 9, section 6.13 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_supported_ops_suspend_resume_bg_ops"></key>
+		<key name="name_"></key>
 		<key name="info_"></key>
 		<key name="long_"></key>
 		<key name="link_"></key>
+
 		
 		<key name="name_"></key>
 		<key name="info_"></key>
@@ -448,11 +453,7 @@ https://alteeve.ca/w/Support
 		<key name="info_"></key>
 		<key name="long_"></key>
 		<key name="link_"></key>
-		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
+		<!--  More information on x can be found in chapter 9, section 6.10 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field). -->
 		
 		
 		<key name="scan_storcli_message_0003"></key>

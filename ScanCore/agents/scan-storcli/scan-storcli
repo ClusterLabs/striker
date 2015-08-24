@@ -810,7 +810,6 @@ sub gather_data
 		}
 
 =pod
-Support Suspend Resume BG ops = Yes
 Support Emergency Spares = No
 Support Set Link Speed = Yes
 Support Boot Time PFK Change = No
