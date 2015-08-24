@@ -215,8 +215,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0002">This is a free-form text field where you can put in any description you would like for the #!string!brand_0003!#.</key>
 		<key name="explain_0003">If you have an internal tracking or documentation system, and if you track the given #!string!brand_0003!# there, you can enter the URL for it here.</key>
 		<key name="explain_0004"><![CDATA[This is the name of the company, person or group that owns the specified #!string!brand_0003!#.<br />This is a purely descriptive field and you can set it to whatever you want.]]></key>
-		<key name="explain_0005"><![CDATA[When your #!string!brand_0003!# was built, a '<span class="highlight_note">ricci</span>' password was set.<br />Your dashboard needs this password in order to add, edit and remove servers from the given #!string!brand_0003!#.]]></key>
-		<key name="explain_0006"><![CDATA[On most #!string!brand_0003!# systems, the same password is used for both the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users.<br />If this is the case for you, you can leave this blank.<br />If you set a different '<span class="highlight_note">root</span>' password though, please enter that password here.<br />Please note that both nodes must have the same root password.]]></key>
+		<key name="explain_0005"></key>
+		<key name="explain_0006"><![CDATA[This is the password used to log into your #!string!brand_0003!# nodes.<br />If you built your #!string!brand_0003!# manually, this is the password used for the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users, which must match.]]></key>
 		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-aYYnZZ</span>.]]></key>
 		<key name="explain_0008"><![CDATA[Generally, if this machine is in the same place as the the #!string!brand_0003!#, the name you set here will resolve to the '#!string!brand_0005!#' of the node.<br />If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />If you use DNS (or similar) to do name to IP translation, leave this blank.]]></key>
 		<key name="explain_0009"><![CDATA[This is the TCP port used to connect to the node over SSH. If you do not specify this, port <span class="fixed_width">22</span> will be used.<br />If the nodes are behind a firewall though, you may need to specify specific port numbers in order to reach each node.<br />When in doubt, leave this blank.]]></key>
@@ -447,8 +447,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0021">Description</key>
 		<key name="row_0022">Tracking URL</key>
 		<key name="row_0023">Owner</key>
-		<key name="row_0024">'ricci' Password</key>
-		<key name="row_0025">'root' Password</key>
+		<key name="row_0024"></key>
+		<key name="row_0025">Password</key>
 		<key name="row_0026">Mail Settings</key>
 		<key name="row_0027">Mail Server Address</key>
 		<key name="row_0028">Mail Server Password</key>

@@ -283,11 +283,11 @@ sub run_new_install_manifest
 		configure_ntp($conf) or return(1);
 		
 		# Add user-specified repos
-		add_user_repositories($conf);
+		#add_user_repositories($conf);
 		
 		# If not online, and if the local dashboard is a compatible
 		# repository, this will add the repo to the node.
-		add_local_repo($conf);
+		#add_local_repo($conf);
 		
 		# Install needed RPMs.
 		install_programs($conf) or return(1);
@@ -422,15 +422,15 @@ sub enable_tools
 	}
 	elsif ($node1_sas_rc eq "2")
 	{
-		# Failed to enabled!
-		$node1_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node1_sas_rc eq "3")
-	{
 		# Disabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_sas_rc eq "3")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node1_sas_rc eq "4")
 	{
@@ -452,15 +452,15 @@ sub enable_tools
 	}
 	elsif ($node2_sas_rc eq "2")
 	{
-		# Failed to enabled!
-		$node2_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node2_sas_rc eq "3")
-	{
 		# Disabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_sas_rc eq "3")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node2_sas_rc eq "4")
 	{
@@ -495,15 +495,15 @@ sub enable_tools
 	}
 	elsif ($node1_akau_rc eq "2")
 	{
-		# Failed to enabled!
-		$node1_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node1_akau_rc eq "3")
-	{
 		# Disabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_akau_rc eq "3")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node1_akau_rc eq "4")
 	{
@@ -525,15 +525,15 @@ sub enable_tools
 	}
 	elsif ($node2_akau_rc eq "2")
 	{
-		# Failed to enabled!
-		$node2_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node2_akau_rc eq "3")
-	{
 		# Disabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_akau_rc eq "3")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node2_akau_rc eq "4")
 	{
@@ -568,15 +568,15 @@ sub enable_tools
 	}
 	elsif ($node1_sc_rc eq "2")
 	{
-		# Failed to enabled!
-		$node1_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node1_sc_rc eq "3")
-	{
 		# Disabled successfully.
 		$node1_class   = "highlight_good_bold";
 		$node1_message = "#!string!state_0120!#";
+	}
+	elsif ($node1_sc_rc eq "3")
+	{
+		# Failed to enabled!
+		$node1_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node1_sc_rc eq "4")
 	{
@@ -598,15 +598,15 @@ sub enable_tools
 	}
 	elsif ($node2_sc_rc eq "2")
 	{
-		# Failed to enabled!
-		$node2_message = "#!string!state_0121!#";
-		$ok            = 0;
-	}
-	elsif ($node2_sc_rc eq "3")
-	{
 		# Disabled successfully.
 		$node2_class   = "highlight_good_bold";
 		$node2_message = "#!string!state_0120!#";
+	}
+	elsif ($node2_sc_rc eq "3")
+	{
+		# Failed to enabled!
+		$node2_message = "#!string!state_0121!#";
+		$ok            = 0;
 	}
 	elsif ($node2_sc_rc eq "4")
 	{
@@ -681,12 +681,12 @@ fi
 			if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
 			{
 				# Not good, should have been disabled
-				$sas_rc = 2;
+				$sas_rc = 4;
 			}
 			else
 			{
 				# Good
-				$sas_rc = 4;
+				$sas_rc = 2;
 			}
 		}
 	}
@@ -739,13 +739,13 @@ fi
 		{
 			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
-				# Good
-				$akau_rc = 2;
+				# Not good, should have been disabled
+				$akau_rc = 4;
 			}
 			else
 			{
-				# Not good, should have been disabled
-				$akau_rc = 4;
+				# Good
+				$akau_rc = 2;
 			}
 		}
 	}
@@ -799,12 +799,12 @@ fi
 			if ($conf->{sys}{install_manifest}{use_scancore})
 			{
 				# Not good, should have been disabled
-				$sc_rc = 2;
+				$sc_rc = 4;
 			}
 			else
 			{
 				# Good
-				$sc_rc = 4;
+				$sc_rc = 2;
 			}
 		}
 	}

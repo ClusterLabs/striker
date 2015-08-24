@@ -641,6 +641,7 @@
 		</td>
 	</tr>
 	<!-- User-defined repos -->
+	<!-- Dropping support for repos
 	<tr>
 		<td class="highlight_good_bold">
 			#!string!row_0244!#
@@ -652,6 +653,8 @@
 			&nbsp;
 		</td>
 	</tr>
+	-->
+	#!replace!say_anvil_repos!#
 	<!-- VNC Ports to Open - Not yet user-selectable. -->
 	<input type="hidden" name="anvil_open_vnc_ports" id="anvil_open_vnc_ports" value="#!replace!anvil_open_vnc_ports!#" />
 	<!-- Machine UUIDs - Not yet user-selectable. -->
@@ -1454,6 +1457,7 @@
 					</td>
 				</tr>
 				<!-- ricci password -->
+				<!-- Setting this to always be root's PW
 				<tr>
 					<td class="highlight_ready" style="border: 0px; text-align: right;">
 						#!string!row_0024!#:
@@ -1468,13 +1472,15 @@
 						<a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci" target="_new">#!string!button_0003!#</a>,<br />
 					</td>
 				</tr>
+				-->
+				<input type="hidden" name="#!replace!cluster_ricci_pw_name!#" id="#!replace!cluster_ricci_pw_id!#" value="#!replace!cluster_root_pw_value!#"/>
 				<!-- root password -->
 				<tr>
 					<td class="highlight_ready" style="border: 0px; text-align: right;">
 						#!string!row_0025!#:
 					</td>
 					<td style="border: 0px; text-align: left;">
-						<input type="password" name="#!replace!cluster_root_pw_name!#" id="#!replace!cluster_root_pw_id!#" value="#!replace!cluster_root_pw_value!#" style="width: 300px;" tabindex="6">
+						<input type="text" name="#!replace!cluster_root_pw_name!#" id="#!replace!cluster_root_pw_id!#" value="#!replace!cluster_root_pw_value!#" style="width: 300px;" tabindex="6">
 					</td>
 					<td style="text-align: left;">
 						#!string!explain_0006!#<br />

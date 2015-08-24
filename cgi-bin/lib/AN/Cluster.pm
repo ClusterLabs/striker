@@ -2689,30 +2689,31 @@ sub create_install_manifest
 			});
 		}
 		
+		### NOTE: Dropping support for repos
 		# Anvil! extra repos
-		if (not $conf->{sys}{install_manifest}{show}{repository_field})
-		{
+		#if (not $conf->{sys}{install_manifest}{show}{repository_field})
+		#{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_repositories",
 				id		=>	"anvil_repositories",
 				value		=>	$conf->{cgi}{anvil_repositories},
 			});
-		}
-		else
-		{
-			my $anvil_repositories_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-				row		=>	"#!string!row_0244!#",
-				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0139!#" : "#!string!explain_0139!#",
-				name		=>	"anvil_repositories",
-				id		=>	"anvil_repositories",
-				value		=>	$conf->{cgi}{anvil_repositories},
-				star		=>	$conf->{form}{anvil_repositories_star},
-				more_info	=>	"$anvil_repositories_more_info",
-			});
-		}
+		#}
+		#else
+		#{
+		#	my $anvil_repositories_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+		#		url	=>	"https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories",
+		#	});
+		#	print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+		#		row		=>	"#!string!row_0244!#",
+		#		explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0139!#" : "#!string!explain_0139!#",
+		#		name		=>	"anvil_repositories",
+		#		id		=>	"anvil_repositories",
+		#		value		=>	$conf->{cgi}{anvil_repositories},
+		#		star		=>	$conf->{form}{anvil_repositories_star},
+		#		more_info	=>	"$anvil_repositories_more_info",
+		#	});
+		#}
 		
 		# Button to pre-populate the rest of the form.
 		print AN::Common::template($conf, "config.html", "install-manifest-form-spacer");
@@ -3814,18 +3815,23 @@ sub load_install_manifest
 					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
+					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$safe_anvil_start], use: 'anvil-kick-apc-ups': [$anvil_kick_apc_ups], use: 'scancore': [$scancore]\n");
 					
 					# Make sure we're using digits.
-					$safe_anvil_start   =~ s/true/1/i;  $safe_anvil_start   =~ s/yes/1/i;
-					$safe_anvil_start   =~ s/false/0/i; $safe_anvil_start   =~ s/no/1/i;
-					$anvil_kick_apc_ups =~ s/true/1/i;  $anvil_kick_apc_ups =~ s/yes/1/i;
-					$anvil_kick_apc_ups =~ s/false/0/i; $anvil_kick_apc_ups =~ s/no/1/i;
-					$scancore           =~ s/true/1/i;  $scancore           =~ s/yes/1/i;
-					$scancore           =~ s/false/0/i; $scancore           =~ s/no/1/i;
+					$safe_anvil_start   =~ s/true/1/i;
+					$safe_anvil_start   =~ s/yes/1/i;
+					$safe_anvil_start   =~ s/false/0/i;
+					$safe_anvil_start   =~ s/no/0/i;
 					
-					$safe_anvil_start   = $safe_anvil_start   eq "true" ? 1 : 0;
-					$anvil_kick_apc_ups = $anvil_kick_apc_ups eq "true" ? 1 : 0;
-					$scancore           = $scancore           eq "true" ? 1 : 0;
+					$anvil_kick_apc_ups =~ s/true/1/i;  
+					$anvil_kick_apc_ups =~ s/yes/1/i;
+					$anvil_kick_apc_ups =~ s/false/0/i; 
+					$anvil_kick_apc_ups =~ s/no/0/i;
+					
+					$scancore           =~ s/true/1/i;  
+					$scancore           =~ s/yes/1/i;
+					$scancore           =~ s/false/0/i; 
+					$scancore           =~ s/no/0/i;
 					
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
@@ -5005,9 +5011,13 @@ sub confirm_install_manifest_run
 	# so it's possible the number of ports to open isn't in
 	# the manifest.
 	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{install_manifest}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
-	my $say_repos =  $conf->{cgi}{anvil_repositories};
-		$say_repos =~ s/,/<br \/>/;
-		$say_repos =  "--" if not $say_repos;
+	
+	# NOTE: Dropping support for repos.
+	my $say_repos = "<input type=\"hidden\" name=\"anvil_repositories\" id=\"anvil_repositories\" value=\"$conf->{cgi}{anvil_repositories}\" />";
+# 	my $say_repos =  $conf->{cgi}{anvil_repositories};
+# 	   $say_repos =~ s/,/<br \/>/;
+# 	   $say_repos =  "--" if not $say_repos;
+	
 	
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
 	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
