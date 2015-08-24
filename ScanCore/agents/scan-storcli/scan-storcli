@@ -786,23 +786,30 @@ sub gather_data
 		}
 		elsif ($line =~ /^Support Shield State = (.*)?/i)
 		{
-			# storcli_supported_ops -> storcli_supported_ops_ld_bbm_info
-			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info} = $1;
+			# storcli_supported_ops -> storcli_supported_ops_shield_state
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{shield_state} = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ld_bbm_info", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info}
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::shield_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{shield_state}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^Block SSD Write Disk Cache Change = (.*)?/i)
 		{
-			# storcli_supported_ops -> storcli_supported_ops_ld_bbm_info
-			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info} = $1;
+			# storcli_supported_ops -> storcli_supported_ops_block_ssd_wdc_change
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{block_ssd_wdc_change} = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ld_bbm_info", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info}
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::block_ssd_wdc_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{block_ssd_wdc_change}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Suspend Resume BG ops = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_suspend_resume_bg_ops
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{suspend_resume_bg_ops} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::suspend_resume_bg_ops", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{suspend_resume_bg_ops}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 
 =pod
-Block SSD Write Disk Cache Change = No
 Support Suspend Resume BG ops = Yes
 Support Emergency Spares = No
 Support Set Link Speed = Yes

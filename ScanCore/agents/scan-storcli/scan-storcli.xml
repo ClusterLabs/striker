@@ -410,12 +410,11 @@ https://alteeve.ca/w/Support
 		<key name="info_storcli_supported_ops_shield_state">Support Physical Disk Shield State</key>
 		<key name="long_storcli_supported_ops_shield_state">This indicates whether or not a drive can enter a "shield" state. When available, physical disk transient failures, like a momentary communication loss, may avoid being marked as failed by first entering a shield state and diagnostics being run against the drive. More information on the shield state can be found in chapter 4, section 8.4 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
 		<key name="link_storcli_supported_ops_shield_state"></key>
-		<key name="name_">Block SSD Write Disk Cache Change</key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
-		
-		<key name="name_"></key>
+		<key name="name_storcli_supported_ops_block_ssd_wdc_change">Block SSD Write Disk Cache Change</key>
+		<key name="info_storcli_supported_ops_block_ssd_wdc_change">Block Solid State Disk Write Disk Cache Change</key>
+		<key name="long_storcli_supported_ops_block_ssd_wdc_change">(unconfirmed. 9.6.10 is confusing) This indicates whether or not the user can change the individual SSD drive's write caching policy.  More information on the SSD Disk Cache Policy can be found in chapter 9, section 6.10 of the "MegaRAID SAS Software User Guide" which can be downloaded from: http://www.avagotech.com/support/download-search (Select 'All RAID Controllers' and enter the document name into the 'Keywords' field).</key>
+		<key name="link_storcli_supported_ops_block_ssd_wdc_change"></key>
+		<key name="name_">Support Suspend Resume BG ops</key>
 		<key name="info_"></key>
 		<key name="long_"></key>
 		<key name="link_"></key>

@@ -827,9 +827,10 @@ sub configure_striker_tools
 	
 	# Configure Striker tools and Scancore.
 	my ($ok) = configure_scancore($conf);
-	if ($ok)
-	{
-		### NOTE: No longer needed, simply calling '--enable' or '--disable' in needed now.
+	
+	### NOTE: No longer needed, simply calling '--enable' or '--disable' in needed now.
+	#if ($ok)
+	#{
 		# This sets up an rc3.d link. When called, it will enable safe_anvil_start in striker.conf
 		# if called with the argument 'start'. This will let the crontab entry run once, and then
 		# safe_anvil_start will disable itself again. This way, it will run on boot without blocking
@@ -844,7 +845,7 @@ sub configure_striker_tools
 		#	# it keeps running until it is disabled.
 		#	($ok) = enable_anvil_kick_apc_ups($conf);
 		#}
-	}
+	#}
 	
 	return($ok);
 }
@@ -1321,8 +1322,6 @@ sub configure_scancore
 {
 	my ($conf) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
-	
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 	
 	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});

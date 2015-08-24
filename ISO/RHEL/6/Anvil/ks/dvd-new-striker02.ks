@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-23 19:05:04
+# Built:   2015-08-24 03:08:28
 # Target:  Optical Media (DVD)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -311,7 +311,7 @@ LABEL next
 	localboot -1
 
 LABEL pxe-new-node01
-	MENU LABEL ^1) New Anvil! Node 01 - rhel6 v6.7 - PXE - Deletes All Existing Data!
+	MENU LABEL ^1) New Anvil! Node 01 - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
 		/------------------------------------------------------------------\
@@ -323,7 +323,7 @@ LABEL pxe-new-node01
 		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 01 using rhel6 v6.7. Will create a traditional 
+		Installs a new Anvil! Node 01 using RHEL v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
@@ -332,7 +332,7 @@ LABEL pxe-new-node01
 	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
 
 LABEL pxe-new-node02
-	MENU LABEL ^2) New Anvil! Node 02 - rhel6 v6.7 - PXE - Deletes All Existing Data!
+	MENU LABEL ^2) New Anvil! Node 02 - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
 		/------------------------------------------------------------------\
@@ -344,7 +344,7 @@ LABEL pxe-new-node02
 		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 02 using rhel6 v6.7. Will create a traditional 
+		Installs a new Anvil! Node 02 using RHEL v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
@@ -353,10 +353,10 @@ LABEL pxe-new-node02
 	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
 
 LABEL pxe-new-striker01
-	MENU LABEL ^3) New Striker 01 dashboard - rhel6 v6.7 - PXE - Deletes All Existing Data!
+	MENU LABEL ^3) New Striker 01 dashboard - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 	
-		Installs a new Striker 01 using rhel6 v6.7. Will create a traditional
+		Installs a new Striker 01 using RHEL v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
@@ -365,10 +365,10 @@ LABEL pxe-new-striker01
 	APPEND initrd=boot/rhel6/x86_64/initrd.img ks=http://10.20.4.2/rhel6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
 	
 LABEL pxe-new-striker02
-	MENU LABEL ^4) New Striker 02 dashboard - rhel6 v6.7 - PXE - Deletes All Existing Data!
+	MENU LABEL ^4) New Striker 02 dashboard - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		Installs a new Striker 02 using rhel6 v6.7. Will create a traditional
+		Installs a new Striker 02 using RHEL v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
@@ -380,7 +380,7 @@ label rescue
 	MENU LABEL ^B) Rescue installed system
 	TEXT HELP
 
-		Boot the rhel6 v6.7 DVD in rescue mode.
+		Boot the RHEL v6.7 DVD in rescue mode.
 	ENDTEXT
 	KERNEL boot/rhel6/x86_64/vmlinuz
 	APPEND initrd=boot/rhel6/x86_64/initrd.img rescue

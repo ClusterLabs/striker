@@ -59,8 +59,8 @@ CREATE TABLE storcli_supported_ops (
 	storcli_supported_ops_ldpi_type3		boolean,
 	storcli_supported_ops_ld_bbm_info		boolean,
 	storcli_supported_ops_shield_state		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
+	storcli_supported_ops_block_ssd_wdc_change	boolean,	-- wdc == Write Disk Cache 
+	storcli_supported_ops_suspend_resume_bg_ops	boolean,	-- bg == Background
 	storcli_supported_ops_		boolean,
 	storcli_supported_ops_		boolean,
 	storcli_supported_ops_		boolean,
