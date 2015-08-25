@@ -86,7 +86,8 @@ UPDATE
     hosts 
 SET 
     host_emergency_stop = FALSE, 
-    host_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($say_off)."
+    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($say_off).", 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
 ;";
@@ -140,7 +141,8 @@ UPDATE
     hosts 
 SET 
     host_emergency_stop = FALSE, 
-    host_stop_reason = NULL
+    host_stop_reason    = NULL, 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
     host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
 ;";
