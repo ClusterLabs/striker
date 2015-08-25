@@ -844,7 +844,7 @@ INSERT INTO
     clustat_cluster_name, 
     modified_date 
 ) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)."), 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
     ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
