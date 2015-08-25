@@ -192,9 +192,6 @@ sub disconnect_from_databases
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
-	# Clear the old timestamp.
-	$an->data->{sys}{db_timestamp} = "";
-	
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id} =~ /^DBI::db=HASH/;
@@ -425,24 +422,24 @@ sub connect_to_databases
 			}
 			
 			# Get a time stamp for this run, if not yet gotten.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "dbh::$id",          value1 => $an->data->{dbh}{$id}, 
 				name2 => "sys::db_timestamp", value2 => $an->data->{sys}{db_timestamp}
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::read_db_id",   value1 => $an->data->{sys}{read_db_id},
 				name2 => "sys::use_db_fh",    value2 => $an->data->{sys}{use_db_fh},
 				name3 => "sys::db_timestamp", value3 => $an->data->{sys}{db_timestamp},

@@ -576,7 +576,7 @@ ORDER BY
 						chomp;
 						my $line =  $_;
 						   $line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "line", value1 => "$line"
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -643,7 +643,7 @@ ORDER BY
 				my $host_uuid           = $row->[0];
 				my $host_name           = $row->[1];
 				my $host_emergency_stop = $row->[2];
-				my $host_stop_reason    = $row->[3] ? $row->[2] : "";
+				my $host_stop_reason    = $row->[3] ? $row->[3] : "";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 					name1 => "host_uuid",                value1 => $host_uuid, 
 					name2 => "host_name",                value2 => $host_name, 
@@ -841,7 +841,8 @@ UPDATE
     hosts 
 SET 
     host_emergency_stop = FALSE, 
-    host_stop_reason = NULL
+    host_stop_reason    = NULL, 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
@@ -4236,16 +4237,18 @@ FROM
 		
 		# Do the query against the source DB and loop through the results.
 		my $results = $an->DB->do_db_query({id => $id, query => $query});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count,
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			my $host_uuid           = $row->[0];
 			my $host_name           = $row->[1];
 			my $host_type           = $row->[2];
-			my $host_emergency_stop = $row->[3] ? "TRUE" : "FALSE";
-			my $host_stop_reason    = $row->[4];
+			my $host_emergency_stop = $row->[3] ? "TRUE"    : "FALSE";
+			my $host_stop_reason    = $row->[4] ? $row->[4] : "";
 			my $modified_date       = $row->[5];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "host_uuid",           value1 => $host_uuid, 
