@@ -808,22 +808,129 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::suspend_resume_bg_ops", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{suspend_resume_bg_ops}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Support Emergency Spares = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_emergency_spares
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emergency_spares} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::emergency_spares", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emergency_spares}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Set Link Speed = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_set_link_speed
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{set_link_speed} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::set_link_speed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{set_link_speed}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Boot Time PFK Change = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_boot_time_pfk_change
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{boot_time_pfk_change} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::boot_time_pfk_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{boot_time_pfk_change}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support JBOD = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_jbod
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{jbod} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::jbod", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{jbod}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Disable Online PFK Change = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_disable_online_pfk_change
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{disable_online_pfk_change} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::disable_online_pfk_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{disable_online_pfk_change}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Perf Tuning = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_performance_tuning
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{performance_tuning} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::performance_tuning", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{performance_tuning}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support SSD PatrolRead = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_ssd_patrol_read
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ssd_patrol_read} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ssd_patrol_read", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ssd_patrol_read}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Real Time Scheduler = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_real_time_scheduler
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{real_time_scheduler} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::real_time_scheduler", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{real_time_scheduler}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Reset Now = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_reset_now
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reset_now} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::reset_now", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reset_now}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Emulated Drives = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_emulated_drives
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emulated_drives} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::emulated_drives", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emulated_drives}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Headless Mode = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_headless_mode
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{headless_mode} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::headless_mode", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{headless_mode}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Dedicated HotSpares Limited = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_dedicated_hs_limited
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hs_limited} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::dedicated_hs_limited", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hs_limited}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Point In Time Progress = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_point_in_time_progress
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{point_in_time_progress} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::point_in_time_progress", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{point_in_time_progress}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Extended LD = (.*)?/i)
+		{
+			# storcli_supported_ops -> storcli_supported_ops_extended_ld
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{extended_ld} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::extended_ld", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{extended_ld}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Supported Physical Disk Operations
+		elsif ($line =~ /^Force Online = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_force_online
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_online} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::force_online", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_online}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 
 =pod
-Support Emergency Spares = No
-Support Set Link Speed = Yes
-Support Boot Time PFK Change = No
-Support JBOD = Yes
-Disable Online PFK Change = No
-Support Perf Tuning = Yes
-Support SSD PatrolRead = Yes
-Real Time Scheduler = Yes
-Support Reset Now = No
-Support Emulated Drives = No
-Headless Mode = Yes
-Dedicated HotSpares Limited = No
-Point In Time Progress = No
-Extended LD = No
 
 
 Supported PD Operations :

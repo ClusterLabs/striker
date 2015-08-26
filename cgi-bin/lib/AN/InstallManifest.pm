@@ -51,6 +51,7 @@ sub run_new_install_manifest
 	$conf->{packages}{to_install} = {
 		acpid				=>	0,
 		'alteeve-repo'			=>	0,
+		'bash-completion'		=>	0,
 		'bridge-utils'			=>	0,
 		ccs				=>	0,
 		cman 				=>	0,
@@ -80,6 +81,7 @@ sub run_new_install_manifest
 		mailx				=>	0,
 		man				=>	0,
 		mlocate				=>	0,
+		mtr				=>	0,
 		'net-snmp'			=>	0,
 		ntp				=>	0,
 		OpenIPMI			=>	0,
@@ -90,6 +92,7 @@ sub run_new_install_manifest
 		'qemu-kvm-tools'		=>	0,
 		parted				=>	0,
 		pciutils			=>	0,
+		pcp				=>	0,
 		perl				=>	0,
 		'perl-DBD-Pg'			=>	0,
 		'perl-Digest-SHA'		=>	0,

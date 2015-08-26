@@ -17,55 +17,18 @@ CREATE TABLE storcli_adapter (
 );
 ALTER TABLE storcli OWNER TO #!variable!user!#;
 
--- Supported Operations
-CREATE TABLE storcli_supported_ops (
-	storcli_supported_ops_id			uuid				primary key,
-	storcli_supported_ops_storcli_adapter_uuid	uuid				not null,
-	storcli_supported_ops_rebuild_rate		boolean,
-	storcli_supported_ops_cc_rate			boolean,
-	storcli_supported_ops_bgi_rate			boolean,
-	storcli_supported_ops_reconstruct_rate		boolean,
-	storcli_supported_ops_patrol_read_rate		boolean,
-	storcli_supported_ops_alarm_control		boolean,
-	storcli_supported_ops_cluster_support		boolean,
-	storcli_supported_ops_bbu			boolean,
-	storcli_supported_ops_spanning			boolean,
-	storcli_supported_ops_dedicated_hot_spare	boolean,
-	storcli_supported_ops_revertible_hot_spares	boolean,
-	storcli_supported_ops_foreign_config_import	boolean,
-	storcli_supported_ops_self_diagnostic		boolean,
-	storcli_supported_ops_allow_mixed_redundancy	boolean,	-- Still needs to be defined!
-	storcli_supported_ops_global_hot_spares		boolean,
-	storcli_supported_ops_deny_scsi_passthrough	boolean,
-	storcli_supported_ops_deny_smp_passthrough	boolean,
-	storcli_supported_ops_deny_stp_passthrough	boolean,
-	storcli_supported_ops_support_more_than_8_pd	boolean,
-	storcli_supported_ops_fw_and_event_time_in_gmt	boolean,
-	storcli_supported_ops_enhanced_foreign_import	boolean,
-	storcli_supported_ops_enclosure_enumeration	boolean,
-	storcli_supported_ops_allowed_operations	boolean,
-	storcli_supported_ops_abort_cc_on_error		boolean,
-	storcli_supported_ops_multipath			boolean,
-	storcli_supported_ops_odd_even_pd_count_raid1e	boolean,
-	storcli_supported_ops_security			boolean,
-	storcli_supported_ops_config_page_model		boolean,
-	storcli_supported_ops_oce_without_adding_drives	boolean,
-	storcli_supported_ops_external_key_management	boolean,
-	storcli_supported_ops_snapshot_enabled		boolean,
-	storcli_supported_ops_premium_feature_key	boolean,
-	storcli_supported_ops_protection_information	boolean,
-	storcli_supported_ops_ldpi_type1		boolean,
-	storcli_supported_ops_ldpi_type2		boolean,
-	storcli_supported_ops_ldpi_type3		boolean,
-	storcli_supported_ops_ld_bbm_info		boolean,
-	storcli_supported_ops_shield_state		boolean,
-	storcli_supported_ops_block_ssd_wdc_change	boolean,	-- wdc == Write Disk Cache 
-	storcli_supported_ops_suspend_resume_bg_ops	boolean,	-- bg == Background
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
-	storcli_supported_ops_		boolean,
+-- Supported Physical Drive Operations
+CREATE TABLE storcli_supported_pd_ops (
+	storcli_supported_pd_ops_id			uuid				primary key,
+	storcli_supported_pd_ops_force_online		boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
+	storcli_supported_pd_ops_			boolean,
 	
 	modified_date					timestamp with time zone	not null,
 
@@ -235,6 +198,69 @@ CREATE TABLE storcli_status (
 	modified_date					timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_status_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+
+-- Supported Operations
+CREATE TABLE storcli_supported_ops (
+	storcli_supported_ops_id			uuid				primary key,
+	storcli_supported_ops_storcli_adapter_uuid	uuid				not null,
+	storcli_supported_ops_rebuild_rate		boolean,
+	storcli_supported_ops_cc_rate			boolean,
+	storcli_supported_ops_bgi_rate			boolean,
+	storcli_supported_ops_reconstruct_rate		boolean,
+	storcli_supported_ops_patrol_read_rate		boolean,
+	storcli_supported_ops_alarm_control		boolean,
+	storcli_supported_ops_cluster_support		boolean,
+	storcli_supported_ops_bbu			boolean,
+	storcli_supported_ops_spanning			boolean,
+	storcli_supported_ops_dedicated_hot_spare	boolean,
+	storcli_supported_ops_revertible_hot_spares	boolean,
+	storcli_supported_ops_foreign_config_import	boolean,
+	storcli_supported_ops_self_diagnostic		boolean,
+	storcli_supported_ops_allow_mixed_redundancy	boolean,	-- Still needs to be defined!
+	storcli_supported_ops_global_hot_spares		boolean,
+	storcli_supported_ops_deny_scsi_passthrough	boolean,
+	storcli_supported_ops_deny_smp_passthrough	boolean,
+	storcli_supported_ops_deny_stp_passthrough	boolean,
+	storcli_supported_ops_support_more_than_8_pd	boolean,
+	storcli_supported_ops_fw_and_event_time_in_gmt	boolean,
+	storcli_supported_ops_enhanced_foreign_import	boolean,
+	storcli_supported_ops_enclosure_enumeration	boolean,
+	storcli_supported_ops_allowed_operations	boolean,
+	storcli_supported_ops_abort_cc_on_error		boolean,
+	storcli_supported_ops_multipath			boolean,
+	storcli_supported_ops_odd_even_pd_count_raid1e	boolean,
+	storcli_supported_ops_security			boolean,
+	storcli_supported_ops_config_page_model		boolean,
+	storcli_supported_ops_oce_without_adding_drives	boolean,
+	storcli_supported_ops_external_key_management	boolean,
+	storcli_supported_ops_snapshot_enabled		boolean,
+	storcli_supported_ops_premium_feature_key	boolean,
+	storcli_supported_ops_protection_information	boolean,
+	storcli_supported_ops_ldpi_type1		boolean,
+	storcli_supported_ops_ldpi_type2		boolean,
+	storcli_supported_ops_ldpi_type3		boolean,
+	storcli_supported_ops_ld_bbm_info		boolean,
+	storcli_supported_ops_shield_state		boolean,
+	storcli_supported_ops_block_ssd_wdc_change	boolean,	-- wdc == Write Disk Cache 
+	storcli_supported_ops_suspend_resume_bg_ops	boolean,	-- bg == Background
+	storcli_supported_ops_emergency_spares		boolean,
+	storcli_supported_ops_set_link_speed		boolean,
+	storcli_supported_ops_boot_time_pfk_change	boolean,
+	storcli_supported_ops_jbod			boolean,
+	storcli_supported_ops_disable_online_pfk_change	boolean,
+	storcli_supported_ops_performance_tuning	boolean,
+	storcli_supported_ops_ssd_patrol_read		boolean,
+	storcli_supported_ops_real_time_scheduler	boolean,
+	storcli_supported_ops_reset_now			boolean,
+	storcli_supported_ops_emulated_drives		boolean,
+	storcli_supported_ops_headless_mode		boolean,
+	storcli_supported_ops_dedicated_hs_limited	boolean,
+	storcli_supported_ops_point_in_time_progress	boolean,
+	storcli_supported_ops_extended_ld		boolean,
+	modified_date					timestamp with time zone	not null,
+
+	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
 
 
