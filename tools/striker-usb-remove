@@ -6,14 +6,35 @@ require "/sbin/striker/striker-usb.lib";
 
 my $THIS_FILE = "striker-usb-remove";
 
-# All this script does is look for mounts that have lost their backing device
-# and cleans up if found.
-# fusermount -u /home/alteeve/usb 
+# All this script does is look for mounts that have lost their backing device and cleans up if found.
+# 
+# NOTE: Unmount fuser mounts with 'fusermount -u /mnt/point'. The 'umount' command will not work!
+# 
 
 my $conf = inititialize_configuration();
+read_configuration($conf);
+
+# See if the user is enabling, disabling or forcing this run.
+get_switches($conf);
+$conf->{sys}{debug} = 1 if $conf->{switches}{debug};
+if (($conf->{switches}{h})   || 
+    ($conf->{switches}{'?'}) ||
+    ($conf->{switches}{help}))
+{
+	print_usage($conf);
+	exit(0);
+}
+elsif ($conf->{switches}{force})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Striker USB Remove script running with '--force', ignoring $conf->{path}{striker_config} setting.", 0);
+}
+elsif (not $conf->{'remote-usb'}{enable_remote_usb_mount})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Striker USB Remove has been disabled, exiting.");
+	exit(0);
+}
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Removal Script");
-read_configuration($conf);
 if (not $conf->{'remote-usb'}{enable_remote_usb_mount})
 {
 	logger($conf, $THIS_FILE, __LINE__, "- Striker Remote USB not enabled, exiting.");

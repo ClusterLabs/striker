@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-08-24 03:08:28
+# Built:   2015-08-26 13:48:35
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -130,10 +130,10 @@ mkdir /mnt/source;
 
 # Download the ISO and mount it.
 echo 'Downloading the source ISO and mounting it'
-wget http://10.20.4.1/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso
+wget http://10.20.4.1/rhel6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso -O /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso
 
 # Make sure our source is mounted.
-mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso /mnt/source/
+mount -o loop /mnt/sysimage/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso /mnt/source/
 
 
 # Setup 'list-ips'.
@@ -172,7 +172,7 @@ echo "Copying 'Tools' into /mnt/sysimage/var/www/html/rhel6/x86_64/files/"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/rhel6/x86_64/files/
 
 echo 'Configuring /etc/fstab to mount the ISO on boot.'
-echo '/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-v6.7_alpha.iso	/var/www/html/rhel6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
+echo '/var/www/html/rhel6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso	/var/www/html/rhel6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
 
 echo 'Copying isolinux to /var/lib/tftpboot/boot/rhel6/x86_64/'
 rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/rhel6/x86_64/

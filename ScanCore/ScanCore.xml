@@ -148,7 +148,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0069">The node: [#!variable!node!#] is off but booting nodes has been disabled via: 'tools::boot_nodes::enabled = 0' in: [#!data!path::striker_config!#] so it will be left off.</key>
 		<key name="scancore_log_0070">#!string!scancore_brand_0001!# invoked with '--force', running regardless of '#!data!path::striker_config!#' setting.</key>
 		<key name="scancore_log_0071">Enabled #!string!scancore_brand_0001!# successfully. It will start within five minutes.</key>
-		<key name="scancore_log_0072">Enabled #!string!scancore_brand_0001!# successfully. It will exit within one minute.</key>
+		<key name="scancore_log_0072">Disabled #!string!scancore_brand_0001!# successfully. It will exit within one minute.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

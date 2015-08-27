@@ -213,7 +213,7 @@ sub generate_ks
 	my ($conf, $distro, $target, $machine, $number, $source) = @_;
 	
 	my $say_os         = $distro eq "centos" ? "CentOS" : "RHEL";
-	my $say_ver        = v$conf->{sys}{os_version};
+	my $say_ver        = $conf->{sys}{os_version};
 	my $os_dir         = $distro eq "centos" ? "c6" : "rhel6";
 	my $say_target     = $target eq "pxe" ? "Network Install (PXE)" : 
 			     $target eq "dvd" ? "Optical Media (DVD)" : 

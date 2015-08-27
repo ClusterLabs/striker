@@ -26,24 +26,21 @@
 # 6  = Unable to create the remote mount point
 # 7  = Remote machine does not have 'sshfs' installed.
 # 8  = sshfs call to ourselves failed.
-# 9  = The remote user does not have permission to create the remote mount
-#      point.
+# 9  = The remote user does not have permission to create the remote mount point.
 # 10 = No mountable device found.
 # 11 = The file system on the device can not be mounted locally.
 # 12 = Loop detected trying to find a mount point on the remote machine.
 # 13 = Unknown error trying to create a directory on the remote machine.
-# 14 = Asked to format an device that didn't look like a proper block device
-#      path.
+# 14 = Asked to format an device that didn't look like a proper block device path.
 # 15 = Tried to format device as LUKS, but no luksUUID was found.
 # 16 = Failed to decrypt LUKS-encrypted device.
-# 17 = blkid called against the LUKS decrypted dm device didn't return the UUID
-#      and/or fs type.
-# 18 = Attempt to mount the local mount on the remote machine using sshfs timed
-#      out.
-# 19 = Permission denied error on the remote machine when trying to create the
-#      remote mount point.
-# 20 = The remote machine failed to connect to this machine. Probably used a
-#      host name that didn't resolve to an IP address.
+# 17 = blkid called against the LUKS decrypted dm device didn't return the UUID and/or fs type.
+# 18 = Attempt to mount the local mount on the remote machine using sshfs timed out.
+# 19 = Permission denied error on the remote machine when trying to create the remote mount point.
+# 20 = The remote machine failed to connect to this machine. Probably used a host name that didn't resolve to
+#      an IP address.
+# 21 = Failed to enable in striker.conf
+# 22 = Failed to disable in striker.conf
 # 
 
 use strict;
@@ -52,18 +49,187 @@ require "/sbin/striker/striker-usb.lib";
 
 my $THIS_FILE = "striker-usb-insert";
 my $conf = inititialize_configuration();
+read_configuration($conf);
+
+# See if the user is enabling, disabling or forcing this run.
+get_switches($conf);
+$conf->{sys}{debug} = 1 if $conf->{switches}{debug};
+if (($conf->{switches}{h})   || 
+    ($conf->{switches}{'?'}) ||
+    ($conf->{switches}{help}))
+{
+	print_usage($conf);
+	exit(0);
+}
+elsif ($conf->{switches}{enable})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Enabling remote mount on USB insert.");
+	my $exit = 0;
+	my $ok   = update_configuration($conf, "enable");
+	if (not $ok)
+	{
+		$exit = 21;
+	}
+	exit($exit);
+}
+elsif ($conf->{switches}{disable})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Disabling remote mount on USB insert.");
+	my $exit = 0;
+	my $ok   = update_configuration($conf, "disable");
+	if (not $ok)
+	{
+		$exit = 22;
+	}
+	exit($exit);
+}
+elsif ($conf->{switches}{force})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert script running with '--force', ignoring $conf->{path}{striker_config} setting.", 0);
+}
+elsif (not $conf->{'remote-usb'}{enable_remote_usb_mount})
+{
+	logger($conf, $THIS_FILE, __LINE__, "- Striker USB Insert has been disabled, exiting.");
+	exit(0);
+}
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
-read_configuration($conf);
-if (not $conf->{'remote-usb'}{enable_remote_usb_mount})
-{
-	logger($conf, $THIS_FILE, __LINE__, "- Striker Remote USB Insert not enabled, exiting.");
-}
-read_syslog($conf);
-parse_syslog($conf);
+
+#find_usb_devices($conf);
+check_sd_devices($conf);
+
+#read_syslog($conf);
+#parse_syslog($conf);
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script finished.");
 
 exit(0);
+
+# This calls udevadm against all found /dev/sdX devices to find the ones that are using USB
+sub check_sd_devices
+{
+	my ($conf) = @_;
+	
+	my $shell_call = "$conf->{path}{ls} /dev/sd*";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $device      = $_;
+		next if $device =~ /\d$/;
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
+		
+		my $this_device  = "";
+		my $this_usb     = "";
+		my $block_device = ($device =~ /\/dev\/(sd.*)/)[0];
+		my $removable    = 0;
+		my $size         = 0;
+		my $read_only    = 0;
+		
+		my $shell_call  = "$conf->{path}{udevadm} info --attribute-walk --name $device";
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /looking at parent device '(.*?)'/)
+			{
+				$this_device = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_device: [$this_device].");
+				if ((not $this_usb) && ($this_device =~ /usb\d+\/(\d+-\d+)\//))
+				{
+					$this_usb = $1;
+					#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
+				}
+				next;
+			}
+			if ($line =~ /ATTR{removable}=="(\d+)"/)
+			{
+				$removable = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - removable: [$removable].");
+			}
+			if ($line =~ /ATTR{size}=="(\d+)"/)
+			{
+				$size = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - size: [$size].");
+			}
+			if ($line =~ /ATTR{ro}=="(\d+)"/)
+			{
+				$read_only = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_only: [$read_only].");
+			}
+		}
+		close $file_handle;
+		
+		my $sector_size = get_sector_size($conf, $block_device);
+		my $size_gib    = 0;
+		my $size_gb     = 0;
+		if ($block_device)
+		{
+			$size_gib = sprintf("%.2f", (($sector_size * $size) / (2 ** 30)));
+			$size_gb  = sprintf("%.2f", (($sector_size * $size) / (10 ** 9)));
+		}
+		
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].");
+		
+		my $host         = $conf->{'remote-usb'}{remote}{host};
+		my $user         = $conf->{'remote-usb'}{remote}{user};
+		my $password     = $conf->{'remote-usb'}{remote}{password};
+		my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+		my $local_mount  = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+		
+		my $yn = ["No", "Yes"];
+		logger($conf, $THIS_FILE, __LINE__, "This device: [$device] is: [$size_gib GiB ($size_gb GB)]; Removable? [".$yn->[$removable]."], Read only? [".$yn->[$read_only]."], ");
+		if (not $this_usb)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The device: [$device] is not a USB device, skipping.");
+		}
+		elsif ($read_only)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The device: [$device] is read-only, skipping it.");
+		}
+		elsif (not $size)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The device: [$device] has no size (likely a removable device with no media), skipping it.");
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+		}
+		
+		#find_file_systems($conf, $device);
+		#mount_filesystems($conf);
+		
+		$conf->{this_usb} = $this_usb;
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This reads '/sys/block/${block_device}/queue/hw_sector_size' to get the sector size.
+sub get_sector_size
+{
+	my ($conf, $block_device) = @_;
+	#logger($conf, $THIS_FILE, __LINE__, "get_sector_size(); block_device: [$block_device]");
+	
+	my $sector_size = 0;
+	my $shell_call  = "/sys/block/${block_device}/queue/hw_sector_size";
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		$sector_size = $_;
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sector_size: [$sector_size].");
+	}
+	close $file_handle;
+	
+	#logger($conf, $THIS_FILE, __LINE__, "sector_size: [$sector_size]");
+	return($sector_size);
+}
 
 # Parse syslog and decide what, if anything, to do.
 sub parse_syslog
@@ -975,6 +1141,116 @@ sub call_blkid
 	else
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device] has no file system.");
+	}
+	
+	return(0);
+}
+
+# This looks for USB devices plugged into the dashboard
+sub find_usb_devices
+{
+	my ($conf) = @_;
+	
+	my $device     = "";
+	my $shell_call = "$conf->{path}{lsusb} -v";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if (not $line)
+		{
+			$device = "";
+			next;
+		}
+		if (not $device)
+		{
+			if ($line =~ /^Bus (\d+) .* hub$/)
+			{
+				$device = "hub";
+				#logger($conf, $THIS_FILE, __LINE__, "device: [$device]");
+			}
+			else
+			{
+				(my $bus, my $device_id, my $vendor, my $product, $device) = ($line =~ /Bus (\d+) Device (\d+): ID (\w\w\w\w):(\w\w\w\w) (.*)$/);
+				#logger($conf, $THIS_FILE, __LINE__, "device: [$device], bus: [$bus], device_id: [$device_id]");
+				$conf->{device}{$device} = {
+					bus			=>	$bus,
+					device_id		=>	$device_id,
+					vendor			=>	$vendor,
+					say_vendor		=>	"",
+					product			=>	$product,
+					say_product		=>	"",
+					id_product		=>	"",
+					manufacturer		=>	"",
+					serial			=>	"",
+					interface_class		=>	"",
+				};
+			}
+		}
+		if (($device) && ($device ne "hub"))
+		{
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /idVendor\s+0x\w\w\w\w (.*)$/)
+			{
+				$conf->{device}{$device}{say_vendor} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Vendor: ............ [$conf->{device}{$device}{say_vendor}]");
+			}
+			if ($line =~ /idProduct\s+0x\w\w\w\w (.*)$/)
+			{
+				$conf->{device}{$device}{id_product} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- ID Product: ........ [$conf->{device}{$device}{id_product}]");
+			}
+			if ($line =~ /iManufacturer\s+\d+ (.*)$/)
+			{
+				$conf->{device}{$device}{manufacturer} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Manufacturer: ...... [$conf->{device}{$device}{manufacturer}]");
+			}
+			if ($line =~ /iProduct\s+\d+ (.*)$/)
+			{
+				$conf->{device}{$device}{say_product} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Product: ........... [$conf->{device}{$device}{say_product}]");
+			}
+			if ($line =~ /iSerial\s+\d+ (.*)$/)
+			{
+				$conf->{device}{$device}{serial} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Serial: ............ [$conf->{device}{$device}{serial}]");
+			}
+			if ($line =~ /bInterfaceClass\s+\d+ (.*)$/)
+			{
+				$conf->{device}{$device}{interface_class} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Interface Class: ... [$conf->{device}{$device}{interface_class}]");
+			}
+			if ($line =~ /bInterfaceSubClass\s+\d+ (.*)$/)
+			{
+				$conf->{device}{$device}{interface_subclass} = $1;
+				#logger($conf, $THIS_FILE, __LINE__, "- Interface Sub-Class: [$conf->{device}{$device}{interface_subclass}]");
+			}
+		}
+	}
+	close $file_handle;
+	
+	foreach my $device (sort {$a cmp $b} keys %{$conf->{device}})
+	{
+		next if $conf->{device}{$device}{interface_class}    ne "Mass Storage";
+		next if $conf->{device}{$device}{interface_subclass} ne "SCSI";
+		
+		# Skip flash readers
+		next if $device =~ /Flash Reader/;
+		
+		my $id = "$conf->{device}{$device}{bus}:$conf->{device}{$device}{device_id}";
+		logger($conf, $THIS_FILE, __LINE__, "Device: [$id - $device]");
+		logger($conf, $THIS_FILE, __LINE__, "- Bus: ..,............ [$conf->{device}{$device}{bus}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Device ID: ..,...... [$conf->{device}{$device}{device_id}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Vendor: ............ [0x$conf->{device}{$device}{vendor} ($conf->{device}{$device}{say_vendor})]");
+		logger($conf, $THIS_FILE, __LINE__, "- ID Product: ........ [$conf->{device}{$device}{id_product}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Manufacturer: ...... [$conf->{device}{$device}{manufacturer}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Product: ........... [0x$conf->{device}{$device}{product} ($conf->{device}{$device}{say_product})]");
+		logger($conf, $THIS_FILE, __LINE__, "- Serial: ............ [$conf->{device}{$device}{serial}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Interface Class: ... [$conf->{device}{$device}{interface_class}]");
+		logger($conf, $THIS_FILE, __LINE__, "- Interface Sub-Class: [$conf->{device}{$device}{interface_subclass}]");
 	}
 	
 	return(0);
