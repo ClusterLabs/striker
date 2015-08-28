@@ -27,6 +27,8 @@ sub inititialize_configuration
 			'mkdir'			=>	"/bin/mkdir",
 			mkfs			=>	"/sbin/mkfs",
 			mount			=>	"/bin/mount",
+			parted			=>	"/sbin/parted",
+			partprobe		=>	"/sbin/partprobe",
 			sed			=>	"/bin/sed",
 			striker_config		=>	"/etc/striker/striker.conf",
 			tail			=>	"/usr/bin/tail",
@@ -50,9 +52,9 @@ sub logger
 	my ($conf, $file, $line_number, $message) = @_;
 	
 	# Print the message to the screen.
-	print "$message\n";
-	return(0);
 	print "$file $line_number: $message\n";
+	return(0);
+	print "$message\n";
 	
 	# We split on new-lines so that multi-line message render better in
 	# syslog.

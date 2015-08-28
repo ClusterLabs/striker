@@ -166,10 +166,11 @@ sub check_sd_devices
 		my $sector_size = get_sector_size($conf, $block_device);
 		my $size_gib    = 0;
 		my $size_gb     = 0;
+		my $byte_size   = ($sector_size * $size);
 		if ($block_device)
 		{
-			$size_gib = sprintf("%.2f", (($sector_size * $size) / (2 ** 30)));
-			$size_gb  = sprintf("%.2f", (($sector_size * $size) / (10 ** 9)));
+			$size_gib = sprintf("%.2f", ($byte_size / (2 ** 30)));
+			$size_gb  = sprintf("%.2f", ($byte_size / (10 ** 9)));
 		}
 		
 		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].");
@@ -197,11 +198,9 @@ sub check_sd_devices
 		else
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+			find_file_systems($conf, $device, $byte_size);
+			mount_filesystems($conf);
 		}
-		
-		#find_file_systems($conf, $device);
-		#mount_filesystems($conf);
-		
 		$conf->{this_usb} = $this_usb;
 	}
 	close $file_handle;
@@ -404,10 +403,7 @@ sub format_device_luks
 		exit(14);
 	}
 	
-	# Delete all existing partition and create a single one using all the
-	# space on the disk.
-	
-	
+	# Delete all existing partition and create a single one using all the space on the disk.
 	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
 	my $dm_path     = "/dev/mapper/$device_name";
 	my $temp_file   = "/tmp/".time;
@@ -575,12 +571,11 @@ sub mount_filesystems
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_filesystems()");
 	
 	### TODO: If I can't make a directory, make an alternative.
-	### TODO: Make the failure to mount one partition not block further
-	###       partitions.
+	### TODO: Make the failure to mount one partition not block further partitions.
 	my $i = 0;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
 		my $this_usb        = $conf->{this_usb};
 		my $remote          = $conf->{'remote-usb'}{remote}{host};
 		my $remote_user     = $conf->{'remote-usb'}{remote}{user};
@@ -680,11 +675,9 @@ sub mount_filesystems
 				{
 					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No protected label set or no label found on the partition, proceeding.");
 				}
-				# Format. This will return the new device
-				# mapper path for the decrypted device. If
-				# anything goes wrong, it will exit, so we
-				# don't need to sanity check the returned
-				# device.
+				# Format. This will return the new device mapper path for the decrypted
+				# device. If anything goes wrong, it will exit, so we don't need to sanity 
+				# check the returned device.
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - proceed: [$proceed].");
 				if ($proceed)
 				{
@@ -1064,10 +1057,11 @@ sub get_mount_point
 # Find any filesystems on a given device
 sub find_file_systems
 {
-	my ($conf, $device) = @_;
+	my ($conf, $device, $byte_size) = @_;
 	my @filesystems;
 	
-	my $shell_call = "$conf->{path}{ls} ${device}*";
+	# First thing, call 'parted' and see if there is a label
+	my $shell_call = "$conf->{path}{parted} -s $device print free";
 	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
@@ -1078,18 +1072,114 @@ sub find_file_systems
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		# If there is a partition already on the device, I will need to know
 		# later if I need to encrypt the drive.
-		if ($line =~ /^$device\d+/)
+		if ($line =~ /unrecognised disk label/)
 		{
-			$conf->{sys}{partition_seen} = 1;
-			logger($conf, $THIS_FILE, __LINE__, "sys::partition_seen: [$conf->{sys}{partition_seen}]");
-		}
-		# Now see if I can find out more about the drive/partition
-		if (($line eq $device) or ($line =~ /^$device\d+/))
-		{
-			call_blkid($conf, $line);
+			# Make a label, gpt if > 2 TiB
+			my $shell_call = "$conf->{path}{parted} -s $device mklabel msdos";
+			if ($byte_size > 2199023255552)
+			{
+				$shell_call = "$conf->{path}{parted} -s $device mklabel gpt";
+			}
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				next if not $line;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			}
+			close $file_handle;
+			
+			$shell_call = "$conf->{path}{partprobe} $device";
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				next if not $line;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			}
+			close $file_handle;
 		}
 	}
 	close $file_handle;
+	
+	# Now if there are no partitions, create one.
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check if: [${device}1] exists.");
+	if (not -e "${device}1")
+	{
+		# Create the partition
+		my $shell_call = "$conf->{path}{parted} -s -a opt $device mkpart primary 0% 100%";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		}
+		close $file_handle;
+		
+		$shell_call = "$conf->{path}{partprobe} $device";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		}
+		close $file_handle;
+		
+		# Now format, with LUKS if a passphrase has been set.
+		if ($conf->{'remote-usb'}{luks}{passphrase})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [${device}1].");
+			($device) = format_device_luks($conf, "${device}1");
+			logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
+		}
+		else
+		{
+			my ($fs, $uuid, $label) = format_device($conf, "${device}1");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
+		}
+		call_blkid($conf, "${device}1");
+		
+		# Delete information about /dev/sdX so the program doesn't try to use it later.
+		delete $conf->{devices}{$device};
+	}
+	else
+	{
+		$shell_call = "$conf->{path}{ls} ${device}*";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			# If there is a partition already on the device, I will need to know
+			# later if I need to encrypt the drive.
+			if ($line =~ /^$device\d+/)
+			{
+				$conf->{sys}{partition_seen} = 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - sys::partition_seen: [$conf->{sys}{partition_seen}]");
+			}
+			
+			# Now see if I can find out more about the drive/partition
+			if (($line eq $device) or ($line =~ /^$device\d+/))
+			{
+				call_blkid($conf, $line);
+			}
+			
+		}
+		close $file_handle;
+	}
 	
 	return(0);
 }
