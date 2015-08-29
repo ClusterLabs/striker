@@ -23,6 +23,7 @@ sub inititialize_configuration
 			echo			=>	"/bin/echo",
 			'grep'			=>	"/bin/grep",
 			ls			=>	"/bin/ls",
+			lsblk			=>	"/bin/lsblk",
 			lsusb			=>	"/usr/sbin/lsusb",
 			'mkdir'			=>	"/bin/mkdir",
 			mkfs			=>	"/sbin/mkfs",
@@ -30,7 +31,9 @@ sub inititialize_configuration
 			parted			=>	"/sbin/parted",
 			partprobe		=>	"/sbin/partprobe",
 			sed			=>	"/bin/sed",
+			sshfs			=>	"/usr/bin/sshfs",
 			striker_config		=>	"/etc/striker/striker.conf",
+			sync			=>	"/bin/sync",
 			tail			=>	"/usr/bin/tail",
 			udevadm			=>	"/sbin/udevadm",
 			umount			=>	"/bin/umount",
@@ -178,41 +181,6 @@ sub read_configuration
 		_make_hash_reference($conf, $var, $val);
 	}
 	$fh->close();
-	
-	return(0);
-}
-
-# Read the last 100 lines of /var/log/messages looking for which USB device was
-# plugged in or removed.
-sub read_syslog
-{
-	my ($conf) = @_;
-	
-	# I'm interested in the last 24 lines, but this is safer in case
-	# something is being noisy.
-	my $sc = "$conf->{path}{tail} -n 100 /var/log/messages";
-	open (my $filehandle, "$sc 2>&1 |") or die "Failed to call: [$sc]. Error: $!\n";
-	while (<$filehandle>)
-	{
-		chomp;
-		my $line = $_;
-		next if not $line;
-		#logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
-		next if $line !~ /kernel:/;
-		if ($line =~ /New USB device found/)
-		{
-			# Old logs, clear what I've read so far.
-			#logger($conf, $THIS_FILE, __LINE__, "I see a message in syslog about a new USB device, clearing anything seen before.");
-			$conf->{syslog} = [];
-			push @{$conf->{syslog}}, $line;
-			next;
-		}
-		else
-		{
-			push @{$conf->{syslog}}, $line;
-		}
-	}
-	close $filehandle;
 	
 	return(0);
 }

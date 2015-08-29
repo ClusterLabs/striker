@@ -117,7 +117,7 @@ sub check_sd_devices
 		chomp;
 		my $device      = $_;
 		next if $device =~ /\d$/;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
 		
 		my $this_device  = "";
 		my $this_usb     = "";
@@ -127,7 +127,7 @@ sub check_sd_devices
 		my $read_only    = 0;
 		
 		my $shell_call  = "$conf->{path}{udevadm} info --attribute-walk --name $device";
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
@@ -137,28 +137,28 @@ sub check_sd_devices
 			if ($line =~ /looking at parent device '(.*?)'/)
 			{
 				$this_device = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_device: [$this_device].");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_device: [$this_device].");
 				if ((not $this_usb) && ($this_device =~ /usb\d+\/(\d+-\d+)\//))
 				{
 					$this_usb = $1;
-					#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
 				}
 				next;
 			}
 			if ($line =~ /ATTR{removable}=="(\d+)"/)
 			{
 				$removable = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - removable: [$removable].");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - removable: [$removable].");
 			}
 			if ($line =~ /ATTR{size}=="(\d+)"/)
 			{
 				$size = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - size: [$size].");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - size: [$size].");
 			}
 			if ($line =~ /ATTR{ro}=="(\d+)"/)
 			{
 				$read_only = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_only: [$read_only].");
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_only: [$read_only].");
 			}
 		}
 		close $file_handle;
@@ -173,7 +173,7 @@ sub check_sd_devices
 			$size_gb  = sprintf("%.2f", ($byte_size / (10 ** 9)));
 		}
 		
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].");
 		
 		my $host         = $conf->{'remote-usb'}{remote}{host};
 		my $user         = $conf->{'remote-usb'}{remote}{user};
@@ -197,8 +197,9 @@ sub check_sd_devices
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
+			logger($conf, $THIS_FILE, __LINE__, "- Looking for file systems on: [$device]");
 			find_file_systems($conf, $device, $byte_size);
+			logger($conf, $THIS_FILE, __LINE__, "- Mounting discovered filesystems, if needed.");
 			mount_filesystems($conf);
 		}
 		$conf->{this_usb} = $this_usb;
@@ -213,6 +214,9 @@ sub get_sector_size
 {
 	my ($conf, $block_device) = @_;
 	#logger($conf, $THIS_FILE, __LINE__, "get_sector_size(); block_device: [$block_device]");
+	
+	# Return 0 if the sysfs file doesn't exist;
+	return(0) if not -e "/sys/block/${block_device}/queue/hw_sector_size";
 	
 	my $sector_size = 0;
 	my $shell_call  = "/sys/block/${block_device}/queue/hw_sector_size";
@@ -230,71 +234,6 @@ sub get_sector_size
 	return($sector_size);
 }
 
-# Parse syslog and decide what, if anything, to do.
-sub parse_syslog
-{
-	my ($conf) = @_;
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parse_syslog().");
-	
-	my $this_usb        = "";
-	my $is_mass_storage = 0;
-	my $block_device    = "";
-	foreach my $line (@{$conf->{syslog}})
-	{
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line].");
-		if ($line =~ /kernel: usb (.*?): New USB device found/)
-		{
-			$this_usb = $1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
-		}
-		if ($line =~ /Uniform CD-ROM driver/)
-		{
-			$block_device = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
-			last;
-		}
-		next if not $this_usb;
-		$line =~ s/^.*?kernel: //;
-		if ($line =~ /SCSI emulation for USB Mass Storage devices/)
-		{
-			$is_mass_storage = 1;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - is_mass_storage: [$is_mass_storage].");
-		}
-		next if not $is_mass_storage;
-		if ($line =~ /sd(\w+): sd(\w+)\d/)
-		{
-			my $lhs = $1;
-			my $rhs = $2;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - lhs: [$lhs], rhs: [$rhs]");
-			next if (($lhs) && ($lhs ne $rhs));
-			$block_device = "sd".$lhs;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - block_device: [$block_device].");
-		}
-		next if not $block_device;
-		last;
-	}
-	if (not $block_device)
-	{
-		logger($conf, $THIS_FILE, __LINE__, "The inserted device is not a block device.");
-		exit(0);
-	}
-	
-	# We no longer require rules. If it's a block device and if
-	# remote USB mounting is enabled, proceed.
-	$conf->{this_usb} = $this_usb;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - USB device: [$this_usb], block device: [$block_device]");
-	my $host         = $conf->{'remote-usb'}{remote}{host};
-	my $user         = $conf->{'remote-usb'}{remote}{user};
-	my $password     = $conf->{'remote-usb'}{remote}{password};
-	my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
-	my $local_mount  = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
-	my $device       = "/dev/".$block_device;
-	logger($conf, $THIS_FILE, __LINE__, "I will mount filesystems on: [$device] locally as: [$local_mount] and remotely on: [$user\@$host] as: [$remote_mount]");
-	
-	find_file_systems($conf, $device);
-	mount_filesystems($conf);
-}
-
 # This tries to read the UUIS of a LUKS encypted device then checks to see if
 # we have a passphrase for the UUID. If so, it tries to decrypt the device. If
 # that works, it returns the new DM device path. If it fails, it returns an
@@ -305,6 +244,7 @@ sub decrypt_luks
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - decrypt_luks(); device: [$device].");
 	
 	# Try to decrypt the passed device using the passphrase in the config file.
+	my $decypted    = 1;
 	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
 	my $dm_path     = "/dev/mapper/$device_name";
 	my $temp_file   = "/tmp/".time;
@@ -312,16 +252,21 @@ sub decrypt_luks
 	my $uuid        = "";
 	my $label       = "";
 	my $shell_call  = "
-$conf->{path}{echo} '$conf->{'remote-usb'}{luks}{passphrase}' > $temp_file
-$conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
-unlink $temp_file
-if [ -e '$dm_path' ]
+if [ -e '$dm_path' ];
 then
+    echo 'already decrypted'
     $conf->{path}{blkid} -p $dm_path
 else
-    echo 'dm path: '$dm_path' not found'
-fi
-";
+    $conf->{path}{echo} '$conf->{'remote-usb'}{luks}{passphrase}' > $temp_file
+    $conf->{path}{cryptsetup} luksOpen $device $device_name --key-file $temp_file
+    unlink $temp_file
+    if [ -e '$dm_path' ]
+    then
+        $conf->{path}{blkid} -p $dm_path
+    else
+        echo 'dm path: '$dm_path' not found'
+    fi;
+fi;";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
@@ -329,6 +274,11 @@ fi
 		chomp;
 		my $line = $_;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line eq "already decrypted")
+		{
+			logger($conf, $THIS_FILE, __LINE__, "The device: [$device] appears to be decrypted already.");
+			$decypted = 0;
+		}
 		if ($line =~ /dm path: .* not found/)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "Failed to decrypt: [$device], unable to proceed.");
@@ -360,7 +310,14 @@ fi
 		$conf->{devices}{$device}{uuid}  = $uuid;
 		$conf->{devices}{$device}{label} = $label;
 		$conf->{devices}{$device}{path}  = $device;
-		logger($conf, $THIS_FILE, __LINE__, "Decryption was successful!");
+		if ($decypted)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "Decryption was successful!");
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "Previously decrypted device appears accessible.");
+		}
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$conf->{devices}{$device}{path}] has a file system of type: [$conf->{devices}{$device}{fs}] with UUID: [$conf->{devices}{$device}{uuid}].");
 	}
 	else
@@ -576,6 +533,30 @@ sub mount_filesystems
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
+		
+		# Before I do anything; Is it already mounted?
+		my $shell_call = "
+if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
+then
+    echo 'already mounted'; 
+else 
+    echo 'not mounted';
+fi";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+			if ($line eq "already mounted")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "The device: [$device] is already mounted, no reason to proceed.");
+				return(0);
+			}
+		}
+		close $file_handle;
+		
 		my $this_usb        = $conf->{this_usb};
 		my $remote          = $conf->{'remote-usb'}{remote}{host};
 		my $remote_user     = $conf->{'remote-usb'}{remote}{user};
@@ -597,16 +578,14 @@ sub mount_filesystems
 		my $mountable = 0;
 		if ($conf->{devices}{$device}{fs} eq "crypto_LUKS")
 		{
-			# We need to get the device's UUID and, if there is an
-			# entry in the config file, decrypt it and modify the
-			# $device variable with the new dm path.
+			# We need to get the device's UUID and, if there is an entry in the config file, 
+			# decrypt it and modify the $device variable with the new dm path.
 			logger($conf, $THIS_FILE, __LINE__, "Device: [$device] is a LUKS encypted device. Checking if I have the passphrase.");
 			($device) = decrypt_luks($conf, $device);
 			logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
 			$mountable = 1;
 			
-			# If there was a label on the decrypted FS, update the
-			# mount directory name.
+			# If there was a label on the decrypted FS, update the mount directory name.
 			if ($conf->{devices}{$device}{label})
 			{
 				# A label was set, update the mount name.
@@ -630,9 +609,8 @@ sub mount_filesystems
 			# then we're going to have to format this partition.
 			if ($conf->{'remote-usb'}{luks}{force_initialize})
 			{
-				# Before we format, see if the user has set a
-				# protected label and, if so, if this FS is
-				# protected.
+				# Before we format, see if the user has set a protected label and, if so, if
+				# this FS is protected.
 				my $proceed = 1;
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - About to format, but checking first for a protected label: [$conf->{'remote-usb'}{luks}{protected_label}] that matches the partition's label: [$conf->{devices}{$device}{label}].");
 				if (($conf->{'remote-usb'}{luks}{protected_label}) && ($conf->{devices}{$device}{label}))
@@ -721,193 +699,122 @@ sub mount_filesystems
 			exit(10);
 		}
 		
-		if (not -e $local_mount)
-		{
-			make_path($local_mount, {
-				mode	=>	0777,
-			});
-			if (not -e $local_mount)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "Failed to create the local mount directory: [$local_mount]");
-				exit(2);
-			}
-		}
-		elsif (not -d $local_mount)
-		{
-			logger($conf, $THIS_FILE, __LINE__, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
-			exit(3);
-		}
-		$i++;
-		
-		# Make sure the mount point is empty.
-		local(*DIR);
-		opendir(DIR, $local_mount) or die "Failed to open the directory: [$local_mount], error was: $!\n";
-		while (my $file = readdir(DIR))
-		{
-			next if (($file eq ".") or ($file eq ".."));
-			logger($conf, $THIS_FILE, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
-			exit(4);
-		}
-		
-		# Finally, mount the FS.
-		my $shell_call = "$conf->{path}{mount} $device $local_mount";
-		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-		while (<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
-			if ($line =~ /unknown filesystem type '(.*?)'/)
-			{
-				my $fs = $1;
-				logger($conf, $THIS_FILE, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
-				exit(11);
-			}
-		}
-		close $file_handle;
-		
-		# Check that it actually mounted.
-		my $mounted    = 0;
-		   $shell_call = "$conf->{path}{df} -hP";
+		# See if the device is already mounted.
+		my $already_mounted = 0;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], local_mount: [$local_mount]");
+		$shell_call = "
+if $conf->{path}{mount} | $conf->{path}{grep} -q '$device on $local_mount';
+then 
+    echo 'already mounted';
+else 
+    echo 'mount needed';
+fi;";
 		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line].");
-			if (($line =~ /^$device /) && ($line =~ /$local_mount$/))
+			logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
+			if ($line eq "already mounted")
 			{
-				$mounted = 1;
-				logger($conf, $THIS_FILE, __LINE__, " - Mounted.");
+				logger($conf, $THIS_FILE, __LINE__, "The device: [$device] is already mounted on: [$local_mount].");
+				$already_mounted = 1;
 			}
 		}
 		close $file_handle;
 		
-		if ($mounted)
+		if (not $already_mounted)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
-		}
-		else
-		{
-			logger($conf, $THIS_FILE, __LINE__, "Failed to mount: [$device] locally on: [$local_mount]. Unable to proceed.");
-			exit(9);
-		}
-		
-		# See if the desired mount point is available.
-		my $directory_found  = 0;
-		my $directory_in_use = 0; 
-		my $j                = 0;
-		my $use_directory    = $remote_mount;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
-		die if not $use_directory;
-		until($directory_found)
-		{
-			$directory_in_use = 0;
-			if ($j)
+			if (not -e $local_mount)
 			{
-				$use_directory = "${remote_mount}-$j";
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
-			}
-			my $shell_call = "ls -A $use_directory";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
-			my ($error, $ssh_fh, $return) = remote_call($conf, {
-				remote		=>	$remote,
-				port		=>	22,
-				user		=>	$remote_user,
-				password	=>	$remote_password,
-				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-			foreach my $line (@{$return})
-			{
-				next if not $line;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-				if ($line =~ /No such file or directory/i)
+				make_path($local_mount, {
+					mode	=>	0777,
+				});
+				if (not -e $local_mount)
 				{
-					# We're good, create the directory.
-					my $shell_call = "/bin/mkdir $use_directory; if [ -e '$use_directory' ]; then echo created; else echo failed; fi";
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
-					my ($error, $ssh_fh, $return) = remote_call($conf, {
-						remote		=>	$remote,
-						port		=>	22,
-						user		=>	$remote_user,
-						password	=>	$remote_password,
-						ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
-						'close'		=>	0,
-						shell_call	=>	$shell_call,
-					});
-					foreach my $line (@{$return})
-					{
-						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-						if ($line =~ /cannot create directory/)
-						{
-							logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to create the directory: [$use_directory].");
-							logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Does the user: [$remote_user] have sufficient rights on the remote machine: [$remote] to create this directory?");
-							exit(19);
-						}
-						elsif ($line eq "failed")
-						{
-							# <sad trombone />
-							logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
-							exit(13);
-						}
-						elsif ($line eq "created")
-						{
-							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Directory created");
-							$directory_found = 1;
-						}
-					}
-				}
-				else
-				{
-					# Directory exists and I got output, so
-					# something is in it.
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
-					$directory_in_use = 1;
+					logger($conf, $THIS_FILE, __LINE__, "Failed to create the local mount directory: [$local_mount]");
+					exit(2);
 				}
 			}
-			if (not $directory_in_use)
+			elsif (not -d $local_mount)
 			{
-				# This directory is empty, we can use it.
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No data in: [$use_directory], using it.");
-				$directory_found = 1;
+				logger($conf, $THIS_FILE, __LINE__, "There is a file called: [$local_mount], which is where I wanted to create a mount point. Unable to proceed.");
+				exit(3);
 			}
-			$j++;
-			if ($j > 5)
+			$i++;
+			
+			# Make sure the mount point is empty.
+			local(*DIR);
+			opendir(DIR, $local_mount) or die "Failed to open the directory: [$local_mount], error was: $!\n";
+			while (my $file = readdir(DIR))
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Loop detected trying to find a mount point on the remote machine.");
-				exit(12);
+				next if (($file eq ".") or ($file eq ".."));
+				logger($conf, $THIS_FILE, __LINE__, "Found a file: [$local_mount/$file], the mount point is not empty. Unable to proceed.");
+				exit(4);
+			}
+			
+			# Finally, mount the FS.
+			$shell_call = "$conf->{path}{mount} $device $local_mount";
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
+				if ($line =~ /unknown filesystem type '(.*?)'/)
+				{
+					my $fs = $1;
+					logger($conf, $THIS_FILE, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
+					exit(11);
+				}
+			}
+			close $file_handle;
+			
+			# Check that it actually mounted.
+			my $mounted    = 0;
+			$shell_call = "$conf->{path}{df} -hP";
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line].");
+				if (($line =~ /^$device /) && ($line =~ /$local_mount$/))
+				{
+					$mounted = 1;
+					logger($conf, $THIS_FILE, __LINE__, " - Mounted.");
+				}
+			}
+			close $file_handle;
+			
+			if ($mounted)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "Failed to mount: [$device] locally on: [$local_mount]. Unable to proceed.");
+				exit(9);
 			}
 		}
-		$remote_mount = $use_directory;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 		
-		# If I am still alive, I can mount.
+		# See if this device is already mounted on the remote node.
 		my $local_host         = $conf->{'remote-usb'}{'local'}{host};
 		my $local_user         = $conf->{'remote-usb'}{'local'}{user};
 		my $local_password     = $conf->{'remote-usb'}{'local'}{password};
 		my $remote_known_hosts = "/home/$remote_user/.ssh/known_hosts";
-		if ($remote_user eq "root")
-		{
-			$remote_known_hosts = "/root/.ssh/known_hosts";
-		}
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_host: [$local_host], local_user: [$local_user], local_password: [$local_password], remote_known_hosts: [$remote_known_hosts]");
-		
-		# Make sure the remote machine's user has us in their
-		# known_hosts file.
-		logger($conf, $THIS_FILE, __LINE__, "Ready to mount local: [$local_mount] on remote: [$remote] at: [$remote_mount].");
-		$shell_call = "
-if [ ! -e '$remote_known_hosts' ] || ! \$(grep -q $local_host $remote_known_hosts)
-then
-    ssh-keyscan $local_host >> $remote_known_hosts
-    echo 'RSA key added'
-else
-    echo 'RSA key exists'
-fi";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+		my $mount_needed       = 1;
+		   $shell_call         = "
+if mount | grep -q '$local_user\@$local_host:$local_mount';
+then 
+    echo 'already mounted'; 
+else 
+    echo 'mount needed'; 
+fi;";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 		my ($error, $ssh_fh, $return) = remote_call($conf, {
 			remote		=>	$remote,
 			port		=>	22,
@@ -920,78 +827,217 @@ fi";
 		foreach my $line (@{$return})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-			if ($line =~ /getaddrinfo (.*?): Name or service not known/)
+			if ($line eq "already mounted")
 			{
-				my $name = $1;
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Asked the remote machine: [$remote] to connect to this machine using the name or IP: [$name].");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If this is a host name, can the remote machine resolve it to an IP?");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Perhaps the remote machine's '/etc/hosts' file needs to be updated?");
-				unmount($conf, $device);
-				exit(20);
+				logger($conf, $THIS_FILE, __LINE__, "Our local mount: [$local_user\@$local_host:$local_mount] is already mounted on the remote machine.");
+				$mount_needed = 0;
 			}
 		}
 		
-		# Try the mount
-		$shell_call  = "echo $local_password | sshfs -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead $local_user\@$local_host:$local_mount $remote_mount";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
-		($error, $ssh_fh, $return) = remote_call($conf, {
-			remote		=>	$remote,
-			port		=>	22,
-			user		=>	$remote_user,
-			password	=>	$remote_password,
-			ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_needed: [$mount_needed]");
+		if ($mount_needed)
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-			if ($line =~ /sshfs: command not found/)
+			# See if the desired *remote* mount point is available.
+			my $directory_found  = 0;
+			my $directory_in_use = 0; 
+			my $j                = 0;
+			my $use_directory    = $remote_mount;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
+			die if not $use_directory;
+			until($directory_found)
 			{
-				# Make this stand out in syslog
-				logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
-				logger($conf, $THIS_FILE, __LINE__, "ERROR: Remote machine: [$remote] does not have 'sshfs' installed.");
-				logger($conf, $THIS_FILE, __LINE__, "ERROR: Unable to mount this USB device on the target node.");
-				logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
-				unmount($conf, $device);
-				exit(7);
+				$directory_in_use = 0;
+				if ($j)
+				{
+					$use_directory = "${remote_mount}-$j";
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
+				}
+				my $shell_call = "$conf->{path}{ls} -A $use_directory";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+				my ($error, $ssh_fh, $return) = remote_call($conf, {
+					remote		=>	$remote,
+					port		=>	22,
+					user		=>	$remote_user,
+					password	=>	$remote_password,
+					ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					next if not $line;
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+					if ($line =~ /No such file or directory/i)
+					{
+						# We're good, create the directory.
+						my $shell_call = "
+$conf->{path}{mkdir} $use_directory;
+if [ -e '$use_directory' ];
+then 
+    echo created; 
+else 
+    echo failed; 
+fi";
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+						my ($error, $ssh_fh, $return) = remote_call($conf, {
+							remote		=>	$remote,
+							port		=>	22,
+							user		=>	$remote_user,
+							password	=>	$remote_password,
+							ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+							'close'		=>	0,
+							shell_call	=>	$shell_call,
+						});
+						foreach my $line (@{$return})
+						{
+							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+							if ($line =~ /cannot create directory/)
+							{
+								logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to create the directory: [$use_directory].");
+								logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Does the user: [$remote_user] have sufficient rights on the remote machine: [$remote] to create this directory?");
+								exit(19);
+							}
+							elsif ($line eq "failed")
+							{
+								# <sad trombone />
+								logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Unknown error trying to create the directory: [$use_directory] on the remote machine: [$remote] as the user: [$remote_user]");
+								exit(13);
+							}
+							elsif ($line eq "created")
+							{
+								logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Directory created");
+								$directory_found = 1;
+							}
+						}
+					}
+					else
+					{
+						# Directory exists and I got output, so
+						# something is in it.
+						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
+						$directory_in_use = 1;
+					}
+				}
+				if (not $directory_in_use)
+				{
+					# This directory is empty, we can use it.
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No data in: [$use_directory], using it.");
+					$directory_found = 1;
+				}
+				$j++;
+				if ($j > 5)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Loop detected trying to find a mount point on the remote machine.");
+					exit(12);
+				}
 			}
-			elsif ($line =~ /fuse: failed to exec fusermount: Permission denied/)
+			$remote_mount = $use_directory;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
+			
+			# If I am still alive, I can mount.
+			if ($remote_user eq "root")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Calling: [$shell_call] on the remote machine returned a 'permission denied' error.");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Is the remote user: [$remote_user] user in the 'fuse' group?");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If not, please run: [usermod -a -G fuse $remote_user] on the remote server and try again.");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to proceed.");
-				unmount($conf, $device);
-				exit(8);
+				$remote_known_hosts = "/root/.ssh/known_hosts";
 			}
-			elsif ($line =~ /Timeout waiting for prompt/i)
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_host: [$local_host], local_user: [$local_user], local_password: [$local_password], remote_known_hosts: [$remote_known_hosts]");
+			
+			# Make sure the remote machine's user has us in their
+			# known_hosts file.
+			logger($conf, $THIS_FILE, __LINE__, "Ready to mount local: [$local_mount] on remote: [$remote] at: [$remote_mount].");
+			$shell_call = "
+if [ ! -e '$remote_known_hosts' ] || ! \$($conf->{path}{grep} -q $local_host $remote_known_hosts)
+then
+    ssh-keyscan $local_host >> $remote_known_hosts
+    echo 'RSA key added'
+else
+    echo 'RSA key exists'
+fi";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+			my ($error, $ssh_fh, $return) = remote_call($conf, {
+				remote		=>	$remote,
+				port		=>	22,
+				user		=>	$remote_user,
+				password	=>	$remote_password,
+				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
 			{
-				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a timed out. Unable to proceed.");
-				unmount($conf, $device);
-				exit(18);
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /getaddrinfo (.*?): Name or service not known/)
+				{
+					my $name = $1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Asked the remote machine: [$remote] to connect to this machine using the name or IP: [$name].");
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If this is a host name, can the remote machine resolve it to an IP?");
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Perhaps the remote machine's '/etc/hosts' file needs to be updated?");
+					unmount($conf, $device);
+					exit(20);
+				}
 			}
-		}
-		
-		# Now call the .post_mount script, if it exists.
-		$shell_call = "
+			
+			# Try the mount
+			$shell_call  = "$conf->{path}{echo} $local_password | $conf->{path}{sshfs} -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead $local_user\@$local_host:$local_mount $remote_mount";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+			($error, $ssh_fh, $return) = remote_call($conf, {
+				remote		=>	$remote,
+				port		=>	22,
+				user		=>	$remote_user,
+				password	=>	$remote_password,
+				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /sshfs: command not found/)
+				{
+					# Make this stand out in syslog
+					logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
+					logger($conf, $THIS_FILE, __LINE__, "ERROR: Remote machine: [$remote] does not have 'sshfs' installed.");
+					logger($conf, $THIS_FILE, __LINE__, "ERROR: Unable to mount this USB device on the target node.");
+					logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
+					unmount($conf, $device);
+					exit(7);
+				}
+				elsif ($line =~ /fuse: failed to exec fusermount: Permission denied/)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Calling: [$shell_call] on the remote machine returned a 'permission denied' error.");
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Is the remote user: [$remote_user] user in the 'fuse' group?");
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If not, please run: [usermod -a -G fuse $remote_user] on the remote server and try again.");
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to proceed.");
+					unmount($conf, $device);
+					exit(8);
+				}
+				elsif ($line =~ /Timeout waiting for prompt/i)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a timed out. Unable to proceed.");
+					unmount($conf, $device);
+					exit(18);
+				}
+			}
+			
+			# Now call the .post_mount script, if it exists.
+			$shell_call = "
 if [ -x '/home/$remote_user/.post_mount' ]
 then
 	/home/$remote_user/.post_mount 
 fi";
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
-		($error, $ssh_fh, $return) = remote_call($conf, {
-			remote		=>	$remote,
-			port		=>	22,
-			user		=>	$remote_user,
-			password	=>	$remote_password,
-			ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+			($error, $ssh_fh, $return) = remote_call($conf, {
+				remote		=>	$remote,
+				port		=>	22,
+				user		=>	$remote_user,
+				password	=>	$remote_password,
+				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			}
 		}
 	}
 	
@@ -1107,8 +1153,9 @@ sub find_file_systems
 	close $file_handle;
 	
 	# Now if there are no partitions, create one.
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check if: [${device}1] exists.");
-	if (not -e "${device}1")
+	my $new_device = "${device}1";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check if: [$new_device] exists.");
+	if (not -e "$new_device")
 	{
 		# Create the partition
 		my $shell_call = "$conf->{path}{parted} -s -a opt $device mkpart primary 0% 100%";
@@ -1138,19 +1185,21 @@ sub find_file_systems
 		# Now format, with LUKS if a passphrase has been set.
 		if ($conf->{'remote-usb'}{luks}{passphrase})
 		{
-			logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [${device}1].");
-			($device) = format_device_luks($conf, "${device}1");
+			logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [$new_device].");
+			($device) = format_device_luks($conf, "$new_device");
 			logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
 		}
 		else
 		{
-			my ($fs, $uuid, $label) = format_device($conf, "${device}1");
+			my ($fs, $uuid, $label) = format_device($conf, "$new_device");
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
 		}
-		call_blkid($conf, "${device}1");
 		
 		# Delete information about /dev/sdX so the program doesn't try to use it later.
 		delete $conf->{devices}{$device};
+		
+		# Get the info on the new device
+		call_blkid($conf, $new_device);
 	}
 	else
 	{
@@ -1231,6 +1280,10 @@ sub call_blkid
 	else
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device] has no file system.");
+		$conf->{devices}{$device}{fs}    = "";
+		$conf->{devices}{$device}{uuid}  = "";
+		$conf->{devices}{$device}{label} = "";
+		$conf->{devices}{$device}{path}  = "";
 	}
 	
 	return(0);
