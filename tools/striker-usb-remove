@@ -9,7 +9,7 @@ my $THIS_FILE = "striker-usb-remove";
 # All this script does is look for mounts that have lost their backing device and cleans up if found.
 # 
 # NOTE: Unmount fuser mounts with 'fusermount -u /mnt/point'. The 'umount' command will not work!
-# BUG: If the mount point is gone but there is a stray dm, it doesn't get removed.
+# 
 
 my $conf = inititialize_configuration();
 read_configuration($conf);
@@ -95,6 +95,31 @@ sub find_missing_devices
 
 	# Look for mounts on the remote machine pointing to no-longer existing local mounts.
 	cleanup_remote($conf);
+	
+	# Final step is to look for stale, detached dm devices.
+	$shell_call = "
+for dev in \$($conf->{path}{dmsetup} ls | $conf->{path}{awk} '{print \$1}');
+do
+    if [[ \$dev = 'No' ]];
+    then
+        echo 'No device-mapped devices exist';
+    elif $conf->{path}{lsblk} | $conf->{path}{grep} -f \$dev; 
+    then
+        echo 'device exists'; 
+    else 
+        echo device is stale; 
+        $conf->{path}{dmsetup} remove \$dev
+    fi; 
+done";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+	}
+	close $file_handle;
 	
 	return(0);
 }

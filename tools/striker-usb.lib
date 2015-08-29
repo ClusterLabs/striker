@@ -16,6 +16,7 @@ sub inititialize_configuration
 	my $conf = {
 		devices	=>	{},
 		path	=>	{
+			awk			=>	"/bin/awk",
 			blkid			=>	"/sbin/blkid",
 			cryptsetup		=>	"/sbin/cryptsetup",
 			df			=>	"/bin/df",
