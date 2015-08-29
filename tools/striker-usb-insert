@@ -532,6 +532,7 @@ sub mount_filesystems
 	my $i = 0;
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
+		next if $device !~ /\d$/;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
 		
 		# Before I do anything; Is it already mounted?
@@ -1194,9 +1195,6 @@ sub find_file_systems
 			my ($fs, $uuid, $label) = format_device($conf, "$new_device");
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
 		}
-		
-		# Delete information about /dev/sdX so the program doesn't try to use it later.
-		delete $conf->{devices}{$device};
 		
 		# Get the info on the new device
 		call_blkid($conf, $new_device);
