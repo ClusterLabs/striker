@@ -9543,17 +9543,34 @@ sub configure_network_on_node
 	   $iptables .= ":INPUT ACCEPT [0:0]\n";
 	   $iptables .= ":FORWARD ACCEPT [0:0]\n";
 	   $iptables .= ":OUTPUT ACCEPT [0:0]\n";
+	   # Allow remote desktop access to servers on both the IFN and BCN. This opens 100 ports. If you
+	   # want to change this range, put the range '5900:(5900+VM count)'.
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:5999 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
+	   # KVM live-migration ports on BCN
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
+	   # DRBD resource 0 and 1 - on the SN
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7789 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7788 -j ACCEPT \n";
+	   # multicast (igmp; Internet group management protocol)
 	   $iptables .= "-A INPUT -p igmp -j ACCEPT \n";
+	   # modclusterd
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
+	   # ricci
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
+	   # dlm
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
+	   # cman (corosync's totem); ring 0
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+	   # ... ring 1
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+	   # NTP
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
 	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
 	   # TODO: Open up VNC now, but make it an option later.
@@ -12662,8 +12679,10 @@ sub generate_cluster_conf
 	$conf->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
 <cluster name=\"$conf->{cgi}{anvil_name}\" config_version=\"1\">
 	<cman expected_votes=\"1\" two_node=\"1\" />
+	<totem rrp_mode=\"active\">
 	<clusternodes>
 		<clusternode name=\"$conf->{cgi}{anvil_node1_name}\" nodeid=\"1\">
+			<altname name=\"${node1_short_name}.sn\" />
 			<fence>\n";
 	# Fence methods for node 1
 	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node1_full_name}{order}})
@@ -12681,6 +12700,7 @@ sub generate_cluster_conf
 	$conf->{sys}{cluster_conf} .= "\t\t\t</fence>
 		</clusternode>
 		<clusternode name=\"$conf->{cgi}{anvil_node2_name}\" nodeid=\"2\">
+			<altname name=\"${node2_short_name}.sn\" />
 			<fence>\n";
 	# Fence methods for node 2
 	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node2_full_name}{order}})

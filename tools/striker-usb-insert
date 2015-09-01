@@ -458,7 +458,7 @@ sub format_device
 	my ($conf, $device) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - format_device(); device: [$device]");
 	
-	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device";
+	my $mkfs_call = "$conf->{path}{touch} $conf->{path}{format_running}; $conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device; $conf->{path}{rm} -f $conf->{path}{format_running}";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::luks::use_filesystem: [$conf->{'remote-usb'}{luks}{use_filesystem}], remote-usb::luks::fs_label: [$conf->{'remote-usb'}{luks}{fs_label}]");
 	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
