@@ -6416,7 +6416,7 @@ sub get_daemon_state
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc] (stopped: [$stopped_rc], running: [$running_rc]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc] (stopped: [$stopped_rc], running: [$running_rc])\n");
 			if ($rc eq $running_rc)
 			{
 				$state = 1;
@@ -12679,7 +12679,6 @@ sub generate_cluster_conf
 	$conf->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
 <cluster name=\"$conf->{cgi}{anvil_name}\" config_version=\"1\">
 	<cman expected_votes=\"1\" two_node=\"1\" />
-	<totem rrp_mode=\"active\">
 	<clusternodes>
 		<clusternode name=\"$conf->{cgi}{anvil_node1_name}\" nodeid=\"1\">
 			<altname name=\"${node1_short_name}.sn\" />
@@ -12728,7 +12727,7 @@ sub generate_cluster_conf
 	}
 	$conf->{sys}{cluster_conf} .= "\t</fencedevices>
 	<fence_daemon post_join_delay=\"$conf->{sys}{post_join_delay}\" />
-	<totem rrp_mode=\"none\" secauth=\"off\"/>
+	<totem rrp_mode=\"active\" secauth=\"off\"/>
 	<rm log_level=\"5\">
 		<resources>
 			<script file=\"/etc/init.d/drbd\" name=\"drbd\"/>
