@@ -7014,6 +7014,16 @@ sub compare_new_and_old
 						$changes .= "\nUPS ${ups_name}'s is in 'TRIM ONLINE', which means it is compensating for distorted input. Power from the mains circuit sub-optimal.\n";
 						$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
 					}
+					elsif (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /BOOST ONLINE/))
+					{
+						$debug_changes .= "\nUPS ${ups_name}'s is in 'BOOST ONLINE', which means it is compensating for low input voltage, called a \"brown out\". Power from the mains circuit sub-optimal.\n";
+						$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					}
+					elsif (($conf->{alerts}{ups}{trim_to_debug_email} == 1) && ($conf->{data}{ups}{old}{ups_name}{$ups_name}{$var} =~ /BOOST ONLINE/))
+					{
+						$debug_changes .=  "UPS ${ups_name}'s status has returned to ONLINE. Alert cleared.\n";
+						$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+					}
 					elsif ($conf->{data}{ups}{new}{ups_name}{$ups_name}{$var} =~ /BOOST ONLINE/i)
 					{
 						$conf->{'system'}{clear_event} = 0;
@@ -7068,11 +7078,21 @@ sub compare_new_and_old
 						if (($line_voltage >= $min_voltage) && ($line_voltage <= $max_voltage))
 						{
 							# We're back in the clear.
-							delete $conf->{'system'}{ups_alert}{$ups_name}{live_voltage};
-							$conf->{'system'}{clear_event} = 1;
-							$changes .= "\nUPS ${ups_name}'s voltage from mains as returned to normal ranges. Alert cleared.\n";
-							$changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
-							$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage has returned to normal levels. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+							if ($conf->{alerts}{ups}{trim_to_debug_email} == 1)
+							{
+								$debug_changes .= "\nUPS ${ups_name}'s voltage from mains as returned to normal ranges. Alert cleared.\n";
+								$debug_changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
+								$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+							}
+							else
+							{
+								delete $conf->{'system'}{ups_alert}{$ups_name}{live_voltage};
+								$conf->{'system'}{clear_event} = 1;
+								$changes .= "\nUPS ${ups_name}'s voltage from mains as returned to normal ranges. Alert cleared.\n";
+								$changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
+								$changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+							}
 						}
 						else
 						{
@@ -7087,9 +7107,18 @@ sub compare_new_and_old
 						{
 							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage has changed but it is within acceptable range. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
 						}
+						elsif ($conf->{alerts}{ups}{trim_to_debug_email} == 1)
+						{
+							# Send it to debug
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage from mains has fallen outside of tolerances. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
+							$debug_changes .= "\nUPS ${ups_name}'s voltage from mains has fallen outside of tolerances!\n";
+							$debug_changes .= "  Minimum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{LOTRANS}, maximum voltage is $conf->{data}{ups}{new}{ups_name}{$ups_name}{HITRANS}.\n";
+							$debug_changes .= "  $conf->{data}{ups}{old}{ups_name}{$ups_name}{$var}\t-> $conf->{data}{ups}{new}{ups_name}{$ups_name}{$var}\n";
+						}
 						else
 						{
 							# Well shit.
+							record($conf, "$THIS_FILE ".__LINE__."; UPS ${ups_name}'s line voltage from mains has fallen outside of tolerances. Currently: [$line_voltage vAC], minimum is: [$min_voltage vAC], maximum is: [$max_voltage vAC]\n");
 							$conf->{'system'}{ups_alert}{$ups_name}{live_voltage} = 1;
 							$conf->{'system'}{warning_event}                      = 1;
 							$changes .= "\nUPS ${ups_name}'s voltage from mains has fallen outside of tolerances!\n";
@@ -7286,7 +7315,14 @@ sub compare_new_and_old
 		if ($service =~ /vm:(.*)/)
 		{
 			my $say_vm = $1;
-			$changes .= "\nThe Server named \"$say_vm\" appears to have been deleted!\n";
+			if ($conf->{alerts}{ups}{vm_to_debug_email})
+			{
+				$debug_changes .= "\nThe Server named \"$say_vm\" appears to have been deleted!\n";
+			}
+			else
+			{
+				$changes .= "\nThe Server named \"$say_vm\" appears to have been deleted!\n";
+			}
 			delete $conf->{data}{clustat}{diff}{service}{$service};
 		}
 		elsif ($service =~ /service:(.*)/)
@@ -7488,7 +7524,7 @@ sub compare_new_and_old
 	# Send an email and record the new values if there are changes.
 	if ($changes)
 	{
-		$conf->{mail_data}{subject} = "[ Anvil! Alert ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name} - State Change!";
+		$conf->{mail_data}{subject} = "State Change!";
 		$conf->{mail_data}{body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
@@ -7503,7 +7539,7 @@ $changes";
 	# Send the debug email if it is needed.
 	if ($debug_changes)
 	{
-		$conf->{mail_data}{debug_subject} = "[ Anvil! Debug ] - $conf->{cluster}{company} - $conf->{cluster}{description} - $conf->{node}{me}{short_name} - State Change!";
+		$conf->{mail_data}{debug_subject} = "State Change!";
 		$conf->{mail_data}{debug_body}    = "
 Changes have been detected in the Anvil!. If you anticipated this
 change then there is no reason for concern. If this change was 
@@ -7899,7 +7935,7 @@ Description:
 ======================================================================
 ";
 
-	my $debug_subject = $subject =~ /\[ Anvil/ ? $subject : "$debug_subject_prefix - $subject";
+	my $debug_subject = "$debug_subject_prefix - $subject";
 	my $debug_body    = $body.$debug_body_suffix;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Sent: [$conf->{mail_data}{subject}], body: [$conf->{mail_data}{body}] to: [$conf->{mail_data}{to}]\n");

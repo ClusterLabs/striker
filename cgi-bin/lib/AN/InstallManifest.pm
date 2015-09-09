@@ -8432,7 +8432,7 @@ common {
 		# after-resync-target /usr/lib/drbd/unsnapshot-resync-target-lvm.sh;
  
 		# Hook into cman's fencing.
-		fence-peer \"/sbin/rhcs_fence\";
+		fence-peer \"/sbin/striker/rhcs_fence\";
 	}
  
 	# NOTE: this is not required or even recommended with pacemaker. remove
