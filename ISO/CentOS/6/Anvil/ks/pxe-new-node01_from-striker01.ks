@@ -1,17 +1,23 @@
+### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+# License: GPLv2
+# Built:   2015-09-09 14:20:44
+# Target:  Network Install (PXE)
+# OS:      CentOS
+# Machine: Anvil! Node #01
+
 ### Setup values.
-# Doing a full install.
+# Run a text-based install
 install
-#cmdline
 text
 
-# Installing from the PXE server
-url --url=http://10.20.4.1/centos6/x86_64/img/
+# Installing from Striker 01's PXE server.
+url --url=http://10.20.4.1/c6/x86_64/img/
 
-# Set the language and keyboard to en_US, UTF-8. Adjust as needed.
+# Set the language and keyboard type.
 lang en_CA.UTF-8
 keyboard us
 
-# Set the timezone to UTC.
+# Set the system clock to UTC and then define the timezone.
 timezone --utc America/Toronto
 
 # This sets the (first) ethernet device. There is currently no way to map
@@ -24,14 +30,14 @@ network --device eth0 --bootproto dhcp --onboot yes --hostname new-node01.alteev
 authconfig --enableshadow --passalgo=sha512 --enablefingerprint
 rootpw Initial1
 
-# Default password is 'Initial1'.
+# Default admin user account.
 user --name=admin --plaintext --password=Initial1
 
-# Security!
-# is expected to change in a future release.
+# At this time, Striker does not yet work with SELinux in enforcing mode. This
+# is expected to change in a (near) future release.
 firewall --service=ssh
 selinux --enforcing
-	
+
 # There is no need for the 'first boot' menu system to run, so we will disable
 # it.
 firstboot --disable
@@ -51,11 +57,12 @@ reboot
 %include /tmp/part-include
 
 # This is a very minimal installation. It is just enough to get the nodes ready
-# for the Stage-2 "Install Manifest" run from the Striker dashboard.
+# for the Stage-2 'Install Manifest' run from the Striker dashboard.
 %packages
 @core
 @server-policy
 -kdump
+alteeve-repo
 gpm
 perl
 perl-Crypt-SSLeay
@@ -63,46 +70,52 @@ yum-plugin-priorities
 %end
 
 
+# Now it's time for the first chroot'ed configuration steps.
+%post --log=/tmp/post-install_chroot.log
+
+
 # Tell the machine to save downloaded RPM updates (for possible distribution to
 # other machines for low-bandwidth users). It also makes sure all NICs start on
 # boot.
-%post --log=/tmp/node1_post_install.log
-echo "Setting yum to keep its cache."
+echo 'Configuring yum to keep its cache.'
 sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
 
 # Disable DNS lookup for SSH so that logins are quick when there is not Internet
 # access.
-echo "Setting sshd to not do DNS lookup on incoming connections"
+echo 'Configuring sshd to not use DNS or GSSAPI authentication for fast logins without internet connections.'
 sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config 
 sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
 
-### This will go away when Raritan PDU support gets into 'fence-agents'.
-# Save the raritan fence agent.
-echo "Installing the fence_raritan agent."
-curl http://10.20.4.1/centos6/x86_64/files/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
-chown root:root /usr/sbin/fence_raritan_snmp
-chmod 755 /usr/sbin/fence_raritan_snmp
+# Show details on boot.
+echo 'Setting plymouth to use detailed boot screen'
+plymouth-set-default-theme details --rebuild-initrd
+sed -i 's/ rhgb//'  /boot/grub/grub.conf
+sed -i 's/ quiet//' /boot/grub/grub.conf
 
 # Setup 'list-ips', which will display the node's post-stage-1 IP address
 # without the user having to log in.
-echo "Downloading and installing 'list-ips'."
-curl http://10.20.4.1/centos6/x86_64/img/Striker/striker-master/tools/list-ips > /root/list-ips
-chown root:root /root/list-ips
-chmod 755 /root/list-ips
-echo /root/list-ips >> /etc/rc.local
+echo /sbin/striker/list-ips >> /etc/rc.local
 
-# Create the /sbin/striker/ directory.
-if [ ! -e "/sbin/striker" ];
-then
-	echo "Creating the '/sbin/striker' directory."
-	mkdir /sbin/striker;
-fi
 
-# Download the striker-tools.tar and extract it to '/sbin/striker/'.
-echo "Installing the Dashboard tools."
-curl http://10.20.4.1/centos6/x86_64/files/striker-tools.tar > /sbin/striker/striker-tools.tar
-tar -xvf /sbin/striker/striker-tools.tar -C /sbin/striker/
+# Download 'list-ips' from the Striker we're installing from.
+echo "Downloading 'list-ips'."
+mkdir /sbin/striker
+curl http://10.20.4.1/c6/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
+# Download 'fence_raritan_snmp' from the Striker we're installing from.
+echo "Downloading 'fence_raritan_snmp'."
+curl http://10.20.4.1/c6/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
+chown root:root /usr/sbin/fence_raritan_snmp
+chmod 755 /usr/sbin/fence_raritan_snmp
+
+# Download 'anvil-map-network' from the Striker we're installing from.
+echo "Downloading 'anvil-map-network'."
+curl http://10.20.4.1/c6/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
+chown root:root /sbin/striker/hap-map-network
+chmod 755 /sbin/striker/anvil-map-network
 
 # Show details on boot.
 echo "Setting plymouth to use detailed boot screen"
@@ -110,11 +123,11 @@ plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
-# Setup the Dashboard repos.
+# Setup the Striker repos.
 cat > /etc/yum.repos.d/striker01.repo << EOF
 [striker01]
 name=Striker 01 Repository
-baseurl=http://10.20.4.1/centos6/x86_64/img/
+baseurl=http://10.20.4.1/c6/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -124,7 +137,7 @@ EOF
 cat > /etc/yum.repos.d/striker02.repo << EOF
 [striker02]
 name=Striker 02 Repository
-baseurl=http://10.20.4.2/centos6/x86_64/img/
+baseurl=http://10.20.4.2/c6/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -136,11 +149,11 @@ EOF
 # This is set to run at the end. It copies all of the kickstart logs into the
 # root user's home page.
 %post --nochroot
-echo "Copying all the anaconda related log files to /root/install/"
+echo 'Copying all the anaconda related log files to /root/install/'
 
-if [ ! -e '/root/install' ]
+if [ ! -e '/mnt/sysimage/root/install' ]
 then
-	mkdir /root/install
+	mkdir /mnt/sysimage/root/install
 fi
 cp -p /tmp/nochroot*   /mnt/sysimage/root/install/
 cp -p /tmp/kernel*     /mnt/sysimage/root/install/
@@ -160,9 +173,7 @@ cp -p /tmp/syslog      /mnt/sysimage/root/install/
 #!/bin/sh
 
 # Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It's obviously just a basic script, and should 
-# be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
-# 1 TB... etc.
+# what configuration to use. 
 
 ###############################################################################
 # Below is for 40 GiB / partitions with the balance of free space to be       #

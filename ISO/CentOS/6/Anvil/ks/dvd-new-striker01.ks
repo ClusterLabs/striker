@@ -1,17 +1,23 @@
+### Alteeve's Niche! Inc. - Anvil! High Availability Platform
+# License: GPLv2
+# Built:   2015-09-09 14:20:44
+# Target:  Optical Media (DVD)
+# OS:      CentOS
+# Machine: Striker Dashboard #01
+
 ### Setup values.
-# Doing a full install.
+# Run a text-based install
 install
-#cmdline
 text
 
 # Installing from DVD.
 cdrom
 
-# Set the language and keyboard to en_US, UTF-8. Adjust as needed.
+# Set the language and keyboard type.
 lang en_CA.UTF-8
 keyboard us
 
-# Set the timezone to UTC.
+# Set the system clock to UTC and then define the timezone.
 timezone --utc America/Toronto
 
 # This sets the (first) ethernet device. There is currently no way to map
@@ -31,7 +37,7 @@ user --name=admin --plaintext --password=Initial1
 # is expected to change in a (near) future release.
 firewall --service=ssh
 selinux --permissive
-	
+
 # There is no need for the 'first boot' menu system to run, so we will disable
 # it.
 firstboot --disable
@@ -50,12 +56,15 @@ reboot
 # depending on a rudamentary test for available storage devices.
 %include /tmp/part-include
 
+
 # This is a fairly minimal installation. It is enough for 'striker-installer'
 # to run properly later
 %packages
 @core
+@server-policy
 -kdump
 acpid
+alteeve-repo
 createrepo
 gcc
 glibc-devel
@@ -70,68 +79,83 @@ syslinux
 syslinux-tftpboot
 xinetd
 yum-plugin-priorities
+
+### Needed to keep virt-manager from complaining. Will be removed when NoVNC
+### support is completed.
+augeas-libs
+dnsmasq
+ebtables
+glusterfs
+glusterfs-api
+glusterfs-libs
+gpxe-roms-qemu
+iscsi-initiator-utils
+keyutils
+libgssglue
+libtirpc
+libevent
+libvirt
+lzop
+netcf-libs
+nfs-utils
+nfs-utils-lib
+numad
+qemu-img
+qemu-kvm
+radvd
+rpcbind
+seabios
+sgabios-bin
+spice-server
+vgabios
 %end
 
 
-# Copy source into place.
-%post --nochroot  --log=/tmp/nochroot-post-install.log
+# First non-chroot steps
+%post --nochroot --log=/tmp/nochroot-post-install.log
 #!/bin/bash
 
-# Make sure our DVD source is mounted.
-if [ ! -e "/mnt/source" ];
-then
-	echo "Creating the '/mnt/source' directory."
-	mkdir /mnt/source;
-	mount /dev/cdrom /mnt/source;
-fi
-
-# Create the /sbin/striker/ directory.
-if [ ! -e "/mnt/sysimage/sbin/striker" ];
-then
-	echo "Creating the '/sbin/striker' directory."
-	mkdir /mnt/sysimage/sbin/striker;
-fi
-
-# Copy all tools into place.
-echo "Copying Striker's tools into /sbin/striker/"
-cp -Rvp /mnt/source/Striker/striker-master/tools/* /mnt/sysimage/sbin/striker/
-
-# For now, safe_anvil_shutdown must be in
-# /var/www/tools/safe_anvil_shutdown, so this copies it into place.
-if [ ! -e "/mnt/sysimage/var/www/tools" ];
-then
-	echo "Creating the '/mnt/sysimage/var/www/tools' directory."
-	mkdir /mnt/sysimage/var/www/tools;
-fi
-cp /mnt/source/Striker/striker-master/tools/safe_anvil_stop /mnt/sysimage/var/www/tools/safe_anvil_stop
-
-# Copy the raritan fence agent into place.
-echo "Copying fence_raritan_snmp into /usr/sbin/"
-cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
-
 # Create the install repo and PXE boot directories.
-echo "Creating the apache docroot and PXE directories."
-mkdir -p /mnt/sysimage/var/www/html/centos6/x86_64/{img,iso,ks,files}
-mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/centos6/x86_64/
-if [ ! -e "/mnt/sysimage/var/lib/tftpboot/pxelinux.cfg" ]
-then
-	mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
-fi
+echo 'Creating the apache docroot and PXE directories.'
+
+# Apache directories
+mkdir -p /mnt/sysimage/var/www/html/c6/x86_64/{img,iso,ks,files}
+
+# PXE/tftp directories
+mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/c6/x86_64/
+mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
+
+# Create the source mount point.
+mkdir /mnt/source;
+
+# Make sure the optical drive is mounted.
+mount /dev/cdrom /mnt/source;
 
 # Create a copy of the install ISO on Striker.
-ISO="Anvil_m2_CentOS-6.6_alpha.iso"
-echo "Copying the install iso image using dd. Be patient"
-dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/centos6/x86_64/iso/${ISO}
+echo 'Copying the install iso image using dd. Be patient'
+dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/c6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso
 
-# Copy the node KS into place
-echo "Copying the KS scripts into place"
-cp /mnt/source/ks/pxe-new-node01_from-striker01.ks /mnt/sysimage/var/www/html/centos6/x86_64/ks/pxe-new-node01.ks
-cp /mnt/source/ks/pxe-new-node02_from-striker01.ks /mnt/sysimage/var/www/html/centos6/x86_64/ks/pxe-new-node02.ks
-cp /mnt/source/ks/pxe-new-striker01.ks             /mnt/sysimage/var/www/html/centos6/x86_64/ks/
-cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/centos6/x86_64/ks/
+
+# Setup 'list-ips'.
+echo "Setting up 'list-ips'."
+mkdir /mnt/sysimage/sbin/striker
+cp /mnt/source/Striker/striker-master/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
+chown root:root /sbin/striker/list-ips
+chmod 755 /sbin/striker/list-ips
+
+# Copy the raritan fence agent into place.
+echo 'Copying fence_raritan_snmp into /usr/sbin/'
+cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
+
+# Copy the node and dashboard KSes into place
+echo 'Copying the KS scripts into place.'
+cp /mnt/source/ks/pxe-new-node01_from-striker01.ks /mnt/sysimage/var/www/html/c6/x86_64/ks/pxe-new-node01.ks
+cp /mnt/source/ks/pxe-new-node02_from-striker01.ks /mnt/sysimage/var/www/html/c6/x86_64/ks/pxe-new-node02.ks
+cp /mnt/source/ks/pxe-new-striker01.ks             /mnt/sysimage/var/www/html/c6/x86_64/ks/
+cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/c6/x86_64/ks/
 
 # A little flair...
-echo "Setting the PXE wallpaper."
+echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/splash.jpg /mnt/sysimage/var/lib/tftpboot/
 
 # I'll need this later for the admin-owned setuid wrapper
@@ -139,95 +163,90 @@ echo "Copying the 'admin' user's copy of 'populate_remote_authorized_keys' into 
 cp /mnt/source/Striker/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/admin/
 
 # Copy the Striker source files and installer into place
-echo "Copying the Striker installer and source code into place."
+echo 'Copying the Striker installer and source code into place.'
 cp      /mnt/source/Striker/master.zip                             /mnt/sysimage/root/
 cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
 cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
 
-# This will be used later by nodes.
-echo "Creating the Striker tools tarball"
-tar -cvf /mnt/sysimage/var/www/html/centos6/x86_64/files/striker-tools.tar -C /mnt/source/Striker/striker-master/tools/ .
+echo "Copying 'Tools' into /mnt/sysimage/var/www/html/c6/x86_64/files/"
+rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/c6/x86_64/files/
 
-# Copy the Install RPM Packages into our repo and the tools onto the system.
-echo "Setting up the PXE boot target data"
-if [ ! -e "/mnt/img" ]
-then
-	mkdir /mnt/img
-fi
+echo 'Configuring /etc/fstab to mount the ISO on boot.'
+echo '/var/www/html/c6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso	/var/www/html/c6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
 
-echo "Mounting the ISO"
-mount -o loop /mnt/sysimage/var/www/html/centos6/x86_64/iso/$ISO /mnt/img
-
-echo "Copying 'Tools' into /mnt/sysimage/var/www/html/centos6/x86_64/files/"
-rsync -av /mnt/img/Tools /mnt/sysimage/var/www/html/centos6/x86_64/files/
-
-echo "Configuring /etc/fstab to mount the ISO on boot."
-echo "/var/www/html/centos6/x86_64/iso/$ISO	/var/www/html/centos6/x86_64/img	iso9660	loop	0 0" >> /mnt/sysimage/etc/fstab
-
-echo "rsync'ing isolinux to /var/lib/tftpboot/boot/centos6/x86_64/"
-rsync -av /mnt/img/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/centos6/x86_64/
+echo 'Copying isolinux to /var/lib/tftpboot/boot/c6/x86_64/'
+rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/c6/x86_64/
+# */ # Ignore me, I am unbreaking syntax highlighting in vim...
 %end
+
+
+# Now it's time for the first chroot'ed configuration steps.
+%post --log=/tmp/post-install_chroot.log
 
 
 # Tell the machine to save downloaded RPM updates (for possible distribution to
 # other machines for low-bandwidth users). It also makes sure all NICs start on
 # boot.
-%post
-echo "Setting yum to keep its cache."
+echo 'Configuring yum to keep its cache.'
 sed -i 's/keepcache=0/keepcache=1/g' /etc/yum.conf
-#for nic in $(ls /etc/sysconfig/network-scripts/ifcfg-eth*); do sed -i 's/ONBOOT=.*/ONBOOT="yes"/' $nic; done
 
 # Disable DNS lookup for SSH so that logins are quick when there is not Internet
 # access.
-echo "Setting sshd to not do DNS lookup on incoming connections"
+echo 'Configuring sshd to not use DNS or GSSAPI authentication for fast logins without internet connections.'
 sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config 
 sed -i 's/#GSSAPIAuthentication no/GSSAPIAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/GSSAPIAuthentication yes/#GSSAPIAuthentication yes/' /etc/ssh/sshd_config
 
 # Show details on boot.
-echo "Setting plymouth to use detailed boot screen"
+echo 'Setting plymouth to use detailed boot screen'
 plymouth-set-default-theme details --rebuild-initrd
 sed -i 's/ rhgb//'  /boot/grub/grub.conf
 sed -i 's/ quiet//' /boot/grub/grub.conf
 
-echo "Writing out local yum repository config"
+# Setup 'list-ips', which will display the node's post-stage-1 IP address
+# without the user having to log in.
+echo /sbin/striker/list-ips >> /etc/rc.local
+
+
+echo 'Writing out local yum repository config'
 cat > /etc/yum.repos.d/striker01.repo << EOF
-[striker01-centos6]
-name=Striker 01 CentOS 6.6 + Custom Repository
-baseurl=http://localhost/centos6/x86_64/img/
+[striker01-c6]
+name=Striker 01 c6 v6.7 + Custom Repository
+baseurl=http://localhost/c6/x86_64/img/
 enabled=1
 gpgcheck=0
 priority=1
-skip_if_unavailable=1
 EOF
 
 # Now setup the script for the user to call once booted.
-echo "Writing out the sample striker-installer script"
-BCNIP="10.20.4.1"
+echo 'Writing out the sample striker-installer script'
 cat > /root/example_striker-installer.txt << EOF
 # This is an example 'striker-installer' call. Feel free to edit this file
 # here and then call it with 'sh /root/example_striker-installer.txt' to
 # save typing all this out.
 # 
-# To understand what all these switches do, run './striker-installer' without
-# switches and the help will be displayed.
+# To understand what all these switches do, run './striker-installer --help' 
+# and the help will be displayed.
 # 
 ./striker-installer \\
- -c "Alteeve's Niche\\!" \\
+ -c "Alteeve's Niche!" \\
  -n "an-striker01.alteeve.ca" \\
+ -e "admin@alteeve.ca:Initial1" \\
+ -m mail.alteeve.ca:587 \\
  -u "admin:Initial1" \\
  -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4 \\
- -b ${BCNIP}/16 \\
- -p 10.20.10.200:10.20.10.210 \\
- --gui \\
- -d git \\
+ -b 10.20.4.1/16 \\
+ -p 10.20.10.200:10.20.10.209 \\
+ --peer-dashboard hostname=an-striker02.alteeve.ca,bcn_ip=10.20.4.2 \\
  --router-mode \\
- -r https://alteeve.ca/an-repo/el6/an-el6.repo
+ --gui \\
+ -d git
 EOF
+
 
 # This writes out the custom PXE menu used when installing nodes and dashboard
 # from this system.
-echo "Writing out the default PXE menu"
+echo 'Writing out the default PXE menu'
 cat > /var/lib/tftpboot/pxelinux.cfg/default << EOF
 # Use the high-colour menu system.
 UI vesamenu.c32
@@ -248,7 +267,7 @@ MENU BACKGROUND splash.jpg
  
 # These do not need to be set. I set them here to show how you can customize or
 # localize your PXE server's dialogue.
-MENU TITLE    Anvil! Striker Dashboard Install - CentOS - DVD
+MENU TITLE    Anvil! Node and Striker Dashboard Install Server
 
 # Below, the hash (#) character is replaced with the countdown timer. The
 # '{,s}' allows for pluralizing a word and is used when the value is >= '2'.
@@ -291,79 +310,79 @@ LABEL next
 	localboot -1
 
 LABEL pxe-new-node01
-	MENU LABEL ^1) New Anvil! Node 01 - CentOS 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^1) New Anvil! Node 01 - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		/------------------------------------------------------------------\
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ------------------------------------------------------------------/
 
 	            To prevent traces of previous installs interrupting the 
-		    Install Manifest run, this boot option starts by "zeroing
-		    out" the first 100 GiB of the drive. There is no output
+		    Install Manifest run, this boot option starts by 'zeroing
+		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 01 using CentOS 6. Will create a traditional 
+		Installs a new Anvil! Node 01 using CentOS v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
-	KERNEL boot/centos6/x86_64/vmlinuz
+	KERNEL boot/c6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://${BCNIP}/centos6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
+	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
 
 LABEL pxe-new-node02
-	MENU LABEL ^2) New Anvil! Node 02 - CentOS 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^2) New Anvil! Node 02 - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		/------------------------------------------------------------------\
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ------------------------------------------------------------------/
 
 	            To prevent traces of previous installs interrupting the 
-		    Install Manifest run, this boot option starts by "zeroing
-		    out" the first 100 GiB of the drive. There is no output
+		    Install Manifest run, this boot option starts by 'zeroing
+		    out' the first 100 GiB of the drive. There is no output
 		    while this runs.
 
-		Installs a new Anvil! Node 02 using CentOS 6. Will create a traditional 
+		Installs a new Anvil! Node 02 using CentOS v6.7. Will create a traditional 
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
-	KERNEL boot/centos6/x86_64/vmlinuz
+	KERNEL boot/c6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://${BCNIP}/centos6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
+	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
 
 LABEL pxe-new-striker01
-	MENU LABEL ^3) New Striker 01 dashboard - CentOS 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^3) New Striker 01 dashboard - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 	
-		Installs a new Striker 01 using CentOS 6. Will create a traditional
+		Installs a new Striker 01 using CentOS v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
-	KERNEL boot/centos6/x86_64/vmlinuz
+	KERNEL boot/c6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://${BCNIP}/centos6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
+	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
 	
 LABEL pxe-new-striker02
-	MENU LABEL ^4) New Striker 02 dashboard - CentOS 6 - PXE - Deletes All Existing Data!
+	MENU LABEL ^4) New Striker 02 dashboard - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		Installs a new Striker 02 using CentOS 6. Will create a traditional
+		Installs a new Striker 02 using CentOS v6.7. Will create a traditional
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
-	KERNEL boot/centos6/x86_64/vmlinuz
+	KERNEL boot/c6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://${BCNIP}/centos6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
+	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
 
 label rescue
 	MENU LABEL ^B) Rescue installed system
 	TEXT HELP
 
-		Boot the CentOS 6.6 DVD in rescue mode.
+		Boot the CentOS v6.7 DVD in rescue mode.
 	ENDTEXT
-	KERNEL boot/centos6/x86_64/vmlinuz
-	APPEND initrd=boot/centos6/x86_64/initrd.img rescue
+	KERNEL boot/c6/x86_64/vmlinuz
+	APPEND initrd=boot/c6/x86_64/initrd.img rescue
 
 label memtest86
 	MENU LABEL ^C) Memory test
@@ -404,16 +423,18 @@ echo "'chroot'ed post install script complete."
 %end
 
 
+
 # This is set to run at the end. It copies all of the kickstart logs into the
 # root user's home page.
 %post --nochroot
-echo "Copying all the anaconda related log files to /root/install/"
+echo 'Copying all the anaconda related log files to /root/install/'
 
 if [ ! -e '/mnt/sysimage/root/install' ]
 then
 	mkdir /mnt/sysimage/root/install
 fi
 cp -p /tmp/nochroot*   /mnt/sysimage/root/install/
+cp -p /tmp/kernel*     /mnt/sysimage/root/install/
 cp -p /tmp/anaconda*   /mnt/sysimage/root/install/
 cp -p /tmp/ks*         /mnt/sysimage/root/install/
 cp -p /tmp/program.log /mnt/sysimage/root/install/
@@ -424,19 +445,17 @@ cp -p /tmp/syslog      /mnt/sysimage/root/install/
 %end
 
 
+
 ### Script to setup partitions.
 %pre --log=/tmp/ks-preinstall.log
 
 #!/bin/sh
 
 # Prepare the disks in the script below. It checks '/proc/partitions' to see
-# what configuration to use. It's obviously just a basic script, and should 
-# be customized for each use-case. IE: RAID 5 doesn't make sense with disks >
-# 1 TB... etc.
+# what configuration to use.
 
 ###############################################################################
-# Below is for 40 GiB / partitions with the balance of free space to be       #
-# configured later.                                                           #
+# Creates a 512 MiB /boot, 4 GiB <swap> and the balance to /                  #
 ###############################################################################
 
 # Default is to use /dev/sda. At this time, software arrays are not supported.
@@ -447,19 +466,13 @@ if grep -q vda /proc/partitions; then
 	DRIVE="vda"
 fi
 
-### NOTE: On ASUS EeeBox machines, the HDD comes up as 'sdb'.
+# /dev/sdb ASUS EeeBox machine
 if grep -q sdb /proc/partitions; then
 	DRIVE="sdb"
 fi
 
-# HP servers
-if grep -q c0d0 /proc/partitions; then
-	DRIVE="cciss/c0d0"
-fi
-
 # Now write the partition script
-cat > /tmp/part-include <<END
-
+cat >> /tmp/part-include <<END
 zerombr
 clearpart --all --drives=${DRIVE}
 ignoredisk --only-use=${DRIVE}
@@ -472,4 +485,3 @@ part     /     --fstype ext4 --size=100   --asprimary --ondisk=${DRIVE} --grow
 END
 
 %end
-
