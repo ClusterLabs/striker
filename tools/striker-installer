@@ -4936,7 +4936,7 @@ sub set_file_ownership_and_modes
 	if (0)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Giving apache permission to create network connections.", 1);
-		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect 1";
+		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -4946,6 +4946,23 @@ sub set_file_ownership_and_modes
 			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
 		}
 		close $file_handle;
+	}
+	
+	# Allow fence_virsh to call ssh
+	if (0)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Allowing fence_virsh to call ssh.", 1);
+		my $shell_call = "$conf->{executable}{setsebool} -P fenced_can_ssh on";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+		}
+		close $file_handle;
+
 	}
 	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
 	

@@ -319,6 +319,9 @@ sub run_new_install_manifest
 		# Configure storage stage 1 (partitioning.
 		configure_storage_stage1($conf) or return(1);
 		
+		# This handles configuring SELinux.
+		configure_selinux($conf) or return(1); 
+		
 		# Set the root user's passwords as the last step to ensure reloading the browser works for 
 		# as long as possible.
 		set_root_password($conf) or return(1);
@@ -5322,6 +5325,64 @@ sub set_ricci_password
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
+}
+
+# This does any needed SELinux configuration that is needed.
+sub configure_selinux
+{
+	my ($conf) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux()\n");
+	
+	# For now, this always returns "success".
+	my ($node1_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
+	# 0 = OK
+	
+	# There are no failure modes yet.
+	my $node1_class   = "highlight_good_bold";
+	my $node1_message = "#!string!state_0073!#";
+	my $node2_class   = "highlight_good_bold";
+	my $node2_message = "#!string!state_0073!#";
+	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		row		=>	"#!string!row_0290!#",
+		node1_class	=>	$node1_class,
+		node1_message	=>	$node1_message,
+		node2_class	=>	$node2_class,
+		node2_message	=>	$node2_message,
+	});
+	
+	return(0);
+}
+
+# This does the work of actually configuring SELinux on a node.
+sub configure_selinux_on_node
+{
+	my ($conf, $node, $password) = @_;
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux_on_node(); node: [$node], password: [--]\n");
+	
+	# Create the backup directory if it doesn't exist yet.
+	my $return_code = 0;
+	my $shell_call  = "$conf->{path}{nodes}{setsebool} -P fenced_can_ssh on; echo rc:\$?";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	22,
+		user		=>	"root",
+		password	=>	$password,
+		ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+	foreach my $line (@{$return})
+	{
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	
+	# 0 = Success
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
+	return($return_code);
 }
 
 # This sets the 'root' user's passwords.

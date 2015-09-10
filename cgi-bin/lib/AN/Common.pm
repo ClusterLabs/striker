@@ -726,6 +726,7 @@ sub initialize_conf
 				safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
 				scancore		=>	"/sbin/striker/ScanCore/ScanCore",
 				sed			=>	"/bin/sed",
+				setsebool		=>	"/usr/sbin/setsebool",
 				shadow			=>	"/etc/shadow",
 				shared_subdirectories	=>	["definitions", "provision", "archive", "files", "status"],
 				sn_bond1_config		=>	"/etc/sysconfig/network-scripts/ifcfg-sn_bond1",
