@@ -5340,6 +5340,7 @@ sub configure_selinux
 	# 0 = OK
 	
 	# There are no failure modes yet.
+	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0073!#";
 	my $node2_class   = "highlight_good_bold";
@@ -5352,7 +5353,8 @@ sub configure_selinux
 		node2_message	=>	$node2_message,
 	});
 	
-	return(0);
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
+	return($ok);
 }
 
 # This does the work of actually configuring SELinux on a node.
