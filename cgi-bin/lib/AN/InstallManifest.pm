@@ -5337,14 +5337,26 @@ sub configure_selinux
 	my ($node1_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_rc: [$node1_rc], node2_rc: [$node2_rc]\n");
-	# 0 = OK
+	# 0 == Success
+	# 1 == Failed
 	
-	# There are no failure modes yet.
 	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0073!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0073!#";
+	if ($node1_rc eq "1")
+	{
+		$ok            = 0;
+		$node1_class   = "highlight_warning_bold";
+		$node1_message = "#!string!state_0018!#";
+	}
+	if ($node2_rc eq "1")
+	{
+		$ok            = 0;
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = "#!string!state_0018!#";
+	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0290!#",
 		node1_class	=>	$node1_class,
@@ -5365,7 +5377,21 @@ sub configure_selinux_on_node
 	
 	# Create the backup directory if it doesn't exist yet.
 	my $return_code = 0;
-	my $shell_call  = "$conf->{path}{nodes}{setsebool} -P fenced_can_ssh on; echo rc:\$?";
+	my $shell_call  = "
+if $($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+then 
+    echo 'Already allowed';
+else 
+    echo \"Off, enabling 'fenced_can_ssh' now...\";
+    $conf->{path}{nodes}{setsebool} -P fenced_can_ssh on
+    if $($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+    then 
+        echo 'Now allowed.'
+    else
+        echo \"Failed to allowe 'fenced_can_ssh'.\"
+    fi
+fi
+";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -5380,9 +5406,14 @@ sub configure_selinux_on_node
 	foreach my $line (@{$return})
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /Failed/i)
+		{
+			$return_code = 1;
+		}
 	}
 	
-	# 0 = Success
+	# 0 == Success
+	# 1 == Failed
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
 	return($return_code);
 }

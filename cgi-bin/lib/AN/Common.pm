@@ -704,6 +704,7 @@ sub initialize_conf
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
 				fstab			=>	"/etc/fstab",
+				getsebool		=>	"/usr/sbin/getsebool",
 				'grep'			=>	"/bin/grep",
 				# This stores this node's UUID. It is used to track all our sensor data in the 
 				# database. If you change this here, change it in the ScanCore, too.
