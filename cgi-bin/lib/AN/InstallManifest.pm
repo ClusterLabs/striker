@@ -60,6 +60,7 @@ sub run_new_install_manifest
 		'cyrus-sasl'			=>	0,
 		'cyrus-sasl-plain'		=>	0,
 		dmidecode			=>	0,
+		'drbd84-utils'			=>	0,
 		expect				=>	0,
 		'fence-agents'			=>	0,
 		freeipmi			=>	0,
@@ -74,6 +75,7 @@ sub run_new_install_manifest
 		irqbalance			=>	0,
 		'kernel-headers'		=>	0,
 		'kernel-devel'			=>	0,
+		'kmod-drbd84'			=>	0,
 		'libstdc++.i686' 		=>	0,
 		'libstdc++-devel.i686'		=>	0,
 		libvirt				=>	0,
@@ -121,19 +123,6 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 		storcli				=>	0,
 	};
-	
-	if ($conf->{sys}{use_drbd} eq "8.3")
-	{
-		$conf->{packages}{to_install}{'kmod-drbd83'}  = 0;
-		$conf->{packages}{to_install}{'drbd83-utils'} = 0;
-	}
-	elsif ($conf->{sys}{use_drbd} eq "8.4")
-	{
-		$conf->{packages}{to_install}{'kmod-drbd84'}  = 0;
-		$conf->{packages}{to_install}{'drbd84-utils'} = 0;
-	}
-	
-	#$conf->{url}{'anvil-map-network'}  = "https://raw.githubusercontent.com/digimer/striker/master/tools/anvil-map-network";
 	$conf->{path}{'anvil-map-network'} = "/sbin/striker/anvil-map-network";
 	
 	if ($conf->{perform_install})
@@ -3726,8 +3715,8 @@ sub drbd_first_start
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_ping_ok: [$node1_ping_ok], node2_ping_ok: [$node2_ping_ok]\n");
 		if (($node1_ping_ok) && ($node2_ping_ok))
 		{
-			# Both nodes have both of their resources attached and
-			# are pingable on the SN, connect them now.
+			# Both nodes have both of their resources attached and are pingable on the SN, 
+			# Make sure they're not 'StandAlone' and, if so, tell them to connect.
 			($node1_connect_rc, $node1_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 			($node2_connect_rc, $node2_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1_connect_rc: [$node1_connect_rc], node1_connect_message: [$node1_connect_message], node2_connect_rc: [$node2_connect_rc], node2_connect_message: [$node2_connect_message]\n");
@@ -3745,16 +3734,15 @@ sub drbd_first_start
 				
 				if (not $rc)
 				{
-					# Check to see if both nodes are 
-					# 'Inconsistent'. If so, force node 1 to be
-					# primary to begin the initial sync.
+					# Check to see if both nodes are 'Inconsistent'. If so, force node 1
+					# to be primary to begin the initial sync.
 					my ($rc, $force_node1_r0, $force_node1_r1) = check_drbd_if_force_primary_is_needed($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], force_node1_r0: [$force_node1_r0], force_node1_r1: [$force_node1_r1]\n");
 					# 0 == Both resources found, safe to proceed
 					# 1 == One or both of the resources not found
 					
-					# This RC check is just a little paranoia
-					# before doing a potentially destructive call.
+					# This RC check is just a little paranoia before doing a potentially
+					# destructive call.
 					if (not $rc)
 					{
 						# Promote to primary!
@@ -4034,11 +4022,11 @@ sub do_drbd_primary_on_node
 	# Resource 0
 	my $return_code = 0;
 	my $message     = "";
-	my $shell_call  = "drbdadm primary r0; echo rc:\$?";
+	my $shell_call  = "$conf->{path}{nodes}{drbdadm} primary r0; echo rc:\$?";
 	if ($force_r0)
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r0' to 'Primary' and overwriting data on peer!\n");
-		$shell_call = "drbdadm -- --overwrite-data-of-peer primary r0; echo rc:\$?";
+		$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r0; echo rc:\$?";
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -4074,11 +4062,11 @@ sub do_drbd_primary_on_node
 	# Resource 1
 	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		$shell_call  = "drbdadm primary r1; echo rc:\$?";
+		$shell_call  = "$conf->{path}{nodes}{drbdadm} primary r1; echo rc:\$?";
 		if ($force_r0)
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r1' to 'Primary' and overwriting data on peer!\n");
-			$shell_call = "drbdadm -- --overwrite-data-of-peer primary r1; echo rc:\$?";
+			$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r1; echo rc:\$?";
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -4117,7 +4105,7 @@ sub do_drbd_primary_on_node
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
 	if (not $return_code)
 	{
-		my $shell_call = "drbdadm adjust all";
+		my $shell_call = "$conf->{path}{nodes}{drbdadm} adjust all";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 			node		=>	$node,
@@ -4285,7 +4273,7 @@ sub do_drbd_connect_on_node
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], connected: [$connected]\n");
 		if (not $connected)
 		{
-			my $shell_call = "drbdadm connect r$resource; echo rc:\$?";
+			my $shell_call = "$conf->{path}{nodes}{drbdadm} connect r$resource; echo rc:\$?";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 				node		=>	$node,
@@ -4455,12 +4443,7 @@ fi;
 			if (not $attached)
 			{
 				my $no_metadata = 0;
-				my $shell_call  = "drbdadm attach r$resource; echo rc:\$?";
-				if ($conf->{sys}{use_drbd} eq "8.4")
-				{
-					# attach and connect are done together in 8.4
-					$shell_call  = "drbdadm up r$resource; echo rc:\$?";
-				}
+				my $shell_call  = "$conf->{path}{nodes}{drbdadm} up r$resource; echo rc:\$?";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -7821,7 +7804,7 @@ sub check_for_drbd_metadata
 			{
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]'s device: [$device] belongs to DRBD resource: [$resource].\n");
 				my $rc         = 255;
-				my $shell_call = "drbdadm -- --force create-md $resource; echo rc:\$?";
+				my $shell_call = "$conf->{path}{nodes}{drbdadm} -- --force create-md $resource; echo rc:\$?";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 					node		=>	$node,
@@ -8422,87 +8405,11 @@ sub generate_drbd_config_files
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	
-	if ($conf->{sys}{use_drbd} eq "8.3")
-	{
-		### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
-		###       the resync rate to 300M;
-		# Generate the config files we'll use if we don't find existing configs
-		# on one of the servers.
-		$conf->{drbd}{global_common} = "
-global {
-	usage-count no;
-	# minor-count dialog-refresh disable-ip-verification
-}
-
-common {
-	protocol C;
-
-	handlers {
-		pri-on-incon-degr \"/usr/lib/drbd/notify-pri-on-incon-degr.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
-		pri-lost-after-sb \"/usr/lib/drbd/notify-pri-lost-after-sb.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
-		local-io-error \"/usr/lib/drbd/notify-io-error.sh; /usr/lib/drbd/notify-emergency-shutdown.sh; echo o > /proc/sysrq-trigger ; halt -f\";
-		# fence-peer \"/usr/lib/drbd/crm-fence-peer.sh\";
-		# split-brain \"/usr/lib/drbd/notify-split-brain.sh root\";
-		# out-of-sync \"/usr/lib/drbd/notify-out-of-sync.sh root\";
-		# before-resync-target \"/usr/lib/drbd/snapshot-resync-target-lvm.sh -p 15 -- -c 16k\";
-		# after-resync-target /usr/lib/drbd/unsnapshot-resync-target-lvm.sh;
-		#fence-peer		\"/sbin/obliterate-peer.sh\";
-		fence-peer		\"/usr/lib/drbd/rhcs_fence\";
-	}
-
-	startup {
-		# wfc-timeout degr-wfc-timeout outdated-wfc-timeout wait-after-sb
-		become-primary-on	both;
-		wfc-timeout		300;
-		degr-wfc-timeout	120;
-		outdated-wfc-timeout    120;
-	}
-
-	disk {
-		# on-io-error fencing use-bmbv no-disk-barrier no-disk-flushes
-		# no-disk-drain no-md-flushes max-bio-bvecs
-		fencing			resource-and-stonith;
-	}
-
-	net {
-		# sndbuf-size rcvbuf-size timeout connect-int ping-int ping-timeout max-buffers
-		# max-epoch-size ko-count allow-two-primaries cram-hmac-alg shared-secret
-		# after-sb-0pri after-sb-1pri after-sb-2pri data-integrity-alg no-tcp-cork
-		allow-two-primaries;
-		after-sb-0pri		discard-zero-changes;
-		after-sb-1pri		discard-secondary;
-		after-sb-2pri		disconnect;
-	}
-
-	syncer {
-		# rate after al-extents use-rle cpu-mask verify-alg csums-alg
-		rate			30M;
-		
-		# During resync-handshake, the dirty-bitmaps of the nodes are 
-		# exchanged and merged (using bit-or), so the nodes will have 
-		# the same understanding of which blocks are dirty. On large 
-		# devices, the fine grained dirty-bitmap can become large as 
-		# well, and the bitmap exchange can take quite some time on 
-		# low-bandwidth links.
-		# 
-		# Because the bitmap typically contains compact areas where all
-		# bits are unset (clean) or set (dirty), a simple run-length 
-		# encoding scheme can considerably reduce the network traffic 
-		# necessary for the bitmap exchange.
-		# 
-		# This can help speed up the start time on resources with large
-		# devices. If you find problems with VGs bein inactive and/or
-		# drbd not promoting to Primary, this may solve the problem.
-		use-rle;
-	}
-}
-";
-	}
-	elsif ($conf->{sys}{use_drbd} eq "8.4")
-	{
-		# Generate the config files we'll use if we don't find existing configs
-		# on one of the servers.
-		$conf->{drbd}{global_common} = "
+	### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
+	###       the resync rate to 300M;
+	# Generate the config files we'll use if we don't find existing configs
+	# on one of the servers.
+	$conf->{drbd}{global_common} = "
 # These are options to set for the DRBD daemon sets the default values for
 # resources.
 global {
@@ -8584,7 +8491,6 @@ common {
 	}
 }
 ";
-	}
 	
 	### TODO: Make sure these are updated if we use a read-in resource
 	###  file.
@@ -8612,66 +8518,7 @@ common {
 	}
 	
 	# Still alive? Yay us!
-	if ($conf->{sys}{use_drbd} eq "8.3")
-	{
-		$conf->{drbd}{r0} = "
-# This is the resource used for the shared GFS2 partition and servers designed
-# to run on node 01.
-resource r0 {
-	# This is the block device path.
-	device		/dev/drbd0;
- 
-	# We'll use the normal internal metadisk (takes about 32MB/TB)
-	meta-disk	internal;
- 
-	# This is the `uname -n` of the first node
-	on $conf->{cgi}{anvil_node1_name} {
-		# The 'address' has to be the IP, not a hostname. This is the
-		# node's SN (bond1) IP. The port number must be unique amoung
-		# resources.
-		address		$node1_sn_ip:7788;
- 
-		# This is the block device backing this resource on this node.
-		disk		$node1_pool1_partition;
-	}
-	# Now the same information again for the second node.
-	on $conf->{cgi}{anvil_node2_name} {
-		address		$node2_sn_ip:7788;
-		disk		$node2_pool1_partition;
-	}
-}
-";
-
-		$conf->{drbd}{r1} = "
-# This is the resource used for the servers designed to run on node 02.
-resource r1 {
-	# This is the block device path.
-	device		/dev/drbd1;
- 
-	# We'll use the normal internal metadisk (takes about 32MB/TB)
-	meta-disk	internal;
- 
-	# This is the `uname -n` of the first node
-	on $conf->{cgi}{anvil_node1_name} {
-		# The 'address' has to be the IP, not a hostname. This is the
-		# node's SN (bond1) IP. The port number must be unique amoung
-		# resources.
-		address		$node1_sn_ip:7789;
- 
-		# This is the block device backing this resource on this node.
-		disk		$node1_pool2_partition;
-	}
-	# Now the same information again for the second node.
-	on $conf->{cgi}{anvil_node2_name} {
-		address		$node2_sn_ip:7789;
-		disk		$node2_pool2_partition;
-	}
-}
-";
-	}
-	elsif ($conf->{sys}{use_drbd} eq "8.4")
-	{
-		$conf->{drbd}{r0} = "
+	$conf->{drbd}{r0} = "
 # This is the first DRBD resource. It will store the shared file systems and
 # the servers designed to run on node 01.
 resource r0 {
@@ -8721,7 +8568,7 @@ resource r0 {
 }
 ";
 
-		$conf->{drbd}{r1} = "
+	$conf->{drbd}{r1} = "
 # This is the resource used for the servers designed to run on node 02.
 resource r1 {
 	on $conf->{cgi}{anvil_node1_name} {
@@ -8769,7 +8616,6 @@ resource r1 {
 	}
 }
 ";
-	}
 	
 	# Unlike 'read_drbd_resource_files()' which only reads the 'rX.res'
 	# files and parses their contents, this function just slurps in the
@@ -9631,54 +9477,105 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_dns2}\"\n" if $conf->{cgi}{anvil_dns2};
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	
+	# Setup the fireall now. (Temporarily; the new multiport based and old state based versions are here.
+	# The old one will be removed once this one is confirmed to be good.)
 	my $vnc_range = 5900 + $conf->{cgi}{anvil_open_vnc_ports};
-	my $iptables =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
-	   $iptables .= "*filter\n";
-	   $iptables .= ":INPUT ACCEPT [0:0]\n";
-	   $iptables .= ":FORWARD ACCEPT [0:0]\n";
-	   $iptables .= ":OUTPUT ACCEPT [0:0]\n";
-	   # Allow remote desktop access to servers on both the IFN and BCN. This opens 100 ports. If you
-	   # want to change this range, put the range '5900:(5900+VM count)'.
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
-	   # KVM live-migration ports on BCN
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
-	   # DRBD resource 0 and 1 - on the SN
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7789 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7788 -j ACCEPT \n";
-	   # multicast (igmp; Internet group management protocol)
-	   $iptables .= "-A INPUT -p igmp -j ACCEPT \n";
-	   # modclusterd
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
-	   # ricci
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
-	   # dlm
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
-	   # cman (corosync's totem); ring 0
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
-	   # ... ring 1
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
-	   # NTP
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
-	   # TODO: Open up VNC now, but make it an option later.
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT \n";
-	   $iptables .= "-A INPUT -p icmp -j ACCEPT \n";
-	   $iptables .= "-A INPUT -i lo -j ACCEPT \n";
-	   $iptables .= "-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT \n";
-	   $iptables .= "-A INPUT -j REJECT --reject-with icmp-host-prohibited \n";
-	   $iptables .= "-A FORWARD -j REJECT --reject-with icmp-host-prohibited \n";
-	   $iptables .= "COMMIT\n";
+	if (1)
+	{
+		my $iptables =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+		   $iptables .= "*filter\n";
+		   $iptables .= ":INPUT ACCEPT [0:0]\n";
+		   $iptables .= ":FORWARD ACCEPT [0:0]\n";
+		   $iptables .= ":OUTPUT ACCEPT [0:0]\n";
+		   
+		   ### Ports
+		   # 22          = ssh
+		   # 123         = ntp
+		   # 5404,5405   = corosync/totem
+		   # 5800,5900+  = VNC 
+		   # 7788,7789   = DRBD
+		   # 11111       = ricci
+		   # 16851       = modclusterd
+		   # 21064       = dlm
+		   # 49152:49216 = KVM Live Migration
+		   
+		   ### All networks
+		   $iptables .= "-A INPUT -p tcp -m conntrack --ctstate NEW -m tcp --dport 22 -j ACCEPT \n";
+		   
+		   ### BCN rules
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p sctp -j ACCEPT";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m conntrack --ctstate NEW -m multiport -m tcp --dport 123,5404,5405,5800,5900:$vnc_range,11111,16851,21064,49152:49216 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   
+		   ### SN rules
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p sctp -j ACCEPT";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m conntrack --ctstate NEW -m multiport -m tcp --dport 5404,5405,7788,7789,11111,16851,21064 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   
+		   ### IFN rules
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m conntrack --ctstate NEW -m multiport -m tcp --dport 123,5800,5900:$vnc_range,49152:49216 -j ACCEPT \n";
+		   
+		   # multicast (igmp; Internet group management protocol)
+		   $iptables .= "-A INPUT -p igmp -j ACCEPT \n";
+		   
+		   # Other rules that are needed.
+		   $iptables .= "-A INPUT -m ctstate --ctstate RELATED,ESTABLISHED -j ACCEPT \n";
+		   $iptables .= "-A INPUT -p icmp -j ACCEPT \n";
+		   $iptables .= "-A INPUT -i lo -j ACCEPT \n";
+		   $iptables .= "-A INPUT -j REJECT --reject-with icmp-host-prohibited \n";
+		   $iptables .= "-A FORWARD -j REJECT --reject-with icmp-host-prohibited \n";
+		   $iptables .= "COMMIT\n";
+	}
+	else
+	{
+		my $iptables =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+		   $iptables .= "*filter\n";
+		   $iptables .= ":INPUT ACCEPT [0:0]\n";
+		   $iptables .= ":FORWARD ACCEPT [0:0]\n";
+		   $iptables .= ":OUTPUT ACCEPT [0:0]\n";
+		   # Allow remote desktop access to servers on both the IFN and BCN. This opens 100 ports. If you
+		   # want to change this range, put the range '5900:(5900+VM count)'.
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900:$vnc_range -j ACCEPT \n";
+		   # KVM live-migration ports on BCN
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m tcp --dport 49152:49216 -j ACCEPT \n";
+		   # DRBD resource 0 and 1 - on the SN
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7789 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 7788 -j ACCEPT \n";
+		   # multicast (igmp; Internet group management protocol)
+		   $iptables .= "-A INPUT -p igmp -j ACCEPT \n";
+		   # modclusterd
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 16851 -j ACCEPT \n";
+		   # ricci
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 11111 -j ACCEPT \n";
+		   # dlm
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p tcp -m state --state NEW -m tcp --dport 21064 -j ACCEPT \n";
+		   # cman (corosync's totem); ring 0
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   # ... ring 1
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m addrtype --dst-type MULTICAST -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p udp -m state --state NEW -m multiport --dports 5404,5405 -j ACCEPT \n";
+		   # NTP
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p udp -m state --state NEW -m udp --dport 123 -j ACCEPT \n";
+		   # TODO: Open up VNC now, but make it an option later.
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5900 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -p tcp -m state --state NEW -m tcp --dport 5800 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT \n";
+		   $iptables .= "-A INPUT -p icmp -j ACCEPT \n";
+		   $iptables .= "-A INPUT -i lo -j ACCEPT \n";
+		   $iptables .= "-A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT \n";
+		   $iptables .= "-A INPUT -j REJECT --reject-with icmp-host-prohibited \n";
+		   $iptables .= "-A FORWARD -j REJECT --reject-with icmp-host-prohibited \n";
+		   $iptables .= "COMMIT\n";
+	}
 	
 	### TODO: When replacing a node, read in the peer's hosts file and
 	###       use that instead of the install manifest contents

@@ -703,6 +703,7 @@ sub initialize_conf
 				drbd_global_common	=>	"/etc/drbd.d/global_common.conf",
 				drbd_r0			=>	"/etc/drbd.d/r0.res",
 				drbd_r1			=>	"/etc/drbd.d/r1.res",
+				drbdadm			=>	"/sbin/drbdadm",
 				fstab			=>	"/etc/fstab",
 				getsebool		=>	"/usr/sbin/getsebool",
 				'grep'			=>	"/bin/grep",
@@ -1076,7 +1077,6 @@ sub initialize_conf
 			up_nodes		=>	0,
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
-			use_drbd		=>	"8.4",			# Set to 8.3 if having trouble with 8.4
 			username		=>	getpwuid( $< ),
 			# If a user wants to use spice + qxl for video in VMs,
 			# set this to '1'. NOTE: This disables web-based VNC!
