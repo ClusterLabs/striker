@@ -4223,6 +4223,11 @@ sub gather_ups_data
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_ups_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: If the network with the UPS is congested, it is possible that, despite connecting to the 
+	###       UPS, some OID reads may fail with '#!no_connection!#'. Try to read them a second time in
+	###       these cases. Regardless, be sure to check all returned OID values for 'no connection' and
+	###       handle such cases more gracefully.
+	
 	my $no_ups_found = 1;
 	foreach my $ups_name (sort {$a cmp $b} keys %{$an->data->{'scan-apc-ups'}{ups}})
 	{

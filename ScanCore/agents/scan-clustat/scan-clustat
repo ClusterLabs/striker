@@ -2275,6 +2275,7 @@ sub read_last_scan
 	my $new   = 0;
 	my $query = "
 SELECT 
+    a.clustat_uuid, 
     a.clustat_quorate, 
     a.clustat_cluster_name 
 FROM 
@@ -2296,15 +2297,19 @@ AND
 	{
 		# We've got an entry in the 'clustat' table, so now we'll look
 		# for data in the node and services tables.
-		my ($clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
-		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "clustat_quorate",      value1 => $clustat_quorate, 
-			name2 => "clustat_cluster_name", value2 => $clustat_cluster_name
+		my ($clustat_uuid, $clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "clustat_uuid",         value1 => $clustat_uuid,
+			name2 => "clustat_quorate",      value2 => $clustat_quorate, 
+			name3 => "clustat_cluster_name", value3 => $clustat_cluster_name
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		$an->data->{sql}{clustat}{clustat_uuid}                  = $clustat_uuid;
 		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
 		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::clustat::clustat_uuid",                  value1 => $an->data->{sql}{clustat}{clustat_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "clustat::sql::clustat::clustat_quorate",      value1 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
 		}, file => $THIS_FILE, line => __LINE__});
