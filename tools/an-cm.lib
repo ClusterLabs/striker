@@ -5537,9 +5537,20 @@ sub compare_new_and_old
 					}
 				}
 			}
-			$changes .= "\n$say_service\n";
-			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
-			$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
+			
+			# Report to debug if this is a VM and was so chosen by the user.
+			if (($service =~ /vm:(.*)/i) && ($conf->{alerts}{ups}{vm_to_debug_email}))
+			{
+				$debug_changes .= "\n$say_service\n";
+				$debug_changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
+				$debug_changes .= "  $conf->{data}{clustat}{old}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
+			}
+			else
+			{
+				$changes .= "\n$say_service\n";
+				$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{'state'}\t-> $conf->{data}{clustat}{new}{service}{$service}{'state'}\n";
+				$changes .= "  $conf->{data}{clustat}{old}{service}{$service}{on}\t-> $conf->{data}{clustat}{new}{service}{$service}{on}\n";
+			}
 		}
 		delete $conf->{data}{clustat}{diff}{service}{$service}{on};
 		delete $conf->{data}{clustat}{diff}{service}{$service}{'state'};
