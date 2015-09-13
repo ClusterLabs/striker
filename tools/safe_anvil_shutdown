@@ -207,8 +207,8 @@ sub health_check
 				my $my_disk_state    = $conf->{drbd}{resource}{$resource}{me}{disk_state};
 				my $peer_role        = $conf->{drbd}{resource}{$resource}{peer}{role};
 				my $peer_disk_state  = $conf->{drbd}{resource}{$resource}{peer}{disk_state};
-				print "- Resource: [$resource], Role (me/peer): [$my_role/$peer_role], Disk state (me/peer): [$my_disk_state/$peer_disk_state]\n";
-				if (lc($connection_state) eq "connected")
+				print "- Resource: [$resource], Role (me/peer): [$my_role/$peer_role], Disk state (me/peer): [$my_disk_state/$peer_disk_state], Connection state: [$connection_state]\n";
+				if ((lc($connection_state) eq "connected") || ($connection_state =~ /Sync/i))
 				{
 					$conf->{drbd}{connected_resources}++;
 				}
