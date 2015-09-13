@@ -1,0 +1,1372 @@
+#!/usr/bin/perl
+# 
+# This takes a stock RHEL or CentOS 6.x ISO as the source for generating a Anvil! install ISO. 
+# 
+# It was created to avoid legal concerns regarding redistributing modified CentOS or RHEL ISOs. Please use it
+# with this spirit in mind and do not make available the resulting ISOs for general download unless you get
+# written permission from Alteeve's Niche! and either Red Hat or CentOS, depending on the generated ISO.
+# 
+# (c) Alteeve's Niche! Inc, 2015 - https://alteeve.ca
+# 
+# This program is released under the GPL v2+
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+my $THIS_FILE =  $0;
+   $THIS_FILE =~ s/^.*\///;
+
+my $conf = {
+	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
+	executable	=>	{
+		# Used to verify that the source provided matches what we expect.
+		md5sum		=>	"md5sum",
+	},
+	# Paths to files and directories
+	path		=>	{
+		# Source ISO will be mounted under here in a 'rhel' or 'centos' subdirectory, as appropriate.
+		mount		=>	"/tmp/",
+	},
+	sys		=>	{
+		debug		=>	0,
+		md5sum		=>	{
+			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"rhel",		# v6.7
+			'51f90e8ddd2ea199780065eaf75130ad'	=>	"centos",	# v6.7
+		},
+		# This will be set to 'rhel' or 'centos', depending on the source ISO type.
+		os		=>	"",
+		source		=>	{
+			directory	=>	"",
+			file		=>	"",
+		},
+		use_anvil	=>	0,
+	},
+};
+
+print "Beginning Anvil! ISO generation process. Please be patient!\n";
+get_switches($conf);
+$conf->{sys}{debug} = 1 if $conf->{switches}{debug};
+if (($conf->{switches}{h})   || 
+    ($conf->{switches}{'?'}) ||
+    ($conf->{switches}{help}))
+{
+	print_usage($conf);
+	exit(0);
+}
+find_executables($conf);
+
+# Validate the source.
+if ($conf->{switches}{source})
+{
+	if (-e $conf->{switches}{source})
+	{
+		print "[ Debug ] - Parsing source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug};
+		
+		($conf->{sys}{source}{directory}, $conf->{sys}{source}{file}) = ($conf->{switches}{source} =~ /^(.*)\/(.*)$/);
+		print "[ Debug ] - Source directory: [$conf->{sys}{source}{directory}], file: [$conf->{sys}{source}{file}]\n" if $conf->{sys}{debug};
+	}
+	else
+	{
+		print "\n[ Error ] - Source: [$conf->{switches}{source}] doesn't exist!\n\n";
+		exit(1);
+	}
+	
+	print "- Generating md5sum of the source, please wait a moment...\n";
+	my $source_sum = "";
+	my $shell_call = "$conf->{executable}{md5sum} $conf->{switches}{source}";
+	print "[ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "[ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
+		
+		if ($line =~ /^(\S+)\s+$conf->{switches}{source}/)
+		{
+			$source_sum = $1;
+			print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
+		}
+	}
+	close $file_handle;
+	
+	# If we got a sum, make sure it matches an expected one.
+	if ($source_sum)
+	{
+		foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
+		{
+			print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
+			print "[ Debug ] - this_sum:   [$this_sum]\n" if $conf->{sys}{debug};
+			if ($source_sum eq $this_sum)
+			{
+				# Match!
+				$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
+				print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
+			}
+		}
+	}
+	else
+	{
+		print "\n[ Error ] - Failed to calculate (or parse) the 'md5sum' for: [$conf->{switches}{source}].\n";
+		print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n\n";
+		exit(1);
+	}
+	
+	# Did I find an OS?
+	if ($conf->{sys}{os} eq "rhel")
+	{
+		print "- The source ISO is Red Hat Enterprise Linux v6.7.\n";
+	}
+	elsif ($conf->{sys}{os} eq "centos")
+	{
+		print "- The source ISO is CentOS v6.7.\n";
+	}
+	else
+	{
+		print "\n[ Error ] - Failed to match the source ISO's 'md5sum': [$source_sum] to a known sum.\n";
+		print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n";
+		print "[ NOTE ]  - The source MUST be v6.7 and it must be DVD disc 1.\n\n";
+		exit(1);
+	}
+}
+else
+{
+	print "\n[ Error ] - No source ISO provided!\n";
+	print "[ Note ]  - Run './$THIS_FILE -h' for usage.\n\n";
+	exit(1);
+}
+
+get_package_list($conf);
+
+if (0)
+{
+	print "# Common packages:\n";
+	print "yum install ";
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{common}})
+	{
+		print "$package ";
+	}
+	print "\n\n";
+}
+
+if (0)
+{
+	print "# RHEL packages:\n";
+	print "yum install ";
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{rhel}})
+	{
+		print "$package ";
+	}
+	print "\n\n";
+}
+
+if (0)
+{
+	print "# CentOS packages:\n";
+	print "yum install ";
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{centos}})
+	{
+		print "$package ";
+	}
+	print "\n\n";
+}
+
+if (0)
+{
+	print "# Anvil! packages:\n";
+	print "yum install ";
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{anvil}})
+	{
+		print "$package ";
+	}
+	print "\n\n";
+}
+
+if (0)
+{
+	print "# Third party, binary packages:\n";
+	print "yum install ";
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{binary}})
+	{
+		print "$package ";
+	}
+	print "\n\n";
+}
+
+exit(0);
+
+# This searches the PATH environment variable looking for the location of any executable not pre-defined.
+sub find_executables
+{
+	my ($conf) = @_;
+	print "[ Debug ] - Searching for executables...\n" if $conf->{sys}{debug};
+	
+	my $ok = 1;
+	foreach my $executable (sort {$a cmp $b} keys %{$conf->{executable}})
+	{
+		next if $conf->{executable}{$executable} =~ /^\//;
+		print "[ Debug ]   - Program: [$executable]... \n" if $conf->{sys}{debug};
+		foreach my $path (split/:/, $ENV{'PATH'})
+		{
+			my $test_path = "$path/$executable";
+			if ((-e $test_path) && (-x $test_path))
+			{
+				# Found it.
+				$conf->{executable}{$executable} = $test_path;
+				print "[ Debug ]     - Found it: [$conf->{executable}{$executable}].\n" if $conf->{sys}{debug};
+				last;
+			}
+		}
+		
+		# Die if we didn't find it.
+		if ($conf->{executable}{$executable} !~ /^\//)
+		{
+			$ok = 0;
+			print "\n[ Error ] - Failed to find the: [$executable] program. Is it installed?\n";
+			print "[ Error ] - If so, is it in one of the directories in your PATH environment variable?\n\n";
+		}
+	}
+	exit(1) if not $ok;
+	
+	return(0);
+}
+
+# This is the list of RPMs.
+sub get_package_list
+{
+	my ($conf) = @_;
+	
+	$conf->{sys}{packages}{common} = [
+		"ConsoleKit.x86_64", 					# ConsoleKit-0.4.1-3.el6.x86_64.rpm
+		"ConsoleKit-libs.x86_64", 				# ConsoleKit-libs-0.4.1-3.el6.x86_64.rpm
+		"ConsoleKit-x11.x86_64", 				# ConsoleKit-x11-0.4.1-3.el6.x86_64.rpm
+		"DeviceKit-power.x86_64", 				# DeviceKit-power-014-3.el6.x86_64.rpm
+		"GConf2.x86_64", 					# GConf2-2.28.0-6.el6.x86_64.rpm
+		"GConf2-gtk.x86_64", 					# GConf2-gtk-2.28.0-6.el6.x86_64.rpm
+		"MAKEDEV.x86_64", 					# MAKEDEV-3.24-6.el6.x86_64.rpm
+		"ORBit2.x86_64", 					# ORBit2-2.14.17-5.el6.x86_64.rpm
+		"OpenIPMI.x86_64", 					# OpenIPMI-2.0.16-14.el6.x86_64.rpm
+		"OpenIPMI-libs.x86_64", 				# OpenIPMI-libs-2.0.16-14.el6.x86_64.rpm
+		"PackageKit.x86_64", 					# PackageKit-0.5.8-25.el6.x86_64.rpm
+		"PackageKit-device-rebind.x86_64", 			# PackageKit-device-rebind-0.5.8-25.el6.x86_64.rpm
+		"PackageKit-glib.x86_64", 				# PackageKit-glib-0.5.8-25.el6.x86_64.rpm
+		"PackageKit-gtk-module.x86_64", 			# PackageKit-gtk-module-0.5.8-25.el6.x86_64.rpm
+		"PackageKit-yum.x86_64", 				# PackageKit-yum-0.5.8-25.el6.x86_64.rpm
+		"PackageKit-yum-plugin.x86_64", 			# PackageKit-yum-plugin-0.5.8-25.el6.x86_64.rpm
+		"abyssinica-fonts.noarch", 				# abyssinica-fonts-1.0-5.1.el6.noarch.rpm
+		"acl.x86_64", 						# acl-2.2.49-6.el6.x86_64.rpm
+		"acpid.x86_64", 					# acpid-1.0.10-2.1.el6.x86_64.rpm
+		"aic94xx-firmware.noarch", 				# aic94xx-firmware-30-2.el6.noarch.rpm
+		"alsa-lib.x86_64", 					# alsa-lib-1.0.22-3.el6.x86_64.rpm
+		"alsa-plugins-pulseaudio.x86_64", 			# alsa-plugins-pulseaudio-1.0.21-3.el6.x86_64.rpm
+		"alsa-utils.x86_64", 					# alsa-utils-1.0.22-9.el6_6.x86_64.rpm
+		"alteeve-repo.noarch", 					# alteeve-repo-0.1-3.noarch.rpm
+		"apr.x86_64", 						# apr-1.3.9-5.el6_2.x86_64.rpm
+		"apr-util.x86_64", 					# apr-util-1.3.9-3.el6_0.1.x86_64.rpm
+		"apr-util-ldap.x86_64", 				# apr-util-ldap-1.3.9-3.el6_0.1.x86_64.rpm
+		"at-spi.x86_64", 					# at-spi-1.28.1-2.el6.x86_64.rpm
+		"atk.x86_64", 						# atk-1.30.0-1.el6.x86_64.rpm
+		"atlas.x86_64", 					# atlas-3.8.4-2.el6.x86_64.rpm
+		"atmel-firmware.noarch", 				# atmel-firmware-1.3-7.el6.noarch.rpm
+		"attr.x86_64", 						# attr-2.4.44-7.el6.x86_64.rpm
+		"audit.x86_64", 					# audit-2.3.7-5.el6.x86_64.rpm
+		"audit-libs.x86_64", 					# audit-libs-2.3.7-5.el6.x86_64.rpm
+		"audit-libs-python.x86_64", 				# audit-libs-python-2.3.7-5.el6.x86_64.rpm
+		"augeas-libs.x86_64", 					# augeas-libs-1.0.0-10.el6.x86_64.rpm
+		"authconfig.x86_64", 					# authconfig-6.1.12-23.el6.x86_64.rpm
+		"avahi-glib.x86_64", 					# avahi-glib-0.6.25-15.el6.x86_64.rpm
+		"avahi-libs.x86_64", 					# avahi-libs-0.6.25-15.el6.x86_64.rpm
+		"avahi-ui.x86_64", 					# avahi-ui-0.6.25-15.el6.x86_64.rpm
+		"b43-openfwwf.noarch", 					# b43-openfwwf-5.2-10.el6.noarch.rpm
+		"basesystem.noarch", 					# basesystem-10.0-4.el6.noarch.rpm
+		"bash.x86_64", 						# bash-4.1.2-33.el6.x86_64.rpm
+		"bc.x86_64", 						# bc-1.06.95-1.el6.x86_64.rpm
+		"bfa-firmware.noarch", 					# bfa-firmware-3.2.23.0-2.el6.noarch.rpm
+		"bind-libs.x86_64", 					# bind-libs-9.8.2-0.37.rc1.el6_7.2.x86_64.rpm
+		"bind-utils.x86_64", 					# bind-utils-9.8.2-0.37.rc1.el6_7.2.x86_64.rpm
+		"binutils.x86_64", 					# binutils-2.20.51.0.2-5.43.el6.x86_64.rpm
+		"bridge-utils.x86_64", 					# bridge-utils-1.2-10.el6.x86_64.rpm
+		"busybox.x86_64", 					# busybox-1.15.1-21.el6_6.x86_64.rpm
+		"bzip2.x86_64", 					# bzip2-1.0.5-7.el6_0.x86_64.rpm
+		"bzip2-libs.x86_64", 					# bzip2-libs-1.0.5-7.el6_0.x86_64.rpm
+		"ca-certificates.noarch", 				# ca-certificates-2015.2.4-65.0.1.el6_6.noarch.rpm
+		"cairo.x86_64", 					# cairo-1.8.8-6.el6_6.x86_64.rpm
+		"ccs.x86_64", 						# ccs-0.16.2-81.el6.x86_64.rpm
+		"cdparanoia-libs.x86_64", 				# cdparanoia-libs-10.2-5.1.el6.x86_64.rpm
+		"celt051.x86_64", 					# celt051-0.5.1.3-0.el6.x86_64.rpm
+		"checkpolicy.x86_64", 					# checkpolicy-2.0.22-1.el6.x86_64.rpm
+		"chkconfig.x86_64", 					# chkconfig-1.3.49.3-5.el6.x86_64.rpm
+		"cifs-utils.x86_64", 					# cifs-utils-4.8.1-20.el6.x86_64.rpm
+		"cim-schema.noarch", 					# cim-schema-2.33.0-1.el6.noarch.rpm
+		"cjkuni-fonts-common.noarch", 				# cjkuni-fonts-common-0.2.20080216.1-36.el6.noarch.rpm
+		"cjkuni-uming-fonts.noarch", 				# cjkuni-uming-fonts-0.2.20080216.1-36.el6.noarch.rpm
+		"cloog-ppl.x86_64", 					# cloog-ppl-0.15.7-1.2.el6.x86_64.rpm
+		"cluster-cim.x86_64", 					# cluster-cim-0.16.2-31.el6.x86_64.rpm
+		"clusterlib.x86_64", 					# clusterlib-3.0.12.1-73.el6.1.x86_64.rpm
+		"cman.x86_64", 						# cman-3.0.12.1-73.el6.1.x86_64.rpm
+		"compat-libstdc++-33.i686", 				# compat-libstdc++-33-3.2.3-69.el6.i686.rpm
+		"comps-extras.noarch", 					# comps-extras-17.8-1.el6.noarch.rpm
+		"control-center.x86_64", 				# control-center-2.28.1-39.el6.x86_64.rpm
+		"control-center-extra.x86_64", 				# control-center-extra-2.28.1-39.el6.x86_64.rpm
+		"control-center-filesystem.x86_64", 			# control-center-filesystem-2.28.1-39.el6.x86_64.rpm
+		"coreutils.x86_64", 					# coreutils-8.4-37.el6.x86_64.rpm
+		"coreutils-libs.x86_64", 				# coreutils-libs-8.4-37.el6.x86_64.rpm
+		"corosync.x86_64", 					# corosync-1.4.7-2.el6.x86_64.rpm
+		"corosynclib.x86_64", 					# corosynclib-1.4.7-2.el6.x86_64.rpm
+		"cpio.x86_64", 						# cpio-2.10-12.el6_5.x86_64.rpm
+		"cpp.x86_64", 						# cpp-4.4.7-16.el6.x86_64.rpm
+		"cracklib.x86_64", 					# cracklib-2.8.16-4.el6.x86_64.rpm
+		"cracklib-dicts.x86_64", 				# cracklib-dicts-2.8.16-4.el6.x86_64.rpm
+		"createrepo.noarch", 					# createrepo-0.9.9-22.el6.noarch.rpm
+		"cronie.x86_64", 					# cronie-1.4.4-15.el6.x86_64.rpm
+		"cronie-anacron.x86_64", 				# cronie-anacron-1.4.4-15.el6.x86_64.rpm
+		"crontabs.noarch", 					# crontabs-1.10-33.el6.noarch.rpm
+		"cryptsetup-luks.x86_64", 				# cryptsetup-luks-1.2.0-11.el6.x86_64.rpm
+		"cryptsetup-luks-libs.x86_64", 				# cryptsetup-luks-libs-1.2.0-11.el6.x86_64.rpm
+		"cups-libs.x86_64", 					# cups-libs-1.4.2-72.el6.x86_64.rpm
+		"curl.x86_64", 						# curl-7.19.7-46.el6.x86_64.rpm
+		"cvs.x86_64", 						# cvs-1.11.23-16.el6.x86_64.rpm
+		"cyrus-sasl.x86_64", 					# cyrus-sasl-2.1.23-15.el6_6.2.x86_64.rpm
+		"cyrus-sasl-lib.x86_64", 				# cyrus-sasl-lib-2.1.23-15.el6_6.2.x86_64.rpm
+		"cyrus-sasl-md5.x86_64", 				# cyrus-sasl-md5-2.1.23-15.el6_6.2.x86_64.rpm
+		"cyrus-sasl-plain.x86_64", 				# cyrus-sasl-plain-2.1.23-15.el6_6.2.x86_64.rpm
+		"dash.x86_64", 						# dash-0.5.5.1-4.el6.x86_64.rpm
+		"db4.x86_64", 						# db4-4.7.25-19.el6_6.x86_64.rpm
+		"db4-cxx.x86_64", 					# db4-cxx-4.7.25-19.el6_6.x86_64.rpm
+		"db4-devel.x86_64", 					# db4-devel-4.7.25-19.el6_6.x86_64.rpm
+		"db4-utils.x86_64", 					# db4-utils-4.7.25-19.el6_6.x86_64.rpm
+		"dbus.x86_64", 						# dbus-1.2.24-8.el6_6.x86_64.rpm
+		"dbus-glib.x86_64", 					# dbus-glib-0.86-6.el6_4.x86_64.rpm
+		"dbus-libs.x86_64", 					# dbus-libs-1.2.24-8.el6_6.x86_64.rpm
+		"dbus-python.x86_64", 					# dbus-python-0.83.0-6.1.el6.x86_64.rpm
+		"dbus-x11.x86_64", 					# dbus-x11-1.2.24-8.el6_6.x86_64.rpm
+		"dejavu-fonts-common.noarch", 				# dejavu-fonts-common-2.33-1.el6.noarch.rpm
+		"dejavu-sans-fonts.noarch", 				# dejavu-sans-fonts-2.33-1.el6.noarch.rpm
+		"dejavu-sans-mono-fonts.noarch", 			# dejavu-sans-mono-fonts-2.33-1.el6.noarch.rpm
+		"dejavu-serif-fonts.noarch", 				# dejavu-serif-fonts-2.33-1.el6.noarch.rpm
+		"deltarpm.x86_64", 					# deltarpm-3.5-0.5.20090913git.el6.x86_64.rpm
+		"desktop-file-utils.x86_64", 				# desktop-file-utils-0.15-9.el6.x86_64.rpm
+		"device-mapper.x86_64", 				# device-mapper-1.02.95-3.el6_7.2.x86_64.rpm
+		"device-mapper-event.x86_64", 				# device-mapper-event-1.02.95-3.el6_7.2.x86_64.rpm
+		"device-mapper-event-libs.x86_64", 			# device-mapper-event-libs-1.02.95-3.el6_7.2.x86_64.rpm
+		"device-mapper-libs.x86_64", 				# device-mapper-libs-1.02.95-3.el6_7.2.x86_64.rpm
+		"device-mapper-persistent-data.x86_64", 		# device-mapper-persistent-data-0.3.2-1.el6.x86_64.rpm
+		"dhclient.x86_64", 					# dhclient-4.1.1-49.P1.el6.x86_64.rpm
+		"dhcp.x86_64", 						# dhcp-4.1.1-49.P1.el6.x86_64.rpm
+		"dhcp-common.x86_64", 					# dhcp-common-4.1.1-49.P1.el6.x86_64.rpm
+		"diffutils.x86_64", 					# diffutils-2.8.1-28.el6.x86_64.rpm
+		"dmidecode.x86_64", 					# dmidecode-2.12-6.el6.x86_64.rpm
+		"dmz-cursor-themes.noarch", 				# dmz-cursor-themes-0.4-4.el6.noarch.rpm
+		"dnsmasq.x86_64", 					# dnsmasq-2.48-14.el6.x86_64.rpm
+		"docbook-dtds.noarch", 					# docbook-dtds-1.0-51.el6.noarch.rpm
+		"dosfstools.x86_64", 					# dosfstools-3.0.9-4.el6.x86_64.rpm
+		"dracut.noarch", 					# dracut-004-388.el6.noarch.rpm
+		"dracut-kernel.noarch", 				# dracut-kernel-004-388.el6.noarch.rpm
+		"e2fsprogs.x86_64", 					# e2fsprogs-1.41.12-22.el6.x86_64.rpm
+		"e2fsprogs-libs.x86_64", 				# e2fsprogs-libs-1.41.12-22.el6.x86_64.rpm
+		"ebtables.x86_64", 					# ebtables-2.0.9-6.el6.x86_64.rpm
+		"efibootmgr.x86_64", 					# efibootmgr-0.5.4-13.el6.x86_64.rpm
+		"eggdbus.x86_64", 					# eggdbus-0.6-3.el6.x86_64.rpm
+		"eject.x86_64", 					# eject-2.1.5-17.el6.x86_64.rpm
+		"elfutils-libelf.x86_64", 				# elfutils-libelf-0.161-3.el6.x86_64.rpm
+		"elfutils-libs.x86_64", 				# elfutils-libs-0.161-3.el6.x86_64.rpm
+		"enchant.x86_64", 					# enchant-1.5.0-5.el6.x86_64.rpm
+		"eog.x86_64", 						# eog-2.28.2-4.el6.x86_64.rpm
+		"ethtool.x86_64", 					# ethtool-3.5-6.el6.x86_64.rpm
+		"evince.x86_64", 					# evince-2.28.2-14.el6_0.1.x86_64.rpm
+		"evince-libs.x86_64", 					# evince-libs-2.28.2-14.el6_0.1.x86_64.rpm
+		"evolution-data-server.x86_64", 			# evolution-data-server-2.32.3-23.el6.x86_64.rpm
+		"exempi.x86_64", 					# exempi-2.1.0-5.el6.x86_64.rpm
+		"expat.x86_64", 					# expat-2.0.1-11.el6_2.x86_64.rpm
+		"expect.x86_64", 					# expect-5.44.1.15-5.el6_4.x86_64.rpm
+		"fence-agents.x86_64", 					# fence-agents-4.0.15-8.el6.x86_64.rpm
+		"fence-virt.x86_64", 					# fence-virt-0.2.3-19.el6.x86_64.rpm
+		"file.x86_64", 						# file-5.04-21.el6.x86_64.rpm
+		"file-libs.x86_64", 					# file-libs-5.04-21.el6.x86_64.rpm
+		"filesystem.x86_64", 					# filesystem-2.4.30-3.el6.x86_64.rpm
+		"findutils.x86_64", 					# findutils-4.4.2-6.el6.x86_64.rpm
+		"fipscheck.x86_64", 					# fipscheck-1.2.0-7.el6.x86_64.rpm
+		"fipscheck-lib.x86_64", 				# fipscheck-lib-1.2.0-7.el6.x86_64.rpm
+		"firefox.x86_64", 					# firefox-38.2.0-4.el6_7.x86_64.rpm
+		"flac.x86_64", 						# flac-1.2.1-7.el6_6.x86_64.rpm
+		"fontconfig.x86_64", 					# fontconfig-2.8.0-5.el6.x86_64.rpm
+		"fontpackages-filesystem.noarch", 			# fontpackages-filesystem-1.41-1.1.el6.noarch.rpm
+		"fprintd.x86_64", 					# fprintd-0.1-22.git04fd09cfa.el6.x86_64.rpm
+		"fprintd-pam.x86_64", 					# fprintd-pam-0.1-22.git04fd09cfa.el6.x86_64.rpm
+		"freeipmi.x86_64", 					# freeipmi-1.2.1-6.el6_5.x86_64.rpm
+		"freeipmi-bmc-watchdog.x86_64", 			# freeipmi-bmc-watchdog-1.2.1-6.el6_5.x86_64.rpm
+		"freeipmi-ipmidetectd.x86_64", 				# freeipmi-ipmidetectd-1.2.1-6.el6_5.x86_64.rpm
+		"freetype.x86_64", 					# freetype-2.3.11-15.el6_6.1.x86_64.rpm
+		"fuse.x86_64", 						# fuse-2.8.3-4.el6.x86_64.rpm
+		"fuse-libs.x86_64", 					# fuse-libs-2.8.3-4.el6.x86_64.rpm
+		"gamin.x86_64", 					# gamin-0.1.10-9.el6.x86_64.rpm
+		"gawk.x86_64", 						# gawk-3.1.7-10.el6.x86_64.rpm
+		"gcc.x86_64", 						# gcc-4.4.7-16.el6.x86_64.rpm
+		"gcc-c++.x86_64", 					# gcc-c++-4.4.7-16.el6.x86_64.rpm
+		"gd.x86_64", 						# gd-2.0.35-11.el6.x86_64.rpm
+		"gdbm.x86_64", 						# gdbm-1.8.0-38.el6.x86_64.rpm
+		"gdbm-devel.x86_64", 					# gdbm-devel-1.8.0-38.el6.x86_64.rpm
+		"gdk-pixbuf2.x86_64", 					# gdk-pixbuf2-2.24.1-5.el6.x86_64.rpm
+		"gdm.x86_64", 						# gdm-2.30.4-64.el6.x86_64.rpm
+		"gdm-libs.x86_64", 					# gdm-libs-2.30.4-64.el6.x86_64.rpm
+		"gdm-plugin-fingerprint.x86_64", 			# gdm-plugin-fingerprint-2.30.4-64.el6.x86_64.rpm
+		"gdm-user-switch-applet.x86_64", 			# gdm-user-switch-applet-2.30.4-64.el6.x86_64.rpm
+		"gedit.x86_64", 					# gedit-2.28.4-3.el6.x86_64.rpm
+		"gettext.x86_64", 					# gettext-0.17-18.el6.x86_64.rpm
+		"gfs2-utils.x86_64", 					# gfs2-utils-3.0.12.1-73.el6.1.x86_64.rpm
+		"ghostscript.x86_64", 					# ghostscript-8.70-21.el6.x86_64.rpm
+		"ghostscript-fonts.noarch", 				# ghostscript-fonts-5.50-23.2.el6.noarch.rpm
+		"giflib.x86_64", 					# giflib-4.1.6-3.1.el6.x86_64.rpm
+		"glib-networking.x86_64", 				# glib-networking-2.28.6.1-2.2.el6.x86_64.rpm
+		"glib2.x86_64", 					# glib2-2.28.8-4.el6.x86_64.rpm
+		"glibc.i686", 						# glibc-2.12-1.166.el6_7.1.i686.rpm
+		"glibc.x86_64", 					# glibc-2.12-1.166.el6_7.1.x86_64.rpm
+		"glibc-common.x86_64", 					# glibc-common-2.12-1.166.el6_7.1.x86_64.rpm
+		"glibc-devel.x86_64", 					# glibc-devel-2.12-1.166.el6_7.1.x86_64.rpm
+		"glibc-headers.x86_64", 				# glibc-headers-2.12-1.166.el6_7.1.x86_64.rpm
+		"glusterfs.x86_64", 					# glusterfs-3.6.0.54-1.el6.x86_64.rpm
+		"glusterfs-api.x86_64", 				# glusterfs-api-3.6.0.54-1.el6.x86_64.rpm
+		"glusterfs-libs.x86_64", 				# glusterfs-libs-3.6.0.54-1.el6.x86_64.rpm
+		"glx-utils.x86_64", 					# glx-utils-10.4.3-1.el6.x86_64.rpm
+		"gmp.x86_64", 						# gmp-4.3.1-7.el6_2.2.x86_64.rpm
+		"gnome-applets.x86_64", 				# gnome-applets-2.28.0-7.el6.x86_64.rpm
+		"gnome-desktop.x86_64", 				# gnome-desktop-2.28.2-11.el6.x86_64.rpm
+		"gnome-disk-utility.x86_64", 				# gnome-disk-utility-2.30.1-2.el6.x86_64.rpm
+		"gnome-disk-utility-libs.x86_64", 			# gnome-disk-utility-libs-2.30.1-2.el6.x86_64.rpm
+		"gnome-disk-utility-ui-libs.x86_64", 			# gnome-disk-utility-ui-libs-2.30.1-2.el6.x86_64.rpm
+		"gnome-doc-utils-stylesheets.noarch", 			# gnome-doc-utils-stylesheets-0.18.1-1.el6.noarch.rpm
+		"gnome-icon-theme.noarch", 				# gnome-icon-theme-2.28.0-2.el6.noarch.rpm
+		"gnome-keyring.x86_64", 				# gnome-keyring-2.28.2-8.el6_3.x86_64.rpm
+		"gnome-keyring-pam.x86_64", 				# gnome-keyring-pam-2.28.2-8.el6_3.x86_64.rpm
+		"gnome-media.x86_64", 					# gnome-media-2.29.91-6.el6.x86_64.rpm
+		"gnome-media-libs.x86_64", 				# gnome-media-libs-2.29.91-6.el6.x86_64.rpm
+		"gnome-menus.x86_64", 					# gnome-menus-2.28.0-4.el6.x86_64.rpm
+		"gnome-packagekit.x86_64", 				# gnome-packagekit-2.28.3-9.el6.x86_64.rpm
+		"gnome-panel.x86_64", 					# gnome-panel-2.30.2-15.el6.x86_64.rpm
+		"gnome-panel-libs.x86_64", 				# gnome-panel-libs-2.30.2-15.el6.x86_64.rpm
+		"gnome-power-manager.x86_64", 				# gnome-power-manager-2.28.3-7.el6_4.x86_64.rpm
+		"gnome-python2.x86_64", 				# gnome-python2-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-applet.x86_64", 				# gnome-python2-applet-2.28.0-5.el6.x86_64.rpm
+		"gnome-python2-bonobo.x86_64", 				# gnome-python2-bonobo-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-canvas.x86_64", 				# gnome-python2-canvas-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-desktop.x86_64", 			# gnome-python2-desktop-2.28.0-5.el6.x86_64.rpm
+		"gnome-python2-extras.x86_64", 				# gnome-python2-extras-2.25.3-20.el6.x86_64.rpm
+		"gnome-python2-gconf.x86_64", 				# gnome-python2-gconf-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-gnome.x86_64", 				# gnome-python2-gnome-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-gnomekeyring.x86_64", 			# gnome-python2-gnomekeyring-2.28.0-5.el6.x86_64.rpm
+		"gnome-python2-gnomevfs.x86_64", 			# gnome-python2-gnomevfs-2.28.0-3.el6.x86_64.rpm
+		"gnome-python2-libegg.x86_64", 				# gnome-python2-libegg-2.25.3-20.el6.x86_64.rpm
+		"gnome-screensaver.x86_64", 				# gnome-screensaver-2.28.3-28.el6.x86_64.rpm
+		"gnome-session.x86_64", 				# gnome-session-2.28.0-22.el6.x86_64.rpm
+		"gnome-session-xsession.x86_64", 			# gnome-session-xsession-2.28.0-22.el6.x86_64.rpm
+		"gnome-settings-daemon.x86_64", 			# gnome-settings-daemon-2.28.2-31.el6.x86_64.rpm
+		"gnome-terminal.x86_64", 				# gnome-terminal-2.31.3-11.el6_6.x86_64.rpm
+		"gnome-themes.noarch", 					# gnome-themes-2.28.1-6.el6.noarch.rpm
+		"gnome-user-docs.noarch", 				# gnome-user-docs-2.28.0-4.el6.noarch.rpm
+		"gnome-utils.x86_64", 					# gnome-utils-2.28.1-10.el6.x86_64.rpm
+		"gnome-utils-libs.x86_64", 				# gnome-utils-libs-2.28.1-10.el6.x86_64.rpm
+		"gnome-vfs2.x86_64", 					# gnome-vfs2-2.24.2-6.el6.x86_64.rpm
+		"gnome-vfs2-smb.x86_64", 				# gnome-vfs2-smb-2.24.2-6.el6.x86_64.rpm
+		"gnupg2.x86_64", 					# gnupg2-2.0.14-8.el6.x86_64.rpm
+		"gnutls.x86_64", 					# gnutls-2.8.5-18.el6.x86_64.rpm
+		"gnutls-utils.x86_64", 					# gnutls-utils-2.8.5-18.el6.x86_64.rpm
+		"google-crosextra-caladea-fonts.noarch", 		# google-crosextra-caladea-fonts-1.002-0.3.20130214.el6.1.noarch.rpm
+		"google-crosextra-carlito-fonts.noarch", 		# google-crosextra-carlito-fonts-1.103-0.1.20130920.el6.1.noarch.rpm
+		"gpgme.x86_64", 					# gpgme-1.1.8-3.el6.x86_64.rpm
+		"gpm.x86_64", 						# gpm-1.20.6-12.el6.x86_64.rpm
+		"gpm-libs.x86_64", 					# gpm-libs-1.20.6-12.el6.x86_64.rpm
+		"gpxe-roms-qemu.noarch", 				# gpxe-roms-qemu-0.9.7-6.14.el6.noarch.rpm
+		"grep.x86_64", 						# grep-2.20-3.el6.x86_64.rpm
+		"groff.x86_64", 					# groff-1.18.1.4-21.el6.x86_64.rpm
+		"grub.x86_64", 						# grub-0.97-94.el6.x86_64.rpm
+		"grubby.x86_64", 					# grubby-7.0.15-7.el6.x86_64.rpm
+		"gstreamer.x86_64", 					# gstreamer-0.10.29-1.el6.x86_64.rpm
+		"gstreamer-plugins-base.x86_64", 			# gstreamer-plugins-base-0.10.29-2.el6.x86_64.rpm
+		"gstreamer-plugins-good.x86_64", 			# gstreamer-plugins-good-0.10.23-3.el6.x86_64.rpm
+		"gstreamer-tools.x86_64", 				# gstreamer-tools-0.10.29-1.el6.x86_64.rpm
+		"gtk-vnc.x86_64", 					# gtk-vnc-0.3.10-3.el6.x86_64.rpm
+		"gtk-vnc-python.x86_64", 				# gtk-vnc-python-0.3.10-3.el6.x86_64.rpm
+		"gtk2.x86_64", 						# gtk2-2.24.23-6.el6.x86_64.rpm
+		"gtk2-engines.x86_64", 					# gtk2-engines-2.18.4-5.el6.x86_64.rpm
+		"gtksourceview2.x86_64", 				# gtksourceview2-2.8.2-4.el6.x86_64.rpm
+		"gucharmap.x86_64", 					# gucharmap-2.28.2-2.el6.x86_64.rpm
+		"gvfs.x86_64", 						# gvfs-1.4.3-22.el6.x86_64.rpm
+		"gvfs-archive.x86_64", 					# gvfs-archive-1.4.3-22.el6.x86_64.rpm
+		"gvfs-fuse.x86_64", 					# gvfs-fuse-1.4.3-22.el6.x86_64.rpm
+		"gvfs-smb.x86_64", 					# gvfs-smb-1.4.3-22.el6.x86_64.rpm
+		"gzip.x86_64", 						# gzip-1.3.12-22.el6.x86_64.rpm
+		"hal.x86_64", 						# hal-0.5.14-14.el6.x86_64.rpm
+		"hal-info.noarch", 					# hal-info-20090716-5.el6.noarch.rpm
+		"hal-libs.x86_64", 					# hal-libs-0.5.14-14.el6.x86_64.rpm
+		"hdparm.x86_64", 					# hdparm-9.43-4.el6.x86_64.rpm
+		"hicolor-icon-theme.noarch", 				# hicolor-icon-theme-0.11-1.1.el6.noarch.rpm
+		"httpd.x86_64", 					# httpd-2.2.15-47.el6_7.x86_64.rpm
+		"httpd-tools.x86_64", 					# httpd-tools-2.2.15-47.el6_7.x86_64.rpm
+		"hunspell.x86_64", 					# hunspell-1.2.8-16.el6.x86_64.rpm
+		"hwdata.noarch", 					# hwdata-0.233-14.1.el6.noarch.rpm
+		"hwloc.x86_64", 					# hwloc-1.5-3.el6_5.x86_64.rpm
+		"icedtea-web.x86_64", 					# icedtea-web-1.5.1-1.el6.x86_64.rpm
+		"info.x86_64", 						# info-4.13a-8.el6.x86_64.rpm
+		"initscripts.x86_64", 					# initscripts-9.03.49-1.el6.x86_64.rpm
+		"ipmitool.x86_64", 					# ipmitool-1.8.11-28.el6.x86_64.rpm
+		"iproute.x86_64", 					# iproute-2.6.32-45.el6.x86_64.rpm
+		"iptables.x86_64", 					# iptables-1.4.7-16.el6.x86_64.rpm
+		"iptables-ipv6.x86_64", 				# iptables-ipv6-1.4.7-16.el6.x86_64.rpm
+		"iputils.x86_64", 					# iputils-20071127-20.el6.x86_64.rpm
+		"ipw2100-firmware.noarch", 				# ipw2100-firmware-1.3-11.el6.noarch.rpm
+		"ipw2200-firmware.noarch", 				# ipw2200-firmware-3.1-4.el6.noarch.rpm
+		"irqbalance.x86_64", 					# irqbalance-1.0.7-5.el6.x86_64.rpm
+		"iscsi-initiator-utils.x86_64", 			# iscsi-initiator-utils-6.2.0.873-14.el6.x86_64.rpm
+		"iso-codes.noarch", 					# iso-codes-3.16-2.el6.noarch.rpm
+		"ivtv-firmware.noarch", 				# ivtv-firmware-20080701-20.2.noarch.rpm
+		"iwl100-firmware.noarch", 				# iwl100-firmware-39.31.5.1-1.el6.noarch.rpm
+		"iwl1000-firmware.noarch", 				# iwl1000-firmware-39.31.5.1-1.el6.noarch.rpm
+		"iwl3945-firmware.noarch", 				# iwl3945-firmware-15.32.2.9-4.el6.noarch.rpm
+		"iwl4965-firmware.noarch", 				# iwl4965-firmware-228.61.2.24-2.1.el6.noarch.rpm
+		"iwl5000-firmware.noarch", 				# iwl5000-firmware-8.83.5.1_1-1.el6_1.1.noarch.rpm
+		"iwl5150-firmware.noarch", 				# iwl5150-firmware-8.24.2.2-1.el6.noarch.rpm
+		"iwl6000-firmware.noarch", 				# iwl6000-firmware-9.221.4.1-1.el6.noarch.rpm
+		"iwl6000g2a-firmware.noarch", 				# iwl6000g2a-firmware-17.168.5.3-1.el6.noarch.rpm
+		"iwl6050-firmware.noarch", 				# iwl6050-firmware-41.28.5.1-2.el6.noarch.rpm
+		"jasper-libs.x86_64", 					# jasper-libs-1.900.1-16.el6_6.3.x86_64.rpm
+		"java-1.7.0-openjdk.x86_64", 				# java-1.7.0-openjdk-1.7.0.79-2.5.5.4.el6.x86_64.rpm
+		"java-1.8.0-openjdk.x86_64", 				# java-1.8.0-openjdk-1.8.0.51-1.b16.el6_7.x86_64.rpm
+		"java-1.8.0-openjdk-headless.x86_64", 			# java-1.8.0-openjdk-headless-1.8.0.51-1.b16.el6_7.x86_64.rpm
+		"jomolhari-fonts.noarch", 				# jomolhari-fonts-0.003-8.1.el6.noarch.rpm
+		"jpackage-utils.noarch", 				# jpackage-utils-1.7.5-3.14.el6.noarch.rpm
+		"kbd.x86_64", 						# kbd-1.15-11.el6.x86_64.rpm
+		"kbd-misc.noarch", 					# kbd-misc-1.15-11.el6.noarch.rpm
+		"kernel.x86_64", 					# kernel-2.6.32-573.3.1.el6.x86_64.rpm
+		"kernel-devel.x86_64", 					# kernel-devel-2.6.32-573.3.1.el6.x86_64.rpm
+		"kernel-firmware.noarch", 				# kernel-firmware-2.6.32-573.3.1.el6.noarch.rpm
+		"kernel-headers.x86_64", 				# kernel-headers-2.6.32-573.3.1.el6.x86_64.rpm
+		"kexec-tools.x86_64", 					# kexec-tools-2.0.0-286.el6.x86_64.rpm
+		"keyutils.x86_64", 					# keyutils-1.4-5.el6.x86_64.rpm
+		"keyutils-libs.x86_64", 				# keyutils-libs-1.4-5.el6.x86_64.rpm
+		"keyutils-libs-devel.x86_64", 				# keyutils-libs-devel-1.4-5.el6.x86_64.rpm
+		"khmeros-base-fonts.noarch", 				# khmeros-base-fonts-5.0-9.el6.noarch.rpm
+		"khmeros-fonts-common.noarch", 				# khmeros-fonts-common-5.0-9.el6.noarch.rpm
+		"kpartx.x86_64", 					# kpartx-0.4.9-87.el6.x86_64.rpm
+		"krb5-devel.x86_64", 					# krb5-devel-1.10.3-42.el6.x86_64.rpm
+		"krb5-libs.x86_64", 					# krb5-libs-1.10.3-42.el6.x86_64.rpm
+		"kurdit-unikurd-web-fonts.noarch", 			# kurdit-unikurd-web-fonts-20020502-6.el6.noarch.rpm
+		"lcms-libs.x86_64", 					# lcms-libs-1.19-1.el6.x86_64.rpm
+		"less.x86_64", 						# less-436-13.el6.x86_64.rpm
+		"libICE.x86_64", 					# libICE-1.0.6-1.el6.x86_64.rpm
+		"libIDL.x86_64", 					# libIDL-0.8.13-2.1.el6.x86_64.rpm
+		"libSM.x86_64", 					# libSM-1.2.1-2.el6.x86_64.rpm
+		"libX11.x86_64", 					# libX11-1.6.0-6.el6.x86_64.rpm
+		"libX11-common.noarch", 				# libX11-common-1.6.0-6.el6.noarch.rpm
+		"libXScrnSaver.x86_64", 				# libXScrnSaver-1.2.2-2.el6.x86_64.rpm
+		"libXau.x86_64", 					# libXau-1.0.6-4.el6.x86_64.rpm
+		"libXaw.x86_64", 					# libXaw-1.0.11-2.el6.x86_64.rpm
+		"libXcomposite.x86_64", 				# libXcomposite-0.4.3-4.el6.x86_64.rpm
+		"libXcursor.x86_64", 					# libXcursor-1.1.14-2.1.el6.x86_64.rpm
+		"libXdamage.x86_64", 					# libXdamage-1.1.3-4.el6.x86_64.rpm
+		"libXdmcp.x86_64", 					# libXdmcp-1.1.1-3.el6.x86_64.rpm
+		"libXext.x86_64", 					# libXext-1.3.2-2.1.el6.x86_64.rpm
+		"libXfixes.x86_64", 					# libXfixes-5.0.1-2.1.el6.x86_64.rpm
+		"libXfont.x86_64", 					# libXfont-1.4.5-4.el6_6.x86_64.rpm
+		"libXft.x86_64", 					# libXft-2.3.1-2.el6.x86_64.rpm
+		"libXi.x86_64", 					# libXi-1.7.2-2.2.el6.x86_64.rpm
+		"libXinerama.x86_64", 					# libXinerama-1.1.3-2.1.el6.x86_64.rpm
+		"libXmu.x86_64", 					# libXmu-1.1.1-2.el6.x86_64.rpm
+		"libXpm.x86_64", 					# libXpm-3.5.10-2.el6.x86_64.rpm
+		"libXrandr.x86_64", 					# libXrandr-1.4.1-2.1.el6.x86_64.rpm
+		"libXrender.x86_64", 					# libXrender-0.9.8-2.1.el6.x86_64.rpm
+		"libXres.x86_64", 					# libXres-1.0.7-2.1.el6.x86_64.rpm
+		"libXt.x86_64", 					# libXt-1.1.4-6.1.el6.x86_64.rpm
+		"libXtst.x86_64", 					# libXtst-1.2.2-2.1.el6.x86_64.rpm
+		"libXv.x86_64", 					# libXv-1.0.9-2.1.el6.x86_64.rpm
+		"libXvMC.x86_64", 					# libXvMC-1.0.8-2.1.el6.x86_64.rpm
+		"libXxf86dga.x86_64", 					# libXxf86dga-1.1.4-2.1.el6.x86_64.rpm
+		"libXxf86misc.x86_64", 					# libXxf86misc-1.0.3-4.el6.x86_64.rpm
+		"libXxf86vm.x86_64", 					# libXxf86vm-1.1.3-2.1.el6.x86_64.rpm
+		"libacl.x86_64", 					# libacl-2.2.49-6.el6.x86_64.rpm
+		"libaio.x86_64", 					# libaio-0.3.107-10.el6.x86_64.rpm
+		"libarchive.x86_64", 					# libarchive-2.8.3-4.el6_2.x86_64.rpm
+		"libart_lgpl.x86_64", 					# libart_lgpl-2.3.20-5.1.el6.x86_64.rpm
+		"libasyncns.x86_64", 					# libasyncns-0.8-1.1.el6.x86_64.rpm
+		"libatasmart.x86_64", 					# libatasmart-0.17-4.el6_2.x86_64.rpm
+		"libattr.x86_64", 					# libattr-2.4.44-7.el6.x86_64.rpm
+		"libavc1394.x86_64", 					# libavc1394-0.5.3-9.1.el6.x86_64.rpm
+		"libblkid.x86_64", 					# libblkid-2.17.2-12.18.el6.x86_64.rpm
+		"libbonobo.x86_64", 					# libbonobo-2.24.2-5.el6.x86_64.rpm
+		"libbonoboui.x86_64", 					# libbonoboui-2.24.2-3.el6.x86_64.rpm
+		"libcacard.x86_64", 					# libcacard-0.15.0-2.el6.x86_64.rpm
+		"libcanberra.x86_64", 					# libcanberra-0.22-1.el6.x86_64.rpm
+		"libcanberra-gtk2.x86_64", 				# libcanberra-gtk2-0.22-1.el6.x86_64.rpm
+		"libcap.x86_64", 					# libcap-2.16-5.5.el6.x86_64.rpm
+		"libcap-ng.x86_64", 					# libcap-ng-0.6.4-3.el6_0.1.x86_64.rpm
+		"libcdio.x86_64", 					# libcdio-0.81-3.1.el6.x86_64.rpm
+		"libcgroup.x86_64", 					# libcgroup-0.40.rc1-16.el6.x86_64.rpm
+		"libcom_err.x86_64", 					# libcom_err-1.41.12-22.el6.x86_64.rpm
+		"libcom_err-devel.x86_64", 				# libcom_err-devel-1.41.12-22.el6.x86_64.rpm
+		"libcroco.x86_64", 					# libcroco-0.6.2-5.el6.x86_64.rpm
+		"libcurl.x86_64", 					# libcurl-7.19.7-46.el6.x86_64.rpm
+		"libdmx.x86_64", 					# libdmx-1.1.3-3.el6.x86_64.rpm
+		"libdrm.x86_64", 					# libdrm-2.4.59-2.el6.x86_64.rpm
+		"libdv.x86_64", 					# libdv-1.0.0-8.1.el6.x86_64.rpm
+		"libedit.x86_64", 					# libedit-2.11-4.20080712cvs.1.el6.x86_64.rpm
+		"liberation-fonts-common.noarch", 			# liberation-fonts-common-1.05.1.20090721-5.el6.noarch.rpm
+		"liberation-mono-fonts.noarch", 			# liberation-mono-fonts-1.05.1.20090721-5.el6.noarch.rpm
+		"liberation-sans-fonts.noarch", 			# liberation-sans-fonts-1.05.1.20090721-5.el6.noarch.rpm
+		"liberation-serif-fonts.noarch", 			# liberation-serif-fonts-1.05.1.20090721-5.el6.noarch.rpm
+		"libertas-usb8388-firmware.noarch", 			# libertas-usb8388-firmware-5.110.22.p23-3.1.el6.noarch.rpm
+		"libevent.x86_64", 					# libevent-1.4.13-4.el6.x86_64.rpm
+		"libexif.x86_64", 					# libexif-0.6.21-5.el6_3.x86_64.rpm
+		"libffi.x86_64", 					# libffi-3.0.5-3.2.el6.x86_64.rpm
+		"libfontenc.x86_64", 					# libfontenc-1.0.5-2.el6.x86_64.rpm
+		"libfprint.x86_64", 					# libfprint-0.1.0-19.pre2.el6.x86_64.rpm
+		"libgail-gnome.x86_64", 				# libgail-gnome-1.20.1-4.1.el6.x86_64.rpm
+		"libgcc.i686", 						# libgcc-4.4.7-16.el6.i686.rpm
+		"libgcc.x86_64", 					# libgcc-4.4.7-16.el6.x86_64.rpm
+		"libgcrypt.x86_64", 					# libgcrypt-1.4.5-11.el6_4.x86_64.rpm
+		"libgdata.x86_64", 					# libgdata-0.6.4-2.el6.x86_64.rpm
+		"libgfortran.x86_64", 					# libgfortran-4.4.7-16.el6.x86_64.rpm
+		"libglade2.x86_64", 					# libglade2-2.6.4-3.1.el6.x86_64.rpm
+		"libgnome.x86_64", 					# libgnome-2.28.0-11.el6.x86_64.rpm
+		"libgnomecanvas.x86_64", 				# libgnomecanvas-2.26.0-4.el6.x86_64.rpm
+		"libgnomekbd.x86_64", 					# libgnomekbd-2.28.2-2.el6.x86_64.rpm
+		"libgnomeui.x86_64", 					# libgnomeui-2.24.1-4.el6.x86_64.rpm
+		"libgomp.x86_64", 					# libgomp-4.4.7-16.el6.x86_64.rpm
+		"libgovirt.x86_64", 					# libgovirt-0.3.2-1.el6.x86_64.rpm
+		"libgpg-error.x86_64", 					# libgpg-error-1.7-4.el6.x86_64.rpm
+		"libgsf.x86_64", 					# libgsf-1.14.15-5.el6.x86_64.rpm
+		"libgssglue.x86_64", 					# libgssglue-0.1-11.el6.x86_64.rpm
+		"libgtop2.x86_64", 					# libgtop2-2.28.0-3.el6.x86_64.rpm
+		"libgudev1.x86_64", 					# libgudev1-147-2.63.el6.x86_64.rpm
+		"libgweather.x86_64", 					# libgweather-2.28.0-5.el6.x86_64.rpm
+		"libibverbs.x86_64", 					# libibverbs-1.1.8-4.el6.x86_64.rpm
+		"libical.x86_64", 					# libical-0.43-6.el6.x86_64.rpm
+		"libidn.x86_64", 					# libidn-1.18-2.el6.x86_64.rpm
+		"libiec61883.x86_64", 					# libiec61883-1.2.0-4.el6.x86_64.rpm
+		"libjpeg-turbo.x86_64", 				# libjpeg-turbo-1.2.1-3.el6_5.x86_64.rpm
+		"libmcpp.x86_64", 					# libmcpp-2.7.2-4.1.el6.x86_64.rpm
+		"libmng.x86_64", 					# libmng-1.0.10-4.1.el6.x86_64.rpm
+		"libnih.x86_64", 					# libnih-1.0.1-7.el6.x86_64.rpm
+		"libnl.x86_64", 					# libnl-1.1.4-2.el6.x86_64.rpm
+		"libnotify.x86_64", 					# libnotify-0.5.0-1.el6.x86_64.rpm
+		"libogg.x86_64", 					# libogg-1.1.4-2.1.el6.x86_64.rpm
+		"liboil.x86_64", 					# liboil-0.3.16-4.1.el6.x86_64.rpm
+		"libpcap.x86_64", 					# libpcap-1.4.0-4.20130826git2dbcaa1.el6.x86_64.rpm
+		"libpciaccess.x86_64", 					# libpciaccess-0.13.3-0.1.el6.x86_64.rpm
+		"libpng.x86_64", 					# libpng-1.2.49-1.el6_2.x86_64.rpm
+		"libproxy.x86_64", 					# libproxy-0.3.0-10.el6.x86_64.rpm
+		"libproxy-bin.x86_64", 					# libproxy-bin-0.3.0-10.el6.x86_64.rpm
+		"libproxy-python.x86_64", 				# libproxy-python-0.3.0-10.el6.x86_64.rpm
+		"libraw1394.x86_64", 					# libraw1394-2.0.4-1.el6.x86_64.rpm
+		"librdmacm.x86_64", 					# librdmacm-1.0.19.1-1.el6.x86_64.rpm
+		"librsvg2.x86_64", 					# librsvg2-2.26.0-14.el6.x86_64.rpm
+		"libsamplerate.x86_64", 				# libsamplerate-0.1.7-2.1.el6.x86_64.rpm
+		"libselinux.x86_64", 					# libselinux-2.0.94-5.8.el6.x86_64.rpm
+		"libselinux-devel.x86_64", 				# libselinux-devel-2.0.94-5.8.el6.x86_64.rpm
+		"libselinux-python.x86_64", 				# libselinux-python-2.0.94-5.8.el6.x86_64.rpm
+		"libselinux-utils.x86_64", 				# libselinux-utils-2.0.94-5.8.el6.x86_64.rpm
+		"libsemanage.x86_64", 					# libsemanage-2.0.43-5.1.el6.x86_64.rpm
+		"libsemanage-python.x86_64", 				# libsemanage-python-2.0.43-5.1.el6.x86_64.rpm
+		"libsepol.x86_64", 					# libsepol-2.0.41-4.el6.x86_64.rpm
+		"libsepol-devel.x86_64", 				# libsepol-devel-2.0.41-4.el6.x86_64.rpm
+		"libshout.x86_64", 					# libshout-2.2.2-5.1.el6.x86_64.rpm
+		"libsmbclient.x86_64", 					# libsmbclient-3.6.23-20.el6.x86_64.rpm
+		"libsndfile.x86_64", 					# libsndfile-1.0.20-5.el6.x86_64.rpm
+		"libsoup.x86_64", 					# libsoup-2.34.3-3.el6_6.x86_64.rpm
+		"libspectre.x86_64", 					# libspectre-0.2.4-1.el6.x86_64.rpm
+		"libss.x86_64", 					# libss-1.41.12-22.el6.x86_64.rpm
+		"libssh2.x86_64", 					# libssh2-1.4.2-1.el6_6.1.x86_64.rpm
+		"libstdc++.i686", 					# libstdc++-4.4.7-16.el6.i686.rpm
+		"libstdc++.x86_64", 					# libstdc++-4.4.7-16.el6.x86_64.rpm
+		"libstdc++-devel.i686", 				# libstdc++-devel-4.4.7-16.el6.i686.rpm
+		"libtalloc.x86_64", 					# libtalloc-2.0.7-2.el6.x86_64.rpm
+		"libtasn1.x86_64", 					# libtasn1-2.3-6.el6_5.x86_64.rpm
+		"libtdb.x86_64", 					# libtdb-1.2.10-1.el6.x86_64.rpm
+		"libtevent.x86_64", 					# libtevent-0.9.18-3.el6.x86_64.rpm
+		"libthai.x86_64", 					# libthai-0.1.12-3.el6.x86_64.rpm
+		"libtheora.x86_64", 					# libtheora-1.1.0-2.el6.x86_64.rpm
+		"libtiff.x86_64", 					# libtiff-3.9.4-10.el6_5.x86_64.rpm
+		"libtirpc.x86_64", 					# libtirpc-0.2.1-10.el6.x86_64.rpm
+		"libtool-ltdl.x86_64", 					# libtool-ltdl-2.2.6-15.5.el6.x86_64.rpm
+		"libudev.x86_64", 					# libudev-147-2.63.el6.x86_64.rpm
+		"libusb.x86_64", 					# libusb-0.1.12-23.el6.x86_64.rpm
+		"libusb1.x86_64", 					# libusb1-1.0.9-0.6.rc1.el6.x86_64.rpm
+		"libuser.x86_64", 					# libuser-0.56.13-8.el6_7.x86_64.rpm
+		"libutempter.x86_64", 					# libutempter-1.1.5-4.1.el6.x86_64.rpm
+		"libuuid.x86_64", 					# libuuid-2.17.2-12.18.el6.x86_64.rpm
+		"libv4l.x86_64", 					# libv4l-0.6.3-2.el6.x86_64.rpm
+		"libvirt.x86_64", 					# libvirt-0.10.2-54.el6.x86_64.rpm
+		"libvirt-client.x86_64", 				# libvirt-client-0.10.2-54.el6.x86_64.rpm
+		"libvirt-python.x86_64", 				# libvirt-python-0.10.2-54.el6.x86_64.rpm
+		"libvisual.x86_64", 					# libvisual-0.4.0-10.el6.x86_64.rpm
+		"libvorbis.x86_64", 					# libvorbis-1.2.3-4.el6_2.1.x86_64.rpm
+		"libvpx.x86_64", 					# libvpx-1.3.0-5.el6_5.x86_64.rpm
+		"libwacom.x86_64", 					# libwacom-0.8-1.el6.x86_64.rpm
+		"libwacom-data.noarch", 				# libwacom-data-0.8-1.el6.noarch.rpm
+		"libwnck.x86_64", 					# libwnck-2.28.0-3.el6.x86_64.rpm
+		"libxcb.x86_64", 					# libxcb-1.9.1-3.el6.x86_64.rpm
+		"libxkbfile.x86_64", 					# libxkbfile-1.0.6-1.1.el6.x86_64.rpm
+		"libxklavier.x86_64", 					# libxklavier-4.0-9.el6.x86_64.rpm
+		"libxml2.x86_64", 					# libxml2-2.7.6-20.el6.x86_64.rpm
+		"libxml2-python.x86_64", 				# libxml2-python-2.7.6-20.el6.x86_64.rpm
+		"libxslt.x86_64", 					# libxslt-1.1.26-2.el6_3.1.x86_64.rpm
+		"lklug-fonts.noarch", 					# lklug-fonts-0.6-4.20090803cvs.el6.noarch.rpm
+		"lm_sensors-libs.x86_64", 				# lm_sensors-libs-3.1.1-17.el6.x86_64.rpm
+		"logrotate.x86_64", 					# logrotate-3.7.8-23.el6.x86_64.rpm
+		"lohit-assamese-fonts.noarch", 				# lohit-assamese-fonts-2.4.3-5.el6.noarch.rpm
+		"lohit-bengali-fonts.noarch", 				# lohit-bengali-fonts-2.4.3-6.el6.noarch.rpm
+		"lohit-devanagari-fonts.noarch", 			# lohit-devanagari-fonts-2.4.3-7.el6.noarch.rpm
+		"lohit-gujarati-fonts.noarch", 				# lohit-gujarati-fonts-2.4.4-4.el6.noarch.rpm
+		"lohit-kannada-fonts.noarch", 				# lohit-kannada-fonts-2.4.5-6.el6.noarch.rpm
+		"lohit-oriya-fonts.noarch", 				# lohit-oriya-fonts-2.4.3-6.el6.noarch.rpm
+		"lohit-punjabi-fonts.noarch", 				# lohit-punjabi-fonts-2.4.4-2.el6.noarch.rpm
+		"lohit-tamil-fonts.noarch", 				# lohit-tamil-fonts-2.4.5-5.el6.noarch.rpm
+		"lohit-telugu-fonts.noarch", 				# lohit-telugu-fonts-2.4.5-6.el6.noarch.rpm
+		"lsof.x86_64", 						# lsof-4.82-5.el6.x86_64.rpm
+		"lsscsi.x86_64", 					# lsscsi-0.23-3.el6.x86_64.rpm
+		"lua.x86_64", 						# lua-5.1.4-4.1.el6.x86_64.rpm
+		"lvm2.x86_64", 						# lvm2-2.02.118-3.el6_7.2.x86_64.rpm
+		"lvm2-cluster.x86_64", 					# lvm2-cluster-2.02.118-3.el6_7.2.x86_64.rpm
+		"lvm2-libs.x86_64", 					# lvm2-libs-2.02.118-3.el6_7.2.x86_64.rpm
+		"lzo.x86_64", 						# lzo-2.03-3.1.el6_5.1.x86_64.rpm
+		"lzop.x86_64", 						# lzop-1.02-0.9.rc1.el6.x86_64.rpm
+		"m2crypto.x86_64", 					# m2crypto-0.20.2-9.el6.x86_64.rpm
+		"m4.x86_64", 						# m4-1.4.13-5.el6.x86_64.rpm
+		"madan-fonts.noarch", 					# madan-fonts-2.000-3.el6.noarch.rpm
+		"mailcap.noarch", 					# mailcap-2.1.31-2.el6.noarch.rpm
+		"mailx.x86_64", 					# mailx-12.4-8.el6_6.x86_64.rpm
+		"make.x86_64", 						# make-3.81-20.el6.x86_64.rpm
+		"man.x86_64", 						# man-1.6f-32.el6.x86_64.rpm
+		"mcpp.x86_64", 						# mcpp-2.7.2-4.1.el6.x86_64.rpm
+		"mdadm.x86_64", 					# mdadm-3.3.2-5.el6.x86_64.rpm
+		"mesa-dri-drivers.x86_64", 				# mesa-dri-drivers-10.4.3-1.el6.x86_64.rpm
+		"mesa-dri-filesystem.x86_64", 				# mesa-dri-filesystem-10.4.3-1.el6.x86_64.rpm
+		"mesa-dri1-drivers.x86_64", 				# mesa-dri1-drivers-7.11-8.el6.x86_64.rpm
+		"mesa-libEGL.x86_64", 					# mesa-libEGL-10.4.3-1.el6.x86_64.rpm
+		"mesa-libGL.x86_64", 					# mesa-libGL-10.4.3-1.el6.x86_64.rpm
+		"mesa-libGLU.x86_64", 					# mesa-libGLU-10.4.3-1.el6.x86_64.rpm
+		"mesa-libgbm.x86_64", 					# mesa-libgbm-10.4.3-1.el6.x86_64.rpm
+		"mesa-private-llvm.x86_64", 				# mesa-private-llvm-3.4-3.el6.x86_64.rpm
+		"metacity.x86_64", 					# metacity-2.28.0-23.el6.x86_64.rpm
+		"mingetty.x86_64", 					# mingetty-1.08-5.el6.x86_64.rpm
+		"mlocate.x86_64", 					# mlocate-0.22.2-6.el6.x86_64.rpm
+		"mod_ssl.x86_64", 					# mod_ssl-2.2.15-47.el6_7.x86_64.rpm
+		"modcluster.x86_64", 					# modcluster-0.16.2-31.el6.x86_64.rpm
+		"module-init-tools.x86_64", 				# module-init-tools-3.9-25.el6.x86_64.rpm
+		"mozilla-filesystem.x86_64", 				# mozilla-filesystem-1.9-5.1.el6.x86_64.rpm
+		"mpfr.x86_64", 						# mpfr-2.4.1-6.el6.x86_64.rpm
+		"mtdev.x86_64", 					# mtdev-1.1.2-5.el6.x86_64.rpm
+		"mtools.x86_64", 					# mtools-4.0.12-1.el6.x86_64.rpm
+		"mtr.x86_64", 						# mtr-0.75-5.el6.x86_64.rpm
+		"mysql-libs.x86_64", 					# mysql-libs-5.1.73-5.el6_6.x86_64.rpm
+		"nautilus.x86_64", 					# nautilus-2.28.4-19.el6.x86_64.rpm
+		"nautilus-extensions.x86_64", 				# nautilus-extensions-2.28.4-19.el6.x86_64.rpm
+		"nautilus-open-terminal.x86_64", 			# nautilus-open-terminal-0.17-4.el6.x86_64.rpm
+		"nc.x86_64", 						# nc-1.84-24.el6.x86_64.rpm
+		"ncurses.x86_64", 					# ncurses-5.7-4.20090207.el6.x86_64.rpm
+		"ncurses-base.x86_64", 					# ncurses-base-5.7-4.20090207.el6.x86_64.rpm
+		"ncurses-libs.x86_64", 					# ncurses-libs-5.7-4.20090207.el6.x86_64.rpm
+		"net-snmp.x86_64", 					# net-snmp-5.5-54.el6_7.1.x86_64.rpm
+		"net-snmp-libs.x86_64", 				# net-snmp-libs-5.5-54.el6_7.1.x86_64.rpm
+		"net-snmp-utils.x86_64", 				# net-snmp-utils-5.5-54.el6_7.1.x86_64.rpm
+		"net-tools.x86_64", 					# net-tools-1.60-110.el6_2.x86_64.rpm
+		"netcf-libs.x86_64", 					# netcf-libs-0.2.4-3.el6.x86_64.rpm
+		"newt.x86_64", 						# newt-0.52.11-3.el6.x86_64.rpm
+		"newt-python.x86_64", 					# newt-python-0.52.11-3.el6.x86_64.rpm
+		"nfs-utils.x86_64", 					# nfs-utils-1.2.3-64.el6.x86_64.rpm
+		"nfs-utils-lib.x86_64", 				# nfs-utils-lib-1.1.5-11.el6.x86_64.rpm
+		"nmap.x86_64", 						# nmap-5.51-4.el6.x86_64.rpm
+		"notification-daemon.x86_64", 				# notification-daemon-0.5.0-1.el6.x86_64.rpm
+		"nspr.x86_64", 						# nspr-4.10.8-1.el6_6.x86_64.rpm
+		"nss.x86_64", 						# nss-3.19.1-3.el6_6.x86_64.rpm
+		"nss-softokn.x86_64", 					# nss-softokn-3.14.3-22.el6_6.x86_64.rpm
+		"nss-softokn-freebl.i686", 				# nss-softokn-freebl-3.14.3-22.el6_6.i686.rpm
+		"nss-softokn-freebl.x86_64", 				# nss-softokn-freebl-3.14.3-22.el6_6.x86_64.rpm
+		"nss-sysinit.x86_64", 					# nss-sysinit-3.19.1-3.el6_6.x86_64.rpm
+		"nss-tools.x86_64", 					# nss-tools-3.19.1-3.el6_6.x86_64.rpm
+		"nss-util.x86_64", 					# nss-util-3.19.1-1.el6_6.x86_64.rpm
+		"ntp.x86_64", 						# ntp-4.2.6p5-5.el6.x86_64.rpm
+		"ntpdate.x86_64", 					# ntpdate-4.2.6p5-5.el6.x86_64.rpm
+		"numactl.x86_64", 					# numactl-2.0.9-2.el6.x86_64.rpm
+		"numad.x86_64", 					# numad-0.5-12.20150602git.el6.x86_64.rpm
+		"numpy.x86_64", 					# numpy-1.4.1-9.el6.x86_64.rpm
+		"oddjob.x86_64", 					# oddjob-0.30-5.el6.x86_64.rpm
+		"openais.x86_64", 					# openais-1.1.1-7.el6.x86_64.rpm
+		"openaislib.x86_64", 					# openaislib-1.1.1-7.el6.x86_64.rpm
+		"openjpeg-libs.x86_64", 				# openjpeg-libs-1.3-11.el6.x86_64.rpm
+		"openldap.x86_64", 					# openldap-2.4.40-5.el6.x86_64.rpm
+		"openslp.x86_64", 					# openslp-2.0.0-2.el6.x86_64.rpm
+		"openssh.x86_64", 					# openssh-5.3p1-112.el6_7.x86_64.rpm
+		"openssh-askpass.x86_64", 				# openssh-askpass-5.3p1-112.el6_7.x86_64.rpm
+		"openssh-clients.x86_64", 				# openssh-clients-5.3p1-112.el6_7.x86_64.rpm
+		"openssh-server.x86_64", 				# openssh-server-5.3p1-112.el6_7.x86_64.rpm
+		"openssl.x86_64", 					# openssl-1.0.1e-42.el6.x86_64.rpm
+		"openssl-devel.x86_64", 				# openssl-devel-1.0.1e-42.el6.x86_64.rpm
+		"p11-kit.x86_64", 					# p11-kit-0.18.5-2.el6_5.2.x86_64.rpm
+		"p11-kit-trust.x86_64", 				# p11-kit-trust-0.18.5-2.el6_5.2.x86_64.rpm
+		"paktype-fonts-common.noarch", 				# paktype-fonts-common-2.0-8.el6.noarch.rpm
+		"paktype-naqsh-fonts.noarch", 				# paktype-naqsh-fonts-2.0-8.el6.noarch.rpm
+		"paktype-tehreer-fonts.noarch", 			# paktype-tehreer-fonts-2.0-8.el6.noarch.rpm
+		"pam.x86_64", 						# pam-1.1.1-20.el6_7.1.x86_64.rpm
+		"pango.x86_64", 					# pango-1.28.1-10.el6.x86_64.rpm
+		"parted.x86_64", 					# parted-2.1-29.el6.x86_64.rpm
+		"passwd.x86_64", 					# passwd-0.77-4.el6_2.2.x86_64.rpm
+		"patch.x86_64", 					# patch-2.6-6.el6.x86_64.rpm
+		"pciutils.x86_64", 					# pciutils-3.1.10-4.el6.x86_64.rpm
+		"pciutils-libs.x86_64", 				# pciutils-libs-3.1.10-4.el6.x86_64.rpm
+		"pcp.x86_64", 						# pcp-3.10.3-3.el6.x86_64.rpm
+		"pcp-conf.x86_64", 					# pcp-conf-3.10.3-3.el6.x86_64.rpm
+		"pcp-libs.x86_64", 					# pcp-libs-3.10.3-3.el6.x86_64.rpm
+		"pcre.x86_64", 						# pcre-7.8-7.el6.x86_64.rpm
+		"pcsc-lite-libs.x86_64", 				# pcsc-lite-libs-1.5.2-15.el6.x86_64.rpm
+		"perl.x86_64", 						# perl-5.10.1-141.el6.x86_64.rpm
+		"perl-CGI.x86_64", 					# perl-CGI-3.51-141.el6.x86_64.rpm
+		"perl-CPAN.x86_64", 					# perl-CPAN-1.9402-141.el6.x86_64.rpm
+		"perl-Compress-Raw-Zlib.x86_64", 			# perl-Compress-Raw-Zlib-2.021-141.el6.x86_64.rpm
+		"perl-Compress-Zlib.x86_64", 				# perl-Compress-Zlib-2.021-141.el6.x86_64.rpm
+		"perl-Crypt-SSLeay.x86_64", 				# perl-Crypt-SSLeay-0.57-17.el6.x86_64.rpm
+		"perl-DBD-Pg.x86_64", 					# perl-DBD-Pg-2.15.1-4.el6_3.x86_64.rpm
+		"perl-DBI.x86_64", 					# perl-DBI-1.609-4.el6.x86_64.rpm
+		"perl-Digest-SHA.x86_64", 				# perl-Digest-SHA-5.47-141.el6.x86_64.rpm
+		"perl-ExtUtils-MakeMaker.x86_64", 			# perl-ExtUtils-MakeMaker-6.55-141.el6.x86_64.rpm
+		"perl-ExtUtils-ParseXS.x86_64", 			# perl-ExtUtils-ParseXS-2.2003.0-141.el6.x86_64.rpm
+		"perl-HTML-Parser.x86_64", 				# perl-HTML-Parser-3.64-2.el6.x86_64.rpm
+		"perl-HTML-Tagset.noarch", 				# perl-HTML-Tagset-3.20-4.el6.noarch.rpm
+		"perl-IO-Compress-Base.x86_64", 			# perl-IO-Compress-Base-2.021-141.el6.x86_64.rpm
+		"perl-IO-Compress-Zlib.x86_64", 			# perl-IO-Compress-Zlib-2.021-141.el6.x86_64.rpm
+		"perl-IO-Socket-SSL.noarch", 				# perl-IO-Socket-SSL-1.31-2.el6.noarch.rpm
+		"perl-JSON.noarch", 					# perl-JSON-2.15-5.el6.noarch.rpm
+		"perl-Module-Pluggable.x86_64", 			# perl-Module-Pluggable-3.90-141.el6.x86_64.rpm
+		"perl-Net-LibIDN.x86_64", 				# perl-Net-LibIDN-0.12-3.el6.x86_64.rpm
+		"perl-Net-SSLeay.x86_64", 				# perl-Net-SSLeay-1.35-9.el6.x86_64.rpm
+		"perl-Net-Telnet.noarch", 				# perl-Net-Telnet-3.03-11.el6.noarch.rpm
+		"perl-PCP-PMDA.x86_64", 				# perl-PCP-PMDA-3.10.3-3.el6.x86_64.rpm
+		"perl-Pod-Escapes.x86_64", 				# perl-Pod-Escapes-1.04-141.el6.x86_64.rpm
+		"perl-Pod-Simple.x86_64", 				# perl-Pod-Simple-3.13-141.el6.x86_64.rpm
+		"perl-TermReadKey.x86_64", 				# perl-TermReadKey-2.30-13.el6.x86_64.rpm
+		"perl-Test-Harness.x86_64", 				# perl-Test-Harness-3.17-141.el6.x86_64.rpm
+		"perl-Test-Simple.x86_64", 				# perl-Test-Simple-0.92-141.el6.x86_64.rpm
+		"perl-Time-HiRes.x86_64", 				# perl-Time-HiRes-1.9721-141.el6.x86_64.rpm
+		"perl-URI.noarch", 					# perl-URI-1.40-2.el6.noarch.rpm
+		"perl-XML-NamespaceSupport.noarch", 			# perl-XML-NamespaceSupport-1.10-3.el6.noarch.rpm
+		"perl-XML-Parser.x86_64", 				# perl-XML-Parser-2.36-7.el6.x86_64.rpm
+		"perl-YAML-Tiny.noarch", 				# perl-YAML-Tiny-1.40-2.el6.noarch.rpm
+		"perl-devel.x86_64", 					# perl-devel-5.10.1-141.el6.x86_64.rpm
+		"perl-libs.x86_64", 					# perl-libs-5.10.1-141.el6.x86_64.rpm
+		"perl-libwww-perl.noarch", 				# perl-libwww-perl-5.833-2.el6.noarch.rpm
+		"perl-version.x86_64", 					# perl-version-0.77-141.el6.x86_64.rpm
+		"pexpect.noarch", 					# pexpect-2.3-6.el6.noarch.rpm
+		"phonon-backend-gstreamer.x86_64", 			# phonon-backend-gstreamer-4.6.2-28.el6_5.x86_64.rpm
+		"pinentry.x86_64", 					# pinentry-0.7.6-8.el6.x86_64.rpm
+		"pixman.x86_64", 					# pixman-0.32.4-4.el6.x86_64.rpm
+		"pkgconfig.x86_64", 					# pkgconfig-0.23-9.1.el6.x86_64.rpm
+		"plymouth.x86_64", 					# plymouth-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-core-libs.x86_64", 				# plymouth-core-libs-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-gdm-hooks.x86_64", 				# plymouth-gdm-hooks-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-graphics-libs.x86_64", 			# plymouth-graphics-libs-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-plugin-label.x86_64", 			# plymouth-plugin-label-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-plugin-two-step.x86_64", 			# plymouth-plugin-two-step-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-scripts.x86_64", 				# plymouth-scripts-0.8.3-27.el6_5.1.x86_64.rpm
+		"plymouth-system-theme.noarch", 			# plymouth-system-theme-0.8.3-27.el6_5.1.noarch.rpm
+		"plymouth-theme-rings.noarch", 				# plymouth-theme-rings-0.8.3-27.el6_5.1.noarch.rpm
+		"plymouth-utils.x86_64", 				# plymouth-utils-0.8.3-27.el6_5.1.x86_64.rpm
+		"pm-utils.x86_64", 					# pm-utils-1.2.5-11.el6.x86_64.rpm
+		"policycoreutils.x86_64", 				# policycoreutils-2.0.83-24.el6.x86_64.rpm
+		"policycoreutils-python.x86_64", 			# policycoreutils-python-2.0.83-24.el6.x86_64.rpm
+		"polkit.x86_64", 					# polkit-0.96-11.el6.x86_64.rpm
+		"polkit-desktop-policy.noarch", 			# polkit-desktop-policy-0.96-11.el6.noarch.rpm
+		"polkit-gnome.x86_64", 					# polkit-gnome-0.96-4.el6.x86_64.rpm
+		"poppler.x86_64", 					# poppler-0.12.4-4.el6_6.1.x86_64.rpm
+		"poppler-data.noarch", 					# poppler-data-0.4.0-1.el6.noarch.rpm
+		"poppler-glib.x86_64", 					# poppler-glib-0.12.4-4.el6_6.1.x86_64.rpm
+		"popt.x86_64", 						# popt-1.13-7.el6.x86_64.rpm
+		"portreserve.x86_64", 					# portreserve-0.0.4-9.el6.x86_64.rpm
+		"postfix.x86_64", 					# postfix-2.6.6-6.el6_5.x86_64.rpm
+		"ppl.x86_64", 						# ppl-0.10.2-11.el6.x86_64.rpm
+		"procps.x86_64", 					# procps-3.2.8-33.el6.x86_64.rpm
+		"psmisc.x86_64", 					# psmisc-22.6-19.el6_5.x86_64.rpm
+		"pth.x86_64", 						# pth-2.0.7-9.3.el6.x86_64.rpm
+		"pulseaudio.x86_64", 					# pulseaudio-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-gdm-hooks.x86_64", 				# pulseaudio-gdm-hooks-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-libs.x86_64", 				# pulseaudio-libs-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-libs-glib2.x86_64", 			# pulseaudio-libs-glib2-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-module-gconf.x86_64", 			# pulseaudio-module-gconf-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-module-x11.x86_64", 			# pulseaudio-module-x11-0.9.21-21.el6.x86_64.rpm
+		"pulseaudio-utils.x86_64", 				# pulseaudio-utils-0.9.21-21.el6.x86_64.rpm
+		"pyOpenSSL.x86_64", 					# pyOpenSSL-0.13.1-2.el6.x86_64.rpm
+		"pycairo.x86_64", 					# pycairo-1.8.6-2.1.el6.x86_64.rpm
+		"pygobject2.x86_64", 					# pygobject2-2.20.0-5.el6.x86_64.rpm
+		"pygpgme.x86_64", 					# pygpgme-0.1-18.20090824bzr68.el6.x86_64.rpm
+		"pygtk2.x86_64", 					# pygtk2-2.16.0-3.el6.x86_64.rpm
+		"pygtk2-libglade.x86_64", 				# pygtk2-libglade-2.16.0-3.el6.x86_64.rpm
+		"pygtksourceview.x86_64", 				# pygtksourceview-2.8.0-1.el6.x86_64.rpm
+		"pyorbit.x86_64", 					# pyorbit-2.24.0-5.el6.x86_64.rpm
+		"python.x86_64", 					# python-2.6.6-64.el6.x86_64.rpm
+		"python-argparse.noarch", 				# python-argparse-1.2.1-2.1.el6.noarch.rpm
+		"python-dateutil.noarch", 				# python-dateutil-1.4.1-6.el6.noarch.rpm
+		"python-deltarpm.x86_64", 				# python-deltarpm-3.5-0.5.20090913git.el6.x86_64.rpm
+		"python-dmidecode.x86_64", 				# python-dmidecode-3.10.13-3.el6_4.x86_64.rpm
+		"python-ethtool.x86_64", 				# python-ethtool-0.6-5.el6.x86_64.rpm
+		"python-iniparse.noarch", 				# python-iniparse-0.3.1-2.1.el6.noarch.rpm
+		"python-libs.x86_64", 					# python-libs-2.6.6-64.el6.x86_64.rpm
+		"python-lxml.x86_64", 					# python-lxml-2.2.3-1.1.el6.x86_64.rpm
+		"python-nose.noarch", 					# python-nose-0.10.4-3.1.el6.noarch.rpm
+		"python-pcp.x86_64", 					# python-pcp-3.10.3-3.el6.x86_64.rpm
+		"python-pycurl.x86_64", 				# python-pycurl-7.19.0-8.el6.x86_64.rpm
+		"python-setuptools.noarch", 				# python-setuptools-0.6.10-3.el6.noarch.rpm
+		"python-suds.noarch", 					# python-suds-0.4.1-3.el6.noarch.rpm
+		"python-urlgrabber.noarch", 				# python-urlgrabber-3.9.1-9.el6.noarch.rpm
+		"python-virtinst.noarch", 				# python-virtinst-0.600.0-29.el6.noarch.rpm
+		"qemu-img.x86_64", 					# qemu-img-0.12.1.2-2.479.el6.x86_64.rpm
+		"qemu-kvm.x86_64", 					# qemu-kvm-0.12.1.2-2.479.el6.x86_64.rpm
+		"qemu-kvm-tools.x86_64", 				# qemu-kvm-tools-0.12.1.2-2.479.el6.x86_64.rpm
+		"ql2100-firmware.noarch", 				# ql2100-firmware-1.19.38-3.1.el6.noarch.rpm
+		"ql2200-firmware.noarch", 				# ql2200-firmware-2.02.08-3.1.el6.noarch.rpm
+		"ql23xx-firmware.noarch", 				# ql23xx-firmware-3.03.27-3.1.el6.noarch.rpm
+		"ql2400-firmware.noarch", 				# ql2400-firmware-7.03.00-1.el6_5.noarch.rpm
+		"ql2500-firmware.noarch", 				# ql2500-firmware-7.03.00-1.el6_5.noarch.rpm
+		"qt.x86_64", 						# qt-4.6.2-28.el6_5.x86_64.rpm
+		"qt-sqlite.x86_64", 					# qt-sqlite-4.6.2-28.el6_5.x86_64.rpm
+		"qt-x11.x86_64", 					# qt-x11-4.6.2-28.el6_5.x86_64.rpm
+		"quota.x86_64", 					# quota-3.17-23.el6.x86_64.rpm
+		"radvd.x86_64", 					# radvd-1.6-1.el6.x86_64.rpm
+		"rarian.x86_64", 					# rarian-0.8.1-5.1.el6.x86_64.rpm
+		"rarian-compat.x86_64", 				# rarian-compat-0.8.1-5.1.el6.x86_64.rpm
+		"rdma.noarch", 						# rdma-6.7_3.15-5.el6.noarch.rpm
+		"readline.x86_64", 					# readline-6.0-4.el6.x86_64.rpm
+		"redhat-bookmarks.noarch", 				# redhat-bookmarks-6-1.el6.noarch.rpm
+		"redhat-logos.noarch", 					# redhat-logos-60.0.14-1.el6.noarch.rpm
+		"redhat-menus.noarch", 					# redhat-menus-14.0.0-3.el6.noarch.rpm
+		"resource-agents.x86_64", 				# resource-agents-3.9.5-24.el6.x86_64.rpm
+		"rest.x86_64", 						# rest-0.7.92-2.el6.x86_64.rpm
+		"rgmanager.x86_64", 					# rgmanager-3.0.12.1-22.el6.x86_64.rpm
+		"ricci.x86_64", 					# ricci-0.16.2-81.el6.x86_64.rpm
+		"rootfiles.noarch", 					# rootfiles-8.1-6.1.el6.noarch.rpm
+		"rpcbind.x86_64", 					# rpcbind-0.2.0-11.el6.x86_64.rpm
+		"rpm.x86_64", 						# rpm-4.8.0-47.el6.x86_64.rpm
+		"rpm-libs.x86_64", 					# rpm-libs-4.8.0-47.el6.x86_64.rpm
+		"rpm-python.x86_64", 					# rpm-python-4.8.0-47.el6.x86_64.rpm
+		"rsync.x86_64", 					# rsync-3.0.6-12.el6.x86_64.rpm
+		"rsyslog.x86_64", 					# rsyslog-5.8.10-10.el6_6.x86_64.rpm
+		"rt61pci-firmware.noarch", 				# rt61pci-firmware-1.2-7.el6.noarch.rpm
+		"rt73usb-firmware.noarch", 				# rt73usb-firmware-1.8-7.el6.noarch.rpm
+		"rtkit.x86_64", 					# rtkit-0.5-2.el6_4.x86_64.rpm
+		"samba-common.x86_64", 					# samba-common-3.6.23-20.el6.x86_64.rpm
+		"samba-winbind.x86_64", 				# samba-winbind-3.6.23-20.el6.x86_64.rpm
+		"samba-winbind-clients.x86_64", 			# samba-winbind-clients-3.6.23-20.el6.x86_64.rpm
+		"screen.x86_64", 					# screen-4.0.3-18.el6.x86_64.rpm
+		"seabios.x86_64", 					# seabios-0.6.1.2-30.el6.x86_64.rpm
+		"sed.x86_64", 						# sed-4.2.1-10.el6.x86_64.rpm
+		"selinux-policy.noarch", 				# selinux-policy-3.7.19-279.el6_7.4.noarch.rpm
+		"selinux-policy-targeted.noarch", 			# selinux-policy-targeted-3.7.19-279.el6_7.4.noarch.rpm
+		"setools-libs.x86_64", 					# setools-libs-3.3.7-4.el6.x86_64.rpm
+		"setools-libs-python.x86_64", 				# setools-libs-python-3.3.7-4.el6.x86_64.rpm
+		"setup.noarch", 					# setup-2.8.14-20.el6_4.1.noarch.rpm
+		"sg3_utils.x86_64", 					# sg3_utils-1.28-8.el6.x86_64.rpm
+		"sg3_utils-libs.x86_64", 				# sg3_utils-libs-1.28-8.el6.x86_64.rpm
+		"sgabios-bin.noarch", 					# sgabios-bin-0-0.3.20110621svn.el6.noarch.rpm
+		"sgml-common.noarch", 					# sgml-common-0.6.3-33.el6.noarch.rpm
+		"shadow-utils.x86_64", 					# shadow-utils-4.1.4.2-19.el6_6.1.x86_64.rpm
+		"shared-mime-info.x86_64", 				# shared-mime-info-0.70-6.el6.x86_64.rpm
+		"sharutils.x86_64", 					# sharutils-4.7-6.1.el6.x86_64.rpm
+		"sil-padauk-fonts.noarch", 				# sil-padauk-fonts-2.6.1-1.el6.noarch.rpm
+		"slang.x86_64", 					# slang-2.2.1-1.el6.x86_64.rpm
+		"smc-fonts-common.noarch", 				# smc-fonts-common-04.2-11.el6.noarch.rpm
+		"smc-meera-fonts.noarch", 				# smc-meera-fonts-04.2-11.el6.noarch.rpm
+		"smp_utils.x86_64", 					# smp_utils-0.94-4.el6.x86_64.rpm
+		"snappy.x86_64", 					# snappy-1.1.0-1.el6.x86_64.rpm
+		"sos.noarch", 						# sos-3.2-28.el6.noarch.rpm
+		"sound-theme-freedesktop.noarch", 			# sound-theme-freedesktop-0.7-3.el6.noarch.rpm
+		"speex.x86_64", 					# speex-1.2-0.12.rc1.1.el6.x86_64.rpm
+		"spice-glib.x86_64", 					# spice-glib-0.26-4.el6.x86_64.rpm
+		"spice-gtk.x86_64", 					# spice-gtk-0.26-4.el6.x86_64.rpm
+		"spice-gtk-python.x86_64", 				# spice-gtk-python-0.26-4.el6.x86_64.rpm
+		"spice-server.x86_64", 					# spice-server-0.12.4-12.el6.x86_64.rpm
+		"spice-vdagent.x86_64", 				# spice-vdagent-0.14.0-9.el6.x86_64.rpm
+		"sqlite.x86_64", 					# sqlite-3.6.20-1.el6_7.2.x86_64.rpm
+		"startup-notification.x86_64", 				# startup-notification-0.10-2.1.el6.x86_64.rpm
+		"stix-fonts.noarch", 					# stix-fonts-0.9-13.1.el6.noarch.rpm
+		"strace.x86_64", 					# strace-4.8-10.el6.x86_64.rpm
+		"sudo.x86_64", 						# sudo-1.8.6p3-20.el6_7.x86_64.rpm
+		"syslinux.x86_64", 					# syslinux-4.04-3.el6.x86_64.rpm
+		"syslinux-nonlinux.noarch", 				# syslinux-nonlinux-4.04-3.el6.noarch.rpm
+		"syslinux-tftpboot.noarch", 				# syslinux-tftpboot-4.04-3.el6.noarch.rpm
+		"sysstat.x86_64", 					# sysstat-9.0.4-27.el6.x86_64.rpm
+		"system-gnome-theme.noarch", 				# system-gnome-theme-60.0.2-1.el6.noarch.rpm
+		"system-icon-theme.noarch", 				# system-icon-theme-6.0.0-2.el6.noarch.rpm
+		"system-setup-keyboard.x86_64", 			# system-setup-keyboard-0.7-4.el6.x86_64.rpm
+		"systemtap.x86_64", 					# systemtap-2.7-2.el6.x86_64.rpm
+		"systemtap-client.x86_64", 				# systemtap-client-2.7-2.el6.x86_64.rpm
+		"systemtap-devel.x86_64", 				# systemtap-devel-2.7-2.el6.x86_64.rpm
+		"systemtap-initscript.x86_64", 				# systemtap-initscript-2.7-2.el6.x86_64.rpm
+		"systemtap-runtime.x86_64", 				# systemtap-runtime-2.7-2.el6.x86_64.rpm
+		"systemtap-sdt-devel.x86_64", 				# systemtap-sdt-devel-2.7-2.el6.x86_64.rpm
+		"systemtap-server.x86_64", 				# systemtap-server-2.7-2.el6.x86_64.rpm
+		"sysvinit-tools.x86_64", 				# sysvinit-tools-2.87-6.dsf.el6.x86_64.rpm
+		"taglib.x86_64", 					# taglib-1.6.1-1.1.el6.x86_64.rpm
+		"tagsoup.noarch", 					# tagsoup-1.2.1-8.el6.noarch.rpm
+		"tar.x86_64", 						# tar-1.23-13.el6.x86_64.rpm
+		"tcl.x86_64", 						# tcl-8.5.7-6.el6.x86_64.rpm
+		"tcp_wrappers.x86_64", 					# tcp_wrappers-7.6-57.el6.x86_64.rpm
+		"tcp_wrappers-libs.x86_64", 				# tcp_wrappers-libs-7.6-57.el6.x86_64.rpm
+		"tcpdump.x86_64", 					# tcpdump-4.0.0-5.20090921gitdf3cb4.2.el6.x86_64.rpm
+		"tcsh.x86_64", 						# tcsh-6.17-25.el6_6.x86_64.rpm
+		"telnet.x86_64", 					# telnet-0.17-48.el6.x86_64.rpm
+		"tftp-server.x86_64", 					# tftp-server-0.49-7.el6.x86_64.rpm
+		"thai-scalable-fonts-common.noarch", 			# thai-scalable-fonts-common-0.4.12-2.1.el6.noarch.rpm
+		"thai-scalable-waree-fonts.noarch", 			# thai-scalable-waree-fonts-0.4.12-2.1.el6.noarch.rpm
+		"tibetan-machine-uni-fonts.noarch", 			# tibetan-machine-uni-fonts-1.901-5.el6.noarch.rpm
+		"tog-pegasus.x86_64", 					# tog-pegasus-2.12.0-3.el6_4.x86_64.rpm
+		"tog-pegasus-libs.x86_64", 				# tog-pegasus-libs-2.12.0-3.el6_4.x86_64.rpm
+		"ttmkfdir.x86_64", 					# ttmkfdir-3.0.9-32.1.el6.x86_64.rpm
+		"tuned.noarch", 					# tuned-0.2.19-15.el6.noarch.rpm
+		"tzdata.noarch", 					# tzdata-2015f-1.el6.noarch.rpm
+		"tzdata-java.noarch", 					# tzdata-java-2015f-1.el6.noarch.rpm
+		"udev.x86_64", 						# udev-147-2.63.el6.x86_64.rpm
+		"udisks.x86_64", 					# udisks-1.0.1-9.el6.x86_64.rpm
+		"un-core-dotum-fonts.noarch", 				# un-core-dotum-fonts-1.0.2-0.15.080608.el6.noarch.rpm
+		"un-core-fonts-common.noarch", 				# un-core-fonts-common-1.0.2-0.15.080608.el6.noarch.rpm
+		"unique.x86_64", 					# unique-1.1.4-2.el6.x86_64.rpm
+		"unzip.x86_64", 					# unzip-6.0-2.el6_6.x86_64.rpm
+		"upstart.x86_64", 					# upstart-0.6.5-13.el6_5.3.x86_64.rpm
+		"urw-fonts.noarch", 					# urw-fonts-2.4-10.el6.noarch.rpm
+		"usbredir.x86_64", 					# usbredir-0.5.1-2.el6.x86_64.rpm
+		"usbutils.x86_64", 					# usbutils-003-4.el6.x86_64.rpm
+		"usermode.x86_64", 					# usermode-1.102-3.el6.x86_64.rpm
+		"ustr.x86_64", 						# ustr-1.0.4-9.1.el6.x86_64.rpm
+		"util-linux-ng.x86_64", 				# util-linux-ng-2.17.2-12.18.el6.x86_64.rpm
+		"vgabios.noarch", 					# vgabios-0.6b-3.7.el6.noarch.rpm
+		"vim-common.x86_64", 					# vim-common-7.4.629-5.el6.x86_64.rpm
+		"vim-enhanced.x86_64", 					# vim-enhanced-7.4.629-5.el6.x86_64.rpm
+		"vim-filesystem.x86_64", 				# vim-filesystem-7.4.629-5.el6.x86_64.rpm
+		"vim-minimal.x86_64", 					# vim-minimal-7.4.629-5.el6.x86_64.rpm
+		"vino.x86_64", 						# vino-2.28.1-9.el6_4.x86_64.rpm
+		"virt-manager.x86_64", 					# virt-manager-0.9.0-29.el6.x86_64.rpm
+		"virt-viewer.x86_64", 					# virt-viewer-2.0-7.el6.x86_64.rpm
+		"virt-what.x86_64", 					# virt-what-1.11-1.2.el6.x86_64.rpm
+		"vlgothic-fonts.noarch", 				# vlgothic-fonts-20091202-2.el6.noarch.rpm
+		"vlgothic-fonts-common.noarch", 			# vlgothic-fonts-common-20091202-2.el6.noarch.rpm
+		"vte.x86_64", 						# vte-0.25.1-9.el6.x86_64.rpm
+		"wavpack.x86_64", 					# wavpack-4.60-1.1.el6.x86_64.rpm
+		"wdaemon.x86_64", 					# wdaemon-0.17-5.el6.x86_64.rpm
+		"wget.x86_64", 						# wget-1.12-5.el6_6.1.x86_64.rpm
+		"which.x86_64", 					# which-2.19-6.el6.x86_64.rpm
+		"wqy-zenhei-fonts.noarch", 				# wqy-zenhei-fonts-0.9.45-3.el6.noarch.rpm
+		"xcb-util.x86_64", 					# xcb-util-0.3.6-6.el6.x86_64.rpm
+		"xdg-user-dirs.x86_64", 				# xdg-user-dirs-0.12-4.el6.x86_64.rpm
+		"xdg-user-dirs-gtk.x86_64", 				# xdg-user-dirs-gtk-0.8-7.el6.x86_64.rpm
+		"xinetd.x86_64", 					# xinetd-2.3.14-39.el6_4.x86_64.rpm
+		"xkeyboard-config.noarch", 				# xkeyboard-config-2.11-3.el6.noarch.rpm
+		"xml-common.noarch", 					# xml-common-0.6.3-33.el6.noarch.rpm
+		"xorg-x11-drivers.x86_64", 				# xorg-x11-drivers-7.3-13.4.el6.x86_64.rpm
+		"xorg-x11-drv-acecad.x86_64", 				# xorg-x11-drv-acecad-1.5.0-7.el6.x86_64.rpm
+		"xorg-x11-drv-aiptek.x86_64", 				# xorg-x11-drv-aiptek-1.4.1-5.el6.x86_64.rpm
+		"xorg-x11-drv-apm.x86_64", 				# xorg-x11-drv-apm-1.2.5-10.el6.x86_64.rpm
+		"xorg-x11-drv-ast.x86_64", 				# xorg-x11-drv-ast-0.98.0-1.el6.x86_64.rpm
+		"xorg-x11-drv-ati.x86_64", 				# xorg-x11-drv-ati-7.5.99-3.el6.x86_64.rpm
+		"xorg-x11-drv-ati-firmware.noarch", 			# xorg-x11-drv-ati-firmware-7.5.99-3.el6.noarch.rpm
+		"xorg-x11-drv-cirrus.x86_64", 				# xorg-x11-drv-cirrus-1.5.2-2.el6.x86_64.rpm
+		"xorg-x11-drv-dummy.x86_64", 				# xorg-x11-drv-dummy-0.3.6-15.el6.x86_64.rpm
+		"xorg-x11-drv-elographics.x86_64", 			# xorg-x11-drv-elographics-1.4.1-3.el6.x86_64.rpm
+		"xorg-x11-drv-evdev.x86_64", 				# xorg-x11-drv-evdev-2.8.2-4.el6.x86_64.rpm
+		"xorg-x11-drv-fbdev.x86_64", 				# xorg-x11-drv-fbdev-0.4.3-16.el6.x86_64.rpm
+		"xorg-x11-drv-fpit.x86_64", 				# xorg-x11-drv-fpit-1.4.0-6.el6.x86_64.rpm
+		"xorg-x11-drv-glint.x86_64", 				# xorg-x11-drv-glint-1.2.8-10.el6.x86_64.rpm
+		"xorg-x11-drv-hyperpen.x86_64", 			# xorg-x11-drv-hyperpen-1.4.1-5.el6.x86_64.rpm
+		"xorg-x11-drv-i128.x86_64", 				# xorg-x11-drv-i128-1.3.6-10.el6.x86_64.rpm
+		"xorg-x11-drv-i740.x86_64", 				# xorg-x11-drv-i740-1.3.4-11.el6.x86_64.rpm
+		"xorg-x11-drv-intel.x86_64", 				# xorg-x11-drv-intel-2.99.911-8.el6.x86_64.rpm
+		"xorg-x11-drv-keyboard.x86_64", 			# xorg-x11-drv-keyboard-1.8.0-1.el6.x86_64.rpm
+		"xorg-x11-drv-mach64.x86_64", 				# xorg-x11-drv-mach64-6.9.4-9.el6.x86_64.rpm
+		"xorg-x11-drv-mga.x86_64", 				# xorg-x11-drv-mga-1.6.3-6.el6.x86_64.rpm
+		"xorg-x11-drv-modesetting.x86_64", 			# xorg-x11-drv-modesetting-0.8.0-14.el6.x86_64.rpm
+		"xorg-x11-drv-mouse.x86_64", 				# xorg-x11-drv-mouse-1.9.0-1.el6.x86_64.rpm
+		"xorg-x11-drv-mutouch.x86_64", 				# xorg-x11-drv-mutouch-1.3.0-5.el6.x86_64.rpm
+		"xorg-x11-drv-nouveau.x86_64", 				# xorg-x11-drv-nouveau-1.0.10-1.el6.x86_64.rpm
+		"xorg-x11-drv-nv.x86_64", 				# xorg-x11-drv-nv-2.1.20-5.el6.x86_64.rpm
+		"xorg-x11-drv-openchrome.x86_64", 			# xorg-x11-drv-openchrome-0.3.3-6.el6.x86_64.rpm
+		"xorg-x11-drv-penmount.x86_64", 			# xorg-x11-drv-penmount-1.5.0-5.el6.x86_64.rpm
+		"xorg-x11-drv-qxl.x86_64", 				# xorg-x11-drv-qxl-0.1.1-17.el6.x86_64.rpm
+		"xorg-x11-drv-r128.x86_64", 				# xorg-x11-drv-r128-6.9.1-8.el6.x86_64.rpm
+		"xorg-x11-drv-rendition.x86_64", 			# xorg-x11-drv-rendition-4.2.5-10.el6.x86_64.rpm
+		"xorg-x11-drv-s3virge.x86_64", 				# xorg-x11-drv-s3virge-1.10.6-10.el6.x86_64.rpm
+		"xorg-x11-drv-savage.x86_64", 				# xorg-x11-drv-savage-2.3.7-2.el6.x86_64.rpm
+		"xorg-x11-drv-siliconmotion.x86_64", 			# xorg-x11-drv-siliconmotion-1.7.7-9.el6.x86_64.rpm
+		"xorg-x11-drv-sis.x86_64", 				# xorg-x11-drv-sis-0.10.7-10.el6.x86_64.rpm
+		"xorg-x11-drv-sisusb.x86_64", 				# xorg-x11-drv-sisusb-0.9.6-10.el6.x86_64.rpm
+		"xorg-x11-drv-synaptics.x86_64", 			# xorg-x11-drv-synaptics-1.7.6-1.el6.x86_64.rpm
+		"xorg-x11-drv-tdfx.x86_64", 				# xorg-x11-drv-tdfx-1.4.5-10.el6.x86_64.rpm
+		"xorg-x11-drv-trident.x86_64", 				# xorg-x11-drv-trident-1.3.6-10.el6.x86_64.rpm
+		"xorg-x11-drv-v4l.x86_64", 				# xorg-x11-drv-v4l-0.2.0-36.el6.x86_64.rpm
+		"xorg-x11-drv-vesa.x86_64", 				# xorg-x11-drv-vesa-2.3.2-15.el6.x86_64.rpm
+		"xorg-x11-drv-vmmouse.x86_64", 				# xorg-x11-drv-vmmouse-13.0.0-2.el6.x86_64.rpm
+		"xorg-x11-drv-vmware.x86_64", 				# xorg-x11-drv-vmware-13.0.1-9.el6.x86_64.rpm
+		"xorg-x11-drv-void.x86_64", 				# xorg-x11-drv-void-1.4.0-23.el6.x86_64.rpm
+		"xorg-x11-drv-voodoo.x86_64", 				# xorg-x11-drv-voodoo-1.2.5-10.el6.x86_64.rpm
+		"xorg-x11-drv-wacom.x86_64", 				# xorg-x11-drv-wacom-0.23.0-4.el6.x86_64.rpm
+		"xorg-x11-drv-xgi.x86_64", 				# xorg-x11-drv-xgi-1.6.0-20.20121114git.el6.x86_64.rpm
+		"xorg-x11-font-utils.x86_64", 				# xorg-x11-font-utils-7.2-11.el6.x86_64.rpm
+		"xorg-x11-fonts-Type1.noarch", 				# xorg-x11-fonts-Type1-7.2-11.el6.noarch.rpm
+		"xorg-x11-glamor.x86_64", 				# xorg-x11-glamor-0.6.0-5.20140506gitf78901e.el6.x86_64.rpm
+		"xorg-x11-server-Xorg.x86_64", 				# xorg-x11-server-Xorg-1.15.0-36.el6.x86_64.rpm
+		"xorg-x11-server-common.x86_64", 			# xorg-x11-server-common-1.15.0-36.el6.x86_64.rpm
+		"xorg-x11-server-utils.x86_64", 			# xorg-x11-server-utils-7.7-2.el6.x86_64.rpm
+		"xorg-x11-utils.x86_64", 				# xorg-x11-utils-7.5-6.el6.x86_64.rpm
+		"xorg-x11-xauth.x86_64", 				# xorg-x11-xauth-1.0.2-7.1.el6.x86_64.rpm
+		"xorg-x11-xinit.x86_64", 				# xorg-x11-xinit-1.0.9-14.el6.x86_64.rpm
+		"xorg-x11-xkb-utils.x86_64", 				# xorg-x11-xkb-utils-7.7-4.el6.x86_64.rpm
+		"xterm.x86_64", 					# xterm-253-1.el6.x86_64.rpm
+		"xulrunner.x86_64", 					# xulrunner-17.0.10-1.el6_4.x86_64.rpm
+		"xvattr.x86_64", 					# xvattr-1.3-18.el6.x86_64.rpm
+		"xz.x86_64", 						# xz-4.999.9-0.5.beta.20091007git.el6.x86_64.rpm
+		"xz-libs.x86_64", 					# xz-libs-4.999.9-0.5.beta.20091007git.el6.x86_64.rpm
+		"xz-lzma-compat.x86_64", 				# xz-lzma-compat-4.999.9-0.5.beta.20091007git.el6.x86_64.rpm
+		"yajl.x86_64", 						# yajl-1.0.7-3.el6.x86_64.rpm
+		"yelp.x86_64", 						# yelp-2.28.1-17.el6_3.x86_64.rpm
+		"yum.noarch", 						# yum-3.2.29-69.el6.noarch.rpm
+		"yum-metadata-parser.x86_64", 				# yum-metadata-parser-1.1.2-16.el6.x86_64.rpm
+		"yum-plugin-priorities.noarch", 			# yum-plugin-priorities-1.1.30-30.el6.noarch.rpm
+		"yum-utils.noarch", 					# yum-utils-1.1.30-30.el6.noarch.rpm
+		"zd1211-firmware.noarch", 				# zd1211-firmware-1.4-4.el6.noarch.rpm
+		"zenity.x86_64", 					# zenity-2.28.0-1.el6.x86_64.rpm
+		"zip.x86_64", 						# zip-3.0-1.el6.x86_64.rpm
+		"zlib.x86_64", 						# zlib-1.2.3-29.el6.x86_64.rpm
+		"zlib-devel.x86_64", 					# zlib-devel-1.2.3-29.el6.x86_64.rpm
+	];
+	
+	# These are packages specific to one source
+	$conf->{sys}{packages}{rhel} = [
+		"mtr-gtk.x86_64",					# mtr-gtk-0.75-5.el6.x86_64.rpm
+		"pcp-gui.x86_64",					# pcp-gui-3.10.3-3.el6.x86_64.rpm
+		"python-gudev.x86_64",					# python-gudev-147.1-4.el6_0.1.x86_64.rpm
+		"python-rhsm.x86_64",					# python-rhsm-1.14.3-1.el6.x86_64.rpm
+		"redhat-indexhtml.noarch",				# redhat-indexhtml-6-6.el6.noarch.rpm
+		"redhat-release-server.x86_64",				# redhat-release-server-6Server-6.7.0.3.el6.x86_64.rpm
+		"redhat-support-lib-python.noarch",			# redhat-support-lib-python-0.9.7-3.el6.noarch.rpm
+		"redhat-support-tool.noarch",				# redhat-support-tool-0.9.7-4.el6.noarch.rpm
+		"rhn-check.noarch",					# rhn-check-1.0.0.1-32.el6.noarch.rpm
+		"rhn-client-tools.noarch",				# rhn-client-tools-1.0.0.1-32.el6.noarch.rpm
+		"rhn-setup.noarch",					# rhn-setup-1.0.0.1-32.el6.noarch.rpm
+		"rhnlib.noarch",					# rhnlib-2.5.22-15.el6.noarch.rpm
+		"rhnsd.x86_64",						# rhnsd-4.9.3-2.el6.x86_64.rpm
+		"subscription-manager.x86_64",				# subscription-manager-1.14.10-1.el6.x86_64.rpm
+		"yum-rhn-plugin.noarch",				# yum-rhn-plugin-0.9.1-58.el6.noarch.rpm
+	];
+	$conf->{sys}{packages}{centos} = [
+		"yum-plugin-fastestmirror.noarch",			# yum-plugin-fastestmirror-1.1.30-30.el6.noarch.rpm
+		"centos-indexhtml.noarch",				# centos-indexhtml-6-2.el6.centos.noarch.rpm
+		"centos-release.x86_64",				# centos-release-6-7.el6.centos.12.3.x86_64.rpm
+	];
+	
+	# Alteeve-source packages
+	$conf->{sys}{packages}{alteeve} = [
+		"bash-completion.noarch", 				# bash-completion-1.3-7.el6.anvil.noarch.rpm
+		"drbd84-utils.x86_64", 					# drbd84-utils-8.9.2-1.el6.anvil.x86_64.rpm
+		"kmod-drbd84.x86_64", 					# kmod-drbd84-8.4.6-1.el6.anvil.x86_64.rpm
+		"ntfs-3g.x86_64", 					# ntfs-3g-2015.3.14-2.el6.anvil.x86_64.rpm
+		"ntfsprogs.x86_64", 					# ntfsprogs-2015.3.14-2.el6.anvil.x86_64.rpm
+		"perl-Net-SSH2.x86_64", 				# perl-Net-SSH2-0.53-4.el6.anvil.x86_64.rpm
+		"perl-XML-Simple.noarch", 				# perl-XML-Simple-2.20-1.el6.anvil.noarch.rpm
+		"postgresql94.x86_64", 					# postgresql94-9.4.1-1PGDG.el6.anvil.x86_64.rpm
+		"postgresql94-contrib.x86_64", 				# postgresql94-contrib-9.4.1-1PGDG.el6.anvil.x86_64.rpm
+		"postgresql94-libs.x86_64", 				# postgresql94-libs-9.4.1-1PGDG.el6.anvil.x86_64.rpm
+		"postgresql94-plperl.x86_64", 				# postgresql94-plperl-9.4.1-1PGDG.el6.anvil.x86_64.rpm
+		"postgresql94-server.x86_64", 				# postgresql94-server-9.4.1-1PGDG.el6.anvil.x86_64.rpm
+		"shorewall.noarch", 					# shorewall-4.6.11.1-1.el6.anvil.noarch.rpm
+		"shorewall-core.noarch", 				# shorewall-core-4.6.11.1-1.el6.anvil.noarch.rpm
+	];
+	
+	# Binary packages from third parties
+	$conf->{sys}{packages}{binary} = [
+		# 3rd party to add manually
+		"MegaCli.noarch", 					# MegaCli-8.07.08-1.noarch.rpm
+		"storcli.noarch", 					# storcli-1.09.13-1.noarch.rpm
+	];
+	
+	return(0);
+}
+
+# This collects the command line switches
+sub get_switches
+{
+	my ($conf) = @_;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$conf->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything after it to 'raw'.
+			$conf->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$conf->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$conf->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$conf->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$conf->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			elsif (($argument eq "start") or ($argument eq "stop") or ($argument eq "status"))
+			{
+				$conf->{switches}{$argument} = 1;
+			}
+			else
+			{
+				# Got a value without an argument.
+				$conf->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($conf->{switches}{raw})
+	{
+		$conf->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	if ($conf->{sys}{debug})
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
+		{
+			print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n";
+		}
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($conf) = @_;
+	
+	my $help = "
+ -=] Anvil! - Generate ISO
+
+DESCRIPTION
+
+This program will read in a Red Hat Enterprise Linux v6.7 or CentOS v6.7 ISO
+and use it to generate an Anvil! install ISO.
+
+This tool is provided as a way to respect the Red Hat and CentOS trademarks 
+while providing users with a convenient way to build an Anvil! based on their
+preferred distibution.
+
+This tool does NOT alter any of the source RPMs. Instead, it creates a new
+'Packages' directory with a subset of the source RPMs needed by the Striker 
+dashboard and Anvil! nodes. It also adds additional RPMs as provided by
+Alteeve's Niche!.
+
+
+SWITCHES
+
+-h, -?, --help
+
+	Show this dialoge and exit.
+
+--source
+
+	This must be the full path and file name to the source ISO to base the
+	Anvil! ISO on. 
+	
+	NOTE: The source *MUST* be the 'DVD 1' ISO for release 6.7.
+	
+	If you provide a RHEL ISO, the resulting Anvil! ISO will include RPMs 
+	appropriate for registering against Red Hat. Please note that you will
+	need to register against Red Hat and entitle the new machines with the
+	'Optional' Add-On. The nodes will also need the 'Resilient Storage'
+	Add-On as well.
+	
+	If you provide a CentOS ISO, the RHEL packages will be skipped and 
+	CentOS-specific packages will be added.
+
+
+EXAMPLES
+
+	Build a RHEL-based Anvil! ISO:
+	
+		./anvil_generate_iso --source ./rhel-server-6.7-x86_64-dvd.iso
+	
+	Build a CentOS-based Anvil ISO:
+	
+		./anvil_generate_iso --source ./CentOS-6.7-x86_64-bin-DVD1.iso
+	
+                  
+SUPPORT
+
+https://alteeve.ca/w/Support
+
+                                                              Alteeve's Niche!
+";
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $help;
+	close $file_handle;
+	
+	system("/usr/bin/less /tmp/${THIS_FILE}.help");
+
+	return(0);
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This is a helper to the below '_make_hash_reference' function. It is called
+# each time a new string is to be created as a new hash key in the passed hash
+# reference.
+sub _add_hash_reference
+{
+	my ($href1, $href2) = @_;
+
+	for my $key (keys %$href2)
+	{
+		if (ref $href1->{$key} eq 'HASH')
+		{
+			_add_hash_reference($href1->{$key}, $href2->{$key});
+		}
+		else
+		{
+			$href1->{$key} = $href2->{$key};
+		}
+	}
+}
+
+### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
+# This takes a string with double-colon seperators and divides on those
+# double-colons to create a hash reference where each element is a hash key.
+sub _make_hash_reference
+{
+	my ($href, $key_string, $value) = @_;
+
+	my @keys            = split /::/, $key_string;
+	my $last_key        = pop @keys;
+	my $_href           = {};
+	$_href->{$last_key} = $value;
+	while (my $key = pop @keys)
+	{
+		my $elem      = {};
+		$elem->{$key} = $_href;
+		$_href        = $elem;
+	}
+	_add_hash_reference($href, $_href);
+}
