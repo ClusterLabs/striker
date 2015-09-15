@@ -22,7 +22,8 @@ sub inititialize_configuration
 			df			=>	"/bin/df",
 			dmsetup			=>	"/sbin/dmsetup",
 			echo			=>	"/bin/echo",
-			format_running		=>	"/tmp/.format_running",
+			format_running		=>	"/tmp/.striker-usb-formatting",
+			fusermount		=>	"/bin/fusermount",
 			'grep'			=>	"/bin/grep",
 			ls			=>	"/bin/ls",
 			lsblk			=>	"/bin/lsblk",
@@ -60,11 +61,10 @@ sub logger
 	
 	# Print the message to the screen.
 	print "$file $line_number: $message\n";
-	return(0);
-	print "$message\n";
+	#return(0);
+	#print "$message\n";
 	
-	# We split on new-lines so that multi-line message render better in
-	# syslog.
+	# We split on new-lines so that multi-line message render better in syslog.
 	my $is_debug = $message =~ /\[ Debug \]/ ? 1 : 0;
 	foreach my $line (split/\n/, $message)
 	{
@@ -74,7 +74,8 @@ sub logger
 			$line = "[ Debug ]   $line";
 		}
 		$line =~ s/\t/    /g;
-		open my $filehandle, '-|', "logger", "-t", $file, "$line_number: $line" or die "Failed to call: [logger -t $THIS_FILE $line]. Error: $!\n";
+		my $shell_call = "logger -t $file \"$line_number: $line\"";
+		open (my $filehandle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$filehandle>)
 		{
 			print $_;
@@ -202,7 +203,7 @@ sub remote_call
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], port: [$port], user: [$user], password: [---], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], port: [$port], user: [$user], password: [---], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]");
 	
@@ -231,11 +232,11 @@ sub remote_call
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ssh_fh: [$ssh_fh]");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Opening an SSH connection to: [$user\@$remote:$port]");
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Opening an SSH connection to: [$user\@$remote:$port]");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($remote, $port, Timeout => 10))
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$@]");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$@]");
 			if ($@ =~ /Bad hostname/)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
@@ -308,7 +309,7 @@ sub remote_call
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - channel: [$channel], shell_call: [$shell_call]");
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - channel: [$channel], shell_call: [$shell_call]");
 			$channel->exec("$shell_call");
 			#"/etc/ssh/ssh_config",
 			# This keeps the connection open when the remote side is slow
@@ -397,6 +398,8 @@ sub update_configuration
 {
 	my ($conf, $do) = @_;
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - update_configuration(); do: [$do]");
+	
+	### TODO: chmod -x /usr/bin/gnome-keyring-daemon on enable, +x on disable
 	
 	my $ok = 1;
 	my $shell_call  = "$conf->{path}{sed} -i 's/^remote-usb::enable_remote_usb_mount\\(\\s*\\)=\\(\\s*\\)1/remote-usb::enable_remote_usb_mount\\1=\\20/' $conf->{path}{striker_config}\n";

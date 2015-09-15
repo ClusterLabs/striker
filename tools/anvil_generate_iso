@@ -54,92 +54,16 @@ if (($conf->{switches}{h})   ||
 	print_usage($conf);
 	exit(0);
 }
+
 find_executables($conf);
 
-# Validate the source.
-if ($conf->{switches}{source})
-{
-	if (-e $conf->{switches}{source})
-	{
-		print "[ Debug ] - Parsing source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug};
-		
-		($conf->{sys}{source}{directory}, $conf->{sys}{source}{file}) = ($conf->{switches}{source} =~ /^(.*)\/(.*)$/);
-		print "[ Debug ] - Source directory: [$conf->{sys}{source}{directory}], file: [$conf->{sys}{source}{file}]\n" if $conf->{sys}{debug};
-	}
-	else
-	{
-		print "\n[ Error ] - Source: [$conf->{switches}{source}] doesn't exist!\n\n";
-		exit(1);
-	}
-	
-	print "- Generating md5sum of the source, please wait a moment...\n";
-	my $source_sum = "";
-	my $shell_call = "$conf->{executable}{md5sum} $conf->{switches}{source}";
-	print "[ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
-	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		print "[ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
-		
-		if ($line =~ /^(\S+)\s+$conf->{switches}{source}/)
-		{
-			$source_sum = $1;
-			print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
-		}
-	}
-	close $file_handle;
-	
-	# If we got a sum, make sure it matches an expected one.
-	if ($source_sum)
-	{
-		foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
-		{
-			print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
-			print "[ Debug ] - this_sum:   [$this_sum]\n" if $conf->{sys}{debug};
-			if ($source_sum eq $this_sum)
-			{
-				# Match!
-				$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
-				print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
-			}
-		}
-	}
-	else
-	{
-		print "\n[ Error ] - Failed to calculate (or parse) the 'md5sum' for: [$conf->{switches}{source}].\n";
-		print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n\n";
-		exit(1);
-	}
-	
-	# Did I find an OS?
-	if ($conf->{sys}{os} eq "rhel")
-	{
-		print "- The source ISO is Red Hat Enterprise Linux v6.7.\n";
-	}
-	elsif ($conf->{sys}{os} eq "centos")
-	{
-		print "- The source ISO is CentOS v6.7.\n";
-	}
-	else
-	{
-		print "\n[ Error ] - Failed to match the source ISO's 'md5sum': [$source_sum] to a known sum.\n";
-		print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n";
-		print "[ NOTE ]  - The source MUST be v6.7 and it must be DVD disc 1.\n\n";
-		exit(1);
-	}
-}
-else
-{
-	print "\n[ Error ] - No source ISO provided!\n";
-	print "[ Note ]  - Run './$THIS_FILE -h' for usage.\n\n";
-	exit(1);
-}
+validate_source($conf);
+
+# If we're still alive, we're ready.
 
 get_package_list($conf);
 
-if (0)
+if (1)
 {
 	print "# Common packages:\n";
 	print "yum install ";
@@ -150,7 +74,7 @@ if (0)
 	print "\n\n";
 }
 
-if (0)
+if ($conf->{sys}{os} eq "rhel")
 {
 	print "# RHEL packages:\n";
 	print "yum install ";
@@ -161,7 +85,7 @@ if (0)
 	print "\n\n";
 }
 
-if (0)
+if ($conf->{sys}{os} eq "centos")
 {
 	print "# CentOS packages:\n";
 	print "yum install ";
@@ -172,18 +96,18 @@ if (0)
 	print "\n\n";
 }
 
-if (0)
+if (1)
 {
-	print "# Anvil! packages:\n";
+	print "# Alteeve packages:\n";
 	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{anvil}})
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{alteeve}})
 	{
 		print "$package ";
 	}
 	print "\n\n";
 }
 
-if (0)
+if (1)
 {
 	print "# Third party, binary packages:\n";
 	print "yum install ";
@@ -195,6 +119,94 @@ if (0)
 }
 
 exit(0);
+
+# This validates the source ISO. It will exit if problems are found.
+sub validate_source
+{
+	my ($conf) = @_;
+	
+	if ($conf->{switches}{source})
+	{
+		if (-e $conf->{switches}{source})
+		{
+			print "[ Debug ] - Parsing source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug};
+			
+			($conf->{sys}{source}{directory}, $conf->{sys}{source}{file}) = ($conf->{switches}{source} =~ /^(.*)\/(.*)$/);
+			print "[ Debug ] - Source directory: [$conf->{sys}{source}{directory}], file: [$conf->{sys}{source}{file}]\n" if $conf->{sys}{debug};
+		}
+		else
+		{
+			print "\n[ Error ] - Source: [$conf->{switches}{source}] doesn't exist!\n\n";
+			exit(1);
+		}
+		
+		print "- Generating md5sum of the source, please wait a moment...\n";
+		my $source_sum = "";
+		my $shell_call = "$conf->{executable}{md5sum} $conf->{switches}{source}";
+		print "[ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "[ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
+			
+			if ($line =~ /^(\S+)\s+$conf->{switches}{source}/)
+			{
+				$source_sum = $1;
+				print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
+			}
+		}
+		close $file_handle;
+		
+		# If we got a sum, make sure it matches an expected one.
+		if ($source_sum)
+		{
+			foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
+			{
+				print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
+				print "[ Debug ] - this_sum:   [$this_sum]\n" if $conf->{sys}{debug};
+				if ($source_sum eq $this_sum)
+				{
+					# Match!
+					$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
+					print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
+				}
+			}
+		}
+		else
+		{
+			print "\n[ Error ] - Failed to calculate (or parse) the 'md5sum' for: [$conf->{switches}{source}].\n";
+			print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n\n";
+			exit(1);
+		}
+		
+		# Did I find an OS?
+		if ($conf->{sys}{os} eq "rhel")
+		{
+			print "- The source ISO is Red Hat Enterprise Linux v6.7.\n";
+		}
+		elsif ($conf->{sys}{os} eq "centos")
+		{
+			print "- The source ISO is CentOS v6.7.\n";
+		}
+		else
+		{
+			print "\n[ Error ] - Failed to match the source ISO's 'md5sum': [$source_sum] to a known sum.\n";
+			print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n";
+			print "[ NOTE ]  - The source MUST be v6.7 and it must be DVD disc 1.\n\n";
+			exit(1);
+		}
+	}
+	else
+	{
+		print "\n[ Error ] - No source ISO provided!\n";
+		print "[ Note ]  - Run './$THIS_FILE -h' for usage.\n\n";
+		exit(1);
+	}
+	
+	return(0);
+}
 
 # This searches the PATH environment variable looking for the location of any executable not pre-defined.
 sub find_executables

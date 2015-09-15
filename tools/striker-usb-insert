@@ -41,6 +41,10 @@
 #      an IP address.
 # 21 = Failed to enable in striker.conf
 # 22 = Failed to disable in striker.conf
+# 23 = Asked to mount a device remotely but the USB address wasn't set.
+# 24 = Asked to mount a device remotely but the remote mount point wasn't set.
+# 25 = Failed to unmount a non-LUKS partition that needed to be reformatted LUKS.
+# 26 = The 'use_directory' variable in the mount_filesystems() function was not set.
 # 
 
 use strict;
@@ -115,9 +119,10 @@ sub check_sd_devices
 	while (<$file_handle>)
 	{
 		chomp;
-		my $device      = $_;
-		next if $device =~ /\d$/;
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
+		my $device        = $_;
+		next if $device   =~ /\d$/;
+		my $active_device =  ($device =~ /.*\/(.*)?/)[0];
+		logger($conf, $THIS_FILE, __LINE__, "*** [ Debug ] - device: [$device], active_device: [$active_device] ***");
 		
 		my $this_device  = "";
 		my $this_usb     = "";
@@ -137,11 +142,11 @@ sub check_sd_devices
 			if ($line =~ /looking at parent device '(.*?)'/)
 			{
 				$this_device = $1;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_device: [$this_device].");
+				#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_device: [$this_device].");
 				if ((not $this_usb) && ($this_device =~ /usb\d+\/(\d+-\d+)\//))
 				{
 					$this_usb = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb].");
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb] parsed from: [$this_device].");
 				}
 				next;
 			}
@@ -175,14 +180,42 @@ sub check_sd_devices
 		
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].");
 		
+		# If I've got a USB address, use it to set 'this_usb'. If this is also a root device, record
+		# the USB address for this device.
+		if ($this_usb)
+		{
+			$conf->{this_usb} = $this_usb;
+			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ::this_usb: [$conf->{this_usb}].");
+			if ($device !~ /\d$/)
+			{
+				$conf->{root_usb}{$device} = $this_usb;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - root_usb::$device: [$conf->{root_usb}{$device}].");
+			}
+		}
+		
+		# Now, if this is not a root device and no USB address was found, see if we have the address 
+		# from the parent.
+		if ((not $this_usb) && ($device =~ /\d$/))
+		{
+			my $parent = ($device =~ /^(.*)\d+$/)[0];
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parent: [$parent].");
+			if ($conf->{root_usb}{$device})
+			{
+				$this_usb = $conf->{root_usb}{$device};
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_usb: [$this_usb], root_usb::$device: [$conf->{root_usb}{$device}].");
+			}
+		}
+		
+		logger($conf, $THIS_FILE, __LINE__, "remote-usb::remote::host: [$conf->{'remote-usb'}{remote}{host}], remote-usb::remote::user: [$conf->{'remote-usb'}{remote}{user}], remote-usb::remote::password: [$conf->{'remote-usb'}{remote}{password}], remote-usb::remote::mount: [$conf->{'remote-usb'}{remote}{mount}], remote-usb::local::mount: [$conf->{'remote-usb'}{'local'}{mount}], this_usb: [$this_usb]");
 		my $host         = $conf->{'remote-usb'}{remote}{host};
 		my $user         = $conf->{'remote-usb'}{remote}{user};
 		my $password     = $conf->{'remote-usb'}{remote}{password};
 		my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
 		my $local_mount  = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+		logger($conf, $THIS_FILE, __LINE__, "host: [$host], user: [$user], password: [$password], remote_mount: [$remote_mount], local_mount: [$local_mount]");
 		
 		my $yn = ["No", "Yes"];
-		logger($conf, $THIS_FILE, __LINE__, "This device: [$device] is: [$size_gib GiB ($size_gb GB)]; Removable? [".$yn->[$removable]."], Read only? [".$yn->[$read_only]."], ");
+		logger($conf, $THIS_FILE, __LINE__, "This device: [$device] is: [$size_gib GiB ($size_gb GB)]; Removable? [".$yn->[$removable]."], Read only? [".$yn->[$read_only]."], USB Address: [$this_usb]");
 		if (not $this_usb)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- The device: [$device] is not a USB device, skipping.");
@@ -200,7 +233,7 @@ sub check_sd_devices
 			logger($conf, $THIS_FILE, __LINE__, "- Looking for file systems on: [$device]");
 			find_file_systems($conf, $device, $byte_size);
 			logger($conf, $THIS_FILE, __LINE__, "- Mounting discovered filesystems, if needed.");
-			mount_filesystems($conf);
+			mount_filesystems($conf, $active_device);
 		}
 		$conf->{this_usb} = $this_usb;
 	}
@@ -458,7 +491,28 @@ sub format_device
 	my ($conf, $device) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - format_device(); device: [$device]");
 	
-	my $mkfs_call = "$conf->{path}{touch} $conf->{path}{format_running}; $conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device; $conf->{path}{rm} -f $conf->{path}{format_running}";
+	# Touch the 'formatting' file on the target so they know to be patient.
+	my $remote          = $conf->{'remote-usb'}{remote}{host};
+	my $remote_user     = $conf->{'remote-usb'}{remote}{user};
+	my $remote_password = $conf->{'remote-usb'}{remote}{password};
+	my $shell_call      = "$conf->{path}{touch} $conf->{path}{format_running};";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	my ($error, $ssh_fh, $return) = remote_call($conf, {
+		remote		=>	$remote,
+		port		=>	22,
+		user		=>	$remote_user,
+		password	=>	$remote_password,
+		ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+	}
+	
+	# Put together our format call
+	my $mkfs_call = "$conf->{path}{mkfs} -t $conf->{'remote-usb'}{luks}{use_filesystem} $device";
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::luks::use_filesystem: [$conf->{'remote-usb'}{luks}{use_filesystem}], remote-usb::luks::fs_label: [$conf->{'remote-usb'}{luks}{fs_label}]");
 	if ($conf->{'remote-usb'}{luks}{fs_label})
 	{
@@ -468,12 +522,14 @@ sub format_device
 	my $uuid  = "";
 	my $label = "";
 	logger($conf, $THIS_FILE, __LINE__, "Will now format the device: [$device] as: [$conf->{'remote-usb'}{luks}{use_filesystem}]");
-	my $shell_call = "
+	$shell_call = "
 echo 'formatting $device now'
+$conf->{path}{touch} $conf->{path}{format_running}; 
 $mkfs_call
 sync
 echo 'formatted, checking with blkid'
 $conf->{path}{blkid} -p $device
+$conf->{path}{rm} -f $conf->{path}{format_running}
 ";
 	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
@@ -516,6 +572,23 @@ $conf->{path}{blkid} -p $device
 	}
 	close $file_handle;
 	
+	# Now remove the 'formatting' file on the target
+	$shell_call = "$conf->{path}{rm} -f $conf->{path}{format_running};";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	($error, $ssh_fh, $return) = remote_call($conf, {
+		remote		=>	$remote,
+		port		=>	22,
+		user		=>	$remote_user,
+		password	=>	$remote_password,
+		ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+	}
+	
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs], uuid: [$uuid], label: [$label]");
 	return($fs, $uuid, $label);
 }
@@ -524,8 +597,8 @@ $conf->{path}{blkid} -p $device
 # and uses sshfs to mount our just-mounted FS.
 sub mount_filesystems
 {
-	my ($conf) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_filesystems()");
+	my ($conf, $active_device) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_filesystems(); active_device: [$active_device]");
 	
 	### TODO: If I can't make a directory, make an alternative.
 	### TODO: Make the failure to mount one partition not block further partitions.
@@ -533,9 +606,10 @@ sub mount_filesystems
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{devices}})
 	{
 		next if $device !~ /\d$/;
+		next if $device !~ /$active_device/;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device: [$device].");
 		
-		# Before I do anything; Is it already mounted?
+		# Check the remote mount
 		my $shell_call = "
 if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
 then
@@ -543,35 +617,105 @@ then
 else 
     echo 'not mounted';
 fi";
-		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-		while (<$file_handle>)
+
+		# If this is a USB device (be very sure!), and if force_initialize is set, and if this is not
+		# and LUKS FS, and if this is not a device-mapped device, dismount and reformat.
+		my $parent = ($device =~ /^(.*)\d+$/)[0];
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parent: [$parent], device: [$device]");
+		if ((not $parent) && ($device =~ /mapper/))
 		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
-			if ($line eq "already mounted")
+			$parent =  $device;
+			$parent =~ s/\/mapper//;
+			$parent =  ($device =~ /^(.*)\d+$/)[0];
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - parent: [$parent]");
+		}
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - root_usb::$parent: [$conf->{root_usb}{$parent}], remote-usb::luks::force_initialize: [$conf->{'remote-usb'}{luks}{force_initialize}], device: [$device]");
+		if (($conf->{root_usb}{$parent}) && ($conf->{'remote-usb'}{luks}{force_initialize}) && ($device !~ /\/mapper/))
+		{
+			# If this isn't a LUKS FS, unmount it.
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - devices::${device}::fs: [$conf->{devices}{$device}{fs}]");
+			if ($conf->{devices}{$device}{fs} =~ /LUKS/i)
 			{
-				logger($conf, $THIS_FILE, __LINE__, "The device: [$device] is already mounted, no reason to proceed.");
-				return(0);
+				# This is a LUKS partition already, so skip it entirely.
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - This is a LUKS partition, skipping it.");
+				$shell_call = "";
+			}
+			else
+			{
+				# Not encypted, but should be.
+				$shell_call = "
+if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
+then
+    echo \"Mounted, but not LUKS encrypted and 'remote-usb::luks::force_initialize' is set, unmounting to prepare to format\"; 
+    $conf->{path}{umount} $device
+    if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
+    then 
+        echo 'failed to unmount device before LUKS format.'
+    else
+        echo 'unmounted for LUKS format successfully.'
+    fi
+else 
+    echo 'not mounted';
+fi";
 			}
 		}
-		close $file_handle;
 		
+		# Now call which-ever shell call is needed.
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+		if ($shell_call)
+		{
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+				if ($line eq "already mounted")
+				{
+					logger($conf, $THIS_FILE, __LINE__, "The device: [$device] is already mounted, skipping it.");
+					$conf->{skip}{$device} = 1;
+				}
+				if ($line =~ /failed to unmount/)
+				{
+					# Error out.
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The device: [$device], which was mounted but not LUKS encrypted and force_initialize is set, failed to unmount. Format not possible.");
+					exit(25);
+				}
+			}
+			close $file_handle;
+		}
+		
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::remote::host: [$conf->{'remote-usb'}{remote}{host}], remote-usb::remote::user: [$conf->{'remote-usb'}{remote}{user}], remote-usb::remote::password: [$conf->{'remote-usb'}{remote}{password}], remote-usb::remote::mount: [$conf->{'remote-usb'}{remote}{mount}], remote-usb::local::mount: [$conf->{'remote-usb'}{'local'}{mount}], ::this_usb: [$conf->{this_usb}]");
 		my $this_usb        = $conf->{this_usb};
 		my $remote          = $conf->{'remote-usb'}{remote}{host};
 		my $remote_user     = $conf->{'remote-usb'}{remote}{user};
 		my $remote_password = $conf->{'remote-usb'}{remote}{password};
 		my $remote_mount    = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
 		my $local_mount     = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], remote_mount: [$remote_mount], local_mount: [$local_mount]");
+		
+		# If, for some reason, the USB address or remote mount variables are blank, exit.
+		if (not $this_usb)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - I was asked to mount: [$device], but no USB address was set.");
+			exit(23);
+		}
+		if (not $remote_mount)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Error ] - I was asked to mount: [$device], but a remote mount point wasn't set.");
+			exit(24);
+		}
+		
 		if ($conf->{devices}{$device}{label})
 		{
 			$remote_mount .= "-$conf->{devices}{$device}{label}";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]", 0);
 		}
 		if ($i)
 		{
 			$local_mount  .= "-$i";
 			$remote_mount .= "-$i";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount], local_mount: [$local_mount]", 0);
 		}
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - i: [$i], device: [$device], this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount]");
 		
@@ -591,6 +735,7 @@ fi";
 			{
 				# A label was set, update the mount name.
 				$remote_mount .= "_$conf->{devices}{$device}{label}";
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount], i: [$i]");
 				if ($i)
 				{
 					$remote_mount .= "-$i";
@@ -601,14 +746,14 @@ fi";
 		else
 		{
 			# Start by making sure it is unmounted
-			logger($conf, $THIS_FILE, __LINE__, "We're about to start, but we're going to sleep for 10 seconds to give other processes time to mount the partitions.");
-			sleep 10;
+			logger($conf, $THIS_FILE, __LINE__, "We're about to start, but we're going to sleep for 5 seconds to give other processes time to mount the partitions.");
+			sleep 5;
 			logger($conf, $THIS_FILE, __LINE__, "Done waiting; Now checking if: [$device ($conf->{devices}{$device}{fs})] is already mounted or not.");
 			unmount($conf, $device);
 			
 			# If the user has requested 'luks::force_initialize', 
 			# then we're going to have to format this partition.
-			if ($conf->{'remote-usb'}{luks}{force_initialize})
+			if (($conf->{'remote-usb'}{luks}{force_initialize}) && ($device !~ /\/mapper/))
 			{
 				# Before we format, see if the user has set a protected label and, if so, if
 				# this FS is protected.
@@ -671,11 +816,10 @@ fi";
 					if ($conf->{devices}{$device}{label})
 					{
 						# A label was set, update the mount name.
-						$remote_mount = $conf->{usb}{$this_usb}{sshfs}{remote_mount};
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						if ($conf->{devices}{$device}{label})
 						{
-							$remote_mount = "$conf->{usb}{$this_usb}{sshfs}{remote_mount}-$conf->{devices}{$device}{label}";
+							$remote_mount .= "-$conf->{devices}{$device}{label}";
 							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 						if ($i)
@@ -711,7 +855,7 @@ else
     echo 'mount needed';
 fi;";
 		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -725,8 +869,10 @@ fi;";
 		}
 		close $file_handle;
 		
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - already_mounted: [$already_mounted].");
 		if (not $already_mounted)
 		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_mount: [$local_mount].");
 			if (not -e $local_mount)
 			{
 				make_path($local_mount, {
@@ -844,7 +990,11 @@ fi;";
 			my $j                = 0;
 			my $use_directory    = $remote_mount;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - use_directory: [$use_directory]");
-			die if not $use_directory;
+			if (not $use_directory)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - The 'use_directory' variable should have been set to match the remote mount directory but was not.");
+				exit(26);
+			}
 			until($directory_found)
 			{
 				$directory_in_use = 0;
@@ -871,6 +1021,7 @@ fi;";
 					if ($line =~ /No such file or directory/i)
 					{
 						# We're good, create the directory.
+						logger($conf, $THIS_FILE, __LINE__, "Remote mount point: [$use_directory] doesn't exist, creating it.");
 						my $shell_call = "
 $conf->{path}{mkdir} $use_directory;
 if [ -e '$use_directory' ];

@@ -59,12 +59,12 @@ sub find_missing_devices
 		chomp;
 		my $line = $_;
 		next if not $line;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /(\/dev\/.*?)\s+\w+\s+\w+\s+\w+\s+\d+%\s($conf->{'remote-usb'}{local}{mount}_.*)/)
 		{
 			my $device = $1;
 			my $mount  = $2;
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], mount: [$mount]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], mount: [$mount]");
 			$conf->{device}{$device}{local_mount} = $mount;
 		}
 	}
@@ -103,7 +103,7 @@ do
     if [[ \$dev = 'No' ]];
     then
         echo 'No device-mapped devices exist';
-    elif $conf->{path}{lsblk} | $conf->{path}{grep} -f \$dev; 
+    elif $conf->{path}{lsblk} | $conf->{path}{grep} -q \$dev; 
     then
         echo 'device exists'; 
     else 
@@ -177,7 +177,7 @@ sub cleanup_remote
 	my $local_user      = $conf->{'remote-usb'}{'local'}{user};
 	my $local_password  = $conf->{'remote-usb'}{'local'}{password};
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
-	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that point to stake mounts on: [$local_user\@$local_host]");
+	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that point to stale mounts on: [$local_user\@$local_host]");
 	
 	# Now look at the mounts on the remote machine.
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Getting a list of mounts on: [$remote]");
@@ -206,26 +206,39 @@ sub cleanup_remote
 	foreach my $mount (sort {$a cmp $b} keys %{$conf->{remove}})
 	{
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Killing any stale sshfs PIDs for the mount point: [$mount]");
-		my $shell_call = "
-for i in \$(ps aux | grep '$mount' | grep sshfs | awk '{print \$2}')
-do
-    echo \"Killing stale sshfs PID: [\$i]\"
-    kill \$i
-done
-
-if \$(fusermount -u $mount)
+		my $shell_call = "$conf->{path}{fusermount} -u $mount; echo rc:\$?";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+		my ($error, $ssh_fh, $return) = remote_call($conf, {
+			remote		=>	$remote,
+			port		=>	22,
+			user		=>	$remote_user,
+			password	=>	$remote_password,
+			ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		}
+		
+		$shell_call = "
+echo 'Removing mount point: [$mount].'
+rmdir $mount
+if [ -e '$mount' ]
 then
-    rmdir $mount
+    echo 'failed to remove old mount point.'
+else
+    echo 'removed mount point successfully.'
     if [ -x '/home/$remote_user/.post_unmount' ]
     then
+        echo 'Running: [/home/$remote_user/.post_unmount]'
         /home/$remote_user/.post_unmount 
     fi
-else
-    echo 'failed to unmount'
 fi
 ";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
-		my ($error, $ssh_fh, $return) = remote_call($conf, {
+		($error, $ssh_fh, $return) = remote_call($conf, {
 			remote		=>	$remote,
 			port		=>	22,
 			user		=>	$remote_user,

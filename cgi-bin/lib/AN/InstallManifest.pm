@@ -12678,7 +12678,7 @@ sub generate_cluster_conf
 	}
 	$conf->{sys}{cluster_conf} .= "\t</fencedevices>
 	<fence_daemon post_join_delay=\"$conf->{sys}{post_join_delay}\" />
-	<totem rrp_mode=\"active\" secauth=\"off\"/>
+	<totem rrp_mode=\"passive\" secauth=\"off\"/>
 	<rm log_level=\"5\">
 		<resources>
 			<script file=\"/etc/init.d/drbd\" name=\"drbd\"/>
