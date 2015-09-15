@@ -1,0 +1,188 @@
+#!/usr/bin/perl
+# 
+# This program places the physical CPUs under 100% load for a set period of time, checking the CPU core 
+# temperatures before and after load. The purpose is to show the user what they can expect their CPU 
+# temperatures to climb too under full load. 
+# 
+# This is useful when testing ScanCore's temperature-based shutdown function by giving the user realistic
+# temperatures to set in Striker.conf the trick the system into a thermal shutdown by weighting the cores 
+# higher than normal and dropping their critical thresholds below the post-load temperatures.
+#
+# Released under the GPL v2 - Alteeve's Niche! Inc. - https://alteeve.ca
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+
+my $THIS_FILE = $0;
+   $THIS_FILE =~ s/^.*\///;
+
+my $conf = {
+	path		=>	{
+		cpuinfo			=>	"/proc/cpuinfo",
+		dd			=>	"/bin/dd",
+		ipmitool		=>	"/usr/bin/ipmitool",
+		taskset			=>	"/bin/taskset",
+		timeout			=>	"/usr/bin/timeout",
+	},
+	sys		=>	{
+		cores			=>	0,
+		debug			=>	1,
+		load_runtime		=>	300,
+	},
+	temp		=>	{
+		CPU1			=>	{
+			pre			=>	"",
+			post			=>	"",
+		},
+		CPU2			=>	{
+			pre			=>	"",
+			post			=>	"",
+		},
+	},
+};
+
+# How many cores do I have?
+get_core_count($conf);
+
+# Get the at-rest CPU temperature
+($conf->{temp}{CPU1}{pre}, $conf->{temp}{CPU2}{pre}) = get_cpu_temp($conf);
+print "The 'at rest' temperature of CPU 1 is: [$conf->{temp}{CPU1}{pre} °C] and CPU 2 is: [$conf->{temp}{CPU2}{pre} °C].\n";
+print "Both CPUs, $conf->{sys}{cores} cores, will now be placed under 100% Load for: [$conf->{sys}{load_runtime}] seconds to raise their temperature.\n";
+print "Please wait...\n";
+load_cpu($conf);
+print "Done, checking the temperatures...\n";
+($conf->{temp}{CPU1}{post}, $conf->{temp}{CPU2}{post}) = get_cpu_temp($conf);
+print "The 'load' temperature of CPU 1 is: [$conf->{temp}{CPU1}{post} °C] and CPU 2 is: [$conf->{temp}{CPU2}{post} °C].\n";
+
+exit(0);
+
+# This returns the number of CPU cores in the system.
+sub get_core_count
+{
+	my ($conf) = @_;
+
+	my $shell_call = "$conf->{path}{cpuinfo}";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
+	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
+		if ($line =~ /processor\s+:\s+(\d+)/)
+		{
+			$conf->{sys}{cores} = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::cores: [$conf->{sys}{cores}]\n" if $conf->{sys}{debug};
+		}
+	}
+	close $file_handle;
+
+	# Account for core 0
+	$conf->{sys}{cores}++ if $conf->{sys}{cores};
+
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::cores: [$conf->{sys}{cores}]\n" if $conf->{sys}{debug};
+	return($conf->{sys}{cores});
+}
+
+# This loads the CPUs for the set amount of time.
+sub load_cpu
+{
+	my ($conf) = @_;
+	
+	my $parent_pid = $$;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Parent process has PID: [$parent_pid].\n" if $conf->{sys}{debug};
+	my %pids;
+	foreach my $core (0..($conf->{sys}{cores} - 1))
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Spawning load on core: [$core]...\n" if $conf->{sys}{debug};
+		defined(my $pid = fork) or die "Failed to fork. The error was: [$!].\n";
+		if ($pid)
+		{
+			$pids{$pid} = 1;
+		}
+		else
+		{
+			# Child, call 'dd'
+			my $shell_call = "$conf->{path}{timeout} $conf->{sys}{load_runtime} $conf->{path}{taskset} -c $core $conf->{path}{dd} if=/dev/zero of=/dev/null";
+			print "$THIS_FILE ".__LINE__."; child: [$$] - [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; child: [$$] - [ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
+			}
+			close $file_handle;
+			exit(0);
+		}
+	}
+
+	# This catches infinite loops, just in case. :)
+	my $saw_reaped = 0;
+	while (%pids)
+	{
+		my $pid;
+		do
+		{
+			# 'wait' returns the PID of each child as they exit.
+			# Once all children are gone it returns '-1'.
+			$pid = wait;
+			if ($pid < 1)
+			{
+				print "$THIS_FILE ".__LINE__.": [ Debug ] - Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n" if $conf->{sys}{debug};
+			}
+			else
+			{
+				print "$THIS_FILE ".__LINE__.": [ Debug ] - Parent process told that child with PID: [$pid] has exited.\n" if $conf->{sys}{debug};
+			}
+			delete $pids{$pid};
+			$saw_reaped++;
+			die "[ Error ] - All children should be gone now but it seems the program went into an infinit loop.\n" if $saw_reaped > ($conf->{sys}{cores} + 1);
+		}
+		while $pid > 0;
+	}
+	print "$THIS_FILE ".__LINE__.": [ Debug ] - All child processes reaped, proceeding.\n" if $conf->{sys}{debug};
+
+	return(0);
+}
+
+# This call ipmitool to read the current CPU1 and CPU2 temperatures.
+sub get_cpu_temp
+{
+	my ($conf) = @_;
+	
+	my $cpu1_temp = "";
+	my $cpu2_temp = "";
+
+	my $shell_call = "$conf->{path}{ipmitool} sdr list";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - >> line: [$line]\n" if $conf->{sys}{debug};
+		next if $line !~ /.*?|.*?|.*/;
+		$line =~ s/\s+\|\s+/,/g;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - << line: [$line]\n" if $conf->{sys}{debug};
+		my ($sensor, $value, $state) = (split/,/, $line);
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - sensor: [$sensor], value: [$value], state: [$state]\n" if $conf->{sys}{debug};
+		if (($sensor eq "CPU1") && ($value =~ /degrees C/))
+		{
+			$cpu1_temp = ($value =~ /^(.*?) degrees C/)[0];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - CPU 1 is: [$cpu1_temp *C]\n" if $conf->{sys}{debug};
+		}
+		if (($sensor eq "CPU2") && ($value =~ /degrees C/))
+		{
+			$cpu2_temp = ($value =~ /^(.*?) degrees C/)[0];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - CPU 2 is: [$cpu2_temp *C]\n" if $conf->{sys}{debug};
+		}
+
+	}
+	close $file_handle;
+
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - cpu1_temp: [$cpu1_temp], cpu2_temp: [$cpu2_temp]\n" if $conf->{sys}{debug};
+	return($cpu1_temp, $cpu2_temp);
+}
