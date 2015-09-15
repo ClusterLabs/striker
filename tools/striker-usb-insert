@@ -45,6 +45,7 @@
 # 24 = Asked to mount a device remotely but the remote mount point wasn't set.
 # 25 = Failed to unmount a non-LUKS partition that needed to be reformatted LUKS.
 # 26 = The 'use_directory' variable in the mount_filesystems() function was not set.
+# 27 = Failed to find the local short host name.
 # 
 # TODO:
 # - Verify that 'remote-usb::local::host' IP is accurate and/or use the subnet to find the actual local IP
@@ -104,6 +105,9 @@ elsif (not $conf->{'remote-usb'}{enable_remote_usb_mount})
 }
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
+
+# Find the local hostname.
+get_short_hostname($conf);
 
 #find_usb_devices($conf);
 check_sd_devices($conf);
@@ -216,7 +220,7 @@ sub check_sd_devices
 		my $host         = $conf->{'remote-usb'}{remote}{host};
 		my $user         = $conf->{'remote-usb'}{remote}{user};
 		my $password     = $conf->{'remote-usb'}{remote}{password};
-		my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+		my $remote_mount = $conf->{'remote-usb'}{remote}{mount}."_$conf->{sys}{short_hostname}_$this_usb";
 		my $local_mount  = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
 		logger($conf, $THIS_FILE, __LINE__, "host: [$host], user: [$user], password: [$password], remote_mount: [$remote_mount], local_mount: [$local_mount]");
 		
@@ -696,7 +700,7 @@ fi";
 		my $remote          = $conf->{'remote-usb'}{remote}{host};
 		my $remote_user     = $conf->{'remote-usb'}{remote}{user};
 		my $remote_password = $conf->{'remote-usb'}{remote}{password};
-		my $remote_mount    = $conf->{'remote-usb'}{remote}{mount}."_$this_usb";
+		my $remote_mount    = $conf->{'remote-usb'}{remote}{mount}."_$conf->{sys}{short_hostname}_$this_usb";
 		my $local_mount     = $conf->{'remote-usb'}{'local'}{mount}."_$this_usb";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], remote_mount: [$remote_mount], local_mount: [$local_mount]");
 		
@@ -714,13 +718,13 @@ fi";
 		
 		if ($conf->{devices}{$device}{label})
 		{
-			$remote_mount .= "-$conf->{devices}{$device}{label}";
+			$remote_mount .= "_$conf->{devices}{$device}{label}";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]", 0);
 		}
 		if ($i)
 		{
-			$local_mount  .= "-$i";
-			$remote_mount .= "-$i";
+			$local_mount  .= "_$i";
+			$remote_mount .= "_$i";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount], local_mount: [$local_mount]", 0);
 		}
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - i: [$i], device: [$device], this_usb: [$this_usb], remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_mount: [$local_mount], remote_mount: [$remote_mount]");
@@ -744,7 +748,7 @@ fi";
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount], i: [$i]");
 				if ($i)
 				{
-					$remote_mount .= "-$i";
+					$remote_mount .= "_$i";
 					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 				}
 			}
@@ -825,12 +829,12 @@ fi";
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						if ($conf->{devices}{$device}{label})
 						{
-							$remote_mount .= "-$conf->{devices}{$device}{label}";
+							$remote_mount .= "_$conf->{devices}{$device}{label}";
 							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 						if ($i)
 						{
-							$remote_mount .= "-$i";
+							$remote_mount .= "_$i";
 							logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote_mount: [$remote_mount]");
 						}
 					}
@@ -850,7 +854,7 @@ fi";
 			exit(10);
 		}
 		
-		# See if the device is already mounted.
+		# See if the device is already mounted locally.
 		my $already_mounted = 0;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], local_mount: [$local_mount]");
 		$shell_call = "
@@ -1027,6 +1031,7 @@ fi;";
 				foreach my $line (@{$return})
 				{
 					next if not $line;
+					next if $directory_in_use;
 					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 					if ($line =~ /No such file or directory/i)
 					{
@@ -1078,7 +1083,6 @@ fi";
 						# something is in it.
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
 						$directory_in_use = 1;
-						$j++;
 					}
 				}
 				if (not $directory_in_use)

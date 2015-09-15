@@ -25,6 +25,7 @@ sub inititialize_configuration
 			format_running		=>	"/tmp/.striker-usb-formatting",
 			fusermount		=>	"/bin/fusermount",
 			'grep'			=>	"/bin/grep",
+			hostname		=>	"/bin/hostname",
 			ls			=>	"/bin/ls",
 			lsblk			=>	"/bin/lsblk",
 			lsusb			=>	"/usr/sbin/lsusb",
@@ -46,12 +47,43 @@ sub inititialize_configuration
 		sys	=>	{
 			partition_seen		=>	0,
 			remote			=>	"",
+			short_hostname		=>	"",
 			debug			=>	0,
 		},
 		syslog	=>	[],
 	};
 	
 	return($conf);
+}
+
+# This gets the short host name.
+sub get_short_hostname
+{
+	my ($conf) = @_;
+	
+	if (not $conf->{sys}{short_hostname})
+	{
+		my $shell_call = "$conf->{path}{hostname} -s";
+		logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+			$conf->{sys}{short_hostname} = $line;
+			last;
+		}
+		close $file_handle;
+	}
+	
+	if (not $conf->{sys}{short_hostname})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to find the short host name for this system. Does 'hostname -s' work?");
+		exit(27);
+	}
+	
+	return($conf->{sys}{short_hostname});
 }
 
 # Write entries to syslog and STDOUT.
