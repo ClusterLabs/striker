@@ -46,6 +46,10 @@
 # 25 = Failed to unmount a non-LUKS partition that needed to be reformatted LUKS.
 # 26 = The 'use_directory' variable in the mount_filesystems() function was not set.
 # 
+# TODO:
+# - Verify that 'remote-usb::local::host' IP is accurate and/or use the subnet to find the actual local IP
+# - Add the short host name to the remote mount directory (ie: remote_an-striker01_4-6)
+# 
 
 use strict;
 use warnings;
@@ -953,6 +957,10 @@ fi;";
 		my $local_user         = $conf->{'remote-usb'}{'local'}{user};
 		my $local_password     = $conf->{'remote-usb'}{'local'}{password};
 		my $remote_known_hosts = "/home/$remote_user/.ssh/known_hosts";
+		if ($remote_user eq "root")
+		{
+			$remote_known_hosts = "/$remote_user/.ssh/known_hosts";
+		}
 		my $mount_needed       = 1;
 		   $shell_call         = "
 if mount | grep -q '$local_user\@$local_host:$local_mount';
@@ -1068,6 +1076,7 @@ fi";
 						# something is in it.
 						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Found data in: [$use_directory], skipping it.");
 						$directory_in_use = 1;
+						$j++:
 					}
 				}
 				if (not $directory_in_use)
@@ -1175,7 +1184,17 @@ fi";
 if [ -x '/home/$remote_user/.post_mount' ]
 then
 	/home/$remote_user/.post_mount 
-fi";
+fi
+";
+			if ($remote_user eq "root")
+			{
+				$shell_call = "
+if [ -x '/$remote_user/.post_mount' ]
+then
+	/$remote_user/.post_mount 
+fi
+";
+			}
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
 			($error, $ssh_fh, $return) = remote_call($conf, {
 				remote		=>	$remote,

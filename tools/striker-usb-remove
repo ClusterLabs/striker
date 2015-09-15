@@ -222,6 +222,11 @@ sub cleanup_remote
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		}
 		
+		my $post_script = "/home/$remote_user/.post_unmount";
+		if ($remote_user eq "root")
+		{
+			$post_script = "/$remote_user/.post_unmount";
+		}
 		$shell_call = "
 echo 'Removing mount point: [$mount].'
 rmdir $mount
@@ -230,10 +235,10 @@ then
     echo 'failed to remove old mount point.'
 else
     echo 'removed mount point successfully.'
-    if [ -x '/home/$remote_user/.post_unmount' ]
+    if [ -x '$post_script' ]
     then
-        echo 'Running: [/home/$remote_user/.post_unmount]'
-        /home/$remote_user/.post_unmount 
+        echo 'Running: [$post_script]'
+        $post_script 
     fi
 fi
 ";
