@@ -533,11 +533,11 @@ ORDER BY
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($count)
 	{
-		# At least one node is in an emergency-off state. See if we can
-		# recover it and if it is safe to do so.
+		# At least one node is in an emergency-off state. See if we can recover it and if it is safe
+		# to do so.
 		
-		# First step is to read in any/all cache files. If we don't
-		# have a cache directory, then we're done.
+		# First step is to read in any/all cache files. If we don't have a cache directory, then 
+		# we're done.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -887,8 +887,7 @@ sub check_node_power_health
 	
 	my $power_is_safe = 0;
 	
-	# This will hold the percentag charge of the strongest UPS powering the
-	# node that has input power.
+	# This will hold the percentag charge of the strongest UPS powering the node that has input power.
 	my $highest_charge = 0;
 	
 	# Read in the names of the UPSes watched by this node.
@@ -953,7 +952,9 @@ WHERE
 			}
 		}
 		
-		# Now, do I have a UPS above the minimum charge percentage?
+		# Now, do I have a UPS above the minimum charge percentage? Strip the '%' off if the user entered it.
+		$an->data->{scancore}{minimum_safe_charge} =~ s/%//;
+		$an->data->{scancore}{minimum_safe_charge} =~ s/\s//g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::minimum_safe_charge", value1 => $an->data->{scancore}{minimum_safe_charge}, 
 			name2 => "highest_charge",                value2 => $highest_charge, 

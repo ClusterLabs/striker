@@ -382,8 +382,9 @@ elsif ($conf->{cgi}{'system'})
 elsif ($conf->{cgi}{cluster})
 {
 	my $cluster = $conf->{cgi}{cluster};
-	$conf->{sys}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
+	$conf->{sys}{root_password}           = $conf->{clusters}{$cluster}{root_pw};
+	$conf->{clusters}{$cluster}{ricci_pw} = $conf->{clusters}{$cluster}{root_pw} if not $conf->{clusters}{$cluster}{ricci_pw};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], clusters::${cluster}::ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})

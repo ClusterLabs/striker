@@ -4354,19 +4354,18 @@ sub add_vm_to_cluster
 		});
 	}
 	
-	
 	# If there is no password set, abort.
 	if (not $conf->{clusters}{$cluster}{ricci_pw})
 	{
 		# No ricci user, so we can't add it. Tell the user and give 
 		# them a link to the config for this Anvil!.
-		print AN::Common::template($conf, "server.html", "general-message", {
+		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0090!#",
 			message	=>	AN::Common::get_string($conf, {key => "message_0087", variables => {
 				server		=>	$vm,
 			}}),
 		});
-		print AN::Common::template($conf, "server.html", "general-message", {
+		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0091!#",
 			message	=>	AN::Common::get_string($conf, {key => "message_0088", variables => {
 				manage_url	=>	"?config=true&anvil=$cluster",

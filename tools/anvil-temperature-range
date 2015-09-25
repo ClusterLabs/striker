@@ -55,6 +55,48 @@ load_cpu($conf);
 print "Done, checking the temperatures...\n";
 ($conf->{temp}{CPU1}{post}, $conf->{temp}{CPU2}{post}) = get_cpu_temp($conf);
 print "The 'load' temperature of CPU 1 is: [$conf->{temp}{CPU1}{post} °C] and CPU 2 is: [$conf->{temp}{CPU2}{post} °C].\n";
+print "
+To test thernal shutdown:
+
+Edit '/etc/striker/striker.conf' and set:
+
+====
+scan-ipmitool::thresholds::CPU1::high_warning	=	".($conf->{temp}{CPU1}{pre} + 5)."
+scan-ipmitool::thresholds::CPU1::high_critical	=	".($conf->{temp}{CPU1}{post} - 5)."
+scan-ipmitool::thresholds::CPU1::weight		=	2.6
+scan-ipmitool::thresholds::CPU2::high_warning	=	".($conf->{temp}{CPU2}{pre} + 5)."
+scan-ipmitool::thresholds::CPU2::high_critical	=	".($conf->{temp}{CPU2}{post} - 5)."
+scan-ipmitool::thresholds::CPU2::weight		=	2.6
+====
+
+When you are ready to simulate an over-heating event, run:
+
+/sbin/striker/striker-load-cpu
+
+That program will not close on it's own. Let it run until the system shuts 
+itself down. If you do want to abort, pressing any key will cause the program
+to shut down.
+
+Please wait, this program will monitor the CPU temperature and exit once the
+temperatures have returned to approximately pre-test level.
+";
+
+my $still_hot = 1;
+while ($still_hot)
+{
+	my ($current_cpu1, $current_cpu2) = get_cpu_temp($conf);
+	
+	if (($current_cpu1 > ($conf->{temp}{CPU1}{pre} + 4)) or ($current_cpu2 > ($conf->{temp}{CPU2}{pre} + 4)))
+	{
+		print "Still warm; CPU 1: [$current_cpu1°C (pre-test was: $conf->{temp}{CPU1}{pre}°C)], CPU 2: [$current_cpu2°C (pre-test was: $conf->{temp}{CPU2}{pre}°C)]. Checking again in 10 seconds...\n";
+		sleep 10;
+	}
+	else
+	{
+		print "Cooled down! CPU 1: [$current_cpu1°C], CPU 2: [$current_cpu2°C]. Exiting....\n";
+		$still_hot = 0;
+	}
+}
 
 exit(0);
 

@@ -502,6 +502,7 @@ sub format_device
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - format_device(); device: [$device]");
 	
 	# Touch the 'formatting' file on the target so they know to be patient.
+	$conf->{path}{format_running} = "$conf->{path}{format_running}_$conf->{sys}{short_hostname}_$conf->{this_usb}";
 	my $remote          = $conf->{'remote-usb'}{remote}{host};
 	my $remote_user     = $conf->{'remote-usb'}{remote}{user};
 	my $remote_password = $conf->{'remote-usb'}{remote}{password};
@@ -815,6 +816,9 @@ fi";
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - proceed: [$proceed].");
 				if ($proceed)
 				{
+					# Remove the old FS label from the remote mount name.
+					$conf->{'remote-usb'}{remote}{mount} =~ s/_$conf->{devices}{$device}{label}//;
+					
 					logger($conf, $THIS_FILE, __LINE__, "LUKS initialization required on: [$device].");
 					($device) = format_device_luks($conf, $device);
 					logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
