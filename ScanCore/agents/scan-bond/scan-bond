@@ -84,11 +84,13 @@ $an->default_language    ($an->data->{scancore}{language});
 $an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
+# Read my stuff
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
 # Set the log level.
 $an->Log->level($an->data->{scancore}{log_level});
 
-# Read my stuff
-$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+# Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});
 $an->String->read_words({file => $an->data->{path}{core_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});

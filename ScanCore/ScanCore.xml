@@ -233,5 +233,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
 		<key name="scancore_message_0003">Another copy of #!string!scancore_brand_0001!# is running, exiting.</key>
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
+		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within five minutes.</key>
+		<key name="scancore_message_0006">#!string!scancore_brand_0001!# has been disabled. It will exit when the next sweep is called.</key>
 	</lang>
 </strings>

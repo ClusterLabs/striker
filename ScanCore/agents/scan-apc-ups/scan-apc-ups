@@ -201,11 +201,13 @@ $an->default_language    ($an->data->{scancore}{language});
 $an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
+# Read my stuff
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
 # Set the log level.
 $an->Log->level($an->data->{scancore}{log_level});
 
-# Read my stuff
-$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+# Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});
 $an->String->read_words({file => $an->data->{path}{core_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
@@ -279,7 +281,7 @@ sub find_changes
 		# Convert all the long hashes into shorter variables
 		my $new_apc_ups_ip            = $an->data->{ups}{$ups_name}{ip};
 		my $new_apc_ups_model         = $an->data->{ups}{$ups_name}{model};
-		my $new_apc_ups_serial_number = $an->data->{ups}{$ups_name}{apc_ups_serial_number};
+		my $new_apc_ups_serial_number = $an->data->{ups}{$ups_name}{apc_ups_serial_number} ? $an->data->{ups}{$ups_name}{apc_ups_serial_number} : "--";
 		my $new_apc_ups_name          = $ups_name;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "new_apc_ups_ip",            value1 => $new_apc_ups_ip, 
@@ -295,18 +297,18 @@ sub find_changes
 		# Base UPS and NMC information                                #
 		###############################################################
 		
-		my $new_apc_ups_ac_restore_delay      = $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay};
-		my $new_apc_ups_shutdown_delay        = $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay};
-		my $new_apc_ups_firmware_version      = $an->data->{ups}{$ups_name}{apc_ups_firmware_version};
-		my $new_apc_ups_health                = $an->data->{ups}{$ups_name}{apc_ups_health};
-		my $new_apc_ups_high_transfer_voltage = $an->data->{ups}{$ups_name}{apc_ups_high_transfer_voltage};
-		my $new_apc_ups_low_transfer_voltage  = $an->data->{ups}{$ups_name}{apc_ups_low_transfer_voltage};
-		my $new_apc_ups_last_transfer_reason  = $an->data->{ups}{$ups_name}{apc_ups_last_transfer_reason};
-		my $new_apc_ups_manufactured_date     = $an->data->{ups}{$ups_name}{apc_ups_manufactured_date};
-		my $new_apc_ups_temperature_units     = $an->data->{ups}{$ups_name}{apc_ups_temperature_units};
-		my $new_apc_ups_nmc_firmware_version  = $an->data->{ups}{$ups_name}{apc_ups_nmc_firmware_version};
-		my $new_apc_ups_nmc_serial_number     = $an->data->{ups}{$ups_name}{apc_ups_nmc_serial_number};
-		my $new_apc_ups_nmc_mac_address       = $an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address};
+		my $new_apc_ups_ac_restore_delay      = defined $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}      ? $an->data->{ups}{$ups_name}{apc_ups_ac_restore_delay}      : 0;
+		my $new_apc_ups_shutdown_delay        = defined $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}        ? $an->data->{ups}{$ups_name}{apc_ups_shutdown_delay}        : 0;
+		my $new_apc_ups_firmware_version      = defined $an->data->{ups}{$ups_name}{apc_ups_firmware_version}      ? $an->data->{ups}{$ups_name}{apc_ups_firmware_version}      : 0;
+		my $new_apc_ups_health                = defined $an->data->{ups}{$ups_name}{apc_ups_health}                ? $an->data->{ups}{$ups_name}{apc_ups_health}                : 0;
+		my $new_apc_ups_high_transfer_voltage = defined $an->data->{ups}{$ups_name}{apc_ups_high_transfer_voltage} ? $an->data->{ups}{$ups_name}{apc_ups_high_transfer_voltage} : 0;
+		my $new_apc_ups_low_transfer_voltage  = defined $an->data->{ups}{$ups_name}{apc_ups_low_transfer_voltage}  ? $an->data->{ups}{$ups_name}{apc_ups_low_transfer_voltage}  : 0;
+		my $new_apc_ups_last_transfer_reason  = defined $an->data->{ups}{$ups_name}{apc_ups_last_transfer_reason}  ? $an->data->{ups}{$ups_name}{apc_ups_last_transfer_reason}  : 0;
+		my $new_apc_ups_manufactured_date     = defined $an->data->{ups}{$ups_name}{apc_ups_manufactured_date}     ? $an->data->{ups}{$ups_name}{apc_ups_manufactured_date}     : 0;
+		my $new_apc_ups_temperature_units     = defined $an->data->{ups}{$ups_name}{apc_ups_temperature_units}     ? $an->data->{ups}{$ups_name}{apc_ups_temperature_units}     : 0;
+		my $new_apc_ups_nmc_firmware_version  = defined $an->data->{ups}{$ups_name}{apc_ups_nmc_firmware_version}  ? $an->data->{ups}{$ups_name}{apc_ups_nmc_firmware_version}  : 0;
+		my $new_apc_ups_nmc_serial_number     = defined $an->data->{ups}{$ups_name}{apc_ups_nmc_serial_number}     ? $an->data->{ups}{$ups_name}{apc_ups_nmc_serial_number}     : 0;
+		my $new_apc_ups_nmc_mac_address       = defined $an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address}       ? $an->data->{ups}{$ups_name}{apc_ups_nmc_mac_address}       : 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "new_apc_ups_ac_restore_delay",      value1  => $new_apc_ups_ac_restore_delay,
 			name2  => "new_apc_ups_shutdown_delay",        value2  => $new_apc_ups_shutdown_delay,
@@ -326,15 +328,15 @@ sub find_changes
 		# Battery information                                         #
 		###############################################################
 		
-		my $new_apc_ups_battery_replacement_date      = $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}; 
-		my $new_apc_ups_battery_health                = $an->data->{ups}{$ups_name}{apc_ups_battery_health}; 
-		my $new_apc_ups_battery_model                 = $an->data->{ups}{$ups_name}{apc_ups_battery_model}; 
-		my $new_apc_ups_battery_percentage_charge     = $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}; 
-		my $new_apc_ups_battery_last_replacement_date = $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date}; 
-		my $new_apc_ups_battery_state                 = $an->data->{ups}{$ups_name}{apc_ups_battery_state}; 
-		my $new_apc_ups_battery_temperature           = $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}; 
-		my $new_apc_ups_battery_alarm_temperature     = $an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature}; 
-		my $new_apc_ups_battery_voltage               = $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}; 
+		my $new_apc_ups_battery_replacement_date      = defined $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}      ? $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}      : 0;
+		my $new_apc_ups_battery_health                = defined $an->data->{ups}{$ups_name}{apc_ups_battery_health}                ? $an->data->{ups}{$ups_name}{apc_ups_battery_health}                : 0;
+		my $new_apc_ups_battery_model                 = defined $an->data->{ups}{$ups_name}{apc_ups_battery_model}                 ? $an->data->{ups}{$ups_name}{apc_ups_battery_model}                 : 0;
+		my $new_apc_ups_battery_percentage_charge     = defined $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}     ? $an->data->{ups}{$ups_name}{apc_ups_battery_percentage_charge}     : 0;
+		my $new_apc_ups_battery_last_replacement_date = defined $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date} ? $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date} : 0;
+		my $new_apc_ups_battery_state                 = defined $an->data->{ups}{$ups_name}{apc_ups_battery_state}                 ? $an->data->{ups}{$ups_name}{apc_ups_battery_state}                 : 0;
+		my $new_apc_ups_battery_temperature           = defined $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}           ? $an->data->{ups}{$ups_name}{apc_ups_battery_temperature}           : 0;
+		my $new_apc_ups_battery_alarm_temperature     = defined $an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature}     ? $an->data->{ups}{$ups_name}{apc_ups_battery_alarm_temperature}     : 0;
+		my $new_apc_ups_battery_voltage               = defined $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}               ? $an->data->{ups}{$ups_name}{apc_ups_battery_voltage}               : 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "new_apc_ups_battery_replacement_date",      value1 =>  $new_apc_ups_battery_replacement_date, 
 			name2 => "new_apc_ups_battery_health",                value2 =>  $new_apc_ups_battery_health, 
@@ -351,11 +353,11 @@ sub find_changes
 		# Input Information                                           #
 		###############################################################
 		
-		my $new_apc_ups_input_frequency                = $an->data->{ups}{$ups_name}{apc_ups_input_frequency};
-		my $new_apc_ups_input_sensitivity              = $an->data->{ups}{$ups_name}{apc_ups_input_sensitivity};
-		my $new_apc_ups_input_voltage                  = $an->data->{ups}{$ups_name}{apc_ups_input_voltage};
-		my $new_apc_ups_input_1m_maximum_input_voltage = $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage};
-		my $new_apc_ups_input_1m_minimum_input_voltage = $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage};
+		my $new_apc_ups_input_frequency                = defined $an->data->{ups}{$ups_name}{apc_ups_input_frequency}                ? $an->data->{ups}{$ups_name}{apc_ups_input_frequency}                : 0;
+		my $new_apc_ups_input_sensitivity              = defined $an->data->{ups}{$ups_name}{apc_ups_input_sensitivity}              ? $an->data->{ups}{$ups_name}{apc_ups_input_sensitivity}              : 0;
+		my $new_apc_ups_input_voltage                  = defined $an->data->{ups}{$ups_name}{apc_ups_input_voltage}                  ? $an->data->{ups}{$ups_name}{apc_ups_input_voltage}                  : 0;
+		my $new_apc_ups_input_1m_maximum_input_voltage = defined $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} ? $an->data->{ups}{$ups_name}{apc_ups_input_1m_maximum_input_voltage} : 0;
+		my $new_apc_ups_input_1m_minimum_input_voltage = defined $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} ? $an->data->{ups}{$ups_name}{apc_ups_input_1m_minimum_input_voltage} : 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "new_apc_ups_input_frequency",                value1 => $new_apc_ups_input_frequency,
 			name2 => "new_apc_ups_input_sensitivity",              value2 => $new_apc_ups_input_sensitivity,
@@ -368,12 +370,12 @@ sub find_changes
 		# Output Information                                          #
 		###############################################################
 		
-		my $new_apc_ups_output_load_percentage   = $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage};
-		my $new_apc_ups_output_time_on_batteries = $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries};
-		my $new_apc_ups_output_estimated_runtime = $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime};
-		my $new_apc_ups_output_frequency         = $an->data->{ups}{$ups_name}{apc_ups_output_frequency};
-		my $new_apc_ups_output_voltage           = $an->data->{ups}{$ups_name}{apc_ups_output_voltage};
-		my $new_apc_ups_output_total_output      = $an->data->{ups}{$ups_name}{apc_ups_output_total_output};
+		my $new_apc_ups_output_load_percentage   = defined $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage}   ? $an->data->{ups}{$ups_name}{apc_ups_output_load_percentage}   : 0;
+		my $new_apc_ups_output_time_on_batteries = defined $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} ? $an->data->{ups}{$ups_name}{apc_ups_output_time_on_batteries} : 0;
+		my $new_apc_ups_output_estimated_runtime = defined $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} ? $an->data->{ups}{$ups_name}{apc_ups_output_estimated_runtime} : 0;
+		my $new_apc_ups_output_frequency         = defined $an->data->{ups}{$ups_name}{apc_ups_output_frequency}         ? $an->data->{ups}{$ups_name}{apc_ups_output_frequency}         : 0;
+		my $new_apc_ups_output_voltage           = defined $an->data->{ups}{$ups_name}{apc_ups_output_voltage}           ? $an->data->{ups}{$ups_name}{apc_ups_output_voltage}           : 0;
+		my $new_apc_ups_output_total_output      = defined $an->data->{ups}{$ups_name}{apc_ups_output_total_output}      ? $an->data->{ups}{$ups_name}{apc_ups_output_total_output}      : 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "new_apc_ups_output_load_percentage",   value1 => $new_apc_ups_output_load_percentage,
 			name2 => "new_apc_ups_output_time_on_batteries", value2 => $new_apc_ups_output_time_on_batteries,
@@ -782,6 +784,7 @@ sub find_changes
 					
 					### There are 10 possible states 
 					### (* == warning, rest are notice):
+					#  0 -  There is no information on when the UPS last transfered to battery.
 					#  1 -  The UPS has not transfered to battery power since the last time it booted.
 					#  2 -  The UPS last transfered to batteries because of high input voltage.
 					# *3 -  The UPS last transfered to batteries because of a brown out. That is, a prolonged drop in input voltage from the mains circuit.
@@ -2747,42 +2750,42 @@ AND
 		# One or more records were found.
 		foreach my $row (@{$results})
 		{
-			my $apc_ups_name                           = $row->[0];
-			my $apc_ups_ip                             = $row->[1];
-			my $apc_ups_ac_restore_delay               = $row->[2];
-			my $apc_ups_shutdown_delay                 = $row->[3];
-			my $apc_ups_firmware_version               = $row->[4];
-			my $apc_ups_health                         = $row->[5];
-			my $apc_ups_high_transfer_voltage          = $row->[6];
-			my $apc_ups_low_transfer_voltage           = $row->[7];
-			my $apc_ups_last_transfer_reason           = $row->[8];
-			my $apc_ups_manufactured_date              = $row->[9];
-			my $apc_ups_model                          = $row->[10];
-			my $apc_ups_temperature_units              = $row->[11];
-			my $apc_ups_serial_number                  = $row->[12];
-			my $apc_ups_nmc_firmware_version           = $row->[13];
-			my $apc_ups_nmc_serial_number              = $row->[14];
-			my $apc_ups_nmc_mac_address                = $row->[15];
-			my $apc_ups_battery_replacement_date       = $row->[16];
-			my $apc_ups_battery_health                 = $row->[17];
-			my $apc_ups_battery_model                  = $row->[18];
-			my $apc_ups_battery_percentage_charge      = $row->[19];
-			my $apc_ups_battery_last_replacement_date  = $row->[20];
-			my $apc_ups_battery_state                  = $row->[21];
-			my $apc_ups_battery_temperature            = $row->[22];
-			my $apc_ups_battery_alarm_temperature      = $row->[23];
-			my $apc_ups_battery_voltage                = $row->[24];
-			my $apc_ups_input_frequency                = $row->[25];
-			my $apc_ups_input_sensitivity              = $row->[26];
-			my $apc_ups_input_voltage                  = $row->[27];
-			my $apc_ups_input_1m_maximum_input_voltage = $row->[28];
-			my $apc_ups_input_1m_minimum_input_voltage = $row->[29];
-			my $apc_ups_output_load_percentage         = $row->[30];
-			my $apc_ups_output_time_on_batteries       = $row->[31];
-			my $apc_ups_output_estimated_runtime       = $row->[32];
-			my $apc_ups_output_frequency               = $row->[33];
-			my $apc_ups_output_voltage                 = $row->[34];
-			my $apc_ups_output_total_output            = $row->[35];
+			my $apc_ups_name                           = defined $row->[0]  ? $row->[0]  : 0;
+			my $apc_ups_ip                             = defined $row->[1]  ? $row->[1]  : 0;
+			my $apc_ups_ac_restore_delay               = defined $row->[2]  ? $row->[2]  : 0;
+			my $apc_ups_shutdown_delay                 = defined $row->[3]  ? $row->[3]  : 0;
+			my $apc_ups_firmware_version               = defined $row->[4]  ? $row->[4]  : 0;
+			my $apc_ups_health                         = defined $row->[5]  ? $row->[5]  : 0;
+			my $apc_ups_high_transfer_voltage          = defined $row->[6]  ? $row->[6]  : 0;
+			my $apc_ups_low_transfer_voltage           = defined $row->[7]  ? $row->[7]  : 0;
+			my $apc_ups_last_transfer_reason           = defined $row->[8]  ? $row->[8]  : 0;
+			my $apc_ups_manufactured_date              = defined $row->[9]  ? $row->[9]  : 0;
+			my $apc_ups_model                          = defined $row->[10] ? $row->[10] : 0;
+			my $apc_ups_temperature_units              = defined $row->[11] ? $row->[11] : 0;
+			my $apc_ups_serial_number                  = defined $row->[12] ? $row->[12] : 0;
+			my $apc_ups_nmc_firmware_version           = defined $row->[13] ? $row->[13] : 0;
+			my $apc_ups_nmc_serial_number              = defined $row->[14] ? $row->[14] : 0;
+			my $apc_ups_nmc_mac_address                = defined $row->[15] ? $row->[15] : 0;
+			my $apc_ups_battery_replacement_date       = defined $row->[16] ? $row->[16] : 0;
+			my $apc_ups_battery_health                 = defined $row->[17] ? $row->[17] : 0;
+			my $apc_ups_battery_model                  = defined $row->[18] ? $row->[18] : 0;
+			my $apc_ups_battery_percentage_charge      = defined $row->[19] ? $row->[19] : 0;
+			my $apc_ups_battery_last_replacement_date  = defined $row->[20] ? $row->[20] : 0;
+			my $apc_ups_battery_state                  = defined $row->[21] ? $row->[21] : 0;
+			my $apc_ups_battery_temperature            = defined $row->[22] ? $row->[22] : 0;
+			my $apc_ups_battery_alarm_temperature      = defined $row->[23] ? $row->[23] : 0;
+			my $apc_ups_battery_voltage                = defined $row->[24] ? $row->[24] : 0;
+			my $apc_ups_input_frequency                = defined $row->[25] ? $row->[25] : 0;
+			my $apc_ups_input_sensitivity              = defined $row->[26] ? $row->[26] : 0;
+			my $apc_ups_input_voltage                  = defined $row->[27] ? $row->[27] : 0;
+			my $apc_ups_input_1m_maximum_input_voltage = defined $row->[28] ? $row->[28] : 0;
+			my $apc_ups_input_1m_minimum_input_voltage = defined $row->[29] ? $row->[29] : 0;
+			my $apc_ups_output_load_percentage         = defined $row->[30] ? $row->[30] : 0;
+			my $apc_ups_output_time_on_batteries       = defined $row->[31] ? $row->[31] : 0;
+			my $apc_ups_output_estimated_runtime       = defined $row->[32] ? $row->[32] : 0;
+			my $apc_ups_output_frequency               = defined $row->[33] ? $row->[33] : 0;
+			my $apc_ups_output_voltage                 = defined $row->[34] ? $row->[34] : 0;
+			my $apc_ups_output_total_output            = defined $row->[35] ? $row->[35] : 0;
 			
 			# When I scan the UPS, I use the FQDN as the hash key.
 			# Here though, we use the serial number. When we do the
@@ -4684,11 +4687,15 @@ sub gather_ups_data
 			name1 => "ups::${ups_name}::apc_ups_output_voltage", value1 => $an->data->{ups}{$ups_name}{apc_ups_output_voltage}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# This is the total power outputted since the UPS was created.
-		# It is measured in tens of watt-hours, so divide be 100 to get
-		# kW/hr.
+		# This is the total power outputted since the UPS was created. It is measured in tens of 
+		# watt-hours, so divide be 100 to get kW/hr.
 		$an->data->{ups}{$ups_name}{apc_ups_output_total_output} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{output}{total_output});
-		if ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
+		if ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} eq "--")
+		{
+			# This model of UPS doesn't report the total output power.
+			$an->data->{ups}{$ups_name}{apc_ups_output_total_output} = 0;
+		}
+		elsif ($an->data->{ups}{$ups_name}{apc_ups_output_total_output} =~ /\D/)
 		{
 			# This should have been an integer...
 			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scan_apc_ups_error_0001", message_variables => { 

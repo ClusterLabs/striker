@@ -147,6 +147,8 @@ sub time
 		$time = $param ? $param : 0;
 	}
 	
+	# Exit if 'time' is not defined or set as '--'.
+	$param->{'time'} = "--" if not defined $param->{'time'};
 	return('--') if $param->{'time'} eq "--";
 	
 	my $old_time =  $time;

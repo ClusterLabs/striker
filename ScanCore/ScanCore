@@ -151,11 +151,11 @@ $an->default_language    ($an->data->{scancore}{language});
 $an->default_log_language($an->data->{scancore}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 
-# Set the log level.
-$an->Log->level($an->data->{scancore}{log_level});
-
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set the log level.
+$an->Log->level($an->data->{scancore}{log_level});
 
 # Read in strings now.
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
@@ -167,12 +167,22 @@ if ($an->data->{switches}{enable})
 {
 	my $rc   = update_configuration($an, "enable");
 	my $exit = $rc ? 0 : 9;
+	if ($rc eq "1")
+	{
+		# Tell the user that it was enabled.
+		print $an->String->get({key => "scancore_message_0005"}), "\n";
+	}
 	exit($exit);
 }
 elsif ($an->data->{switches}{disable})
 {
 	my $rc   = update_configuration($an, "disable");
 	my $exit = $rc ? 0 : 10;
+	if ($rc eq "1")
+	{
+		# Tell the user that it was disabled.
+		print $an->String->get({key => "scancore_message_0006"}), "\n";
+	}
 	exit($exit);
 }
 elsif ($an->data->{switches}{force})
@@ -257,6 +267,9 @@ while(1)
 	$an->String->read_words({file => $an->data->{path}{striker_strings}});
 	$an->data->{scancore}{enabled} = 1 if $an->data->{switches}{force};
 	load_agent_strings($an);
+
+	# Set the log level in case it was changed in the config file.
+	$an->Log->level($an->data->{scancore}{log_level});
 	
 	# Calculate the sum and see if it has changed.
 	#calculate_scancore_sum($an);
