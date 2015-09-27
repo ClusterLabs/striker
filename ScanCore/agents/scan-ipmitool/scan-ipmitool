@@ -11,6 +11,9 @@
 # 0  - Success
 # 1  - Passed in host name was not found in the database.
 # 
+# TODO:
+# - Decide if we should parse 'ipmitool sel list'
+# 
 =pod
 Change/set thresholds:
 

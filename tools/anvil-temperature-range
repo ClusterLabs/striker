@@ -28,7 +28,7 @@ my $conf = {
 	},
 	sys		=>	{
 		cores			=>	0,
-		debug			=>	1,
+		debug			=>	0,
 		load_runtime		=>	300,
 	},
 	temp		=>	{
@@ -104,7 +104,7 @@ exit(0);
 sub get_core_count
 {
 	my ($conf) = @_;
-
+	
 	my $shell_call = "$conf->{path}{cpuinfo}";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
 	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";

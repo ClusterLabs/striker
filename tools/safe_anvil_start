@@ -245,6 +245,7 @@ fi";
 	
 	if (not $exit)
 	{
+		print "Successfully set 'safe_anvil_start' to run shortly after boot.\n";
 		logger($conf, $THIS_FILE, __LINE__, "Successfully set 'safe_anvil_start' to run shortly after boot.", 1);
 	}
 	
@@ -289,6 +290,7 @@ fi";
 	
 	if (not $exit)
 	{
+		print "Successfully disabled 'safe_anvil_start' from runnig after boot.\n";
 		logger($conf, $THIS_FILE, __LINE__, "Successfully disabled 'safe_anvil_start' from runnig after boot.", 1);
 	}
 	

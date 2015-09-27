@@ -91,6 +91,7 @@ my $an = AN::Tools->new({data =>
 			# did not come from alteeve.ca
 			append_email_footer	=>	0,
 			disable			=>	{
+				boot_nodes		=>	0,
 				power_shutdown		=>	0,
 				thermal_shutdown	=>	0,
 			},
@@ -136,12 +137,14 @@ my $an = AN::Tools->new({data =>
 			# start a program lists 120 MiB+ used. I will make it smarter later.
 			program_name		=>	$THIS_FILE,
 			read_db_id		=>	"",
-			use_db_fh		=>	"",
-		},
-		tools		=>	{
-			boot_nodes	=>	{
-				enabled		=>	1,
+			# These are used to avoid repeatedly logging that something has happened.
+			reported		=>	{
+				power_is_critical	=>	0,
+				power_is_warning	=>	0,
+				temperature_is_critical	=>	0,
+				temperature_is_warning	=>	0,
 			},
+			use_db_fh		=>	"",
 		},
 	}
 });
@@ -261,6 +264,9 @@ $an->Log->entry({
 $an->DB->disconnect_from_databases();
 while(1)
 {
+	# Note the time
+	my $start_time = time;
+	
 	# Re-read the configuration and words files.
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
@@ -367,12 +373,14 @@ while(1)
 		name2 => "----------------------------------------", value2 => "----------------------------------------"
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: change this to lvel 2 before final release.
 	# Sleep.
 	$an->Log->entry({
-		log_level	=>	3,
+		log_level	=>	1,
 		title_key	=>	"scancore_title_0001",
 		message_key	=>	"scancore_log_0012",	# Sleeping for X seconds.
 		message_variables	=>	{
+			run_time	=>	(time - $start_time),
 			sleep_time	=>	$an->data->{scancore}{sleep_time},
 		},
 		file		=>	$THIS_FILE,
@@ -637,11 +645,10 @@ ORDER BY
 				}
 			}
 			
-			# I might be able to boot up nodes that are down, so I
-			# want to now read in the 'power' and 'temperature' 
-			# tables. As I loop through the downed nodes, I will 
-			# pull their particulars and decide on a case by case
-			# basis if it is safe to boot them back up.
+			# I might be able to boot up nodes that are down, so I want to now read in the 
+			# 'power' and 'temperature' tables. As I loop through the downed nodes, I will pull 
+			# their particulars and decide on a case by case basis if it is safe to boot them 
+			# back up.
 			
 			# First, read in the power table.
 			read_power_table($an);
@@ -676,10 +683,10 @@ ORDER BY
 				my $power_is_safe       = check_node_power_health      ($an, $host_name);
 				my $temperature_is_safe = check_node_temperature_health($an, $host_name);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-					name1 => "power_is_safe",              value1 => $power_is_safe, 
-					name2 => "temperature_is_safe",        value2 => $temperature_is_safe, 
-					name3 => "my_temperature_is_ok",       value3 => $my_temperature_is_ok, 
-					name4 => "tools::boot_nodes::enabled", value4 => $an->data->{tools}{boot_nodes}{enabled}
+					name1 => "power_is_safe",                 value1 => $power_is_safe, 
+					name2 => "temperature_is_safe",           value2 => $temperature_is_safe, 
+					name3 => "my_temperature_is_ok",          value3 => $my_temperature_is_ok, 
+					name4 => "scancore::disable::boot_nodes", value4 => $an->data->{scancore}{disable}{boot_nodes}
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
@@ -687,16 +694,24 @@ ORDER BY
 				if ($host_stop_reason eq "clean")
 				{
 					# Leave it off.
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0063", message_variables => {
-						node => $host_name, 
-					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{sys}{reported}{$host_name}{node_clean_off})
+					{
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0063", message_variables => {
+							node => $host_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->data->{sys}{reported}{$host_name}{node_clean_off} = 1;
+					}
 				}
-				elsif (not $an->data->{tools}{boot_nodes}{enabled})
+				elsif ($an->data->{scancore}{disable}{boot_nodes})
 				{
 					# Booting is disabled.
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0069", message_variables => {
-						node => $host_name, 
-					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{sys}{reported}{$host_name}{boot_disabled})
+					{
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0069", message_variables => {
+							node => $host_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->data->{sys}{reported}{$host_name}{boot_disabled} = 1;
+					}
 				}
 				elsif ($host_stop_reason =~ /^\d+$/)
 				{
@@ -704,7 +719,7 @@ ORDER BY
 					if (time > $host_stop_reason)
 					{
 						# Time to boot.
-						$an->Log->entry({log_level => 2, message_key => "scancore_log_0067", message_variables => {
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0067", message_variables => {
 							node => $host_name, 
 						}, file => $THIS_FILE, line => __LINE__});
 						boot_node($an, $host_name, $host_uuid);
@@ -713,18 +728,26 @@ ORDER BY
 					{
 						# Not yet time to boot.
 						my $time_left = $host_stop_reason - time;
-						$an->Log->entry({log_level => 2, message_key => "scancore_log_0068", message_variables => {
-							node		=>	$host_name, 
-							time_left	=>	$time_left
-						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{sys}{reported}{$host_name}{boot_delayed})
+						{
+							$an->Log->entry({log_level => 1, message_key => "scancore_log_0068", message_variables => {
+								node		=>	$host_name, 
+								time_left	=>	$time_left
+							}, file => $THIS_FILE, line => __LINE__});
+							$an->data->{sys}{reported}{$host_name}{boot_delayed} = 1;
+						}
 					}
 				}
-				elsif (not $an->data->{tools}{boot_nodes}{enabled})
+				elsif ($an->data->{scancore}{disable}{boot_nodes})
 				{
 					# Booting nodes was disabled by the user.
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0064", message_variables => {
-						node => $host_name, 
-					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{sys}{reported}{$host_name}{boot_disabled})
+					{
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0064", message_variables => {
+							node => $host_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->data->{sys}{reported}{$host_name}{boot_disabled} = 1;
+					}
 				}
 				elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
 				{
@@ -735,9 +758,13 @@ ORDER BY
 				else
 				{
 					# Not ready to boot yet.
-					$an->Log->entry({log_level => 2, message_key => "scancore_log_0062", message_variables => {
-						node => $host_name, 
-					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{sys}{reported}{$host_name}{node_not_ready})
+					{
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0062", message_variables => {
+							node => $host_name, 
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->data->{sys}{reported}{$host_name}{node_not_ready} = 1;
+					}
 				}
 			}
 		}
@@ -751,6 +778,66 @@ ORDER BY
 	{
 		# No nodes are in emergency-off, so nothing more to do.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0056", file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now check to see which nodes are on and clear their reported states.
+	$query = "
+SELECT 
+    host_name
+FROM 
+    hosts 
+WHERE 
+    host_type = 'node' 
+AND 
+    host_stop_reason IS NULL
+ORDER BY 
+    host_name;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$results = $an->DB->do_db_query({query => $query});
+	$count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $host_name = $row->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host_name", value1 => $host_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($an->data->{sys}{reported}{$host_name}{boot_delayed})
+		{
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0073", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{$host_name}{boot_delayed} = 0;
+		}
+		if ($an->data->{sys}{reported}{$host_name}{boot_disabled})
+		{
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0074", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{$host_name}{boot_disabled} = 0;
+		}
+		if ($an->data->{sys}{reported}{$host_name}{node_clean_off})
+		{
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0075", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{$host_name}{node_clean_off} = 0;
+		}
+		if ($an->data->{sys}{reported}{$host_name}{node_not_ready})
+		{
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0076", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{$host_name}{node_not_ready} = 0;
+		}
+		
 	}
 	
 	return(0);
@@ -796,13 +883,11 @@ sub boot_node
 				# The return code is defined here: 
 				# https://fedorahosted.org/cluster/wiki/FenceAgentAPI#agent_ops
 				# 
-				# 0 - The fence device is reachable and the
-				#     port is in the on state.
+				# 0 - The fence device is reachable and the port is in the on state.
 				# 1 - The fence device could not be reached.
-				# 2 - The fence device is reachable and the
-				#     port is in the off state.
+				# 2 - The fence device is reachable and the port is in the off state.
 				$boot_node = 1 if $rc eq "2";
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "rc",        value1 => $rc, 
 					name2 => "boot_node", value2 => $boot_node,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -844,7 +929,7 @@ sub boot_node
 					if ($rc eq "0")
 					{
 						# Booted!
-						$an->Log->entry({log_level => 2, message_key => "scancore_log_0059", message_variables => {
+						$an->Log->entry({log_level => 1, message_key => "scancore_log_0059", message_variables => {
 							node	=>	$node,
 						}, file => $THIS_FILE, line => __LINE__});
 						
@@ -1300,21 +1385,16 @@ sub do_post_scan_node_tasks
 		name1 => "node_temperature_ok", value1 => $node_temperature_ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Enable load shedding where, if the power is out for > 5 
-	###       minutes and/or if the temperature has climbed into warning
-	###       on both nodes for > 5 minutes, consolidate the VMs by 
-	###       migrating servers from the node with the lease guests to the
-	###       node with the most guests (to minimize migration time) and 
-	###       then power off the node. To this, I will need to know who my
-	###       peer is and read in the UPS and thermal data for both of us,
-	###       looking at the times that we both went into a 'warning' 
-	###       state.
+	### TODO: Enable load shedding where, if the power is out for > 5 minutes and/or if the temperature
+	###       has climbed into warning on both nodes for > 5 minutes, consolidate the VMs by migrating 
+	###       servers from the node with the lease guests to the node with the most guests (to minimize 
+	###       migration time) and then power off the node. To this, I will need to know who my peer is 
+	###       and read in the UPS and thermal data for both of us, looking at the times that we both went
+	###       into a 'warning' state.
 	
-	# OK, if both are '1', make sure our health file is set to 'OK'. If 
-	# either returned '2', make sure our health file is set to 'Warning'.
-	# If either returned '3', set the health file to 'Critical' and set the
-	# hosts -> host_emergency_stop to TRUE and then call 
-	# 'safe_anvil_shutdown'.
+	# OK, if both are '1', make sure our health file is set to 'OK'. If either returned '2', make sure
+	# our health file is set to 'Warning'. If either returned '3', set the health file to 'Critical' and 
+	# set the hosts -> host_emergency_stop to TRUE and then call 'safe_anvil_shutdown'.
 	if (($node_power_ok eq "3") || ($node_temperature_ok eq "3"))
 	{
 		# Set the health to 'Critical'.
@@ -1346,6 +1426,28 @@ WHERE
 			# Shutdown has been disabled.
 			$do_shutdown = 0;
 			$message_key = "scancore_error_0016";
+			
+			# Tell the user what's (not) happening
+			if ($host_stop_reason eq "power")
+			{
+				# Power shutdown disabled.
+				$an->Log->entry({log_level => 0, message_key => "scancore_warning_0017", file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($host_stop_reason eq "temperature")
+			{
+				# Thermal shutdown disabled.
+				$an->Log->entry({log_level => 0, message_key => "scancore_warning_0018", file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		elsif ($host_stop_reason eq "power")
+		{
+			# Power shutdown enabled, we're going down.
+			$an->Log->entry({log_level => 0, message_key => "scancore_warning_0019", file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($host_stop_reason eq "temperature")
+		{
+			# Thermal shutdown enabled, we're going down
+			$an->Log->entry({log_level => 0, message_key => "scancore_warning_0020", file => $THIS_FILE, line => __LINE__});
 		}
 		# Send our final email.
 		$an->Alert->register_alert({
@@ -1373,9 +1475,7 @@ WHERE
 				my $line = $_;
 				$line =~ s/\n//g;
 				$line =~ s/\r//g;
-				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 1, message_key => "scancore_warning_0021", message_variables => { line => $line }, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 			
@@ -1460,6 +1560,67 @@ WHERE
 			
 			# Send the email
 			process_alerts($an, 0);
+		}
+	}
+	
+	### Log the state, if needed.
+	# Power
+	if ($node_power_ok eq "3")
+	{
+		if (not $an->data->{sys}{reported}{power_is_critical})
+		{
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0079", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{power_is_critical} = 1;
+			$an->data->{sys}{reported}{power_is_warning}  = 0;
+		}
+	}
+	elsif ($node_power_ok eq "2")
+	{
+		if (not $an->data->{sys}{reported}{power_is_warning})
+		{
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0077", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{power_is_critical} = 0;
+			$an->data->{sys}{reported}{power_is_warning}  = 1;
+		}
+	}
+	else
+	{
+		if (($an->data->{sys}{reported}{power_is_critical}) || ($an->data->{sys}{reported}{power_is_warning}))
+		{
+			# Clear
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0081", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{power_is_critical} = 0;
+			$an->data->{sys}{reported}{power_is_warning}  = 0;
+		}
+	}
+	
+	# Temperature
+	if ($node_temperature_ok eq "3")
+	{
+		if (not $an->data->{sys}{reported}{temperature_is_critical})
+		{
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0080", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{temperature_is_critical} = 1;
+			$an->data->{sys}{reported}{temperature_is_warning}  = 0;
+		}
+	}
+	elsif ($node_temperature_ok eq "2")
+	{
+		if (not $an->data->{sys}{reported}{temperature_is_warning})
+		{
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0078", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{temperature_is_critical} = 0;
+			$an->data->{sys}{reported}{temperature_is_warning}  = 1;
+		}
+	}
+	else
+	{
+		if (($an->data->{sys}{reported}{temperature_is_critical}) || ($an->data->{sys}{reported}{temperature_is_warning}))
+		{
+			# Clear
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0082", file => $THIS_FILE, line => __LINE__});
+			$an->data->{sys}{reported}{temperature_is_critical} = 0;
+			$an->data->{sys}{reported}{temperature_is_warning}  = 0;
 		}
 	}
 	
@@ -4608,8 +4769,7 @@ sub call_agents
 	{
 		### TODO: Put a time limit on these...
 		my $start_time =  time;
-		my $say_agent  =  $agent;
-		   $say_agent  =~ s/^.*\///;
+		my $say_agent  = ($agent =~ /.*\/(.*)$/)[0];
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0015", message_variables => { agent => "$say_agent" }, file => $THIS_FILE, line => __LINE__});
 		
 		# I call these sequentially to minimize the load on the host.
@@ -4639,10 +4799,12 @@ sub call_agents
 			}
 		}
 		close $file_handle;
-		my $runtime = time - $start_time;
+		
+		# Note how long it took.
+		my $runtime   = time - $start_time;
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0020", message_variables => { 
-			agent   => "$agent", 
-			runtime => $runtime 
+			agent	=>	$say_agent, 
+			runtime	=>	$runtime 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Record this run in the DB.
