@@ -1360,9 +1360,8 @@ WHERE
 	return(0);
 }
 
-# This will check the 'power' and 'temperature' tables. If the UPSes found in
-# the local '/etc/hosts' file are both running on batteries, their remaining
-# run time is checked. 
+# This will check the 'power' and 'temperature' tables. If the UPSes found in the local '/etc/hosts' file are
+# both running on batteries, their remaining run time is checked. 
 sub do_post_scan_node_tasks
 {
 	my ($an) = @_;
@@ -1798,10 +1797,9 @@ AND
 	return($node_temperature_ok);
 }
 
-# This pulls the data on the UPSes associated with this node and returns '1' if
-# at least one of the UPSes has power, '2' if neither do but the hold-up time 
-# of at least one is above minimum and '3' if both are on batteries and below
-# the minimum hold-up time.
+# This pulls the data on the UPSes associated with this node and returns '1' if at least one of the UPSes has
+# power, '2' if neither do but the hold-up time of at least one is above minimum and '3' if both are on 
+# batteries and below the minimum hold-up time.
 sub check_node_power
 {
 	my ($an) = @_;
@@ -1854,9 +1852,8 @@ WHERE
 		return(0);
 	}
 	
-	# NOTE: I know I could sort by remaining hold-up time and/or filter by
-	#       which UPS is on batteries, but slurping it all in makes it 
-	#       easier to debug with everything in perl.
+	# NOTE: I know I could sort by remaining hold-up time and/or filter by which UPS is on batteries, but
+	#       slurping it all in makes it easier to debug with everything in perl.
 	my $last_agent = "";
 	# One or more records were found.
 	foreach my $row (@{$results})
@@ -1921,6 +1918,14 @@ WHERE
 			name2 => "minimum_ups_runtime", value2 => $minimum_ups_runtime, 
 			name3 => "highest_holdup_time", value3 => $highest_holdup_time, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Log the time remaining. I know this might get noisey, but it could be very helpful to an
+		# admin watching the logs.
+		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0022", message_variables => {
+			highest_holdup_time	=>	$highest_holdup_time,
+			minimum_ups_runtime	=>	$minimum_ups_runtime,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($minimum_ups_runtime > $highest_holdup_time)
 		{
 			# Time to go zzz
@@ -2419,6 +2424,16 @@ sub record_alert_to_file
 		name3 => "level",    value3 => $level, 
 		name4 => "units",    value4 => $units, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the file name has '#!hostname!#' in it, replace it with this machine's host name.
+	if ($file =~ /#!hostname!#/)
+	{
+		my $hostname =  $an->hostname;
+		   $file     =~ s/#!hostname!#/$hostname/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "file",     value1 => $file, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Convert the user's log level to a numeric number for easier
 	# comparison.

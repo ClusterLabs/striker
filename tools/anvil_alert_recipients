@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+#
+# This tool simply parses the striker.conf file and reports in plain language who is the recipient of 
+# ScanCore alerts.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released
+# under the terms of the GNU GPL version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+
+# Determine this file name.
+my $THIS_FILE = ($0 =~ /^.*\/(.*)$/)[0];
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+
+# This allows our XML and SQL files to be found, even if the path the program
+# is in changes.
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+		},
+	},
+});
+
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+
+# Read my stuff
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set the log level.
+$an->Log->level($an->data->{scancore}{log_level});
+
+# Read in strings now.
+$an->String->read_words({file => $an->data->{path}{scancore_strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+# We don't use switches yet, but there is no harm in checking.
+$an->Get->switches();
+
+# Parse the alert recipients now.
+foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
+{
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "integer",                              value1 => $integer,
+		name2 => "alerts::recipient::${integer}::email", value2 => $an->data->{alerts}{recipient}{$integer}{email},
+		name3 => "alerts::recipient::${integer}::file",  value3 => $an->data->{alerts}{recipient}{$integer}{file},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{alerts}{recipient}{$integer}{email})
+	{
+		# Email recipient
+		print Dumper $an->data->{alerts}{recipient}{$integer}{email};
+	}
+	elsif ($an->data->{alerts}{recipient}{$integer}{file})
+	{
+		# Write to a file
+		print Dumper $an->data->{alerts}{recipient}{$integer}{file};
+	}
+	else
+	{
+		# Bad entry
+		print "Malformed alert recipient in: [".$an->data->{path}{log_file}."] at: [alerts::recipient::$integer]\n";
+	}
+}
+
+
+
+exit(0);

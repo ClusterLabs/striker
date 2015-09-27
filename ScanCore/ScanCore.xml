@@ -209,6 +209,7 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_warning_0019">This machine has dropped below the minimum hold-up threshold. Shutdown will soon begin!</key>
 		<key name="scancore_warning_0020">This machine has risen above the maximum temperature thresholds. Shutdown will soon begin!</key>
 		<key name="scancore_warning_0021">Shutdown output: [#!variable!line!#]</key>
+		<key name="scancore_warning_0022">Mains power has been lost. Remaining *estimated* hold-up time is: [#!variable!highest_holdup_time!# seconds]. Shutdown will occur when the hold-up time drops below: [#!variable!minimum_ups_runtime!# seconds].</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
