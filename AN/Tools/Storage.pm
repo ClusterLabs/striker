@@ -291,7 +291,7 @@ sub read_conf
 	else
 	{
 		# No file at all...
-		die "I can't read config a file I wasn't passed...\n";
+		die "$THIS_FILE ".__LINE__."; [ Error ] - No file was passed in to read.\n";
 	}
 	#print "$THIS_FILE ".__LINE__."; hash: [$hash], file: [$file]\n";
 	

@@ -251,5 +251,30 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
 		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within five minutes.</key>
 		<key name="scancore_message_0006">#!string!scancore_brand_0001!# has been disabled. It will exit when the next sweep is called.</key>
+		
+		<!-- Tools related to ScanCore will use these strings. -->
+		<key name="scancore_tools_0001">
+File recipient:
+- Log File: [#!variable!file!#]
+- Level:    [#!variable!level!#]
+- Language: [#!variable!language!#]
+- Units:    [#!variable!units!#]
+		</key>
+		<key name="scancore_tools_0002">
+E-mail recipient:
+- Name:     [#!variable!name!#]
+- Address:  [#!variable!email!#]
+- Level:    [#!variable!level!#]
+- Language: [#!variable!language!#]
+- Units:    [#!variable!units!#]
+		</key>
+		<key name="scancore_tools_0003">Metric</key>
+		<key name="scancore_tools_0004">Imperial</key>
+		<key name="scancore_tools_0005">Debug</key>
+		<key name="scancore_tools_0006">Information</key>
+		<key name="scancore_tools_0007">Notice</key>
+		<key name="scancore_tools_0008">Warning</key>
+		<key name="scancore_tools_0009">Critical</key>
+		<key name="scancore_tools_0010">#!Invalid log level name!#</key>
 	</lang>
 </strings>

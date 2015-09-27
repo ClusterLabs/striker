@@ -2435,15 +2435,13 @@ sub record_alert_to_file
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# Convert the user's log level to a numeric number for easier
-	# comparison.
+	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "level", value1 => $level, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Loop through all the alerts and prep the relevant ones to be written
-	# to the file.
+	# Loop through all the alerts and prep the relevant ones to be written to the file.
 	foreach my $alert_agent_name (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

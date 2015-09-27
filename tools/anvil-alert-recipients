@@ -33,6 +33,14 @@ my $an = AN::Tools->new({data =>
 	{
 		path		=>	{
 			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+			scancore_strings	=>	"$running_directory/ScanCore/ScanCore.xml",
+		},
+		scancore			=>	{
+			language		=>	"en_CA",
+			log_level		=>	1,
+			log_language		=>	"en_CA",
 		},
 	},
 });
@@ -65,12 +73,112 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 	if ($an->data->{alerts}{recipient}{$integer}{email})
 	{
 		# Email recipient
-		print Dumper $an->data->{alerts}{recipient}{$integer}{email};
+		#print Dumper $an->data->{alerts}{recipient}{$integer}{email};
+		my $name     = "";
+		my $email    = "";
+		my $language = $an->data->{scancore}{language};
+		my $level    = "warning";
+		my $units    = "metric";
+		foreach my $pair (split/,/, $an->data->{alerts}{recipient}{$integer}{email})
+		{
+			next if not $pair;
+			my ($variable, $value) = ($pair =~ /^(.*?)="(.*)"/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if    ($variable eq "name")     { $name     = $value; }
+			elsif ($variable eq "email")    { $email    = $value; }
+			elsif ($variable eq "language") { $language = $value; }
+			elsif ($variable eq "level")    { $level    = $value; }
+			elsif ($variable eq "units")    { $units    = $value; }
+			else
+			{
+				# Invalid entry.
+				$an->Log->entry({log_level => 2, message_key => "scancore_warning_0009", message_variables => {
+					variable => $variable, 
+					value    => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "name",     value1 => $name, 
+			name2 => "email",    value2 => $email, 
+			name3 => "language", value3 => $language, 
+			name4 => "level",    value4 => $level, 
+			name5 => "units",    value5 => $units, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $log_key = get_log_level_key($an, $level);
+		print $an->String->get({
+			key			=>	"scancore_tools_0002",
+			variables		=>	{
+				name			=>	$name,
+				email			=>	$email,
+				level			=>	$an->String->get_language_name({language => $language}),
+				language		=>	"#!string!$log_key!#",
+				units			=>	$units eq "imperial" ? "#!string!scancore_tools_0003!#" : "#!string!scancore_tools_0004!#",
+			},
+		}), "\n";
 	}
 	elsif ($an->data->{alerts}{recipient}{$integer}{file})
 	{
 		# Write to a file
-		print Dumper $an->data->{alerts}{recipient}{$integer}{file};
+		my $file     = "";
+		my $language = $an->data->{scancore}{language};
+		my $level    = "warning";
+		my $units    = "metric";
+		foreach my $pair (split/,/, $an->data->{alerts}{recipient}{$integer}{file})
+		{
+			next if not $pair;
+			my ($variable, $value) = ($pair =~ /^(.*?)="(.*)"/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if    ($variable eq "file")     { $file     = $value; }
+			elsif ($variable eq "language") { $language = $value; }
+			elsif ($variable eq "level")    { $level    = $value; }
+			elsif ($variable eq "units")    { $units    = $value; }
+			else
+			{
+				# Invalid entry.
+				$an->Log->entry({log_level => 0, message_key => "scancore_warning_0010", message_variables => {
+					variable => $variable, 
+					value    => $value, 
+				}, file => $THIS_FILE, line => __LINE__});
+				exit(1);
+			}
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "file",     value1 => $file, 
+			name2 => "language", value2 => $language, 
+			name3 => "level",    value3 => $level, 
+			name4 => "units",    value4 => $units, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If the file name has '#!hostname!#' in it, replace it with this machine's host name.
+		if ($file =~ /#!hostname!#/)
+		{
+			my $hostname =  $an->hostname;
+			$file     =~ s/#!hostname!#/$hostname/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "file", value1 => $file, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		my $log_key = get_log_level_key($an, $level);
+		print $an->String->get({
+			key			=>	"scancore_tools_0001",
+			variables		=>	{
+				file			=>	$file,
+				level			=>	$an->String->get_language_name({language => $language}),
+				language		=>	"#!string!$log_key!#",
+				units			=>	$units eq "imperial" ? "#!string!scancore_tools_0003!#" : "#!string!scancore_tools_0004!#",
+			},
+		}), "\n";
 	}
 	else
 	{
@@ -82,3 +190,18 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 
 
 exit(0);
+
+# This translates a log level name into a string key
+sub get_log_level_key
+{
+	my ($an, $level) = @_;
+	
+	my $key = "scancore_tools_0010";
+	if    ($level eq "debug")    { $key = "scancore_tools_0005"; }
+	elsif ($level eq "info")     { $key = "scancore_tools_0006"; }
+	elsif ($level eq "notice")   { $key = "scancore_tools_0007"; }
+	elsif ($level eq "warning")  { $key = "scancore_tools_0008"; }
+	elsif ($level eq "critical") { $key = "scancore_tools_0009"; }
+	
+	return($key);
+}

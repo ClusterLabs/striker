@@ -69,6 +69,27 @@ sub force_utf8
 	return ($self->{FORCE_UTF8});
 }
 
+# This returns the long language name for a given ISO language code (as available in the read-in words).
+sub get_language_name
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	my $language  = $parameter->{language} if $parameter->{language};
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	die "$THIS_FILE ".__LINE__."; [ Error ] - No language code passed into AN::String::get_language_name().\n" if not $language;
+	
+	my $hash = $an->data;
+	my $language_name = $hash->{strings}{lang}{$language}{lang}{long_name};
+	
+	#print Dumper $hash->{strings}{lang}{$language}{lang}{long_name};
+	
+	return($language_name);
+}
+
 # This takes a word key and, optionally, a hash reference, a language and/or an
 # variables array reference. It returns the corresponding string from the hash
 # reference data containing the data from a 'read_words()' call.
