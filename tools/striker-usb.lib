@@ -92,7 +92,7 @@ sub logger
 	my ($conf, $file, $line_number, $message) = @_;
 	
 	# Print the message to the screen.
-	print "$file $line_number: $message\n";
+	#print "$file $line_number: $message\n";
 	#return(0);
 	#print "$message\n";
 	

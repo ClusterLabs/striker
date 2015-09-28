@@ -77,7 +77,11 @@ elsif ($conf->{switches}{enable})
 	logger($conf, $THIS_FILE, __LINE__, "Enabling remote mount on USB insert.");
 	my $exit = 0;
 	my $ok   = update_configuration($conf, "enable");
-	if (not $ok)
+	if ($ok)
+	{
+		print "Striker USB tool has been enabled successfully.\n";
+	}
+	else
 	{
 		$exit = 21;
 	}
@@ -88,7 +92,11 @@ elsif ($conf->{switches}{disable})
 	logger($conf, $THIS_FILE, __LINE__, "Disabling remote mount on USB insert.");
 	my $exit = 0;
 	my $ok   = update_configuration($conf, "disable");
-	if (not $ok)
+	if ($ok)
+	{
+		print "Striker USB tool has been disabled successfully.\n";
+	}
+	else
 	{
 		$exit = 22;
 	}
