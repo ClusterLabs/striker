@@ -244,7 +244,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0031">Windows servers tend to work best with 2 CPUs.</key>
 		<key name="explain_0032">More is not always better. When in doubt, start with 2 to 4. You can change this easily later.</key>
 		<key name="explain_0033">Please use only one node's storage pool.</key>
-		<key name="explain_0034"><![CDATA[Type <span class="fixed_width">all</span> to use the all of the available free space.<br />Enter a percentage to use that percent of the remaining free space.]]></key>
+		<!-- <key name="explain_0034"><![CDATA[Type "<span class="fixed_width">all</span>" to use the all of the available free space.<br />Enter a percentage to use that percent of the remaining free space.]]></key> -->
+		<key name="explain_0034"><![CDATA[Enter a fixed size or a percentage of remaining free space to use for this server.]]></key>
 		<key name="explain_0035">This is likely a bug in the program.</key>
 		<key name="explain_0036"><![CDATA[Save the current configuration of this #!string!brand_0002!# to a file on your computer.<br />This can be used to restore the configuration should this dashboard get reset or replaced.]]></key>
 		<key name="explain_0037"><![CDATA[If you upload a backup configuration file, any existing configuration will be removed and the information in the backup file will be loaded.<br />Generally, this is done when a dashboard is fresh and there is no existing configuration.<br />If you have a configuration already that you do not want to lose, please do not use this feature.]]></key>
@@ -366,8 +367,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0153"><![CDATA[This is the brand name for the fourth <a href="http://alteeve.ca/w/PDU" target="_new">Switched PDU</a>.<br />This sets which fence agent will be used to control this device if a fence action is required.]]></key>
 		<key name="explain_0154"><![CDATA[The UPSes will now be told to power cycle.]]></key>
 		<key name="explain_0155"><![CDATA[The UPSes will now be told to power off.]]></key>
-		<key name="explain_0156"><![CDATA[]]></key>
-		<key name="explain_0157"><![CDATA[]]></key>
+		<key name="explain_0156"><![CDATA[The MTU, or "Maximum Tranmission Unit", indicates the largest amount of data that can be sent in a given "packet" of data on a network.<br />In most cases, leave this as '1500'.<br />If you are certain all of your network equipment supports a higher MTU though, increasing this may improve performance.<br /><span class="highlight_warning_bold">Warning</span>: Do <b>NOT</b> change this unless you know for sure that the larger size will be supported!]]></key>
+		<key name="explain_0157"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" is too small. The smallest valid MTU size is '576' (see RFC 879).]]></key>
 		<key name="explain_0158"><![CDATA[]]></key>
 		<key name="explain_0159"><![CDATA[]]></key>
 		<key name="explain_0160"><![CDATA[]]></key>
@@ -422,6 +423,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="terse_0151"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0152"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0153"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0154"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0155"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0156"><![CDATA[&nbsp;]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -714,6 +718,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0288"><![CDATA[Configuring <span class="highlight_detail">anvil-kick-apc-ups</span>]]></key>
 		<key name="row_0289">Configuring #!string!brand_0015!#</key>
 		<key name="row_0290">Configuring SELinux</key>
+		<key name="row_0291">MTU Byte Size</key>
 		
 		<!-- Program names -->
 		<key name="app_0001">/sbin/striker/anvil-setup-node</key>
@@ -1033,7 +1038,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0051">Didn't shut down</key>
 		<key name="state_0052">Storage Pool Mismatch</key>
 		<key name="state_0053">Not enough space</key>
-		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key>
+		<!-- <key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key> -->
+		<key name="state_0054"><![CDATA[Servers: [<span class="highlight_detail">#!variable!pool1_size!#</span>],<br />Media Library: [<span class="highlight_detail">#!variable!media_size!#</span>].</span>]]></key>
 		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>] Not Found.]]></key>
 		<key name="state_0056">No backing device specified</key>
 		<key name="state_0057"><![CDATA[Non-DRBD data found on [<span class="highlight_detail">#!variable!device!#</span>]]]></key>
@@ -1217,7 +1223,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0103">#!string!brand_0003!# Membership</key> <!-- was 'cman' -->
 		<key name="title_0104">Resource Manager</key> <!-- was 'rgmanager' -->
 		<key name="title_0105">Replicated Storage</key> <!-- was 'drbd' -->
-		<key name="title_0106">Storage Pools</key> <!-- was 'clvmd' -->
+		<key name="title_0106">Storage Manager</key> <!-- was 'clvmd' -->
 		<key name="title_0107">Shared Filesystems</key> <!-- was 'gfs2' -->
 		<key name="title_0108">Hypervisor</key> <!-- was 'libvirtd' -->
 		<key name="title_0109">#!string!brand_0003!# Nodes - Controls</key>

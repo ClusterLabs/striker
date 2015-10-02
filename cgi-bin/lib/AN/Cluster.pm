@@ -2184,7 +2184,7 @@ sub create_install_manifest
 	$conf->{form}{anvil_striker2_user}          = "";
 	$conf->{form}{anvil_striker2_password}      = "";
 	$conf->{form}{anvil_striker2_database}      = "";
-	$conf->{form}{anvil_mtu_size}               = "";
+	$conf->{form}{anvil_mtu_size_star}          = "";
 	
 	if ($conf->{cgi}{'delete'})
 	{
@@ -2363,9 +2363,7 @@ sub create_install_manifest
 			# Hidden fields for now.
 			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
 			if (not $conf->{cgi}{anvil_open_vnc_ports})     { $conf->{cgi}{anvil_open_vnc_ports}     = $conf->{sys}{install_manifest}{'default'}{open_vnc_ports}; }
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_mtu_size: [$conf->{cgi}{anvil_mtu_size}], sys::install_manifest::default::mtu: [$conf->{sys}{install_manifest}{'default'}{mtu}]\n");
-			if (not $conf->{cgi}{anvil_mtu_size})           { $conf->{cgi}{anvil_mtu_size}           = $conf->{sys}{install_manifest}{'default'}{mtu}; }
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_mtu_size: [$conf->{cgi}{anvil_mtu_size}]\n");
+			if (not $conf->{cgi}{anvil_mtu_size})           { $conf->{cgi}{anvil_mtu_size}           = $conf->{sys}{install_manifest}{'default'}{mtu_size}; }
 			
 			# It's possible for the user to set default values in
 			# the install manifest.
@@ -2656,10 +2654,43 @@ sub create_install_manifest
 			});
 		}
 		
+		### NOTE: Disabled, now all goes to Pool 1
 		# Anvil! Storage Pools
-		if (($conf->{sys}{install_manifest}{'default'}{pool1_size}) && 
-		    ($conf->{sys}{install_manifest}{'default'}{pool1_unit}) && 
-		    (not $conf->{sys}{install_manifest}{show}{pool1_fields}))
+		if (0)
+		{
+			if (($conf->{sys}{install_manifest}{'default'}{pool1_size}) && 
+			    ($conf->{sys}{install_manifest}{'default'}{pool1_unit}) && 
+			    (not $conf->{sys}{install_manifest}{show}{pool1_fields}))
+			{
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"anvil_storage_pool1_size",
+					id		=>	"anvil_storage_pool1_size",
+					value		=>	$conf->{cgi}{anvil_storage_pool1_size},
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"anvil_storage_pool1_unit",
+					id		=>	"anvil_storage_pool1_unit",
+					value		=>	$conf->{cgi}{anvil_storage_pool1_unit},
+				});
+			}
+			else
+			{
+				my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
+					row		=>	"#!string!row_0199!#",
+					explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
+					name		=>	"anvil_storage_pool1_size",
+					id		=>	"anvil_storage_pool1_size",
+					value		=>	$conf->{cgi}{anvil_storage_pool1_size},
+					'select'	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
+					star		=>	$conf->{form}{anvil_storage_pool1_star},
+					more_info	=>	"$anvil_storage_pool1_more_info",
+				});
+			}
+		}
+		else
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
 				name		=>	"anvil_storage_pool1_size",
@@ -2670,22 +2701,6 @@ sub create_install_manifest
 				name		=>	"anvil_storage_pool1_unit",
 				id		=>	"anvil_storage_pool1_unit",
 				value		=>	$conf->{cgi}{anvil_storage_pool1_unit},
-			});
-		}
-		else
-		{
-			my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
-				row		=>	"#!string!row_0199!#",
-				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
-				name		=>	"anvil_storage_pool1_size",
-				id		=>	"anvil_storage_pool1_size",
-				value		=>	$conf->{cgi}{anvil_storage_pool1_size},
-				'select'	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
-				star		=>	$conf->{form}{anvil_storage_pool1_star},
-				more_info	=>	"$anvil_storage_pool1_more_info",
 			});
 		}
 		
@@ -2758,13 +2773,6 @@ sub create_install_manifest
 			name		=>	"anvil_cluster_name",
 			id		=>	"anvil_cluster_name",
 			value		=>	$conf->{cgi}{anvil_cluster_name},
-		});
-		
-		# The "mtu" is stored as a hidden field.
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
-			name		=>	"anvil_mtu_size",
-			id		=>	"anvil_mtu_size",
-			value		=>	$conf->{cgi}{anvil_mtu_size},
 		});
 		
 		# Anvil! IFN Gateway
@@ -2881,6 +2889,31 @@ sub create_install_manifest
 				value		=>	$conf->{cgi}{anvil_ntp2},
 				star		=>	$conf->{form}{anvil_ntp2_star},
 				more_info	=>	"$anvil_ntp2_more_info",
+			});
+		}
+		
+		# Allows the user to set the MTU size manually
+		if (1)
+		{
+			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+				url	=>	"https://en.wikipedia.org/wiki/Maximum_transmission_unit",
+			});
+			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				row		=>	"#!string!row_0291!#",
+				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0156!#" : "#!string!explain_0156!#",
+				name		=>	"anvil_mtu_size",
+				id		=>	"anvil_mtu_size",
+				value		=>	$conf->{cgi}{anvil_mtu_size},
+				star		=>	$conf->{form}{anvil_mtu_size_star},
+				more_info	=>	"$anvil_name_more_info",
+			});
+		}
+		else
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_mtu_size",
+				id		=>	"anvil_mtu_size",
+				value		=>	$conf->{cgi}{anvil_mtu_size},
 			});
 		}
 		
@@ -4072,7 +4105,7 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_password}     = $conf->{install_manifest}{$file}{common}{anvil}{password}         ? $conf->{install_manifest}{$file}{common}{anvil}{password}         : $conf->{sys}{install_manifest}{'default'}{password};
 		$conf->{cgi}{anvil_repositories} = $conf->{install_manifest}{$file}{common}{anvil}{repositories};
 		$conf->{cgi}{anvil_ssh_keysize}  = $conf->{install_manifest}{$file}{common}{ssh}{keysize}            ? $conf->{install_manifest}{$file}{common}{ssh}{keysize}            : $conf->{sys}{install_manifest}{'default'}{ssh_keysize};
-		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu};
+		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu_size};
 		$conf->{cgi}{striker_user}       = $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     ? $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     : $conf->{sys}{install_manifest}{'default'}{striker_user};
 		$conf->{cgi}{striker_database}   = $conf->{install_manifest}{$file}{common}{anvil}{striker_database} ? $conf->{install_manifest}{$file}{common}{anvil}{striker_database} : $conf->{sys}{install_manifest}{'default'}{striker_database};
 		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}], cgi::striker_database: [$conf->{cgi}{striker_database}]\n");
@@ -4727,8 +4760,8 @@ sub generate_uuid
 	return($uuid);
 }
 
-# This takes the (sanity-checked) form data and generates the XML manifest file
-# and then returns the download URL.
+# This takes the (sanity-checked) form data and generates the XML manifest file and then returns the download
+# URL.
 sub generate_install_manifest
 {
 	my ($conf) = @_;
@@ -5321,12 +5354,16 @@ sub show_summary_manifest
 		column2		=>	"&nbsp;",
 	});
 	
+	### NOTE: Disabled now, always 100% to pool 1.
 	# Storage Pool 1 size
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
-		row		=>	"#!string!row_0199!#",
-		column1		=>	"$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}",
-		column2		=>	"&nbsp;",
-	});
+	if (0)
+	{
+		print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+			row		=>	"#!string!row_0199!#",
+			column1		=>	"$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}",
+			column2		=>	"&nbsp;",
+		});
+	}
 	
 	# BCN Network Mask
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
@@ -5629,6 +5666,34 @@ sub sanity_check_manifest_answers
 			message	=>	AN::Common::get_string($conf, {key => "explain_0119", variables => { field => "#!string!row_0164!#"}}),
 		});
 		$problem = 1;
+	}
+	# MTU
+	$conf->{cgi}{anvil_mtu_size} =~ s/,//g;
+	$conf->{cgi}{anvil_mtu_size} =~ s/\s+//g;
+	if (not $conf->{cgi}{anvil_mtu_size})
+	{
+		$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{install_manifest}{'default'}{mtu_size};
+	}
+	else
+	{
+		# Defined, sane?
+		if ($conf->{cgi}{anvil_mtu_size} =~ /\D/)
+		{
+			$conf->{form}{anvil_mtu_size_star} = "#!string!symbol_0012!#";
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0102", variables => { field => "#!string!row_0291!#"}}),
+			});
+			$problem = 1;
+		}
+		# Is the MTU too small or too big? - https://tools.ietf.org/html/rfc879
+		elsif ($conf->{cgi}{anvil_mtu_size} < 576)
+		{
+			$conf->{form}{anvil_mtu_size_star} = "#!string!symbol_0012!#";
+			print AN::Common::template($conf, "config.html", "form-error", {
+				message	=>	AN::Common::get_string($conf, {key => "explain_0157", variables => { field => "#!string!row_0291!#"}}),
+			});
+			$problem = 1;
+		}
 	}
 	
 	### TODO: Worth checking the select box values?

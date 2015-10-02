@@ -63,6 +63,32 @@ my $an = AN::Tools->new({data =>
 			log_level			=>	2,
 			log_language			=>	"en_CA",
 		},
+		section			=>	{
+			controller			=>	{
+				in_header			=>	1,
+				in_basics			=>	0,
+				in_version			=>	0,
+				in_bus				=>	0,
+				in_pending_images_in_flash	=>	0,
+				in_status			=>	0,
+				in_supported_adapter_operations	=>	0,
+				in_supported_pd_operations	=>	0,
+				in_supported_vd_operations	=>	0,
+				in_advanced_software_option	=>	0,
+				in_hardware_config		=>	0,
+				in_policies			=>	0,
+				in_policies_table		=>	0,
+				in_boot				=>	0,
+				in_high_availability		=>	0,
+				in_defaults			=>	0,
+				in_capabilities			=>	0,
+				in_scheduled_tasks		=>	0,
+				in_topology			=>	0,
+				in_virtual_disk_list		=>	0,
+				in_physical_disk_list		=>	0,
+				in_cachevault_info		=>	0,
+			},
+		},
 		sys			=>	{
 			sql			=>	[],
 			arguments		=>	{
@@ -113,12 +139,133 @@ nice_exit($an);
 # Function below                                                                                            #
 #############################################################################################################
 
+# This sets the active section to '1' when a storcli header is passed in.
+sub set_active_section
+{
+	my ($an, $type, $line) = @_;
+	
+	# These variables are used to track which section is being parsed.
+	if ($type eq "adapter")
+	{
+		$an->data->{$type}{in_header}                       = 0;
+		$an->data->{$type}{in_basics}                       = 0;
+		$an->data->{$type}{in_version}                      = 0;
+		$an->data->{$type}{in_bus}                          = 0;
+		$an->data->{$type}{in_pending_images_in_flash}      = 0;
+		$an->data->{$type}{in_status}                       = 0;
+		$an->data->{$type}{in_supported_adapter_operations} = 0;
+		$an->data->{$type}{in_supported_pd_operations}      = 0;
+		$an->data->{$type}{in_supported_vd_operations}      = 0;
+		$an->data->{$type}{in_advanced_software_option}     = 0;
+		$an->data->{$type}{in_hardware_config}              = 0;
+		$an->data->{$type}{in_policies}                     = 0;
+		$an->data->{$type}{in_policies_table}               = 0;
+		$an->data->{$type}{in_boot}                         = 0;
+		$an->data->{$type}{in_high_availability}            = 0;
+		$an->data->{$type}{in_defaults}                     = 0;
+		$an->data->{$type}{in_capabilities}                 = 0;
+		$an->data->{$type}{in_scheduled_tasks}              = 0;
+		$an->data->{$type}{in_topology}                     = 0;
+		$an->data->{$type}{in_virtual_disk_list}            = 0;
+		$an->data->{$type}{in_physical_disk_list}           = 0;
+		$an->data->{$type}{in_cachevault_info}              = 0;
+		
+		if ($line =~ /^Basics:$/i)
+		{
+			$an->data->{$type}{in_basics} = 1;
+		}
+		elsif ($line =~ /^Version:$/i)
+		{
+			$an->data->{$type}{in_version} = 1;
+		}
+		elsif ($line =~ /^Bus:$/i)
+		{
+			$an->data->{$type}{in_bus} = 1;
+		}
+		elsif ($line =~ /^Pending Images in Flash:$/i)
+		{
+			$an->data->{$type}{in_pending_images_in_flash} = 1;
+		}
+		elsif ($line =~ /^Status:$/i)
+		{
+			$an->data->{$type}{in_status} = 1;
+		}
+		elsif ($line =~ /^Supported Adapter Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_adapter_operations} = 1;
+		}
+		elsif ($line =~ /^Supported PD Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_pd_operations} = 1;
+		}
+		elsif ($line =~ /^Supported VD Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_vd_operations} = 1;
+		}
+		elsif ($line =~ /^Advanced Software Option:$/i)
+		{
+			$an->data->{$type}{in_advanced_software_option} = 1;
+		}
+		elsif ($line =~ /^HwCfg:$/i)
+		{
+			$an->data->{$type}{in_hardware_config} = 1;
+		}
+		elsif ($line =~ /^Policies:$/i)
+		{
+			$an->data->{$type}{in_policies} = 1;
+		}
+		elsif ($line =~ /^Policies Table:$/i)
+		{
+			$an->data->{$type}{in_policies_table} = 1;
+		}
+		elsif ($line =~ /^Boot:$/i)
+		{
+			$an->data->{$type}{in_boot} = 1;
+		}
+		elsif ($line =~ /^High Availability:$/i)
+		{
+			$an->data->{$type}{in_high_availability} = 1;
+		}
+		elsif ($line =~ /^Defaults:$/i)
+		{
+			$an->data->{$type}{in_defaults} = 1;
+		}
+		elsif ($line =~ /^Capabilities:$/i)
+		{
+			$an->data->{$type}{in_capabilities} = 1;
+		}
+		elsif ($line =~ /^Scheduled Tasks:$/i)
+		{
+			$an->data->{$type}{in_scheduled_tasks} = 1;
+		}
+		elsif ($line =~ /^TOPOLOGY:$/i)
+		{
+			$an->data->{$type}{in_topology} = 1;
+		}
+		elsif ($line =~ /^VD LIST:$/i)
+		{
+			$an->data->{$type}{in_virtual_disk_list} = 1;
+		}
+		elsif ($line =~ /^PD LIST:$/i)
+		{
+			$an->data->{$type}{in_physical_disk_list} = 1;
+		}
+		elsif ($line =~ /^Cachevault_Info:$/i)
+		{
+			$an->data->{$type}{in_cachevault_info} = 1;
+		}
+	}
+	
+	return(0);
+}
+
 # This gathers the various data from the controller(s).
 sub gather_data
 {
 	my ($an) = @_;
 	
 	# Read in information about the adapter(s);
+	my $type       = "adapter";
 	my $adapter    = "";
 	my $port_type  = "";
 	my $shell_call = $an->data->{path}{storcli}." /cAll ".$an->data->{sys}{arguments}{controller_info}." 2>&1 |";
@@ -142,6 +289,439 @@ sub gather_data
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line ~= /:$/)
+		{
+			set_active_section($an, $type, $line);
+		}
+		
+		if ($an->data->{$type}{in_header})
+		{
+		}
+		elsif ($an->data->{$type}{in_basics})
+		{
+		}
+		elsif ($an->data->{$type}{in_version}                      = 0;
+		elsif ($an->data->{$type}{in_bus}                          = 0;
+		elsif ($an->data->{$type}{in_pending_images_in_flash}      = 0;
+		elsif ($an->data->{$type}{in_status}                       = 0;
+		elsif ($an->data->{$type}{in_supported_adapter_operations} = 0;
+		elsif ($an->data->{$type}{in_supported_pd_operations}      = 0;
+		elsif ($an->data->{$type}{in_supported_vd_operations}      = 0;
+		elsif ($an->data->{$type}{in_advanced_software_option}     = 0;
+		elsif ($an->data->{$type}{in_hardware_config}              = 0;
+		elsif ($an->data->{$type}{in_policies}                     = 0;
+		elsif ($an->data->{$type}{in_policies_table}               = 0;
+		elsif ($an->data->{$type}{in_boot}                         = 0;
+		elsif ($an->data->{$type}{in_high_availability}            = 0;
+		elsif ($an->data->{$type}{in_defaults}                     = 0;
+		elsif ($an->data->{$type}{in_capabilities}                 = 0;
+		elsif ($an->data->{$type}{in_scheduled_tasks}              = 0;
+		elsif ($an->data->{$type}{in_topology}                     = 0;
+		elsif ($an->data->{$type}{in_virtual_disk_list}            = 0;
+		elsif ($an->data->{$type}{in_physical_disk_list}           = 0;
+		elsif ($an->data->{$type}{in_cachevault_info}              = 0;
+=pod
+Basics :
+Version :
+Bus :
+Pending Images in Flash :
+Status :
+======
+Controller Status = Optimal
+Memory Correctable Errors = 0
+Memory Uncorrectable Errors = 0
+ECC Bucket Count = 0
+Any Offline VD Cache Preserved = No
+BBU Status = 0
+Support PD Firmware Download = No
+Lock Key Assigned = Yes
+Failed to get lock key on bootup = No
+Lock key has not been backed up = No
+Bios was not detected during boot = No
+Controller must be rebooted to complete security operation = No
+A rollback operation is in progress = No
+At least one PFK exists in NVRAM = No
+SSC Policy is WB = No
+Controller has booted into safe mode = No
+
+
+Supported Adapter Operations :
+============================
+Rebuild Rate = Yes
+CC Rate = Yes
+BGI Rate  = Yes
+Reconstruct Rate = Yes
+Patrol Read Rate = Yes
+Alarm Control = Yes
+Cluster Support = No
+BBU  = Yes
+Spanning = Yes
+Dedicated Hot Spare = Yes
+Revertible Hot Spares = Yes
+Foreign Config Import = Yes
+Self Diagnostic = Yes
+Allow Mixed Redundancy on Array = No
+Global Hot Spares = Yes
+Deny SCSI Passthrough = No
+Deny SMP Passthrough = No
+Deny STP Passthrough = No
+Support more than 8 Phys = Yes
+FW and Event Time in GMT = No
+Support Enhanced Foreign Import = Yes
+Support Enclosure Enumeration = Yes
+Support Allowed Operations = Yes
+Abort CC on Error = Yes
+Support Multipath = Yes
+Support Odd & Even Drive count in RAID1E = No
+Support Security = Yes
+Support Config Page Model = Yes
+Support the OCE without adding drives = Yes
+Support EKM = Yes
+Snapshot Enabled = No
+Support PFK = Yes
+Support PI = Yes
+Support LDPI Type1 = No
+Support LDPI Type2 = No
+Support LDPI Type3 = No
+Support Ld BBM Info = No
+Support Shield State = Yes
+Block SSD Write Disk Cache Change = Yes
+Support Suspend Resume BG ops = Yes
+Support Emergency Spares = Yes
+Support Set Link Speed = Yes
+Support Boot Time PFK Change = No
+Support JBOD = Yes
+Disable Online PFK Change = No
+Support Perf Tuning = Yes
+Support SSD PatrolRead = Yes
+Real Time Scheduler = Yes
+Support Reset Now = Yes
+Support Emulated Drives = Yes
+Headless Mode = Yes
+Dedicated HotSpares Limited = No
+Point In Time Progress = Yes
+Extended LD = No
+
+
+Supported PD Operations :
+=======================
+Force Online = Yes
+Force Offline = Yes
+Force Rebuild = Yes
+Deny Force Failed = No
+Deny Force Good/Bad = No
+Deny Missing Replace = No
+Deny Clear = No
+Deny Locate = No
+Support Power State = Yes
+Set Power State For Cfg = No
+Support T10 Power State = No
+Support Temperature = Yes
+NCQ = No
+
+
+Supported VD Operations :
+=======================
+Read Policy = Yes
+Write Policy = Yes
+IO Policy = Yes
+Access Policy = Yes
+Disk Cache Policy = Yes
+Reconstruction = Yes
+Deny Locate = No
+Deny CC = No
+Allow Ctrl Encryption = No
+Enable LDBBM = Yes
+Support FastPath = Yes
+Performance Metrics = Yes
+Power Savings = No
+Support Powersave Max With Cache = No
+Support Breakmirror = Yes
+Support SSC WriteBack = No
+Support SSC Association = Yes
+Support VD Hide = No
+Support VD HOQRebuid = No
+
+
+Advanced Software Option :
+========================
+
+------------------------------------------------------
+Adv S/W Opt         Time Remaining  Mode              
+------------------------------------------------------
+MegaRAID FastPath   Unlimited      Factory Installed  
+MegaRAID SafeStore  Unlimited       Secured           
+MegaRAID RAID6      Unlimited       Factory Installed 
+MegaRAID RAID5      Unlimited       Factory Installed 
+------------------------------------------------------
+
+Safe ID =  9X9EEK139UJVVRLFC5QB838VMNJAPKJRMC3QB8AZ
+
+HwCfg :
+=====
+ChipRevision =  C0
+BatteryFRU = N/A
+Front End Port Count = 0
+Backend Port Count = 8
+BBU = Present
+Alarm = On
+Serial Debugger = Present
+NVRAM Size = 32KB
+Flash Size = 16MB
+On Board Memory Size = 1024MB
+On Board Expander = Absent
+Temperature Sensor for ROC = Present
+Temperature Sensor for Controller = Absent
+Current Size of CacheCade (GB) = 0
+Current Size of FW Cache (MB) = 834
+ROC temperature(Degree Celsius) = 64
+
+
+Policies :
+========
+
+Policies Table :
+==============
+
+------------------------------------------------
+Policy                          Current Default 
+------------------------------------------------
+Predictive Fail Poll Interval   300 sec         
+Interrupt Throttle Active Count 16              
+Interrupt Throttle Completion   50 us           
+Rebuild Rate                    30 %    30%     
+PR Rate                         30 %    30%     
+BGI Rate                        30 %    30%     
+Check Consistency Rate          30 %    30%     
+Reconstruction Rate             30 %    30%     
+Cache Flush Interval            4s              
+------------------------------------------------
+
+Flush Time(Default) = 4s
+Drive Coercion Mode = none
+Auto Rebuild = On
+Battery Warning = On
+ECC Bucket Size = 15
+ECC Bucket Leak Rate (hrs) = 24
+Restore HotSpare on Insertion = Off
+Expose Enclosure Devices = On
+Maintain PD Fail History = On
+Reorder Host Requests = On
+Auto detect BackPlane = SGPIO/i2c SEP
+Load Balance Mode = Auto
+Security Key Assigned = On
+Disable Online Controller Reset = Off
+Use drive activity for locate = Off
+
+
+Boot :
+====
+BIOS Enumerate VDs = 1
+Stop BIOS on Error = Off
+Delay during POST = 0
+Spin Down Mode = None
+Enable Ctrl-R = Yes
+Enable Web BIOS = No
+Enable PreBoot CLI = No
+Enable BIOS = Yes
+Max Drives to Spinup at One Time = 2
+Maximum number of direct attached drives to spin up in 1 min = 10
+Delay Among Spinup Groups (sec) = 12
+Allow Boot with Preserved Cache = Off
+
+
+High Availability :
+=================
+Topology Type = None
+Cluster Permitted = No
+Cluster Active = No
+
+
+Defaults :
+========
+Phy Polarity = 0
+Phy PolaritySplit = 0
+Strip Size = 256kB
+Write Policy = WB
+Read Policy = RA
+Cache When BBU Bad = Off
+Cached IO = Off
+VD PowerSave Policy = Controller Defined
+Default spin down time (mins) = 30
+Coercion Mode = None
+ZCR Config = Unknown
+Max Chained Enclosures = 16
+Direct PD Mapping = No
+Restore Hot Spare on Insertion = No
+Expose Enclosure Devices = Yes
+Maintain PD Fail History = Yes
+Zero Based Enclosure Enumeration = No
+Disable Puncturing = No
+EnableLDBBM = Yes
+Un-Certified Hard Disk Drives = Allow
+SMART Mode = Mode 6
+Enable LED Header = No
+LED Show Drive Activity = Yes
+Dirty LED Shows Drive Activity = No
+EnableCrashDump = No
+Disable Online Controller Reset = No
+Treat Single span R1E as R10 = No
+Power Saving option = Enabled
+TTY Log In Flash = No
+Auto Enhanced Import = Yes
+BreakMirror RAID Support = Yes
+Disable Join Mirror = Yes
+Enable Shield State = Yes
+Time taken to detect CME = 60 sec
+
+
+Capabilities :
+============
+Supported Drives = SAS, SATA
+Boot Volume Supported = NO
+RAID Level Supported = RAID0, RAID1, RAID5, RAID6, RAID00, RAID10, RAID50, 
+RAID60, PRL 11, PRL 11 with spanning, SRL 3 supported, 
+PRL11-RLQ0 DDF layout with no span, PRL11-RLQ0 DDF layout with span
+Enable JBOD = No
+Mix in Enclosure = Allowed
+Mix of SAS/SATA of HDD type in VD = Allowed
+Mix of SAS/SATA of SSD type in VD = Allowed
+Mix of SSD/HDD in VD = Allowed
+SAS Disable = No
+Max Arms Per VD = 32
+Max Spans Per VD = 8
+Max Arrays = 128
+Max VD per array = 16
+Max Number of VDs = 64
+Max Parallel Commands = 928
+Max SGE Count = 60
+Max Data Transfer Size = 8192 sectors
+Max Strips PerIO = 42
+Max Configurable CacheCade Size = 0
+Min Strip Size = 64 KB
+Max Strip Size = 1.0 MB
+
+
+Scheduled Tasks :
+===============
+Consistency Check Reoccurrence = 168 hrs
+Next Consistency check launch = 10/03/2015, 03:00:00
+Patrol Read Reoccurrence = 168 hrs
+Next Patrol Read launch = 10/03/2015, 03:00:00
+Battery learn Reoccurrence = 672 hrs
+Next Battery Learn = 10/21/2015, 17:00:00
+OEMID = LSI
+
+Drive Groups = 1
+
+TOPOLOGY :
+========
+
+-------------------------------------------------------------------------
+DG Arr Row EID:Slot DID Type  State BT      Size PDC  PI SED DS3  FSpace 
+-------------------------------------------------------------------------
+ 0 -   -   -        -   RAID6 Optl  N  32.737 TB dflt N  Y   dflt N      
+ 0 0   -   -        -   RAID6 Optl  N  32.737 TB dflt N  Y   dflt N      
+ 0 0   0   15:0     13  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   1   15:1     10  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   2   15:2     18  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   3   15:3     14  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   4   15:4     29  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   5   15:5     19  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   6   15:6     25  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   7   15:7     30  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   8   15:8     12  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   9   15:9     21  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   10  15:10    20  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   11  15:11    11  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   12  15:12    23  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   13  15:13    32  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   14  15:14    31  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   15  15:15    9   DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   16  15:16    8   DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   17  15:17    27  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   18  15:18    24  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   19  15:19    28  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   20  15:20    22  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+ 0 0   21  15:21    16  DRIVE Onln  N   1.636 TB dflt N  Y   dflt -      
+-------------------------------------------------------------------------
+
+DG=Disk Group Index|Arr=Array Index|Row=Row Index|EID=Enclosure Device ID
+DID=Device ID|Type=Drive Type|Onln=Online|Rbld=Rebuild|Dgrd=Degraded
+Pdgd=Partially degraded|Offln=Offline|BT=Background Task Active
+PDC=PD Cache|PI=Protection Info|SED=Self Encrypting Drive|Frgn=Foreign
+DS3=Dimmer Switch 3|dflt=Default|Msng=Missing|FSpace=Free Space Present
+
+Virtual Drives = 1
+
+VD LIST :
+=======
+
+----------------------------------------------------------
+DG/VD TYPE  State Access Consist Cache sCC      Size Name 
+----------------------------------------------------------
+0/0   RAID6 Optl  RW     Yes     RWBD  -   32.737 TB      
+----------------------------------------------------------
+
+Cac=CacheCade|Rec=Recovery|OfLn=OffLine|Pdgd=Partially Degraded|dgrd=Degraded
+Optl=Optimal|RO=Read Only|RW=Read Write|HD=Hidden|B=Blocked|Consist=Consistent|
+R=Read Ahead Always|NR=No Read Ahead|WB=WriteBack|
+AWB=Always WriteBack|WT=WriteThrough|C=Cached IO|D=Direct IO|sCC=Scheduled
+Check Consistency
+
+Physical Drives = 24
+
+PD LIST :
+=======
+
+-----------------------------------------------------------------------
+EID:Slt DID State DG     Size Intf Med SED PI SeSz Model            Sp 
+-----------------------------------------------------------------------
+15:0     13 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:1     10 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:2     18 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:3     14 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:4     29 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:5     19 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:6     25 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:7     30 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:8     12 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:9     21 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:10    20 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:11    11 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:12    23 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:13    32 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:14    31 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:15     9 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:16     8 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:17    27 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:18    24 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:19    28 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:20    22 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:21    16 Onln   0 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  U  
+15:22    17 GHS    - 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  D  
+15:23    26 GHS    - 1.636 TB SAS  HDD Y   N  512B HUC101818CS4201  D  
+-----------------------------------------------------------------------
+
+EID-Enclosure Device ID|Slt-Slot No.|DID-Device ID|DG-DriveGroup
+DHS-Dedicated Hot Spare|UGood-Unconfigured Good|GHS-Global Hotspare
+UBad-Unconfigured Bad|Onln-Online|Offln-Offline|Intf-Interface
+Med-Media Type|SED-Self Encryptive Drive|PI-Protection Info
+SeSz-Sector Size|Sp-Spun|U-Up|D-Down|T-Transition|F-Foreign
+UGUnsp-Unsupported|UGShld-UnConfigured shielded|HSPShld-Hotspare shielded
+CFShld-Configured shielded
+
+
+Cachevault_Info :
+===============
+
+------------------------------------
+Model  State   Temp Mode MfgDate    
+------------------------------------
+CVPM03 Optimal 33C  -    2014/11/05 
+------------------------------------
+=cut
 		
 		if ($line =~ /Controller = (\d+)/i)
 		{

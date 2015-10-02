@@ -66,7 +66,7 @@ my $an = AN::Tools->new({data =>
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it in the agents, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
-			log_file		=>	"/var/log/striker.log",
+			log_file		=>	"/var/log/ScanCore.log",
 			mailx			=>	"/bin/mailx",
 			# This is the path to Striker's cache directory. It is
 			# used by striker dashboards when they want to reboot a

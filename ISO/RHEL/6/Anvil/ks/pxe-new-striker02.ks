@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-09-11 21:07:26
+# Built:   2015-10-02 10:56:57
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -314,9 +314,9 @@ LABEL pxe-new-node01
 	MENU LABEL ^1) New Anvil! Node 01 - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        ------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing
@@ -335,9 +335,9 @@ LABEL pxe-new-node02
 	MENU LABEL ^2) New Anvil! Node 02 - RHEL v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        ------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing

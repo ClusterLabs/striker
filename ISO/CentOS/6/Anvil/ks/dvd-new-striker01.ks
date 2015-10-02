@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-09-11 21:07:26
+# Built:   2015-10-02 10:56:57
 # Target:  Optical Media (DVD)
 # OS:      CentOS
 # Machine: Striker Dashboard #01
@@ -119,10 +119,10 @@ vgabios
 echo 'Creating the apache docroot and PXE directories.'
 
 # Apache directories
-mkdir -p /mnt/sysimage/var/www/html/c6/x86_64/{img,iso,ks,files}
+mkdir -p /mnt/sysimage/var/www/html/centos6/x86_64/{img,iso,ks,files}
 
 # PXE/tftp directories
-mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/c6/x86_64/
+mkdir -p /mnt/sysimage/var/lib/tftpboot/boot/centos6/x86_64/
 mkdir /mnt/sysimage/var/lib/tftpboot/pxelinux.cfg
 
 # Create the source mount point.
@@ -133,7 +133,7 @@ mount /dev/cdrom /mnt/source;
 
 # Create a copy of the install ISO on Striker.
 echo 'Copying the install iso image using dd. Be patient'
-dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/c6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso
+dd if=/dev/cdrom of=/mnt/sysimage/var/www/html/centos6/x86_64/iso/Anvil_m2_CentOS-6.7_alpha.iso
 
 
 # Setup 'list-ips'.
@@ -149,10 +149,10 @@ cp /mnt/source/Tools/fence/fence_raritan_snmp /mnt/sysimage/usr/sbin/
 
 # Copy the node and dashboard KSes into place
 echo 'Copying the KS scripts into place.'
-cp /mnt/source/ks/pxe-new-node01_from-striker01.ks /mnt/sysimage/var/www/html/c6/x86_64/ks/pxe-new-node01.ks
-cp /mnt/source/ks/pxe-new-node02_from-striker01.ks /mnt/sysimage/var/www/html/c6/x86_64/ks/pxe-new-node02.ks
-cp /mnt/source/ks/pxe-new-striker01.ks             /mnt/sysimage/var/www/html/c6/x86_64/ks/
-cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/c6/x86_64/ks/
+cp /mnt/source/ks/pxe-new-node01_from-striker01.ks /mnt/sysimage/var/www/html/centos6/x86_64/ks/pxe-new-node01.ks
+cp /mnt/source/ks/pxe-new-node02_from-striker01.ks /mnt/sysimage/var/www/html/centos6/x86_64/ks/pxe-new-node02.ks
+cp /mnt/source/ks/pxe-new-striker01.ks             /mnt/sysimage/var/www/html/centos6/x86_64/ks/
+cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/centos6/x86_64/ks/
 
 # A little flair...
 echo 'Setting the PXE wallpaper.'
@@ -168,14 +168,14 @@ cp      /mnt/source/Striker/master.zip                             /mnt/sysimage
 cp -Rvp /mnt/source/Striker/striker-master                         /mnt/sysimage/root/
 cp      /mnt/source/Striker/striker-master/tools/striker-installer /mnt/sysimage/root/
 
-echo "Copying 'Tools' into /mnt/sysimage/var/www/html/c6/x86_64/files/"
-rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/c6/x86_64/files/
+echo "Copying 'Tools' into /mnt/sysimage/var/www/html/centos6/x86_64/files/"
+rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/centos6/x86_64/files/
 
 echo 'Configuring /etc/fstab to mount the ISO on boot.'
-echo '/var/www/html/c6/x86_64/iso/Anvil_m2_RHEL-6.7_alpha.iso	/var/www/html/c6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
+echo '/var/www/html/centos6/x86_64/iso/Anvil_m2_CentOS-6.7_alpha.iso	/var/www/html/centos6/x86_64/img	iso9660	loop	0 0' >> /mnt/sysimage/etc/fstab
 
-echo 'Copying isolinux to /var/lib/tftpboot/boot/c6/x86_64/'
-rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/c6/x86_64/
+echo 'Copying isolinux to /var/lib/tftpboot/boot/centos6/x86_64/'
+rsync -av /mnt/source/isolinux/* /mnt/sysimage/var/lib/tftpboot/boot/centos6/x86_64/
 # */ # Ignore me, I am unbreaking syntax highlighting in vim...
 %end
 
@@ -210,9 +210,9 @@ echo /sbin/striker/list-ips >> /etc/rc.local
 
 echo 'Writing out local yum repository config'
 cat > /etc/yum.repos.d/striker01.repo << EOF
-[striker01-c6]
-name=Striker 01 c6 v6.7 + Custom Repository
-baseurl=http://localhost/c6/x86_64/img/
+[striker01-centos6]
+name=Striker 01 centos6 v6.7 + Custom Repository
+baseurl=http://localhost/centos6/x86_64/img/
 enabled=1
 gpgcheck=0
 priority=1
@@ -313,9 +313,9 @@ LABEL pxe-new-node01
 	MENU LABEL ^1) New Anvil! Node 01 - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        ------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing
@@ -326,17 +326,17 @@ LABEL pxe-new-node01
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
-	KERNEL boot/c6/x86_64/vmlinuz
+	KERNEL boot/centos6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
+	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://10.20.4.1/centos6/x86_64/ks/pxe-new-node01.ks ksdevice=bootif
 
 LABEL pxe-new-node02
 	MENU LABEL ^2) New Anvil! Node 02 - CentOS v6.7 - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        ------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing
@@ -347,9 +347,9 @@ LABEL pxe-new-node02
 		/boot + MBR install for systems with traditional BIOSes. Partition 
 		will be 0.5 GiB /boot, 4 GiB <swap>, 40 GiB /.
 	ENDTEXT
-	KERNEL boot/c6/x86_64/vmlinuz
+	KERNEL boot/centos6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
+	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://10.20.4.1/centos6/x86_64/ks/pxe-new-node02.ks ksdevice=bootif
 
 LABEL pxe-new-striker01
 	MENU LABEL ^3) New Striker 01 dashboard - CentOS v6.7 - PXE - Deletes All Existing Data!
@@ -359,9 +359,9 @@ LABEL pxe-new-striker01
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
-	KERNEL boot/c6/x86_64/vmlinuz
+	KERNEL boot/centos6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
+	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://10.20.4.1/centos6/x86_64/ks/pxe-new-striker01.ks ksdevice=bootif
 	
 LABEL pxe-new-striker02
 	MENU LABEL ^4) New Striker 02 dashboard - CentOS v6.7 - PXE - Deletes All Existing Data!
@@ -371,9 +371,9 @@ LABEL pxe-new-striker02
 		/boot + MBR install for systems with traditional BIOSes. Partition will 
 		be 0.5 GiB /boot, 4 GiB <swap>, remainder for /.
 	ENDTEXT
-	KERNEL boot/c6/x86_64/vmlinuz
+	KERNEL boot/centos6/x86_64/vmlinuz
 	IPAPPEND 2
-	APPEND initrd=boot/c6/x86_64/initrd.img ks=http://10.20.4.1/c6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
+	APPEND initrd=boot/centos6/x86_64/initrd.img ks=http://10.20.4.1/centos6/x86_64/ks/pxe-new-striker02.ks ksdevice=bootif
 
 label rescue
 	MENU LABEL ^B) Rescue installed system
@@ -381,8 +381,8 @@ label rescue
 
 		Boot the CentOS v6.7 DVD in rescue mode.
 	ENDTEXT
-	KERNEL boot/c6/x86_64/vmlinuz
-	APPEND initrd=boot/c6/x86_64/initrd.img rescue
+	KERNEL boot/centos6/x86_64/vmlinuz
+	APPEND initrd=boot/centos6/x86_64/initrd.img rescue
 
 label memtest86
 	MENU LABEL ^C) Memory test

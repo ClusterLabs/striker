@@ -214,7 +214,7 @@ sub generate_ks
 	
 	my $say_os         = $distro eq "centos" ? "CentOS" : "RHEL";
 	my $say_ver        = $conf->{sys}{os_version};
-	my $os_dir         = $distro eq "centos" ? "c6" : "rhel6";
+	my $os_dir         = $distro eq "centos" ? "centos6" : "rhel6";
 	my $say_target     = $target eq "pxe" ? "Network Install (PXE)" : 
 			     $target eq "dvd" ? "Optical Media (DVD)" : 
 			     "USB Drive";
@@ -236,7 +236,7 @@ sub generate_ks
 	my $keyboard       = $conf->{sys}{keyboard};
 	my $selinux        = $machine eq "striker" ? "permissive" : "enforcing";
 	my $packages       = get_packages($conf, $machine);
-	my $iso_name       = "Anvil_m2_RHEL-${say_ver}_alpha.iso";
+	my $iso_name       = "Anvil_m2_${say_os}-${say_ver}_alpha.iso";
 	my $background     = $conf->{sys}{background};
 	my $bcn_netmask    = $conf->{sys}{bcn_netmask};
 	my $ifn_netmask    = $conf->{sys}{ifn_netmask};
@@ -678,9 +678,9 @@ LABEL pxe-new-node01
 	MENU LABEL ^1) New $anvil_name Node 01 - $say_os v$say_ver - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing
@@ -699,9 +699,9 @@ LABEL pxe-new-node02
 	MENU LABEL ^2) New $anvil_name Node 02 - $say_os v$say_ver - PXE - Deletes All Existing Data!
 	TEXT HELP
 
-		/------------------------------------------------------------------\\
+		.------------------------------------------------------------------.
 		| WARNING: This install will appear to stall at first! BE PATIENT! |
-	        \------------------------------------------------------------------/
+	        ^------------------------------------------------------------------^
 
 	            To prevent traces of previous installs interrupting the 
 		    Install Manifest run, this boot option starts by 'zeroing

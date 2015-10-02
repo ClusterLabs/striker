@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-09-11 21:07:26
+# Built:   2015-10-02 10:56:57
 # Target:  Network Install (PXE)
 # OS:      CentOS
 # Machine: Anvil! Node #01
@@ -11,7 +11,7 @@ install
 text
 
 # Installing from Striker 01's PXE server.
-url --url=http://10.20.4.1/c6/x86_64/img/
+url --url=http://10.20.4.1/centos6/x86_64/img/
 
 # Set the language and keyboard type.
 lang en_CA.UTF-8
@@ -101,19 +101,19 @@ echo /sbin/striker/list-ips >> /etc/rc.local
 # Download 'list-ips' from the Striker we're installing from.
 echo "Downloading 'list-ips'."
 mkdir /sbin/striker
-curl http://10.20.4.1/c6/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
+curl http://10.20.4.1/centos6/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
 # Download 'fence_raritan_snmp' from the Striker we're installing from.
 echo "Downloading 'fence_raritan_snmp'."
-curl http://10.20.4.1/c6/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
+curl http://10.20.4.1/centos6/x86_64/img/Tools/fence/fence_raritan_snmp > /usr/sbin/fence_raritan_snmp
 chown root:root /usr/sbin/fence_raritan_snmp
 chmod 755 /usr/sbin/fence_raritan_snmp
 
 # Download 'anvil-map-network' from the Striker we're installing from.
 echo "Downloading 'anvil-map-network'."
-curl http://10.20.4.1/c6/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
+curl http://10.20.4.1/centos6/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
 chown root:root /sbin/striker/hap-map-network
 chmod 755 /sbin/striker/anvil-map-network
 
@@ -127,7 +127,7 @@ sed -i 's/ quiet//' /boot/grub/grub.conf
 cat > /etc/yum.repos.d/striker01.repo << EOF
 [striker01]
 name=Striker 01 Repository
-baseurl=http://10.20.4.1/c6/x86_64/img/
+baseurl=http://10.20.4.1/centos6/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
@@ -137,7 +137,7 @@ EOF
 cat > /etc/yum.repos.d/striker02.repo << EOF
 [striker02]
 name=Striker 02 Repository
-baseurl=http://10.20.4.2/c6/x86_64/img/
+baseurl=http://10.20.4.2/centos6/x86_64/img/
 enabled=1
 gpgcheck=0
 skip_if_unavailable=1
