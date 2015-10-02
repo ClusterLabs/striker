@@ -17,20 +17,19 @@ CREATE TABLE storcli_adapter (
 );
 ALTER TABLE storcli OWNER TO #!variable!user!#;
 
--- Supported Physical Drive Operations
-CREATE TABLE storcli_supported_pd_ops (
-	storcli_supported_pd_ops_id			uuid				primary key,
-	storcli_supported_pd_ops_force_online		boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	storcli_supported_pd_ops_			boolean,
-	
-	modified_date					timestamp with time zone	not null,
+-- Supported Virtual Drive Operations
+CREATE TABLE storcli_supported_vd_ops (
+	storcli_supported_vd_ops_id				uuid				primary key,
+	storcli_supported_vd_ops_read_policy			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	storcli_supported_vd_ops_			boolean,
+	modified_date						timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
@@ -259,6 +258,26 @@ CREATE TABLE storcli_supported_ops (
 	storcli_supported_ops_point_in_time_progress	boolean,
 	storcli_supported_ops_extended_ld		boolean,
 	modified_date					timestamp with time zone	not null,
+
+	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+
+-- Supported Physical Drive Operations
+CREATE TABLE storcli_supported_pd_ops (
+	storcli_supported_pd_ops_id				uuid				primary key,
+	storcli_supported_pd_ops_force_online			boolean,
+	storcli_supported_pd_ops_force_rebuild			boolean,
+	storcli_supported_pd_ops_deny_force_failed		boolean,
+	storcli_supported_pd_ops_deny_force_good_Bad		boolean,
+	storcli_supported_pd_ops_deny_missing_replace		boolean,
+	storcli_supported_pd_ops_deny_clear			boolean,
+	storcli_supported_pd_ops_deny_locate			boolean,
+	storcli_supported_pd_ops_support_power_state		boolean,
+	storcli_supported_pd_ops_set_power_state_for_config	boolean,
+	storcli_supported_pd_ops_support_t10_power_state	boolean,
+	storcli_supported_pd_ops_support_temperature		boolean,
+	storcli_supported_pd_ops_ncq				boolean,
+	modified_date						timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );

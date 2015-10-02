@@ -78,9 +78,11 @@ my $conf =  {
 		echo			=>	"/bin/echo",
 		fence_path		=>	"/usr/sbin",
 		hostname		=>	"/bin/hostname",
+		'kill'			=>	"/bin/kill",
 		ln			=>	"/bin/ln",
 		ls			=>	"/bin/ls",
 		lvs			=>	"/sbin/lvs",
+		pgrep			=>	"/usr/bin/pgrep",
 		safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
 		safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
 		sed			=>	"/bin/sed",
@@ -93,7 +95,7 @@ my $conf =  {
 		debug		=>	0,
 		enabled		=>	0,
 		log_level	=>	1,
-		node2_sleep	=>	120,
+		node2_sleep	=>	60,
 		peer_booted	=>	0,
 	},
 	timeouts	=>	{
@@ -108,6 +110,8 @@ if (not -e $conf->{path}{safe_anvil_start})
 {
 	$conf->{path}{safe_anvil_start} = $0;
 }
+
+# TODO: Exit if another instance is running
 
 read_configuration($conf);
 
@@ -128,15 +132,23 @@ if ($conf->{switches}{start})
 	my $return_code = update_configuration($conf, "enable");
 	exit(0);
 }
+elsif ($conf->{switches}{abort})
+{
+	abort_start($conf);
+	exit(0);
+}
 elsif ($conf->{switches}{enable})
 {
 	# Create the rc3.d symlink
 	create_symlink($conf);
+	exit(0);
 }
 elsif ($conf->{switches}{disable})
 {
+	### TODO: Check the striker.conf and set it to '0' and then kill any running instances.
 	# Delete the rc3.d symlink
 	remove_symlink($conf);
+	exit(0);
 }
 elsif ($conf->{switches}{force})
 {
@@ -145,13 +157,17 @@ elsif ($conf->{switches}{force})
 }
 elsif (not $conf->{tools}{safe_anvil_start}{enabled})
 {
-	#logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
+	logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
 	exit(0);
 }
 else
 {
 	logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
 }
+
+# No matter what, exit if there is another instance running. Print as much if '--force' was used.
+avoid_duplicate_run($conf);
+
 
 read_hostname($conf);
 read_cluster_config($conf);
@@ -206,6 +222,92 @@ exit(0);
 ###############################################################################
 # Here be Functions!                                                          #
 ###############################################################################
+
+# This causes the script to exit if another instance is already running.
+sub avoid_duplicate_run
+{
+	my ($conf) = @_;
+	
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE 2>&1 |";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $pid = $_;
+		logger($conf, $THIS_FILE, __LINE__, "pid: [$pid], my pid: [$$]", 2);
+		if ($pid ne $$)
+		{
+			# Another copy is running, exit.
+			close $file_handle;
+			logger($conf, $THIS_FILE, __LINE__, "PID is different, another instance is running.", 2);
+			if ($conf->{switches}{force})
+			{
+				print "[ Warning ] - The call was forced, but another instance with PID: [$pid] is running.\n";
+				print "[ Notice  ] - If you want to run this instance, kill the other instance first and call it again.\n";
+			}
+			exit(6);
+		}
+	}
+	close $file_handle;
+	
+	return (0);
+}
+
+# This cancels any running start and/or prevents a pending run.
+sub abort_start
+{
+	my ($conf) = @_;
+	
+	my $ok = 1;
+	
+	# First, prevent any pending run from occurring.
+	if (update_configuration($conf, "disable"))
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to set 'tools::safe_anvil_start::enabled = 0' in striker.conf.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Error ]   $THIS_FILE will run next time cron calls it!", 0);
+		print "[ Error ] - Failed to set 'tools::safe_anvil_start::enabled = 0' in striker.conf.\n";
+		print "[ Error ]   $THIS_FILE will run next time cron calls it!\n";
+		my $ok = 0;
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Success ] - Disabled $THIS_FILE from running via cron for this session.", 1);
+	}
+	
+	# Now kill any running process.
+	my $file_handle = IO::Handle->new();
+	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE 2>&1 |";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $pid = $_;
+		logger($conf, $THIS_FILE, __LINE__, "pid: [$pid], my pid: [$$]", 2);
+		if ($pid ne $$)
+		{
+			# Another copy is running, kill it.
+			logger($conf, $THIS_FILE, __LINE__, "[ Notice ] - An existing instance of $THIS_FILE is running with PID: [$pid], killing it.", 0);
+			my $file_handle = IO::Handle->new();
+			my $shell_call  = "$conf->{path}{'kill'} $pid 2>&1 |";
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "line: [$line].", 2);
+			}
+			close $file_handle;
+		}
+	}
+	close $file_handle;
+	
+	
+	return($ok);
+}
 
 # This creates the rc3.d symlink so that this program will be set to run on boot. Exits with '8' if it fails,
 # '0' otherwise.
@@ -2024,6 +2126,14 @@ process.
 
 
 SWITCHES
+
+ --abort
+
+	This kills any running instance of $THIS_FILE.
+	It also prevents it from running again for this session. 
+	
+	NOTE: It does NOT disable $THIS_FILE!
+	      If it was enabled, it will run on the next time the node boots.
 
  --debug
 

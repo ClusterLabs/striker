@@ -29,6 +29,9 @@ package AN::InstallManifest;
 # - Make it easier to identify which node is being worked on when doing things
 #   like managing a node's Storage (ie; <b>Node X</b> in the top right)
 # 
+# - When assembling DRBD, watch syslog for "Sep 28 23:44:34 node2 kernel: block drbd0: The peer's disk size is too small!"
+#   This is likely caused by the replacement machine having a smaller disk.
+# - 
 
 use strict;
 use warnings;
@@ -1266,7 +1269,7 @@ then
 	echo 'safe_anvil_start exits'
 else
 	echo \"Adding 'safe_anvil_start' to root's cron table.\"
-	echo '*/5 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
+	echo '*/1 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];

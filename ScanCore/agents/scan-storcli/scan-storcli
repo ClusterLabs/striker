@@ -931,27 +931,105 @@ sub gather_data
 				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::force_online", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_online}
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		elsif ($line =~ /^Force Rebuild = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_force_rebuild
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_rebuild} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::force_rebuild", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_rebuild}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny Force Failed = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_force_failed
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_failed} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_force_failed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_failed}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny Force Good\/Bad = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_force_good_Bad
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_good_Bad} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_force_good_Bad", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_good_Bad}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny Missing Replace = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_missing_replace
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_missing_replace} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_missing_replace", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_missing_replace}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny Clear = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_clear
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_clear} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_clear", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_clear}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Deny Locate = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_locate
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_locate} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_locate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_locate}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Power State = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_power_state
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_power_state} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_power_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_power_state}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Set Power State For Cfg = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_set_power_state_for_config
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{set_power_state_for_config} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::set_power_state_for_config", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{set_power_state_for_config}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support T10 Power State = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_t10_power_state
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_t10_power_state} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_t10_power_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_t10_power_state}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^Support Temperature = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_temperature
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_temperature} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_temperature", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_temperature}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($line =~ /^NCQ = (.*)?/i)
+		{
+			# storcli_supported_pd_ops -> storcli_supported_pd_ops_ncq
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{ncq} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::ncq", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{ncq}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Supported Virtual Disk Operations
+		elsif ($line =~ /^NCQ = (.*)?/i)
+		{
+			# storcli_supported_vd_ops -> 
+			$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{ncq} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::ncq", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{ncq}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 
 =pod
-
-
-Supported PD Operations :
-=======================
-Force Online = Yes
-Force Offline = Yes
-Force Rebuild = Yes
-Deny Force Failed = No
-Deny Force Good/Bad = No
-Deny Missing Replace = No
-Deny Clear = No
-Deny Locate = No
-Support Power State = Yes
-Set Power State For Cfg = No
-Support T10 Power State = No
-Support Temperature = Yes
-NCQ = No
-
-
 Supported VD Operations :
 =======================
 Read Policy = Yes
