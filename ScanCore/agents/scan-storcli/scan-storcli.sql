@@ -1,34 +1,45 @@
 -- This is the database schema for the 'storcli Scan Agent'.
 
 CREATE TABLE storcli_adapter (
-	storcli_adapter_uuid			uuid				primary key,
-	storcli_adapter_host_uuid		uuid				not null,
-	storcli_adapter_adapter_number		numeric				not null,
-	storcli_adapter_product_name		text				not null,
-	storcli_adapter_serial_number		text				not null,	-- This is the core identifier
-	storcli_adapter_sas_address		text,
-	storcli_adapter_pci_address		text,
-	storcli_adapter_manufacture_date	date,						-- yyyy/mm/dd
-	storcli_adapter_rework_date		date,						-- yyyy/mm/dd
-	storcli_adapter_revision_number		text,
+	storcli_adapter_uuid				uuid				primary key,
+	storcli_adapter_host_uuid			uuid				not null,
+	storcli_adapter_adapter_number			numeric				not null,
+	storcli_adapter_product_name			text				not null,
+	storcli_adapter_serial_number			text				not null,	-- This is the core identifier
+	storcli_adapter_sas_address			text,
+	storcli_adapter_pci_address			text,
+	storcli_adapter_manufacture_date		date,						-- yyyy/mm/dd
+	storcli_adapter_rework_date			date,						-- yyyy/mm/dd
+	storcli_adapter_revision_number			text,
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE storcli OWNER TO #!variable!user!#;
 
--- Supported Virtual Drive Operations
-CREATE TABLE storcli_supported_vd_ops (
-	storcli_supported_vd_ops_id				uuid				primary key,
-	storcli_supported_vd_ops_read_policy			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
-	storcli_supported_vd_ops_			boolean,
+-- Advanced Software Options
+-- TODO: More will be added later
+CREATE TABLE storcli_adapter_adv_sw_opts (
+	storcli_adapter_adv_sw_opts_id			uuid				primary key,
+	storcli_adapter_adv_sw_opts_safe_id		text,
+	storcli_adapter_adv_sw_opts_			boolean,
+	modified_date						timestamp with time zone	not null,
+
+	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+
+-- Hardware Configuration
+CREATE TABLE storcli_adapter_hw_config (
+	storcli_adapter_hw_config_id			uuid				primary key,
+	storcli_adapter_hw_config_chip_revision		text,
+	storcli_adapter_hw_config_battery_fru		text,
+	storcli_adapter_hw_config_external_ports	integer,
+	storcli_adapter_hw_config_internal_ports	integer,
+	storcli_adapter_hw_config_bbu_installed		boolean,
+	storcli_adapter_hw_config_alarm_enabled		boolean,
+	storcli_adapter_hw_config_			boolean,
+	storcli_adapter_hw_config_			boolean,
+	storcli_adapter_hw_config_			boolean,
 	modified_date						timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
@@ -277,6 +288,33 @@ CREATE TABLE storcli_supported_pd_ops (
 	storcli_supported_pd_ops_support_t10_power_state	boolean,
 	storcli_supported_pd_ops_support_temperature		boolean,
 	storcli_supported_pd_ops_ncq				boolean,
+	modified_date						timestamp with time zone	not null,
+
+	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+
+-- Supported Virtual Drive Operations
+CREATE TABLE storcli_supported_vd_ops (
+	storcli_supported_vd_ops_id				uuid				primary key,
+	storcli_supported_vd_ops_read_policy			boolean,
+	storcli_supported_vd_ops_write_policy			boolean,
+	storcli_supported_vd_ops_io_policy			boolean,
+	storcli_supported_vd_ops_access_policy			boolean,
+	storcli_supported_vd_ops_disk_cache_policy		boolean,
+	storcli_supported_vd_ops_reconstruction			boolean,
+	storcli_supported_vd_ops_deny_locate			boolean,
+	storcli_supported_vd_ops_deny_consistency_check		boolean,
+	storcli_supported_vd_ops_allow_controller_encryption	boolean,
+	storcli_supported_vd_ops_enable_ldbbm			boolean,
+	storcli_supported_vd_ops_support_fastpath		boolean,
+	storcli_supported_vd_ops_performance_metrics		boolean,
+	storcli_supported_vd_ops_power_savings			boolean,
+	storcli_supported_vd_ops_powersave_max_with_cache	boolean,
+	storcli_supported_vd_ops_support_breakmirror		boolean,
+	storcli_supported_vd_ops_support_ssc_writeback		boolean,
+	storcli_supported_vd_ops_support_ssc_association	boolean,
+	storcli_supported_vd_ops_support_vd_hide		boolean,
+	storcli_supported_vd_ops_support_vd_hoqrebuid		boolean,
 	modified_date						timestamp with time zone	not null,
 
 	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)

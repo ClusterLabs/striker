@@ -529,6 +529,158 @@ https://alteeve.ca/w/Support
 		<key name="long_storcli_supported_vd_ops_read_policy"></key>
 		<key name="link_storcli_supported_vd_ops_read_policy"></key>
 		
+		<key name="name_storcli_supported_vd_ops_write_policy">Write Policy</key>
+		<key name="info_storcli_supported_vd_ops_write_policy"></key>
+		<key name="long_storcli_supported_vd_ops_write_policy"></key>
+		<key name="link_storcli_supported_vd_ops_write_policy"></key>
+		
+		<key name="name_storcli_supported_vd_ops_io_policy">IO Policy</key>
+		<key name="info_storcli_supported_vd_ops_io_policy"></key>
+		<key name="long_storcli_supported_vd_ops_io_policy"></key>
+		<key name="link_storcli_supported_vd_ops_io_policy"></key>
+		
+		<key name="name_storcli_supported_vd_ops_access_policy">Access Policy</key>
+		<key name="info_storcli_supported_vd_ops_access_policy"></key>
+		<key name="long_storcli_supported_vd_ops_access_policy"></key>
+		<key name="link_storcli_supported_vd_ops_access_policy"></key>
+		
+		<key name="name_storcli_supported_vd_ops_disk_cache_policy">Disk Cache Policy</key>
+		<key name="info_storcli_supported_vd_ops_disk_cache_policy"></key>
+		<key name="long_storcli_supported_vd_ops_disk_cache_policy"></key>
+		<key name="link_storcli_supported_vd_ops_disk_cache_policy"></key>
+		
+		<key name="name_storcli_supported_vd_ops_reconstruction">Reconstruction</key>
+		<key name="info_storcli_supported_vd_ops_reconstruction"></key>
+		<key name="long_storcli_supported_vd_ops_reconstruction"></key>
+		<key name="link_storcli_supported_vd_ops_reconstruction"></key>
+		
+		<key name="name_storcli_supported_vd_ops_deny_locate">Deny Locate</key>
+		<key name="info_storcli_supported_vd_ops_deny_locate"></key>
+		<key name="long_storcli_supported_vd_ops_deny_locate"></key>
+		<key name="link_storcli_supported_vd_ops_deny_locate"></key>
+		
+		<key name="name_storcli_supported_vd_ops_deny_consistency_check">Deny Consistency Check</key>
+		<key name="info_storcli_supported_vd_ops_deny_consistency_check">Deny Consistency Check</key>
+		<key name="long_storcli_supported_vd_ops_deny_consistency_check"></key>
+		<key name="link_storcli_supported_vd_ops_deny_consistency_check"></key>
+		
+		<key name="name_storcli_supported_vd_ops_allow_controller_encryption">Allow Controller Encryption</key>
+		<key name="info_storcli_supported_vd_ops_allow_controller_encryption"></key>
+		<key name="long_storcli_supported_vd_ops_allow_controller_encryption"></key>
+		<key name="link_storcli_supported_vd_ops_allow_controller_encryption"></key>
+		
+		<key name="name_storcli_supported_vd_ops_enable_ldbbm">Enable Logical Drive Bad Block Management</key>
+		<key name="info_storcli_supported_vd_ops_enable_ldbbm"></key>
+		<key name="long_storcli_supported_vd_ops_enable_ldbbm">(unconfirmed, acronym is 'LDBBM')</key>
+		<key name="link_storcli_supported_vd_ops_enable_ldbbm"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_fastpath">Support FastPath</key>
+		<key name="info_storcli_supported_vd_ops_support_fastpath"></key>
+		<key name="long_storcli_supported_vd_ops_support_fastpath"></key>
+		<key name="link_storcli_supported_vd_ops_support_fastpath"></key>
+		
+		<key name="name_storcli_supported_vd_ops_performance_metrics">Performance Metrics</key>
+		<key name="info_storcli_supported_vd_ops_performance_metrics"></key>
+		<key name="long_storcli_supported_vd_ops_performance_metrics"></key>
+		<key name="link_storcli_supported_vd_ops_performance_metrics"></key>
+		
+		<key name="name_storcli_supported_vd_ops_power_savings">Power Savings</key>
+		<key name="info_storcli_supported_vd_ops_power_savings"></key>
+		<key name="long_storcli_supported_vd_ops_power_savings"></key>
+		<key name="link_storcli_supported_vd_ops_power_savings"></key>
+		
+		<key name="name_storcli_supported_vd_ops_powersave_max_with_cache">Support Powersave Max With Cache</key>
+		<key name="info_storcli_supported_vd_ops_powersave_max_with_cache"></key>
+		<key name="long_storcli_supported_vd_ops_powersave_max_with_cache"></key>
+		<key name="link_storcli_supported_vd_ops_powersave_max_with_cache"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_breakmirror">Support Breakmirror</key>
+		<key name="info_storcli_supported_vd_ops_support_breakmirror"></key>
+		<key name="long_storcli_supported_vd_ops_support_breakmirror"></key>
+		<key name="link_storcli_supported_vd_ops_support_breakmirror"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_ssc_writeback">Support SSC WriteBack</key>
+		<key name="info_storcli_supported_vd_ops_support_ssc_writeback"></key>
+		<key name="long_storcli_supported_vd_ops_support_ssc_writeback"></key>
+		<key name="link_storcli_supported_vd_ops_support_ssc_writeback"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_ssc_association">Support SSC Association</key>
+		<key name="info_storcli_supported_vd_ops_support_ssc_association"></key>
+		<key name="long_storcli_supported_vd_ops_support_ssc_association"></key>
+		<key name="link_storcli_supported_vd_ops_support_ssc_association"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_vd_hide">Support VD Hide</key>
+		<key name="info_storcli_supported_vd_ops_support_vd_hide"></key>
+		<key name="long_storcli_supported_vd_ops_support_vd_hide"></key>
+		<key name="link_storcli_supported_vd_ops_support_vd_hide"></key>
+		
+		<key name="name_storcli_supported_vd_ops_support_vd_hoqrebuid">Support VD HOQRebuid</key>
+		<key name="info_storcli_supported_vd_ops_support_vd_hoqrebuid">Support Virtual Disk "Head of Queue" Rebuild</key>
+		<key name="long_storcli_supported_vd_ops_support_vd_hoqrebuid"></key>
+		<key name="link_storcli_supported_vd_ops_support_vd_hoqrebuid">http://www.google.com/patents/US8751861</key>
+		
+		<!-- Advanced Software Options -->
+		<key name="name_storcli_adapter_adv_sw_opts_safe_id">Safe ID</key>
+		<key name="info_storcli_adapter_adv_sw_opts_safe_id"></key>
+		<key name="long_storcli_adapter_adv_sw_opts_safe_id"></key>
+		<key name="link_storcli_adapter_adv_sw_opts_safe_id"></key>
+		
+		<!-- Hardware Configuration -->
+		<key name="name_storcli_adapter_hw_config_chip_revision">Chip Revision</key>
+		<key name="info_storcli_adapter_hw_config_chip_revision"></key>
+		<key name="long_storcli_adapter_hw_config_chip_revision"></key>
+		<key name="link_storcli_adapter_hw_config_chip_revision"></key>
+		
+		<key name="name_storcli_adapter_hw_config_battery_fru">Battery FRU</key>
+		<key name="info_storcli_adapter_hw_config_battery_fru">Battery "Field-Replaceable Unit" Number</key>
+		<key name="long_storcli_adapter_hw_config_battery_fru"></key>
+		<key name="link_storcli_adapter_hw_config_battery_fru">https://en.wikipedia.org/wiki/Field-replaceable_unit</key>
+		
+		<key name="name_storcli_adapter_hw_config_external_ports">External Ports</key>
+		<key name="info_storcli_adapter_hw_config_external_ports">Number of External Ports</key>
+		<key name="long_storcli_adapter_hw_config_external_ports"></key>
+		<key name="link_storcli_adapter_hw_config_external_ports">Called the "Front End Port Count" officially, this indicates how many SAS ports are available for external devices. Generally, a single physical port supports four devices.</key>
+		
+		<key name="name_storcli_adapter_hw_config_internal_ports">Internal Ports</key>
+		<key name="info_storcli_adapter_hw_config_internal_ports">Number of Internal Ports</key>
+		<key name="long_storcli_adapter_hw_config_internal_ports"></key>
+		<key name="link_storcli_adapter_hw_config_internal_ports">Called the "Front End Port Count" officially, this indicates how many SAS ports are available for internal devices. Generally, a single physical port supports four devices.</key>
+		
+		<key name="name_storcli_adapter_hw_config_bbu_installed">BBU/FBU Installed</key>
+		<key name="info_storcli_adapter_hw_config_bbu_installed">Battery-Backup or Flash-Backup Installed</key>
+		<key name="long_storcli_adapter_hw_config_bbu_installed"></key>
+		<key name="link_storcli_adapter_hw_config_bbu_installed"></key>
+		
+		<key name="name_">Alarm Enabled</key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
+		<key name="name_"></key>
+		<key name="info_"></key>
+		<key name="long_"></key>
+		<key name="link_"></key>
+		
 		<key name="name_"></key>
 		<key name="info_"></key>
 		<key name="long_"></key>
