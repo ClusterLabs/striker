@@ -141,13 +141,13 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0062">The node: [#!variable!node!#] is not ready to boot yet.</key>
 		<key name="scancore_log_0063">The node: [#!variable!node!#] was cleanly shut off so it will be left off.</key>
 		<key name="scancore_log_0064">The node: [#!variable!node!#] will not be booted because 'scancore::disable::boot_nodes' is set in [#!data!path::striker_config!#].</key>
-		<key name="scancore_log_0065">#!string!scancore_brand_0001!# has been disabled, exiting. The program will restart automatically within five minutes of being re-enabled.</key>
+		<key name="scancore_log_0065">#!string!scancore_brand_0001!# has been disabled, exiting. The program will restart automatically within one minute of being re-enabled.</key>
 		<key name="scancore_log_0066">#!string!scancore_brand_0001!# has started.</key>
 		<key name="scancore_log_0067">The node: [#!variable!node!#] is set to a timed reboot which has now expired, booting it back up.</key>
 		<key name="scancore_log_0068">The node: [#!variable!node!#] is set to a timed reboot which is: [#!variable!time_left!#] in the future. Leaving it off.</key>
 		<key name="scancore_log_0069">The node: [#!variable!node!#] is off but booting nodes has been disabled via: 'scancore::disable::boot_nodes' in: [#!data!path::striker_config!#] so it will be left off.</key>
 		<key name="scancore_log_0070">#!string!scancore_brand_0001!# invoked with '--force', running regardless of '#!data!path::striker_config!#' setting.</key>
-		<key name="scancore_log_0071">Enabled #!string!scancore_brand_0001!# successfully. It will start within five minutes.</key>
+		<key name="scancore_log_0071">Enabled #!string!scancore_brand_0001!# successfully. It will start within one minute.</key>
 		<key name="scancore_log_0072">Disabled #!string!scancore_brand_0001!# successfully. It will exit within one minute.</key>
 		<key name="scancore_log_0073">The node: [#!variable!node!#] is now on, clearing the 'boot_delayed' alert.</key>
 		<key name="scancore_log_0074">The node: [#!variable!node!#] is now on, clearing the 'scancore::disable::boot_nodes' alert.</key>
@@ -210,6 +210,8 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_warning_0020">This machine has risen above the maximum temperature thresholds. Shutdown will soon begin!</key>
 		<key name="scancore_warning_0021">Shutdown output: [#!variable!line!#]</key>
 		<key name="scancore_warning_0022">Mains power has been lost. Remaining *estimated* hold-up time is: [#!variable!highest_holdup_time!# seconds]. Shutdown will occur when the hold-up time drops below: [#!variable!minimum_ups_runtime!# seconds].</key>
+		<key name="scancore_warning_0023">Failed to read the amount of RAM is being used by: [#!variable!program_name!#]. To be safe, the program will exit at the end of this sweep.</key>
+		<key name="scancore_warning_0024">Exiting because of errors. The reason(s) will be logged above.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
@@ -249,7 +251,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0002">[ #!variable!title!# ] - #!variable!message!#</key>
 		<key name="scancore_message_0003">Another copy of #!string!scancore_brand_0001!# is running, exiting.</key>
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
-		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within five minutes.</key>
+		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within one minute.</key>
 		<key name="scancore_message_0006">#!string!scancore_brand_0001!# has been disabled. It will exit when the next sweep is called.</key>
 		
 		<!-- Tools related to ScanCore will use these strings. -->

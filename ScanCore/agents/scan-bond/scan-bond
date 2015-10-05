@@ -54,7 +54,7 @@ my $an = AN::Tools->new({data =>
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it ScanCore, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
-			log_file		=>	"/var/log/striker.log",
+			log_file		=>	"/var/log/ScanCore.log",
 			#log_file		=>	"/var/log/$THIS_FILE.log",
 			proc_bond		=>	"/proc/net/bonding",
 			sql			=>	"$running_directory/$THIS_FILE.sql",

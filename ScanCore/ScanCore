@@ -19,9 +19,14 @@
 # 10 - Failed to disable ScanCore.
 # 
 # TODO:
-# - Record the hostname to a file and check the current host name with the one
-#   on file. If it differs, update the appropriate 'hosts' table in the DBs
+# - Record the hostname to a file and check the current host name with the one on file. If it differs, update
+#   the appropriate 'hosts' table in the DBs
 # - Have DB.pm return an error code and have ScanCore exit if a query fails.
+# - Move the log path variable to 'ScanCore::path::log_file' so that it can be set by the user. Make this
+#   default for all agents unless '<agent>::path::log_file' is set.
+# - Add a '--status' option to report if it's enabled in striker.conf.
+# - Add a '--restart' option that touches a temp file and, if in a loop that file is found, delete it and 
+#   then exit.
 #         
 # BUG:
 # - 
@@ -53,6 +58,7 @@ my $an = AN::Tools->new({data =>
 	{
 		path		=>	{
 			agents_directory	=>	"$running_directory/agents",
+			'anvil-report-memory'	=>	"/sbin/striker/anvil-report-memory",
 			cp			=>	"/bin/cp",
 			email_directory		=>	"/var/log/alert_emails",
 			fence_agents		=>	"/usr/sbin",
@@ -129,6 +135,9 @@ my $an = AN::Tools->new({data =>
 			# This gets the config ID(s) of any initialized databases.
 			db_initialized		=>	{},
 			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
+			# If the program hits a significant error, this will be set to '1' causing the
+			# program to exit at the end of the sweep.
+			'exit'			=>	0,
 			# This stores the local machine's ScanCore UUID.
 			host_uuid		=>	"",
 			# This gets set to '1' once we know this host is in the DB.
@@ -277,32 +286,12 @@ while(1)
 	# Set the log level in case it was changed in the config file.
 	$an->Log->level($an->data->{scancore}{log_level});
 	
+	# TODO: Calc the md5s of ScanCore's core files and if they change, exit.
 	# Calculate the sum and see if it has changed.
 	#calculate_scancore_sum($an);
 	
-	# Has the user disabled ScanCore?
-	if (not $an->data->{scancore}{enabled})
-	{
-		$an->Log->entry({log_level => 1, message_key => "scancore_log_0065", file => $THIS_FILE, line => __LINE__});
-		my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-		if ($connections)
-		{
-			# Log that we're exiting on being disabled.
-			$an->Alert->register_alert({
-				alert_level		=>	"notice", 
-				alert_agent_name	=>	"$THIS_FILE",
-				alert_title_key		=>	"an_alert_title_0003",
-				alert_message_key	=>	"scancore_log_0065",
-				alert_message_variables	=>	"",
-			});
-			process_alerts($an, 0);
-			$an->DB->disconnect_from_databases();
-		}
-		exit(0);
-	}
-	
-	# TODO: Calc the md5s of ScanCore's core files and if they change, exit when the scan runs at x:x4
-	#       or x:x9 minutes so that it restarts and misses the fewest possible scans.
+	# Did the user disable ScanCore while it was sleeping?
+	exit_if_disabled($an);
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
@@ -373,7 +362,17 @@ while(1)
 		name2 => "----------------------------------------", value2 => "----------------------------------------"
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: change this to lvel 2 before final release.
+	# Did the user disabled ScanCore while the agents were running?
+	exit_if_disabled($an);
+	
+	# Exit if I hit an error.
+	if ($an->data->{sys}{'exit'})
+	{
+		$an->Alert->warning({message_key => "scancore_warning_0024", file => $THIS_FILE, line => __LINE__});
+		exit(0);
+	}
+	
+	### TODO: change this to level 2 before final release.
 	# Sleep.
 	$an->Log->entry({
 		log_level	=>	1,
@@ -396,6 +395,35 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# This exits if the user has disabled ScanCore.
+sub exit_if_disabled
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "exit_if_disabled" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if (not $an->data->{scancore}{enabled})
+	{
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0065", file => $THIS_FILE, line => __LINE__});
+		my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+		if ($connections)
+		{
+			# Log that we're exiting on being disabled.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scancore_log_0065",
+				alert_message_variables	=>	"",
+			});
+			process_alerts($an, 0);
+			$an->DB->disconnect_from_databases();
+		}
+		exit(0);
+	}
+	
+	return(0);
+}
 
 # This updates striker.conf to enable or disable ScanCore.
 sub update_configuration
@@ -4885,50 +4913,28 @@ AND
 	return(0);
 }
 
-# This checks the amount RAM used by ScanCore and exits if it exceeds a
-# scancore::maximum_ram bytes. It looks for any process with our name and sums the
-# RAM used.
+# This checks the amount RAM used by ScanCore and exits if it exceeds a scancore::maximum_ram bytes. It looks
+# for any process with our name and sums the RAM used.
 sub check_ram_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_ram_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Make this ___way___ smarter.
-	# Call PS to get our (and any other duplicate copies of ScanCore) RAM 
-	# usage.
-	my $used_ram   = 0;
-	my $shell_call = $an->data->{path}{ps}." aux 2>&1 |";
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	# Read in how much RAM we're using.
+	my $used_ram = $an->Get->ram_used_by_program({program_name => $an->data->{sys}{program_name}});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "used_ram",              value1 => "$used_ram", 
+		name2 => "scancore::maximum_ram", value2 => $an->data->{scancore}{maximum_ram}
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Exit if I failed to read the amount of RAM in use.
+	if (not $used_ram)
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> line", value1 => "$line"
+		$an->Alert->warning({message_key => "scancore_warning_0023", message_variables => {
+			program_name	=>	$an->data->{sys}{program_name},
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		next if $line !~ /$THIS_FILE/;
-		next if $line =~ /grep $THIS_FILE/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Dig out the PID
-		my $pid        =  ($line =~ /^.*?\s(\d+)\s/)[0];
-		my ($pids_ram) =  $an->Get->get_ram_used_by_pid({pid => $pid});
-		   $used_ram   += $pids_ram;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "pid",                   value1 => "$pid", 
-			name2 => "pids_ram",              value2 => "$pids_ram", 
-			name3 => "used_ram",              value3 => "$used_ram", 
-			name4 => "scancore::maximum_ram", value4 => $an->data->{scancore}{maximum_ram}
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->data->{sys}{'exit'} = 1;
 	}
-	close $file_handle;
 	
 	# Records the RAM used.
 	my $query = "
@@ -4941,7 +4947,7 @@ WHERE
 AND
     ram_used_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $ram_used_bytes = $an->DB->do_db_query({query => $query})->[0]->[0];	# (->[row]->[column])

@@ -1,0 +1,188 @@
+#!/usr/bin/perl
+# 
+# This reports the total memory used by all processes with to passed-in program name.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 1  - No program name passed-in.
+# 2  - No PIDs found for the passed-in program name.
+# 3  - None PID returned by pgrep
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+my $THIS_FILE = ($0 =~ /^.*\/(.*)$/)[0];
+
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			log_file	=>	"/var/log/striker.log",
+			pgrep		=>	"/usr/bin/pgrep",
+			smaps		=>	"/proc/#!pid!#/smaps",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		memory		=>	{
+			total		=>	0,
+		},
+		sys		=>	{
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+			pids		=>	[],
+			program		=>	"ScanCore",
+		},
+	},
+});
+
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+# Exit if no program name given.
+if (not $an->data->{switches}{program})
+{
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arm_error_0001", code => 2, file => "$THIS_FILE", line => __LINE__});
+}
+
+$an->Log->entry({log_level => 2, message_key => "arm_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+get_pids($an);
+
+read_smaps($an);
+
+my $hr_size = $an->Readable->bytes_to_hr({'bytes' => $an->data->{memory}{total}});
+$an->Log->entry({log_level => 2, message_key => "arm_log_0002", message_variables => {
+	program_name	=>	$an->data->{switches}{program}, 
+	'bytes'		=>	$an->data->{memory}{total},
+	hr_size		=>	$hr_size,
+}, file => $THIS_FILE, line => __LINE__});
+print $an->data->{switches}{program}." = ".$an->data->{memory}{total}." # $hr_size\n";
+# Find all PIDs using 
+# for PID in $(pgrep Scanner); do awk '$1 == "Private_Dirty:" {sum+=$2}END{print sum}' /proc/$PID/smaps; done | awk '{sum += $1} END {print sum " KB"}' | grep -v '0 kB'
+
+exit(0);
+
+# This reads in smaps for each PID and sums the total 'Private_Dirty' memory used.
+sub read_smaps
+{
+	my ($an) = @_;
+	
+	foreach my $pid (@{$an->data->{sys}{pids}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pid", value1 => $pid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $smaps_file =  $an->data->{path}{smaps};
+		   $smaps_file =~ s/#!pid!#/$pid/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "smaps_file", value1 => $smaps_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not -e $smaps_file)
+		{
+			# warning, it is possible that the program just closed.
+			$an->Alert->warning({message_key => "arm_warning_0001", message_variables => {
+				pid	=>	$pid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Read it in.
+			$an->data->{memory}{pid}{$pid} = 0;
+			my $shell_call = $smaps_file;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /^Private_Dirty:\s+(\d+) (.*B)$/)
+				{
+					my $size = $1;
+					my $type = $2;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "size", value1 => $size, 
+						name2 => "type", value2 => $type, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next if not $size;
+					
+					# This uses 'kB' for 'KiB' >_>
+					$type =  lc($type);
+					$type =~ s/b$/ib/ if $type !~ /ib$/;
+					
+					my $size_in_bytes = $an->Readable->hr_to_bytes({size => $size, type => $type});
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "size_in_bytes", value1 => $size_in_bytes, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{memory}{pid}{$pid} += $size_in_bytes;
+					$an->data->{memory}{total}     += $size_in_bytes;
+				}
+			}
+			close $file_handle;
+		}
+	}
+	
+	return(0);
+}
+
+# This looks for all PIDs for the given program name and stores them in a the $an->data->{sys}{pids} array
+# reference.
+sub get_pids
+{
+	my ($an) = @_;
+	
+	my $shell_call = $an->data->{path}{pgrep}." ".$an->data->{switches}{program};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /\D/)
+		{
+			# WTF?
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arm_error_0002", message_variables => {
+				program		=>	$an->data->{switches}{program},
+				line		=>	$line
+			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+		}
+		else
+		{
+			push @{$an->data->{sys}{pids}}, $line;
+		}
+	}
+	close $file_handle;
+	
+	return(0);
+}

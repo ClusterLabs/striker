@@ -1261,7 +1261,7 @@ then
 	echo 'ScanCore exits'
 else
 	echo \"Adding ScanCore to root's cron table.\"
-	echo '*/5 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
+	echo '*/1 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q safe_anvil_start $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
@@ -1277,7 +1277,7 @@ then
 	echo 'anvil-kick-apc-ups exits'
 else
 	echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
-	echo '*/2 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
+	echo '*/1 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
 fi
 ";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: \n====\n$shell_call\n====\n");

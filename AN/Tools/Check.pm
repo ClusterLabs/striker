@@ -34,6 +34,62 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This pings the target (hostname or IP) and if it can be reached, it returns '0'. If it can't be reached, it
+# returns '1'.
+sub ping
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "AN::Tools::Check->ping()" }, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $parameter->{target})
+	{
+		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0003", file => "$THIS_FILE", line => __LINE__});
+		return(2);
+	}
+	my $target = $parameter->{target};
+	my $count  = $parameter->{count} ? $parameter->{count} : 1;
+	
+	my $return_code = 0;
+	my $shell_call  = $an->data->{path}{'ping'}." -n $target -c $count";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
+		{
+			# This isn't really needed, but might help folks watching the logs.
+			my $pings_sent     = $1;
+			my $pings_received = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "pings_sent",     value1 => $pings_sent, 
+				name2 => "pings_received", value2 => $pings_received, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $pings_received)
+			{
+				$return_code = 1;
+			}
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
 # This private method is called my AN::Tools' constructor at startup and checks
 # the underlying OS and sets any internal variables as needed. It takes no
 # arguments and simply returns '1' when complete.

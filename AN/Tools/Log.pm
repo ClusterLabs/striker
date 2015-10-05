@@ -119,8 +119,7 @@ sub entry
 		#}
 	}
 	
-	# Return if the log level of the message is less than the current
-	# system log level.
+	# Return if the log level of the message is less than the current system log level.
 	return(1) if $log_level > $an->Log->level;
 	
 	# Get the current data and time.

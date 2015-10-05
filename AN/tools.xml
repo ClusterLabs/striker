@@ -364,6 +364,8 @@ Variables:
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>
 		<key name="warning_title_0002">Unknown Environment</key>
+		<key name="warning_title_0003">AN::Tools::Check->ping() called without a target being specified.</key>
+		<key name="warning_title_0004">Missing argument</key>
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>

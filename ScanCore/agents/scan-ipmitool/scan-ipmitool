@@ -67,7 +67,7 @@ my $an = AN::Tools->new({data =>
 			# database. If you change this here, change it ScanCore, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
 			ipmitool		=>	"/usr/bin/ipmitool",
-			log_file		=>	"/var/log/striker.log",
+			log_file		=>	"/var/log/ScanCore.log",
 			node_cache		=>	"/var/www/home/cache", 
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
@@ -199,6 +199,14 @@ sub find_changes
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "machine", value1 => $machine, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Was it accessible?
+		if (not $an->data->{ipmi}{$machine}{access})
+		{
+			### TODO: Check if access was lost and if so, record it in the DB if it was 
+			###       accessible last time.
+		}
+		
 		# This returns the number of read sensors already in the DB for this machine recorded by us 
 		# previously.
 		if (read_last_scan($an, $machine))
@@ -2179,6 +2187,25 @@ sub query_ipmi_targets
 	
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
 	{
+		# Now, make sure I can ping the targets I found.
+		if ($an->Check->ping({target => $machine}))
+		{
+			# Can't ping it.
+			$an->data->{ipmi}{$machine}{access} = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmi::${machine}::access", value1 => $an->data->{ipmi}{$machine}{access},
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		else
+		{
+			# Pinged it!
+			$an->data->{ipmi}{$machine}{access} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmi::${machine}::access", value1 => $an->data->{ipmi}{$machine}{access},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
 		my $ipmitool_command = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmitool_command};
 		my $ipmi_password    = $an->data->{'scan-ipmitool'}{machine}{$machine}{ipmi_password};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -2268,8 +2295,7 @@ sub query_ipmi_targets
 			$units = "W" if $units =~ /watt/i;
 			$units = "V" if $units =~ /volt/i;
 			
-			# Values in the DB that are 'double precision' must be
-			# 'NULL' if not set.
+			# Values in the DB that are 'double precision' must be 'NULL' if not set.
 			$current_value = 'NULL' if not $current_value;
 			$low_fail      = 'NULL' if not $low_fail;
 			$low_critical  = 'NULL' if not $low_critical;
@@ -2317,10 +2343,8 @@ sub query_ipmi_targets
 				name7 => "ipmi::${machine}::ipmitool_sensor_name::${sensor_name}::ipmitool_sensor_low_warning",   value7 => $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$sensor_name}{ipmitool_sensor_low_warning}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# If this is a temperature, check to see if it is 
-			# outside it's nominal range and, if so, record it into
-			# a hash for loading into ScanCore's 'temperature' 
-			# table.
+			# If this is a temperature, check to see if it is outside it's nominal range and, if
+			# so, record it into a hash for loading into ScanCore's 'temperature' table.
 			if ($units eq "C")
 			{
 				log_abnormal_temperatures($an, $machine, $sensor_name);

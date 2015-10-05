@@ -161,8 +161,10 @@ sub new
 	}
 	
 	# Set some system paths
+	$an->data->{path}{echo}     = "/bin/echo";
 	$an->data->{path}{hostname} = "/etc/sysconfig/network";
 	$an->data->{path}{pg_dump}  = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}   = "/bin/ping",
 	$an->data->{path}{pgrep}    = "/usr/bin/pgrep";
 	$an->data->{path}{psql}     = "/usr/bin/psql";
 	$an->data->{path}{pmap}     = "/usr/bin/pmap";
