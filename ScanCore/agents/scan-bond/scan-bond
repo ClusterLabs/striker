@@ -22,10 +22,6 @@
 # - If the 'ifn_bond1' interface goes to MII state 'down', try to ping the peer
 #   on the BCN and, if successful, start migrating the VMs off.
 
-# Determine this file name.
-my $THIS_FILE =  $0;
-   $THIS_FILE =~ s/^.*\///;
-
 # Use my modules.
 use strict;
 use warnings;
@@ -35,9 +31,9 @@ use Data::Dumper;
 # Disable buffering.
 $| = 1;
 
-# This allows our XML and SQL files to be found, even if the path the program
-# is in changes.
-my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	$running_directory =~ s/^\./$ENV{PWD}/;
@@ -54,8 +50,6 @@ my $an = AN::Tools->new({data =>
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it ScanCore, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
-			log_file		=>	"/var/log/ScanCore.log",
-			#log_file		=>	"/var/log/$THIS_FILE.log",
 			proc_bond		=>	"/proc/net/bonding",
 			sql			=>	"$running_directory/$THIS_FILE.sql",
 			striker_config		=>	"/etc/striker/striker.conf",
@@ -64,9 +58,10 @@ my $an = AN::Tools->new({data =>
 		},
 		# This is used so that the user can set the language in on
 		# striker.conf variable.
-		scancore		=>	{
+		'scan-bond'		=>	{
 			language		=>	"en_CA",
-			log_level		=>	2,
+			log_file		=>	"/var/log/ScanCore.log",
+			log_level		=>	1,
 			log_language		=>	"en_CA",
 		},
 		sql		=>	{
@@ -79,16 +74,16 @@ my $an = AN::Tools->new({data =>
 	}
 });
 
-# Set some defaults
-$an->default_language    ($an->data->{scancore}{language});
-$an->default_log_language($an->data->{scancore}{log_language});
-$an->default_log_file    ($an->data->{path}{log_file});
-
-# Read my stuff
+# Read the config file
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 
+# Set some defaults
+$an->default_language    ($an->data->{'scan-bond'}{language});
+$an->default_log_language($an->data->{'scan-bond'}{log_language});
+$an->default_log_file    ($an->data->{'scan-bond'}{log_file});
+
 # Set the log level.
-$an->Log->level($an->data->{scancore}{log_level});
+$an->Log->level($an->data->{'scan-bond'}{log_level});
 
 # Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});
@@ -2685,7 +2680,7 @@ sub get_switches
 			},
 			file		=>	$THIS_FILE,
 			line		=>	__LINE__,
-			log_to		=>	$an->data->{path}{log_file},
+			log_to		=>	$an->data->{'scan-bond'}{log_file},
 		});
 	}
 	

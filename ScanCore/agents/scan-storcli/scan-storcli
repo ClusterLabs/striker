@@ -16,10 +16,6 @@
 
 exit(0);
 
-# Determine this file name.
-my $THIS_FILE =  $0;
-   $THIS_FILE =~ s/^.*\///;
-
 # Use my modules.
 use strict;
 use warnings;
@@ -32,9 +28,9 @@ use Socket;
 # Disable buffering.
 $| = 1;
 
-# This allows our XML and SQL files to be found, even if the path the program
-# is in changes.
-my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	$running_directory =~ s/^\./$ENV{PWD}/;
@@ -50,7 +46,6 @@ my $an = AN::Tools->new({data =>
 			# database. If you change this here, change it ScanCore, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
 			ipmitool		=>	"/usr/bin/ipmitool",
-			log_file		=>	"/var/log/ScanCore.log",
 			storcli			=>	"/sbin/storcli64",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
@@ -58,10 +53,11 @@ my $an = AN::Tools->new({data =>
 		},
 		# This is used so that the user can set the language in on
 		# striker.conf variable.
-		scancore		=>	{
+		'scan-storcli'		=>	{
 			language		=>	"en_CA",
-			log_level			=>	2,
-			log_language			=>	"en_CA",
+			log_level		=>	1,
+			log_language		=>	"en_CA",
+			log_file		=>	"/var/log/ScanCore.log",
 		},
 		section			=>	{
 			controller			=>	{
@@ -103,16 +99,16 @@ my $an = AN::Tools->new({data =>
 	},
 });
 
-# Set some defaults
-$an->default_language    ($an->data->{scancore}{language});
-$an->default_log_language($an->data->{scancore}{log_language});
-$an->default_log_file    ($an->data->{path}{log_file});
-
-# Read my stuff
+# Read the config file
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 
+# Set some defaults
+$an->default_language    ($an->data->{'scan-storcli'}{language});
+$an->default_log_language($an->data->{'scan-storcli'}{log_language});
+$an->default_log_file    ($an->data->{'scan-storcli'}{log_file});
+
 # Set the log level.
-$an->Log->level($an->data->{scancore}{log_level});
+$an->Log->level($an->data->{'scan-storcli'}{log_level});
 
 # Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});
@@ -2092,8 +2088,8 @@ sub get_switches
 			},
 			file		=>	$THIS_FILE,
 			line		=>	__LINE__,
-			language	=>	$an->data->{scancore}{log_language},
-			log_to		=>	$an->data->{path}{log_file},
+			language	=>	$an->data->{'scan-storcli'}{log_language},
+			log_to		=>	$an->data->{'scan-storcli'}{log_file},
 		});
 	}
 	

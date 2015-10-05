@@ -19,9 +19,9 @@ use warnings;
 use IO::Handle;
 use AN::Tools;
 
-my $THIS_FILE = ($0 =~ /^.*\/(.*)$/)[0];
-
-my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	        $running_directory =~ s/^\./$ENV{PWD}/;
@@ -77,8 +77,6 @@ $an->Log->entry({log_level => 2, message_key => "arm_log_0002", message_variable
 	hr_size		=>	$hr_size,
 }, file => $THIS_FILE, line => __LINE__});
 print $an->data->{switches}{program}." = ".$an->data->{memory}{total}." # $hr_size\n";
-# Find all PIDs using 
-# for PID in $(pgrep Scanner); do awk '$1 == "Private_Dirty:" {sum+=$2}END{print sum}' /proc/$PID/smaps; done | awk '{sum += $1} END {print sum " KB"}' | grep -v '0 kB'
 
 exit(0);
 

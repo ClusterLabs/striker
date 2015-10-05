@@ -157,7 +157,7 @@ elsif ($conf->{switches}{force})
 }
 elsif (not $conf->{tools}{safe_anvil_start}{enabled})
 {
-	logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
+	#logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
 	exit(0);
 }
 else

@@ -13,8 +13,7 @@ sub new
 	#print "$THIS_FILE ".__LINE__."; In AN::Check->new()\n";
 	my $class = shift;
 	
-	my $self  = {
-	};
+	my $self  = {};
 	
 	bless $self, $class;
 	
@@ -43,7 +42,7 @@ sub ping
 	my $an        = $self->parent;
 	
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "AN::Tools::Check->ping()" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "AN::Tools::Check->ping()" }, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $parameter->{target})
 	{
@@ -63,7 +62,7 @@ sub ping
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
@@ -71,7 +70,7 @@ sub ping
 			# This isn't really needed, but might help folks watching the logs.
 			my $pings_sent     = $1;
 			my $pings_received = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "pings_sent",     value1 => $pings_sent, 
 				name2 => "pings_received", value2 => $pings_received, 
 			}, file => $THIS_FILE, line => __LINE__});

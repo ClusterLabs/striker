@@ -224,7 +224,6 @@ sub read_conf
 	
 	my $file;
 	my $hash = $an->data;
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 	
 	# This is/was for testing.
 	if (0)
@@ -234,8 +233,7 @@ sub read_conf
 		exit;
 	}
 	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
+	# Now see if the user passed the values in a hash reference or directly.
 	if (ref($param) eq "HASH")
 	{
 		# Values passed in a hash, good.
@@ -248,27 +246,20 @@ sub read_conf
 		$file = $param;
 		$hash = $_[0] if defined $_[0];
 	}
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash], file: [$file]\n";
 	
 	# Make sure I have a sane file name.
-	#print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
 	if ($file)
 	{
 		# Find it relative to the AN::Tools root directory.
-		#print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
 		if ($file =~ /^AN::Tools/)
 		{
 			my $dir =  $INC{'AN/Tools.pm'};
-			#print "$THIS_FILE ".__LINE__."; dir: [$dir], file: [$file]<br />\n";
 			$dir    =~ s/Tools.pm//;
 			$file   =~ s/AN::Tools\//$dir/;
 			$file   =~ s/\/\//\//g;
-			#print "$THIS_FILE ".__LINE__."; dir: [$dir], file: [$file]<br />\n";
 		}
 		
-		# I have a file. Is it relative to the install dir or fully
-		# qualified?
-		#print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
+		# I have a file. Is it relative to the install dir or fully qualified?
 		if (($file =~ /^\.\//) || ($file !~ /^\//))
 		{
 			# It's in or relative to this directory.
@@ -276,15 +267,11 @@ sub read_conf
 			{
 				# Can expand using the environment variable.
 				$file =~ s/^\./$ENV{PWD}/;
-				#print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
 			}
 			else
 			{
-				# No environmnet variable, search the array of
-				# directories.
-				#print "$THIS_FILE ".__LINE__."; Searching for file: [$file]<br />\n";
+				# No environmnet variable, search the array of directories.
 				$file = $an->Storage->find({fatal=>1, file=>$file});
-				#print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
 			}
 		}
 	}
@@ -293,14 +280,12 @@ sub read_conf
 		# No file at all...
 		die "$THIS_FILE ".__LINE__."; [ Error ] - No file was passed in to read.\n";
 	}
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash], file: [$file]\n";
 	
 	# Now that I have a file, read it.
 	$an->_load_io_handle() if not $an->_io_handle_loaded();
 	my $read = IO::Handle->new();
 	
 	# Is it too early to use "$an->error"?
-	#print "$THIS_FILE ".__LINE__."; Reading file: [$file]\n";
 	open ($read, "<$file") or die "Can't read: [$file], error was: $!\n";
 	while (<$read>)
 	{
@@ -314,7 +299,11 @@ sub read_conf
 		$variable =~ s/\s+$//;
 		$value    =~ s/^\s+//;
 		next if not $variable;
-		#print "$THIS_FILE ".__LINE__."; variable: [$variable]\t->\t[$value]\n";
+		
+		# If the variable has '#!hostname!#' or '#!short_hostname!#', convert it now.
+		$variable =~ s/#!hostname!#/$an->hostname/g;
+		$variable =~ s/#!short_hostname!#/$an->short_hostname/g;
+		
 		$an->_make_hash_reference($hash, $variable, $value);
 	}
 	$read->close();

@@ -22,8 +22,6 @@
 # - Record the hostname to a file and check the current host name with the one on file. If it differs, update
 #   the appropriate 'hosts' table in the DBs
 # - Have DB.pm return an error code and have ScanCore exit if a query fails.
-# - Move the log path variable to 'ScanCore::path::log_file' so that it can be set by the user. Make this
-#   default for all agents unless '<agent>::path::log_file' is set.
 # - Add a '--status' option to report if it's enabled in striker.conf.
 # - Add a '--restart' option that touches a temp file and, if in a loop that file is found, delete it and 
 #   then exit.
@@ -31,10 +29,6 @@
 # BUG:
 # - 
 #       
-
-# Determine this file name.
-my $THIS_FILE =  $0;
-   $THIS_FILE =~ s/^.*\///;
 
 # Use my modules.
 use strict;
@@ -45,9 +39,9 @@ use Data::Dumper;
 # Disable buffering.
 $| = 1;
 
-# This allows our XML and SQL files to be found, even if the path the program
-# is in changes.
-my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	$running_directory =~ s/^\./$ENV{PWD}/;
@@ -72,7 +66,6 @@ my $an = AN::Tools->new({data =>
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it in the agents, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
-			log_file		=>	"/var/log/ScanCore.log",
 			mailx			=>	"/bin/mailx",
 			# This is the path to Striker's cache directory. It is
 			# used by striker dashboards when they want to reboot a
@@ -104,9 +97,10 @@ my $an = AN::Tools->new({data =>
 			# This gets set to 'dashboard' if we determine this is a dashboard machine.
 			i_am_a			=>	"",
 			language		=>	"en_CA",
-			log_level		=>	2,
+			log_file		=>	"/var/log/ScanCore.log",
+			log_level		=>	1,
 			log_language		=>	"en_CA",
-			maximum_ram		=>	(512 * 1048576),
+			maximum_ram		=>	(128 * 1048576),
 			# When both/all UPSes powering a node switch to batteries, their remaining hold-up 
 			# time will be checked and the strongest will be compared against this value. If the
 			# remaining runtime of the strongest ups is below this time, 'safe_anvil_shutdown' 
@@ -158,13 +152,13 @@ my $an = AN::Tools->new({data =>
 	}
 });
 
+# Read the config file
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
 $an->default_log_language($an->data->{scancore}{log_language});
-$an->default_log_file    ($an->data->{path}{log_file});
-
-# Read my stuff
-$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->default_log_file    ($an->data->{scancore}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{scancore}{log_level});
@@ -266,7 +260,7 @@ $an->Log->entry({
 	message_key	=>	"scancore_log_0011",	# Entering the scan loop
 	file		=>	$THIS_FILE,
 	line		=>	__LINE__,
-	log_to		=>	$an->data->{path}{log_file},
+	log_to		=>	$an->data->{scancore}{log_file},
 });
 
 # Disconnect from databases... We'll reconnect inside the loop.
@@ -384,7 +378,7 @@ while(1)
 		},
 		file		=>	$THIS_FILE,
 		line		=>	__LINE__,
-		log_to		=>	$an->data->{path}{log_file},
+		log_to		=>	$an->data->{scancore}{log_file},
 	});
 	sleep $an->data->{scancore}{sleep_time};
 }
@@ -498,19 +492,15 @@ sub do_post_scan_checks
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_checks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# What we do here strongly depends on whether we're a node or a
-	# dashboard. 
+	# What we do here strongly depends on whether we're a node or a dashboard. 
 	# 
-	# If we're a node, we will withdraw and shut down if the UPS power is 
-	# depleted past a certain point or if temperatures go outside 
-	# acceptible ranges. If any sensor diviates, we set our "sick" flag and
+	# If we're a node, we will withdraw and shut down if the UPS power is depleted past a certain point
+	# or if temperatures go outside acceptible ranges. If any sensor diviates, we set our "sick" flag and
 	# ensure it's clear if we're A-OK.
 	# 
-	# If this is a dashboard, we never shutdown. Instead, we will watch the
-	# nodes configured in our /etc/striker/striker.conf and if they're 
-	# offline and the host shut itself down, we'll watch the UPSes and
-	# temperature sensors. If/when things are good, we'll boot the nodes
-	# back up.
+	# If this is a dashboard, we never shutdown. Instead, we will watch the nodes configured in our 
+	# /etc/striker/striker.conf and if they're offline and the host shut itself down, we'll watch the
+	# UPSes and temperature sensors. If/when things are good, we'll boot the nodes back up.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::i_am_a", value1 => $an->data->{scancore}{i_am_a}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2452,16 +2442,6 @@ sub record_alert_to_file
 		name3 => "level",    value3 => $level, 
 		name4 => "units",    value4 => $units, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If the file name has '#!hostname!#' in it, replace it with this machine's host name.
-	if ($file =~ /#!hostname!#/)
-	{
-		my $hostname =  $an->hostname;
-		   $file     =~ s/#!hostname!#/$hostname/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "file",     value1 => $file, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	
 	# Convert the user's log level to a numeric number for easier comparison.
 	$level = $an->Alert->convert_level_name_to_number({level => $level});
