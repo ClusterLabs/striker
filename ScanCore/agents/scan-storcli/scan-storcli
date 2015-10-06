@@ -1651,6 +1651,14 @@ sub gather_data
 	elsif ($line =~ /^Alarm = (.*)?/i)
 	{
 		# storcli_adapter_hw_config -> storcli_adapter_hw_config_alarm_enabled
+		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed} = $1 =~ /On/i ? "TRUE" : "FALSE";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::bbu_installed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Serial Debugger = (.*)?/i)
+	{
+		# storcli_adapter_hw_config -> storcli_adapter_hw_config_alarm_enabled
 		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed} = $1 =~ /Present/i ? "TRUE" : "FALSE";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::bbu_installed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed}
@@ -1659,7 +1667,6 @@ sub gather_data
 =pod
 HwCfg :
 =====
-Alarm = Disable
 Serial Debugger = Present
 NVRAM Size = 32KB
 Flash Size = 16MB

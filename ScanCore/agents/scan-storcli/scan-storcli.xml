@@ -651,15 +651,15 @@ https://alteeve.ca/w/Support
 		<key name="long_storcli_adapter_hw_config_bbu_installed"></key>
 		<key name="link_storcli_adapter_hw_config_bbu_installed"></key>
 		
-		<key name="name_">Alarm Enabled</key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
+		<key name="name_storcli_adapter_hw_config_alarm_enabled">Alarm Enabled</key>
+		<key name="info_storcli_adapter_hw_config_alarm_enabled"></key>
+		<key name="long_storcli_adapter_hw_config_alarm_enabled"></key>
+		<key name="link_storcli_adapter_hw_config_alarm_enabled"></key>
 		
-		<key name="name_"></key>
-		<key name="info_"></key>
-		<key name="long_"></key>
-		<key name="link_"></key>
+		<key name="name_storcli_adapter_hw_config_serial_debugger">Serial Debugger</key>
+		<key name="info_storcli_adapter_hw_config_serial_debugger"></key>
+		<key name="long_storcli_adapter_hw_config_serial_debugger"></key>
+		<key name="link_storcli_adapter_hw_config_serial_debugger"></key>
 		
 		<key name="name_"></key>
 		<key name="info_"></key>

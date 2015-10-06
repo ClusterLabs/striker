@@ -37,7 +37,7 @@ CREATE TABLE storcli_adapter_hw_config (
 	storcli_adapter_hw_config_internal_ports	integer,
 	storcli_adapter_hw_config_bbu_installed		boolean,
 	storcli_adapter_hw_config_alarm_enabled		boolean,
-	storcli_adapter_hw_config_			boolean,
+	storcli_adapter_hw_config_serial_debugger	boolean,
 	storcli_adapter_hw_config_			boolean,
 	storcli_adapter_hw_config_			boolean,
 	modified_date						timestamp with time zone	not null,

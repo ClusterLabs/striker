@@ -2692,14 +2692,13 @@ sub change_vm
 				}
 				if ($in_os)
 				{
+					my $boot_menu_exists = 0;
 					if ($line =~ /<\/os>/)
 					{
 						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], exiting the OS block.\n");
 						$in_os          =  0;
-						# Write out the new list of 
-						# boot devices. Start with the
-						# requested boot device and 
-						# then loop through the rest.
+						# Write out the new list of boot devices. Start with the
+						# requested boot device and then loop through the rest.
 						$new_definition .= "    <boot dev='$requested_boot_device'/>\n";
 						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding initiall boot device: [$requested_boot_device]\n");
 						foreach my $device (split /,/, $conf->{vm}{$vm}{available_boot_devices})
@@ -2709,9 +2708,20 @@ sub change_vm
 							#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding device: [$device] to boot list\n");
 						}
 						
+						# Cap off with the command to enable the boot prompt
+						if (not $boot_menu_exists)
+						{
+							$new_definition .= "    <bootmenu enable='yes'/>\n";
+						}
+						
 						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], Adding line: [$line].\n");
 						$new_definition .= "$line\n";
 						next;
+					}
+					elsif ($line =~ /<bootmenu enable=/)
+					{
+						$new_definition   .= "$line\n";
+						$boot_menu_exists =  1;
 					}
 					elsif ($line !~ /<boot dev/)
 					{
@@ -3110,11 +3120,10 @@ sub manage_vm
 {
 	my ($conf) = @_;
 	
-	# I need to get a list of the running VM's resource/media, read the
-	# VM's current XML if it's up, otherwise read the stored XML, read the
-	# available ISOs and then display everything in a form. If the user
-	# submits the form and something is different, re-write the stored 
-	# config and, if possible, make the required changes immediately.
+	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
+	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
+	# the user submits the form and something is different, re-write the stored config and, if possible,
+	# make the required changes immediately.
 	my $cluster         = $conf->{cgi}{cluster};
 	my $vm              = $conf->{cgi}{vm};
 	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
@@ -3184,8 +3193,7 @@ sub manage_vm
 		read_vm_definition($conf, $node, $vm);
 	}
 	
-	# Find the list of bootable devices and present them in a selection
-	# box.
+	# Find the list of bootable devices and present them in a selection box.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	$conf->{vm}{$vm}{current_boot_device}    = "";
@@ -3267,8 +3275,7 @@ sub manage_vm
 	$boot_select .= "</select>";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	
-	# If I need to change the number of CPUs or the amount of RAM, do so
-	# now.
+	# If I need to change the number of CPUs or the amount of RAM, do so now.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
 	if ($conf->{cgi}{change})
 	{
@@ -3398,6 +3405,11 @@ sub manage_vm
 				$this_media = $1;
 				$this_media =~ s/^.*\/(.*?)$/$1/;
 			}
+			elsif ($line =~ /source dev='(.*?)'/)
+			{
+				$this_media = $1;
+				$this_media =~ s/^.*\/(.*?)$/$1/;
+			}
 			elsif ($line =~ /target dev='(.*?)'/)
 			{
 				$this_device = $1;
@@ -3413,12 +3425,11 @@ sub manage_vm
 	# Create the media select boxes.
 	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
 	{
-		my $key                                      =  "media_$device";
-		$conf->{vm}{$vm}{cdrom}{device_keys}         .= "$key,";
+		my $key                                 =  "media_$device";
+		   $conf->{vm}{$vm}{cdrom}{device_keys} .= "$key,";
 		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
 		{
-			### TODO: If the media no longer exists, re-write the
-			###       XML definition immediately.
+			### TODO: If the media no longer exists, re-write the XML definition immediately.
 			# Offer the eject button.
 			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\" disabled>\n";
 			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"fixed_width\">$conf->{vm}{$vm}{cdrom}{$device}{media}</span>\n";
@@ -3494,8 +3505,8 @@ sub manage_vm
 	my $max_ram       = $available_ram;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
 	
-	# If the user sets the RAM to less than 1 GiB, warn them. If the user
-	# sets the RAM to less that 32 MiB, error out.
+	# If the user sets the RAM to less than 1 GiB, warn them. If the user sets the RAM to less that 32 
+	# MiB, error out.
 	my $say_max_ram          = AN::Cluster::bytes_to_hr($conf, $max_ram);
 	my $say_current_ram      = AN::Cluster::bytes_to_hr($conf, $current_ram);
 	my ($current_ram_value, $current_ram_suffix) = (split/ /, $say_current_ram);
@@ -3627,12 +3638,12 @@ sub manage_vm
 		next if $device eq "device_keys";
 		my $say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_select};
 		my $say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_insert};
-		my $say_state  = "Drive empty";
+		my $say_state  = "#!string!state_0124!#";
 		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
 		{
 			$say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_in_drive};
 			$say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_eject};
-			$say_state  = "Disc in drive";
+			$say_state  = "#!string!state_0125!#";
 		}
 		my $say_optical_drive = AN::Common::get_string($conf, {key => "device_0003", variables => {
 				drive_number	=>	$i,
