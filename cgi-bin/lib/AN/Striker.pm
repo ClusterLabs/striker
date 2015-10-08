@@ -4260,11 +4260,10 @@ sub add_vm_to_cluster
 	my ($conf, $skip_scan) = @_;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster(); skip_scan: [$skip_scan]\n");
 	
-	# If this is being called after provisioning a VM, we'll skip scanning
-	# the cluster and we'll not print the opening header. 
+	# If this is being called after provisioning a VM, we'll skip scanning the cluster and we'll not 
+	# print the opening header. 
 	
-	# Two steps needed; Dump the definition and use ccs to add it to the 
-	# cluster.
+	# Two steps needed; Dump the definition and use ccs to add it to the cluster.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $vm         = $conf->{cgi}{name};
 	#my $node       = $conf->{cgi}{node};
@@ -5056,6 +5055,7 @@ sub provision_vm
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
 	$provision .= "  --cdrom '/shared/files/$conf->{new_vm}{install_iso}' \\\\\n";
+	$provision .= "  --boot menu=on \\\\\n";
 	if ($conf->{cgi}{driver_iso})
 	{
 		$provision .= "  --disk path='/shared/files/$conf->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";

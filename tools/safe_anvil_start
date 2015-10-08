@@ -228,7 +228,6 @@ sub avoid_duplicate_run
 {
 	my ($conf) = @_;
 	
-	my $file_handle = IO::Handle->new();
 	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE 2>&1 |";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -277,7 +276,6 @@ sub abort_start
 	}
 	
 	# Now kill any running process.
-	my $file_handle = IO::Handle->new();
 	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE 2>&1 |";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -290,7 +288,6 @@ sub abort_start
 		{
 			# Another copy is running, kill it.
 			logger($conf, $THIS_FILE, __LINE__, "[ Notice ] - An existing instance of $THIS_FILE is running with PID: [$pid], killing it.", 0);
-			my $file_handle = IO::Handle->new();
 			my $shell_call  = "$conf->{path}{'kill'} $pid 2>&1 |";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -392,7 +389,7 @@ fi";
 	
 	if (not $exit)
 	{
-		print "Successfully disabled 'safe_anvil_start' from runnig after boot.\n";
+		#print "Successfully disabled 'safe_anvil_start' from runnig after boot.\n";
 		logger($conf, $THIS_FILE, __LINE__, "Successfully disabled 'safe_anvil_start' from runnig after boot.", 1);
 	}
 	
