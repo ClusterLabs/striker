@@ -2192,8 +2192,8 @@ sub create_install_manifest
 	$conf->{form}{'anvil_drbd_net_max-buffers_star'}   = "";
 	$conf->{form}{'anvil_drbd_net_sndbuf-size_star'}   = "";
 	$conf->{form}{'anvil_drbd_net_rcvbuf-size_star'}   = "";
-
 	
+	# Delete it, if requested
 	if ($conf->{cgi}{'delete'})
 	{
 		if ($conf->{cgi}{confirm})
@@ -2233,6 +2233,8 @@ sub create_install_manifest
 			});
 		}
 	}
+	
+	# Generate a new one, if requested.
 	if ($conf->{cgi}{generate})
 	{
 		# Sanity check the user's answers and, if OK, returns 0. Any problem detected returns 1.
@@ -2342,6 +2344,12 @@ sub create_install_manifest
 		if ($conf->{cgi}{load})
 		{
 			load_install_manifest($conf, $conf->{cgi}{load});
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}], cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac: [$conf->{cgi}{anvil_node1_sn_link1_mac}], cgi::anvil_node1_sn_link2_mac: [$conf->{cgi}{anvil_node1_sn_link2_mac}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}], cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}], cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac: [$conf->{cgi}{anvil_node2_sn_link1_mac}], cgi::anvil_node2_sn_link2_mac: [$conf->{cgi}{anvil_node2_sn_link2_mac}]\n");
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}], cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}]\n");
 		}
 		elsif (not $conf->{cgi}{generate})
 		{
@@ -2807,6 +2815,104 @@ sub create_install_manifest
 			id		=>	"anvil_drbd_net_rcvbuf-size",
 			value		=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 		});
+		
+		# Store defined MAC addresses
+		if ($conf->{cgi}{anvil_node1_bcn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_bcn_link1_mac",
+				id		=>	"anvil_node1_bcn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node1_bcn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_bcn_link2_mac",
+				id		=>	"anvil_node1_bcn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node1_sn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_sn_link1_mac",
+				id		=>	"anvil_node1_sn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node1_sn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_sn_link2_mac",
+				id		=>	"anvil_node1_sn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node1_ifn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_ifn_link1_mac",
+				id		=>	"anvil_node1_ifn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node1_ifn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node1_ifn_link2_mac",
+				id		=>	"anvil_node1_ifn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_bcn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_bcn_link1_mac",
+				id		=>	"anvil_node2_bcn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_bcn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_bcn_link2_mac",
+				id		=>	"anvil_node2_bcn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_sn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_sn_link1_mac",
+				id		=>	"anvil_node2_sn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_sn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_sn_link2_mac",
+				id		=>	"anvil_node2_sn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_ifn_link1_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_ifn_link1_mac",
+				id		=>	"anvil_node2_ifn_link1_mac",
+				value		=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+			});
+		}
+		if ($conf->{cgi}{anvil_node2_ifn_link2_mac})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_node2_ifn_link2_mac",
+				id		=>	"anvil_node2_ifn_link2_mac",
+				value		=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
+			});
+		}
 		
 		# Anvil! (cman cluster) Name
 		if (($conf->{sys}{install_manifest}{'default'}{name}) && 
@@ -4421,8 +4527,7 @@ sub load_install_manifest
 			$conf->{cgi}{$uuid_key}          = $conf->{install_manifest}{$file}{node}{$node}{uuid}                            ? $conf->{install_manifest}{$file}{node}{$node}{uuid}                            : "";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}], cgi::$uuid_key: [$conf->{cgi}{$uuid_key}]\n");
 			
-			# If the user remapped their network, we don't want to
-			# undo the results.
+			# If the user remapped their network, we don't want to undo the results.
 			if (not $conf->{cgi}{perform_install})
 			{
 				$conf->{cgi}{$bcn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{bcn_link1}{mac};
@@ -4917,13 +5022,13 @@ sub generate_install_manifest
 	my $node2_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node2_ipmi_ip});
 	
 	### Setup the DRBD lines.
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 	# Standardize
 	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($conf->{cgi}{'anvil_drbd_disk_disk-barrier'});
 	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
@@ -4942,13 +5047,13 @@ sub generate_install_manifest
 	$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = $conf->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $conf->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
 	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
 	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
-	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 	
 	### TODO: Get the node and dashboard UUIDs if not yet set.
 	
@@ -5281,8 +5386,7 @@ sub confirm_install_manifest_run
 	return(0);
 }
 
-# This shows a summary of what the user selected and asks them to confirm that
-# they are happy.
+# This shows a summary of what the user selected and asks them to confirm that they are happy.
 sub show_summary_manifest
 {
 	my ($conf) = @_;
@@ -5599,18 +5703,30 @@ sub show_summary_manifest
 		anvil_name			=>	$conf->{cgi}{anvil_name},
 		anvil_node1_name		=>	$conf->{cgi}{anvil_node1_name},
 		anvil_node1_bcn_ip		=>	$conf->{cgi}{anvil_node1_bcn_ip},
+		anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+		anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
 		anvil_node1_ipmi_ip		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
 		anvil_node1_sn_ip		=>	$conf->{cgi}{anvil_node1_sn_ip},
+		anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+		anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
 		anvil_node1_ifn_ip		=>	$conf->{cgi}{anvil_node1_ifn_ip},
+		anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+		anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
 		anvil_node1_pdu1_outlet		=>	$conf->{cgi}{anvil_node1_pdu1_outlet},
 		anvil_node1_pdu2_outlet		=>	$conf->{cgi}{anvil_node1_pdu2_outlet},
 		anvil_node1_pdu3_outlet		=>	$conf->{cgi}{anvil_node1_pdu3_outlet},
 		anvil_node1_pdu4_outlet		=>	$conf->{cgi}{anvil_node1_pdu4_outlet},
 		anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
 		anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
+		anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+		anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
 		anvil_node2_ipmi_ip		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
 		anvil_node2_sn_ip		=>	$conf->{cgi}{anvil_node2_sn_ip},
+		anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+		anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
 		anvil_node2_ifn_ip		=>	$conf->{cgi}{anvil_node2_ifn_ip},
+		anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+		anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
 		anvil_node2_pdu1_outlet		=>	$conf->{cgi}{anvil_node2_pdu1_outlet},
 		anvil_node2_pdu2_outlet		=>	$conf->{cgi}{anvil_node2_pdu2_outlet},
 		anvil_node2_pdu3_outlet		=>	$conf->{cgi}{anvil_node2_pdu3_outlet},
@@ -7942,8 +8058,8 @@ sub show_anvil_selection_and_striker_options
 	# Show the list of configured Anvil! systems.
 	ask_which_cluster($conf);
 	
-	# See if this machine is configured as a boot target and, if so,
-	# whether dhcpd is running or not (so we can offer a toggle.
+	# See if this machine is configured as a boot target and, if so, whether dhcpd is running or not (so
+	# we can offer a toggle).
 	my ($dhcpd_state) = get_dhcpd_state($conf);
 	# 0 == Running
 	# 1 == Not running
