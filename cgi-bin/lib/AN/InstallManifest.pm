@@ -8450,16 +8450,32 @@ common {
 	}
  
 	options {
-		# cpu-mask on-no-data-accessible
+		# cpu-mask on-no-data-accessible\n";
+	if ($conf->{cgi}{'anvil_drbd_options_cpu-mask'})
+	{
+		print "		cpu-mask $conf->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
 	}
+	print "	}
  
 	disk {
 		# size max-bio-bvecs on-io-error fencing disk-barrier disk-flushes
 		# disk-drain md-flushes resync-rate resync-after al-extents
 		# c-plan-ahead c-delay-target c-fill-target c-max-rate
 		# c-min-rate disk-timeout
-		fencing resource-and-stonith;
+		fencing resource-and-stonith;\n";
+	if ($conf->{cgi}{'anvil_drbd_disk_disk-barrier'})
+	{
+		print "		disk-barrier $conf->{cgi}{'anvil_drbd_disk_disk-barrier'}\n";
 	}
+	if ($conf->{cgi}{'anvil_drbd_disk_disk-flushes'})
+	{
+		print "		disk-flushes $conf->{cgi}{'anvil_drbd_disk_disk-flushes'}\n";
+	}
+	if ($conf->{cgi}{'anvil_drbd_disk_md-flushes'})
+	{
+		print "		md-flushes $conf->{cgi}{'anvil_drbd_disk_md-flushes'}\n";
+	}
+	print "	}
  
 	net {
 		# protocol timeout max-epoch-size max-buffers unplug-watermark
@@ -8490,8 +8506,20 @@ common {
 		# another and let a human decide which node to invalidate. Of 
 		after-sb-0pri discard-zero-changes;
 		after-sb-1pri discard-secondary;
-		after-sb-2pri disconnect;
+		after-sb-2pri disconnect;\n";
+	if ($conf->{cgi}{'anvil_drbd_net_max-buffers'})
+	{
+		print "		max-buffers $conf->{cgi}{'anvil_drbd_net_max-buffers'}\n";
 	}
+	if ($conf->{cgi}{'anvil_drbd_net_sndbuf-size'})
+	{
+		print "		sndbuf-size $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}\n";
+	}
+	if ($conf->{cgi}{'anvil_drbd_net_rcvbuf-size'})
+	{
+		print "		rcvbuf-size $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}\n";
+	}
+	print "	}
 }
 ";
 	

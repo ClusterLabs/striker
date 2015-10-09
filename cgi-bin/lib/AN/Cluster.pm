@@ -2115,83 +2115,90 @@ sub create_install_manifest
 	
 	my $show_form = 1;
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
-	$conf->{form}{anvil_prefix_star}            = "";
-	$conf->{form}{anvil_sequence_star}          = "";
-	$conf->{form}{anvil_domain_star}            = "";
-	$conf->{form}{anvil_name_star}              = "";
-	$conf->{form}{anvil_password_star}          = "";
-	$conf->{form}{anvil_bcn_network_star}       = "";
-	$conf->{form}{anvil_sn_network_star}        = "";
-	$conf->{form}{anvil_ifn_network_star}       = "";
-	$conf->{form}{anvil_ifn_gateway_star}       = "";
-	$conf->{form}{anvil_dns1_star}              = "";
-	$conf->{form}{anvil_dns2_star}              = "";
-	$conf->{form}{anvil_ntp1_star}              = "";
-	$conf->{form}{anvil_ntp2_star}              = "";
-	$conf->{form}{anvil_switch1_name_star}      = "";
-	$conf->{form}{anvil_switch1_ip_star}        = "";
-	$conf->{form}{anvil_switch2_name_star}      = "";
-	$conf->{form}{anvil_switch2_ip_star}        = "";
-	$conf->{form}{anvil_pdu1_name_star}         = "";
-	$conf->{form}{anvil_pdu1_ip_star}           = "";
-	$conf->{form}{anvil_pdu1_agent_star}        = "";
-	$conf->{form}{anvil_pdu2_name_star}         = "";
-	$conf->{form}{anvil_pdu2_ip_star}           = "";
-	$conf->{form}{anvil_pdu2_agent_star}        = "";
-	$conf->{form}{anvil_pdu3_name_star}         = "";
-	$conf->{form}{anvil_pdu3_ip_star}           = "";
-	$conf->{form}{anvil_pdu3_agent_star}        = "";
-	$conf->{form}{anvil_pdu4_name_star}         = "";
-	$conf->{form}{anvil_pdu4_ip_star}           = "";
-	$conf->{form}{anvil_pdu4_agent_star}        = "";
-	$conf->{form}{anvil_ups1_name_star}         = "";
-	$conf->{form}{anvil_ups1_ip_star}           = "";
-	$conf->{form}{anvil_ups2_name_star}         = "";
-	$conf->{form}{anvil_ups2_ip_star}           = "";
-	$conf->{form}{anvil_striker1_name_star}     = "";
-	$conf->{form}{anvil_striker1_bcn_ip_star}   = "";
-	$conf->{form}{anvil_striker1_ifn_ip_star}   = "";
-	$conf->{form}{anvil_striker2_name_star}     = "";
-	$conf->{form}{anvil_striker2_bcn_ip_star}   = "";
-	$conf->{form}{anvil_striker2_ifn_ip_star}   = "";
-	$conf->{form}{anvil_media_library_star}     = "";
-	$conf->{form}{anvil_storage_pool1_star}     = "";
-	$conf->{form}{anvil_repositories_star}      = "";
-	$conf->{form}{anvil_node1_name_star}        = "";
-	$conf->{form}{anvil_node1_bcn_ip_star}      = "";
-	$conf->{form}{anvil_node1_ipmi_ip_star}     = "";
-	$conf->{form}{anvil_node1_sn_ip_star}       = "";
-	$conf->{form}{anvil_node1_ifn_ip_star}      = "";
-	$conf->{form}{anvil_node1_pdu1_outlet_star} = "";
-	$conf->{form}{anvil_node1_pdu2_outlet_star} = "";
-	$conf->{form}{anvil_node1_pdu3_outlet_star} = "";
-	$conf->{form}{anvil_node1_pdu4_outlet_star} = "";
-	$conf->{form}{anvil_node2_name_star}        = "";
-	$conf->{form}{anvil_node2_bcn_ip_star}      = "";
-	$conf->{form}{anvil_node2_ipmi_ip_star}     = "";
-	$conf->{form}{anvil_node2_sn_ip_star}       = "";
-	$conf->{form}{anvil_node2_ifn_ip_star}      = "";
-	$conf->{form}{anvil_node2_pdu1_outlet_star} = "";
-	$conf->{form}{anvil_node2_pdu2_outlet_star} = "";
-	$conf->{form}{anvil_node2_pdu3_outlet_star} = "";
-	$conf->{form}{anvil_node2_pdu4_outlet_star} = "";
-	$conf->{form}{anvil_open_vnc_ports}         = "";
-	$conf->{form}{striker_user}                 = "";
-	$conf->{form}{striker_database}             = "";
-	$conf->{form}{anvil_striker1_user}          = "";
-	$conf->{form}{anvil_striker1_password}      = "";
-	$conf->{form}{anvil_striker1_database}      = "";
-	$conf->{form}{anvil_striker2_user}          = "";
-	$conf->{form}{anvil_striker2_password}      = "";
-	$conf->{form}{anvil_striker2_database}      = "";
-	$conf->{form}{anvil_mtu_size_star}          = "";
+	$conf->{form}{anvil_prefix_star}                   = "";
+	$conf->{form}{anvil_sequence_star}                 = "";
+	$conf->{form}{anvil_domain_star}                   = "";
+	$conf->{form}{anvil_name_star}                     = "";
+	$conf->{form}{anvil_password_star}                 = "";
+	$conf->{form}{anvil_bcn_network_star}              = "";
+	$conf->{form}{anvil_sn_network_star}               = "";
+	$conf->{form}{anvil_ifn_network_star}              = "";
+	$conf->{form}{anvil_ifn_gateway_star}              = "";
+	$conf->{form}{anvil_dns1_star}                     = "";
+	$conf->{form}{anvil_dns2_star}                     = "";
+	$conf->{form}{anvil_ntp1_star}                     = "";
+	$conf->{form}{anvil_ntp2_star}                     = "";
+	$conf->{form}{anvil_switch1_name_star}             = "";
+	$conf->{form}{anvil_switch1_ip_star}               = "";
+	$conf->{form}{anvil_switch2_name_star}             = "";
+	$conf->{form}{anvil_switch2_ip_star}               = "";
+	$conf->{form}{anvil_pdu1_name_star}                = "";
+	$conf->{form}{anvil_pdu1_ip_star}                  = "";
+	$conf->{form}{anvil_pdu1_agent_star}               = "";
+	$conf->{form}{anvil_pdu2_name_star}                = "";
+	$conf->{form}{anvil_pdu2_ip_star}                  = "";
+	$conf->{form}{anvil_pdu2_agent_star}               = "";
+	$conf->{form}{anvil_pdu3_name_star}                = "";
+	$conf->{form}{anvil_pdu3_ip_star}                  = "";
+	$conf->{form}{anvil_pdu3_agent_star}               = "";
+	$conf->{form}{anvil_pdu4_name_star}                = "";
+	$conf->{form}{anvil_pdu4_ip_star}                  = "";
+	$conf->{form}{anvil_pdu4_agent_star}               = "";
+	$conf->{form}{anvil_ups1_name_star}                = "";
+	$conf->{form}{anvil_ups1_ip_star}                  = "";
+	$conf->{form}{anvil_ups2_name_star}                = "";
+	$conf->{form}{anvil_ups2_ip_star}                  = "";
+	$conf->{form}{anvil_striker1_name_star}            = "";
+	$conf->{form}{anvil_striker1_bcn_ip_star}          = "";
+	$conf->{form}{anvil_striker1_ifn_ip_star}          = "";
+	$conf->{form}{anvil_striker2_name_star}            = "";
+	$conf->{form}{anvil_striker2_bcn_ip_star}          = "";
+	$conf->{form}{anvil_striker2_ifn_ip_star}          = "";
+	$conf->{form}{anvil_media_library_star}            = "";
+	$conf->{form}{anvil_storage_pool1_star}            = "";
+	$conf->{form}{anvil_repositories_star}             = "";
+	$conf->{form}{anvil_node1_name_star}               = "";
+	$conf->{form}{anvil_node1_bcn_ip_star}             = "";
+	$conf->{form}{anvil_node1_ipmi_ip_star}            = "";
+	$conf->{form}{anvil_node1_sn_ip_star}              = "";
+	$conf->{form}{anvil_node1_ifn_ip_star}             = "";
+	$conf->{form}{anvil_node1_pdu1_outlet_star}        = "";
+	$conf->{form}{anvil_node1_pdu2_outlet_star}        = "";
+	$conf->{form}{anvil_node1_pdu3_outlet_star}        = "";
+	$conf->{form}{anvil_node1_pdu4_outlet_star}        = "";
+	$conf->{form}{anvil_node2_name_star}               = "";
+	$conf->{form}{anvil_node2_bcn_ip_star}             = "";
+	$conf->{form}{anvil_node2_ipmi_ip_star}            = "";
+	$conf->{form}{anvil_node2_sn_ip_star}              = "";
+	$conf->{form}{anvil_node2_ifn_ip_star}             = "";
+	$conf->{form}{anvil_node2_pdu1_outlet_star}        = "";
+	$conf->{form}{anvil_node2_pdu2_outlet_star}        = "";
+	$conf->{form}{anvil_node2_pdu3_outlet_star}        = "";
+	$conf->{form}{anvil_node2_pdu4_outlet_star}        = "";
+	$conf->{form}{anvil_open_vnc_ports_star}           = "";
+	$conf->{form}{striker_user_star}                   = "";
+	$conf->{form}{striker_database_star}               = "";
+	$conf->{form}{anvil_striker1_user_star}            = "";
+	$conf->{form}{anvil_striker1_password_star}        = "";
+	$conf->{form}{anvil_striker1_database_star}        = "";
+	$conf->{form}{anvil_striker2_user_star}            = "";
+	$conf->{form}{anvil_striker2_password_star}        = "";
+	$conf->{form}{anvil_striker2_database_star}        = "";
+	$conf->{form}{anvil_mtu_size_star}                 = "";
+	$conf->{form}{'anvil_drbd_disk_disk-barrier_star'} = "";
+	$conf->{form}{'anvil_drbd_disk_disk-flushes_star'} = "";
+	$conf->{form}{'anvil_drbd_disk_md-flushes_star'}   = "";
+	$conf->{form}{'anvil_drbd_options_cpu-mask_star'}  = "";
+	$conf->{form}{'anvil_drbd_net_max-buffers_star'}   = "";
+	$conf->{form}{'anvil_drbd_net_sndbuf-size_star'}   = "";
+	$conf->{form}{'anvil_drbd_net_rcvbuf-size_star'}   = "";
+
 	
 	if ($conf->{cgi}{'delete'})
 	{
 		if ($conf->{cgi}{confirm})
 		{
-			# Make sure that the file exists and that it is in the
-			# manifests directory.
+			# Make sure that the file exists and that it is in the manifests directory.
 			my $file = $conf->{path}{apache_manifests_dir}."/".$conf->{cgi}{'delete'};
 			if (-e $file)
 			{
@@ -2228,12 +2235,10 @@ sub create_install_manifest
 	}
 	if ($conf->{cgi}{generate})
 	{
-		# Sanity check the user's answers and, if OK, returns 0. Any
-		# problem detected returns 1.
+		# Sanity check the user's answers and, if OK, returns 0. Any problem detected returns 1.
 		if (not sanity_check_manifest_answers($conf))
 		{
-			# No errors, write out the manifest and create the
-			# download link.
+			# No errors, write out the manifest and create the download link.
 			if (not $conf->{cgi}{confirm})
 			{
 				$show_form = 0;
@@ -2359,6 +2364,29 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_storage_pool1_size}) { $conf->{cgi}{anvil_storage_pool1_size} = $conf->{sys}{install_manifest}{'default'}{pool1_size}; }
 			if (not $conf->{cgi}{anvil_storage_pool1_unit}) { $conf->{cgi}{anvil_storage_pool1_unit} = $conf->{sys}{install_manifest}{'default'}{pool1_unit}; }
 			if (not $conf->{cgi}{anvil_repositories})       { $conf->{cgi}{anvil_repositories}       = $conf->{sys}{install_manifest}{'default'}{repositories}; }
+			
+			# DRBD variables
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask:  [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
+			if (not $conf->{cgi}{'anvil_drbd_disk_disk-barrier'}) { $conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}; }
+			if (not $conf->{cgi}{'anvil_drbd_disk_disk-flushes'}) { $conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}; }
+			if (not $conf->{cgi}{'anvil_drbd_disk_md-flushes'})   { $conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}; }
+			if (not $conf->{cgi}{'anvil_drbd_options_cpu-mask'})  { $conf->{cgi}{'anvil_drbd_options_cpu-mask'}  = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}; }
+			if (not $conf->{cgi}{'anvil_drbd_net_max-buffers'})   { $conf->{cgi}{'anvil_drbd_net_max-buffers'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}; }
+			if (not $conf->{cgi}{'anvil_drbd_net_sndbuf-size'})   { $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}; }
+			if (not $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'})   { $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}; }
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 			
 			# Hidden fields for now.
 			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
@@ -2742,6 +2770,43 @@ sub create_install_manifest
 		
 		# Now show the header for the Common section.
 		print AN::Common::template($conf, "config.html", "install-manifest-form-common-header");
+		
+		### NOTE: For now, DRBD options are hidden.
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_disk_disk-barrier",
+			id		=>	"anvil_drbd_disk_disk-barrier",
+			value		=>	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_disk_disk-flushes",
+			id		=>	"anvil_drbd_disk_disk-flushes",
+			value		=>	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_disk_md-flushes",
+			id		=>	"anvil_drbd_disk_md-flushes",
+			value		=>	$conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_options_cpu-mask",
+			id		=>	"anvil_drbd_options_cpu-mask",
+			value		=>	$conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_net_max-buffers",
+			id		=>	"anvil_drbd_net_max-buffers",
+			value		=>	$conf->{cgi}{'anvil_drbd_net_max-buffers'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_net_sndbuf-size",
+			id		=>	"anvil_drbd_net_sndbuf-size",
+			value		=>	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+		});
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_drbd_net_rcvbuf-size",
+			id		=>	"anvil_drbd_net_rcvbuf-size",
+			value		=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		});
 		
 		# Anvil! (cman cluster) Name
 		if (($conf->{sys}{install_manifest}{'default'}{name}) && 
@@ -3602,7 +3667,7 @@ sub get_striker_prefix_and_domain
 	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
 	
 	my ($hostname) = get_hostname($conf);
-	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	
 	my $default_prefix = "";
 	if ($hostname =~ /^(\w+)-/)
@@ -3611,13 +3676,13 @@ sub get_striker_prefix_and_domain
 		record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
 	}
 	my $default_demain = ($hostname =~ /\.(.*)$/)[0];
-	record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
 	
 	# If the user has defined default prefix and/or domain, use them instead.
 	if ($conf->{sys}{install_manifest}{'default'}{prefix}) { $default_prefix = $conf->{sys}{install_manifest}{'default'}{prefix}; }
 	if ($conf->{sys}{install_manifest}{'default'}{domain}) { $default_demain = $conf->{sys}{install_manifest}{'default'}{domain}; }
 	
-	record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
 	return($default_prefix, $default_demain);
 }
 
@@ -3949,6 +4014,36 @@ sub load_install_manifest
 						}
 					}
 				}
+				elsif ($b eq "drbd")
+				{
+					foreach my $c (keys %{$a->{$b}->[0]})
+					{
+						if ($c eq "disk")
+						{
+							my $disk_barrier = $a->{$b}->[0]->{$c}->[0]->{'disk-barrier'};
+							my $disk_flushes = $a->{$b}->[0]->{$c}->[0]->{'disk-flushes'};
+							my $md_flushes   = $a->{$b}->[0]->{$c}->[0]->{'md-flushes'};
+							
+							$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'} = defined $disk_barrier ? $disk_barrier : "";
+							$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'} = defined $disk_flushes ? $disk_flushes : "";
+							$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}   = defined $md_flushes   ? $md_flushes   : "";
+						}
+						elsif ($c eq "options")
+						{
+							my $cpu_mask = $a->{$b}->[0]->{$c}->[0]->{'cpu-mask'};
+							$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'} = defined $cpu_mask ? $cpu_mask : "";
+						}
+						elsif ($c eq "net")
+						{
+							my $max_buffers = $a->{$b}->[0]->{$c}->[0]->{'max-buffers'};
+							my $sndbuf_size = $a->{$b}->[0]->{$c}->[0]->{'sndbuf-size'};
+							my $rcvbuf_size = $a->{$b}->[0]->{$c}->[0]->{'rcvbuf-size'};
+							$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'} = defined $max_buffers ? $max_buffers : "";
+							$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'} = defined $sndbuf_size ? $sndbuf_size : "";
+							$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'} = defined $rcvbuf_size ? $rcvbuf_size : "";
+						}
+					}
+				}
 				elsif ($b eq "pdu")
 				{
 					foreach my $c (@{$a->{$b}->[0]->{pdu}})
@@ -4147,6 +4242,23 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_ntp1}        = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ntp1};
 		$conf->{cgi}{anvil_ntp2}        = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ntp2};
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cgi::anvil_ifn_gateway: [$conf->{cgi}{anvil_ifn_gateway}], cgi::anvil_dns1: [$conf->{cgi}{anvil_dns1}], cgi::anvil_dns2: [$conf->{cgi}{anvil_dns2}], cgi::anvil_ntp1: [$conf->{cgi}{anvil_ntp1}], cgi::anvil_ntp2: [$conf->{cgi}{anvil_ntp2}]\n");
+		
+		# DRBD variables
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-barrier: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-flushes: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::md-flushes:   [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::options::cpu-mask:  [$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::max-buffers:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::sndbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::rcvbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
+		$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};
+		$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};
+		$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};
+		$conf->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}     ? $conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}     : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'};
+		$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};
+		$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};
+		$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], cgi::anvil_drbd_disk_md-flushes: [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}], cgi::anvil_drbd_options_cpu-mask: [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}], cgi::anvil_drbd_net_max-buffers: [$conf->{cgi}{'anvil_drbd_net_max-buffers'}], cgi::anvil_drbd_net_sndbuf-size: [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}], cgi::anvil_drbd_net_rcvbuf-size: [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 		
 		### Foundation Pack
 		# Switches
@@ -4796,13 +4908,47 @@ sub generate_install_manifest
 	### TODO: This isn't set for some reason, fix
 	$conf->{cgi}{anvil_open_vnc_ports} = $conf->{sys}{install_manifest}{open_vnc_ports} if not $conf->{cgi}{anvil_open_vnc_ports};
 	
-	# This is currently not set by the program, but will be later.
+	# Set the MTU.
 	$conf->{cgi}{anvil_mtu_size} = $conf->{sys}{install_manifest}{'default'}{mtu_size} if not $conf->{cgi}{anvil_mtu_size};
 	
 	# Use the subnet mask of the IPMI devices by comparing their IP to that
 	# of the BCN and IFN, and use the netmask of the matching network.
 	my $node1_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node1_ipmi_ip});
 	my $node2_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node2_ipmi_ip});
+	
+	### Setup the DRBD lines.
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+	# Standardize
+	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($conf->{cgi}{'anvil_drbd_disk_disk-barrier'});
+	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
+	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/0/false/;
+	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} =  lc($conf->{cgi}{'anvil_drbd_disk_disk-flushes'});
+	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/no/false/;
+	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/0/false/;
+	$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   =  lc($conf->{cgi}{'anvil_drbd_disk_md-flushes'});
+	$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/no/false/;
+	$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/0/false/;
+	# Convert
+	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = $conf->{cgi}{'anvil_drbd_disk_disk-barrier'} eq "false" ? "no" : "yes";
+	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = $conf->{cgi}{'anvil_drbd_disk_disk-flushes'} eq "false" ? "no" : "yes";
+	$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = $conf->{cgi}{'anvil_drbd_disk_md-flushes'}   eq "false" ? "no" : "yes";
+	$conf->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $conf->{cgi}{'anvil_drbd_options_cpu-mask'}   ? $conf->{cgi}{'anvil_drbd_options_cpu-mask'} : "";
+	$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = $conf->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $conf->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
+	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
+	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 	
 	### TODO: Get the node and dashboard UUIDs if not yet set.
 	
@@ -4897,9 +5043,15 @@ Striker Version: $conf->{sys}{version}
 			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
 			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" delay=\"15\" delay_node=\"$conf->{cgi}{anvil_node1_name}\" />
 		</cluster>
+		<drbd>
+			<disk disk-barrier=\"$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}\" disk-flushes=\"$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}\" md-flushes=\"$conf->{cgi}{'anvil_drbd_disk_md-flushes'}\" />
+			<options cpu-mask=\"$conf->{cgi}{'anvil_drbd_options_cpu-mask'}\" />
+			<net max-buffers=\"$conf->{cgi}{'anvil_drbd_net_max-buffers'}\" sndbuf-size=\"$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}\" rcvbuf-size=\"$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}\" />
+		</drbd>
 		<switch>
 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" />
 ";
+
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
 	if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
 	{
@@ -5497,6 +5649,13 @@ sub show_summary_manifest
 		anvil_repositories		=>	$conf->{cgi}{anvil_repositories},
 		anvil_mtu_size			=>	$conf->{cgi}{anvil_mtu_size},
 		say_anvil_repositories		=>	$say_repos,
+		'anvil_drbd_disk_disk-barrier'	=>	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+		'anvil_drbd_disk_disk-flushes'	=>	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+		'anvil_drbd_disk_md-flushes'	=>	$conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+		'anvil_drbd_options_cpu-mask'	=>	$conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+		'anvil_drbd_net_max-buffers'	=>	$conf->{cgi}{'anvil_drbd_net_max-buffers'},
+		'anvil_drbd_net_sndbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+		'anvil_drbd_net_rcvbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 	});
 	
 	return(0);
@@ -8784,7 +8943,7 @@ sub record
 	if (not $file_handle)
 	{
 		# Touch the file if it doesn't exist yet.
-		#print "[ Debug ] $THIS_FILE ".__LINE__."; - Checking if: [$conf->{path}{log_file}] is writable...\n";
+		#print "<pre>[ Debug ] $THIS_FILE ".__LINE__."; - Checking if: [$conf->{path}{log_file}] is writable...</pre>\n";
 		if (not -w $conf->{path}{log_file})
 		{
 			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
@@ -9920,11 +10079,11 @@ sub get_rsa_public_key
 sub get_hostname
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
 
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -9937,7 +10096,7 @@ sub get_hostname
 	}
 	close $file_handle;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	return($hostname);
 }
 
