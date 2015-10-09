@@ -1,0 +1,243 @@
+#!/usr/bin/perl
+# 
+# This is meant to be called by udev when a new 'vnet' device is created. It reads striker.conf looking for
+# 'tools::anvil-adjust-vnet::${server}::${option} = $value' entries. If the 'option' is supported, its value
+# will be applied to any/all vnet interfaces linked to the matching 'server' name.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			ip		=>	"/sbin/ip",
+			log_file	=>	"/var/log/striker.log",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+			virsh		=>	"/usr/bin/virsh",
+		},
+		servers		=>	{},
+		sys		=>	{
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+		},
+	},
+});
+
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+# Record that we're starting.
+$an->Log->entry({log_level => 2, message_key => "aav_log_0001", message_variables => {
+	this_file => $THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Get a list of servers on this node and, for each, which vnets they have.
+get_server_list($an);
+
+# DEBUG TOOl: Show the found servers
+if (0)
+{
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		print "Server: [$server] interfaces;\n";
+		foreach my $interface (sort {$a cmp $b} @{$an->data->{server}{$server}{interfaces}})
+		{
+			print "- [$interface]\n";
+		}
+	}
+}
+
+# Loop through defined servers, if any.
+foreach my $server (sort {$a cmp $b} keys %{$an->data->{tools}{'hap-adjust-vnet'}})
+{
+	$an->Log->entry({log_level => 2, message_key => "aav_log_0002", message_variables => {
+		server => $server, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (exists $an->data->{server}{$server})
+	{
+		$an->Log->entry({log_level => 2, message_key => "aav_log_0003", file => $THIS_FILE, line => __LINE__});
+		my $set_qlen = "";
+		if ($an->data->{tools}{'hap-adjust-vnet'}{$server}{qlen})
+		{
+			$set_qlen = $an->data->{tools}{'hap-adjust-vnet'}{$server}{qlen};
+			$an->Log->entry({log_level => 2, message_key => "aav_log_0004", message_variables => {
+				set_qlen => $set_qlen, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		foreach my $interface (sort {$a cmp $b} @{$an->data->{server}{$server}{interfaces}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "aav_log_0005", message_variables => {
+				interface => $interface, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Set the queue length
+			set_queue_length($an, $interface, $set_qlen);
+		}
+	}
+	else
+	{
+		print "- This server is not running here.\n";
+	}
+}
+
+
+exit(0);
+
+# This sets the queue length on a given interface
+sub set_queue_length
+{
+	my ($an, $interface, $set_qlen) = @_;
+	
+	my $ok         = 0;
+	my $shell_call = $an->data->{path}{ip}." link set dev $interface qlen $set_qlen; ".$an->data->{path}{ip}." link show $interface";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /qlen (\d+)/)
+		{
+			my $queue_length = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "queue_length", value1 => $queue_length, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($queue_length eq $set_qlen)
+			{
+				$ok = 1;
+			}
+		}
+	}
+	close $file_handle;
+	
+	if ($ok)
+	{
+		$an->Log->entry({log_level => 2, message_key => "aav_log_0006", message_variables => {
+			interface	=>	$interface, 
+			queue_length	=>	$set_qlen, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		$an->Alert->warning({message_key => "aav_warning_0001", message_variables => {
+			interface	=>	$interface, 
+			queue_length	=>	$set_qlen, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($ok);
+}
+
+# Gets a list of servers running on this host and their interfaces
+sub get_server_list
+{
+	my ($an) = @_;
+	
+	my $shell_call = $an->data->{path}{virsh}." list";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		if ($line =~ /^(\d+) (.*?) (.*)$/)
+		{
+			my $domain_id = $1;
+			my $server    = $2;
+			my $state     = $3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "domain_id", value1 => $domain_id, 
+				name2 => "server",    value2 => $server, 
+				name3 => "state",     value3 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{server}{$server}{'state'}    = $state;
+			$an->data->{server}{$server}{domain_id}  = $domain_id;
+			$an->data->{server}{$server}{interfaces} = [];
+		}
+	}
+	close $file_handle;
+	
+	# Find the vnetX interfaces for this server
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+	{
+		my $shell_call = $an->data->{path}{virsh}." dumpxml $server";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $in_interface = 0;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /<interface/)
+			{
+				$in_interface = 1;
+				next;
+			}
+			if ($line =~ /<\/interface/)
+			{
+				$in_interface = 0;
+				next;
+			}
+			if ($in_interface)
+			{
+				if ($line =~ /<target/)
+				{
+					if ($line =~ /dev='(.*?)'/)
+					{
+						my $interface = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "interface", value1 => $interface, 
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{server}{$server}{interfaces}}, $interface;
+					}
+				}
+			}
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
