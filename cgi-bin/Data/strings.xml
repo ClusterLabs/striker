@@ -640,8 +640,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0210">DNS1</key>
 		<key name="row_0211">DNS2</key>
 		<key name="row_0212">Outlet</key>
-		<key name="row_0213"><![CDATA[Storage Pool <span class="highlight_bad_bold">1</span>]]></key>
-		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key>
+		<!-- <key name="row_0213"><![CDATA[Storage Pool <span class="highlight_bad_bold">1</span>]]></key> -->
+		<!-- <key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key> -->
 		<key name="row_0215"><![CDATA[<span class="fixed_width">/etc/hosts</span> File]]></key>
 		<key name="row_0216">Ready?</key>
 		<key name="row_0217">Current Address [:port]</key>
@@ -659,8 +659,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0229">Current Network</key>
 		<key name="row_0230">Network Mapping</key>
 		<key name="row_0231">Partition Plan</key>
-		<key name="row_0232">Storage Pool 1</key>
-		<key name="row_0233">Storage Pool 2</key>
+		<key name="row_0232">Replicated Storage</key>
+		<!-- <key name="row_0233">Storage Pool 2</key> -->
 		<key name="row_0234">OS Registration</key>
 		<key name="row_0235">Distribution Name</key>
 		<key name="row_0236">Registered?</key>
@@ -673,11 +673,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0243">Checking for Execution Environment</key>
 		<key name="row_0244">Repositories</key>
 		<key name="row_0245">Adding local repository</key>
-		<key name="row_0246">Partitioning Pool 1</key>
+		<key name="row_0246">Replicated Storage Partition</key>
 		<key name="row_0247">Rebooting</key>
-		<key name="row_0248">Partitioning Pool 2</key>
-		<key name="row_0249">Pool 1 Meta-data</key>
-		<key name="row_0250">Pool 2 Meta-data</key>
+		<!-- <key name="row_0248">Partitioning Pool 2</key> -->
+		<key name="row_0249">Storage Meta-data</key>
+		<!-- <key name="row_0250">Pool 2 Meta-data</key> -->
 		<key name="row_0251">Configuring Clustered LVM</key>
 		<key name="row_0252">Configure Daemons</key>
 		<key name="row_0253">Configuring IPMI</key>
@@ -685,7 +685,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0255">Updating system password</key>
 		<key name="row_0256">Cluster membership first start</key>
 		<key name="row_0257">Configuring inter-node SSH</key>
-		<key name="row_0258">DRBD first start</key>
+		<key name="row_0258">Start Replicated Storage</key>
 		<key name="row_0259">Start Clustered LVM</key>
 		<key name="row_0260">Create Physical Volumes</key>
 		<key name="row_0261">Create Volume Groups</key>

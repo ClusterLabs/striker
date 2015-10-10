@@ -8096,54 +8096,55 @@ sub configure_storage_stage1
 		node2_message	=>	$node2_pool1_message,
 	});
 	
-	# Pool 2 message
-	# Default to 'created'.
-	my $node1_pool2_class   = "highlight_good_bold";
-	my $node1_pool2_message = "#!string!state_0045!#";
-	my $node2_pool2_class   = "highlight_good_bold";
-	my $node2_pool2_message = "#!string!state_0045!#";
-	if ($node1_pool2_created eq "0")
-	{
-		# Failed
-		$node1_pool2_class   = "highlight_warning_bold";
-		$node1_pool2_message = "#!string!state_0018!#",
-		$ok                  = 0;
-	}
-	elsif ($node1_pool2_created eq "2")
-	{
-		# Already existed.
-		$node1_pool2_message = "#!string!state_0020!#",
-	}
-	elsif ($node1_pool2_created eq "3")
-	{
-		# Not needed..
-		$node1_pool2_message = "#!string!state_0047!#",
-	}
-	if ($node2_pool2_created eq "0")
-	{
-		# Failed
-		$node2_pool2_class   = "highlight_warning_bold";
-		$node2_pool2_message = "#!string!state_0018!#",
-		$ok                  = 0;
-	}
-	elsif ($node2_pool2_created eq "2")
-	{
-		# Already existed.
-		$node2_pool2_message = "#!string!state_0020!#",
-	}
-	elsif ($node2_pool2_created eq "3")
-	{
-		# Not needed..
-		$node2_pool2_message = "#!string!state_0047!#",
-	}
-	# Pool 1 message
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	"#!string!row_0248!#",
-		node1_class	=>	$node1_pool2_class,
-		node1_message	=>	$node1_pool2_message,
-		node2_class	=>	$node2_pool2_class,
-		node2_message	=>	$node2_pool2_message,
-	});
+	### Pool 2 no longer supported.
+# 	# Pool 2 message
+# 	# Default to 'created'.
+# 	my $node1_pool2_class   = "highlight_good_bold";
+# 	my $node1_pool2_message = "#!string!state_0045!#";
+# 	my $node2_pool2_class   = "highlight_good_bold";
+# 	my $node2_pool2_message = "#!string!state_0045!#";
+# 	if ($node1_pool2_created eq "0")
+# 	{
+# 		# Failed
+# 		$node1_pool2_class   = "highlight_warning_bold";
+# 		$node1_pool2_message = "#!string!state_0018!#",
+# 		$ok                  = 0;
+# 	}
+# 	elsif ($node1_pool2_created eq "2")
+# 	{
+# 		# Already existed.
+# 		$node1_pool2_message = "#!string!state_0020!#",
+# 	}
+# 	elsif ($node1_pool2_created eq "3")
+# 	{
+# 		# Not needed..
+# 		$node1_pool2_message = "#!string!state_0047!#",
+# 	}
+# 	if ($node2_pool2_created eq "0")
+# 	{
+# 		# Failed
+# 		$node2_pool2_class   = "highlight_warning_bold";
+# 		$node2_pool2_message = "#!string!state_0018!#",
+# 		$ok                  = 0;
+# 	}
+# 	elsif ($node2_pool2_created eq "2")
+# 	{
+# 		# Already existed.
+# 		$node2_pool2_message = "#!string!state_0020!#",
+# 	}
+# 	elsif ($node2_pool2_created eq "3")
+# 	{
+# 		# Not needed..
+# 		$node2_pool2_message = "#!string!state_0047!#",
+# 	}
+# 	# Pool 1 message
+# 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+# 		row		=>	"#!string!row_0248!#",
+# 		node1_class	=>	$node1_pool2_class,
+# 		node1_message	=>	$node1_pool2_message,
+# 		node2_class	=>	$node2_pool2_class,
+# 		node2_message	=>	$node2_pool2_message,
+# 	});
 	
 	return($ok);
 }
@@ -8278,103 +8279,104 @@ sub configure_storage_stage2
 		node2_message	=>	$node2_message,
 	});
 	
-	## Now Pool 2
-	$node1_class   = "highlight_good_bold";
-	$node1_message = "#!string!state_0045!#";
-	$node2_class   = "highlight_good_bold";
-	$node2_message = "#!string!state_0045!#";
-	$message       = "";
-	# Node 1, Pool 1
-	if ($node1_pool2_rc eq "1")
-	{
-		# Already existed
-		$node1_message = "#!string!state_0020!#";
-	}
-	elsif ($node1_pool2_rc eq "2")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-		$ok            = 0;
-	}
-	elsif ($node1_pool2_rc eq "3")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0056!#";
-		$ok            = 0;
-	}
-	elsif ($node1_pool2_rc eq "4")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-		$show_lvm_note = 1;
-		$ok            = 0;
-	}
-	elsif ($node1_pool2_rc eq "5")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-		$ok            = 0;
-	}
-	elsif ($node1_pool2_rc eq "6")
-	{
-		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0059!#";
-		$ok            = 0;
-	}
-	elsif ($node1_pool2_rc eq "7")
-	{
-		$node1_class   = "highlight_good_bold";
-		$node1_message = "#!string!state_0047!#";
-	}
-	# Node 2, Pool 1
-	if ($node2_pool2_rc eq "1")
-	{
-		# Already existed
-		$node2_message = "#!string!state_0020!#";
-	}
-	elsif ($node2_pool2_rc eq "2")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-		$ok            = 0;
-	}
-	elsif ($node2_pool2_rc eq "3")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0056!#";
-		$ok            = 0;
-	}
-	elsif ($node2_pool2_rc eq "4")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-		$show_lvm_note = 1;
-		$ok            = 0;
-	}
-	elsif ($node2_pool2_rc eq "5")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-		$ok            = 0;
-	}
-	elsif ($node2_pool2_rc eq "6")
-	{
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0059!#";
-		$ok            = 0;
-	}
-	elsif ($node2_pool2_rc eq "7")
-	{
-		$node2_class   = "highlight_good_bold";
-		$node2_message = "#!string!state_0047!#";
-	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-		row		=>	"#!string!row_0250!#",
-		node1_class	=>	$node1_class,
-		node1_message	=>	$node1_message,
-		node2_class	=>	$node2_class,
-		node2_message	=>	$node2_message,
-	});
+	### Pool 2 no longer supported
+# 	## Now Pool 2
+# 	$node1_class   = "highlight_good_bold";
+# 	$node1_message = "#!string!state_0045!#";
+# 	$node2_class   = "highlight_good_bold";
+# 	$node2_message = "#!string!state_0045!#";
+# 	$message       = "";
+# 	# Node 1, Pool 2
+# 	if ($node1_pool2_rc eq "1")
+# 	{
+# 		# Already existed
+# 		$node1_message = "#!string!state_0020!#";
+# 	}
+# 	elsif ($node1_pool2_rc eq "2")
+# 	{
+# 		$node1_class   = "highlight_warning_bold";
+# 		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node1_pool2_rc eq "3")
+# 	{
+# 		$node1_class   = "highlight_warning_bold";
+# 		$node1_message = "#!string!state_0056!#";
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node1_pool2_rc eq "4")
+# 	{
+# 		$node1_class   = "highlight_warning_bold";
+# 		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+# 		$show_lvm_note = 1;
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node1_pool2_rc eq "5")
+# 	{
+# 		$node1_class   = "highlight_warning_bold";
+# 		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node1_pool2_rc eq "6")
+# 	{
+# 		$node1_class   = "highlight_warning_bold";
+# 		$node1_message = "#!string!state_0059!#";
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node1_pool2_rc eq "7")
+# 	{
+# 		$node1_class   = "highlight_good_bold";
+# 		$node1_message = "#!string!state_0047!#";
+# 	}
+# 	# Node 2, Pool 2
+# 	if ($node2_pool2_rc eq "1")
+# 	{
+# 		# Already existed
+# 		$node2_message = "#!string!state_0020!#";
+# 	}
+# 	elsif ($node2_pool2_rc eq "2")
+# 	{
+# 		$node2_class   = "highlight_warning_bold";
+# 		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node2_pool2_rc eq "3")
+# 	{
+# 		$node2_class   = "highlight_warning_bold";
+# 		$node2_message = "#!string!state_0056!#";
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node2_pool2_rc eq "4")
+# 	{
+# 		$node2_class   = "highlight_warning_bold";
+# 		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+# 		$show_lvm_note = 1;
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node2_pool2_rc eq "5")
+# 	{
+# 		$node2_class   = "highlight_warning_bold";
+# 		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node2_pool2_rc eq "6")
+# 	{
+# 		$node2_class   = "highlight_warning_bold";
+# 		$node2_message = "#!string!state_0059!#";
+# 		$ok            = 0;
+# 	}
+# 	elsif ($node2_pool2_rc eq "7")
+# 	{
+# 		$node2_class   = "highlight_good_bold";
+# 		$node2_message = "#!string!state_0047!#";
+# 	}
+# 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+# 		row		=>	"#!string!row_0250!#",
+# 		node1_class	=>	$node1_class,
+# 		node1_message	=>	$node1_message,
+# 		node2_class	=>	$node2_class,
+# 		node2_message	=>	$node2_message,
+# 	});
 	
 	if (not $ok)
 	{
@@ -8451,9 +8453,9 @@ common {
 		# cpu-mask on-no-data-accessible\n";
 	if ($conf->{cgi}{'anvil_drbd_options_cpu-mask'})
 	{
-		print "		cpu-mask $conf->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
+		$conf->{drbd}{global_common} .= "		cpu-mask $conf->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
 	}
-	print "	}
+	$conf->{drbd}{global_common} .= "	}
  
 	disk {
 		# size max-bio-bvecs on-io-error fencing disk-barrier disk-flushes
@@ -8463,17 +8465,17 @@ common {
 		fencing resource-and-stonith;\n";
 	if ($conf->{cgi}{'anvil_drbd_disk_disk-barrier'})
 	{
-		print "		disk-barrier $conf->{cgi}{'anvil_drbd_disk_disk-barrier'}\n";
+		$conf->{drbd}{global_common} .= "		disk-barrier $conf->{cgi}{'anvil_drbd_disk_disk-barrier'};\n";
 	}
 	if ($conf->{cgi}{'anvil_drbd_disk_disk-flushes'})
 	{
-		print "		disk-flushes $conf->{cgi}{'anvil_drbd_disk_disk-flushes'}\n";
+		$conf->{drbd}{global_common} .= "		disk-flushes $conf->{cgi}{'anvil_drbd_disk_disk-flushes'};\n";
 	}
 	if ($conf->{cgi}{'anvil_drbd_disk_md-flushes'})
 	{
-		print "		md-flushes $conf->{cgi}{'anvil_drbd_disk_md-flushes'}\n";
+		$conf->{drbd}{global_common} .= "		md-flushes $conf->{cgi}{'anvil_drbd_disk_md-flushes'};\n";
 	}
-	print "	}
+	$conf->{drbd}{global_common} .= "	}
  
 	net {
 		# protocol timeout max-epoch-size max-buffers unplug-watermark
@@ -8507,17 +8509,17 @@ common {
 		after-sb-2pri disconnect;\n";
 	if ($conf->{cgi}{'anvil_drbd_net_max-buffers'})
 	{
-		print "		max-buffers $conf->{cgi}{'anvil_drbd_net_max-buffers'}\n";
+		$conf->{drbd}{global_common} .= "		max-buffers $conf->{cgi}{'anvil_drbd_net_max-buffers'};\n";
 	}
 	if ($conf->{cgi}{'anvil_drbd_net_sndbuf-size'})
 	{
-		print "		sndbuf-size $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}\n";
+		$conf->{drbd}{global_common} .= "		sndbuf-size $conf->{cgi}{'anvil_drbd_net_sndbuf-size'};\n";
 	}
 	if ($conf->{cgi}{'anvil_drbd_net_rcvbuf-size'})
 	{
-		print "		rcvbuf-size $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}\n";
+		$conf->{drbd}{global_common} .= "		rcvbuf-size $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'};\n";
 	}
-	print "	}
+	$conf->{drbd}{global_common} .= "	}
 }
 ";
 	
@@ -9386,6 +9388,13 @@ sub configure_network_on_node
 	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn_link2\"\n";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_net_rules: \n====\n$udev_net_rules\n====\n");
 	
+	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}]\n");
+	$conf->{cgi}{anvil_bcn_ethtool_opts} =~ s/\$/\\\$/g;
+	$conf->{cgi}{anvil_sn_ethtool_opts}  =~ s/\$/\\\$/g;
+	$conf->{cgi}{anvil_ifn_ethtool_opts} =~ s/\$/\\\$/g;
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}]\n");
+	
 	### Back-Channel Network
 	#$conf->{path}{nodes}{bcn_link1_config};
 	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
@@ -9487,6 +9496,7 @@ sub configure_network_on_node
 	{
 		$ifcfg_ifn_link1 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_ifn_ethtool_opts}\"";
 	}
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ifcfg_ifn_link1:\n====\n$ifcfg_ifn_link1\n====\n");
 	
 	#$conf->{path}{nodes}{ifn_link2_config};
 	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";

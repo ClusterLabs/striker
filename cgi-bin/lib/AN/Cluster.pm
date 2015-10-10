@@ -2380,13 +2380,6 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_repositories})       { $conf->{cgi}{anvil_repositories}       = $conf->{sys}{install_manifest}{'default'}{repositories}; }
 			
 			# DRBD variables
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask:  [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size:   [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
 			if (not $conf->{cgi}{'anvil_drbd_disk_disk-barrier'}) { $conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}; }
 			if (not $conf->{cgi}{'anvil_drbd_disk_disk-flushes'}) { $conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}; }
 			if (not $conf->{cgi}{'anvil_drbd_disk_md-flushes'})   { $conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}; }
@@ -2394,13 +2387,6 @@ sub create_install_manifest
 			if (not $conf->{cgi}{'anvil_drbd_net_max-buffers'})   { $conf->{cgi}{'anvil_drbd_net_max-buffers'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}; }
 			if (not $conf->{cgi}{'anvil_drbd_net_sndbuf-size'})   { $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}; }
 			if (not $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'})   { $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}; }
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 			
 			# Hidden fields for now.
 			if (not $conf->{cgi}{anvil_cluster_name})       { $conf->{cgi}{anvil_cluster_name}       = $conf->{sys}{install_manifest}{'default'}{cluster_name}; }
@@ -4376,7 +4362,7 @@ sub load_install_manifest
 		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 		$conf->{sys}{install_manifest}{use_scancore}             = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             : $conf->{sys}{install_manifest}{'default'}{use_scancore};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
@@ -4388,13 +4374,13 @@ sub load_install_manifest
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cgi::anvil_ifn_gateway: [$conf->{cgi}{anvil_ifn_gateway}], cgi::anvil_dns1: [$conf->{cgi}{anvil_dns1}], cgi::anvil_dns2: [$conf->{cgi}{anvil_dns2}], cgi::anvil_ntp1: [$conf->{cgi}{anvil_ntp1}], cgi::anvil_ntp2: [$conf->{cgi}{anvil_ntp2}]\n");
 		
 		# DRBD variables
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-barrier: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-flushes: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::md-flushes:   [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::options::cpu-mask:  [$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::max-buffers:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::sndbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::rcvbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-barrier: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-flushes: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::md-flushes:   [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::options::cpu-mask:  [$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::max-buffers:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::sndbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::rcvbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
 		$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};
 		$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};
 		$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};
@@ -4402,7 +4388,7 @@ sub load_install_manifest
 		$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};
 		$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};
 		$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], cgi::anvil_drbd_disk_md-flushes: [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}], cgi::anvil_drbd_options_cpu-mask: [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}], cgi::anvil_drbd_net_max-buffers: [$conf->{cgi}{'anvil_drbd_net_max-buffers'}], cgi::anvil_drbd_net_sndbuf-size: [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}], cgi::anvil_drbd_net_rcvbuf-size: [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], cgi::anvil_drbd_disk_md-flushes: [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}], cgi::anvil_drbd_options_cpu-mask: [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}], cgi::anvil_drbd_net_max-buffers: [$conf->{cgi}{'anvil_drbd_net_max-buffers'}], cgi::anvil_drbd_net_sndbuf-size: [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}], cgi::anvil_drbd_net_rcvbuf-size: [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
 		
 		### Foundation Pack
 		# Switches
@@ -5346,7 +5332,6 @@ sub confirm_install_manifest_run
 # 	   $say_repos =~ s/,/<br \/>/;
 # 	   $say_repos =  "--" if not $say_repos;
 	
-	
 	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
 	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
 		form_file			=>	"/cgi-bin/striker",
@@ -5354,8 +5339,10 @@ sub confirm_install_manifest_run
 		say_storage_pool_2		=>	$say_storage_pool_2,
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
 		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+		anvil_node1_uuid		=>	$conf->{cgi}{anvil_node1_uuid},
 		anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
 		anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
+		anvil_node2_uuid		=>	$conf->{cgi}{anvil_node2_uuid},
 		anvil_password			=>	$conf->{cgi}{anvil_password},
 		anvil_bcn_ethtool_opts		=>	$conf->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
