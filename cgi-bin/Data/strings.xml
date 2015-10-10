@@ -640,8 +640,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0210">DNS1</key>
 		<key name="row_0211">DNS2</key>
 		<key name="row_0212">Outlet</key>
-		<!-- <key name="row_0213"><![CDATA[Storage Pool <span class="highlight_bad_bold">1</span>]]></key> -->
-		<!-- <key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key> -->
+		<key name="row_0213">Replicated Storage</key>
+		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key> <!-- Not used now -->
 		<key name="row_0215"><![CDATA[<span class="fixed_width">/etc/hosts</span> File]]></key>
 		<key name="row_0216">Ready?</key>
 		<key name="row_0217">Current Address [:port]</key>
@@ -660,7 +660,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0230">Network Mapping</key>
 		<key name="row_0231">Partition Plan</key>
 		<key name="row_0232">Replicated Storage</key>
-		<!-- <key name="row_0233">Storage Pool 2</key> -->
+		<key name="row_0233">Storage Pool 2</key>  <!-- Not used now -->
 		<key name="row_0234">OS Registration</key>
 		<key name="row_0235">Distribution Name</key>
 		<key name="row_0236">Registered?</key>
@@ -675,9 +675,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0245">Adding local repository</key>
 		<key name="row_0246">Replicated Storage Partition</key>
 		<key name="row_0247">Rebooting</key>
-		<!-- <key name="row_0248">Partitioning Pool 2</key> -->
+		<key name="row_0248">Partitioning Pool 2</key>  <!-- Not used now -->
 		<key name="row_0249">Storage Meta-data</key>
-		<!-- <key name="row_0250">Pool 2 Meta-data</key> -->
+		<key name="row_0250">Pool 2 Meta-data</key> <!-- Not used now -->
 		<key name="row_0251">Configuring Clustered LVM</key>
 		<key name="row_0252">Configure Daemons</key>
 		<key name="row_0253">Configuring IPMI</key>
@@ -1038,7 +1038,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0051">Didn't shut down</key>
 		<key name="state_0052">Storage Pool Mismatch</key>
 		<key name="state_0053">Not enough space</key>
-		<!-- <key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key> -->
+		<key name="state_0054"><![CDATA[Pool 1: [<span class="fixed_width">#!variable!pool1_device!#</span>, <span class="fixed_width">#!variable!pool1_size!#</span>]<br />Pool 2: [<span class="fixed_width">#!variable!pool2_device!#</span>, <span class="fixed_width">#!variable!pool2_size!#</span>]<br /><span class="subtle_text">Pool 1 inc. [<span class="fixed_width">#!variable!media_size!#</span>] Media Libraray.</span>]]></key> <!-- Not used now -->
 		<key name="state_0054"><![CDATA[Servers: [<span class="highlight_detail">#!variable!pool1_size!#</span>],<br />Media Library: [<span class="highlight_detail">#!variable!media_size!#</span>].</span>]]></key>
 		<key name="state_0055"><![CDATA[Backing device: [<span class="highlight_detail">#!variable!device!#</span>] Not Found.]]></key>
 		<key name="state_0056">No backing device specified</key>
