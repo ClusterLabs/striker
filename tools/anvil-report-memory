@@ -62,7 +62,7 @@ if (not $an->data->{switches}{program})
 	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arm_error_0001", code => 2, file => "$THIS_FILE", line => __LINE__});
 }
 
-$an->Log->entry({log_level => 2, message_key => "arm_log_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "arm_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -71,7 +71,7 @@ get_pids($an);
 read_smaps($an);
 
 my $hr_size = $an->Readable->bytes_to_hr({'bytes' => $an->data->{memory}{total}});
-$an->Log->entry({log_level => 2, message_key => "arm_log_0002", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "arm_log_0002", message_variables => {
 	program_name	=>	$an->data->{switches}{program}, 
 	'bytes'		=>	$an->data->{memory}{total},
 	hr_size		=>	$hr_size,
@@ -87,7 +87,7 @@ sub read_smaps
 	
 	foreach my $pid (@{$an->data->{sys}{pids}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "pid", value1 => $pid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
