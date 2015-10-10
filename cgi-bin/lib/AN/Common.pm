@@ -690,6 +690,7 @@ sub initialize_conf
 			
 			# These are files on nodes, not on the dashboard machin itself.
 			nodes			=>	{
+				'anvil-adjust-vnet'	=>	"/sbin/striker/anvil-adjust-vnet",
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 				# This is the actual DRBD wait script
 				'anvil-wait-for-drbd'	=>	"/sbin/striker/anvil-wait-for-drbd",
@@ -739,6 +740,7 @@ sub initialize_conf
 				striker_tarball		=>	"/sbin/striker/striker_tools.tar.bz2",
 				tar			=>	"/bin/tar",
 				udev_net_rules		=>	"/etc/udev/rules.d/70-persistent-net.rules",
+				udev_vnet_rules		=>	"/etc/udev/rules.d/99-anvil-adjust-vnet.rules",
 				# This is the LSB wrapper.
 				'wait-for-drbd'		=>	"/sbin/striker/wait-for-drbd",
 				'wait-for-drbd_initd'	=>	"/etc/init.d/wait-for-drbd",
@@ -823,6 +825,7 @@ sub initialize_conf
 			# entries is striker.conf.
 			install_manifest	=>	{
 				'default'		=>	{
+					bcn_ethtool_opts		=>	"",
 					bcn_network			=>	"10.20.0.0",
 					bcn_subnet			=>	"255.255.0.0",
 					cluster_name			=>	"anvil",
@@ -836,6 +839,7 @@ sub initialize_conf
 					dns1				=>	"8.8.8.8",
 					dns2				=>	"8.8.4.4",
 					domain				=>	"",
+					ifn_ethtool_opts		=>	"",
 					ifn_gateway			=>	"",
 					ifn_network			=>	"10.255.0.0",
 					ifn_subnet			=>	"255.255.0.0",
@@ -883,6 +887,7 @@ sub initialize_conf
 					repositories			=>	"",
 					sequence			=>	"01",
 					ssh_keysize			=>	8191,
+					sn_ethtool_opts			=>	"",
 					sn_network			=>	"10.10.0.0",
 					sn_subnet			=>	"255.255.0.0",
 					striker_database		=>	"scancore",
@@ -996,10 +1001,16 @@ sub initialize_conf
 				"netware4#!#Novell Netware 4",
 				"msdos#!#MS-DOS",
 				"generic#!#Generic",
+				"rhel7#!#Debian Jessie",
 				"debianwheezy#!#Debian Wheezy",
 				"debiansqueeze#!#Debian Squeeze",
 				"debianlenny#!#Debian Lenny",
 				"debianetch#!#Debian Etch",
+				"fedora18#!#Fedora 23",
+				"fedora18#!#Fedora 22",
+				"fedora18#!#Fedora 21",
+				"fedora18#!#Fedora 20",
+				"fedora18#!#Fedora 19",
 				"fedora18#!#Fedora 18",
 				"fedora17#!#Fedora 17",
 				"fedora16#!#Fedora 16",

@@ -125,6 +125,7 @@ if ((not $conf->{cgi}{cluster}) && (not $conf->{cgi}{config}))
 AN::Cluster::get_cgi_vars($conf, [
 	"adapter",
 	"anvil",
+	"anvil_bcn_ethtool_opts",
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
 	"anvil_dns1",
@@ -139,6 +140,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_drbd_net_rcvbuf-size", 
 	"anvil_fence_order",
 	"anvil_id",
+	"anvil_ifn_ethtool_opts",
 	"anvil_ifn_gateway",
 	"anvil_ifn_network",
 	"anvil_ifn_subnet",
@@ -212,6 +214,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_root_password",
 	"anvil_sequence",
 	"anvil_ssh_keysize",
+	"anvil_sn_ethtool_opts",
 	"anvil_sn_network",
 	"anvil_sn_subnet",
 	"anvil_storage_partition_1_byte_size",

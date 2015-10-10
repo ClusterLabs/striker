@@ -2120,8 +2120,11 @@ sub create_install_manifest
 	$conf->{form}{anvil_domain_star}                   = "";
 	$conf->{form}{anvil_name_star}                     = "";
 	$conf->{form}{anvil_password_star}                 = "";
+	$conf->{form}{anvil_bcn_ethtool_opts_star}         = "";
 	$conf->{form}{anvil_bcn_network_star}              = "";
+	$conf->{form}{anvil_sn_ethtool_opts_star}          = "";
 	$conf->{form}{anvil_sn_network_star}               = "";
+	$conf->{form}{anvil_ifn_ethtool_opts_star}         = "";
 	$conf->{form}{anvil_ifn_network_star}              = "";
 	$conf->{form}{anvil_ifn_gateway_star}              = "";
 	$conf->{form}{anvil_dns1_star}                     = "";
@@ -2361,10 +2364,13 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = $conf->{sys}{install_manifest}{'default'}{sequence}; }
 			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
 			if (not $conf->{cgi}{anvil_password})           { $conf->{cgi}{anvil_password}           = $conf->{sys}{install_manifest}{'default'}{password}; }
+			if (not $conf->{cgi}{anvil_bcn_ethtool_opts})   { $conf->{cgi}{anvil_bcn_ethtool_opts}   = $conf->{sys}{install_manifest}{'default'}{bcn_ethtool_opts}; }
 			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = $conf->{sys}{install_manifest}{'default'}{bcn_network}; }
 			if (not $conf->{cgi}{anvil_bcn_subnet})         { $conf->{cgi}{anvil_bcn_subnet}         = $conf->{sys}{install_manifest}{'default'}{bcn_subnet}; }
+			if (not $conf->{cgi}{anvil_sn_ethtool_opts})    { $conf->{cgi}{anvil_sn_ethtool_opts}    = $conf->{sys}{install_manifest}{'default'}{sn_ethtool_opts}; }
 			if (not $conf->{cgi}{anvil_sn_network})         { $conf->{cgi}{anvil_sn_network}         = $conf->{sys}{install_manifest}{'default'}{sn_network}; }
 			if (not $conf->{cgi}{anvil_sn_subnet})          { $conf->{cgi}{anvil_sn_subnet}          = $conf->{sys}{install_manifest}{'default'}{sn_subnet}; }
+			if (not $conf->{cgi}{anvil_ifn_ethtool_opts})   { $conf->{cgi}{anvil_ifn_ethtool_opts}   = $conf->{sys}{install_manifest}{'default'}{ifn_ethtool_opts}; }
 			if (not $conf->{cgi}{anvil_ifn_network})        { $conf->{cgi}{anvil_ifn_network}        = $conf->{sys}{install_manifest}{'default'}{ifn_network}; }
 			if (not $conf->{cgi}{anvil_ifn_subnet})         { $conf->{cgi}{anvil_ifn_subnet}         = $conf->{sys}{install_manifest}{'default'}{ifn_subnet}; }
 			if (not $conf->{cgi}{anvil_media_library_size}) { $conf->{cgi}{anvil_media_library_size} = $conf->{sys}{install_manifest}{'default'}{library_size}; }
@@ -2592,6 +2598,15 @@ sub create_install_manifest
 				more_info	=>	"$anvil_bcn_network_more_info",
 			});
 		}
+		# For now, ethtool_opts are always hidden.
+		if (1)
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_bcn_ethtool_opts",
+				id		=>	"anvil_bcn_ethtool_opts",
+				value		=>	$conf->{cgi}{anvil_bcn_ethtool_opts},
+			});
+		}
 		
 		# Anvil! SN Network definition
 		if (($conf->{sys}{install_manifest}{'default'}{sn_network}) && 
@@ -2625,6 +2640,15 @@ sub create_install_manifest
 				more_info	=>	"$anvil_sn_network_more_info",
 			});
 		}
+		# For now, ethtool_opts are always hidden.
+		if (1)
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_sn_ethtool_opts",
+				id		=>	"anvil_sn_ethtool_opts",
+				value		=>	$conf->{cgi}{anvil_sn_ethtool_opts},
+			});
+		}
 		
 		# Anvil! IFN Network definition
 		if (($conf->{sys}{install_manifest}{'default'}{ifn_network}) && 
@@ -2656,6 +2680,15 @@ sub create_install_manifest
 				subnet_value	=>	$conf->{cgi}{anvil_ifn_subnet},
 				star		=>	$conf->{form}{anvil_ifn_network_star},
 				more_info	=>	"$anvil_ifn_network_more_info",
+			});
+		}
+		# For now, ethtool_opts are always hidden.
+		if (1)
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"anvil_ifn_ethtool_opts",
+				id		=>	"anvil_ifn_ethtool_opts",
+				value		=>	$conf->{cgi}{anvil_ifn_ethtool_opts},
 			});
 		}
 		
@@ -4099,24 +4132,26 @@ sub load_install_manifest
 						}
 						else
 						{
-							my $netblock = $a->{$b}->[0]->{$c}->[0]->{netblock};
-							my $netmask  = $a->{$b}->[0]->{$c}->[0]->{netmask};
-							my $gateway  = $a->{$b}->[0]->{$c}->[0]->{gateway};
-							my $defroute = $a->{$b}->[0]->{$c}->[0]->{defroute};
-							my $dns1     = $a->{$b}->[0]->{$c}->[0]->{dns1};
-							my $dns2     = $a->{$b}->[0]->{$c}->[0]->{dns2};
-							my $ntp1     = $a->{$b}->[0]->{$c}->[0]->{ntp1};
-							my $ntp2     = $a->{$b}->[0]->{$c}->[0]->{ntp2};
+							my $netblock     = $a->{$b}->[0]->{$c}->[0]->{netblock};
+							my $netmask      = $a->{$b}->[0]->{$c}->[0]->{netmask};
+							my $gateway      = $a->{$b}->[0]->{$c}->[0]->{gateway};
+							my $defroute     = $a->{$b}->[0]->{$c}->[0]->{defroute};
+							my $dns1         = $a->{$b}->[0]->{$c}->[0]->{dns1};
+							my $dns2         = $a->{$b}->[0]->{$c}->[0]->{dns2};
+							my $ntp1         = $a->{$b}->[0]->{$c}->[0]->{ntp1};
+							my $ntp2         = $a->{$b}->[0]->{$c}->[0]->{ntp2};
+							my $ethtool_opts = $a->{$b}->[0]->{$c}->[0]->{ethtool_opts};
 							
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock} = $netblock ? $netblock : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}  = $netmask  ? $netmask  : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}  = $gateway  ? $gateway  : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute} = $defroute ? $defroute : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}     = $dns1     ? $dns1     : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}     = $dns2     ? $dns2     : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}     = $ntp1     ? $ntp1     : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}     = $ntp2     ? $ntp2     : "";
-							#record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}]\n");
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock}     = $netblock     ? $netblock     : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}      = $netmask      ? $netmask      : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}      = $gateway      ? $gateway      : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}     = $defroute     ? $defroute     : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}         = $dns1         ? $dns1         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}         = $dns2         ? $dns2         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}         = $ntp1         ? $ntp1         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}         = $ntp2         ? $ntp2         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts} = $ethtool_opts ? $ethtool_opts : "";
+							record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}], ethtool_opts: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts}]\n");
 						}
 					}
 				}
@@ -4317,13 +4352,16 @@ sub load_install_manifest
 		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_size: [$conf->{cgi}{anvil_media_library_size}], cgi::anvil_media_library_unit: [$conf->{cgi}{anvil_media_library_unit}]\n");
 		
 		# Networks
-		$conf->{cgi}{anvil_bcn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock};
-		$conf->{cgi}{anvil_bcn_subnet}  = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netmask};
-		$conf->{cgi}{anvil_sn_network}  = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netblock};
-		$conf->{cgi}{anvil_sn_subnet}   = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netmask};
-		$conf->{cgi}{anvil_ifn_network} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
-		$conf->{cgi}{anvil_ifn_subnet}  = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
+		$conf->{cgi}{anvil_bcn_ethtool_opts} = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{ethtool_opts};
+		$conf->{cgi}{anvil_bcn_network}      = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock};
+		$conf->{cgi}{anvil_bcn_subnet}       = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netmask};
+		$conf->{cgi}{anvil_sn_ethtool_opts}  = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{ethtool_opts};
+		$conf->{cgi}{anvil_sn_network}       = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netblock};
+		$conf->{cgi}{anvil_sn_subnet}        = $conf->{install_manifest}{$file}{common}{network}{name}{sn}{netmask};
+		$conf->{cgi}{anvil_ifn_ethtool_opts} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ethtool_opts};
+		$conf->{cgi}{anvil_ifn_network}      = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
+		$conf->{cgi}{anvil_ifn_subnet}       = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_ethtool_opts: [$conf->{cgi}{anvil_bcn_ethtool_opts}], cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_ethtool_opts: [$conf->{cgi}{anvil_sn_ethtool_opts}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
 		
 		# iptables
 		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
@@ -5126,9 +5164,9 @@ Striker Version: $conf->{sys}{version}
 	</node>
 	<common>
 		<networks>
-			<bcn netblock=\"$conf->{cgi}{anvil_bcn_network}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" gateway=\"\" defroute=\"no\" />
-			<sn  netblock=\"$conf->{cgi}{anvil_sn_network}\" netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" defroute=\"no\" />
-			<ifn netblock=\"$conf->{cgi}{anvil_ifn_network}\" netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_dns1}\" dns2=\"$conf->{cgi}{anvil_dns2}\" ntp1=\"$conf->{cgi}{anvil_ntp1}\" ntp2=\"$conf->{cgi}{anvil_ntp2}\" defroute=\"yes\" />
+			<bcn netblock=\"$conf->{cgi}{anvil_bcn_network}\" netmask=\"$conf->{cgi}{anvil_bcn_subnet}\" gateway=\"\" defroute=\"no\" ethtool_opts=\"$conf->{cgi}{anvil_bcn_ethtool_opts}\" />
+			<sn netblock=\"$conf->{cgi}{anvil_sn_network}\" netmask=\"$conf->{cgi}{anvil_sn_subnet}\" gateway=\"\" defroute=\"no\" ethtool_opts=\"$conf->{cgi}{anvil_sn_ethtool_opts}\" />
+			<ifn netblock=\"$conf->{cgi}{anvil_ifn_network}\" netmask=\"$conf->{cgi}{anvil_ifn_subnet}\" gateway=\"$conf->{cgi}{anvil_ifn_gateway}\" dns1=\"$conf->{cgi}{anvil_dns1}\" dns2=\"$conf->{cgi}{anvil_dns2}\" ntp1=\"$conf->{cgi}{anvil_ntp1}\" ntp2=\"$conf->{cgi}{anvil_ntp2}\" defroute=\"yes\" ethtool_opts=\"$conf->{cgi}{anvil_ifn_ethtool_opts}\" />
 			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
 				<bcn name=\"bcn_bond1\" primary=\"bcn_link1\" secondary=\"bcn_link2\" />
 				<sn name=\"sn_bond1\" primary=\"sn_link1\" secondary=\"sn_link2\" />
@@ -5319,10 +5357,12 @@ sub confirm_install_manifest_run
 		anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
 		anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
 		anvil_password			=>	$conf->{cgi}{anvil_password},
+		anvil_bcn_ethtool_opts		=>	$conf->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
 		anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
 		anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
 		anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
+		anvil_ifn_ethtool_opts		=>	$conf->{cgi}{anvil_ifn_ethtool_opts}, 
 		anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
 		anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
 		anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
@@ -5690,10 +5730,13 @@ sub show_summary_manifest
 		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
 		anvil_domain			=>	$conf->{cgi}{anvil_domain},
 		anvil_password			=>	$conf->{cgi}{anvil_password},
+		anvil_bcn_ethtool_opts		=>	$conf->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
 		anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
+		anvil_sn_ethtool_opts		=>	$conf->{cgi}{anvil_sn_ethtool_opts}, 
 		anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
 		anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
+		anvil_ifn_ethtool_opts		=>	$conf->{cgi}{anvil_ifn_ethtool_opts}, 
 		anvil_ifn_network		=>	$conf->{cgi}{anvil_ifn_network},
 		anvil_ifn_subnet		=>	$conf->{cgi}{anvil_ifn_subnet},
 		anvil_media_library_size	=>	$conf->{cgi}{anvil_media_library_size},
