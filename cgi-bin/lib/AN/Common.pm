@@ -1001,7 +1001,7 @@ sub initialize_conf
 				"netware4#!#Novell Netware 4",
 				"msdos#!#MS-DOS",
 				"generic#!#Generic",
-				"rhel7#!#Debian Jessie",
+				"debianjessie#!#Debian Jessie",
 				"debianwheezy#!#Debian Wheezy",
 				"debiansqueeze#!#Debian Squeeze",
 				"debianlenny#!#Debian Lenny",

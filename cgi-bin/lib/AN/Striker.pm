@@ -5476,6 +5476,13 @@ sub verify_vm_config
 			push @errors, "$say_row#!#$say_message";
 		}
 		
+		# A few OSes we set don't match a real os-variant. Swap them here.
+		if ($conf->{cgi}{os_variant} eq "debianjessie")
+		{
+			# Debian is modern enough so we'll use the 'rhel7' variant.
+			$conf->{cgi}{os_variant} = "rhel7";
+		}
+		
 		### TODO: Find a better way to determine this.
 		# Look at the OS type to try and determine if 'e1000' or
 		# 'virtio' should be used by the network.
@@ -5486,7 +5493,8 @@ sub verify_vm_config
 		    ($conf->{cgi}{os_variant} =~ /ubuntu/) || 
 		    ($conf->{cgi}{os_variant} =~ /sles11/) || 
 		    ($conf->{cgi}{os_variant} =~ /rhel5/) || 
-		    ($conf->{cgi}{os_variant} =~ /rhel6/))
+		    ($conf->{cgi}{os_variant} =~ /rhel6/) || 
+		    ($conf->{cgi}{os_variant} =~ /rhel7/))
 		{
 			$conf->{new_vm}{virtio}{disk} = 1;
 			$conf->{new_vm}{virtio}{nic}  = 1;
