@@ -399,10 +399,9 @@ elsif ($conf->{cgi}{cluster})
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
 	{
-		# You can pass in 'anvil => $cluster' as the first hash
-		# reference in the 'template' call and then use the string
-		# directly in the template, but I think that's too indirect
-		# for future devs to follow initially.
+		# You can pass in 'anvil => $cluster' as the first hash reference in the 'template' call and 
+		# then use the string directly in the template, but I think that's too indirect for future
+		# devs to follow initially.
 		my $say_message = AN::Common::get_string($conf, {key => "message_0003", variables => {
 			anvil	=>	$cluster,
 		}});

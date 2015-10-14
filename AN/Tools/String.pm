@@ -23,9 +23,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -36,8 +35,8 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
-# This forces UTF8 mode when reading a words file. This should not be used
-# normally as the words file should already be UTF8 encoded.
+# This forces UTF8 mode when reading a words file. This should not be used normally as the words file should
+# already be UTF8 encoded.
 sub force_utf8
 {
 	my $self = shift;
@@ -85,60 +84,39 @@ sub get_language_name
 	my $hash = $an->data;
 	my $language_name = $hash->{strings}{lang}{$language}{lang}{long_name};
 	
-	#print Dumper $hash->{strings}{lang}{$language}{lang}{long_name};
-	
 	return($language_name);
 }
 
-# This takes a word key and, optionally, a hash reference, a language and/or an
-# variables array reference. It returns the corresponding string from the hash
-# reference data containing the data from a 'read_words()' call.
+# This takes a word key and, optionally, a hash reference, a language and/or an variables array reference. It
+# returns the corresponding string from the hash reference data containing the data from a 'read_words()' 
+# call.
 sub get
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	#print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
 	my $key;
 	my $hash = $an->data;
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 	
 	my $variables;
 	my $language = $an->default_language;
-	#print "$THIS_FILE ".__LINE__."; lang: [$language]\n";
 	
 	# Catch infinite loops
 	my $i     = 0;
 	my $limit = $an->_error_limit;
-	#print "$THIS_FILE ".__LINE__."; limit: [$limit]\n";
 	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	#print "$THIS_FILE ".__LINE__."; param: [$parameter]\n";
+	# Now see if the user passed the values in a hash reference or directly.
 	if (ref($parameter) eq "HASH")
 	{
 		# Values passed in a hash, good.
-#		print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
-#		print "$THIS_FILE ".__LINE__."; key:  [$parameter->{key}]\n"       if $parameter->{key};
-#		print "$THIS_FILE ".__LINE__."; variables: [$parameter->{variables}]\n" if $parameter->{variables};
-#		print "$THIS_FILE ".__LINE__."; lang: [$parameter->{language}]\n"  if $parameter->{language};
-#		print "$THIS_FILE ".__LINE__."; hash: [$parameter->{hash}]\n"      if $parameter->{hash};
 		$key       = $parameter->{key}       if $parameter->{key};
 		$variables = $parameter->{variables} ?  $parameter->{variables} : "";
 		$language  = $parameter->{language}  if $parameter->{language};
 		$hash      = $parameter->{hash}      if $parameter->{hash};
-# 		print "$THIS_FILE ".__LINE__."; key: [$key], variables: [$variables], language: [$language], hash: [$hash]\n";
-# 		if (ref($variables) eq "HASH")
-# 		{
-# 			print "========================\n";
-# 			print "key: [$key]\n";
-# 			print Dumper $variables;
-# 			print "========================\n";
-# 		}
 	}
 	else
 	{
@@ -147,14 +125,11 @@ sub get
 		$variables = $_[0] if defined $_[0];
 		$language  = $_[1] if defined $_[1];
 		$hash      = $_[2] if defined $_[2];
-		#print "$THIS_FILE ".__LINE__."; key: [$key], variables: [$variables], lang: [$language], hash: [$hash]\n";
 	}
 	
 	# Make sure we got a key.
-	#print "$THIS_FILE ".__LINE__."; key: [$key]\n";
 	if (not $key)
 	{
-		#print "$THIS_FILE ".__LINE__."; The 'hash' string does not contain a hash.\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0001",
@@ -163,16 +138,13 @@ sub get
 			file		=>	"$THIS_FILE",
 			line		=>	__LINE__
 		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
 	# Make sure that 'hash' is a hash reference
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 	if (ref($hash) ne "HASH")
 	{
-		#print "$THIS_FILE ".__LINE__."; The 'hash' string does not contain a hash.\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0001",
@@ -184,16 +156,13 @@ sub get
 			file	=>	"$THIS_FILE",
 			line	=>	__LINE__
 		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 
 	# Make sure that 'variables' is an array reference, if set.
-	#print "$THIS_FILE ".__LINE__."; variables: [$variables]\n";
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
-		#print "$THIS_FILE ".__LINE__."; The 'variables' string has the value: [$variables], which is not a hash reference, as was expected.\n";
 		$an->Alert->error({
 			fatal		=>	1,
 			title_key	=>	"error_title_0001",
@@ -211,8 +180,7 @@ sub get
 	# Make sure that the request language exists in the hash.
 	if (ref($hash->{strings}{lang}{$language}) ne "HASH")
 	{
-		# If not, I have to just 'die' because calling Alert->error()
-		# would trigger an infite loop.
+		# If not, I have to just 'die' because calling Alert->error() would trigger an infite loop.
 		print "$THIS_FILE ".__LINE__."; [ ERROR ] Invalid Language!<br />\n";
 		print "$THIS_FILE ".__LINE__."; [ ERROR ] The 'AN::Tools::String' module's 'get' method was passed an invalid 'language' argument: [$language]. This must match one of the languages in the words file's <langs>...</langs> block.<br />\n",
 		print "$THIS_FILE ".__LINE__."; [ ERROR ] Exiting in file: [$THIS_FILE] at line: [".__LINE__."]<br />\n";
@@ -231,7 +199,7 @@ sub get
 			fatal			=>	1,
 			title_key		=>	"error_title_0004",
 			message_key		=>	"error_message_0007",
-			message_variables		=>	{
+			message_variables	=>	{
 				key			=>	$key,
 				language		=>	$language,
 			},
@@ -244,21 +212,17 @@ sub get
 	
 	# Now pick out my actual string.
 	my $string =  $hash->{strings}{lang}{$language}{key}{$key}{content};
-	$string    =~ s/^\n//;
-	#print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], string: [$string]\n";
+	   $string =~ s/^\n//;
 	
-	# This clears off the new-line and trailing white-spaces caused by the
-	# indenting of the '</key>' field in the words XML file when printing
-	# to the command line.
+	# This clears off the new-line and trailing white-spaces caused by the indenting of the '</key>' 
+	# field in the words XML file when printing to the command line.
 	$string =~ s/\n(\s+)$//;
 	
-	# Make sure that if the string has '#!variable!x!#', that 'variables' 
-	# is a hash reference. If it isn't, it would trigger an infinite loop 
-	# later. The one exception is '#!variable!*!#' which is used to explain
-	# things to the user, and is explicitely escaped as needed.
+	# Make sure that if the string has '#!variable!x!#', that 'variables' is a hash reference. If it 
+	# isn't, it would trigger an infinite loop later. The one exception is '#!variable!*!#' which is used
+	# to explain things to the user, and is explicitely escaped as needed.
 	if (($string =~ /#!variable!(.*?)!#/) && (ref($variables) ne "HASH"))
 	{
-		#print "$THIS_FILE ".__LINE__."; string: [$string], key: [$key]\n";
 		if ($string =~ /#!variable!\*!#/)
 		{
 			#print "$THIS_FILE ".__LINE__."; Passed: '#!variable!\*!#'\n";
@@ -280,11 +244,8 @@ sub get
 	}
 	
 	# Substitute in any variables if needed.
-	#print "$THIS_FILE ".__LINE__."; string: [$string]\n";
-	#print "$THIS_FILE ".__LINE__."; variables: [".ref($variables)."]\n" if $variables;
 	if (ref($variables) eq "HASH")
 	{
-		#foreach my $key (keys %{$variables}) { print "$THIS_FILE ".__LINE__."; key: [$key]\t->[$variables->{$key}]\n"; }
 		$string = $an->String->_insert_variables_into_string({
 			string		=>	$string,
 			variables	=>	$variables,
@@ -299,12 +260,11 @@ sub get
 		  variables	=>	$variables,
 	});
 	
-	#print "$THIS_FILE ".__LINE__."; [ Debug ] - string: [$string]\n";
 	return ($string);
 }
 
-# This takes the path/name of an XML file containing AN::Tools type words and
-# reads them into a hash reference.
+# This takes the path/name of an XML file containing AN::Tools type words and reads them into a hash 
+# reference.
 sub read_words
 {
 	my $self      = shift;
@@ -663,21 +623,18 @@ sub read_words
 	return (1);
 }
 
-# This takes a string and substitutes out the various replacement keys as
-# needed until the string is ready for display. The only thing it doesn't
-# handle is substituting '#!variable!x!#' keys into a string. For that, call the
-# 'get' method with it's given variable array reference and store the
-# results in a string. This is requried because there is currently no way for
-# any of the called methods within here to know which string the variables in
-# the array reference belong in.
+# This takes a string and substitutes out the various replacement keys as needed until the string is ready 
+# for display. The only thing it doesn't handle is substituting '#!variable!x!#' keys into a string. For 
+# that, call the 'get' method with it's given variable array reference and store the results in a string. 
+# This is requried because there is currently no way for any of the called methods within here to know which
+# string the variables in the array reference belong in.
 sub _process_string
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Start looping through the passed string until all the replacement
-	# keys are gone.
+	# Start looping through the passed string until all the replacement keys are gone.
 	my $i     = 0;
 	my $limit = $an->_error_limit;
 	   $limit = 6;
@@ -686,17 +643,11 @@ sub _process_string
 			string		=>	$parameter->{string},
 			variables	=>	$parameter->{variables},
 	});
-	   
-# 	print "Error limit: [$limit]\n";
-# 	print "$i: $parameter->{string}\n";
+	
 	while ($parameter->{string} =~ /#!(.+?)!#/)
 	{
-		# Substitute 'word' keys, but without 'variables'. This has to be
-		# first! 'protect' will catch 'word' keys, because no where
-		# else are they allowed.
-		#print __LINE__."; string: [$parameter->{string}]\n";
-		#print __LINE__."; language: [$parameter->{language}]\n";
-		#print __LINE__."; hash: [$parameter->{hash}]\n";
+		# Substitute 'word' keys, but without 'variables'. This has to be first! 'protect' will catch
+		# 'word' keys, because no where else are they allowed.
 		$parameter->{string} = $an->String->_process_string_insert_strings({
 			  string	=>	$parameter->{string},
 			  language	=>	$parameter->{language},
@@ -782,18 +733,15 @@ sub _insert_data
 	my $an    = $self->parent;
 	
 	my $i = 0;
-	#print "$THIS_FILE ".__LINE__."; string: [$parameter->{string}]\n";
 	while ($parameter->{string} =~ /#!data!(.+?)!#/)
 	{
 		my $id = $1;
 		if ($id =~ /::/)
 		{
 			# Multi-dimensional hash.
-			#print "$THIS_FILE ".__LINE__."; id: [$id]\n";
 			my $value = $an->_get_hash_reference({
 				key	=>	$id,
 			});
-			#print "$THIS_FILE ".__LINE__."; value: [$value]\n";
 			if (not defined $value)
 			{
 				$parameter->{string} =~ s/#!data!$id!#/!!a[$id]!!/;

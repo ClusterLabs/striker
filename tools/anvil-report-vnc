@@ -1,0 +1,340 @@
+#!/usr/bin/perl
+# 
+# This reports the current host of a server and the TCP port it's VNC connection is listening on.
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 1  - Anvil! and/or server name not passed in.
+# 2  - Anvil! name not found in striker.conf.
+# 3  - Failed to log into either node.
+# 4  - Failed to find the server's host.
+# 5  - Failed to read the server's XML definition data on the host node.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		anvil		=>	{
+			id		=>	"",
+			node1		=>	"",
+			node2		=>	"",
+			password	=>	"",
+		},
+		path		=>	{
+			clustat		=>	"/usr/sbin/clustat",
+			log_file	=>	"/var/log/striker.log",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+			virsh		=>	"/usr/bin/virsh",
+		},
+		server		=>	{
+			host		=>	"",
+			'state'		=>	"",
+			vnc_port	=>	0,
+			type		=>	"",
+			'listen'	=>	"",
+		},
+		switches	=>	{
+			anvil		=>	"",
+			server		=>	"",
+		},
+		sys		=>	{
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+			pids		=>	[],
+			program		=>	"ScanCore",
+		},
+	},
+});
+
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+$an->Log->entry({log_level => 3, message_key => "arv_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Exit if no Anvil! or server name was passed in.
+if ((not $an->data->{switches}{anvil}) or (not $an->data->{switches}{server}))
+{
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+}
+
+$an->Log->entry({log_level => 2, message_key => "arv_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+$an->Log->entry({log_level => 2, message_key => "arv_log_0002", message_variables => {
+	server	=>	$an->data->{switches}{anvil}, 
+	anvil	=>	$an->data->{switches}{server},
+}, file => $THIS_FILE, line => __LINE__});
+
+# Find the login details
+foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+{
+	if ($an->data->{cluster}{$id}{name} eq $an->data->{switches}{anvil})
+	{
+		# Split out the node names.
+		my ($node1, $node2) = (split/,/, $an->data->{cluster}{$id}{nodes});
+		$node1 =~ s/^\s+//g;
+		$node1 =~ s/\s+$//g;
+		$node2 =~ s/^\s+//g;
+		$node2 =~ s/\s+$//g;
+		
+		$an->data->{anvil}{id}       = $id;
+		$an->data->{anvil}{node1}    = $node1;
+		$an->data->{anvil}{node2}    = $node2;
+		$an->data->{anvil}{password} = $an->data->{cluster}{$id}{root_pw} ? $an->data->{cluster}{$id}{root_pw} : $an->data->{cluster}{$id}{ricci_pw};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
+			name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
+			name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
+			name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+}
+
+# If I didn't find an Anvil!, exit.
+if ($an->data->{anvil}{id})
+{
+	# Woot!
+	$an->Log->entry({log_level => 2, message_key => "arv_log_0003", message_variables => {
+		anvil	=>	$an->data->{switches}{anvil}, 
+	}, file => $THIS_FILE, line => __LINE__});
+}
+else
+{
+	# Well foo. 
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0002", message_variables => {
+		anvil	=>	$an->data->{switches}{anvil},
+	}, code => 2, file => "$THIS_FILE", line => __LINE__});
+}
+
+# Now find the server
+find_server($an);
+
+# Report it:
+print "server = ".$an->data->{switches}{server}."\n";
+print "anvil  = ".$an->data->{switches}{anvil}."\n";
+print "host   = ".$an->data->{server}{host}."\n";
+print "port   = ".$an->data->{server}{vnc_port}."\n";
+print "type   = ".$an->data->{server}{type}."\n";
+print "listen = ".$an->data->{server}{'listen'}."\n";
+
+exit(0);
+
+# This calls 'clustat' and records which VMs are running where. Returns '1' if it fails for any reason, '0'
+# on success.
+sub read_clustat
+{
+	my ($an, $node) = @_;
+	
+	my $return_code = 1;
+	my $shell_call  = $an->data->{path}{clustat};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		password	=>	$an->data->{anvil}{password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /Service Name/i)
+		{
+			$return_code = 0;
+		}
+		
+		if ($line =~ /^vm:(.*?) (.*?) (.*)$/)
+		{
+			my $server = $1;
+			my $host   = $2;
+			my $state  = $3;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "server", value1 => $server, 
+				name2 => "host",   value2 => $host, 
+				name3 => "state",  value3 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($server eq $an->data->{switches}{server})
+			{
+				# Found it.
+				$an->data->{server}{host}    = $host;
+				$an->data->{server}{'state'} = $state;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "server::host",  value1 => $an->data->{server}{host}, 
+					name2 => "server::state", value2 => $an->data->{server}{'state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# 0 = Success
+	# 1 = Failed
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
+# This calls 'virsh dumpxml <server>' and records the VNC port it is listening on. Returns '1' if there was
+# a problem reading the XML, '0' otherwise.
+sub read_virsh_dumpxml
+{
+	my ($an, $node, $server) = @_;
+	
+	my $return_code = 1;
+	my $in_graphics = 0;
+	my $shell_call  = $an->data->{path}{virsh}." dumpxml $server";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		password	=>	$an->data->{anvil}{password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		next if not $line;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /^<domain /i)
+		{
+			$return_code = 0;
+		}
+		
+		if ($line =~ /^<graphics /)
+		{
+			# In the graphics section.
+			$in_graphics = 1;
+			if ($line =~ /type='(.*?)'/)
+			{
+				$an->data->{server}{type} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::type",  value1 => $an->data->{server}{type}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /port='(\d+)'/)
+			{
+				$an->data->{server}{vnc_port} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::vnc_port",  value1 => $an->data->{server}{vnc_port}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /listen='(.*?)'/)
+			{
+				$an->data->{server}{'listen'} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::listen",  value1 => $an->data->{server}{'listen'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			next;
+		}
+		if ($line =~ /^<\/graphics>/)
+		{
+			$in_graphics = 0;
+			next;
+		}
+		if (($in_graphics) && (not $an->data->{server}{'listen'}))
+		{
+			if ($line =~ /<listen.*?listen='(.*?)'/)
+			{
+				$an->data->{server}{'listen'} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::listen",  value1 => $an->data->{server}{'listen'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# 0 = Success
+	# 1 = Failed
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
+# This looks for all PIDs for the given program name and stores them in a the $an->data->{sys}{pids} array
+# reference.
+sub find_server
+{
+	my ($an) = @_;
+	
+	my $read_clustat = 0;
+	
+	# Try node 1
+	if (read_clustat($an, $an->data->{anvil}{node1}))
+	{
+		# Failed, try node 2
+		if (read_clustat($an, $an->data->{anvil}{node1}))
+		{
+			# Well shucks.
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0003", message_variables => {
+				anvil	=>	$an->data->{switches}{anvil},
+			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	
+	# If I have the host, verify with virsh. If I don't have a host, then no bueno.
+	if ($an->data->{server}{host})
+	{
+		# \o/
+		if (read_virsh_dumpxml($an, $an->data->{server}{host}, $an->data->{switches}{server}))
+		{
+			# Failed.
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0005", message_variables => {
+				server	=>	$an->data->{switches}{server},
+				host	=>	$an->data->{server}{host}, 
+			}, code => 5, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	else
+	{
+		# Sad trombone...
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "arv_error_0004", message_variables => {
+			server	=>	$an->data->{switches}{server},
+			anvil	=>	$an->data->{switches}{anvil},
+		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	return(0);
+}

@@ -35,7 +35,7 @@ sub parent
 sub prep_local_uuid
 {
 	my $self  = shift;
-	my $param = shift;
+	my $parameter = shift;
 	
 	# Clear any prior errors.
 	my $an    = $self->parent;
@@ -109,15 +109,14 @@ sub prep_local_uuid
 	return($an->data->{sys}{host_uuid});
 }
 
-### MADI: Add a function to create a list of searchable directories that starts
-###       with @INC so that a CSV of directories can be added to it after
-###       reading a config file. Make this method take an array reference to
-###       work on.
+### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
+###       directories can be added to it after reading a config file. Make this method take an array 
+###       reference to work on.
 # This method searches the storage device for a give file or directory.
 sub find
 {
-	my $self  = shift;
-	my $param = shift;
+	my $self      = shift;
+	my $parameter = shift;
 	
 	# Clear any prior errors.
 	my $an    = $self->parent;
@@ -134,17 +133,17 @@ sub find
 	
 	# See if I am getting parameters is a hash reference or directly as
 	# element arrays.
-	if (ref($param))
+	if (ref($parameter))
 	{
 		# Called via a hash ref, good.
-		$fatal = $param->{fatal} if $param->{fatal};
-		$file  = $param->{file}  if $param->{file};
-		$dirs  = $param->{dirs}  if $param->{dirs};
+		$fatal = $parameter->{fatal} if $parameter->{fatal};
+		$file  = $parameter->{file}  if $parameter->{file};
+		$dirs  = $parameter->{dirs}  if $parameter->{dirs};
 	}
 	else
 	{
 		# Called directly.
-		$file  = $param;
+		$file  = $parameter;
 		# I don't want to overwrite the defaults if undef or a blank
 		# value was passed.
 		$dirs  = $_[0] if $_[0];
@@ -214,7 +213,7 @@ sub find
 sub read_conf
 {
 	my $self  = shift;
-	my $param = shift;
+	my $parameter = shift;
 	
 	# This just makes the code more consistent.
 	my $an    = $self->parent;
@@ -234,16 +233,16 @@ sub read_conf
 	}
 	
 	# Now see if the user passed the values in a hash reference or directly.
-	if (ref($param) eq "HASH")
+	if (ref($parameter) eq "HASH")
 	{
 		# Values passed in a hash, good.
-		$file = $param->{file} if $param->{file};
-		$hash = $param->{hash} if $param->{hash};
+		$file = $parameter->{file} if $parameter->{file};
+		$hash = $parameter->{hash} if $parameter->{hash};
 	}
 	else
 	{
 		# Values passed directly.
-		$file = $param;
+		$file = $parameter;
 		$hash = $_[0] if defined $_[0];
 	}
 	
@@ -379,6 +378,51 @@ sub search_dirs
 	}
 	
 	return ($array);
+}
+
+# This reads /etc/ssh/ssh_config and later will try to match host names to port forwards.
+sub read_ssh_config
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
+		file	=>	$an->data->{path}{ssh_config}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
+	
+	my $this_host  = "";
+	my $shell_call = $an->data->{path}{ssh_config};
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/#.*$//;
+		$line =~ s/\s+$//;
+		next if not $line;
+		
+		if ($line =~ /^host (.*)/i)
+		{
+			$this_host = $1;
+			next;
+		}
+		next if not $this_host;
+		if ($line =~ /port (\d+)/i)
+		{
+			my $port = $1;
+			$hash->{hosts}{$this_host}{port} = $port;
+		}
+	}
+	close $file_handle;
+	
+	return($hash);
 }
 
 1;

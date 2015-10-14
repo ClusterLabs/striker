@@ -1859,6 +1859,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		
 		<!-- warnings -->
 		<key name="aav_warning_0001">Failed to set the queue length of interface: [#!variable!interface!#] to: [#!variable!queue_length!#].</key>
+		
+		<!-- anvil-report-vnc -->
+		<key name="arv_log_0001">#!variable!this_file!# has started.</key>
+		<key name="arv_log_0002">Looking for: [#!variable!server!#] on the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="arv_log_0003">Gathered the login credentials for the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		
+		<!-- errors -->
+		<key name="arv_error_0001"><![CDATA[Must be called with '--anvil <name> --server <name>'.]]></key>
+		<key name="arv_error_0002">The #!string!brand_0004!# named: [#!variable!anvil!#] was not found in: [#!data!path::striker_config!#].</key>
+		<key name="arv_error_0003">Failed to log into either node in the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="arv_error_0004">Failed to find the host for the server: [#!variable!server!#] on the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="arv_error_0005">Failed to read the XML definition data for the server: [#!variable!server!#] on the host: [#!variable!host!#].</key>
 	</lang>
 
 	<!-- Japanese -->

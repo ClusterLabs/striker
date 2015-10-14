@@ -1,13 +1,9 @@
 package AN::Tools;
-# This is the "root" package that manages the sub modules and controls access
-# to their methods.
+# 
+# This is the "root" package that manages the sub modules and controls access to their methods.
 # 
 # Dedicated to Leah Kubik who helped me back in the early days of TLE-BU.
 # 
-
-# Search engine that assigns a "word" to a given page that best defines that word.
-# Then give each page a "rank" based on the "words" pages that link to and from that page.
-# (weighted, outbound links worth ~1/10th an inbound link)
 
 BEGIN
 {
@@ -23,11 +19,9 @@ my $THIS_FILE = "Tools.pm";
 use utf8;
 $ENV{'PERL_UNICODE'} = 1;
 
-# I intentionally don't use EXPORT, @ISA and the like because I want my
-# "subclass"es to be accessed in a somewhat more OO style. I know some may
-# wish to strike me down for this, but I like the idea of accessing methods
-# via their containing module's name. (A La: $an->Module->method rather than
-# $an->method).
+# I intentionally don't use EXPORT, @ISA and the like because I want my "subclass"es to be accessed in a
+# somewhat more OO style. I know some may wish to strike me down for this, but I like the idea of accessing
+# methods via their containing module's name. (A La: $an->Module->method rather than $an->method).
 use AN::Tools::Alert;
 use AN::Tools::Check;
 use AN::Tools::Convert;
@@ -36,16 +30,16 @@ use AN::Tools::Get;
 use AN::Tools::Log;
 use AN::Tools::Math;
 use AN::Tools::Readable;
+use AN::Tools::Remote;
 use AN::Tools::Storage;
 use AN::Tools::String;
 
 # The constructor through which all other module's methods will be accessed.
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Tools->new()\n";
-	my $class = shift;
-	my $param = shift;
-	my $self  = {
+	my $class     = shift;
+	my $parameter = shift;
+	my $self      = {
 		HANDLE				=>	{
 			ALERT				=>	AN::Tools::Alert->new(),
 			CHECK				=>	AN::Tools::Check->new(),
@@ -55,6 +49,7 @@ sub new
 			LOG				=>	AN::Tools::Log->new(),
 			MATH				=>	AN::Tools::Math->new(),
 			READABLE			=>	AN::Tools::Readable->new(),
+			REMOTE				=>	AN::Tools::Remote->new(),
 			STORAGE				=>	AN::Tools::Storage->new(),
 			STRING				=>	AN::Tools::String->new(),
 		},
@@ -84,14 +79,12 @@ sub new
 	
 	# Bless you!
 	bless $self, $class;
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
-	# This isn't needed, but it makes the code below more consistent with
-	# and portable to other modules.
+	# This isn't needed, but it makes the code below more consistent with and portable to other modules.
 	my $an = $self;
 	
-	# This gets handles to my other modules that the child modules will use
-	# to talk to other sibling modules.
+	# This gets handles to my other modules that the child modules will use to talk to other sibling 
+	# modules.
 	$an->Alert->parent($an);
 	$an->Check->parent($an);
 	$an->Convert->parent($an);
@@ -100,91 +93,83 @@ sub new
 	$an->Log->parent($an);
 	$an->Math->parent($an);
 	$an->Readable->parent($an);
+	$an->Remote->parent($an);
 	$an->Storage->parent($an);
 	$an->String->parent($an);
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# Check the operating system and set any OS-specific values.
 	$an->Check->_os;
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# This checks the environment this program is running in.
 	$an->Check->_environment;
 	
-	# Before I do anything, read in values from the 'DEFAULT::CONFIG_FILE'
-	# configuration file.
+	# Before I do anything, read in values from the 'DEFAULT::CONFIG_FILE' configuration file.
 	$an->Storage->read_conf($an->{DEFAULT}{CONFIG_FILE});
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# I need to read the initial words early.
 	$an->String->read_words();
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
-	# 
+	# Set the directory delimiter
 	my $directory_delimiter = $an->_directory_delimiter();
-	#print "$THIS_FILE ".__LINE__."<br />\n";
 	
 	# Set passed parameters if needed.
-	if (ref($param) eq "HASH")
+	if (ref($parameter) eq "HASH")
 	{
 		### Local parameters
 		# Set the data hash
-		$an->data			($param->{data}) 			if $param->{data};
+		$an->data			($parameter->{data}) 			if $parameter->{data};
 		
 		# Set the default languages.
-		$an->default_language		($param->{default_language}) 		if $param->{default_language};
-		$an->default_log_language	($param->{default_log_language}) 	if $param->{default_log_language};
-		$an->default_log_file		($param->{default_log_file}) 		if $param->{default_log_file};	# TODO: Phase this out
+		$an->default_language		($parameter->{default_language}) 	if $parameter->{default_language};
+		$an->default_log_language	($parameter->{default_log_language}) 	if $parameter->{default_log_language};
+		$an->default_log_file		($parameter->{default_log_file}) 	if $parameter->{default_log_file};	# TODO: Phase this out
 		
 		### AN::Tools::Readable parameters
-		# Readable needs to be set before Log so that changes to
-		# 'base2' are made before the default log cycle size is
-		# interpreted.
-		$an->Readable->base2		($param->{Readable}{base2}) 		if defined $param->{Readable}{base2};
+		# Readable needs to be set before Log so that changes to 'base2' are made before the default
+		# log cycle size is interpreted.
+		$an->Readable->base2		($parameter->{Readable}{base2}) 	if defined $parameter->{Readable}{base2};
 		
 		### AN::Tools::Log parameters
 		# Set the log file.
-		$an->Log->level		($param->{'Log'}{level}) 		if defined $param->{'Log'}{level};
+		$an->Log->level			($parameter->{'Log'}{level}) 		if defined $parameter->{'Log'}{level};
 		
 		### AN::Tools::String parameters
 		# Force UTF-8.
-		$an->String->force_utf8	($param->{String}{force_utf8}) 		if defined $param->{String}{force_utf8};
+		$an->String->force_utf8		($parameter->{String}{force_utf8}) 	if defined $parameter->{String}{force_utf8};
 		# Read in the user's words.
-		$an->String->read_words({file => $param->{String}{read_words}{file}}) if defined $param->{String}{read_words}{file};
+		$an->String->read_words({file => $parameter->{String}{read_words}{file}}) if defined $parameter->{String}{read_words}{file};
 		
 		### AN::Tools::Get parameters
-		$an->Get->use_24h		($param->{'Get'}{use_24h})		if defined $param->{'Get'}{use_24h};
-		$an->Get->say_am		($param->{'Get'}{say_am})		if defined $param->{'Get'}{say_am};
-		$an->Get->say_pm		($param->{'Get'}{say_pm})		if defined $param->{'Get'}{say_pm};
-		$an->Get->date_seperator	($param->{'Get'}{date_seperator})	if defined $param->{'Get'}{date_seperator};
-		$an->Get->time_seperator	($param->{'Get'}{time_seperator})	if defined $param->{'Get'}{time_seperator};
+		$an->Get->use_24h		($parameter->{'Get'}{use_24h})		if defined $parameter->{'Get'}{use_24h};
+		$an->Get->say_am		($parameter->{'Get'}{say_am})		if defined $parameter->{'Get'}{say_am};
+		$an->Get->say_pm		($parameter->{'Get'}{say_pm})		if defined $parameter->{'Get'}{say_pm};
+		$an->Get->date_seperator	($parameter->{'Get'}{date_seperator})	if defined $parameter->{'Get'}{date_seperator};
+		$an->Get->time_seperator	($parameter->{'Get'}{time_seperator})	if defined $parameter->{'Get'}{time_seperator};
 	}
 	
 	# Set some system paths
-	$an->data->{path}{echo}     = "/bin/echo";
-	$an->data->{path}{hostname} = "/etc/sysconfig/network";
-	$an->data->{path}{pg_dump}  = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}   = "/bin/ping",
-	$an->data->{path}{pgrep}    = "/usr/bin/pgrep";
-	$an->data->{path}{psql}     = "/usr/bin/psql";
-	$an->data->{path}{pmap}     = "/usr/bin/pmap";
-	$an->data->{path}{ps}       = "/bin/ps";
+	$an->data->{path}{echo}       = "/bin/echo";
+	$an->data->{path}{hostname}   = "/etc/sysconfig/network";
+	$an->data->{path}{pg_dump}    = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}     = "/bin/ping",
+	$an->data->{path}{pgrep}      = "/usr/bin/pgrep";
+	$an->data->{path}{psql}       = "/usr/bin/psql";
+	$an->data->{path}{pmap}       = "/usr/bin/pmap";
+	$an->data->{path}{ps}         = "/bin/ps";
+	$an->data->{path}{ssh_config} = "/etc/ssh/ssh_config";
 	
 	# Call methods that need to be loaded at invocation of the module.
-	#print "$THIS_FILE ".__LINE__."; Reading: [$an->{DEFAULT}{STRINGS}], PWD: [$ENV{PWD}], 0: [$0]\n";
 	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))
 	{
-		# Try to find the location of this module (I can't use
-		# Dir::Self' because it's not provided by RHEL 6)
+		# Try to find the location of this module (I can't use Dir::Self' because it's not provided
+		# by RHEL 6)
 		my $root = ($INC{'AN/Tools.pm'} =~ /^(.*?)\/AN\/Tools.pm/)[0];
 		my $file = ($an->{DEFAULT}{STRINGS} =~ /^\.\/(.*)/)[0];
 		my $path = "$root/$file";
-		#print "path: [$path]\n";
 		if (-e $path)
 		{
 			# Found the words file.
 			$an->{DEFAULT}{STRINGS} = $path;
-			#print "Found it: [$an->{DEFAULT}{STRINGS}]\n";
 		}
 	}
 	if (not -e $an->{DEFAULT}{STRINGS})
@@ -197,29 +182,25 @@ sub new
 	return ($self);
 }
 
-# This sets or returns the default language the various modules use when
-# processing word strings.
+# This sets or returns the default language the various modules use when processing word strings.
 sub default_language
 {
 	my $self = shift;
 	my $set  = shift if defined $_[0];
 	
-	# This could be set before any word files are read, so no checks are
-	# done here.
+	# This could be set before any word files are read, so no checks are done here.
 	$self->{DEFAULT}{LANGUAGE} = $set if $set;
 	
 	return ($self->{DEFAULT}{LANGUAGE});
 }
 
-# This sets or returns the default language the various modules use when
-# processing word strings.
+# This sets or returns the default language the various modules use when processing word strings.
 sub default_log_language
 {
 	my $self = shift;
 	my $set  = shift if defined $_[0];
 	
-	# This could be set before any word files are read, so no checks are
-	# done here.
+	# This could be set before any word files are read, so no checks are done here.
 	$self->{DEFAULT}{LOG_LANGUAGE} = $set if $set;
 	
 	return ($self->{DEFAULT}{LOG_LANGUAGE});
@@ -231,23 +212,22 @@ sub default_log_file
 	my $self = shift;
 	my $set  = shift if defined $_[0];
 	
-	# This could be set before any word files are read, so no checks are
-	# done here.
+	# This could be set before any word files are read, so no checks are done here.
 	$self->{DEFAULT}{LOG_FILE} = $set if $set;
 	
 	return ($self->{DEFAULT}{LOG_FILE});
 }
 
-# This is a shortcut to the '$an->Alert->_error_string' method allowing for
-# '$an->error' to be called, saving the caller typing.
+# This is a shortcut to the '$an->Alert->_error_string' method allowing for '$an->error' to be called, saving
+# the caller typing.
 sub error
 {
 	my $self = shift;
 	return ($self->Alert->_error_string);
 }
 
-# This is a shortcut to the '$an->Alert->_error_code' method allowing for
-# '$an->error_code' to be called, saving the caller typing.
+# This is a shortcut to the '$an->Alert->_error_code' method allowing for '$an->error_code' to be called, 
+# saving the caller typing.
 sub error_code
 {
 	my $self = shift;
@@ -294,8 +274,8 @@ sub hostname
 	return($hostname);
 }
 
-# This returns the short hostname for the machine this is running on. That is
-# to say, the hostname up to the first '.'.
+# This returns the short hostname for the machine this is running on. That is to say, the hostname up to the 
+# first '.'.
 sub short_hostname
 {
 	my $self = shift;
@@ -307,8 +287,7 @@ sub short_hostname
 	return($short_host_name);
 }
 
-# Makes my handle to AN::Tools::Alert clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Alert clearer when using this module to access it's methods.
 sub Alert
 {
 	my $self = shift;
@@ -316,8 +295,7 @@ sub Alert
 	return ($self->{HANDLE}{ALERT});
 }
 
-# Makes my handle to AN::Tools::Check clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Check clearer when using this module to access it's methods.
 sub Check
 {
 	my $self = shift;
@@ -325,8 +303,7 @@ sub Check
 	return ($self->{HANDLE}{CHECK});
 }
 
-# Makes my handle to AN::Tools::Convert clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Convert clearer when using this module to access it's methods.
 sub Convert
 {
 	my $self = shift;
@@ -334,8 +311,7 @@ sub Convert
 	return ($self->{HANDLE}{CONVERT});
 }
 
-# Makes my handle to AN::Tools::DB clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::DB clearer when using this module to access it's methods.
 sub DB
 {
 	my $self = shift;
@@ -343,8 +319,7 @@ sub DB
 	return ($self->{HANDLE}{DB});
 }
 
-# Makes my handle to AN::Tools::Get clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Get clearer when using this module to access it's methods.
 sub Get
 {
 	my $self = shift;
@@ -352,9 +327,8 @@ sub Get
 	return ($self->{HANDLE}{GET});
 }
 
-# This is the method used to access the main hash reference that all
-# user-accessible values are stored in. This includes words, configuration file
-# variables and so forth.
+# This is the method used to access the main hash reference that all user-accessible values are stored in. 
+# This includes words, configuration file variables and so forth.
 sub data
 {
 	my ($self) = shift;
@@ -365,8 +339,7 @@ sub data
 	return ($self->{DATA});
 }
 
-# This sets or receives the environment the program is running in. Current
-# valid values are 'cli' and 'html'.
+# This sets or receives the environment the program is running in. Current valid values are 'cli' and 'html'.
 sub environment
 {
 	my ($self) = shift;
@@ -377,8 +350,7 @@ sub environment
 	return ($self->{ENV_VALUES}{ENVIRONMENT});
 }
 
-# Makes my handle to AN::Tools::Log clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Log clearer when using this module to access it's methods.
 sub Log
 {
 	my $self = shift;
@@ -386,8 +358,7 @@ sub Log
 	return ($self->{HANDLE}{LOG});
 }
 
-# Makes my handle to AN::Tools::Math clearer when using this module to access
-# it's methods.
+# Makes my handle to AN::Tools::Math clearer when using this module to access it's methods.
 sub Math
 {
 	my $self = shift;
@@ -395,8 +366,7 @@ sub Math
 	return ($self->{HANDLE}{MATH});
 }
 
-# Makes my handle to AN::Tools::Readable clearer when using this module to
-# access it's methods.
+# Makes my handle to AN::Tools::Readable clearer when using this module to access it's methods.
 sub Readable
 {
 	my $self = shift;
@@ -404,8 +374,15 @@ sub Readable
 	return ($self->{HANDLE}{READABLE});
 }
 
-# Makes my handle to AN::Tools::Storage clearer when using this module to
-# access it's methods.
+# Makes my handle to AN::Tools::Remote clearer when using this module to access it's methods.
+sub Remote
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{REMOTE});
+}
+
+# Makes my handle to AN::Tools::Storage clearer when using this module to access it's methods.
 sub Storage
 {
 	my $self = shift;
@@ -413,8 +390,7 @@ sub Storage
 	return ($self->{HANDLE}{STORAGE});
 }
 
-# Makes my handle to AN::Tools::String clearer when using this module to
-# access it's methods.
+# Makes my handle to AN::Tools::String clearer when using this module to access it's methods.
 sub String
 {
 	my $self = shift;
@@ -422,8 +398,7 @@ sub String
 	return ($self->{HANDLE}{STRING});
 }
 
-### This will be expanded later when the DB module is done. For now, it is not
-### used.
+### This will be expanded later when the DB module is done. For now, it is not used.
 sub nice_exit
 {
 	my $self      = shift;
@@ -443,8 +418,8 @@ sub nice_exit
 }
 
 ### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This is a helper to the above '_add_href' method. It is called each time a
-# new string is to be created as a new hash key in the passed hash reference.
+# This is a helper to the above '_add_href' method. It is called each time a new string is to be created as a
+# new hash key in the passed hash reference.
 sub _add_hash_reference
 {
 	my $self  = shift;
@@ -464,8 +439,8 @@ sub _add_hash_reference
 	}
 }
 
-# This returns an array reference stored in 'self' that is used to hold an
-# array of directories to search for.
+# This returns an array reference stored in 'self' that is used to hold an array of directories to search 
+# for.
 sub _defaut_search_dirs
 {
 	my $self = shift;
@@ -495,8 +470,7 @@ sub _uuidgen_path
 	return ($self->{DEFAULT}{UUIDGEN_PATH});
 }
 
-# This is used to set system-wide error count, used to catch possible run-away
-# loops that span functions
+# This is used to set system-wide error count, used to catch possible run-away loops that span functions.
 sub _error_count
 {
 	my $self = shift;
@@ -507,8 +481,8 @@ sub _error_count
 }
 
 
-# When a method may possibly loop indefinately, it checks an internal counter
-# against the value returned here and kills the program when reached.
+# When a method may possibly loop indefinately, it checks an internal counter against the value returned here
+# and kills the program when reached.
 sub _error_limit
 {
 	my $self = shift;
@@ -516,8 +490,7 @@ sub _error_limit
 	return ($self->{ERROR_LIMIT});
 }
 
-# This simply sets and/or returns the internal variable that records when the
-# Fcntl module has been loaded.
+# This simply sets and/or returns the internal variable that records when the Fcntl module has been loaded.
 sub _fcntl_loaded
 {
 	my $self = shift;
@@ -535,14 +508,14 @@ sub _get_hash_reference
 {
 	# 'href' is the hash reference I am working on.
 	my $self  = shift;
-	my $param = shift;
+	my $parameter = shift;
 	my $an    = $self;
 	
-	#print "$THIS_FILE ".__LINE__."; hash: [".$an."], key: [$param->{key}]\n";
-	die "$THIS_FILE ".__LINE__."; The hash key string: [$param->{key}] doesn't seem to be valid. It should be a string in the format 'foo::bar::baz'.\n" if $param->{key} !~ /::/;
+	#print "$THIS_FILE ".__LINE__."; hash: [".$an."], key: [$parameter->{key}]\n";
+	die "$THIS_FILE ".__LINE__."; The hash key string: [$parameter->{key}] doesn't seem to be valid. It should be a string in the format 'foo::bar::baz'.\n" if $parameter->{key} !~ /::/;
 	
 	# Split up the keys.
-	my @keys     = split /::/, $param->{key};
+	my @keys     = split /::/, $parameter->{key};
 	my $last_key = pop @keys;
 	
 	# Re-order the array.
@@ -555,8 +528,8 @@ sub _get_hash_reference
 	return ($_chref->{$last_key});
 }
 
-# This simply sets and/or returns the internal variable that records when the
-# IO::Handle module has been loaded.
+# This simply sets and/or returns the internal variable that records when the IO::Handle module has been
+# loaded.
 sub _io_handle_loaded
 {
 	my $self = shift;
@@ -676,8 +649,8 @@ sub _load_math_bigint
 }
 
 ### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.
-# This takes a string with double-colon seperators and divides on those
-# double-colons to create a hash reference where each element is a hash key.
+# This takes a string with double-colon seperators and divides on those double-colons to create a hash
+# reference where each element is a hash key.
 sub _make_hash_reference
 {
 	my $self       = shift;
@@ -703,8 +676,8 @@ sub _make_hash_reference
 	$self->_add_hash_reference($href, $_href);
 }
 
-# This simply sets and/or returns the internal variable that records when the
-# Math::BigInt module has been loaded.
+# This simply sets and/or returns the internal variable that records when the Math::BigInt module has been 
+# loaded.
 sub _math_bigint_loaded
 {
 	my $self = shift;

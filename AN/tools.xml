@@ -352,9 +352,8 @@ Variables:
 		<key name="an_alert_title_0006">Warning Cleared</key>
 		<key name="an_alert_title_0007">Critical Cleared</key>
 		
-		<!-- These are used when creating an alert email subject. They
-		     map the log level to a name. Eventually, I will delete the
-		     values above. -->
+		<!-- These are used when creating an alert email subject. They map the log level to a name. 
+		     Eventually, I will delete the values above. -->
 		<key name="an_alert_subject_0001">Critical</key>
 		<key name="an_alert_subject_0002">Warning</key>
 		<key name="an_alert_subject_0003">Notice</key>
@@ -374,6 +373,9 @@ Variables:
 		<!-- notice messages -->
 		<key name="notice_message_0001">The databse: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
 		<key name="notice_message_0002">The scan agent: [#!variable!agent!#] has initialized it's SQL schema in the databse: [#!variable!name!#] on the host: [#!variable!host!#]. If data from the agent exists on other databases, it should now be loaded on this database.</key>
+		<key name="notice_message_0003">Reading: [#!variable!file!#].</key>
+		<key name="notice_message_0004">SSH session opened to: [#!variable!target!#].</key>
+		<key name="notice_message_0005">SSH session closed to: [#!variable!target!#].</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
@@ -422,6 +424,15 @@ Variables:
 		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0023">Failed to generate a sane UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#].</key>
 		<key name="error_message_0024">Failed to generate UUID.</key>
+		<key name="error_message_0025">Connecting to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#] is not possible, the port is invalid.</key>
+		<key name="error_message_0026">#!variable!method!# was asked to call: [#!variable!shell_call!#] but no target was defined. This is probably a program error, sorry about the inconvenience. Please contact support (#!string!brand_0012!#) and we will try to help fix this.</key>
+		<key name="error_message_0027">Host name: [#!variable!target!#] does not resolve to an IP address.</key>
+		<key name="error_message_0028">Connection to: [#!variable!target!#] on port: [#!variable!port!#] as the user: [#!variable!user!#] was refused. If you recently booted this server, it may be just about finished booting. It is normal for the connection to be refused for a brief time during the boot process.</key>
+		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>
+		<key name="error_message_0030">Timed out while waiting for a reply from: [#!variable!target!#]. Is the machine booting up? If so, please wait a minute or two and try again.</key>
+		<key name="error_message_0031">Unknown error while connecting to: [#!variable!target!#]. The error was: [#!variable!error!#]</key>
+		<key name="error_message_0032">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
+		<key name="error_message_0033">Failed to establish channel to target: [#!variable!target!#] for shell call: [#!variable!shell_call!#]</key>
 	</lang>
 	
 	<!-- 日本語 -->
