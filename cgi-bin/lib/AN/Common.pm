@@ -801,8 +801,10 @@ sub initialize_conf
 					"drbd",		# 
 					"gfs2",		# 
 					"ip6tables",	# 
+					"ipmidetectd",	# Not needed on the Anvil!
 					"rgmanager",	# 
-					"snmptrapd",
+					"snmptrapd",	# 
+					"systemtap",	# 
 				],
 			},
 			date_seperator		=>	"-",			# Should put these in the strings.xml file

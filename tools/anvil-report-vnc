@@ -136,12 +136,9 @@ else
 find_server($an);
 
 # Report it:
-print "server = ".$an->data->{switches}{server}."\n";
-print "anvil  = ".$an->data->{switches}{anvil}."\n";
-print "host   = ".$an->data->{server}{host}."\n";
-print "port   = ".$an->data->{server}{vnc_port}."\n";
-print "type   = ".$an->data->{server}{type}."\n";
-print "listen = ".$an->data->{server}{'listen'}."\n";
+print "<anvil name=\"".$an->data->{switches}{anvil}."\">
+    <server name=\"".$an->data->{switches}{server}."\" host=\"".$an->data->{server}{host}."\" type=\"".$an->data->{server}{type}."\" port=\"".$an->data->{server}{vnc_port}."\" listen=\"".$an->data->{server}{'listen'}."\" />
+</anvil>\n";
 
 exit(0);
 
@@ -189,7 +186,12 @@ sub read_clustat
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($server eq $an->data->{switches}{server})
 			{
-				# Found it.
+				# Found it, but is it running?
+				if ($host =~ /\(.*\)/)
+				{
+					# Nope.
+					$host = "";
+				}
 				$an->data->{server}{host}    = $host;
 				$an->data->{server}{'state'} = $state;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {

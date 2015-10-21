@@ -108,7 +108,8 @@ my $conf = {
 		# These will be both chkconfig off'ed and stopped.
 		disable			=>	[
 			"ip6tables", 
-			"NetworkManager"
+			"ipmidetectd", 
+			"NetworkManager", 
 		],
 	},
 	directory	=>	{

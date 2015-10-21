@@ -911,6 +911,29 @@ sub start_servers
 	# Get a list of PV(s) under each LV.
 	get_pvs_under_lv($conf);
 	
+	# Read/set the boot order.
+	foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
+	{
+		# If it is defined, we'll use the set value. Otherwise we'll add it to set 1 with no delay.
+		my $set   = 1;
+		my $delay = 0;
+		if ($conf->{server}{boot_order}{$server})
+		{
+			# Set, parse.
+			if ($conf->{server}{boot_order}{$server} =~ /^(\d+):(\d+)$/)
+			{
+				$set   = $1;
+				$delay = $2;
+			}
+			else
+			{
+				# Bad formatting, throw an error.
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The server: [$server] appears to have a boot order set: [$conf->{server}{boot_order}{$server}], but it appears to be invalid. The boot order must be integers only and set as: 'server::boot_order::$server = (order):(delay)'. For example; '... = 2:30' or '... = 3:0'.", 0);
+			}
+		}
+		
+	}
+	
 	# Now decide where to start each server.
 	foreach my $name (sort {$a cmp $b} keys %{$conf->{vm}})
 	{
