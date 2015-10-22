@@ -4047,7 +4047,9 @@ sub do_drbd_primary_on_node
 	if ($force_r0)
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r0' to 'Primary' and overwriting data on peer!\n");
-		$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r0; echo rc:\$?";
+		### This was the DRBD 8.3 way.
+		#$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r0; echo rc:\$?";
+		$shell_call = "$conf->{path}{nodes}{drbdadm} primary r0 --force; echo rc:\$?";
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -4087,7 +4089,9 @@ sub do_drbd_primary_on_node
 		if ($force_r0)
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r1' to 'Primary' and overwriting data on peer!\n");
-			$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r1; echo rc:\$?";
+			### This was the DRBD 8.3 way.
+			#$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r1; echo rc:\$?";
+			$shell_call = "$conf->{path}{nodes}{drbdadm} primary r1 --force; echo rc:\$?";
 		}
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 		($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -4842,7 +4846,7 @@ fi";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^ssh-rsa /)
 		{
 			$rsa_key = $line;
@@ -7784,7 +7788,8 @@ sub check_for_drbd_metadata
 	my ($is_drbd) = check_device_for_drbd_metadata($conf, $node, $password, $device);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; type: [$type], is_drbd: [$is_drbd].\n");
 	my $return_code = 255;
-	if (($type eq "drbd") || (($type eq "LVM2_member") && ($is_drbd)))
+	### blkid now returns no type for DRBD.
+	if (($type eq "drbd") || ($is_drbd))
 	{
 		# Already has meta-data, nothing else to do.
 		$return_code = 1;
