@@ -79,16 +79,12 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>
+		<key name="tools_log_0005">There are: [#!variable!count!#] values in the: [#!variable!array!#] array.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="an_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
-		<key name="an_variables_0003">
-Variables:
-|- #!variable!name1!#: [#!variable!value1!#]
-|- #!variable!name2!#: [#!variable!value2!#]
-\- #!variable!name3!#: [#!variable!value3!#]
-		</key>
+		<key name="an_variables_0003">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#], #!variable!name3!#: [#!variable!value3!#]</key>
 		<key name="an_variables_0004">
 Variables:
 |- #!variable!name1!#: [#!variable!value1!#]

@@ -1871,6 +1871,31 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="arv_error_0003">Failed to log into either node in the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
 		<key name="arv_error_0004">Failed to find the host for the server: [#!variable!server!#] on the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
 		<key name="arv_error_0005">Failed to read the XML definition data for the server: [#!variable!server!#] on the host: [#!variable!host!#].</key>
+		
+		<!-- striker-push-ssh -->
+		<key name="sps_log_0001">#!variable!this_file!# has started.</key>
+		<key name="sps_log_0002">Looking for the login details for: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="sps_log_0003">Gathered the login credentials for the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
+		<key name="sps_log_0004">No local users were found, so there is nothing to do.</key>
+		<key name="sps_log_0005">Please be patient! Generating an RSA key now. This can take time depending on how large the key is and how long it takes to collect entropy...</key>
+		<key name="sps_log_0006">successfully generated an RSA key for the user: [#!variable!user!#].</key>
+		<key name="sps_log_0007">Read the local user/host: [#!variable!owner!#]'s public RSA key: [#!variable!key!#].</key>
+		<key name="sps_log_0008">Adding the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
+		<key name="sps_log_0009">The fingerprint of node: [#!variable!node!#] is already in the: [#!variable!user!#]'s list of known hosts.</key>
+		<key name="sps_log_0010">Added the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
+		<key name="sps_log_0011">The local user: [#!variable!user!#]'s public RSA key was already in to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
+		<key name="sps_log_0012">Added the local user: [#!variable!user!#]'s public RSA key was added to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
+		
+		<!-- errors -->
+		<key name="sps_error_0001"><![CDATA[Must be called with '--anvil <name>'.]]></key>
+		<key name="sps_error_0002">The #!string!brand_0004!# named: [#!variable!anvil!#] was not found in: [#!data!path::striker_config!#].</key>
+		
+		<!-- warnings -->
+		<key name="sps_warning_0001">Failed to create an RSA key for the user: [#!variable!user!#]. Skipping this user.</key>
+		<key name="sps_warning_0002">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read. Skipping this user.</key>
+		<key name="sps_warning_0003">Failed to ping node: [#!variable!node!#]. Skipping it.</key>
+		<key name="sps_warning_0004">Failed to add the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
+		<key name="sps_warning_0005">Failed to add the local user: [#!variable!node!#]'s public RSA key to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
 	</lang>
 
 	<!-- Japanese -->

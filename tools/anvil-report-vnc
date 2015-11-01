@@ -86,6 +86,7 @@ $an->Log->entry({log_level => 2, message_key => "arv_log_0001", message_variable
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
+# Log that we're looking for the login credentials to the defined node.
 $an->Log->entry({log_level => 2, message_key => "arv_log_0002", message_variables => {
 	server	=>	$an->data->{switches}{anvil}, 
 	anvil	=>	$an->data->{switches}{server},

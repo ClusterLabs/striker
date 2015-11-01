@@ -52,38 +52,56 @@ sub ping
 	my $target = $parameter->{target};
 	my $count  = $parameter->{count} ? $parameter->{count} : 1;
 	
-	my $return_code = 0;
-	my $shell_call  = $an->data->{path}{'ping'}." -n $target -c $count";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	my $pinged = 0;
+	foreach my $try (1..$count)
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "try",    value1 => $try,
+			name2 => "pinged", value2 => $pinged
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
+		next if $pinged;
+		
+		my $shell_call  = $an->data->{path}{'ping'}." -n $target -c 1";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
 		{
-			# This isn't really needed, but might help folks watching the logs.
-			my $pings_sent     = $1;
-			my $pings_received = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "pings_sent",     value1 => $pings_sent, 
-				name2 => "pings_received", value2 => $pings_received, 
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
-			if (not $pings_received)
+			if ($line =~ /(\d+) packets transmitted, (\d+) received/)
 			{
-				$return_code = 1;
+				# This isn't really needed, but might help folks watching the logs.
+				my $pings_sent     = $1;
+				my $pings_received = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "target",         value1 => $target, 
+					name2 => "pings_sent",     value2 => $pings_sent, 
+					name3 => "pings_received", value3 => $pings_received, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($pings_received)
+				{
+					# Contact!
+					$pinged = 1;
+				}
+				else
+				{
+					# Not yet... Sleep to give time for transient network problems to 
+					# pass.
+					sleep 1;
+				}
 			}
 		}
+		close $file_handle;
 	}
-	close $file_handle;
+	my $return_code = $pinged ? 0 : 1;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);

@@ -1,12 +1,8 @@
 #!/usr/bin/perl
 # 
-# This takes the ~/.ssh/id_rsa.pub file from the user account running this
-# program and adds it to the ~/.ssh/authorized_keys of the target machine's
-# root user and any users found under /home/. It will create the local user's
-# RSA keys if not found.
-# 
-# TODO: Detect is selinux is running on remote and set context on created
-#       directories and files.
+# This takes the ~/.ssh/id_rsa.pub file from the user account running this program and adds it to the 
+# ~/.ssh/authorized_keys of the target machine's root user and any users found under /home/. It will create 
+# the local user's RSA keys if not found.
 # 
 # Return codes:
 # 0  = Normal exit.
@@ -78,9 +74,9 @@ if (not $conf->{sys}{switch_count})
 	exit(4);
 }
 
-# This sanity-checks the passed in command line switches and returns '1' if
-# any problems were found.
-$conf->{sys}{username} = ($0 =~ /^\/home\/(.*?)\//)[0];
+# This sanity-checks the passed in command line switches and returns '1' if any problems were found.
+$conf->{sys}{username} = $ENV{HOME};
+print "[ Debug ] - sys::username: [$conf->{sys}{username}]\n";
 if (not $conf->{sys}{username})
 {
 	print "[ Error ] - Unable to determine which user I am running as.\n";
