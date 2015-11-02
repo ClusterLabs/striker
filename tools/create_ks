@@ -534,10 +534,6 @@ cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/$o
 echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/$background /mnt/sysimage/var/lib/tftpboot/
 
-# I'll need this later for the $admin_user-owned setuid wrapper
-echo \"Copying the '$admin_user' user's copy of 'populate_remote_authorized_keys' into place.\"
-cp /mnt/source/$conf->{sys}{striker_name}/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/$admin_user/
-
 # Copy the $striker_name source files and installer into place
 echo 'Copying the $striker_name installer and source code into place.'
 cp      /mnt/source/$conf->{sys}{striker_name}/master.zip                             /mnt/sysimage/root/

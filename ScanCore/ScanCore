@@ -19,8 +19,10 @@
 # 10 - Failed to disable ScanCore.
 # 
 # TODO:
-# - Record the hostname to a file and check the current host name with the one on file. If it differs, update
-#   the appropriate 'hosts' table in the DBs
+#   
+# - Add '--summary' to all agents where they will not compare values in that pass, but will alert on 
+#   anomolous readings, and instead print a summary of all data in a nice screen.
+# 
 # - Have DB.pm return an error code and have ScanCore exit if a query fails.
 # - Add a '--status' option to report if it's enabled in striker.conf.
 # - Add a '--restart' option that touches a temp file and, if in a loop that file is found, delete it and 

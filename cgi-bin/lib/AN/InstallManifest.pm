@@ -2865,17 +2865,17 @@ fi";
 context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
 if [ \$context == 'file_t' ];
 then
-	semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
-	restorecon -r /shared
-	context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
-	if [ \$context == 'virt_etc_t' ];
-	then
-		echo 'context updated'
-	else
-		echo \"context failed to update, still: \$context.\"
-	fi
+    semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
+    restorecon -r /shared
+    context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+    if [ \$context == 'virt_etc_t' ];
+    then
+        echo 'context updated'
+    else
+        echo \"context failed to update, still: \$context.\"
+    fi
 else 
-	echo 'context ok';
+    echo 'context ok';
 fi";
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {

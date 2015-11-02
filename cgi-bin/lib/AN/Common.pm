@@ -604,9 +604,10 @@ sub initialize_conf
 			agents_directory	=>	"/var/www/ScanCore/ScanCore/agents",
 			apache_manifests_dir	=>	"/var/www/html/manifests",
 			apache_manifests_url	=>	"/manifests",
-			'call_anvil-kick-apc-ups' =>	"/sbin/striker/call_anvil-kick-apc-ups",
 			backup_config		=>	"/var/www/html/striker-backup_#!hostname!#_#!date!#.txt",	# Remember to update the sys::backup_url value below if you change this
+			'call_anvil-kick-apc-ups' =>	"/sbin/striker/call_anvil-kick-apc-ups",
 			'call_gather-system-info' =>	"/sbin/striker/call_gather-system-info",
+			'call_striker-push-ssh'	=>	"/sbin/striker/call_striker-push-ssh",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
 			check_dvd		=>	"/sbin/striker/check_dvd",
@@ -673,6 +674,7 @@ sub initialize_conf
 			striker_cache		=>	"/var/www/home/cache",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_files		=>	"/var/www/home",
+			'striker-push-ssh'	=>	"/sbin/striker/striker-push-ssh",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			sync			=>	"/bin/sync",
 			tools_directory		=>	"/sbin/striker/",
@@ -1105,6 +1107,18 @@ sub initialize_conf
 			# Adds: [--disablerepo='*' --enablerepo='striker*'] if
 			# no internet connection found.
 			yum_switches		=>	"-y",		
+		},
+		# Tools default valies
+		tools				=>	{
+			'anvil-kick-apc-ups'	=>	{
+				enabled			=>	0,
+			},
+			'safe_anvil_start'	=>	{
+				enabled			=>	0,
+			},
+			'striker-push-ssh'	=>	{
+				enabled			=>	0,
+			},
 		},
 		# Config values needed to managing strings
 		strings				=>	{

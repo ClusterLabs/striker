@@ -461,6 +461,13 @@ my $conf = {
 		},
 		# The following entries must sort last to ensure the setuid doesn't get changed by a change
 		# to the parent directory.
+		'z_call_striker-push-ssh' =>	{
+			path			=>	"/sbin/striker/call_striker-push-ssh",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		'z_call_anvil-kick-apc-ups' =>	{
 			path			=>	"/sbin/striker/call_anvil-kick-apc-ups",
 			owner			=>	"root",

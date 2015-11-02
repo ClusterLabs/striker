@@ -1190,8 +1190,27 @@ sub save_dashboard_configure
 		copy_file($conf, $conf->{path}{ssh_config}, "$conf->{path}{home}/archive/ssh_config.$date");
 		write_new_ssh_config($conf, $say_date);
 		
-		# If requested in the config, add the user's SSH keys to the
-		# new anvil!.
+		# If requested in the config, add the user's SSH keys to the new anvil!.
+		if ($conf->{tools}{'striker-push-ssh'}{enabled})
+		{
+			# Setup some variables...
+			my $anvil_id       = $conf->{cgi}{anvil_id};
+			my $anvil_name_key = "cluster__${anvil_id}__name";
+			
+			# Call 'tools/striker-push-ssh' for this new Anvil!
+			my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{$anvil_name_key}";
+			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
+			}
+			close $file_handle;
+		}
+		
+=pod
 		my $anvil_id               = $conf->{cgi}{anvil_id};
 		my $anvil_name_key         = "cluster__${anvil_id}__name";
 		my $anvil_name             = $conf->{cgi}{$anvil_name_key};
@@ -1202,7 +1221,7 @@ sub save_dashboard_configure
 		my $node1_name             = $conf->{cgi}{$node1_name_key};
 		my $node2_name_key         = "cluster__${anvil_id}__nodes_2_name";
 		my $node2_name             = $conf->{cgi}{$node2_name_key};
-		if (($anvil_id eq "new") && ($conf->{sys}{auto_populate_ssh_users}))
+		if (($anvil_id eq "new") && ($conf->{tools}{'striker-push-ssh'}{enabled}}))
 		{
 			# For each user, check to see if the 
 			# '/home/<user>/populate_remote_authorized_keys' script
@@ -1256,10 +1275,10 @@ sub save_dashboard_configure
 				}
 			}
 		}
+=cut
 		
-		# Which message to show will depend on whether we're saving an
-		# Anvil! or the global config. The 'message_0017' provides a
-		# link to the user's Anvil!, which is non-existent when saving
+		# Which message to show will depend on whether we're saving an Anvil! or the global config. 
+		# The 'message_0017' provides a link to the user's Anvil!, which is non-existent when saving
 		# global values.
 		my $message = AN::Common::get_string($conf, {key => "message_0377"});
 		if ($anvil_name)
