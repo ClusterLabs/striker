@@ -358,6 +358,7 @@ my $conf = {
 		backups			=>	"/root/anvil",
 		cron_root		=>	"/var/spool/cron/root",
 		dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
+		gcc			=>	"/usr/bin/gcc",
 		hostname		=>	"/etc/sysconfig/network",
 		hosts			=>	"/etc/hosts",
 		inittab			=>	"/etc/inittab",
@@ -390,6 +391,48 @@ my $conf = {
 		udev_persistent_net	=>	"/etc/udev/rules.d/70-persistent-net.rules",
 		udev_striker_usb	=>	"/etc/udev/rules.d/99-striker-usb.rules",
 		xinetd_tftp_config	=>	"/etc/xinetd.d/tftp",
+	},
+	# These will be compiled during the install.
+	setuid		=>	{
+		# Compile by entering 'gcc -o $out_file $c_file'
+		'anvil-kick-apc-ups'	=>	{
+			c_file			=>	"/var/www/tools/call_anvil-kick-apc-ups.c",
+			out_file		=>	"call_anvil-kick-apc-ups",
+		},
+		'gather-system-info'	=>	{
+			c_file			=>	"/var/www/tools/call_gather-system-info.c",
+			out_file		=>	"call_gather-system-info",
+		},
+		'striker-push-ssh'	=>	{
+			c_file			=>	"/var/www/tools/call_striker-push-ssh.c",
+			out_file		=>	"call_striker-push-ssh",
+		},
+		# These just pass along directly to existing systems calls, hence the lack of 'call_' 
+		# prefixes.
+		'control_dhcpd'	=>	{
+			c_file			=>	"/var/www/tools/control_dhcpd.c",
+			out_file		=>	"control_dhcpd",
+		},
+		'control_iptables'	=>	{
+			c_file			=>	"/var/www/tools/control_iptables.c",
+			out_file		=>	"control_iptables",
+		},
+		'control_libvirtd'	=>	{
+			c_file			=>	"/var/www/tools/control_libvirtd.c",
+			out_file		=>	"control_libvirtd",
+		},
+		'control_shorewall'	=>	{
+			c_file			=>	"/var/www/tools/control_shorewall.c",
+			out_file		=>	"control_shorewall",
+		},
+		'do_dd'	=>	{
+			c_file			=>	"/var/www/tools/do_dd.c",
+			out_file		=>	"do_dd",
+		},
+		'touch_striker.log'	=>	{
+			c_file			=>	"/var/www/tools/touch_striker.log.c",
+			out_file		=>	"touch_striker.log",
+		},
 	},
 	permissions	=>	{
 		dhcpd_dir		=>	{
@@ -1976,6 +2019,9 @@ sub setup_striker
 	# This sets up the dashboard to be a ScanCore database server.
 	configure_scancore($conf);
 	
+	# This compiles the setuid C-wrappers (mode and owner are set in the next function, not here).
+	compile_c_wrappers($conf);
+	
 	# Set owners and file modes.
 	set_file_ownership_and_modes($conf);
 	
@@ -1998,6 +2044,46 @@ sub setup_striker
 	
 	# Remove the 'priority=1' from our repos.
 	remove_yum_priority($conf);
+	
+	return(0);
+}
+
+# This compiles the setuid C-wrappers (mode and owner are set in the next function, not here).
+sub compile_c_wrappers
+{
+	my ($conf) = @_;
+	
+	logger($conf, $THIS_FILE, __LINE__, "Compiling setuid C-wrappers.", 1);
+	foreach my $wrapper (sort {$a cmp $b} keys %{$conf->{setuid}})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Compiling: [$wrapper]", 1);
+		my $c_file   = $conf->{setuid}{$wrapper}{c_file};
+		my $out_file = $conf->{setuid}{$wrapper}{out_file};
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
+		
+		# Unlink the existing output file, if it exists.
+		if (-e $out_file)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Removing the existing c-wrapper: [$out_file]", 1);
+			unlink $out_file or warn "$THIS_FILE ".__LINE__."; [ Warning ] - Failed to delete: [$out_file]. The error was: $!\n";
+		}
+		
+		# Compile
+		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			print $_;
+		}
+		close $file_handle;
+		
+		if (-e $out_file)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Successfully compiled: [$out_file]", 1);
+		}
+	}
+	logger($conf, $THIS_FILE, __LINE__, "- Finished.", 1);
 	
 	return(0);
 }

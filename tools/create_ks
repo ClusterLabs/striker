@@ -755,27 +755,6 @@ label memtest86
 	APPEND -
 EOF
 
-### Note: This will go away when NoVNC is integrated.
-# Copy the 'populate_remote_authorized_keys' to the '$admin_user' user's home and make
-# a setuid C-wrapper owned by $admin_user so that apache can call it when an Anvil is
-# added to a system.
-cat > /home/$admin_user/call_populate_remote_authorized_keys.c << EOF
-#define REAL_PATH \"/home/$admin_user/populate_remote_authorized_keys\"
-main(ac, av)
-char **av;
-{
-	setuid(0);
-	setgid(0);
-	execv(REAL_PATH, av);
-}
-EOF
-chmod 755     /home/$admin_user
-gcc -o        /home/$admin_user/call_populate_remote_authorized_keys /home/$admin_user/call_populate_remote_authorized_keys.c
-chown 0:0     /home/$admin_user/call_populate_remote_authorized_keys
-chmod 6755    /home/$admin_user/call_populate_remote_authorized_keys
-chown 500:500 /home/$admin_user/populate_remote_authorized_keys
-chmod 755     /home/$admin_user/populate_remote_authorized_keys
-
 # Disable the libvirtd default bridge.
 echo \"Disabling the default libvirtd bridge 'virbr0'.\"
 cat /dev/null >/etc/libvirt/qemu/networks/default.xml
