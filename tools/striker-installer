@@ -396,41 +396,41 @@ my $conf = {
 	setuid		=>	{
 		# Compile by entering 'gcc -o $out_file $c_file'
 		'anvil-kick-apc-ups'	=>	{
-			c_file			=>	"/var/www/tools/call_anvil-kick-apc-ups.c",
+			c_file			=>	"/sbin/striker/call_anvil-kick-apc-ups.c",
 			out_file		=>	"call_anvil-kick-apc-ups",
 		},
 		'gather-system-info'	=>	{
-			c_file			=>	"/var/www/tools/call_gather-system-info.c",
+			c_file			=>	"/sbin/striker/call_gather-system-info.c",
 			out_file		=>	"call_gather-system-info",
 		},
 		'striker-push-ssh'	=>	{
-			c_file			=>	"/var/www/tools/call_striker-push-ssh.c",
+			c_file			=>	"/sbin/striker/call_striker-push-ssh.c",
 			out_file		=>	"call_striker-push-ssh",
 		},
 		# These just pass along directly to existing systems calls, hence the lack of 'call_' 
 		# prefixes.
 		'control_dhcpd'	=>	{
-			c_file			=>	"/var/www/tools/control_dhcpd.c",
+			c_file			=>	"/sbin/striker/control_dhcpd.c",
 			out_file		=>	"control_dhcpd",
 		},
 		'control_iptables'	=>	{
-			c_file			=>	"/var/www/tools/control_iptables.c",
+			c_file			=>	"/sbin/striker/control_iptables.c",
 			out_file		=>	"control_iptables",
 		},
 		'control_libvirtd'	=>	{
-			c_file			=>	"/var/www/tools/control_libvirtd.c",
+			c_file			=>	"/sbin/striker/control_libvirtd.c",
 			out_file		=>	"control_libvirtd",
 		},
 		'control_shorewall'	=>	{
-			c_file			=>	"/var/www/tools/control_shorewall.c",
+			c_file			=>	"/sbin/striker/control_shorewall.c",
 			out_file		=>	"control_shorewall",
 		},
 		'do_dd'	=>	{
-			c_file			=>	"/var/www/tools/do_dd.c",
+			c_file			=>	"/sbin/striker/do_dd.c",
 			out_file		=>	"do_dd",
 		},
 		'touch_striker.log'	=>	{
-			c_file			=>	"/var/www/tools/touch_striker.log.c",
+			c_file			=>	"/sbin/striker/touch_striker.log.c",
 			out_file		=>	"touch_striker.log",
 		},
 	},
