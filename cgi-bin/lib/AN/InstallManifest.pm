@@ -4330,14 +4330,13 @@ sub do_drbd_connect_on_node
 				}
 			}
 		}
-	}
 	
-	# If requested by 'sys::install_manifest::default::immediate-uptodate', and if both nodes are
-	# 'Inconsistent', force both nodes to be UpToDate/UpToDate.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::default::immediate-uptodate: [$conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'}]\n");
-	if ($conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'})
-	{
-		my $shell_call = "
+		# If requested by 'sys::install_manifest::default::immediate-uptodate', and if both nodes are
+		# 'Inconsistent', force both nodes to be UpToDate/UpToDate.
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::default::immediate-uptodate: [$conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'}]\n");
+		if ($conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'})
+		{
+			my $shell_call = "
 if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'Inconsistent/Inconsistent'); 
 then 
     echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
@@ -4352,22 +4351,23 @@ else
     echo \"Not forcing 'UpToDate/UpToDate', disk state isn't 'Inconsistent/Inconsistent'\"; 
 fi
 ";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	22,
-			user		=>	"root",
-			password	=>	$password,
-			ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-		foreach my $line (@{$return})
-		{
-			# I don't analyze this because it isn't critical if it doesn't work and the output
-			# will explain what happened to anyone who cares to look.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+				node		=>	$node,
+				port		=>	22,
+				user		=>	"root",
+				password	=>	$password,
+				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+			foreach my $line (@{$return})
+			{
+				# I don't analyze this because it isn't critical if it doesn't work and the output
+				# will explain what happened to anyone who cares to look.
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			}
 		}
 	}
 	
