@@ -847,6 +847,7 @@ sub initialize_conf
 					ifn_gateway			=>	"",
 					ifn_network			=>	"10.255.0.0",
 					ifn_subnet			=>	"255.255.0.0",
+					'immediate-uptodate'		=>	0,
 					library_size			=>	"40",
 					library_unit			=>	"GiB",
 					mtu_size			=>	1500,

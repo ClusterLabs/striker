@@ -1,14 +1,14 @@
 body {
 	font-family: 'Dejavu Sans', Arial, Helvetica, Verdana, Sans-Serif;
 	font-size: 14px;
-	background-color: #d1cfd3;
+	background-color: #797979;
 	color: #1f1f4f;
 	margin: 0;
 	padding: 0;
 }
 
 .logo {
-	box-shadow: 0 0 5px #888;
+	box-shadow: 0 0 5px #191919;
 }
 
 table {
@@ -16,7 +16,7 @@ table {
 	color: #1f1f4f;
 	background-color: white;
 	border-collapse: collapse;
-	box-shadow: 0 0 5px #888;
+	box-shadow: 0 0 5px #191919;
 	margin: 0 auto;
 	
 	/*margin-left: 10px; 
@@ -37,7 +37,7 @@ td {
 }
 
 .td_hidden {
-	border: 1px solid #d1cfd3;
+	border: 1px transparent;
 /* 	padding-left: 0px; */
 /* 	padding-right: 0px; */
 /* 	padding-top: 0px; */
@@ -65,14 +65,14 @@ td {
 	padding-top: 0px;
 	padding-bottom: 0px;*/
 /* 	border-spacing: 0px;  */
-/* 	border: 1px solid #d1cfd3; */
+/* 	border: 1px solid #797979; */
 /* 	border-color: 1px solid red; */
 }
 
 .legal {
 	font-size: 9px;
 	text-align: center;
-	color: #6f6f6f;
+	color: #191919;
 }
 
 .fixed_width {
@@ -185,12 +185,12 @@ td {
 }
 
 .highlight_dangerous {
-	color: #a60a0a;
+	color: #FF0033;
 	font-style: italic;
 }
 
 .highlight_dangerous_bold {
-	color: #a60a0a;
+	color: #FF0033;
 	font-style: italic;
 	font-weight: bold;
 }
@@ -200,12 +200,12 @@ td {
 }
 
 .highlight_offline {
-	color: #3f3fcf;
+	color: #C20030;
 	font-weight: bold;
 }
 
 .highlight_offline_fixed_width {
-	color: #3f3fcf;
+	color: #C20030;
 	font-weight: bold;
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;
