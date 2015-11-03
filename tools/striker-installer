@@ -2059,7 +2059,7 @@ sub compile_c_wrappers
 		logger($conf, $THIS_FILE, __LINE__, "- Compiling: [$wrapper]", 1);
 		my $c_file   = $conf->{setuid}{$wrapper}{c_file};
 		my $out_file = $conf->{setuid}{$wrapper}{out_file};
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
 		
 		# Unlink the existing output file, if it exists.
 		if (-e $out_file)
@@ -2083,7 +2083,7 @@ sub compile_c_wrappers
 			logger($conf, $THIS_FILE, __LINE__, "- Successfully compiled: [$out_file]", 1);
 		}
 	}
-	logger($conf, $THIS_FILE, __LINE__, "- Finished.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- Finished.\n", 1);
 	
 	return(0);
 }
