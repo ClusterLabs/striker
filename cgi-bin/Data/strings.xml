@@ -1896,6 +1896,73 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="sps_warning_0003">Failed to ping node: [#!variable!node!#]. Skipping it.</key>
 		<key name="sps_warning_0004">Failed to add the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		<key name="sps_warning_0005">Failed to add the local user: [#!variable!node!#]'s public RSA key to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
+		
+		<!-- striker-merge-dashboards -->
+		<key name="smd_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- messages -->
+		<key name="smd_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program merges the local #!data!path::striker_config!# with the one on the
+named peer dashboard.
+
+Where conflicts exist, the values in the '--prefer [local|remote]' dashboard 
+will be used.
+
+
+SWITCHES
+
+ --peer <hostname or IP>
+
+	This disables the hostname or IP address of the peer dashboard to sync
+	with. 
+
+	If --peer and/or --password are not given, the program will try to 
+	determine the peer by checking:
+
+	scancore::db::x::host
+
+	If there are two entries and the local host name is found, the other
+	will be used as the peer.
+
+ --password
+ 
+	This is the (root) password needed to connect to the peer. 
+
+	If the peer is found in 'scancore::db::x::host' (either via --peer or 
+	detected as described above) and --password is not set, the password 
+	will be set by:
+
+	scancore::db::x::password
+
+ --prefer [local|remote]
+
+	This controls which node's data will be used if a conflict is detected.
+	
+	If this is not set, 'local' will be used by default.
+
+ --force
+
+	This will prevent the program from confirming with the user before 
+	running. It is needed if the program is run by another program.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]></key>
+		
+		<!-- errors -->
+		<key name="smd_error_0001"><![CDATA[Must be called with '--prefer <striker>'.]]></key>
 	</lang>
 
 	<!-- Japanese -->
