@@ -4340,7 +4340,7 @@ sub do_drbd_connect_on_node
 if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'Inconsistent/Inconsistent'); 
 then 
     echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
-    $conf->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource
+    $conf->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
     if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
     then 
         echo \"Successfully forced both nodes to 'UpToDate' immediately.\"
