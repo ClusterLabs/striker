@@ -6629,15 +6629,22 @@ sub get_chkconfig_data
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
 	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return line: [$line]\n");
 		if ($line =~ /^$daemon/)
 		{
 			$init3 = ($line =~ /3:(.*?)\s/)[0];
 			$init5 = ($line =~ /5:(.*?)\s/)[0];
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
 			$init3 = $init3 eq "off" ? 0 : 1;
 			$init5 = $init5 eq "off" ? 0 : 1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
+		}
+		if ($line =~ /No such file or directory/i)
+		{
+			# That's a form of 'off'
+			$init3 = 0;
+			$init5 = 0;
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5]\n");
 		}
 	}
 	

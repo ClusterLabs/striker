@@ -290,8 +290,8 @@ sub read_conf
 	{
 		chomp;
 		my $line  =  $_;
-		$line     =~ s/^\s+//;
-		$line     =~ s/\s+$//;
+		   $line  =~ s/^\s+//;
+		   $line  =~ s/\s+$//;
 		next if ((not $line) or ($line =~ /^#/));
 		next if $line !~ /=/;
 		my ($variable, $value) = split/=/, $line, 2;

@@ -1897,6 +1897,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="sps_warning_0004">Failed to add the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		<key name="sps_warning_0005">Failed to add the local user: [#!variable!node!#]'s public RSA key to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
 		
+		
 		<!-- striker-merge-dashboards -->
 		<key name="smd_log_0001">#!variable!this_file!# has started.</key>
 		
@@ -1909,7 +1910,7 @@ DESCRIPTION
 This program merges the local #!data!path::striker_config!# with the one on the
 named peer dashboard.
 
-Where conflicts exist, the values in the '--prefer [local|remote]' dashboard 
+Where conflicts exist, the values in the '--prefer [local|peer]' dashboard 
 will be used.
 
 
@@ -1938,7 +1939,7 @@ SWITCHES
 
 	scancore::db::x::password
 
- --prefer [local|remote]
+ --prefer [local|peer]
 
 	This controls which node's data will be used if a conflict is detected.
 	
@@ -1960,9 +1961,43 @@ SUPPORT
 
                                                           #!string!brand_0001!#
 ]]></key>
+		<key name="smd_message_0002">
+Merge summary:
+- This machine will sync with: ....... [#!variable!peer!#]
+- Conflicts will prefer the values in: [#!variable!prefer!#]
+		</key>
+		<key name="smd_message_0003">Proceeding automatically, '--force' was used.</key>
+		<key name="smd_message_0004">Proceed? [Y/n]</key>
+		<key name="smd_message_0005">Thank you, proceeding now.</key>
+		<key name="smd_message_0006">OK, exiting.</key>
+		<key name="smd_message_0007">It would appear that: [#!variable!path::striker_config!#] is already the same on both the local and peer dashboards, so there is nothing to do.</key>
+		<key name="smd_message_0008">
+###############################################################################
+# Below are variables merged in from a peer dashboard.                        #
+###############################################################################
+		</key>
+		<key name="smd_message_0009">Backed up the local configuration file: [#!variable!source!#] to: [#!variable!backup!#].</key>
+		<key name="smd_message_0010">Backed up and then the peer's configuration file: [#!variable!source!#] to: [#!variable!backup!#] and then re-wrote it.</key>
+		<key name="smd_message_0011">The new local configuration file has been written.</key>
+		<key name="smd_message_0012">The local configuration file didn't change.</key>
+		<key name="smd_message_0013">The peer's configuration file didn't change.</key>
 		
 		<!-- errors -->
 		<key name="smd_error_0001"><![CDATA[Must be called with '--prefer <striker>'.]]></key>
+		<key name="smd_error_0002"><![CDATA[The peer can only be auto-determined if two 'scancore::db::X::host' entries exist; #!variable!count!# were found. You must use the '--peer <host_or_ip>' switch.]]></key>
+		<key name="smd_error_0003"><![CDATA[The peer can only be auto-determined if it can match the local hostname (full or short) to an 'scancore::db::X::host' entry, and thus deduce the peer, but the local host name was not found. You must use the '--peer <host_or_ip>' switch.]]></key>
+		<key name="smd_error_0004"><![CDATA[The peer can only be auto-determined the peer if it determine the peer host name by finding the entry in 'scancore::db::X::host'. The local entry was found, but the peer was blank. You must use the '--peer <host_or_ip>' switch.]]></key>
+		<key name="smd_error_0005"><![CDATA[The peer's root password can only be auto-determined if it set as 'scancore::db::X::password'. The peer is #!variable!hostname!#, which should have the password set at 'scancore::db::#!variable!id!#::password' but the password wasn't found. You must use the '--password <peer's root pw>' switch.]]></key>
+		<!-- translator note; the value 'local' and 'peer' must be left in English. -->
+		<key name="smd_error_0006"><![CDATA[The '--prefer' switch was set with an invalid value: [#!variable!prefer!#]. The value must be 'local' or 'peer'.]]></key>
+		<key name="smd_error_0007">
+Failed to connect to the peer. The error was:
+====
+#!variable!error!#
+====
+Unable to proceed with the merge, exiting.
+		</key>
+		<key name="smd_error_0008">It would appear that: [#!variable!path::striker_config!#] was not found on either node. We can't merge what doesn't exists.</key>
 	</lang>
 
 	<!-- Japanese -->

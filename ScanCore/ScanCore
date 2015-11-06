@@ -27,6 +27,11 @@
 # - Add a '--status' option to report if it's enabled in striker.conf.
 # - Add a '--restart' option that touches a temp file and, if in a loop that file is found, delete it and 
 #   then exit.
+# 
+# - Write a 'scan-usb' agent that monitored USB ports for things being plugged in or removed.
+# - Write an agent that monitors the XML definition files and barks on change, too.
+# - An agent to monitor LVM and another for DRBD would be good, too.
+# - 
 #         
 # BUG:
 # - 
@@ -2222,7 +2227,7 @@ sub send_email
 			if ($level >= $alert_level)
 			{
 				#print "$THIS_FILE ".__LINE__."; Sending alert: [$alert_uuid] to: [$name <$email>] in the language: [$language]...\n";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "title",   value1 => $title, 
 					name2 => "message", value2 => $message, 
 				}, file => $THIS_FILE, line => __LINE__});

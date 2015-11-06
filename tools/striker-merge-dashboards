@@ -31,12 +31,52 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 }
 
 my $an = AN::Tools->new({data => {
+		config		=>	{
+			'local'		=>	{
+				raw		=>	"",
+				hash		=>	{},
+				pairs		=>	{},
+				new		=>	"",
+				missing		=>	0,
+				add_to_body	=>	{},
+				add_to_anvil	=>	{},
+				changed_value	=>	{},
+				changes_exist	=>	0,
+			},
+			peer		=>	{
+				raw		=>	"",
+				hash		=>	{},
+				pairs		=>	{},
+				new		=>	"",
+				missing		=>	0,
+				add_to_body	=>	{},
+				add_to_anvil	=>	{},
+				changed_value	=>	{},
+				changes_exist	=>	0,
+			},
+			merged		=>	{},
+		},
 		path		=>	{
+			cat		=>	"/bin/cat",
+			cp		=>	"/bin/cp",
+			echo		=>	"/bin/echo",
 			'less'		=>	"/usr/bin/less",
 			log_file	=>	"/var/log/striker.log",
 			ssh_config	=>	"/etc/ssh/ssh_config",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		node		=>	{
+			hostname	=>	{},
+			id		=>	{
+				peer		=>	"",
+				'local'		=>	"",
+			},
+		},
+		run		=>	{
+			peer_hostname	=>	"",
+			peer_password	=>	"",
+			prefer		=>	"local",
 		},
 		switches	=>	{},
 		sys		=>	{
@@ -69,22 +109,731 @@ if (($an->data->{switches}{h})   ||
 	print_usage($an);
 }
 
+# Now I need to set a few things, if the user didn't (will error and exit if anything is missing).
+prepare_for_run($an);
+
+# If I am alive, I am ready to proceed.
+read_local_striker_config($an);
+read_peers_striker_config($an);
+
+# Find the differences.
+diff_local_and_peer_config($an);
+
 exit(0);
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This parses out all 'variable = value' pairs into on place and see what is missing from either dashboard's
+# config.
+sub diff_local_and_peer_config
+{
+	my ($an) = @_;
+	
+	# Loop through both configs, compiling the variable/values into a common array.
+	$an->data->{config}{merged} = {};
+	foreach my $source ("local", "peer")
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "source", value1 => $source, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $line (split/\n/, $an->data->{config}{$source}{raw})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "source", value1 => $source, 
+				name2 => "line",   value2 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			next if ((not $line) or ($line =~ /^#/));
+			next if $line !~ /=/;
+			my ($variable, $value) = split/=/, $line, 2;
+			$variable =~ s/\s+$//;
+			$value    =~ s/^\s+//;
+			next if not $variable;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (exists $an->data->{config}{merged}{$variable})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "source",                    value1 => $source, 
+					name2 => "run::prefer",               value2 => $an->data->{run}{prefer}, 
+					name3 => "config::merged::$variable", value3 => $an->data->{config}{merged}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				# Only update if this is the preferred source.
+				if ($source eq $an->data->{run}{prefer})
+				{
+					$an->data->{config}{merged}{$variable} = $value;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "source",                    value1 => $source, 
+						name2 => "config::merged::$variable", value2 => $an->data->{config}{merged}{$variable}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Record the value.
+				$an->data->{config}{merged}{$variable} = $value;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "source",                    value1 => $source, 
+					name2 => "config::merged::$variable", value2 => $an->data->{config}{merged}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# If one side is missing its config, just bulk-copy the good dashboard's config.
+	if (($an->data->{config}{'local'}{missing}) && ($an->data->{config}{peer}{missing}))
+	{
+		# wat?
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0008", code => 7, file => "$THIS_FILE", line => __LINE__});
+	}
+	elsif ($an->data->{config}{'local'}{missing})
+	{
+		# Copy the peer's config.
+		$an->data->{config}{'local'}{new} = $an->data->{config}{peer}{raw};
+	}
+	elsif ($an->data->{config}{peer}{missing})
+	{
+		# Copy the local config.
+		$an->data->{config}{peer}{new} = $an->data->{config}{'local'}{raw};
+	}
+	elsif ($an->data->{config}{'local'}{raw} eq $an->data->{config}{peer}{raw})
+	{
+		# Both are the same, nothing to do.
+		$an->Log->entry({log_level => 2, message_key => "smd_message_0007", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smd_message_0007"}), "\n";
+		exit(0);
+	}
+	else
+	{
+		# Both dashboards have a config and they differ, so merge.
+		foreach my $variable (sort {$a cmp $b} keys %{$an->data->{config}{merged}})
+		{
+			my $value = $an->data->{config}{merged}{$variable};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $value,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Grep to see if the variable exists in either dashboard's 'raw' value. If not, add it to the
+			# 'add_to_X' variable. If so, see if the value matches. If not, change it.
+			foreach my $source ("local", "peer")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "source", value1 => $source, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $variable_found = 0;
+				my $value_changed  = 0;
+				foreach my $line (split/\n/, $an->data->{config}{$source}{raw})
+				{
+					next if $variable_found;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "source", value1 => $source, 
+						name2 => "line",   value2 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					next if ((not $line) or ($line =~ /^#/));
+					next if $line !~ /=/;
+					my ($this_variable, $this_value) = split/=/, $line, 2;
+					$this_variable =~ s/\s+$//;
+					$this_value    =~ s/^\s+//;
+					next if not $variable;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",      value1 => $variable, 
+						name2 => "this_variable", value2 => $this_variable, 
+						name3 => "value",         value3 => $value, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($this_variable eq $variable)
+					{
+						$variable_found = 1;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+							name1 => "source",        value1 => $source, 
+							name2 => "this_variable", value2 => $this_variable, 
+							name3 => "variable",      value3 => $variable,
+							name4 => "this_value",    value4 => $this_value, 
+							name5 => "value",         value5 => $value, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($this_value ne $value)
+						{
+							$value_changed = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "value_changed", value1 => $value_changed, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+				
+				# Did we find the variable?
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable_found", value1 => $variable_found, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($variable_found)
+				{
+					# Exists, if the value the same?
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "value_changed", value1 => $value_changed, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($value_changed)
+					{
+						$an->data->{config}{$source}{changed_value}{$variable} = $value;
+						$an->data->{config}{$source}{changes_exist}            = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "config::${source}::changed_value::$variable", value1 => $an->data->{config}{$source}{changed_value}{$variable}, 
+							name2 => "config::${source}::changes_exist",            value2 => $an->data->{config}{$source}{changes_exist}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					# New variable for this source, add the variable. If it's a 
+					# 'cluster::' value, add it to 'add_to_anvil'.
+					$an->data->{config}{$source}{changes_exist} = 1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "config::${source}::changes_exist", value1 => $an->data->{config}{$source}{changes_exist}, 
+						name2 => "variable",                         value2 => $variable, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($variable =~ /^cluster::/)
+					{
+						$an->data->{config}{$source}{add_to_anvil}{$variable} = $value;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "config::${source}::add_to_anvil::$variable", value1 => $an->data->{config}{$source}{add_to_anvil}{$variable}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						$an->data->{config}{$source}{add_to_body}{$variable} = $value;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "config::${source}::add_to_body::$variable", value1 => $an->data->{config}{$source}{add_to_body}{$variable}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+		
+		# Now, if I things have changed or if there are things to inject, use 'raw' as a template and build
+		# 'new'.
+		foreach my $source ("local", "peer")
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "source",                           value1 => $source, 
+				name2 => "config::${source}::changes_exist", value2 => $an->data->{config}{$source}{changes_exist}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{config}{$source}{changes_exist})
+			{
+				### OK, update and write!
+				# Insert missing values that aren't Anvil! details.
+				my $header_printed = 0;
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{config}{$source}{add_to_body}})
+				{
+					if (not $header_printed)
+					{
+						$header_printed = 1;
+						$an->data->{config}{$source}{new} = $an->String->get({key => "smd_message_0008"})
+					}
+					$an->data->{config}{$source}{new} .= "$variable	=	".$an->data->{config}{$source}{add_to_body}{$variable}."\n";
+				}
+				if ($header_printed)
+				{
+					$an->data->{config}{$source}{new} .= "\n";
+				}
+				
+				# Now edit changed existing entries.
+				foreach my $line (split/\n/, $an->data->{config}{$source}{raw})
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					my $check_line = $line;
+					if (($check_line) && ($check_line !~ /^#/) && ($check_line =~ /=/))
+					{
+						$check_line =~ s/^\s+//;
+						$check_line =~ s/\s+$//;
+						my ($variable, $value) = split/=/, $check_line, 2;
+						$variable =~ s/\s+$//;
+						$value    =~ s/^\s+//;
+						if ($variable)
+						{
+							# I may need to edit.
+							if ((exists $an->data->{config}{$source}{changed_value}{$variable}) && ($an->data->{config}{$source}{changed_value}{$variable} ne $value))
+							{
+								# It has changed!
+								my $new_value = $an->data->{config}{$source}{changed_value}{$variable};
+								$line =~ s/$variable(\s+)=(\s+)$value/$variable$1=$2$new_value/;
+							}
+						}
+					}
+					$an->data->{config}{$source}{new} .= "$line\n";
+				}
+				
+				# Now append any new Anvil! systems that were found.
+				my $this_id = "";
+				my $last_id = "";
+				foreach my $variable (sort {$a cmp $b} keys %{$an->data->{config}{$source}{add_to_anvil}})
+				{
+					my $this_id = ($variable =~ /cluster::(.*?)::/)[0];
+					if ($this_id ne $last_id)
+					{
+						# Blank line for a visual break.
+						$an->data->{config}{$source}{new} .= "\n";
+						$last_id = $this_id;
+					}
+					my $tabs = "";
+					if    (length($variable) >= 32) { $tabs = "\t"; }
+					elsif (length($variable) >= 24) { $tabs = "\t\t"; }
+					elsif (length($variable) >= 16) { $tabs = "\t\t\t"; }
+					elsif (length($variable) >= 8)  { $tabs = "\t\t\t\t"; }
+					$an->data->{config}{$source}{new} .= "${variable}$tabs=	".$an->data->{config}{$source}{add_to_anvil}{$variable}."\n";
+				}
+				
+				# Record the end result.
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "config::${source}::new", value1 => $an->data->{config}{$source}{new}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now write out each, if needed.
+	my ($date, $time) = $an->Get->date_and_time();
+	$time =~ s/:/-/g;
+	
+	# Backup and rewrite 'local' if needed.
+	if ($an->data->{config}{'local'}{new})
+	{
+		# Backup
+		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$line =~ s/\n//g;
+			$line =~ s/\r//g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		print $an->String->get({key => "smd_message_0009", variables => {
+			source	=>	$an->data->{path}{striker_config}, 
+			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
+		}}), "\n";
+		
+		# Write out
+		$shell_call = $an->data->{path}{striker_config};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $an->data->{config}{'local'}{new};
+		close $file_handle;
+		print $an->String->get({key => "smd_message_0011"}), "\n";
+	}
+	else
+	{
+		# No change
+		print $an->String->get({key => "smd_message_0012"}), "\n";
+	}
+	
+	# Backup and rewrite 'peer' if needed.
+	if ($an->data->{config}{peer}{new})
+	{
+		# Backup and write in one call.
+		my $shell_call = "
+".$an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time
+".$an->data->{path}{cat}." > ".$an->data->{path}{striker_config}." << EOF
+".$an->data->{config}{peer}{new}."
+EOF
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		print $an->String->get({key => "smd_message_0010", variables => {
+			source	=>	$an->data->{path}{striker_config}, 
+			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
+		}}), "\n";
+		
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			### TODO: Handle a rebuilt machine where the fingerprint no longer matches.
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# No change
+		print $an->String->get({key => "smd_message_0013"}), "\n";
+	}
+	
+	return(0);
+}
+
+# This reads the local striker.conf into a special hash.
+sub read_local_striker_config
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_local_striker_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read the parsed values into the special hash.
+	$an->Storage->read_conf({
+		file	=>	$an->data->{path}{striker_config},
+		hash	=>	$an->data->{config}{'local'}{hash},
+	});
+	
+	# Now read the raw file in.
+	if (-e $an->data->{path}{striker_config})
+	{
+		$an->data->{config}{'local'}{raw} = "";
+		my $shell_call = $an->data->{path}{striker_config};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{config}{'local'}{raw} .= "$line\n";
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# No local file, will copy the peer whole-sale.
+		$an->data->{config}{'local'}{missing} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "config::local::missing", value1 => $an->data->{config}{'local'}{missing}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This works by cat'ing the peer's config and reading it into a temporary file, then loading the peer's 
+# config into a special hash references to compare.
+sub read_peers_striker_config
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_peers_striker_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Call cat against the file on the remote machine, erroring out if it can't be reached.
+	$an->data->{config}{peer}{raw} = "";
+	my $shell_call = "
+if [ -e ".$an->data->{path}{striker_config}." ]
+then
+    ".$an->data->{path}{cat}." ".$an->data->{path}{striker_config}."
+else
+    ".$an->data->{path}{echo}." 'config not found'
+fi;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{run}{peer_hostname},
+		password	=>	$an->data->{run}{peer_password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	$shell_call,
+	});
+	my $returned_lines = @{$return};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "error",          value1 => $error, 
+		name2 => "ssh_fh",         value2 => $ssh_fh, 
+		name3 => "returned_lines", value3 => $returned_lines, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($error)
+	{
+		# Well, we're dead.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0007", message_variables => {
+			error	=>	$error, 
+		}, code => 6, file => "$THIS_FILE", line => __LINE__});
+	}
+	foreach my $line (@{$return})
+	{
+		### TODO: Handle a rebuilt machine where the fingerprint no longer matches.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line eq "config not found")
+		{
+			# Load the local one directly.
+			$an->data->{config}{peer}{missing} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "config::peer::missing", value1 => $an->data->{config}{peer}{missing}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$an->data->{config}{peer}{raw} .= "$line\n";
+		}
+	}
+	
+	### TODO: Add 'rsync' to AN::Tools::Storage
+	# Write it out to a temp file.
+	$shell_call = "/tmp/".$an->data->{run}{peer_hostname}.".striker.conf";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	print $file_handle $an->data->{config}{peer}{raw};
+	close $file_handle;
+	
+	# Read the parsed values into the special hash.
+	$an->Storage->read_conf({
+		file	=>	$shell_call,
+		hash	=>	$an->data->{config}{peer}{hash},
+	});
+	
+	return(0);
+}
+
+# This will look in the local striker.conf for the peer host and password, if not set by the user.
+sub prepare_for_run
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prepare_for_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, read in the scancore::db entries. I'll need these if the peer host and/or password are not
+	# defined.
+	
+	# Only support 2 DBs for now
+	my $db_count   = 0;
+	my $i_am_long  = $an->hostname();
+	my $i_am_short = $an->short_hostname();
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "i_am_long",  value1 => $i_am_long, 
+		name2 => "i_am_short", value2 => $i_am_short, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$db_count++;
+		my $this_host     = $an->data->{scancore}{db}{$id}{host};
+		my $this_password = $an->data->{scancore}{db}{$id}{password};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "id",            value1 => $id, 
+			name2 => "this_host",     value2 => $this_host, 
+			name3 => "this_password", value3 => $this_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Record in the hash for later reference.
+		$an->data->{node}{hostname}{$this_host}{id}       = $id;
+		$an->data->{node}{hostname}{$this_host}{password} = $this_password;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "node::hostname::${this_host}::id",       value1 => $an->data->{node}{hostname}{$this_host}{id}, 
+			name2 => "node::hostname::${this_host}::password", value2 => $an->data->{node}{hostname}{$this_host}{password}, 
+			name3 => "this_host",                              value3 => $this_host, 
+			name4 => "i_am_long",                              value4 => $i_am_long, 
+			name5 => "i_am_short",                             value5 => $i_am_short, 
+		}, file => $THIS_FILE, line => __LINE__});
+		### NOTE: OMG, how did I not know about these?!
+		#use Devel::Peek;
+		#Dump $this_host;
+		#Dump $i_am_long;
+		#Dump $i_am_short;
+		#printf "%vd\n%vd\n%vd\n", $this_host, $i_am_long, $i_am_short;
+		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
+		{
+			$an->data->{node}{id}{'local'} = $id;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::id::local", value1 => $an->data->{node}{id}{'local'}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Do I need to figure out who my peer is?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "switches::peer", value1 => $an->data->{switches}{peer}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{switches}{peer})
+	{
+		# No.
+		$an->data->{run}{peer_hostname} = $an->data->{switches}{peer};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "run::peer_hostname", value1 => $an->data->{run}{peer_hostname}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		### Yes.
+		# If there were too many peers, exit.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_count", value1 => $db_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($db_count ne "2")
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0002", message_variables => {
+				this_file	=>	$THIS_FILE,
+				count		=>	$db_count, 
+			}, code => 1, file => "$THIS_FILE", line => __LINE__});
+		}
+		
+		# If I didn't find myself, exit.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::id::local", value1 => $an->data->{node}{id}{'local'}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{node}{id}{'local'} eq "")
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0003", message_variables => {
+				this_file	=>	$THIS_FILE,
+			}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		}
+		
+		# Now I know who I am, find the peer.
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "id",              value1 => $id, 
+				name2 => "node::id::local", value2 => $an->data->{node}{id}{'local'}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($id ne $an->data->{node}{id}{'local'})
+			{
+				$an->data->{node}{id}{peer}     = $id;
+				$an->data->{run}{peer_hostname} = $an->data->{scancore}{db}{$id}{host};
+				$an->data->{run}{peer_password} = $an->data->{scancore}{db}{$id}{password};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node::id::peer",     value1 => $an->data->{node}{id}{peer}, 
+					name2 => "run::peer_hostname", value2 => $an->data->{run}{peer_hostname}, 
+					name3 => "run::peer_password", value3 => $an->data->{run}{peer_password}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		
+		# Now I should know who my peer is.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "run::peer_hostname", value1 => $an->data->{run}{peer_hostname}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $an->data->{run}{peer_hostname})
+		{
+			# >_<
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0004", message_variables => {
+				this_file	=>	$THIS_FILE,
+			}, code => 3, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	
+	# Now if I know my peer's name but maybe not password.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "switches::password", value1 => $an->data->{switches}{password}, 
+		name2 => "run::peer_password", value2 => $an->data->{run}{peer_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{switches}{password}) && (not $an->data->{run}{peer_password}))
+	{
+		# Wasn't set explicitely, but found it in the config.
+		$an->data->{run}{peer_password} = $an->data->{switches}{password};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "switches::password", value1 => $an->data->{switches}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Final check that I have a password.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "run::peer_password", value1 => $an->data->{run}{peer_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{run}{peer_password})
+	{
+		# boo.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0005", message_variables => {
+			this_file	=>	$THIS_FILE,
+			hostname	=>	$an->data->{run}{peer_hostname}, 
+			id		=>	$an->data->{node}{id}{peer}, 
+		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If I'm alive, we're good. Last thing to check is who to take as the preferred node.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "switches::prefer", value1 => $an->data->{switches}{prefer}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{switches}{prefer})
+	{
+		if (($an->data->{switches}{prefer} eq "local") or ($an->data->{switches}{prefer} eq "peer"))
+		{
+			$an->data->{run}{prefer} = $an->data->{switches}{prefer};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "run::prefer", value1 => $an->data->{run}{prefer}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Bad value.
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "smd_error_0006", message_variables => {
+				prefer	=>	$an->data->{switches}{prefer}, 
+			}, code => 5, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	
+	# Now summarize
+	print $an->String->get({key => "smd_message_0002", variables => {
+		peer	=>	$an->data->{run}{peer_hostname}, 
+		prefer	=>	$an->data->{run}{prefer}, 
+	}}), "\n";
+	
+	# If not '--force', ask the user to proceed or not.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "switches::force", value1 => $an->data->{switches}{force}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{switches}{force})
+	{
+		# Forced.
+		print $an->String->get({key => "smd_message_0003"}), "\n";
+	}
+	else
+	{
+		# Prompt.
+		print $an->String->get({key => "smd_message_0004"}), "\n";
+		my $answer = <STDIN>;
+		chomp($answer);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "answer", value1 => $answer, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($answer) && (lc($answer) =~ /^n/))
+		{
+			print $an->String->get({key => "smd_message_0006"}), "\n";
+			exit(0);
+		}
+		else
+		{
+			print $an->String->get({key => "smd_message_0005"}), "\n";
+		}
+	}
+	
+	return(0);
+}
+
 # This prints the usage instructions and then exits
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	print $an->String->get({key => "smd_message_0001"}), "\n";
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
-	print $file_handle $help;
+	print $file_handle $an->String->get({key => "smd_message_0001"}), "\n";
 	close $file_handle;
 	
 	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");

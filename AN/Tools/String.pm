@@ -637,14 +637,13 @@ sub _process_string
 	# Start looping through the passed string until all the replacement keys are gone.
 	my $i     = 0;
 	my $limit = $an->_error_limit;
-	   $limit = 6;
 	   
 	$parameter->{string} = $an->String->_insert_variables_into_string({
 			string		=>	$parameter->{string},
 			variables	=>	$parameter->{variables},
 	});
 	
-	while ($parameter->{string} =~ /#!(.+?)!#/)
+	while ($parameter->{string} =~ /#!([^\s]+?)!#/)
 	{
 		# Substitute 'word' keys, but without 'variables'. This has to be first! 'protect' will catch
 		# 'word' keys, because no where else are they allowed.
@@ -704,10 +703,10 @@ sub _restore_protected
 	
 	# Restore and unrecognized substitution values.
 	my $i = 0;
-	while ($parameter->{string} =~ /!#.*?#!/)
+	while ($parameter->{string} =~ /!#[^\s]+?#!/)
 	{
 		#print "$THIS_FILE ".__LINE__."; >> string: [$parameter->{string}]\n";
-		$parameter->{string} =~ s/!#(.*?)#!/#!$1!#/g;
+		$parameter->{string} =~ s/!#([^\s]+?)#!/#!$1!#/g;
 		#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 		
 		if ($i > $an->_error_limit)
@@ -776,12 +775,13 @@ sub _insert_data
 # possibly set or created by a user.
 sub _protect
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
-	my $an    = $self->parent;
-	my $i     = 0;
-	foreach my $check ($parameter->{string} =~ /#!(.+?)!#/)
+	my $an        = $self->parent;
+	my $i         = 0;
+	foreach my $check ($parameter->{string} =~ /#!([^\s]+?)!#/)
 	{
+		#print "$THIS_FILE ".__LINE__."; check: [$check]\n";
 		if (($check !~ /^free/) &&
 		    ($check !~ /^replace/) &&
 		    ($check !~ /^data/) &&
@@ -789,7 +789,9 @@ sub _protect
 		    ($check !~ /^var/))
 		{
 			# Simply invert the '#!...!#' to '!#...#!'.
+			#print "$THIS_FILE ".__LINE__."; >> string: [$parameter->{string}]\n";
 			$parameter->{string} =~ s/#!($check)!#/!#$1#!/g;
+			#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 		}
 		
 		die "Infinite loop detected while protecting replacement keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
