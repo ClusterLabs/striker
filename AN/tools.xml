@@ -361,6 +361,9 @@ Variables:
 		<key name="warning_title_0002">Unknown Environment</key>
 		<key name="warning_title_0003">AN::Tools::Check->ping() called without a target being specified.</key>
 		<key name="warning_title_0004">Missing argument</key>
+		<key name="warning_title_0005">Failed to create an RSA key for the user: [#!variable!user!#]. Skipping this user.</key>
+		<key name="warning_title_0006">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read.</key>
+		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
@@ -372,6 +375,11 @@ Variables:
 		<key name="notice_message_0003">Reading: [#!variable!file!#].</key>
 		<key name="notice_message_0004">SSH session opened to: [#!variable!target!#].</key>
 		<key name="notice_message_0005">SSH session closed to: [#!variable!target!#].</key>
+		<key name="notice_message_0006">Please be patient! Generating an RSA key now. This can take time depending on how large the key is and how long it takes to collect entropy...</key>
+		<key name="notice_message_0007">successfully generated an RSA key for the user: [#!variable!user!#].</key>
+		<key name="notice_message_0008">Read the local user/host: [#!variable!owner!#]'s public RSA key: [#!variable!key!#].</key>
+		<key name="notice_message_0009">Added the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
+		<key name="notice_message_0010">Adding the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
@@ -429,6 +437,14 @@ Variables:
 		<key name="error_message_0031">Unknown error while connecting to: [#!variable!target!#]. The error was: [#!variable!error!#]</key>
 		<key name="error_message_0032">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
 		<key name="error_message_0033">Failed to establish channel to target: [#!variable!target!#] for shell call: [#!variable!shell_call!#]</key>
+		<key name="error_message_0034">The 'AN::Tools::Storage->_create_rsync_wrapper() private function was called without passing the target machine and/or target password.</key>
+		<key name="error_message_0035"><![CDATA[The 'AN::Tools::Storage->rsync() method was called without a 'target' parameter. Please use 'target => <remote_machine_address>'.]]></key>
+		<key name="error_message_0036"><![CDATA[The 'AN::Tools::Storage->rsync() method was called without a 'password' parameter. Please use 'password => <remote_users_password>'. The 'source' or 'destination' will be in the format 'user@target' and the password must be for the 'user' on the 'target' machine.]]></key>
+		<key name="error_message_0037">The 'AN::Tools::Storage->rsync() method was called without a 'source' parameter. Please use 'source => [user@target:]/path/to/source'. If the 'source' is the local machine, simply set the path. If the source is the remote machine, use 'user@target:/path/to/source'.</key>
+		<key name="error_message_0038">The 'AN::Tools::Storage->rsync() method was called without a 'destination' parameter. Please use 'destination => [user@target:]/path/to/source'. If the 'destination' is the local machine, simply set the path. If the destination is the remote machine, use 'user@target:/path/to/source'.</key>
+		<key name="error_message_0039"><![CDATA[The 'AN::Tools::Get->rsa_public_key()' method wasn't passed a 'user' parameter. Please use 'user => <local_user>' where the 'local_user' is the system users whose RSA key you want to read is.]]></key>
+		<key name="error_message_0040">The 'AN::Tools::Get->users_home()' method failed to read the user: [#!variable!user!#]'s home directory from '/etc/passwd'.</key>
+		<key name="error_message_0041"><![CDATA[The 'AN::Tools::Get->users_home()' method was called without being passed a user name. Please use 'user => <user>' where the 'user' is the local system users whose home directory you want.]]></key>
 	</lang>
 	
 	<!-- 日本語 -->

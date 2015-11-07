@@ -109,6 +109,158 @@ sub prep_local_uuid
 	return($an->data->{sys}{host_uuid});
 }
 
+# This creates an 'expect' wrapper and then calls rsync to copy data between this machine and a remote 
+# system.
+sub rsync
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Check my parameters.
+	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
+	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
+	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
+	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
+	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "target",      value1 => $target, 
+		name2 => "password",    value2 => $password, 
+		name3 => "source",      value3 => $source, 
+		name4 => "destination", value4 => $destination, 
+		name5 => "switches",    value5 => $switches, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I have everything I need.
+	if (not $target)
+	{
+		# No target
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
+	}
+	if (not $password)
+	{
+		# No password
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
+	}
+	if (not $source)
+	{
+		# No source
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => "$THIS_FILE", line => __LINE__});
+	}
+	if (not $destination)
+	{
+		# No destination
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If either the source or destination is remote, we need to make sure we have the remote machine in
+	# the current user's ~/.ssh/known_hosts file.
+	my $remote_user    = "";
+	my $remote_machine = "";
+	if ($source =~ /^(.*?)@(.*?):/)
+	{
+		$remote_user    = $1;
+		$remote_machine = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "remote_user",    value1 => $remote_user, 
+			name2 => "remote_machine", value2 => $remote_machine, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($destination =~ /^(.*?)@(.*?):/)
+	{
+		$remote_user    = $1;
+		$remote_machine = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "remote_user",    value1 => $remote_user, 
+			name2 => "remote_machine", value2 => $remote_machine, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ($remote_machine)
+	{
+		# Make sure we know the fingerprint of the remote machine
+		$an->Remote->add_target_to_known_hosts({user => $remote_user, target => $remote_machine});
+	}
+	
+	# Setup the rsync wrapper
+	my $wrapper = $an->Storage->_create_rsync_wrapper({
+		target   => $target,
+		password => $password, 
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "wrapper", value1 => $wrapper, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# And make the shell call
+	my $shell_call = "$wrapper $switches $source $destination";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This does the actual work of creating the 'expect' wrapper script and returns the path to that wrapper.
+sub _create_rsync_wrapper
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an    = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Check my parameters.
+	my $target   = $parameter->{target};
+	my $password = $parameter->{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "password", value2 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $target) || (not $password))
+	{
+		# Can't do much without a target or password.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $wrapper    = "/tmp/rsync.$target";
+	my $shell_call = "
+".$an->data->{path}{echo}." '#!".$an->data->{path}{expect}."' > $wrapper
+".$an->data->{path}{echo}." 'set timeout 3600' >> $wrapper
+".$an->data->{path}{echo}." 'eval spawn rsync \$argv' >> $wrapper
+".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
+".$an->data->{path}{echo}." 'expect eof' >> $wrapper
+".$an->data->{path}{'chmod'}." 755 $wrapper;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		print $_;
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "wrapper", value1 => $wrapper, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($wrapper);
+}
+
 ### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
 ###       directories can be added to it after reading a config file. Make this method take an array 
 ###       reference to work on.

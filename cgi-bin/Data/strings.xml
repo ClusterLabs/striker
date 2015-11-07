@@ -1976,11 +1976,14 @@ Merge summary:
 # Below are variables merged in from a peer dashboard.                        #
 ###############################################################################
 		</key>
-		<key name="smd_message_0009">Backed up the local configuration file: [#!variable!source!#] to: [#!variable!backup!#].</key>
-		<key name="smd_message_0010">Backed up and then the peer's configuration file: [#!variable!source!#] to: [#!variable!backup!#] and then re-wrote it.</key>
+		<key name="smd_message_0009">Backing up the local configuration file: [#!variable!source!#] to: [#!variable!backup!#].</key>
+		<key name="smd_message_0010">Backing up the peer's configuration file: [#!variable!source!#] to: [#!variable!backup!#].</key>
 		<key name="smd_message_0011">The new local configuration file has been written.</key>
 		<key name="smd_message_0012">The local configuration file didn't change.</key>
 		<key name="smd_message_0013">The peer's configuration file didn't change.</key>
+		<key name="smd_message_0014">Writing the peer's temporary local configuration file: [#!variable!file!#].</key>
+		<key name="smd_message_0015">Copying the temporary peer config file to the peer's configuration file: [#!variable!file!#].</key>
+		<key name="smd_message_0016">Merge complete.</key>
 		
 		<!-- errors -->
 		<key name="smd_error_0001"><![CDATA[Must be called with '--prefer <striker>'.]]></key>

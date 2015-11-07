@@ -5026,7 +5026,7 @@ sub scan_directory
 		next if $file eq "..";
 		my $full_path = "$directory/$file";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "full_path", value1 => "$full_path"
+			name1 => "full_path", value1 => $full_path, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (-d $full_path)
 		{
