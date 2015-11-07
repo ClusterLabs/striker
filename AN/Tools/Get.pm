@@ -50,7 +50,7 @@ sub users_home
 	my $an        = $self->parent;
 	
 	my $user = $parameter->{user};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "user", value1 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $user)
@@ -64,7 +64,7 @@ sub users_home
 	
 	my $shell_call = "/etc/passwd";
 	my $users_home = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -78,7 +78,7 @@ sub users_home
 		if ($line =~ /$user:/)
 		{
 			$users_home = (split/:/, $line)[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "users_home", value1 => $users_home, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -110,8 +110,12 @@ sub rsa_public_key
 		name2 => "key_size", value2 => $key_size,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Find the public RSA key file for this user.
 	my $users_home = $an->Get->users_home({user => $user});
 	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "rsa_file", value1 => $rsa_file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#If it doesn't exit, create it,
 	if (not -e $rsa_file)
@@ -132,7 +136,7 @@ sub rsa_public_key
 	my $key_owner  = "";
 	my $key_string = "";
 	my $shell_call = $rsa_file;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -148,8 +152,8 @@ sub rsa_public_key
 			$key_string = $1;
 			$key_owner  = $2;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "key_string", value1 => $key_string, 
-				name2 => "key_owner",  value2 => $key_owner, 
+				name1 => "key_owner",  value1 => $key_owner, 
+				name2 => "key_string", value2 => $key_string, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -173,6 +177,11 @@ sub rsa_public_key
 			key	=>	$key_string, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "key_owner",  value1 => $key_owner, 
+		name2 => "key_string", value2 => $key_string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($key_owner, $key_string);
 }
 
