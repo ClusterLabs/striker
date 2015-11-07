@@ -160,15 +160,17 @@ elsif (not $conf->{tools}{safe_anvil_start}{enabled})
 	#logger($conf, $THIS_FILE, __LINE__, "- Safe Anvil! Start has been disabled, exiting.");
 	exit(0);
 }
-else
-{
-	logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
-}
 
 # No matter what, exit if there is another instance running. Print as much if '--force' was used.
 avoid_duplicate_run($conf);
 
+logger($conf, $THIS_FILE, __LINE__, "\n-=] Safe Anvil! Start is now running.", 0);
 
+# If I am alive, I am running. This could take a while though, so disable now to block another run from 
+# starting in a minute.
+my $return_code = update_configuration($conf, "disable");
+
+# Now go to work
 read_hostname($conf);
 read_cluster_config($conf);
 
@@ -212,9 +214,6 @@ wait_for_drbd_sync($conf);
 # If I am still alive, I am healthy. Time to start the servers!
 start_servers($conf);
 
-# Disable it so it doesn't run again.
-my $return_code = update_configuration($conf, "disable");
-
 # All done.
 logger($conf, $THIS_FILE, __LINE__, "- Finished, exiting.\n", 1);
 exit(0);
@@ -228,7 +227,7 @@ sub avoid_duplicate_run
 {
 	my ($conf) = @_;
 	
-	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE 2>&1 |";
+	my $shell_call  = "$conf->{path}{pgrep} $THIS_FILE";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 	while (<$file_handle>)

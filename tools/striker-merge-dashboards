@@ -409,6 +409,11 @@ sub diff_local_and_peer_config
 	if ($an->data->{config}{'local'}{new})
 	{
 		# Backup
+		print $an->String->get({key => "smd_message_0009", variables => {
+			source	=>	$an->data->{path}{striker_config}, 
+			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
+		}}), "\n";
+		
 		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
@@ -425,12 +430,9 @@ sub diff_local_and_peer_config
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		close $file_handle;
-		print $an->String->get({key => "smd_message_0009", variables => {
-			source	=>	$an->data->{path}{striker_config}, 
-			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
-		}}), "\n";
 		
 		# Write out
+		print $an->String->get({key => "smd_message_0011"}), "\n";
 		$shell_call = $an->data->{path}{striker_config};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
@@ -438,7 +440,6 @@ sub diff_local_and_peer_config
 		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		print $file_handle $an->data->{config}{'local'}{new};
 		close $file_handle;
-		print $an->String->get({key => "smd_message_0011"}), "\n";
 	}
 	else
 	{
@@ -449,22 +450,16 @@ sub diff_local_and_peer_config
 	# Backup and rewrite 'peer' if needed.
 	if ($an->data->{config}{peer}{new})
 	{
-		# Backup and write in one call.
-		my $shell_call = "
-".$an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time
-".$an->data->{path}{cat}." > ".$an->data->{path}{striker_config}." << EOF
-".$an->data->{config}{peer}{new}."
-EOF
-";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
+		# Backup
 		print $an->String->get({key => "smd_message_0010", variables => {
 			source	=>	$an->data->{path}{striker_config}, 
 			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
 		}}), "\n";
 		
+		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$an->data->{run}{peer_hostname},
 			password	=>	$an->data->{run}{peer_password},
@@ -474,17 +469,48 @@ EOF
 		});
 		foreach my $line (@{$return})
 		{
-			### TODO: Handle a rebuilt machine where the fingerprint no longer matches.
 			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		
+		# Now write it out locally
+		my $temporary_file = "striker_config.".time;
+		print $an->String->get({key => "smd_message_0014", variables => {
+			file	=>	$temporary_file, 
+		}}), "\n";
+		$shell_call = "/tmp/$temporary_file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $an->data->{config}{peer}{new};
+		close $file_handle;
+		
+		# Now rsync it.
+		my $destination = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{striker_config};
+		print $an->String->get({key => "smd_message_0015", variables => {
+			file	=>	$destination, 
+		}}), "\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "destination", value1 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	"/tmp/$temporary_file",
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
 	}
 	else
 	{
 		# No change
 		print $an->String->get({key => "smd_message_0013"}), "\n";
 	}
+	
+	# Done!
+	print $an->String->get({key => "smd_message_0016"}), "\n";
 	
 	return(0);
 }

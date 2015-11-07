@@ -30,9 +30,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -43,19 +42,153 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This reads /etc/password to figure out the requested user's home directory.
+sub users_home
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $user = $parameter->{user};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "user", value1 => $user, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $user)
+	{
+		# No user? No bueno...
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0041", message_variables => {
+			user => $user, 
+		}, code => 38, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $shell_call = "/etc/passwd";
+	my $users_home = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /$user:/)
+		{
+			$users_home = (split/:/, $line)[5];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "users_home", value1 => $users_home, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Do I have the a user's $HOME now?
+	if (not $users_home)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0040", message_variables => {
+			user => $user, 
+		}, code => 34, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	return($users_home);
+}
+
+# Get the local user's RSA public key.
+sub rsa_public_key
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $user     = $parameter->{user};
+	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "user",     value1 => $user, 
+		name2 => "key_size", value2 => $key_size,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $users_home = $an->Get->users_home({user => $user});
+	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
+	
+	#If it doesn't exit, create it,
+	if (not -e $rsa_file)
+	{
+		# Generate it.
+		my $ok = $an->Remote->generate_rsa_public_key({user => $user, key_size => $key_size});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ok", value1 => $ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ok)
+		{
+			# Failed, return.
+			return("", "");
+		}
+	}
+	
+	# Read it!
+	my $key_owner  = "";
+	my $key_string = "";
+	my $shell_call = $rsa_file;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /^ssh-rsa (.*?) (.*?\@.*)$/)
+		{
+			$key_string = $1;
+			$key_owner  = $2;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "key_string", value1 => $key_string, 
+				name2 => "key_owner",  value2 => $key_owner, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# If I failed to read the key, exit.
+	if ((not $key_owner) or (not $key_string))
+	{
+		# Foo. Warn the user and return.
+		$an->Alert->warning({message_key => "warning_title_0006", message_variables => {
+			user	=>	$user,
+			file	=>	$rsa_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		return("", "");
+	}
+	else
+	{
+		# We're good!
+		$an->Log->entry({log_level => 3, message_key => "notice_message_0008", message_variables => {
+			owner	=>	$key_owner, 
+			key	=>	$key_string, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	return($key_owner, $key_string);
+}
+
 # Uses 'uuidgen' to generate a UUID and return it to the caller.
 sub uuid
 {
-	my $self  = shift;
-	my $param = shift;
-	my $an    = $self->parent;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	
 	# Set the 'uuidgen' path if set by the user.
-	$an->_uuidgen_path($param->{uuidgen_path}) if $param->{uuidgen_path};
+	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
 	
 	# If the user asked for the host UUID, read it in.
 	my $uuid = "";
-	if ((exists $param->{get}) && ($param->{get} eq "host_uuid"))
+	if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"))
 	{
 		my $shell_call = $an->data->{path}{host_uuid};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -98,7 +231,7 @@ sub uuid
 	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# Yup. Set the host UUID if that's what we read.
-		$an->data->{sys}{host_uuid} = $uuid if ((exists $param->{get}) && ($param->{get} eq "host_uuid"));
+		$an->data->{sys}{host_uuid} = $uuid if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"));
 	}
 	else
 	{
@@ -222,8 +355,8 @@ sub use_24h
 # This returns the date and time based on the given unix-time.
 sub date_and_time
 {
-	my $self  = shift;
-	my $param = shift;
+	my $self      = shift;
+	my $parameter = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -237,18 +370,18 @@ sub date_and_time
 	
 	# Now see if the user passed the values in a hash reference or
 	# directly.
-	if (ref($param) eq "HASH")
+	if (ref($parameter) eq "HASH")
 	{
 		# Values passed in a hash, good.
-		$offset		 = $param->{offset}		? $param->{offset} : 0;
-		$use_time	 = $param->{use_time}		? $param->{use_time} : time;
-		$require_weekday = $param->{require_weekday}	? $param->{require_weekday} : 0;
-		$skip_weekends	 = $param->{skip_weekends}	? $param->{skip_weekends} : 0;
+		$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
+		$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
+		$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
+		$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
 	}
 	else
 	{
 		# Values passed directly.
-		$offset		 = defined $param ? $param : 0;
+		$offset		 = defined $parameter ? $parameter : 0;
 		$use_time	 = defined $_[0] ? $_[0] : time;
 		$require_weekday = defined $_[1] ? $_[1] : "";
 		$skip_weekends	 = defined $_[2] ? $_[2] : "";
@@ -458,8 +591,8 @@ sub date_and_time
 # This uses 'anvil-report-memory' to get the amount of RAM used by a given program name.
 sub ram_used_by_program
 {
-	my $self  = shift;
-	my $param = shift;
+	my $self      = shift;
+	my $parameter = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -468,13 +601,13 @@ sub ram_used_by_program
 	$an->Alert->_set_error;
 	
 	# What program?
-	if (not $param->{program_name})
+	if (not $parameter->{program_name})
 	{
 		return(-1);
 	}
 	
 	my $total_bytes = 0;
-	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $param->{program_name}";
+	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $parameter->{program_name}";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => "$shell_call"
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
@@ -487,7 +620,7 @@ sub ram_used_by_program
 			name1 => "line", value1 => "$line"
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		
-		if ($line =~ /^$param->{program_name} = (\d+)/)
+		if ($line =~ /^$parameter->{program_name} = (\d+)/)
 		{
 			$total_bytes = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -504,8 +637,8 @@ sub ram_used_by_program
 # parent process.
 sub get_ram_used_by_pid
 {
-	my $self  = shift;
-	my $param = shift;
+	my $self      = shift;
+	my $parameter = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -514,7 +647,7 @@ sub get_ram_used_by_pid
 	$an->Alert->_set_error;
 	
 	# What PID?
-	my $pid = $param->{pid} ? $param->{pid} : $$;
+	my $pid = $parameter->{pid} ? $parameter->{pid} : $$;
 	
 	my $total_bytes = 0;
 	my $shell_call  = $an->data->{path}{pmap}." $pid 2>&1 |";

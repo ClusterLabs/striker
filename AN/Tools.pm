@@ -148,15 +148,20 @@ sub new
 	}
 	
 	# Set some system paths
-	$an->data->{path}{echo}       = "/bin/echo";
-	$an->data->{path}{hostname}   = "/etc/sysconfig/network";
-	$an->data->{path}{pg_dump}    = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}     = "/bin/ping",
-	$an->data->{path}{pgrep}      = "/usr/bin/pgrep";
-	$an->data->{path}{psql}       = "/usr/bin/psql";
-	$an->data->{path}{pmap}       = "/usr/bin/pmap";
-	$an->data->{path}{ps}         = "/bin/ps";
-	$an->data->{path}{ssh_config} = "/etc/ssh/ssh_config";
+	$an->data->{path}{'chmod'}      = "/bin/chmod";
+	$an->data->{path}{echo}         = "/bin/echo";
+	$an->data->{path}{expect}       = "/usr/bin/expect";
+	$an->data->{path}{hostname}     = "/etc/sysconfig/network";
+	$an->data->{path}{pg_dump}      = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}       = "/bin/ping",
+	$an->data->{path}{pgrep}        = "/usr/bin/pgrep";
+	$an->data->{path}{psql}         = "/usr/bin/psql";
+	$an->data->{path}{pmap}         = "/usr/bin/pmap";
+	$an->data->{path}{ps}           = "/bin/ps";
+	$an->data->{path}{rsync}        = "/usr/bin/rsync",
+	$an->data->{path}{ssh}          = "/usr/bin/ssh";
+	$an->data->{path}{ssh_config}   = "/etc/ssh/ssh_config";
+	$an->data->{path}{'ssh-keygen'} = "/usr/bin/ssh-keygen";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))

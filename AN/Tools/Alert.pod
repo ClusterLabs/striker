@@ -320,19 +320,19 @@ The 'AN::Tools::String' module's 'get()' method was passed an empty key value.
 
 =head2 C<21>
 
-free
+The 'AN::Tools::Storage->_create_rsync_wrapper() private function was called without passing the target machine and/or target password.
 
 =head2 C<22>
 
-free
+The 'AN::Tools::Storage->rsync() method was called without a 'target' parameter. Please use 'target => <remote_machine_address>'.
 
 =head2 C<23>
 
-free
+The 'AN::Tools::Storage->rsync() method was called without a 'password' parameter. Please use 'password => <remote_users_password>'. The 'source' or 'destination' will be in the format 'user@target' and the password must be for the 'user' on the 'target' machine.
 
 =head2 C<24>
 
-free
+The 'AN::Tools::Storage->rsync() method was called without a 'source' parameter. Please use 'source => [user@target:]/path/to/source'. If the 'source' is the local machine, simply set the path. If the source is the remote machine, use 'user@target:/path/to/source'.
 
 =head2 C<25>
 
@@ -364,15 +364,15 @@ The 'AN::Tools' module tried to load the 'Fcntl' module but it failed to load or
 
 =head2 C<32>
 
-free
+The 'AN::Tools::Storage->rsync() method was called without a 'destination' parameter. Please use 'destination => [user@target:]/path/to/source'. If the 'destination' is the local machine, simply set the path. If the destination is the remote machine, use 'user@target:/path/to/source'.
 
 =head2 C<33>
 
-free
+The 'AN::Tools::Get->rsa_public_key()' method wasn't passed a 'user' parameter. Please use 'user => <local_user>' where the 'local_user' is the system users whose RSA key you want to read is.
 
 =head2 C<34>
 
-free
+The 'AN::Tools::Get->users_home()' method failed to read the requested user's home directory from '/etc/passwd'.
 
 =head2 C<35>
 
@@ -388,7 +388,7 @@ The 'AN::Tools' module detected an unknown environment. Defaulting to "html" as 
 
 =head2 C<38>
 
-free
+The 'AN::Tools::Get->users_home()' method was called without being passed a user name. Please use 'user => <user>' where the 'user' is the local system users whose home directory you want.
 
 =head2 C<39>
 
