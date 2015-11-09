@@ -8526,7 +8526,11 @@ common {
 	{
 		$conf->{drbd}{global_common} .= "		cpu-mask $conf->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
 	}
-	$conf->{drbd}{global_common} .= "	}
+	$conf->{drbd}{global_common} .= "		# Regarding LINBIT Ticket# 2015110642000184; Setting this to 
+		# 'suspend-io' is safest given the risk of data divergence in
+		# some corner cases.
+		on-no-data-accessible suspend-io;
+	}
  
 	disk {
 		# size max-bio-bvecs on-io-error fencing disk-barrier disk-flushes

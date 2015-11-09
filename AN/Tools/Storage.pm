@@ -96,7 +96,7 @@ sub prep_local_uuid
 	$an->Get->uuid({get => 'host_uuid'});
 	
 	# Verify I have a good UUID.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::host_uuid", value1 => $an->data->{sys}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
@@ -154,7 +154,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -163,7 +163,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -178,7 +178,7 @@ sub rsync
 		{
 			# No target, set the 'remote_machine' as the target.
 			$target = $remote_machine;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
 			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
@@ -199,7 +199,7 @@ sub rsync
 			target   => $target,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "wrapper", value1 => $wrapper, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -207,7 +207,7 @@ sub rsync
 		$shell_call = "$wrapper $switches $source $destination";
 	}
 	# Now make the call
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -238,7 +238,7 @@ sub _create_rsync_wrapper
 	# Check my parameters.
 	my $target   = $parameter->{target};
 	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",   value1 => $target, 
 		name2 => "password", value2 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -256,7 +256,7 @@ sub _create_rsync_wrapper
 ".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
 ".$an->data->{path}{echo}." 'expect eof' >> $wrapper
 ".$an->data->{path}{'chmod'}." 755 $wrapper;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -266,7 +266,7 @@ sub _create_rsync_wrapper
 	}
 	close $file_handle;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "wrapper", value1 => $wrapper, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($wrapper);
@@ -371,8 +371,8 @@ sub find
 	return (0);
 }
 
-# This reads in a configuration file and stores it in either the passed hash
-# reference else in $an->data else in a new anonymous hash.
+# This reads in a configuration file and stores it in either the passed hash reference else in $an->data else
+# in a new anonymous hash.
 sub read_conf
 {
 	my $self  = shift;

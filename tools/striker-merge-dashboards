@@ -56,15 +56,34 @@ my $an = AN::Tools->new({data => {
 			},
 			merged		=>	{},
 		},
+		hosts		=>	{
+			'local'		=>	{
+				raw		=>	"",
+				hash		=>	{},
+				pairs		=>	{},
+				new		=>	"",
+				changes_exist	=>	0,
+			},
+			peer		=>	{
+				raw		=>	"",
+				hash		=>	{},
+				pairs		=>	{},
+				new		=>	"",
+				changes_exist	=>	0,
+			},
+			merged		=>	{},
+		},
 		path		=>	{
 			cat		=>	"/bin/cat",
 			cp		=>	"/bin/cp",
 			echo		=>	"/bin/echo",
+			hosts		=>	"/etc/hosts",
 			'less'		=>	"/usr/bin/less",
 			log_file	=>	"/var/log/striker.log",
 			ssh_config	=>	"/etc/ssh/ssh_config",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+			install_manifests =>	"/var/www/html/manifests",
 		},
 		node		=>	{
 			hostname	=>	{},
@@ -80,9 +99,11 @@ my $an = AN::Tools->new({data => {
 		},
 		switches	=>	{},
 		sys		=>	{
+			date_and_time	=>	"",
 			language	=>	"en_CA",
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			timestamp	=>	"",
 		},
 	},
 });
@@ -112,6 +133,14 @@ if (($an->data->{switches}{h})   ||
 # Now I need to set a few things, if the user didn't (will error and exit if anything is missing).
 prepare_for_run($an);
 
+# If we backup any files, we'll need a timestamp.
+my $unix_time                   =  time;
+my ($date, $time)               =  $an->Get->date_and_time({use_time => $unix_time});
+$time                           =~ s/:/-/g;
+$an->data->{sys}{timestamp}     =  "${date}_$time";
+$an->data->{sys}{date_and_time} =  "$date $time";
+$an->data->{sys}{unix_time}     =  $unix_time; 
+
 # If I am alive, I am ready to proceed.
 read_local_striker_config($an);
 read_peers_striker_config($an);
@@ -119,17 +148,435 @@ read_peers_striker_config($an);
 # Find the differences.
 diff_local_and_peer_config($an);
 
+# Now read in each machine's /etc/hosts files.
+read_local_hosts($an);
+read_peers_hosts($an);
+
+# Find the differences.
+diff_local_and_peer_hosts($an);
+
+# Now the manifests... Simple rsync the 'prefer' to the other first, then in the other direction.
+merge_install_manifests($an);
+print $an->String->get({key => "smd_message_0023"}), "\n";
+
 exit(0);
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This works by first rsync'ing all the manifests on the preferred node to the peer first, then in the other
+# direction. Where conflicts might exist, the first rsync will overwrite the other.
+sub merge_install_manifests
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "merge_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my ($manifests_parent_directory, $manifest_directory_name) = ($an->data->{path}{install_manifests} =~ /^(.*)\/(.*)$/);
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		name1 => "manifests_parent_directory", value1 => $manifests_parent_directory, 
+		name2 => "manifest_directory_name",    value2 => $manifest_directory_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{run}{prefer} eq "local")
+	{
+		# Rsync to the peer first, then back to us.
+		my $source      = $an->data->{path}{install_manifests};
+		my $destination = "root\@".$an->data->{run}{peer_hostname}.":$manifests_parent_directory/";
+		print $an->String->get({key => "smd_message_0023"}), "\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+		
+		# Now rsync the peer back to us.
+		$destination = "$manifests_parent_directory/";
+		$source      = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{install_manifests};
+		print $an->String->get({key => "smd_message_0024"}), "\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+	}
+	else
+	{
+		# Rsync from the peer first, then from us over to them.
+		my $destination = "$manifests_parent_directory/";
+		my $source      = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{install_manifests};
+		print $an->String->get({key => "smd_message_0024"}), "\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+		
+		# Now over to the peer.
+		$source      = $an->data->{path}{install_manifests};
+		$destination = "root\@".$an->data->{run}{peer_hostname}.":$manifests_parent_directory/";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+	}
+	
+	return(0);
+}
+
+# This parses out all IP addresses and their host names from the source and peer, figures out if any are on
+# one node but not the other, creates updated hosts file where needed and writes them out.
+sub diff_local_and_peer_hosts
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "diff_local_and_peer_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Loop through both hosts files, compiling the variable/values into a common array.
+	foreach my $source ("local", "peer")
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "source", value1 => $source, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $line (split/\n/, $an->data->{hosts}{$source}{raw})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "source", value1 => $source, 
+				name2 => ">> line",   value2 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Start parsing.
+			$line =~ s/#.*$//;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			next if not $line;
+			next if $line =~ /^::1 /;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "source", value1 => $source, 
+				name2 => "<< line",   value2 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my ($address, $hosts) = ($line =~ /^(.*?) (.*)$/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "address", value1 => $address, 
+				name2 => "hosts",   value2 => $hosts, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next if not $address;
+			next if not $hosts;
+			
+			### TODO: Validate that the address is IPv4 or IPv6
+			
+			foreach my $this_host (split/ /, $hosts)
+			{
+				$an->data->{hosts}{$source}{$this_host}{ip} = $address;
+				$an->data->{hosts}{merged}{$this_host}{ip}  = "" if not defined $an->data->{hosts}{merged}{$this_host}{ip};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "this_host",                          value1 => $this_host, 
+					name2 => "hosts::${source}::${this_host}::ip", value2 => $an->data->{hosts}{$source}{$this_host}{ip}, 
+					name3 => "hosts::merged::${this_host}::ip",    value3 => $an->data->{hosts}{merged}{$this_host}{ip}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($an->data->{hosts}{merged}{$this_host}{ip})
+				{
+					# Conflict. Overwrite if this is the preferred hosts.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "source",      value1 => $source, 
+						name2 => "run::prefer", value2 => $an->data->{run}{prefer}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($source eq $an->data->{run}{prefer})
+					{
+						# We prefer this value.
+						$an->data->{hosts}{merged}{$this_host}{ip} = $address;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "hosts::merged::${this_host}::ip", value1 => $an->data->{hosts}{merged}{$this_host}{ip}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					# No conflict, record.
+					$an->data->{hosts}{merged}{$this_host}{ip} = $address;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "hosts::merged::${this_host}::ip", value1 => $an->data->{hosts}{merged}{$this_host}{ip}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	# Now I know all the hosts, loop through each source and see if a given host is missing...
+	my $new_file = "";
+	foreach my $source ("local", "peer")
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "source", value1 => $source, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $this_host (sort {$a cmp $b} keys %{$an->data->{hosts}{merged}})
+		{
+			my $address = $an->data->{hosts}{merged}{$this_host}{ip};
+			$an->data->{hosts}{$source}{$this_host}{ip} = "" if not defined $an->data->{hosts}{$source}{$this_host}{ip};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_host",                          value1 => $this_host, 
+				name2 => "address",                            value2 => $address, 
+				name3 => "hosts::${source}::${this_host}::ip", value3 => $an->data->{hosts}{$source}{$this_host}{ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Does this address exist on this source and, if so, has it changed?
+			if ($an->data->{hosts}{$source}{$this_host}{ip})
+			{
+				# It exists, check if it has changed,
+				my $source_address = $an->data->{hosts}{$source}{$this_host}{ip};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "address",        value1 => $address, 
+					name2 => "source_address", value2 => $source_address, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($address ne $source_address)
+				{
+					# It's changed.
+					$an->data->{hosts}{$source}{changes_exist} = 1;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "hosts::${source}::changes_exist", value1 => $an->data->{hosts}{$source}{changes_exist}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# It doesn't exist, add it.
+				$an->data->{hosts}{$source}{changes_exist} = 1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "hosts::${source}::changes_exist", value1 => $an->data->{hosts}{$source}{changes_exist}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Write out the new hosts file if changes were found.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "hosts::${source}::changes_exist", value1 => $an->data->{hosts}{$source}{changes_exist}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{hosts}{$source}{changes_exist})
+		{
+			# If I generated this in the last pass, just re-use if, If not, generate it now.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_file", value1 => $new_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $new_file)
+			{
+				### Generate it.
+				# We need a header
+				$new_file = $an->String->get({key => "text_0008", variables => { 
+					date_and_time => $an->data->{sys}{date_and_time},
+					program       => $THIS_FILE,
+				}})."\n";
+				
+				# Now add the default localhost entries.
+				$new_file .= $an->String->get({key => "text_0009"})."\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_file", value1 => $new_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Next, merge hosts with the same address.
+				foreach my $this_host (sort {$a cmp $b} keys %{$an->data->{hosts}{merged}})
+				{
+					my $address = $an->data->{hosts}{merged}{$this_host}{ip};
+					$an->data->{hosts}{new}{$address} = "" if not defined $an->data->{hosts}{new}{$address};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "address",              value1 => $address, 
+						name2 => "hosts::new::$address", value2 => $an->data->{hosts}{new}{$address}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{hosts}{new}{$address})
+					{
+						$an->data->{hosts}{new}{$address} .= " $this_host";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "hosts::new::$address", value1 => $an->data->{hosts}{new}{$address}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						$an->data->{hosts}{new}{$address} = "$address	$this_host";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "hosts::new::$address", value1 => $an->data->{hosts}{new}{$address}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				# Make sure '127.0.0.1' is at the top.
+				if ($an->data->{hosts}{new}{'127.0.0.1'})
+				{
+					$new_file .= $an->data->{hosts}{new}{'127.0.0.1'}."\n";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_file", value1 => $new_file, 
+					}, file => $THIS_FILE, line => __LINE__});
+					delete $an->data->{hosts}{new}{'127.0.0.1'};
+				}
+				
+				# Now add the entries to the new file.
+				$new_file .= "\n";
+				foreach my $address (sort {$a cmp $b} keys %{$an->data->{hosts}{new}})
+				{
+					$new_file .= $an->data->{hosts}{new}{$address}."\n";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_file", value1 => $new_file, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				$new_file .= "\n";
+			}
+			
+			# Log the old and new.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "hosts::${source}::raw", value1 => $an->data->{hosts}{$source}{raw}, 
+				name2 => "new_file",              value2 => $new_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Write out the new file.
+			if ($source eq "local")
+			{
+				# Back up the original, if it exists.
+				if (-e $an->data->{path}{hosts})
+				{
+					# Back it up.
+					my $backup    = $an->data->{path}{hosts}.".".$an->data->{sys}{timestamp};
+					my $variables = {
+						source      => $an->data->{path}{hosts}, 
+						destination => $backup, 
+					};
+					print $an->String->get({key => "notice_message_0011", variables => $variables}), "\n";
+					$an->Log->entry({log_level => 2, message_key => "notice_message_0011", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+					$an->Storage->rsync({
+						source      => $an->data->{path}{hosts}, 
+						destination => $backup, 
+					});
+				}
+				
+				# Directly write out the new file.
+				print $an->String->get({key => "smd_message_0018"}), "\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "new_file", value1 => $new_file, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				my $shell_call = $an->data->{path}{hosts};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				print $file_handle $new_file;
+				close $file_handle;
+			}
+			else
+			{
+				# It's the peer. Backup their file, write out a temp file locally and then 
+				# rsync it over.
+				my $backup     = $an->data->{path}{hosts}.".".$an->data->{sys}{timestamp};
+				my $shell_call = "
+if [ -e '".$an->data->{path}{hosts}."' ]
+then
+    ".$an->data->{path}{echo}." backup
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{hosts}." $backup
+fi";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$an->data->{run}{peer_hostname},
+					password	=>	$an->data->{run}{peer_password},
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($line eq "backup")
+					{
+						my $variables = {
+							source      => $an->data->{path}{hosts}, 
+							destination => $backup, 
+							host        => $an->data->{run}{peer_hostname},
+						};
+						print $an->String->get({key => "notice_message_0012", variables => $variables}), "\n";
+						$an->Log->entry({log_level => 2, message_key => "notice_message_0012", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				
+				# Write out the temporary local copy
+				my $temp_file = "/tmp/hosts".$an->data->{run}{peer_hostname};
+				print $an->String->get({key => "smd_message_0021", variables => {
+					file	=>	$temp_file, 
+				}}), "\n";
+				$shell_call = $temp_file;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				print $file_handle $new_file;
+				close $file_handle;
+				
+				# Now rsync it
+				my $destination = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{hosts};
+				print $an->String->get({key => "smd_message_0022", variables => {
+					file	=>	$destination, 
+				}}), "\n";
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+					name1 => "temp_file",   value1 => $temp_file, 
+					name2 => "destination", value2 => $destination, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Storage->rsync({
+					source		=>	$temp_file,
+					target		=>	$an->data->{run}{peer_hostname},
+					password	=>	$an->data->{run}{peer_password},
+					destination	=>	$destination,
+					switches	=>	'-av',
+				});
+			}
+		}
+		else
+		{
+			# No change
+			if ($source eq "local")
+			{
+				print $an->String->get({key => "smd_message_0018"}), "\n";
+			}
+			else
+			{
+				print $an->String->get({key => "smd_message_0019"}), "\n";
+			}
+		}
+	}
+	
+	return(0);
+}
+
 # This parses out all 'variable = value' pairs into on place and see what is missing from either dashboard's
 # config.
 sub diff_local_and_peer_config
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "diff_local_and_peer_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through both configs, compiling the variable/values into a common array.
 	$an->data->{config}{merged} = {};
@@ -336,7 +783,7 @@ sub diff_local_and_peer_config
 					if (not $header_printed)
 					{
 						$header_printed = 1;
-						$an->data->{config}{$source}{new} = $an->String->get({key => "smd_message_0008"})
+						$an->data->{config}{$source}{new} = $an->String->get({key => "smd_message_0008"})."\n\n";
 					}
 					$an->data->{config}{$source}{new} .= "$variable	=	".$an->data->{config}{$source}{add_to_body}{$variable}."\n";
 				}
@@ -401,21 +848,17 @@ sub diff_local_and_peer_config
 		}
 	}
 	
-	# Now write out each, if needed.
-	my ($date, $time) = $an->Get->date_and_time();
-	$time =~ s/:/-/g;
-	
 	# Backup and rewrite 'local' if needed.
 	if ($an->data->{config}{'local'}{new})
 	{
 		# Backup
 		print $an->String->get({key => "smd_message_0009", variables => {
 			source	=>	$an->data->{path}{striker_config}, 
-			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
+			backup	=>	$an->data->{path}{striker_config}.".".$an->data->{sys}{timestamp}, 
 		}}), "\n";
 		
-		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".".$an->data->{sys}{timestamp};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -425,7 +868,7 @@ sub diff_local_and_peer_config
 			my $line = $_;
 			$line =~ s/\n//g;
 			$line =~ s/\r//g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -434,7 +877,7 @@ sub diff_local_and_peer_config
 		# Write out
 		print $an->String->get({key => "smd_message_0011"}), "\n";
 		$shell_call = $an->data->{path}{striker_config};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open ($file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -453,10 +896,10 @@ sub diff_local_and_peer_config
 		# Backup
 		print $an->String->get({key => "smd_message_0010", variables => {
 			source	=>	$an->data->{path}{striker_config}, 
-			backup	=>	$an->data->{path}{striker_config}.".${date}_$time", 
+			backup	=>	$an->data->{path}{striker_config}.".".$an->data->{sys}{timestamp}, 
 		}}), "\n";
 		
-		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".${date}_$time";
+		my $shell_call = $an->data->{path}{cp}." ".$an->data->{path}{striker_config}." ".$an->data->{path}{striker_config}.".".$an->data->{sys}{timestamp};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -511,6 +954,88 @@ sub diff_local_and_peer_config
 	
 	# Done!
 	print $an->String->get({key => "smd_message_0016"}), "\n";
+	
+	return(0);
+}
+
+# This works by rsync'ing the peer's /etc/hosts to /tmp/ and then reading it in.
+sub read_peers_hosts
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_peers_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# rsync the peer's host file to our temp directory.
+	my $source      = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{hosts};
+	my $destination = "/tmp/hosts.".$an->data->{run}{peer_hostname};
+	print $an->String->get({key => "smd_message_0017", variables => {
+		source      => $source, 
+		destination => $destination, 
+	}}), "\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "destination", value1 => $destination, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Storage->rsync({
+		source		=>	$source,
+		destination	=>	$destination,
+		target		=>	$an->data->{run}{peer_hostname},
+		password	=>	$an->data->{run}{peer_password},
+		switches	=>	'-av',
+	});
+	
+	# Now read the temp file in.
+	$an->data->{hosts}{peer}{raw} = "";
+	my $shell_call = $destination;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{hosts}{peer}{raw} .= "$line\n";
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hosts::peer::raw", value1 => $an->data->{hosts}{peer}{raw}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# This reads the local /etc/hosts into a special hash.
+sub read_local_hosts
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_local_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read the raw file in.
+	$an->data->{hosts}{'local'}{raw} = "";
+	my $shell_call = $an->data->{path}{hosts};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{hosts}{'local'}{raw} .= "$line\n";
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hosts::local::raw", value1 => $an->data->{hosts}{'local'}{raw}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }

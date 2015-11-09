@@ -381,6 +381,8 @@ Variables:
 		<key name="notice_message_0008">Read the local user/host: [#!variable!owner!#]'s public RSA key: [#!variable!key!#].</key>
 		<key name="notice_message_0009">Added the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
 		<key name="notice_message_0010">Adding the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
+		<key name="notice_message_0011">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
+		<key name="notice_message_0012">Backed up: [#!variable!source!#] to: [#!variable!destination!#] on: [#!variable!host!#].</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
