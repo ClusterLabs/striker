@@ -487,9 +487,6 @@ sub diff_local_and_peer_config
 		print $file_handle $an->data->{config}{peer}{new};
 		close $file_handle;
 		
-		# Make sure I've recoreded the peer's RSA fingerprint...
-		
-		
 		# Now rsync it.
 		my $destination = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{striker_config};
 		print $an->String->get({key => "smd_message_0015", variables => {

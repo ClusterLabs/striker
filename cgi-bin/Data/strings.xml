@@ -1166,7 +1166,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0046"><![CDATA[Booting <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
 		<key name="title_0047"><![CDATA[About to migrate the server <span class="fixed_width">#!variable!server!#</span> to <b><span class="fixed_width">#!variable!target!#</span></b>.]]></key>
 		<key name="title_0048"><![CDATA[Booting of <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> failed!]]></key>
-		<key name="title_0049"><![CDATA[Migrating <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!migration_target!#</span> now...]]></key>
+		<key name="title_0049"><![CDATA[Migrating <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!target!#</span> now...]]></key>
 		<key name="title_0050"><![CDATA[Migration of <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!migration_target!#</span> aborted!]]></key>
 		<key name="title_0051"><![CDATA[Attempting orderly shut down of <span class="fixed_width">#!variable!server!#</span> now...]]></key>
 		<key name="title_0052"><![CDATA[Attempting to join <span class="fixed_width">#!variable!node_anvil_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> now...]]></key>
@@ -2001,6 +2001,34 @@ Failed to connect to the peer. The error was:
 Unable to proceed with the merge, exiting.
 		</key>
 		<key name="smd_error_0008">It would appear that: [#!variable!path::striker_config!#] was not found on either node. We can't merge what doesn't exists.</key>
+		
+		
+		<!-- striker-config-vmm; Configure Virtual Machine Manager -->
+		<key name="scv_log_0001">#!variable!this_file!# has started.</key>
+		<key name="scv_log_0002">No local users were found, so there is nothing to do.</key>
+		
+		<!-- normal messages -->
+		<key name="scv_message_0001">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
+		<key name="scv_message_0002">
+Writing out: [#!variable!file!#]
+- Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
+		</key>
+		<key name="scv_message_0003">
+Creating the directory: [#!variable!directory!#]
+- Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
+		</key>
+		<key name="scv_message_0004">Analyzing: [#!variable!file!#]...</key>
+		<key name="scv_message_0005">Adding the node: [#!variable!node!#] to Virtual Machine Manager's 'auto-connect' list.</key>
+		<key name="scv_message_0006">Adding the URI: [#!variable!uri!#] to Virtual Machine Manager's 'auto-connect' list.</key>
+		<key name="scv_message_0007">Adding the node: [#!variable!node!#] to Virtual Machine Manager's connection list.</key>
+		<key name="scv_message_0008">Adding the URI: [#!variable!uri!#] to Virtual Machine Manager's connection list.</key>
+		<key name="scv_message_0009">Configuring Virtual Machine Manager for all users.</key>
+		<key name="scv_message_0010">Configuring VMM for: [#!variable!user!#].</key>
+		<key name="scv_message_0011">Done.</key>
+		<key name="scv_message_0012">
+Touching: [#!variable!file!#]
+- Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
+		</key>
 	</lang>
 
 	<!-- Japanese -->

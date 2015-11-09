@@ -80,6 +80,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>
 		<key name="tools_log_0005">There are: [#!variable!count!#] values in the: [#!variable!array!#] array.</key>
+		<key name="tools_log_0006">There is: [#!variable!count!#] value in the: [#!variable!array!#] array.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -402,6 +403,8 @@ Variables:
 		<key name="error_title_0018">Unable to connect to the database with with configuration ID: [#!variable!id!#].</key>
 		<key name="error_title_0019">Failed to create the directory: [#!variable!directory!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0020">System call failed</key>
+		<key name="error_title_0021">Failed to set the ownership of: [#!variable!directory!#] to be owned by the user: [#!variable!user!#] and group: [#!variable!group!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0022">Failed to set the mode of: [#!variable!directory!#] to be: [#!variable!mode!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>

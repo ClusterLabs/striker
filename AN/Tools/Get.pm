@@ -42,6 +42,55 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This returns an array of local users on the system. Specifically, users with home directories under 
+# '/home'. So not 'root' or system users accounts.
+sub local_users
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $users = [];
+	my $shell_call = "/etc/passwd";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		#my $user       = (split/:/, $line)[0];
+		#my $users_home = (split/:/, $line)[5];
+		my ($user, $users_home) = (split/:/, $line)[0,5];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "user",       value1 => $user, 
+			name2 => "users_home", value2 => $users_home, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($users_home =~ /^\/home\//)
+		{
+			push @{$users}, $user;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "user", value1 => $user, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# record how many users we read into the array.
+	my $users_count = @{$users};
+	my $message_key = $users_count == 1 ? "tools_log_0006" : "tools_log_0005";
+	$an->Log->entry({log_level => 3, message_key => $message_key, message_variables => {
+		array	=>	"users",
+		count	=>	$users_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($users);
+}
+
 # This reads /etc/password to figure out the requested user's home directory.
 sub users_home
 {

@@ -126,8 +126,7 @@ sub rsync
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "target",      value1 => $target, 
 		name2 => "password",    value2 => $password, 
 		name3 => "source",      value3 => $source, 
@@ -136,16 +135,6 @@ sub rsync
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure I have everything I need.
-	if (not $target)
-	{
-		# No target
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
-	}
-	if (not $password)
-	{
-		# No password
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
-	}
 	if (not $source)
 	{
 		# No source
@@ -174,7 +163,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -183,19 +172,41 @@ sub rsync
 	{
 		# Make sure we know the fingerprint of the remote machine
 		$an->Remote->add_target_to_known_hosts({user => $remote_user, target => $remote_machine});
+		
+		# Make sure we have a target and password for the remote machine.
+		if (not $target)
+		{
+			# No target, set the 'remote_machine' as the target.
+			$target = $remote_machine;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
+		}
+		if (not $password)
+		{
+			# No password
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
+		}
 	}
 	
-	# Setup the rsync wrapper
-	my $wrapper = $an->Storage->_create_rsync_wrapper({
-		target   => $target,
-		password => $password, 
-	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "wrapper", value1 => $wrapper, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# And make the shell call
-	my $shell_call = "$wrapper $switches $source $destination";
+	# If local, call rsync directly. If remote, setup the rsync wrapper
+	my $shell_call = $an->data->{path}{rsync}." $switches $source $destination";
+	if ($remote_machine)
+	{
+		# Remote target, wrapper needed.
+		my $wrapper = $an->Storage->_create_rsync_wrapper({
+			target   => $target,
+			password => $password, 
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "wrapper", value1 => $wrapper, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# And make the shell call
+		$shell_call = "$wrapper $switches $source $destination";
+	}
+	# Now make the call
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});

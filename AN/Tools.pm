@@ -149,9 +149,12 @@ sub new
 	
 	# Set some system paths
 	$an->data->{path}{'chmod'}       = "/bin/chmod";
+	$an->data->{path}{'chown'}       = "/bin/chown";
 	$an->data->{path}{echo}          = "/bin/echo";
 	$an->data->{path}{expect}        = "/usr/bin/expect";
 	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
+	$an->data->{path}{ls}            = "/bin/ls";
+	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
 	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
 	$an->data->{path}{'ping'}        = "/bin/ping",
 	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
@@ -163,6 +166,7 @@ sub new
 	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
 	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
 	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
+	$an->data->{path}{touch}         = "/bin/touch";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))

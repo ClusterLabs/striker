@@ -230,7 +230,7 @@ sub get
 		else
 		{
 			# Other variable key, so this is fatal.
-			print "$THIS_FILE ".__LINE__."; String: [$string] has a variable substitution, but no variables were passed in.\n";
+			print "$THIS_FILE ".__LINE__."; String key: [$key], containing: [$string] has a variable substitution, but no variables were passed in.\n";
 			$an->Alert->error({
 				fatal		=>	1,
 				title_key	=>	"error_title_0005",

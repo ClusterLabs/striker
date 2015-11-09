@@ -50,10 +50,10 @@ my $an = AN::Tools->new({data => {
 			'ssh-copy-id'	=>	"/usr/bin/ssh-copy-id",
 		},
 		switches	=>	{},
-		local_users	=>	[],
 		sys		=>	{
 			key_size	=>	8191,
 			language	=>	"en_CA",
+			local_users	=>	[],
 			log_language	=>	"en_CA",
 			log_level	=>	2,
 		},
@@ -127,7 +127,9 @@ else
 }
 
 # Now determine what local users exist.
-if (not get_local_users($an))
+$an->data->{sys}{local_users} = $an->Get->local_users();
+my $local_user_count          = @{$an->data->{sys}{local_users}};
+if (not $local_user_count)
 {
 	# No users found, nothing to do.
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0004", file => $THIS_FILE, line => __LINE__});
@@ -136,7 +138,7 @@ if (not get_local_users($an))
 
 # If I am still alive, loop through the list of users, get their local RSA key (generating it as needed) and
 # then add it to each target node.
-foreach my $user (sort {$a cmp $b} @{$an->data->{local_users}})
+foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 {
 	### TODO: When moving to the new module methods, we'll need to process the general success/failure as
 	###       it won't report per-user failures.
@@ -203,254 +205,3 @@ sub push_ssh_keys
 	
 	return(0);
 }
-
-# This calls 'ls /home' to get a list of local users. It returns the number of users found.
-sub get_local_users
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_local_users" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $shell_call = $an->data->{path}{ls}." /home";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$an->data->{local_users}}, $line;
-	}
-	
-	# record how many users we read into the array.
-	my $local_user_count = @{$an->data->{local_users}};
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0005", message_variables => {
-		array	=>	"local_users",
-		count	=>	$local_user_count,
-	}, file => $THIS_FILE, line => __LINE__});
-	return(@{$an->data->{local_users}});
-}
-
-=pod
-# This checks the root user's ~/.ssh/authorized_keys file for the given key. Returns '1' if it exists, '0' if
-# it doesn't.
-sub check_if_key_is_on_node
-{
-	my ($an, $node, $key) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_key_is_on_node" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "node", value1 => $node,
-		name2 => "key",  value2 => $key,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $exists = 0;
-	my $shell_call = "ssh root\@$node \"".$an->data->{path}{'grep'}." -q $key /root/.ssh/authorized_keys; ".$an->data->{path}{'echo'}." rc:\\\$?\"";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		password	=>	$an->data->{anvil}{password},
-		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		### TODO: Handle a rebuilt machine where the fingerprint no longer matches.
-		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /rc:(\d+)/)
-		{
-			# If rc = 0, the key is there. Otherwise, add it.
-			my $rc = $1;
-			if ($rc)
-			{
-				# Add it
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "rc", value1 => $rc, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				# Exists.
-				$exists = 1;
-			}
-		}
-	}
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "exists", value1 => $exists, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($exists);
-}
-
-# This does the work of adding the user's public RSA key to the target node's root user's authorized_keys
-# file.
-sub add_rsa_public_key_to_remote_node
-{
-	my ($an, $user, $node, $owner, $key) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_rsa_public_key_to_remote_node" }, message_key => "an_variables_0004", message_variables => { 
-		name1 => "user",  value1 => $user,
-		name2 => "node",  value2 => $node,
-		name3 => "owner", value3 => $owner, 
-		name4 => "key",   value4 => $key,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# I'll need to make sure I've seen the fingerprint before.
-	$an->Remote->add_target_to_known_hosts({user => $user, target => $node, owner => $owner});
-	
-	# This returns '1' if the key exists on the node
-	my $exists = check_if_key_is_on_target({target => $node, key => $key});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "exists", value1 => $exists, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($exists)
-	{
-		# Already there
-		$an->Log->entry({log_level => 2, message_key => "sps_log_0011", message_variables => {
-			node => $node, 
-			user => $user, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Add the key.
-		$an->Remote->add_rsa_key_to_target({
-			user     => "root",
-			target   => $node,
-			password => $an->data->{anvil}{password},
-			key      => $key, 
-		});
-		
-		my $shell_call = "ssh root\@$node \"".$an->data->{path}{'echo'}." 'ssh-rsa $key ' >> /root/.ssh/authorized_keys; ".$an->data->{path}{'echo'}." rc:\\\$?\"";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$node,
-			password	=>	$an->data->{anvil}{password},
-			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			### TODO: Handle a rebuilt machine where the fingerprint no longer matches.
-			next if not $line;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /rc:(\d+)/)
-			{
-				# If rc = 0, the key is there. Otherwise, add it.
-				my $rc = $1;
-				if ($rc)
-				{
-					# Add it
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "rc", value1 => $rc, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-		}
-		
-		# Check that it was added...
-		$exists = check_if_key_is_on_target({target => $node, key => $key});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "exists", value1 => $exists, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($exists)
-		{
-			# Success!
-			$an->Log->entry({log_level => 2, message_key => "sps_log_0012", message_variables => {
-				node => $node, 
-				user => $user, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			# Boo :(
-			$an->Alert->warning({message_key => "sps_warning_0005	", message_variables => {
-				node => $node, 
-				user => $user, 
-			}, file => $THIS_FILE, line => __LINE__});
-			return(1);
-		}
-	}
-	
-	return(0);
-}
-
-# This generates an RSA key for the user.
-sub generate_rsa_public_key
-{
-	my ($an, $user) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_rsa_public_key" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "user", value1 => $user, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Determine and define the private RSA key file
-	my $rsa_private_file = "/home/$user/.ssh/id_rsa";
-	if ($user eq "root")
-	{
-		$rsa_private_file = "/root/.ssh/id_rsa";
-	}
-	my $rsa_public_file = "${rsa_private_file}.pub";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "rsa_private_file", value1 => $rsa_private_file, 
-		name2 => "rsa_public_file",  value2 => $rsa_public_file,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Log that this can take time and then make the call.
-	$an->Log->entry({log_level => 2, message_key => "sps_log_0005", file => $THIS_FILE, line => __LINE__});
-	my $shell_call  = $an->data->{path}{'ssh-keygen'}." -t rsa -N \"\" -b ".$an->data->{sys}{key_size}." -f $rsa_private_file && ";
-	   $shell_call .= $an->data->{path}{'chown'}." $user:$user $rsa_private_file && ";
-	   $shell_call .= $an->data->{path}{'chown'}." $user:$user $rsa_public_file && ";
-	   $shell_call .= $an->data->{path}{'chmod'}." 600 $rsa_private_file && ";
-	   $shell_call .= $an->data->{path}{'chown'}." 644 $rsa_public_file";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "rsa_private_file", value1 => $rsa_private_file, 
-		name2 => "rsa_public_file",  value2 => $rsa_public_file,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Did it work?
-	my $ok = 0;
-	if (-e $rsa_private_file)
-	{
-		# Yup!
-		$ok = 1;
-		$an->Log->entry({log_level => 2, message_key => "sps_log_0006", message_variables => {
-			user => $user, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Failed, tell the user.
-		$an->Alert->warning({message_key => "sps_warning_0001", message_variables => {
-			user	=>	$user,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "ok", value1 => $ok, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($ok);
-}
-=cut
