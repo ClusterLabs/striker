@@ -610,6 +610,8 @@ sub initialize_conf
 			'call_striker-push-ssh'	=>	"/sbin/striker/call_striker-push-ssh",
 			'call_striker-configure-vmm' =>	"/sbin/striker/call_striker-configure-vmm",
 			'call_striker-merge-dashboards' => "/sbin/striker/call_striker-merge-dashboards",
+			'striker-configure-vmm'	=>	"/sbin/striker/striker-configure-vmm",
+			'striker-merge-dashboards' =>	"/sbin/striker/striker-merge-dashboards",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
 			check_dvd		=>	"/sbin/striker/check_dvd",

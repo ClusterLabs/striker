@@ -1273,12 +1273,13 @@ sub sync_with_peer
 	}
 	
 	# Make sure I have a peer.
-	my $db_count   =  0;
-	my $local_id   =  "";
-	my $peer_name  =  "";
-	my $i_am_long  =  get_hostname($conf);
-	my $i_am_short =  $i_am_long;
-	   $i_am_short =~ s/\..*$//;
+	my $db_count      =  0;
+	my $local_id      =  "";
+	my $peer_name     =  "";
+	my $peer_password =  "";
+	my $i_am_long     =  get_hostname($conf);
+	my $i_am_short    =  $i_am_long;
+	   $i_am_short    =~ s/\..*$//;
 	record($conf, "$THIS_FILE ".__LINE__."; i_am_long: [$i_am_long], i_am_short: [$i_am_short]\n");
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
 	{
@@ -1314,8 +1315,9 @@ sub sync_with_peer
 		record($conf, "$THIS_FILE ".__LINE__."; id: [$id], node::id::local: [$conf->{node}{id}{'local'}]\n");
 		if ($id ne $local_id)
 		{
-			$peer_name = $conf->{scancore}{db}{$id}{host};
-			record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+			$peer_name     = $conf->{scancore}{db}{$id}{host};
+			$peer_password = $conf->{scancore}{db}{$id}{password};
+			record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name], peer_password: [$peer_password]\n");
 			last;
 		}
 	}
@@ -1327,30 +1329,26 @@ sub sync_with_peer
 	}
 	
 	# Configure the local virtual machine manager, if it is installed.
-	my $sync_vmm_ok      = 1;
 	my $merge_striker_ok = 1;
-	if ($conf->{path}{'virt-manager'})
+	my $shell_call = "$conf->{path}{'call_striker-merge-dashboards'} --force --prefer local; echo rc:\$?";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
 	{
-		my $shell_call = "$conf->{path}{'striker-configure-vmm'}; echo rc:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /rc:(\d+)/)
 		{
-			chomp;
-			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line =~ /rc:(\d+)/)
-			{
-				my $rc = $1;
-				$sync_vmm_ok = $rc eq "0" ? 1 : 0;
-				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], sync_vmm_ok: [$sync_vmm_ok]\n");
-			}
+			my $rc = $1;
+			$merge_striker_ok = $rc eq "0" ? 1 : 0;
+			record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], merge_striker_ok: [$merge_striker_ok]\n");
 		}
-		close $file_handle;
 	}
+	close $file_handle;
 	if ($conf->{cgi}{anvil})
 	{
-		my $shell_call = "$conf->{path}{'striker-merge-dashboards'} --force --anvil $conf->{cgi}{anvil}; echo rc:\$?";
+		my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}; echo rc:\$?";
 		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -1367,10 +1365,53 @@ sub sync_with_peer
 		}
 		close $file_handle;
 	}
+	### NOTE: I don't currently check if this passes or not.
+	# Setup VMM locally
+	if (-e $conf->{path}{'virt-manager'})
+	{
+		my $shell_call = "$conf->{path}{'call_striker-configure-vmm'}";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+		close $file_handle;
+	}
+	# Setup VMM on the peer.
+	# Note: I don't worry about the fingerprint because it would have been setup by 
+	#       'striker-merge-dashboards'.
+	if ($peer_password)
+	{
+		my $shell_call = "
+$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}
+if [ -e '$conf->{path}{'virt-manager'}' ]; 
+then 
+    $conf->{path}{'striker-configure-vmm'}
+fi;
+";
+		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		my ($error, $ssh_fh, $output) = remote_call($conf, {
+			node		=>	$peer_name,
+			port		=>	22,
+			user		=>	"root",
+			password	=>	$peer_password,
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	$shell_call,
+		});
+		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		foreach my $line (@{$output})
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		}
+	}
 	
 	# If either program errors, change the host name to '#!error!#'.
-	record($conf, "$THIS_FILE ".__LINE__."; sync_vmm_ok: [$sync_vmm_ok], merge_striker_ok: [$merge_striker_ok]\n");
-	if ((not $sync_vmm_ok) or (not $merge_striker_ok))
+	record($conf, "$THIS_FILE ".__LINE__."; merge_striker_ok: [$merge_striker_ok]\n");
+	if (not $merge_striker_ok)
 	{
 		$peer_name = "#!error!#";
 		record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
