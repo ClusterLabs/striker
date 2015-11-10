@@ -254,7 +254,6 @@ my $conf = {
 			},
 		},
 		debug		=>	0,
-		log_file	=>	"/var/log/$THIS_FILE.log",
 		version		=>	"1.0",
 		connections	=>	0,
 	},
@@ -577,7 +576,7 @@ fi";
 			if ($do eq "enable")
 			{
 				# Good!
-				logger($conf, $THIS_FILE, __LINE__, "Enabled successfully (it will start in the next two minutes).");
+				logger($conf, $THIS_FILE, __LINE__, "Enabled successfully (it will start in a minute).");
 			}
 			else
 			{
@@ -642,7 +641,7 @@ sub set_oid_integer
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_integer(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
 	
 	my $shell_call = "$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community}{'write'} $ups $oid i $value";
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -668,7 +667,7 @@ sub set_oid_ticks
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - set_oid_ticks(); ups: [$ups], oid: [$oid], value: [$value]") if $conf->{sys}{debug};
 	
 	my $shell_call = "$conf->{path}{snmpset} -v 2c -c $conf->{snmp}{community}{'write'} $ups $oid t $value";
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -765,7 +764,7 @@ sub read_oid_ticks
 	
 	my $value      = "#!no_value!#";
 	my $shell_call = "$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community}{'read'} $ups $oid";
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -805,7 +804,7 @@ sub read_oid_integer
 	
 	my $value      = "#!no_value!#";
 	my $shell_call = "$conf->{path}{snmpget} -v 2c -c $conf->{snmp}{community}{'read'} $ups $oid";
-	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]") if $conf->{sys}{debug};
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{

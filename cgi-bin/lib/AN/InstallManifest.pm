@@ -1250,6 +1250,7 @@ if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
 	echo 'creating empty crontab for root.'
 	echo 'MAILTO=\"\"' > $conf->{path}{nodes}{cron_root}
+	echo \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
 	chown root:root $conf->{path}{nodes}{cron_root}
 	chmod 600 $conf->{path}{nodes}{cron_root}
 fi
