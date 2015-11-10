@@ -154,7 +154,7 @@ sub rsa_public_key
 	
 	my $user     = $parameter->{user};
 	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",     value1 => $user, 
 		name2 => "key_size", value2 => $key_size,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -171,7 +171,7 @@ sub rsa_public_key
 	{
 		# Generate it.
 		my $ok = $an->Remote->generate_rsa_public_key({user => $user, key_size => $key_size});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ok", value1 => $ok, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $ok)
@@ -227,7 +227,7 @@ sub rsa_public_key
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "key_owner",  value1 => $key_owner, 
 		name2 => "key_string", value2 => $key_string, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -666,7 +666,7 @@ sub ram_used_by_program
 	
 	my $total_bytes = 0;
 	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $parameter->{program_name}";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => "$shell_call"
 	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
@@ -674,14 +674,14 @@ sub ram_used_by_program
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => "$line"
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		
 		if ($line =~ /^$parameter->{program_name} = (\d+)/)
 		{
 			$total_bytes = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "total_bytes", value1 => $total_bytes
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		}
