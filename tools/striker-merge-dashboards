@@ -5,6 +5,9 @@
 # Return codes:
 # 0  = Normal exit.
 # 
+# 
+# TODO: Merge sshd_config and cache files.
+# 
 
 use strict; 
 use warnings;

@@ -407,6 +407,14 @@ my $conf = {
 			c_file			=>	"/sbin/striker/call_striker-push-ssh.c",
 			out_file		=>	"call_striker-push-ssh",
 		},
+		'striker-configure-vmm'	=>	{
+			c_file			=>	"/sbin/striker/call_striker-configure-vmm.c",
+			out_file		=>	"call_striker-configure-vmm",
+		},
+		'striker-merge-dashboards'	=>	{
+			c_file			=>	"/sbin/striker/call_striker-merge-dashboards.c",
+			out_file		=>	"call_striker-merge-dashboards",
+		},
 		# These just pass along directly to existing systems calls, hence the lack of 'call_' 
 		# prefixes.
 		'control_dhcpd'	=>	{

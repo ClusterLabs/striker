@@ -1212,6 +1212,20 @@ sub save_dashboard_configure
 			close $file_handle;
 		}
 		
+		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
+		# then something went wrong. Otherwise the peer's hostname is returned.
+		my $peer = sync_with_peer($conf);
+		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+		if (($peer) && ($peer ne "#!error!#"))
+		{
+			# Tell the user
+			my $message  = AN::Common::get_string($conf, {key => "message_0449", variables => { peer => $peer }});
+			print AN::Common::template($conf, "config.html", "general-row-good", {
+				row	=>	"#!string!row_0292!#",
+				message	=>	$message,
+			});
+		}
+		
 		# Which message to show will depend on whether we're saving an Anvil! or the global config. 
 		# The 'message_0017' provides a link to the user's Anvil!, which is non-existent when saving
 		# global values.
@@ -1243,6 +1257,127 @@ sub save_dashboard_configure
 	print AN::Common::template($conf, "config.html", "close-table");
 
 	return(0);
+}
+
+# This calls 'striker-merge-dashboards' and 'striker-configure-vmm' to sync with the peer and configure 
+# Virtual Machine Manager.
+sub sync_with_peer
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; sync_with_peer()\n");
+	
+	# Return if this is disabled.
+	if (not $conf->{tools}{striker}{'auto-sync'})
+	{
+		return("");
+	}
+	
+	# Make sure I have a peer.
+	my $db_count   =  0;
+	my $local_id   =  "";
+	my $peer_name  =  "";
+	my $i_am_long  =  get_hostname($conf);
+	my $i_am_short =  $i_am_long;
+	   $i_am_short =~ s/\..*$//;
+	record($conf, "$THIS_FILE ".__LINE__."; i_am_long: [$i_am_long], i_am_short: [$i_am_short]\n");
+	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
+	{
+		$db_count++;
+		my $this_host = $conf->{scancore}{db}{$id}{host};
+		record($conf, "$THIS_FILE ".__LINE__."; id: [$id], this_host: [$this_host]\n");
+		
+		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
+		{
+			$local_id = $id;
+			record($conf, "$THIS_FILE ".__LINE__."; local_id: [$local_id]\n");
+		}
+	}
+	
+	# If there were too many peers, exit.
+	record($conf, "$THIS_FILE ".__LINE__."; db_count: [$db_count]\n");
+	if ($db_count ne "2")
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host'. I found: [$db_count] entries\n");
+		return("");
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; local_id: [$local_id]\n");
+	if (not $local_id)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host' and one of them matches this dashboard's host name: [$i_am_long ($i_am_short)].\n");
+		return("");
+	}
+	
+	# Now I know who I am, find the peer.
+	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; id: [$id], node::id::local: [$conf->{node}{id}{'local'}]\n");
+		if ($id ne $local_id)
+		{
+			$peer_name = $conf->{scancore}{db}{$id}{host};
+			record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+			last;
+		}
+	}
+	
+	# Final check...
+	if (not $peer_name)
+	{
+		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync can't run because it was unable to determine the peer's host name via analyzing the 'scancore::db::x::host' entries.\n");
+	}
+	
+	# Configure the local virtual machine manager, if it is installed.
+	my $sync_vmm_ok      = 1;
+	my $merge_striker_ok = 1;
+	if ($conf->{path}{'virt-manager'})
+	{
+		my $shell_call = "$conf->{path}{'striker-configure-vmm'}; echo rc:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				$sync_vmm_ok = $rc eq "0" ? 1 : 0;
+				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], sync_vmm_ok: [$sync_vmm_ok]\n");
+			}
+		}
+		close $file_handle;
+	}
+	if ($conf->{cgi}{anvil})
+	{
+		my $shell_call = "$conf->{path}{'striker-merge-dashboards'} --force --anvil $conf->{cgi}{anvil}; echo rc:\$?";
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				$merge_striker_ok = $rc eq "0" ? 1 : 0;
+				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], merge_striker_ok: [$merge_striker_ok]\n");
+			}
+		}
+		close $file_handle;
+	}
+	
+	# If either program errors, change the host name to '#!error!#'.
+	record($conf, "$THIS_FILE ".__LINE__."; sync_vmm_ok: [$sync_vmm_ok], merge_striker_ok: [$merge_striker_ok]\n");
+	if ((not $sync_vmm_ok) or (not $merge_striker_ok))
+	{
+		$peer_name = "#!error!#";
+		record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+	}
+	
+	record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+	return($peer_name);
 }
 
 # This uses the data from the config files to pre-fill configuration form data.
@@ -1724,12 +1859,13 @@ sub push_config_to_anvil
 			# and create it, if not.
 			my $striker_directory = ($conf->{path}{config_file} =~ /^(.*)\/.*$/)[0];
 			record($conf, "$THIS_FILE ".__LINE__."; striker_directory: [$striker_directory]\n");
-			my $shell_call        = "if [ ! -e '$striker_directory' ]; 
-						then 
-							mkdir -p $striker_directory;
-							echo 'Create: [$striker_directory]';
-						fi;
-						ls $striker_directory";
+			my $shell_call = "
+if [ ! -e '$striker_directory' ]; 
+then 
+    mkdir -p $striker_directory;
+    echo 'Create: [$striker_directory]';
+fi;
+ls $striker_directory";
 			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 			my ($error, $ssh_fh, $output) = remote_call($conf, {
 				node		=>	$node,
@@ -2050,6 +2186,20 @@ sub load_backup_configuration
 			close $manifest_fh;
 		}
 		
+		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
+		# then something went wrong. Otherwise the peer's hostname is returned.
+		my $peer = sync_with_peer($conf);
+		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+		if (($peer) && ($peer ne "#!error!#"))
+		{
+			# Tell the user
+			my $message  = AN::Common::get_string($conf, {key => "message_0449", variables => { peer => $peer }});
+			print AN::Common::template($conf, "config.html", "general-table-row-good", {
+				row	=>	"#!string!row_0292!#",
+				message	=>	$message,
+			});
+		}
+		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file		=>	$conf->{cgi}{file},
 			});
@@ -2215,6 +2365,21 @@ sub create_install_manifest
 						}
 					}),
 				});
+				
+				# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to
+				# '#!error!#', then something went wrong. Otherwise the peer's hostname is 
+				# returned.
+				my $peer = sync_with_peer($conf);
+				record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+				if (($peer) && ($peer ne "#!error!#"))
+				{
+					# Tell the user
+					my $message  = AN::Common::get_string($conf, {key => "message_0449", variables => { peer => $peer }});
+					print AN::Common::template($conf, "config.html", "general-table-row-good", {
+						row	=>	"#!string!row_0292!#",
+						message	=>	$message,
+					});
+				}
 			}
 		}
 	}
@@ -4943,6 +5108,7 @@ sub generate_uuid
 		$uuid = lc($_);
 		last;
 	}
+	close $file_handle;
 	
 	# Did we get a sane value?
 	if ($uuid !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)

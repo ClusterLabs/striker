@@ -608,6 +608,8 @@ sub initialize_conf
 			'call_anvil-kick-apc-ups' =>	"/sbin/striker/call_anvil-kick-apc-ups",
 			'call_gather-system-info' =>	"/sbin/striker/call_gather-system-info",
 			'call_striker-push-ssh'	=>	"/sbin/striker/call_striker-push-ssh",
+			'call_striker-configure-vmm' =>	"/sbin/striker/call_striker-configure-vmm",
+			'call_striker-merge-dashboards' => "/sbin/striker/call_striker-merge-dashboards",
 			cat			=>	"/bin/cat",
 			ccs			=>	"/usr/sbin/ccs",
 			check_dvd		=>	"/sbin/striker/check_dvd",
@@ -620,7 +622,7 @@ sub initialize_conf
 			control_libvirtd	=>	"/sbin/striker/control_libvirtd",
 			control_shorewall	=>	"/sbin/striker/control_shorewall",
 			cp			=>	"/bin/cp",
-			default_striker_manifest	=>	"/var/www/html/manifests/striker-default.xml",
+			default_striker_manifest =>	"/var/www/html/manifests/striker-default.xml",
 			dhcpd_conf		=>	"/etc/dhcp/dhcpd.conf",
 			do_dd			=>	"/sbin/striker/do_dd",
 			docroot			=>	"/var/www/html/",
@@ -682,6 +684,7 @@ sub initialize_conf
 			tput			=>	"/usr/bin/tput",
 			uuidgen			=>	"/usr/bin/uuidgen",
 			virsh			=>	"/usr/bin/virsh",
+			'virt-manager'		=>	"/usr/bin/virt-manager",
 			
 			# These are the tools that will be copied to 'docroot' if either node doesn't have 
 			# an internet connection.

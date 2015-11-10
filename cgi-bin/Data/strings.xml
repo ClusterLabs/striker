@@ -727,6 +727,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0289">Configuring #!string!brand_0015!#</key>
 		<key name="row_0290">Configuring SELinux</key>
 		<key name="row_0291">MTU Byte Size</key>
+		<key name="row_0292">Synchronized</key>
 		
 		<!-- Program names -->
 		<key name="app_0001">/sbin/striker/anvil-setup-node</key>
@@ -1783,7 +1784,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0446"><![CDATA[The request to power-off the [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0447"><![CDATA[The request to fence the: [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
-		<key name="message_0449"><![CDATA[]]></key>
+		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>] and setup Virtual Machine Manager (if it is installed)]]>.</key>
 		<key name="message_0450"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
