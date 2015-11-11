@@ -30,6 +30,7 @@ my $conf = {
 		debug		=>	0,
 		ramdisk		=>	"1G",
 		start_time	=>	time,
+		delay		=>	5,
 	},
 };
 
@@ -51,6 +52,11 @@ destroy_physical_drives($conf);
 # This will never be hit unless we failed to die.
 exit;
 
+
+### NOTE: This is quite weak security... an attacker with root access can disable this function and avoid the
+###       need for a passphrase entirely. We could add a check against the passphrase against the controller
+###       but that would be no better. In the end, the commands to send to the controller are not secured so
+###       any attempt at security here is little more than a delay tactice against a malicious attacker.
 # Sum the passed in passphrase to make sure it's right.
 sub check_passphrase
 {
@@ -58,22 +64,35 @@ sub check_passphrase
 	
 	read_configuration($conf);
 	my $passphrase = $ARGV[0];
-
-	print "Checking passphrase: [$passphrase]...\n";
-	my $hash = sha512_base64($passphrase);
-	if ($conf->{sys}{storage_security}{reencrypt_count})
-	{
-		for (1..$conf->{sys}{storage_security}{reencrypt_count})
-		{
-			$hash = sha512_base64($hash);
-		}
-	}
-	print "- Hash:  [$hash]\n";
-	print "- Match: [$conf->{sys}{storage_security}{hash}]\n";
 	
-	if ($hash eq $conf->{sys}{storage_security}{hash})
+	if (not $passphrase)
 	{
-		print "- Passphrase accepted.\n";
+		print "[ Error ] - No passphrase given, aborting.\n";
+		print "[ Note  ] - Use: [./$0 <passphrase>].\n";
+		exit(1);
+	}
+	
+	print "Checking passphrase...\n";
+	my $hash = sha512_base64($passphrase);
+	print "- Hash: .. [$hash]\n";
+	print "- Entered: [$conf->{tools}{'anvil-self-destruct'}{hash}]\n";
+	
+	if ($hash eq $conf->{tools}{'anvil-self-destruct'}{hash})
+	{
+		print "- Passphrase accepted.\n\n";
+		print "Proceeding in $conf->{sys}{delay} seconds... Press <ctrl> + <c> to abort!\n";
+		foreach my $tick (sort {$b cmp $a} (0..$conf->{sys}{delay}))
+		{
+			if ($tick)
+			{
+				print "$tick, ";
+				sleep 1;
+			}
+			else
+			{
+				print "0. Self-destruct initiated.\n\n";
+			}
+		}
 	}
 	else
 	{

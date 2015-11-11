@@ -10,9 +10,8 @@
 # https://alteeve.ca
 # 
 # 0 == OK
-# 1 == Minimum passphrase length not set
-# 2 == Passphrase too short.
-# 3 == Re-encryption count not set
+# 1 == Passphrase too short.
+# 
 
 
 my $THIS_FILE =  $0;
@@ -31,37 +30,25 @@ my $conf = {
 	path	=>	{
 		striker_conf		=>	"/etc/striker/striker.conf",
 	},
+	tools	=>	{
+		'anvil-self-destruct'	=>	{
+			minimum_length		=>	6,
+		},
+	},
 };
 read_configuration($conf);
 
 my $passphrase = $ARGV[0];
 
-if (not $conf->{sys}{storage_security}{minimum_length})
+if (length($passphrase) < $conf->{tools}{'anvil-self-destruct'}{minimum_length})
 {
-	print "Please configure 'sys::storage_security::minimum_length' in striker.conf.\n";
+	print "Passphrase: [$passphrase] too short. Must be $conf->{tools}{'anvil-self-destruct'}{minimum_length} or longer.\n";
+	print "Remember to wrap your password in quotes if it has spaces in it!\n";
 	exit(1);
 }
-if (length($passphrase) < $conf->{sys}{storage_security}{minimum_length})
-{
-	print "Passphrase: [$passphrase] too short. Must be $conf->{sys}{storage_security}{minimum_length} or longer.\n";
-	print "Remember to wrap your password in quotes if it has spaces in it!\n";
-	exit(2);
-}
-if (not $conf->{sys}{storage_security}{reencrypt_count})
-{
-	print "Please configure 'sys::storage_security::reencrypt_count' in striker.conf.\n";
-	exit(3);
-}
 
-print "Encrypting: [$passphrase] with salt: [$conf->{sys}{storage_security}{salt}], re-encrypting times: [$conf->{sys}{storage_security}{reencrypt_count}]\n";
+print "Encrypting: [$passphrase]...\n";
 my $hash = sha512_base64($passphrase);
-if ($conf->{sys}{storage_security}{reencrypt_count})
-{
-	for (1..$conf->{sys}{storage_security}{reencrypt_count})
-	{
-		$hash = sha512_base64($hash);
-	}
-}
 print "- Hash: [$hash]\n";
 
 
