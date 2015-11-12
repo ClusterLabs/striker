@@ -1988,6 +1988,10 @@ sub update_install_manifest
 			class	=>	"body",
 			message	=>	"#!string!message_0376!#",
 		});
+		
+		# Sync with the peer
+		my $peer = AN::Cluster::sync_with_peer($conf);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer]\n");
 	}
 	
 	return(0);
@@ -4337,37 +4341,99 @@ sub do_drbd_connect_on_node
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::default::immediate-uptodate: [$conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'}]\n");
 		if ($conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'})
 		{
-			my $shell_call = "
-if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'Inconsistent/Inconsistent'); 
+			# This will loop for a maximum of 30 seconds waiting for the peer to connect. Once 
+			# connected, it will check the disk state and decide it if can force both nodes to
+			# UpToDate immediately.
+			my $ready          = 0;
+			my $force_uptodate = 0;
+			for (1..6)
+			{
+				# Check to see if we're connected.
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ready: [$ready]\n");
+				last if $ready;
+				sleep 5;
+				my $shell_call = "cat /proc/drbd";
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+					if ($line =~ /^(\d+): cs:(.*?) .*? ds:(.*?)\/(.*?) /)
+					{
+						my $resource_minor   = $1;
+						my $connection_state = $2;
+						my $my_disk_state    = $3;
+						my $peer_disk_state  = $4;
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource_minor: [$resource_minor], connection_state: [$connection_state], my_disk_state: [$my_disk_state], peer_disk_state: [$peer_disk_state]\n");
+						if ($connection_state =~ /connected/i)
+						{
+							# Connected... What are the disk states?
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource_minor: [$resource_minor], my_disk_state: [$my_disk_state], peer_disk_state: [$peer_disk_state]\n");
+							if ((($my_disk_state   =~ /Inconsistent/i) or ($my_disk_state   =~ /Outdated/i) or ($my_disk_state   =~ /Consistent/i) or ($my_disk_state   =~ /UpToDate/i)) &&
+							    (($peer_disk_state =~ /Inconsistent/i) or ($peer_disk_state =~ /Outdated/i) or ($peer_disk_state =~ /Consistent/i) or ($peer_disk_state =~ /UpToDate/i)))
+							{
+								# We're ready.
+								$ready = 1;
+								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ready: [$ready]\n");
+							}
+							if (($my_disk_state =~ /Inconsistent/i) && ($peer_disk_state =~ /Inconsistent/i))
+							{
+								$force_uptodate = 1;
+								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; force_uptodate: [$force_uptodate]\n");
+							}
+						}
+					}
+				}
+			}
+			if (not $ready)
+			{
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Problem connecting resource: [r$resource] on node: [$node]!\n");
+				$message .= AN::Common::get_string($conf, {key => "message_0450", variables => { resource => "r$resource", node => $node }});
+				$return_code = 1;
+			}
+			elsif ($force_uptodate)
+			{
+				my $shell_call = "
+echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
+$conf->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
+sleep 2
+if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
 then 
-    echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
-    $conf->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
-    if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
-    then 
-        echo \"Successfully forced both nodes to 'UpToDate' immediately.\"
-    else
-        echo \"Failed to force both nodes to 'UpToDate'! Check output for error.\"
-    fi
-else 
-    echo \"Not forcing 'UpToDate/UpToDate', disk state isn't 'Inconsistent/Inconsistent'\"; 
+    echo success
+else
+    echo failed.
 fi
 ";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-			my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	22,
-				user		=>	"root",
-				password	=>	$password,
-				ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
-			foreach my $line (@{$return})
-			{
-				# I don't analyze this because it isn't critical if it doesn't work and the output
-				# will explain what happened to anyone who cares to look.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
+				my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
+					node		=>	$node,
+					port		=>	22,
+					user		=>	"root",
+					password	=>	$password,
+					ssh_fh		=>	$conf->{node}{$node}{ssh_fh} ? $conf->{node}{$node}{ssh_fh} : "",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], return: [$return (".@{$return}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					# I don't analyze this because it isn't critical if it doesn't work and the output
+					# will explain what happened to anyone who cares to look.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				}
 			}
 		}
 	}

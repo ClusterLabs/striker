@@ -1785,7 +1785,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0447"><![CDATA[The request to fence the: [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
 		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
-		<key name="message_0450"><![CDATA[]]></key>
+		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
+		<key name="message_0451"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
