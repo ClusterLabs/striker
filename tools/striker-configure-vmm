@@ -372,7 +372,7 @@ sub setup_virtual_machine_manager_config
 			# Read in the current file.
 			my $variables = { file  => $path };
 			print $an->String->get({key => "scv_message_0004", variables => $variables}), "\n";
-			$an->Log->entry({log_level => 3, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			
 			# If it exists, read it in and analyze it.
 			if ($raw_file)
@@ -457,13 +457,13 @@ sub setup_virtual_machine_manager_config
 			
 			# Now construct the new body. If 'raw' is set, merge in our nodes that haven't been
 			# seen. If raw doesn't exist, then we'll use the default 'body'.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "raw_file", value1 => $raw_file, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $raw_file)
 			{
 				$raw_file = $body;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "raw_file", value1 => $raw_file, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -531,12 +531,16 @@ sub setup_virtual_machine_manager_config
 					}
 				}
 			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "body", value1 => $body, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		my $files_differ = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "body",     value1 => $body, 
+			name2 => "raw_file", value1 => $raw_file, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($body) && ($raw_file))
 		{
 			my $test_body     =  $body;
@@ -639,8 +643,11 @@ sub setup_virtual_machine_manager_config
 		}
 		
 		# Set the owner and mode
-		chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-		chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		if (-e $path)
+		{
+			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		}
 	}
 	
 	return(0);
