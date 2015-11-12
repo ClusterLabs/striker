@@ -77,6 +77,12 @@ sub check_passphrase
 	print "- Hash: .. [$hash]\n";
 	print "- Entered: [$conf->{tools}{'anvil-self-destruct'}{hash}]\n";
 	
+	if (not $conf->{tools}{'anvil-self-destruct'}{hash})
+	{
+		print "- No passphrase set in: [$conf->{path}{striker_conf}] ->  'tools::anvil-self-destruct::hash'\n";
+		print "- Self-destruct aborted!\n";
+		exit(1);
+	}
 	if ($hash eq $conf->{tools}{'anvil-self-destruct'}{hash})
 	{
 		print "- Passphrase accepted.\n\n";
