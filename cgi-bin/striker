@@ -128,7 +128,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_bcn_ethtool_opts",
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
-	"anvil_bcn_subnet",
+	"anvil_dns1",
 	"anvil_dns2",
 	"anvil_domain",
 	"anvil_drbd_disk_disk-barrier", 

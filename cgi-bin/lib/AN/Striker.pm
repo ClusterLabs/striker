@@ -2568,11 +2568,9 @@ sub change_vm
 	});
 
 	# Make sure something changed.
-	if (
-		($current_ram         ne $requested_ram)         || 
-		($current_cpus        ne $requested_cpus)        || 
-		($current_boot_device ne $requested_boot_device)
-	)
+	if (($current_ram         ne $requested_ram) or 
+	    ($current_cpus        ne $requested_cpus) or
+	    ($current_boot_device ne $requested_boot_device))
 	{
 		# Something has changed. Make sure the request is sane,
 		my $max_cpus      = $conf->{resources}{total_threads};
@@ -2739,6 +2737,9 @@ sub change_vm
 			$new_definition =~ s/(\S)\s+$/$1\n/;
 			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
+			
+			# See if I need to insert or edit any network interface driver elements.
+			$new_definition = update_network_driver($conf, $new_definition);
 			
 			# Write the new definition file.
 			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -2911,6 +2912,9 @@ sub vm_insert_media
 		$new_definition =~ s/(\S)\s+$/$1\n/;
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
+		# See if I need to insert or edit any network interface driver elements.
+		$new_definition = update_network_driver($conf, $new_definition);
+		
 		# Write the new definition file.
 		print AN::Common::template($conf, "server.html", "saving-server-config");
 		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -2976,7 +2980,7 @@ sub vm_eject_media
 			'close'		=>	1,
 			shell_call	=>	"/usr/bin/virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		foreach my $line (@{$output})
 		{
 			$line =~ s/^\s+//;
@@ -3086,6 +3090,9 @@ sub vm_eject_media
 		$new_definition =~ s/(\S)\s+$/$1\n/;
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new definition: [$new_definition]\n");
 		
+		# See if I need to insert or edit any network interface driver elements.
+		$new_definition = update_network_driver($conf, $new_definition);
+		
 		# Write the new definition file.
 		print AN::Common::template($conf, "server.html", "saving-server-config");
 		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -3168,7 +3175,7 @@ sub manage_vm
 	# Now choose the node to work through.
 	my $node          = "";
 	my $vm_is_running = 0;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::current_host: [$conf->{vm}{$vm}{current_host}]\n");
 	if ($conf->{vm}{$vm}{current_host})
 	{
 		# Read the current VM config from virsh.
@@ -3273,10 +3280,10 @@ sub manage_vm
 		}
 	}
 	$boot_select .= "</select>";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; boot select: [$boot_select].\n");
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so now.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::change: [$conf->{cgi}{change}].\n");
 	if ($conf->{cgi}{change})
 	{
 		change_vm($conf, $node);
@@ -3301,7 +3308,7 @@ sub manage_vm
 	}
 	
 	### TODO: Merge insert and eject into one function.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_insert: [$do_insert], insert_drive: [$insert_drive], insert_media: [$insert_media]\n");
 	if ($do_insert)
 	{
 		vm_insert_media($conf, $node, $insert_media, $insert_drive, $vm_is_running);
@@ -3323,7 +3330,7 @@ sub manage_vm
 		'close'		=>	1,
 		shell_call	=>	"df -P && ls -l /shared/files/",
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
 		$line =~ s/^\s+//;
@@ -3498,12 +3505,12 @@ sub manage_vm
 	
 	# Something has changed. Make sure the request is sane,
 	my $current_ram   = $conf->{vm}{$vm}{details}{ram};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; current_ram: [$current_ram]\n");
 
 	my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
 	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	my $max_ram       = $available_ram;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; available_ram: [$available_ram]\n");
 	
 	# If the user sets the RAM to less than 1 GiB, warn them. If the user sets the RAM to less that 32 
 	# MiB, error out.
@@ -4207,7 +4214,9 @@ sub update_vm_definition
 	my $definition_file = $conf->{vm}{$vm}{definition_file};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in update_vm_definition(); node: [$node], vm: [$vm], say_vm: [$say_vm], definition_file: [$definition_file]\n");
 	
-	my $virsh_exit_code;
+	my $new_definition = "";
+	my $shell_call     = "/usr/bin/virsh dumpxml $say_vm";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4215,43 +4224,45 @@ sub update_vm_definition
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	1,
-		shell_call	=>	"/usr/bin/virsh dumpxml $say_vm > $definition_file; echo virsh:\$?",
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	foreach my $line (@{$output})
 	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if not $line;
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		if ($line =~ /virsh:(\d+)/)
-		{
-			$virsh_exit_code = $1;
-		}
-		else
-		{
-			#print "<span class=\"code\">$line</span><br />\n";
-		}
+		$new_definition .= "$line\n";
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; virsh exit code: [$virsh_exit_code]\n");
-	if ($virsh_exit_code eq "0")
+	
+	# See if I need to insert or edit any network interface driver elements.
+	$new_definition = update_network_driver($conf, $new_definition);
+	
+	# Write out the new one.
+	$shell_call = "cat > $definition_file << EOF\n$new_definition\nEOF";
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	die if $new_definition =~ /ARRAY/;
+	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
+		node		=>	$node,
+		port		=>	$conf->{node}{$node}{port},
+		user		=>	"root",
+		password	=>	$conf->{sys}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	foreach my $line (@{$output})
 	{
-		# Delete the old definition values and read the new one.
-		$conf->{vm}{$vm}{xml} = "";
-		read_vm_definition($conf, $node, $vm);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 	}
-	else
+	
+	# Rebuild the $conf->{vm}{$vm}{xml} array.
+	undef $conf->{vm}{$vm}{xml};
+	$conf->{vm}{$vm}{xml} = [];
+	foreach my $line (split/\n/, $new_definition)
 	{
-		$virsh_exit_code = "-" if not defined $virsh_exit_code;
-		my $say_error = AN::Common::get_string($conf, {key => "message_0086", variables => {
-			server		=>	$say_vm,
-			virsh_exit_code	=>	$virsh_exit_code,
-		}});
-		print AN::Common::template($conf, "server.html", "update-definition-failed-bad-exit-code", {
-			error	=>	$say_error,
-		});
-		return($virsh_exit_code);
+		push @{$conf->{vm}{$vm}{xml}}, $line;
 	}
+	
 	return(0);
 }
 
@@ -4627,91 +4638,7 @@ sub add_vm_to_cluster
 	}
 	
 	# See if I need to insert or edit any network interface driver elements.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::server::bcn_nic_driver: [$conf->{sys}{server}{bcn_nic_driver}], sys::server::sn_nic_driver: [$conf->{sys}{server}{sn_nic_driver}], sys::server::ifn_nic_driver: [$conf->{sys}{server}{ifn_nic_driver}]\n");
-	if (($conf->{sys}{server}{bcn_nic_driver}) or ($conf->{sys}{server}{sn_nic_driver} or $conf->{sys}{server}{ifn_nic_driver}))
-	{
-		# Clear out the old array and refill it with the possibly-edited 'new_xml'.
-		undef @new_vm_xml;
-		foreach my $line (split/\n/, $new_xml)
-		{
-			push @new_vm_xml, "$line";
-		}
-		$new_xml = "";
-		
-		my $in_interface = 0;
-		my $this_network = "";
-		my $this_driver  = "";
-		foreach my $line (@new_vm_xml)
-		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line =~ /<interface type='bridge'>/)
-			{
-				$in_interface = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface]\n");
-			}
-			if ($in_interface)
-			{
-				if ($line =~ /<source bridge='(.*?)_bridge1'\/>/)
-				{
-					$this_network = $1;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
-				}
-				if ($line =~ /<driver name='(.*?)'\/>/)
-				{
-					$this_driver = $1;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
-					
-					# See if I need to update it.
-					if ($this_network)
-					{
-						my $key = $this_network."_nic_driver";
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
-						if ($conf->{sys}{server}{$key})
-						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
-							if ($this_driver ne $conf->{sys}{server}{$key})
-							{
-								# Change the driver
-								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
-								$line =~ s/driver name='.*?'/driver name='$conf->{sys}{server}{$key}'/;
-								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
-							}
-						}
-						else
-						{
-							# Delete the driver
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Skipping the line: [$line] to remove the driver.\n");
-							next;
-						}
-					}
-				}
-				if ($line =~ /<\/interface>/)
-				{
-					# Insert the driver, if needed.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
-					if ($this_network)
-					{
-						my $key = $this_network."_nic_driver";
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
-						if ($conf->{sys}{server}{$key})
-						{
-							# Insert it
-							$new_xml .= "      <driver name='$conf->{sys}{server}{$key}'/>\n";
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; inserting driver: [<driver name='$conf->{sys}{server}{$key}'/>]\n");
-						}
-					}
-					
-					$in_interface = 0;
-					$this_network = "";
-					$this_driver  = "";
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface], this_network: [$this_network], this_driver: [$this_driver]\n");
-				}
-			}
-			
-			$new_xml .= "$line\n";
-		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_xml:\n====\n$new_xml\n====\n");
-	}
+	$new_xml = update_network_driver($conf, $new_xml);
 	
 	# Now write out the XML.
 	$shell_call = "cat > $definition << EOF\n$new_xml\nEOF";
@@ -4959,6 +4886,97 @@ sub add_vm_to_cluster
 	print AN::Common::template($conf, "server.html", "add-server-to-anvil-footer");
 
 	return (0);
+}
+
+# This inserts, updates or removes a network interface driver in the passed-in XML definition file.
+sub update_network_driver
+{
+	my ($conf, $new_xml) = @_;
+	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::server::bcn_nic_driver: [$conf->{sys}{server}{bcn_nic_driver}], sys::server::sn_nic_driver: [$conf->{sys}{server}{sn_nic_driver}], sys::server::ifn_nic_driver: [$conf->{sys}{server}{ifn_nic_driver}]\n");
+	# Clear out the old array and refill it with the possibly-edited 'new_xml'.
+	my @new_vm_xml;
+	foreach my $line (split/\n/, $new_xml)
+	{
+		push @new_vm_xml, "$line";
+	}
+	$new_xml = "";
+	
+	my $in_interface = 0;
+	my $this_network = "";
+	my $this_driver  = "";
+	foreach my $line (@new_vm_xml)
+	{
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		if ($line =~ /<interface type='bridge'>/)
+		{
+			$in_interface = 1;
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface]\n");
+		}
+		if ($in_interface)
+		{
+			if ($line =~ /<source bridge='(.*?)_bridge1'\/>/)
+			{
+				$this_network = $1;
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
+			}
+			if ($line =~ /<driver name='(.*?)'\/>/)
+			{
+				$this_driver = $1;
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
+				
+				# See if I need to update it.
+				if ($this_network)
+				{
+					my $key = $this_network."_nic_driver";
+					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+					if ($conf->{sys}{server}{$key})
+					{
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+						if ($this_driver ne $conf->{sys}{server}{$key})
+						{
+							# Change the driver
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+							$line =~ s/driver name='.*?'/driver name='$conf->{sys}{server}{$key}'/;
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+						}
+					}
+					else
+					{
+						# Delete the driver
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Skipping the line: [$line] to remove the driver.\n");
+						next;
+					}
+				}
+			}
+			if ($line =~ /<\/interface>/)
+			{
+				# Insert the driver, if needed.
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
+				if ($this_network)
+				{
+					my $key = $this_network."_nic_driver";
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+					if ($conf->{sys}{server}{$key})
+					{
+						# Insert it
+						$new_xml .= "      <driver name='$conf->{sys}{server}{$key}'/>\n";
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; inserting driver: [<driver name='$conf->{sys}{server}{$key}'/>]\n");
+					}
+				}
+				
+				$in_interface = 0;
+				$this_network = "";
+				$this_driver  = "";
+				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface], this_network: [$this_network], this_driver: [$this_driver]\n");
+			}
+		}
+		
+		$new_xml .= "$line\n";
+	}
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_xml:\n====\n$new_xml\n====\n");
+	
+	return($new_xml);
 }
 
 # This looks for a VM on the cluster and returns the current host node, if any.
@@ -7248,12 +7266,12 @@ sub archive_file
 		'close'		=>	1,
 		shell_call	=>	"cp $file $destination; echo cp:\$?",
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $header_printed = 0;
 	foreach my $line (@{$output})
 	{
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /cp:(\d+)/)
 		{
 			$cp_exit_code = $1;
@@ -9510,7 +9528,7 @@ sub read_vm_definition
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
 		return (0);
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
 	if (not ref($conf->{vm}{$vm}{raw_xml}) eq "ARRAY")
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
