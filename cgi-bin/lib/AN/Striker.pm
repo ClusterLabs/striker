@@ -4587,8 +4587,7 @@ sub add_vm_to_cluster
 		return (1);
 	}
 	
-	# We'll switch to boot the 'hd' first if needed and add a cdrom if it
-	# doesn't exist.
+	# We'll switch to boot the 'hd' first if needed and add a cdrom if it doesn't exist.
 	my $new_xml = "";
 	my $hd_seen = 0;
 	my $cd_seen = 0;
@@ -4625,6 +4624,93 @@ sub add_vm_to_cluster
 			}
 		}
 		$new_xml .= "$line\n";
+	}
+	
+	# See if I need to insert or edit any network interface driver elements.
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::server::bcn_nic_driver: [$conf->{sys}{server}{bcn_nic_driver}], sys::server::sn_nic_driver: [$conf->{sys}{server}{sn_nic_driver}], sys::server::ifn_nic_driver: [$conf->{sys}{server}{ifn_nic_driver}]\n");
+	if (($conf->{sys}{server}{bcn_nic_driver}) or ($conf->{sys}{server}{sn_nic_driver} or $conf->{sys}{server}{ifn_nic_driver}))
+	{
+		# Clear out the old array and refill it with the possibly-edited 'new_xml'.
+		undef @new_vm_xml;
+		foreach my $line (split/\n/, $new_xml)
+		{
+			push @new_vm_xml, "$line";
+		}
+		$new_xml = "";
+		
+		my $in_interface = 0;
+		my $this_network = "";
+		my $this_driver  = "";
+		foreach my $line (@new_vm_xml)
+		{
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			if ($line =~ /<interface type='bridge'>/)
+			{
+				$in_interface = 1;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface]\n");
+			}
+			if ($in_interface)
+			{
+				if ($line =~ /<source bridge='(.*?)_bridge1'\/>/)
+				{
+					$this_network = $1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
+				}
+				if ($line =~ /<driver name='(.*?)'\/>/)
+				{
+					$this_driver = $1;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
+					
+					# See if I need to update it.
+					if ($this_network)
+					{
+						my $key = $this_network."_nic_driver";
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+						if ($conf->{sys}{server}{$key})
+						{
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+							if ($this_driver ne $conf->{sys}{server}{$key})
+							{
+								# Change the driver
+								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+								$line =~ s/driver name='.*?'/driver name='$conf->{sys}{server}{$key}'/;
+								AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+							}
+						}
+						else
+						{
+							# Delete the driver
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Skipping the line: [$line] to remove the driver.\n");
+							next;
+						}
+					}
+				}
+				if ($line =~ /<\/interface>/)
+				{
+					# Insert the driver, if needed.
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
+					if ($this_network)
+					{
+						my $key = $this_network."_nic_driver";
+						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+						if ($conf->{sys}{server}{$key})
+						{
+							# Insert it
+							$new_xml .= "      <driver name='$conf->{sys}{server}{$key}'/>\n";
+							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; inserting driver: [<driver name='$conf->{sys}{server}{$key}'/>]\n");
+						}
+					}
+					
+					$in_interface = 0;
+					$this_network = "";
+					$this_driver  = "";
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface], this_network: [$this_network], this_driver: [$this_driver]\n");
+				}
+			}
+			
+			$new_xml .= "$line\n";
+		}
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new_xml:\n====\n$new_xml\n====\n");
 	}
 	
 	# Now write out the XML.
@@ -8976,7 +9062,6 @@ sub display_free_resources
 	}
 	
 	# Always knock off some RAM for the host OS.
-	
 	my $real_total_ram            =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB
 	# of total RAM. So we modulous off the difference, then subtract that
@@ -9425,7 +9510,7 @@ sub read_vm_definition
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]; I was asked to look at: [$vm]'s definition file, it was not read or was not found.\n");
 		return (0);
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::$vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::raw_xml: [$conf->{vm}{$vm}{raw_xml}]\n");
 	if (not ref($conf->{vm}{$vm}{raw_xml}) eq "ARRAY")
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];

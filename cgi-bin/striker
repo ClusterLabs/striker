@@ -128,7 +128,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"anvil_bcn_ethtool_opts",
 	"anvil_bcn_network",
 	"anvil_bcn_subnet",
-	"anvil_dns1",
+	"anvil_bcn_subnet",
 	"anvil_dns2",
 	"anvil_domain",
 	"anvil_drbd_disk_disk-barrier", 
@@ -394,7 +394,7 @@ elsif ($conf->{cgi}{cluster})
 	my $cluster = $conf->{cgi}{cluster};
 	$conf->{sys}{root_password}           = $conf->{clusters}{$cluster}{root_pw};
 	$conf->{clusters}{$cluster}{ricci_pw} = $conf->{clusters}{$cluster}{root_pw} if not $conf->{clusters}{$cluster}{ricci_pw};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], clusters::${cluster}::ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], clusters::${cluster}::ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})

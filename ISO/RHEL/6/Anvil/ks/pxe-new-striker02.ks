@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2015-10-02 10:56:57
+# Built:   2015-11-12 23:48:17
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Striker Dashboard #02
@@ -157,10 +157,6 @@ cp /mnt/source/ks/pxe-new-striker02.ks             /mnt/sysimage/var/www/html/rh
 # A little flair...
 echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/splash.jpg /mnt/sysimage/var/lib/tftpboot/
-
-# I'll need this later for the admin-owned setuid wrapper
-echo "Copying the 'admin' user's copy of 'populate_remote_authorized_keys' into place."
-cp /mnt/source/Striker/striker-master/tools/populate_remote_authorized_keys /mnt/sysimage/home/admin/
 
 # Copy the Striker source files and installer into place
 echo 'Copying the Striker installer and source code into place.'
@@ -394,27 +390,6 @@ label memtest86
 	KERNEL memtest
 	APPEND -
 EOF
-
-### Note: This will go away when NoVNC is integrated.
-# Copy the 'populate_remote_authorized_keys' to the 'admin' user's home and make
-# a setuid C-wrapper owned by admin so that apache can call it when an Anvil is
-# added to a system.
-cat > /home/admin/call_populate_remote_authorized_keys.c << EOF
-#define REAL_PATH "/home/admin/populate_remote_authorized_keys"
-main(ac, av)
-char **av;
-{
-	setuid(0);
-	setgid(0);
-	execv(REAL_PATH, av);
-}
-EOF
-chmod 755     /home/admin
-gcc -o        /home/admin/call_populate_remote_authorized_keys /home/admin/call_populate_remote_authorized_keys.c
-chown 0:0     /home/admin/call_populate_remote_authorized_keys
-chmod 6755    /home/admin/call_populate_remote_authorized_keys
-chown 500:500 /home/admin/populate_remote_authorized_keys
-chmod 755     /home/admin/populate_remote_authorized_keys
 
 # Disable the libvirtd default bridge.
 echo "Disabling the default libvirtd bridge 'virbr0'."

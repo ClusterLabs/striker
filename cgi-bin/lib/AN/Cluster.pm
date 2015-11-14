@@ -2744,7 +2744,7 @@ sub create_install_manifest
 				more_info	=>	"$anvil_bcn_network_more_info",
 			});
 		}
-		# For now, ethtool_opts are always hidden.
+		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
@@ -2786,7 +2786,7 @@ sub create_install_manifest
 				more_info	=>	"$anvil_sn_network_more_info",
 			});
 		}
-		# For now, ethtool_opts are always hidden.
+		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
@@ -2828,7 +2828,7 @@ sub create_install_manifest
 				more_info	=>	"$anvil_ifn_network_more_info",
 			});
 		}
-		# For now, ethtool_opts are always hidden.
+		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
 			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
@@ -4288,15 +4288,20 @@ sub load_install_manifest
 							my $ntp2         = $a->{$b}->[0]->{$c}->[0]->{ntp2};
 							my $ethtool_opts = $a->{$b}->[0]->{$c}->[0]->{ethtool_opts};
 							
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock}     = $netblock     ? $netblock     : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}      = $netmask      ? $netmask      : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}      = $gateway      ? $gateway      : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}     = $defroute     ? $defroute     : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}         = $dns1         ? $dns1         : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}         = $dns2         ? $dns2         : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}         = $ntp1         ? $ntp1         : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}         = $ntp2         ? $ntp2         : "";
-							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts} = $ethtool_opts ? $ethtool_opts : "";
+							my $netblock_key     = "${c}_network";
+							my $netmask_key      = "${c}_subnet";
+							my $gateway_key      = "${c}_gateway";
+							my $defroute_key     = "${c}_defroute";
+							my $ethtool_opts_key = "${c}_ethtool_opts";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netblock}     = defined $netblock     ? $netblock     : $conf->{sys}{install_manifest}{'default'}{$netblock_key};
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}      = defined $netmask      ? $netmask      : $conf->{sys}{install_manifest}{'default'}{$netmask_key};
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}      = defined $gateway      ? $gateway      : $conf->{sys}{install_manifest}{'default'}{$gateway_key};
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}     = defined $defroute     ? $defroute     : $conf->{sys}{install_manifest}{'default'}{$defroute_key};
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}         = defined $dns1         ? $dns1         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}         = defined $dns2         ? $dns2         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}         = defined $ntp1         ? $ntp1         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}         = defined $ntp2         ? $ntp2         : "";
+							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts} = defined $ethtool_opts ? $ethtool_opts : $conf->{sys}{install_manifest}{'default'}{$ethtool_opts_key};
 							record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}], ethtool_opts: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts}]\n");
 						}
 					}
@@ -5508,6 +5513,7 @@ sub confirm_install_manifest_run
 		anvil_bcn_ethtool_opts		=>	$conf->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$conf->{cgi}{anvil_bcn_network},
 		anvil_bcn_subnet		=>	$conf->{cgi}{anvil_bcn_subnet},
+		anvil_sn_ethtool_opts		=>	$conf->{cgi}{anvil_sn_ethtool_opts}, 
 		anvil_sn_network		=>	$conf->{cgi}{anvil_sn_network},
 		anvil_sn_subnet			=>	$conf->{cgi}{anvil_sn_subnet},
 		anvil_ifn_ethtool_opts		=>	$conf->{cgi}{anvil_ifn_ethtool_opts}, 
@@ -10853,6 +10859,11 @@ sub parse_dmidecode
 	$conf->{resources}{total_cores}   = 0;
 	$conf->{resources}{total_threads} = 0;
 	$conf->{resources}{total_ram}     = 0;
+	# In some cases, like in VMs, the CPU core count is not provided. So this keeps a running tally of 
+	# how many times we've gone in and out of 'in_cpu' and will be used as the core count if, when it's
+	# all done, we have 0 cores listed.
+	$conf->{resources}{total_cpus}    = 0;
+	
 	#record($conf, "$THIS_FILE ".__LINE__."; Cluster; total cores: [$conf->{resources}{total_cores}], total threads: [$conf->{resources}{total_threads}], total memory: [$conf->{resources}{total_ram}]\n");
 	
 	foreach my $line (@{$array})
@@ -10861,6 +10872,7 @@ sub parse_dmidecode
 		{
 			die "$THIS_FILE ".__LINE__."; Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
 		}
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
 		
 		# Find out what I am looking at.
 		if (not $line)
@@ -10877,6 +10889,7 @@ sub parse_dmidecode
 				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor} = $dimm_form_factor;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], dimm: [$dimm_locator], bank: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank}], size: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size}], type: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}], speed: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}], form factor: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor}]\n");
 			}
+			
 			$in_cpu         = 0;
 			$in_system_ram  = 0;
 			$in_dimm_module = 0;
@@ -10887,6 +10900,7 @@ sub parse_dmidecode
 		if ($line =~ /Processor Information/)
 		{
 			$in_cpu         = 1;
+			$conf->{resources}{total_cpus}++;
 			next;
 		}
 		if ($line =~ /Physical Memory Array/)
@@ -10913,6 +10927,7 @@ sub parse_dmidecode
 			if ($line =~ /Socket Designation: (.*)/)
 			{
 				$this_socket = $1;
+				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], this_socket: [$this_socket]\n");
 				next;
 			}
 			
@@ -11010,6 +11025,18 @@ sub parse_dmidecode
 				}
 			}
 		}
+	}
+	
+	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resources::total_cpus: [$conf->{resources}{total_cpus}], node::${node}::hardware::total_node_cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_cores}))
+	{
+		$conf->{node}{$node}{hardware}{total_node_cores}   = $conf->{resources}{total_cpus};
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::hardware::total_node_cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+	}
+	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_threads}))
+	{
+		$conf->{node}{$node}{hardware}{total_node_threads} = $conf->{node}{$node}{hardware}{total_node_cores};
+		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::hardware::total_node_threads: [$conf->{node}{$node}{hardware}{total_node_threads}]\n");
 	}
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
