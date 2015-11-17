@@ -447,8 +447,8 @@ sub bytes_to_hr
 	return($hr_size);
 }
 
-# This takes a "human readable" size with an ISO suffix and converts it back to
-# a base byte size as accurately as possible.
+# This takes a "human readable" size with an ISO suffix and converts it back to a base byte size as 
+# accurately as possible.
 sub hr_to_bytes
 {
 	my $self  = shift;

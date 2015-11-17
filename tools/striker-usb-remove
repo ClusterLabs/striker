@@ -60,7 +60,7 @@ sub find_missing_devices
 		my $line = $_;
 		next if not $line;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-		if ($line =~ /(\/dev\/.*?)\s+\w+\s+\w+\s+\w+\s+\d+%\s($conf->{'remote-usb'}{local}{mount}_.*)/)
+		if ($line =~ /(\/dev\/.*?)\s+\w+\s+\w+\s+\w+\s+\d+%\s($conf->{'remote-usb'}{'local'}{mount}_.*)/)
 		{
 			my $device = $1;
 			my $mount  = $2;

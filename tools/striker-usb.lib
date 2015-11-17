@@ -219,6 +219,14 @@ sub read_configuration
 	}
 	$fh->close();
 	
+	# Swap out '#!short_hostname!# for this machine's host name.
+	get_short_hostname($conf);
+	
+	logger($conf, $THIS_FILE, __LINE__, ">> remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], sys::short_hostname: [$conf->{sys}{short_hostname}]");
+	my $short_hostname = $conf->{sys}{short_hostname};
+	$conf->{'remote-usb'}{'local'}{host} =~ s/#!short_hostname!#/$short_hostname/;
+	logger($conf, $THIS_FILE, __LINE__, "<< remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], short_hostname: [$short_hostname]");
+	
 	return(0);
 }
 

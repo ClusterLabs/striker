@@ -117,7 +117,7 @@ sub do_db_write
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
-			#print "id: [$id], query: ============\n$query\n============\n";
+			#print "id: [$id], query:\n============\n$query\n============\n";
 			#$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
 								query    => $query, 

@@ -114,9 +114,6 @@ elsif (not $conf->{'remote-usb'}{enable_remote_usb_mount})
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
 
-# Find the local hostname.
-get_short_hostname($conf);
-
 #find_usb_devices($conf);
 check_sd_devices($conf);
 

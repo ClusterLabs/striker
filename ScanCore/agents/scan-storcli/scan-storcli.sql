@@ -1,375 +1,284 @@
 -- This is the database schema for the 'storcli Scan Agent'.
 
+-- Data here comes from the 'Basics' section of 'storcli64 /cX show all'
 CREATE TABLE storcli_adapter (
-	storcli_adapter_uuid				uuid				primary key,
-	storcli_adapter_host_uuid			uuid				not null,
-	storcli_adapter_adapter_number			numeric				not null,
-	storcli_adapter_product_name			text				not null,
-	storcli_adapter_serial_number			text				not null,	-- This is the core identifier
-	storcli_adapter_sas_address			text,
-	storcli_adapter_pci_address			text,
-	storcli_adapter_manufacture_date		date,						-- yyyy/mm/dd
-	storcli_adapter_rework_date			date,						-- yyyy/mm/dd
-	storcli_adapter_revision_number			text,
-	modified_date					timestamp with time zone	not null,
+	storcli_adapter_uuid			uuid				primary key,
+	storcli_adapter_host_uuid		uuid				not null,
+	storcli_adapter_model			text				not null,
+	storcli_adapter_serial_number		text				not null,	-- This is the core identifier
+	storcli_adapter_pci_address		text,
+	modified_date				timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_host_uuid) REFERENCES hosts(host_uuid)
 );
-ALTER TABLE storcli OWNER TO #!variable!user!#;
+ALTER TABLE storcli_adapter OWNER TO #!variable!user!#;
 
--- Advanced Software Options
--- TODO: More will be added later
-CREATE TABLE storcli_adapter_adv_sw_opts (
-	storcli_adapter_adv_sw_opts_id			uuid				primary key,
-	storcli_adapter_adv_sw_opts_safe_id		text,
-	storcli_adapter_adv_sw_opts_			boolean,
-	modified_date						timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+CREATE TABLE history.storcli_adapter (
+	history_id				bigserial,
+	storcli_adapter_uuid			uuid				primary key,
+	storcli_adapter_host_uuid		uuid				not null,
+	storcli_adapter_model			text				not null,
+	storcli_adapter_serial_number		text				not null,	-- This is the core identifier
+	storcli_adapter_pci_address		text,
+	modified_date				timestamp with time zone	not null
 );
+ALTER TABLE history.storcli_adapter OWNER TO #!variable!user!#;
 
--- Hardware Configuration
-CREATE TABLE storcli_adapter_hw_config (
-	storcli_adapter_hw_config_id			uuid				primary key,
-	storcli_adapter_hw_config_chip_revision		text,
-	storcli_adapter_hw_config_battery_fru		text,
-	storcli_adapter_hw_config_external_ports	integer,
-	storcli_adapter_hw_config_internal_ports	integer,
-	storcli_adapter_hw_config_bbu_installed		boolean,
-	storcli_adapter_hw_config_alarm_enabled		boolean,
-	storcli_adapter_hw_config_serial_debugger	boolean,
-	storcli_adapter_hw_config_			boolean,
-	storcli_adapter_hw_config_			boolean,
-	modified_date						timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-	
-	
-	
-	-- PCI Info
-	storcli_adapter_controller_id		text,
-	storcli_adapter_vendor_id		text,
-	storcli_adapter_subvendor_id		text,
-	storcli_adapter_device_id		text,
-	storcli_adapter_subdevice_id		text,
-	storcli_adapter_host_interface		text,
-	storcli_adapter_chip_revision		text,
-	storcli_adapter_link_speed		text,
-	storcli_adapter_device_interface	text,
-	storcli_adapter_frontend_port_number	text,						-- External ports
-	storcli_adapter_backend_port_number	text,						-- Internal ports
-	-- Hardware Info
-	storcli_adapter_bbu_present		boolean,
-	storcli_adapter_alarm_present		boolean,					-- This is NOT set by the existence of a problem, simply that there is an alarm available
-	storcli_adapter_nvram_present		boolean,
-	storcli_adapter_serial_debugger_present	boolean,
-	storcli_adapter_memory_present		boolean,
-	storcli_adapter_flash_present		boolean,
-	storcli_adapter_memory_size		numeric,					-- Raw bytes
-	storcli_adapter_tpm_present		boolean,
-	storcli_adapter_onboard_expander	boolean,
-	storcli_adapter_upgrade_key		boolean,
-	storcli_adapter_roc_temp_sensor		boolean,
-	storcli_adapter_controller_temp_sensor	boolean,
-	storcli_adapter_troc_temperature	double precision,				-- In degree C
-	-- Settings
-	storcli_adapter_battery_fru		text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	storcli_adapter_	text,
-	
-	modified_date					timestamp with time zone	not null,
-	
-	FOREIGN KEY(storcli_host_uuid) REFERENCES hosts(host_uuid)
-);
-ALTER TABLE storcli OWNER TO #!variable!user!#;
-
-CREATE TABLE history.storcli (
-	history_id			bigserial,
-	storcli_uuid			uuid,
-	storcli_host_uuid		uuid,
-	storcli_sensor_host		text				not null,
-	storcli_sensor_name		text				not null,
-	storcli_sensor_units		text				not null,
-	storcli_sensor_status		text				not null,
-	storcli_sensor_high_critical	numeric,
-	storcli_sensor_high_warning	numeric,
-	storcli_sensor_low_critical	numeric,
-	storcli_sensor_low_warning	numeric,
-	modified_date			timestamp with time zone	not null
-);
-ALTER TABLE history.storcli OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_storcli() RETURNS trigger
+CREATE FUNCTION history_storcli_adapter() RETURNS trigger
 AS $$
 DECLARE
-	history_storcli RECORD;
+	history_storcli_adapter RECORD;
 BEGIN
-	SELECT INTO history_storcli * FROM storcli WHERE storcli_uuid=new.storcli_uuid;
-	INSERT INTO history.storcli
-		(storcli_uuid,
-		 storcli_host_uuid, 
-		 storcli_sensor_host, 
-		 storcli_sensor_name, 
-		 storcli_sensor_units, 
-		 storcli_sensor_status, 
-		 storcli_sensor_high_critical, 
-		 storcli_sensor_high_warning, 
-		 storcli_sensor_low_critical, 
-		 storcli_sensor_low_warning, 
+	SELECT INTO history_storcli_adapter * FROM storcli_adapter WHERE storcli_adapter_uuid=new.storcli_adapter_uuid;
+	INSERT INTO history.storcli_adapter
+		(storcli_adapter_uuid, 
+		 storcli_adapter_host_uuid, 
+		 storcli_adapter_model, 
+		 storcli_adapter_serial_number, 
+		 storcli_adapter_pci_address, 
 		 modified_date)
 	VALUES
-		(history_storcli.storcli_uuid,
-		 history_storcli.storcli_host_uuid, 
-		 history_storcli.storcli_sensor_host, 
-		 history_storcli.storcli_sensor_name, 
-		 history_storcli.storcli_sensor_units, 
-		 history_storcli.storcli_sensor_status, 
-		 history_storcli.storcli_sensor_high_critical, 
-		 history_storcli.storcli_sensor_high_warning, 
-		 history_storcli.storcli_sensor_low_critical, 
-		 history_storcli.storcli_sensor_low_warning, 
-		 history_storcli.modified_date);
+		(history_storcli_adapter.storcli_adapter_uuid,
+		 history_storcli_adapter.storcli_adapter_host_uuid,
+		 history_storcli_adapter.storcli_adapter_model, 
+		 history_storcli_adapter.storcli_adapter_serial_number, 
+		 history_storcli_adapter.storcli_adapter_pci_address, 
+		 history_storcli_adapter.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_storcli() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_storcli_adapter() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_storcli
-	AFTER INSERT OR UPDATE ON storcli
-	FOR EACH ROW EXECUTE PROCEDURE history_storcli();
+CREATE TRIGGER trigger_storcli_adapter
+	AFTER INSERT OR UPDATE ON storcli_adapter
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_adapter();
 
 
--- ----------------------------------------------------------------------------------------------------------
-
--- Information on firmware
-CREATE TABLE storcli_firmware (
-	storcli_firmware_id				uuid				primary key,
-	storcli_firmware_storcli_adapter_uuid		uuid				not null,
-	storcli_firmware_package_build			text,
-	storcli_firmware_version			text,
-	storcli_firmware_bios_version			text,
-	storcli_firmware_webbios_version		text,
-	storcli_firmware_preboot_cli_version		text,
-	storcli_firmware_nvdata_version			text,
-	storcli_firmware_boot_block_version		text,
-	storcli_firmware_bootloader_version		text,
-	storcli_firmware_driver_name			text,
-	storcli_firmware_driver_version			text,
-	storcli_firmware_pending_images_in_flash	text,
-	modified_date					timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_firmware_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
--- Information on bus
-CREATE TABLE storcli_bus (
-	storcli_bus_id				uuid				primary key,
-	storcli_bus_storcli_adapter_uuid	uuid				not null,
-	storcli_bus_vendor_id			text,
-	storcli_bus_device_id			text,
-	storcli_bus_subvendor_id		text,
-	storcli_bus_subdevice_id		text,
-	storcli_bus_host_interface		text,
-	storcli_bus_device_interface		text,
-	storcli_bus_bus_number			numeric,
-	storcli_bus_device_number		numeric,
-	storcli_bus_function_number		numeric,
+-- This stores the data from the 'Version' section of 'storcli64 /cX show all'.
+CREATE TABLE storcli_version (
+	storcli_version_uuid			uuid				primary key,
+	storcli_version_storcli_adapter_uuid	uuid				not null,
+	storcli_version_package_build		text, 
+	storcli_version_version			text, 
+	storcli_version_cpld_version		text, 
+	storcli_version_bios_version		text, 
+	storcli_version_webbios_version		text, 
+	storcli_version_ctrl_r_version		text, 
+	storcli_version_preboot_cli_version	text, 
+	storcli_version_nvdata_version		text, 
+	storcli_version_boot_block_version	text, 
+	storcli_version_bootloader_version	text, 
+	storcli_version_driver_name		text, 
+	storcli_version_driver_version		text, 
 	modified_date				timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_bus_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+	
+	FOREIGN KEY(storcli_version_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
+ALTER TABLE storcli_version OWNER TO #!variable!user!#;
 
--- Status information
-CREATE TABLE storcli_status (
-	storcli_status_id				uuid				primary key,
-	storcli_status_storcli_adapter_uuid		uuid				not null,
-	storcli_status_controller_status		text,
-	storcli_status_memory_correctable_errors	numeric,
-	storcli_status_memory_uncorrectable_errors	numeric,
-	storcli_status_ecc_bucket_count			numeric,
-	storcli_status_any_offline_vd_cache_preserved	boolean,
-	storcli_status_bbu_status			numeric,
-	storcli_status_support_pd_firmware_download	boolean,
-	storcli_status_lock_key_assigned		boolean,
-	storcli_status_failed_to_get_lock_key_on_bootup	boolean,
-	storcli_status_bios_not_detected_during_boot	boolean,
-	storcli_status_rebooted_for_security_operation	boolean,
-	storcli_status_rollback_operation_in_progress	boolean,
-	storcli_status_at_least_one_pfk_exists_in_nvram	boolean,
-	storcli_status_ssc_policy_is_wb			boolean,
-	storcli_status_controller_booted_into_safe_mode	boolean,
-	modified_date					timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_status_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
--- Supported Operations
-CREATE TABLE storcli_supported_ops (
-	storcli_supported_ops_id			uuid				primary key,
-	storcli_supported_ops_storcli_adapter_uuid	uuid				not null,
-	storcli_supported_ops_rebuild_rate		boolean,
-	storcli_supported_ops_cc_rate			boolean,
-	storcli_supported_ops_bgi_rate			boolean,
-	storcli_supported_ops_reconstruct_rate		boolean,
-	storcli_supported_ops_patrol_read_rate		boolean,
-	storcli_supported_ops_alarm_control		boolean,
-	storcli_supported_ops_cluster_support		boolean,
-	storcli_supported_ops_bbu			boolean,
-	storcli_supported_ops_spanning			boolean,
-	storcli_supported_ops_dedicated_hot_spare	boolean,
-	storcli_supported_ops_revertible_hot_spares	boolean,
-	storcli_supported_ops_foreign_config_import	boolean,
-	storcli_supported_ops_self_diagnostic		boolean,
-	storcli_supported_ops_allow_mixed_redundancy	boolean,	-- Still needs to be defined!
-	storcli_supported_ops_global_hot_spares		boolean,
-	storcli_supported_ops_deny_scsi_passthrough	boolean,
-	storcli_supported_ops_deny_smp_passthrough	boolean,
-	storcli_supported_ops_deny_stp_passthrough	boolean,
-	storcli_supported_ops_support_more_than_8_pd	boolean,
-	storcli_supported_ops_fw_and_event_time_in_gmt	boolean,
-	storcli_supported_ops_enhanced_foreign_import	boolean,
-	storcli_supported_ops_enclosure_enumeration	boolean,
-	storcli_supported_ops_allowed_operations	boolean,
-	storcli_supported_ops_abort_cc_on_error		boolean,
-	storcli_supported_ops_multipath			boolean,
-	storcli_supported_ops_odd_even_pd_count_raid1e	boolean,
-	storcli_supported_ops_security			boolean,
-	storcli_supported_ops_config_page_model		boolean,
-	storcli_supported_ops_oce_without_adding_drives	boolean,
-	storcli_supported_ops_external_key_management	boolean,
-	storcli_supported_ops_snapshot_enabled		boolean,
-	storcli_supported_ops_premium_feature_key	boolean,
-	storcli_supported_ops_protection_information	boolean,
-	storcli_supported_ops_ldpi_type1		boolean,
-	storcli_supported_ops_ldpi_type2		boolean,
-	storcli_supported_ops_ldpi_type3		boolean,
-	storcli_supported_ops_ld_bbm_info		boolean,
-	storcli_supported_ops_shield_state		boolean,
-	storcli_supported_ops_block_ssd_wdc_change	boolean,	-- wdc == Write Disk Cache 
-	storcli_supported_ops_suspend_resume_bg_ops	boolean,	-- bg == Background
-	storcli_supported_ops_emergency_spares		boolean,
-	storcli_supported_ops_set_link_speed		boolean,
-	storcli_supported_ops_boot_time_pfk_change	boolean,
-	storcli_supported_ops_jbod			boolean,
-	storcli_supported_ops_disable_online_pfk_change	boolean,
-	storcli_supported_ops_performance_tuning	boolean,
-	storcli_supported_ops_ssd_patrol_read		boolean,
-	storcli_supported_ops_real_time_scheduler	boolean,
-	storcli_supported_ops_reset_now			boolean,
-	storcli_supported_ops_emulated_drives		boolean,
-	storcli_supported_ops_headless_mode		boolean,
-	storcli_supported_ops_dedicated_hs_limited	boolean,
-	storcli_supported_ops_point_in_time_progress	boolean,
-	storcli_supported_ops_extended_ld		boolean,
-	modified_date					timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
--- Supported Physical Drive Operations
-CREATE TABLE storcli_supported_pd_ops (
-	storcli_supported_pd_ops_id				uuid				primary key,
-	storcli_supported_pd_ops_force_online			boolean,
-	storcli_supported_pd_ops_force_rebuild			boolean,
-	storcli_supported_pd_ops_deny_force_failed		boolean,
-	storcli_supported_pd_ops_deny_force_good_Bad		boolean,
-	storcli_supported_pd_ops_deny_missing_replace		boolean,
-	storcli_supported_pd_ops_deny_clear			boolean,
-	storcli_supported_pd_ops_deny_locate			boolean,
-	storcli_supported_pd_ops_support_power_state		boolean,
-	storcli_supported_pd_ops_set_power_state_for_config	boolean,
-	storcli_supported_pd_ops_support_t10_power_state	boolean,
-	storcli_supported_pd_ops_support_temperature		boolean,
-	storcli_supported_pd_ops_ncq				boolean,
-	modified_date						timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
--- Supported Virtual Drive Operations
-CREATE TABLE storcli_supported_vd_ops (
-	storcli_supported_vd_ops_id				uuid				primary key,
-	storcli_supported_vd_ops_read_policy			boolean,
-	storcli_supported_vd_ops_write_policy			boolean,
-	storcli_supported_vd_ops_io_policy			boolean,
-	storcli_supported_vd_ops_access_policy			boolean,
-	storcli_supported_vd_ops_disk_cache_policy		boolean,
-	storcli_supported_vd_ops_reconstruction			boolean,
-	storcli_supported_vd_ops_deny_locate			boolean,
-	storcli_supported_vd_ops_deny_consistency_check		boolean,
-	storcli_supported_vd_ops_allow_controller_encryption	boolean,
-	storcli_supported_vd_ops_enable_ldbbm			boolean,
-	storcli_supported_vd_ops_support_fastpath		boolean,
-	storcli_supported_vd_ops_performance_metrics		boolean,
-	storcli_supported_vd_ops_power_savings			boolean,
-	storcli_supported_vd_ops_powersave_max_with_cache	boolean,
-	storcli_supported_vd_ops_support_breakmirror		boolean,
-	storcli_supported_vd_ops_support_ssc_writeback		boolean,
-	storcli_supported_vd_ops_support_ssc_association	boolean,
-	storcli_supported_vd_ops_support_vd_hide		boolean,
-	storcli_supported_vd_ops_support_vd_hoqrebuid		boolean,
-	modified_date						timestamp with time zone	not null,
-
-	FOREIGN KEY(storcli_supported_ops_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
-
-
-
-
--- ----------------------------------------------------------------------------------------------------------
-
--- Adapter settings (We do not record the date on the controller because it'll change every scan)
-CREATE TABLE storcli_settings (
-	storcli_settings_id					uuid				primary key,
-	storcli_settings_storcli_adapter_uuid			uuid				not null,
-	storcli_settings_predictive_fail_poll_interval		numeric,					-- Number of seconds
-	storcli_settings_interrupt_throttle_active_count	numeric,
-	storcli_settings_interrupt_throttle_completion		numeric,					-- Number of us
-	storcli_settings_rebuild_rate				numeric,					-- Percentage of total bandwidth
-	storcli_settings_patrol_read_rate			numeric,					-- Percentage - scans PDs looking for errors early
-	storcli_settings_background_initialization_rate		numeric,					-- Percentage
-	storcli_settings_check_consistency_rate			numeric,					-- Percentage
-	storcli_settings_reconstruction_rate			numeric,					-- Percentage
-	storcli_settings_cache_flush_interval			numeric,					-- Number of seconds
-	storcli_settings_max_simultaneous_drive_spinup		numeric,					-- Drive count
-	storcli_settings_spinup_group_delay			numeric,					-- Number of seconds to wait between drive group spinup
-	storcli_settings_physical_drive_coercion_mode		boolean,					-- TRUE == enabled, FALSE == Disabled - ?
-	storcli_settings_cluster_mode				boolean,					-- TRUE == enabled, FALSE == Disabled - ?
-	storcli_settings_alarm					boolean,					-- TRUE == ?, FALSE == Disabled
-	storcli_settings_auto_rebuild				boolean,					-- TRUE == enabled, FALSE == Disabled
-	storcli_settings_battery_warning			boolean,					-- 
-	storcli_settings_ecc_bucket_size			numeric,					-- ?
-	storcli_settings_ecc_bucket_leak_rate			numeric,					-- Number of seconds
-	storcli_settings_restore_hotspare_on_insertion		boolean,					-- TRUE == enabled, FALSE == Disabled
-	storcli_settings_expose_enclosure_devices		boolean,					-- TRUE == enabled, FALSE == Disabled
-	storcli_settings_maintain_physical_disk_fail_history	boolean,					-- TRUE == enabled, FALSE == Disabled
-	storcli_settings_host_request_reordering		boolean,					-- TRUE == enabled, FALSE == Disabled
-	storcli_settings_auto_detect_backplane_enabled		text,
-	storcli_settings_load_balance_mode			text,
-	storcli_settings_		boolean,
-	storcli_settings_		numeric,
-
-	modified_date			timestamp with time zone	not null
-
-	FOREIGN KEY(storcli_settings_storcli_adapter_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
-);
-
--- Information on ports
-CREATE TABLE storcli_port (
-	storcli_port_id				uuid				primary key,
-	storcli_port_storcli_adapter_uuid	uuid				not null,
-	storcli_port_type			text				not null,	-- 'frontend' == external port, 'backend' == internal port
-	storcli_port_number			numeric				not null,
-	storcli_port_address			text				not null,
+CREATE TABLE history.storcli_version (
+	history_id				bigserial,
+	storcli_version_uuid			uuid				primary key,
+	storcli_version_storcli_adapter_uuid	uuid				not null,
+	storcli_version_package_build		text, 
+	storcli_version_version			text, 
+	storcli_version_cpld_version		text, 
+	storcli_version_bios_version		text, 
+	storcli_version_webbios_version		text, 
+	storcli_version_ctrl_r_version		text, 
+	storcli_version_preboot_cli_version	text, 
+	storcli_version_nvdata_version		text, 
+	storcli_version_boot_block_version	text, 
+	storcli_version_bootloader_version	text, 
+	storcli_version_driver_name		text, 
+	storcli_version_driver_version		text, 
 	modified_date				timestamp with time zone	not null
-
-	FOREIGN KEY(storcli_port_storcli_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
 );
+ALTER TABLE history.storcli_version OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_version() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_version RECORD;
+BEGIN
+	SELECT INTO history_storcli_version * FROM storcli_version WHERE storcli_version_uuid=new.storcli_version_uuid;
+	INSERT INTO history.storcli_version
+		(storcli_version_uuid, 
+		 storcli_version_storcli_adapter_uuid, 
+		 storcli_version_package_build, 
+		 storcli_version_version, 
+		 storcli_version_cpld_version, 
+		 storcli_version_bios_version, 
+		 storcli_version_webbios_version, 
+		 storcli_version_ctrl_r_version, 
+		 storcli_version_preboot_cli_version, 
+		 storcli_version_nvdata_version, 
+		 storcli_version_boot_block_version, 
+		 storcli_version_bootloader_version, 
+		 storcli_version_driver_name, 
+		 storcli_version_driver_version, 
+		 modified_date)
+	VALUES
+		(history_storcli_version.storcli_version_uuid, 
+		 history_storcli_version.storcli_version_storcli_adapter_uuid, 
+		 history_storcli_version.storcli_version_package_build, 
+		 history_storcli_version.storcli_version_version, 
+		 history_storcli_version.storcli_version_cpld_version, 
+		 history_storcli_version.storcli_version_bios_version, 
+		 history_storcli_version.storcli_version_webbios_version, 
+		 history_storcli_version.storcli_version_ctrl_r_version, 
+		 history_storcli_version.storcli_version_preboot_cli_version, 
+		 history_storcli_version.storcli_version_nvdata_version, 
+		 history_storcli_version.storcli_version_boot_block_version, 
+		 history_storcli_version.storcli_version_bootloader_version, 
+		 history_storcli_version.storcli_version_driver_name, 
+		 history_storcli_version.storcli_version_driver_version, 
+		 history_storcli_version.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_version() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_version
+	AFTER INSERT OR UPDATE ON storcli_version
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_version();
+
+
+-- This stores the data from the 'Status' section of 'storcli64 /cX show all'.
+CREATE TABLE storcli_status (
+	storcli_status_uuid				uuid				primary key,
+	storcli_status_storcli_adapter_uuid		uuid				not null,
+	storcli_status_function_number			text,
+	storcli_status_memory_correctable_errors	text,
+	storcli_status_memory_uncorrectable_errors	text,
+	storcli_status_ecc_bucket_count			text,
+	storcli_status_any_offline_vd_cache_preserved	text,
+	storcli_status_bbu_status			text,
+	storcli_status_lock_key_assigned		text,
+	storcli_status_failed_to_get_lock_key_on_bootup	text,
+	storcli_status_controller_booted_into_safe_mode	text,
+	
+	modified_date					timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_status_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+ALTER TABLE storcli_status OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_status (
+	history_id					bigserial,
+	storcli_status_uuid				uuid				primary key,
+	storcli_status_storcli_adapter_uuid		uuid				not null,
+	storcli_status_function_number			text,
+	storcli_status_memory_correctable_errors	text,
+	storcli_status_memory_uncorrectable_errors	text,
+	storcli_status_ecc_bucket_count			text,
+	storcli_status_any_offline_vd_cache_preserved	text,
+	storcli_status_bbu_status			text,
+	storcli_status_lock_key_assigned		text,
+	storcli_status_failed_to_get_lock_key_on_bootup	text,
+	storcli_status_controller_booted_into_safe_mode	text,
+	modified_date					timestamp with time zone	not null
+);
+ALTER TABLE history.storcli_status OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_status() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_status RECORD;
+BEGIN
+	SELECT INTO history_storcli_status * FROM storcli_status WHERE storcli_status_uuid=new.storcli_status_uuid;
+	INSERT INTO history.storcli_status
+		(storcli_status_uuid, 
+		 storcli_status_storcli_adapter_uuid, 
+		 storcli_status_function_number, 
+		 storcli_status_memory_correctable_errors, 
+		 storcli_status_memory_uncorrectable_errors, 
+		 storcli_status_ecc_bucket_count, 
+		 storcli_status_any_offline_vd_cache_preserved, 
+		 storcli_status_bbu_status, 
+		 storcli_status_lock_key_assigned, 
+		 storcli_status_failed_to_get_lock_key_on_bootup, 
+		 storcli_status_controller_booted_into_safe_mode, 
+		 modified_date)
+	VALUES
+		(history_storcli_status.storcli_status_uuid, 
+		 history_storcli_status.storcli_status_storcli_adapter_uuid, 
+		 history_storcli_status.storcli_status_function_number, 
+		 history_storcli_status.storcli_status_memory_correctable_errors, 
+		 history_storcli_status.storcli_status_memory_uncorrectable_errors, 
+		 history_storcli_status.storcli_status_ecc_bucket_count, 
+		 history_storcli_status.storcli_status_any_offline_vd_cache_preserved, 
+		 history_storcli_status.storcli_status_bbu_status, 
+		 history_storcli_status.storcli_status_lock_key_assigned, 
+		 history_storcli_status.storcli_status_failed_to_get_lock_key_on_bootup, 
+		 history_storcli_status.storcli_status_controller_booted_into_safe_mode, 
+		 history_storcli_status.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_status() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_status
+	AFTER INSERT OR UPDATE ON storcli_status
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_status();
+
+
+-- ------------------------------------------------------------------------------------------------------- --
+-- This stores the plethora of values we read but don't explicitely parse (yet).                           --
+-- ------------------------------------------------------------------------------------------------------- --
+CREATE TABLE storcli_miscellaneous (
+	storcli_misc_uuid			uuid				primary key,
+	storcli_misc_storcli_adapter_uuid	uuid				not null,
+	storcli_misc_section			text				not null,
+	storcli_misc_varible_name		text				not null,
+	storcli_misc_value			text,
+	modified_date				timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_misc_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+ALTER TABLE storcli_miscellaneous OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_miscellaneous (
+	history_id				bigserial,
+	storcli_misc_uuid			uuid				primary key,
+	storcli_misc_storcli_adapter_uuid	uuid				not null,
+	storcli_misc_section			text				not null,
+	storcli_misc_varible_name		text				not null,
+	storcli_misc_value			text,
+	modified_date				timestamp with time zone	not null
+);
+ALTER TABLE history.storcli_miscellaneous OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_miscellaneous() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_adapter RECORD;
+BEGIN
+	SELECT INTO history_storcli_misc * FROM storcli_miscellaneous WHERE storcli_adapter_uuid=new.storcli_adapter_uuid;
+	INSERT INTO history.storcli_miscellaneous
+		(storcli_misc_uuid, 
+		 storcli_misc_storcli_adapter_uuid, 
+		 storcli_misc_section, 
+		 storcli_misc_varible_name, 
+		 storcli_misc_value, 
+		 modified_date)
+	VALUES
+		(history_storcli_misc.storcli_misc_uuid, 
+		 history_storcli_misc.storcli_misc_storcli_adapter_uuid, 
+		 history_storcli_misc.storcli_misc_section, 
+		 history_storcli_misc.storcli_misc_varible_name, 
+		 history_storcli_misc.storcli_misc_value, 
+		 history_storcli_misc.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_adapter() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_miscellaneous
+	AFTER INSERT OR UPDATE ON storcli_miscellaneous
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_miscellaneous();
+

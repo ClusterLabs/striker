@@ -12,9 +12,9 @@
 # 1  - storcli64 not installed
 # 2  - storcli64 is installed but it is not executable.
 # 3  - No LSI-based controllers found.
+# 4  - Got data from the wrong controller.
+# 5  - Unexpecte status when querying adapter
 # 
-
-exit(0);
 
 # Use my modules.
 use strict;
@@ -51,8 +51,7 @@ my $an = AN::Tools->new({data =>
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
-		# This is used so that the user can set the language in on
-		# striker.conf variable.
+		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-storcli'		=>	{
 			language		=>	"en_CA",
 			log_level		=>	1,
@@ -95,6 +94,8 @@ my $an = AN::Tools->new({data =>
 				physical_disks		=>	"",
 				virtual_disks		=>	"",
 			},
+			adapter_count		=>	0,
+			adapter			=>	{},
 		},
 	},
 });
@@ -122,7 +123,7 @@ print $an->String->get({key => "scan_storcli_message_0001"}), "\n";
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 
 # executable) and then checks to see if any controllers are found in the system (exits '3' if not). 
-find_lsi_controllers($an);
+find_avago_controllers($an);
 
 # If we're still alive, start gathering data.
 gather_data($an);
@@ -135,366 +136,81 @@ nice_exit($an);
 # Function below                                                                                            #
 #############################################################################################################
 
-# This sets the active section to '1' when a storcli header is passed in.
-sub set_active_section
+# This gathers the various data from the controller(s).
+sub gather_data
 {
-	my ($an, $type, $line) = @_;
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# These variables are used to track which section is being parsed.
-	if ($type eq "adapter")
+	# Loops through reach found controller.
+	foreach my $controller (1..$an->data->{sys}{adapter_count})
 	{
-		$an->data->{$type}{in_header}                       = 0;
-		$an->data->{$type}{in_basics}                       = 0;
-		$an->data->{$type}{in_version}                      = 0;
-		$an->data->{$type}{in_bus}                          = 0;
-		$an->data->{$type}{in_pending_images_in_flash}      = 0;
-		$an->data->{$type}{in_status}                       = 0;
-		$an->data->{$type}{in_supported_adapter_operations} = 0;
-		$an->data->{$type}{in_supported_pd_operations}      = 0;
-		$an->data->{$type}{in_supported_vd_operations}      = 0;
-		$an->data->{$type}{in_advanced_software_option}     = 0;
-		$an->data->{$type}{in_hardware_config}              = 0;
-		$an->data->{$type}{in_policies}                     = 0;
-		$an->data->{$type}{in_policies_table}               = 0;
-		$an->data->{$type}{in_boot}                         = 0;
-		$an->data->{$type}{in_high_availability}            = 0;
-		$an->data->{$type}{in_defaults}                     = 0;
-		$an->data->{$type}{in_capabilities}                 = 0;
-		$an->data->{$type}{in_scheduled_tasks}              = 0;
-		$an->data->{$type}{in_topology}                     = 0;
-		$an->data->{$type}{in_virtual_disk_list}            = 0;
-		$an->data->{$type}{in_physical_disk_list}           = 0;
-		$an->data->{$type}{in_cachevault_info}              = 0;
+		# We drop the number by 1 because the '/cX' starts at '0' where the controller count starts 
+		# at '1'.
+		my $adapter = ($controller - 1);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "controller", value1 => $controller, 
+			name2 => "adapter",    value2 => $adapter, 
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		# Read in basic and version data (well, read in everything, but that's all we care about).
+		my $type       = "adapter";
+		my $shell_call = $an->data->{path}{storcli}." /c".$adapter." ".$an->data->{sys}{arguments}{controller_info};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/\r//;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+:/:/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /^Basics:$/i)
-		{
-			$an->data->{$type}{in_basics} = 1;
+			if ($line =~ /:$/)
+			{
+				set_active_section($an, $type, $line);
+			}
+			
+			if ($an->data->{$type}{in_header})
+			{
+				# A couple sanity checks...
+				parse_adapter_header($an, $adapter, $line);
+				next;
+			}
+			elsif ($an->data->{$type}{in_basics})
+			{
+				# Controller info
+				parse_adapter_basics($an, $adapter, $line);
+			}
+			elsif ($an->data->{$type}{in_version})
+			{
+				# Firmware info.
+				parse_adapter_version($an, $adapter, $line);
+			}
+			elsif ($an->data->{$type}{in_pending_images_in_flash})
+			{
+				# Firmware images pending in flash memory
+				parse_adapter_pending_images_in_flash($an, $adapter, $line);
+			}
+			elsif ($an->data->{$type}{in_bus})
+			{
+				# Bus info.
+				parse_adapter_bus($an, $adapter, $line);
+			}
+			elsif ($an->data->{$type}{in_status})
+			{
+				# System status.
+				parse_adapter_status($an, $adapter, $line);
+			}
 		}
-		elsif ($line =~ /^Version:$/i)
-		{
-			$an->data->{$type}{in_version} = 1;
-		}
-		elsif ($line =~ /^Bus:$/i)
-		{
-			$an->data->{$type}{in_bus} = 1;
-		}
-		elsif ($line =~ /^Pending Images in Flash:$/i)
-		{
-			$an->data->{$type}{in_pending_images_in_flash} = 1;
-		}
-		elsif ($line =~ /^Status:$/i)
-		{
-			$an->data->{$type}{in_status} = 1;
-		}
-		elsif ($line =~ /^Supported Adapter Operations:$/i)
-		{
-			$an->data->{$type}{in_supported_adapter_operations} = 1;
-		}
-		elsif ($line =~ /^Supported PD Operations:$/i)
-		{
-			$an->data->{$type}{in_supported_pd_operations} = 1;
-		}
-		elsif ($line =~ /^Supported VD Operations:$/i)
-		{
-			$an->data->{$type}{in_supported_vd_operations} = 1;
-		}
-		elsif ($line =~ /^Advanced Software Option:$/i)
-		{
-			$an->data->{$type}{in_advanced_software_option} = 1;
-		}
-		elsif ($line =~ /^HwCfg:$/i)
-		{
-			$an->data->{$type}{in_hardware_config} = 1;
-		}
-		elsif ($line =~ /^Policies:$/i)
-		{
-			$an->data->{$type}{in_policies} = 1;
-		}
-		elsif ($line =~ /^Policies Table:$/i)
-		{
-			$an->data->{$type}{in_policies_table} = 1;
-		}
-		elsif ($line =~ /^Boot:$/i)
-		{
-			$an->data->{$type}{in_boot} = 1;
-		}
-		elsif ($line =~ /^High Availability:$/i)
-		{
-			$an->data->{$type}{in_high_availability} = 1;
-		}
-		elsif ($line =~ /^Defaults:$/i)
-		{
-			$an->data->{$type}{in_defaults} = 1;
-		}
-		elsif ($line =~ /^Capabilities:$/i)
-		{
-			$an->data->{$type}{in_capabilities} = 1;
-		}
-		elsif ($line =~ /^Scheduled Tasks:$/i)
-		{
-			$an->data->{$type}{in_scheduled_tasks} = 1;
-		}
-		elsif ($line =~ /^TOPOLOGY:$/i)
-		{
-			$an->data->{$type}{in_topology} = 1;
-		}
-		elsif ($line =~ /^VD LIST:$/i)
-		{
-			$an->data->{$type}{in_virtual_disk_list} = 1;
-		}
-		elsif ($line =~ /^PD LIST:$/i)
-		{
-			$an->data->{$type}{in_physical_disk_list} = 1;
-		}
-		elsif ($line =~ /^Cachevault_Info:$/i)
-		{
-			$an->data->{$type}{in_cachevault_info} = 1;
-		}
+		close $file_handle;
 	}
-	
-	return(0);
-}
-
-# This parses out the 'Basics' data from the adapter.
-sub parse_adapter_basics
-{
-	my ($an, $adapter, $line) = @_;
-	
-	if ($line =~ /^Model = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_product_name
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{product_name} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::product_name", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{product_name}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Serial Number = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_serial_number
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{serial_number} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::serial_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{serial_number}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^SAS Address = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_sas_address
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{sas_address} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::sas_address", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{sas_address}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^PCI Address = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_pci_address
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{pci_address} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::pci_address", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{pci_address}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Mfg Date = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_manufacture_date
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{manufacture_date} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::manufacture_date", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{manufacture_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Rework Date = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_rework_date
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{rework_date} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::rework_date", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{rework_date}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Revision No = (.*)?/i)
-	{
-		# storcli_adapter -> storcli_adapter_revision_number
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{revision_number} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter::revision_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter}{revision_number}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This parses out the 'Version' data from the adapter.
-sub parse_adapter_version
-{
-	my ($an, $adapter, $line) = @_;
-	
-	if ($line =~ /^Firmware Package Build = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_package_build
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{package_build} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::package_build", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{package_build}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Firmware Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Bios Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_bios_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{bios_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::bios_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{bios_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^WebBIOS Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_webbios_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{webbios_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::webbios_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{webbios_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Preboot CLI Version = (.*)?/i)
-	{
-		# storcli_firmware -> name_storcli_firmware_preboot_cli_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{preboot_cli_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::preboot_cli_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{preboot_cli_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Boot Block Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_boot_block_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{boot_block_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::boot_block_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{boot_block_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Bootloader Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_boot_block_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{boot_block_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::boot_block_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{boot_block_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Driver Name = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_driver_name
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{driver_name} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::driver_name", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{driver_name}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Driver Version = (.*)?/i)
-	{
-		# storcli_firmware -> storcli_firmware_driver_version
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{driver_version} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::driver_version", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{driver_version}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Image name = (.*)?/i)
-	{
-		# storcli_firmware -> link_storcli_firmware_pending_images_in_flash
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{pending_images_in_flash} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_firmware::pending_images_in_flash", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_firmware}{pending_images_in_flash}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This parses out the 'Bus' data from the adapter.
-sub parse_adapter_bus
-{
-	my ($an, $adapter, $line) = @_;
-	
-	if ($line =~ /^Vendor Id = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_vendor_id
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{vendor_id} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::vendor_id", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{vendor_id}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Device Id = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_device_id
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_id} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::device_id", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_id}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^SubVendor Id = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_subvendor_id
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{subvendor_id} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::subvendor_id", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{subvendor_id}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^SubDevice Id = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_subdevice_id
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{subdevice_id} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::subdevice_id", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{subdevice_id}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Host Interface = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_host_interface
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{host_interface} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::host_interface", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{host_interface}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Device Interface = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_device_interface
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_interface} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::device_interface", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_interface}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Bus Number = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_bus_number
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{bus_number} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::bus_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{bus_number}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Device Number = (.*)?/i)
-	{
-		# storcli_bus -> storclstorcli_bus_device_number
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_number} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::device_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{device_number}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Function Number = (.*)?/i)
-	{
-		# storcli_bus -> storcli_bus_function_number
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{function_number} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_bus::function_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_bus}{function_number}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This parses out the 'Pending Images in Flash' data from the adapter.
-sub parse_adapter_pending_images_in_flash
-{
-	my ($an, $adapter, $line) = @_;
-	
 	
 	return(0);
 }
@@ -503,6 +219,9 @@ sub parse_adapter_pending_images_in_flash
 sub parse_adapter_status
 {
 	my ($an, $adapter, $line) = @_;
+	
+	my $section_name = "status";
+	my $section_key  = "#!string!scan_storcli_section_0005!#";
 	
 	if ($line =~ /^Controller Status = (.*)?/i)
 	{
@@ -552,14 +271,6 @@ sub parse_adapter_status
 			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::bbu_status", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bbu_status}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Support PD Firmware Download = (.*)?/i)
-	{
-		# storcli_status -> storcli_status_support_pd_firmware_download
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{support_pd_firmware_download} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::support_pd_firmware_download", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{support_pd_firmware_download}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	elsif ($line =~ /^Lock Key Assigned = (.*)?/i)
 	{
 		# storcli_status -> storcli_status_lock_key_assigned
@@ -576,46 +287,6 @@ sub parse_adapter_status
 			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::failed_to_get_lock_key_on_bootup", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{failed_to_get_lock_key_on_bootup}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Bios was not detected during boot = (.*)?/i)
-	{
-		# storcli_status -> storcli_status_bios_not_detected_during_boot
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bios_not_detected_during_boot} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::bios_not_detected_during_boot", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{bios_not_detected_during_boot}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Controller must be rebooted to complete security operation = (.*)?/i)
-	{
-		# storcli_status -> storcli_status_rebooted_for_security_operation
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rebooted_for_security_operation} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::rebooted_for_security_operation", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rebooted_for_security_operation}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^A rollback operation is in progress = (.*)?/i)
-	{
-		# storcli_status -> storcli_status_rollback_operation_in_progress
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rollback_operation_in_progress} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::rollback_operation_in_progress", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{rollback_operation_in_progress}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^At least one PFK exists in NVRAM = (.*)?/i)	# Premium Feature Key
-	{
-		# storcli_status -> storcli_status_at_least_one_pfk_exists_in_nvram
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::at_least_one_pfk_exists_in_nvram", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{at_least_one_pfk_exists_in_nvram}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^SSC Policy is WB = (.*)?/i)	# Solid State Cache policy
-	{
-		# storcli_status -> storcli_status_ssc_policy_is_wb
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ssc_policy_is_wb} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::ssc_policy_is_wb", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{ssc_policy_is_wb}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	elsif ($line =~ /^Controller has booted into safe mode = (.*)?/i)
 	{
 		# storcli_status -> storcli_status_controller_booted_into_safe_mode
@@ -624,1286 +295,283 @@ sub parse_adapter_status
 			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::controller_booted_into_safe_mode", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{controller_booted_into_safe_mode}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	else
+	{
+		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+	}
 	
 	return(0);
 }
 
-# This parses out the 'Supported Adapter Operations' data from the adapter.
-sub parse_adapter_supported_adapter_operations
+# This parses out the 'Pending Images in Flash' data from the adapter.
+sub parse_adapter_pending_images_in_flash
 {
 	my ($an, $adapter, $line) = @_;
 	
-	if ($line =~ /^Rebuild Rate = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_rebuild_rate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{rebuild_rate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::rebuild_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{rebuild_rate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^CC Rate = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_cc_rate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cc_rate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::cc_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cc_rate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^BGI Rate = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_bgi_rate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bgi_rate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::bgi_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bgi_rate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Reconstruct Rate = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_reconstruct_rate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reconstruct_rate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::reconstruct_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reconstruct_rate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Patrol Read Rate = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_patrol_read_rate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::patrol_read_rate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{patrol_read_rate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Alarm Control = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_alarm_control
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{alarm_control} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::alarm_control", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{alarm_control}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Cluster Support = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_cluster_support
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cluster_support} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::cluster_support", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{cluster_support}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^BBU = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_bbu
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bbu} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::bbu", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{bbu}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Spanning = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_spanning
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{spanning} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::spanning", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{spanning}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Dedicated Hot Spare = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_dedicated_hot_spare
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hot_spare} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::dedicated_hot_spare", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hot_spare}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Revertible Hot Spares = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_revertible_hot_spares
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{revertible_hot_spares} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::revertible_hot_spares", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{revertible_hot_spares}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Foreign Config Import = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_foreign_config_import
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{foreign_config_import} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::foreign_config_import", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{foreign_config_import}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Self Diagnostic = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_self_diagnostic
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{self_diagnostic} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::self_diagnostic", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{self_diagnostic}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Allow Mixed Redundancy on Array = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_allow_mixed_redundancy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allow_mixed_redundancy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Global Hot Spares = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_global_hot_spares
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allow_mixed_redundancy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allow_mixed_redundancy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny SCSI Passthrough = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_deny_scsi_passthrough
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_scsi_passthrough} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_scsi_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_scsi_passthrough}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny SMP Passthrough = (.*)?/i)	# Serial Management Protocol
-	{
-		# storcli_supported_ops -> storcli_supported_ops_deny_smp_passthrough
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_smp_passthrough} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_smp_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_smp_passthrough}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny STP Passthrough = (.*)?/i)	# Serial Tunneling Protocol
-	{
-		# storcli_supported_ops -> storcli_supported_ops_deny_stp_passthrough
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_stp_passthrough} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::deny_stp_passthrough", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{deny_stp_passthrough}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support more than 8 Phys = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_support_more_than_8_pd
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{support_more_than_8_pd} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::support_more_than_8_pd", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{support_more_than_8_pd}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^FW and Event Time in GMT = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_fw_and_event_time_in_gmt
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{fw_and_event_time_in_gmt} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::fw_and_event_time_in_gmt", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{fw_and_event_time_in_gmt}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Enhanced Foreign Import = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_enhanced_foreign_import
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enhanced_foreign_import} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::enhanced_foreign_import", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enhanced_foreign_import}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Enclosure Enumeration = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_enclosure_enumeration
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enclosure_enumeration} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::enclosure_enumeration", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{enclosure_enumeration}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Allowed Operations = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_allowed_operations
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allowed_operations} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::allowed_operations", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{allowed_operations}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Abort CC on Error = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_abort_cc_on_error
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{abort_cc_on_error} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::abort_cc_on_error", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{abort_cc_on_error}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Multipath = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_multipath
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{multipath} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::multipath", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{multipath}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Odd & Even Drive count in RAID1E = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_odd_even_pd_count_raid1e
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{odd_even_pd_count_raid1e} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::odd_even_pd_count_raid1e", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{odd_even_pd_count_raid1e}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Security = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_security
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{security} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::security", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{security}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Config Page Model = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_config_page_model
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{config_page_model} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::config_page_model", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{config_page_model}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support the OCE without adding drives = (.*)?/i)	# Online Capacity Expansion
-	{
-		# storcli_supported_ops -> storcli_supported_ops_oce_without_adding_drives
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{oce_without_adding_drives} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::oce_without_adding_drives", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{oce_without_adding_drives}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support EKM = (.*)?/i)	# External Key Management
-	{
-		# storcli_supported_ops -> storcli_supported_ops_external_key_management
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{external_key_management} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::external_key_management", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{external_key_management}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Snapshot Enabled = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_snapshot_enabled
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{snapshot_enabled} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::snapshot_enabled", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{snapshot_enabled}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support PFK = (.*)?/i)	# Premium Feature Key
-	{
-		# storcli_supported_ops -> storcli_supported_ops_premium_feature_key
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{premium_feature_key} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::premium_feature_key", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{premium_feature_key}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support PI = (.*)?/i)	# Protection Information
-	{
-		# storcli_supported_ops -> storcli_supported_ops_protection_information
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{protection_information} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::protection_information", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{protection_information}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support LDPI Type1 = (.*)?/i)	# 
-	{
-		# storcli_supported_ops -> storcli_supported_ops_ldpi_type1
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type1} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type1", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type1}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support LDPI Type2 = (.*)?/i)	# 
-	{
-		# storcli_supported_ops -> storcli_supported_ops_ldpi_type2
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type2} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type2", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type2}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support LDPI Type3 = (.*)?/i)	# 
-	{
-		# storcli_supported_ops -> storcli_supported_ops_ldpi_type3
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type3} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ldpi_type3", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ldpi_type3}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Ld BBM Info = (.*)?/i)	# Logical Disk Bad Block Management
-	{
-		# storcli_supported_ops -> storcli_supported_ops_ld_bbm_info
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ld_bbm_info", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ld_bbm_info}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Shield State = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_shield_state
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{shield_state} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::shield_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{shield_state}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Block SSD Write Disk Cache Change = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_block_ssd_wdc_change
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{block_ssd_wdc_change} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::block_ssd_wdc_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{block_ssd_wdc_change}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Suspend Resume BG ops = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_suspend_resume_bg_ops
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{suspend_resume_bg_ops} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::suspend_resume_bg_ops", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{suspend_resume_bg_ops}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Emergency Spares = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_emergency_spares
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emergency_spares} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::emergency_spares", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emergency_spares}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Set Link Speed = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_set_link_speed
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{set_link_speed} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::set_link_speed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{set_link_speed}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Boot Time PFK Change = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_boot_time_pfk_change
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{boot_time_pfk_change} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::boot_time_pfk_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{boot_time_pfk_change}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support JBOD = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_jbod
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{jbod} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::jbod", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{jbod}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Disable Online PFK Change = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_disable_online_pfk_change
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{disable_online_pfk_change} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::disable_online_pfk_change", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{disable_online_pfk_change}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Perf Tuning = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_performance_tuning
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{performance_tuning} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::performance_tuning", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{performance_tuning}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support SSD PatrolRead = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_ssd_patrol_read
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ssd_patrol_read} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::ssd_patrol_read", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{ssd_patrol_read}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Real Time Scheduler = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_real_time_scheduler
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{real_time_scheduler} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::real_time_scheduler", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{real_time_scheduler}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Reset Now = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_reset_now
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reset_now} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::reset_now", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{reset_now}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Emulated Drives = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_emulated_drives
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emulated_drives} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::emulated_drives", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{emulated_drives}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Headless Mode = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_headless_mode
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{headless_mode} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::headless_mode", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{headless_mode}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Dedicated HotSpares Limited = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_dedicated_hs_limited
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hs_limited} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::dedicated_hs_limited", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{dedicated_hs_limited}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Point In Time Progress = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_point_in_time_progress
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{point_in_time_progress} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::point_in_time_progress", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{point_in_time_progress}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Extended LD = (.*)?/i)
-	{
-		# storcli_supported_ops -> storcli_supported_ops_extended_ld
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{extended_ld} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_ops::extended_ld", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_ops}{extended_ld}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
+	my $section_name = "pending_images_in_flash";
+	my $section_key  = "#!string!scan_storcli_section_0003!#";
+	
+	# We're not actively monitoring this yet.
+	process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
 	
 	return(0);
 }
 
-# This parses out the 'Supported PD Operations' data from the adapter.
-sub parse_adapter_supported_pd_operations
-{
-	my ($an, $adapter, $line) = @_;
-
-	if ($line =~ /^Force Online = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_force_online
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_online} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::force_online", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_online}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Force Rebuild = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_force_rebuild
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_rebuild} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::force_rebuild", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{force_rebuild}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Force Failed = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_force_failed
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_failed} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_force_failed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_failed}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Force Good\/Bad = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_force_good_Bad
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_good_Bad} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_force_good_Bad", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_force_good_Bad}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Missing Replace = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_missing_replace
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_missing_replace} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_missing_replace", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_missing_replace}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Clear = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_clear
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_clear} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_clear", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_clear}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Locate = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_deny_locate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_locate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::deny_locate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{deny_locate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Power State = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_power_state
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_power_state} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_power_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_power_state}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Set Power State For Cfg = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_set_power_state_for_config
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{set_power_state_for_config} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::set_power_state_for_config", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{set_power_state_for_config}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support T10 Power State = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_t10_power_state
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_t10_power_state} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_t10_power_state", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_t10_power_state}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Temperature = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_support_temperature
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_temperature} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::support_temperature", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{support_temperature}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^NCQ = (.*)?/i)
-	{
-		# storcli_supported_pd_ops -> storcli_supported_pd_ops_ncq
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{ncq} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_pd_ops::ncq", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_pd_ops}{ncq}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This parses out the 'Supported VD Operations' data from the adapter.
-sub parse_adapter_supported_vd_operations
+# This parses out the 'Bus' data from the adapter.
+sub parse_adapter_bus
 {
 	my ($an, $adapter, $line) = @_;
 	
-	if ($line =~ /^Read Policy = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_read_policy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{read_policy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::read_policy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{read_policy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Write Policy = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_write_policy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{write_policy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::write_policy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{write_policy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^IO Policy = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_io_policy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{io_policy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::io_policy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{io_policy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Access Policy = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_access_policy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{access_policy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::access_policy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{access_policy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Disk Cache Policy = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_disk_cache_policy
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{disk_cache_policy} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::disk_cache_policy", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{disk_cache_policy}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Reconstruction = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_reconstruction
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{reconstruction} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::reconstruction", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{reconstruction}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny Locate = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_deny_locate
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{deny_locate} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::deny_locate", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{deny_locate}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Deny CC = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_deny_consistency_check
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{deny_consistency_check} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::deny_consistency_check", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{deny_consistency_check}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Allow Ctrl Encryption = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_allow_controller_encryption
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{allow_controller_encryption} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::allow_controller_encryption", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{allow_controller_encryption}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Enable LDBBM = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_enable_ldbbm
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{enable_ldbbm} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::enable_ldbbm", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{enable_ldbbm}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support FastPath = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_fastpath
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_fastpath} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_fastpath", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_fastpath}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Performance Metrics = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_performance_metrics
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{performance_metrics} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::performance_metrics", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{performance_metrics}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Power Savings = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_power_savings
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{power_savings} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::power_savings", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{power_savings}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Powersave Max With Cache = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_powersave_max_with_cache
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{powersave_max_with_cache} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::powersave_max_with_cache", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{powersave_max_with_cache}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support Breakmirror = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_breakmirror
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_breakmirror} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_breakmirror", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_breakmirror}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support SSC WriteBack = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_ssc_writeback
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_ssc_writeback} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_ssc_writeback", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_ssc_writeback}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support SSC Association = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_ssc_association
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_ssc_association} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_ssc_association", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_ssc_association}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support VD Hide = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_vd_hide
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_vd_hide} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_vd_hide", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_vd_hide}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($line =~ /^Support VD HOQRebuid = (.*)?/i)
-	{
-		# storcli_supported_vd_ops -> storcli_supported_vd_ops_support_vd_hoqrebuid
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_vd_hoqrebuid} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_supported_vd_ops::support_vd_hoqrebuid", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_supported_vd_ops}{support_vd_hoqrebuid}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
+	my $section_name = "bus";
+	my $section_key  = "#!string!scan_storcli_section_0004!#";
+	
+	# We're not actively monitoring this yet.
+	process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
 	
 	return(0);
 }
 
-# This parses out the 'Advanced Software Options' data from the adapter.
-sub parse_adapter_advanced_software_option
+# This processes all storcli output lines we aren't actively watching.
+sub process_other_storcl_line
 {
-	my ($an, $adapter, $line) = @_;
-	
-	# Advanced Software Options
-	if ($line =~ /^Safe ID = (.*)?/i)
-	{
-		# storcli_adapter_adv_sw_opts -> storcli_adapter_adv_sw_opts_safe_id
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_adv_sw_opts}{safe_id} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_adv_sw_opts::safe_id", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_adv_sw_opts}{safe_id}
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This parses out the 'HwCfg' data from the adapter.
-sub parse_adapter_hardware_config
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Policies' data from the adapter.
-sub parse_adapter_policies
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Policies Table' data from the adapter.
-sub parse_adapter_policies_table
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Boot' data from the adapter.
-sub parse_adapter_boot
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'High Availability' data from the adapter.
-sub parse_adapter_high_availability
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Defaults' data from the adapter.
-sub parse_adapter_defaults
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Capabilities' data from the adapter.
-sub parse_adapter_capabilities
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Scheduled Tasks' data from the adapter.
-sub parse_adapter_scheduled_tasks
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'Topology' data from the adapter.
-sub parse_adapter_topology
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'VD List' data from the adapter.
-sub parse_adapter_virtual_disk_list
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'PD List' data from the adapter.
-sub parse_adapter_physical_disk_list
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This parses out the 'CacheVault Info' data from the adapter.
-sub parse_adapter_cachevault_info
-{
-	my ($an, $adapter, $line) = @_;
-	
-	
-	return(0);
-}
-
-# This gathers the various data from the controller(s).
-sub gather_data
-{
-	my ($an) = @_;
-	
-	# Read in information about the adapter(s);
-	my $type       = "adapter";
-	my $adapter    = "";
-	my $port_type  = "";
-	my $shell_call = $an->data->{path}{storcli}." /cAll ".$an->data->{sys}{arguments}{controller_info}." 2>&1 |";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+	my ($conf, $adapter, $line, $section_name, $section_key) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_other_storcl_line", }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "adapter",      value1 => $adapter, 
+		name2 => "line",         value2 => $line, 
+		name3 => "section_name", value3 => $section_name, 
+		name4 => "section_key",  value4 => $section_key, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		   $line =~ s/\r//;
-		   $line =~ s/^\s+//;
-		   $line =~ s/\s+$//;
-		   $line =~ s/\s+:/:/;
-		if (not $line)
-		{
-			$port_type = "";
-			next;
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /:$/)
-		{
-			set_active_section($an, $type, $line);
-		}
-		
-		if ($line =~ /^Controller = (\d+)/i)
-		{
-			# storcli_adapter -> storcli_adapter_adapter_number
-			$adapter = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "adapter", value1 => $adapter
-			}, file => $THIS_FILE, line => __LINE__});
-			next;
-		}
-		
-		# If I don't have an adapter, skip the line.
-		next if $adapter !~ /^\d+/;
-		
-		### Now start digging data out!
-		if ($an->data->{$type}{in_header})
-		{
-			# I don't currently care about this data.
-		}
-		elsif ($an->data->{$type}{in_basics})
-		{
-			# Controller info
-			parse_adapter_basics($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_version})
-		{
-			# Firmware info.
-			parse_adapter_version($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_bus})
-		{
-			# Bus info.
-			parse_adapter_bus($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_pending_images_in_flash})
-		{
-			parse_adapter_pending_images_in_flash($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_status})
-		{
-			parse_adapter_status($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_supported_adapter_operations})
-		{
-			parse_adapter_supported_adapter_operations($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_supported_pd_operations})
-		{
-			# Supported Physical Disk Operations
-			parse_adapter_supported_pd_operations($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_supported_vd_operations})
-		{
-			# Supported Virtual Disk Operations
-			parse_adapter_supported_vd_operations($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_advanced_software_option})
-		{
-			# Advanced Software Options
-			### TODO: Parse 'MegaCli64 -ELF -ControllerFeatures -a0', only 'Safe ID' is read here.
-			parse_adapter_advanced_software_option($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_hardware_config})
-		{
-			parse_adapter_hardware_config($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_policies})
-		{
-			parse_adapter_policies($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_policies_table})
-		{
-			parse_adapter_policies_table($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_boot})
-		{
-			parse_adapter_boot($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_high_availability})
-		{
-			parse_adapter_high_availability($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_defaults})
-		{
-			parse_adapter_defaults($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_capabilities})
-		{
-			parse_adapter_capabilities($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_scheduled_tasks})
-		{
-			parse_adapter_scheduled_tasks($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_topology})
-		{
-			parse_adapter_topology($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_virtual_disk_list})
-		{
-			parse_adapter_virtual_disk_list($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_physical_disk_list})
-		{
-			parse_adapter_physical_disk_list($an, $adapter, $line);
-		}
-		elsif ($an->data->{$type}{in_cachevault_info})
-		{
-			parse_adapter_cachevault_info($an, $adapter, $line);
-		}
 	
-	# Hardware Configuration
-	if ($line =~ /^ChipRevision = (.*)?/i)
+	if ($line =~ /^(.*?) = (.*)$/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_chip_revision
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{chip_revision} = $1;
+		# Everything else.
+		my $this_variable = $1;
+		my $this_value    = $2;
+		$an->data->{storcli}{adapter}{$adapter}{other}{$section_name}{variable}{$this_variable}{value} = $this_value;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::chip_revision", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{chip_revision}
+			name1 => "storcli::adapter::${adapter}::other::${section_name}::variable::${this_variable}::value", value1 => $an->data->{storcli}{adapter}{$adapter}{other}{$section_name}{variable}{$this_variable}{value}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^BatteryFRU = (.*)?/i)
+	else
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_battery_fru
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{battery_fru} = $1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::battery_fru", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{battery_fru}
+		# A line I wasn't expecting...
+		# This section's name is stored in 'scan_storcli_section_0002'
+		$an->Alert->warning({message_key => "scan_storcli_warning_0002", message_variables => {
+			adapter => $adapter, 
+			section => $section_key,
+			line    => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Front End Port Count = (.*)?/i)
+	
+	return(0);
+}
+
+# This parses out the 'Version' data from the adapter.
+sub parse_adapter_version
+{
+	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_version", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $section_name = "version";
+	my $section_key  = "#!string!scan_storcli_section_0002!#";
+	if ($line =~ /^Firmware Package Build = (.*)?/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_external_ports
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{external_ports} = $1;
+		# storcli_version -> storcli_version_package_build
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{package_build} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::external_ports", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{external_ports}
+			name1 => "storcli::adapter::${adapter}::storcli_version::package_build", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{package_build}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Backend Port Count = (.*)?/i)
+	elsif ($line =~ /^Firmware Version = (.*)?/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_internal_ports
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{internal_ports} = $1;
+		# storcli_version -> storcli_version_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{version} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::internal_ports", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{internal_ports}
+			name1 => "storcli::adapter::${adapter}::storcli_version::version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{version}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^BBU = (.*)?/i)
+	elsif ($line =~ /^CPLD Version = (.*)?/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_bbu_installed
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed} = $1 =~ /Present/i ? "TRUE" : "FALSE";
+		# storcli_version -> storcli_version_cpld_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{cpld_version} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::bbu_installed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed}
+			name1 => "storcli::adapter::${adapter}::storcli_version::cpld_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{cpld_version}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Alarm = (.*)?/i)
+	elsif ($line =~ /^Bios Version = (.*)?/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_alarm_enabled
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed} = $1 =~ /On/i ? "TRUE" : "FALSE";
+		# storcli_version -> storcli_version_bios_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{bios_version} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::bbu_installed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed}
+			name1 => "storcli::adapter::${adapter}::storcli_version::bios_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{bios_version}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($line =~ /^Serial Debugger = (.*)?/i)
+	elsif ($line =~ /^WebBIOS Version = (.*)?/i)
 	{
-		# storcli_adapter_hw_config -> storcli_adapter_hw_config_alarm_enabled
-		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed} = $1 =~ /Present/i ? "TRUE" : "FALSE";
+		# storcli_version -> storcli_version_webbios_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{webbios_version} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_adapter_hw_config::bbu_installed", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_adapter_hw_config}{bbu_installed}
+			name1 => "storcli::adapter::${adapter}::storcli_version::webbios_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{webbios_version}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-=pod
-HwCfg :
-=====
-Serial Debugger = Present
-NVRAM Size = 32KB
-Flash Size = 16MB
-On Board Memory Size = 1024MB
-On Board Expander = Absent
-Temperature Sensor for ROC = Present
-Temperature Sensor for Controller = Absent
-Current Size of CacheCade (GB) = 0
-Current Size of FW Cache (MB) = 873
-ROC temperature(Degree Celsius) = 78
-
-
-Policies :
-========
-
-Policies Table :
-==============
-
-------------------------------------------------
-Policy                          Current Default 
-------------------------------------------------
-Predictive Fail Poll Interval   300 sec         
-Interrupt Throttle Active Count 16              
-Interrupt Throttle Completion   50 us           
-Rebuild Rate                    30 %    30%     
-PR Rate                         20 %    30%     
-BGI Rate                        30 %    30%     
-Check Consistency Rate          30 %    30%     
-Reconstruction Rate             30 %    30%     
-Cache Flush Interval            4s              
-------------------------------------------------
-
-Flush Time(Default) = 4s
-Drive Coercion Mode = none
-Auto Rebuild = On
-Battery Warning = On
-ECC Bucket Size = 15
-ECC Bucket Leak Rate (hrs) = 24
-Restore HotSpare on Insertion = On
-Expose Enclosure Devices = Off
-Maintain PD Fail History = On
-Reorder Host Requests = On
-Auto detect BackPlane = SGPIO/i2c SEP
-Load Balance Mode = Auto
-Security Key Assigned = Off
-Disable Online Controller Reset = Off
-Use drive activity for locate = Off
-
-
-Boot :
-====
-BIOS Enumerate VDs = 1
-Stop BIOS on Error = Off
-Delay during POST = 0
-Spin Down Mode = None
-Enable Ctrl-R = No
-Enable Web BIOS = Yes
-Enable PreBoot CLI = Yes
-Enable BIOS = Yes
-Max Drives to Spinup at One Time = 2
-Maximum number of direct attached drives to spin up in 1 min = 20
-Delay Among Spinup Groups (sec) = 6
-Allow Boot with Preserved Cache = Off
-
-
-High Availability :
-=================
-Topology Type = None
-Cluster Permitted = No
-Cluster Active = No
-
-
-Defaults :
-========
-Phy Polarity = 0
-Phy PolaritySplit = 0
-Strip Size = 64kB
-Write Policy = WT
-Read Policy = None
-Cache When BBU Bad = Off
-Cached IO = Off
-VD PowerSave Policy = Automatic
-Default spin down time (mins) = 30
-Coercion Mode = None
-ZCR Config = Unknown
-Max Chained Enclosures = 16
-Direct PD Mapping = No
-Restore Hot Spare on Insertion = Yes
-Expose Enclosure Devices = No
-Maintain PD Fail History = Yes
-Zero Based Enclosure Enumeration = No
-Disable Puncturing = No
-EnableLDBBM = Yes
-Un-Certified Hard Disk Drives = Allow
-SMART Mode = Mode 6
-Enable LED Header = No
-LED Show Drive Activity = Yes
-Dirty LED Shows Drive Activity = No
-EnableCrashDump = No
-Disable Online Controller Reset = No
-Treat Single span R1E as R10 = No
-Power Saving option = Enabled
-TTY Log In Flash = Yes
-Auto Enhanced Import = No
-BreakMirror RAID Support = No
-Disable Join Mirror = No
-Enable Shield State = Yes
-Time taken to detect CME = 60 sec
-
-
-Capabilities :
-============
-Supported Drives = SAS, SATA
-Boot Volume Supported = NO
-RAID Level Supported = RAID0, RAID1, RAID5, RAID6, RAID00, RAID10, RAID50, 
-RAID60, PRL 11, PRL 11 with spanning, SRL 3 supported, 
-PRL11-RLQ0 DDF layout with no span, PRL11-RLQ0 DDF layout with span
-Enable JBOD = No
-Mix in Enclosure = Allowed
-Mix of SAS/SATA of HDD type in VD = Not Allowed
-Mix of SAS/SATA of SSD type in VD = Not Allowed
-Mix of SSD/HDD in VD = Not Allowed
-SAS Disable = No
-Max Arms Per VD = 32
-Max Spans Per VD = 8
-Max Arrays = 128
-Max VD per array = 16
-Max Number of VDs = 64
-Max Parallel Commands = 1008
-Max SGE Count = 60
-Max Data Transfer Size = 8192 sectors
-Max Strips PerIO = 42
-Max Configurable CacheCade Size = 0
-Min Strip Size = 8 KB
-Max Strip Size = 1.0 MB
-
-
-Scheduled Tasks :
-===============
-Consistency Check Reoccurrence = 168 hrs
-Next Consistency check launch = 08/08/2015, 03:00:00
-Patrol Read Reoccurrence = 168 hrs
-Next Patrol Read launch = 08/08/2015, 03:00:00
-Battery learn Reoccurrence = 672 hrs
-Next Battery Learn = 08/28/2015, 00:00:00
-OEMID = Unknown
-
-Drive Groups = 1
-
-TOPOLOGY :
-========
-
---------------------------------------------------------------------------
-DG Arr Row EID:Slot DID Type  State BT       Size PDC  PI SED DS3  FSpace 
---------------------------------------------------------------------------
- 0 -   -   -        -   RAID6 Optl  N  544.875 GB dsbl N  N   none N      
- 0 0   -   -        -   RAID6 Optl  N  544.875 GB dsbl N  N   none N      
- 0 0   0   252:0    9   DRIVE Onln  N  136.218 GB dsbl N  N   none -      
- 0 0   1   252:6    12  DRIVE Onln  N  136.218 GB dsbl N  N   none -      
- 0 0   2   252:7    13  DRIVE Onln  N  136.218 GB dsbl N  N   none -      
- 0 0   3   252:3    7   DRIVE Onln  N  136.218 GB dsbl N  N   none -      
- 0 0   4   252:4    11  DRIVE Onln  N  136.218 GB dsbl N  N   none -      
- 0 0   5   252:5    14  DRIVE Onln  N  136.218 GB dsbl N  N   none -      
---------------------------------------------------------------------------
-
-DG=Disk Group Index|Arr=Array Index|Row=Row Index|EID=Enclosure Device ID
-DID=Device ID|Type=Drive Type|Onln=Online|Rbld=Rebuild|Dgrd=Degraded
-Pdgd=Partially degraded|Offln=Offline|BT=Background Task Active
-PDC=PD Cache|PI=Protection Info|SED=Self Encrypting Drive|Frgn=Foreign
-DS3=Dimmer Switch 3|dflt=Default|Msng=Missing|FSpace=Free Space Present
-
-Virtual Drives = 1
-
-VD LIST :
-=======
-
------------------------------------------------------------
-DG/VD TYPE  State Access Consist Cache sCC       Size Name 
------------------------------------------------------------
-0/0   RAID6 Optl  RW     Yes     NRWBD -   544.875 GB      
------------------------------------------------------------
-
-Cac=CacheCade|Rec=Recovery|OfLn=OffLine|Pdgd=Partially Degraded|dgrd=Degraded
-Optl=Optimal|RO=Read Only|RW=Read Write|HD=Hidden|B=Blocked|Consist=Consistent|
-R=Read Ahead Always|NR=No Read Ahead|WB=WriteBack|
-AWB=Always WriteBack|WT=WriteThrough|C=Cached IO|D=Direct IO|sCC=Scheduled
-Check Consistency
-
-Physical Drives = 8
-
-PD LIST :
-=======
-
--------------------------------------------------------------------------
-EID:Slt DID State DG       Size Intf Med SED PI SeSz Model            Sp 
--------------------------------------------------------------------------
-252:0     9 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
-252:1    10 GHS    - 136.218 GB SAS  HDD N   N  512B MK1401GRRB       D  
-252:2     8 GHS    - 136.218 GB SAS  HDD N   N  512B MK1401GRRB       D  
-252:3     7 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
-252:4    11 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
-252:5    14 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
-252:6    12 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
-252:7    13 Onln   0 136.218 GB SAS  HDD N   N  512B MK1401GRRB       U  
--------------------------------------------------------------------------
-
-EID-Enclosure Device ID|Slt-Slot No.|DID-Device ID|DG-DriveGroup
-DHS-Dedicated Hot Spare|UGood-Unconfigured Good|GHS-Global Hotspare
-UBad-Unconfigured Bad|Onln-Online|Offln-Offline|Intf-Interface
-Med-Media Type|SED-Self Encryptive Drive|PI-Protection Info
-SeSz-Sector Size|Sp-Spun|U-Up|D-Down|T-Transition|F-Foreign
-UGUnsp-Unsupported|UGShld-UnConfigured shielded|HSPShld-Hotspare shielded
-CFShld-Configured shielded
-
-
-Cachevault_Info :
-===============
-
---------------------------------------
-Model    State   Temp Mode MfgDate    
---------------------------------------
-SuperCaP Optimal 32C  -    2013/10/25 
---------------------------------------
-
-=cut
+	elsif ($line =~ /^Ctrl-R Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_ctrl_r_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{ctrl_r_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::ctrl_r_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{ctrl_r_version}
+		}, file => $THIS_FILE, line => __LINE__});
 	}
-	close $file_handle;
+	elsif ($line =~ /^Preboot CLI Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_preboot_cli_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{preboot_cli_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::preboot_cli_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{preboot_cli_version}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^NVDATA Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_nvdata_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{nvdata_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::nvdata_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{nvdata_version}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Boot Block Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_boot_block_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{boot_block_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::boot_block_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{boot_block_version}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Bootloader Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_bootloader_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{bootloader_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::bootloader_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{bootloader_version}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Driver Name = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_driver_name
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{driver_name} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::driver_name", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{driver_name}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Driver Version = (.*)?/i)
+	{
+		# storcli_version -> storcli_version_driver_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{driver_version} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_version::driver_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{driver_version}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+	}
+	
+	return(0);
+}
+
+# This parses out the 'Basics' data from the adapter.
+sub parse_adapter_basics
+{
+	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_basics", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $section_name = "basics";
+	my $section_key  = "#!string!scan_storcli_section_0001!#";
+	if ($line =~ /^Model = (.*)$/i)
+	{
+		# storcli_adapter -> storcli_adapter_product_name
+		$an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{model} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_adapter::model", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{model}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^Serial Number = (.*)$/i)
+	{
+		# storcli_adapter -> storcli_adapter_serial_number
+		$an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{serial_number} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_adapter::serial_number", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{serial_number}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($line =~ /^PCI Address = (.*)$/i)
+	{
+		# storcli_adapter -> storcli_adapter_pci_address
+		$an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{pci_address} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::adapter::${adapter}::storcli_adapter::pci_address", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{pci_address}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+	}
+	
+	return(0);
+}
+
+# This parses a couple values from the header of 'show all'.
+sub parse_adapter_header
+{
+	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_header", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($line =~ /Controller = (\d+)/)
+	{
+		# Make sure the controller matches the one we want.
+		my $this_adapter = $1;
+		if ($this_adapter ne $adapter)
+		{
+			# wat?
+			print $an->String->get({key => "scan_storcli_error_0004", variables => { path => $an->data->{path}{storcli} }}), "\n";
+			$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0001", message_variables => {
+				requested_controller => $adapter, 
+				this_controller      => $this_adapter, 
+			}, file => $THIS_FILE, line => __LINE__});
+			nice_exit($an, 4);
+		}
+	}
+	
+	if ($line =~ /Status = (.*?)/)
+	{
+		my $status = $1;
+		if ($status !~ /Success/i)
+		{
+			print $an->String->get({key => "scan_storcli_error_0005", variables => { path => $an->data->{path}{storcli} }}), "\n";
+			$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0001", message_variables => {
+				controller => $adapter, 
+				status     => $status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			nice_exit($an, 5);
+		}
+	}
 	
 	return(0);
 }
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 
 # executable) and then checks to see if any controllers are found in the system (exits '3' if not). 
-sub find_lsi_controllers
+sub find_avago_controllers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_lsi_controllers", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_avago_controllers", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will keep track of how many controllers we find.
 	my $adapter_count = 0;
@@ -1911,12 +579,7 @@ sub find_lsi_controllers
 	# First, do we have storcli64 installed?
 	if (not -e $an->data->{path}{storcli})
 	{
-		print $an->String->get({
-			key		=>	"scan_storcli_error_0001",
-			variables	=>	{
-				path		=>	$an->data->{path}{storcli},
-			},
-		}), "\n";
+		print $an->String->get({key => "scan_storcli_error_0001", variables => { path => $an->data->{path}{storcli} }}), "\n";
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0001", message_variables => {
 			path	=>	$an->data->{path}{storcli},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1926,12 +589,7 @@ sub find_lsi_controllers
 	# Make sure it is executable
 	if (not -x $an->data->{path}{storcli})
 	{
-		print $an->String->get({
-			key		=>	"scan_storcli_error_0002",
-			variables	=>	{
-				path		=>	$an->data->{path}{storcli},
-			},
-		}), "\n";
+		print $an->String->get({key => "scan_storcli_error_0002", variables => { path => $an->data->{path}{storcli} }}), "\n";
 		$an->Log->entry({log_level => 1, message_key => "scan_storcli_error_0002", message_variables => {
 			path	=>	$an->data->{path}{storcli},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1939,11 +597,11 @@ sub find_lsi_controllers
 	}
 	
 	# Still alive? Good! Look for controllers now.
-	my $shell_call = $an->data->{path}{storcli}." ".$an->data->{sys}{arguments}{adapter_count}." 2>&1 |";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	my $shell_call = $an->data->{path}{storcli}." ".$an->data->{sys}{arguments}{adapter_count};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1966,8 +624,9 @@ sub find_lsi_controllers
 	# Have we any adapters?
 	if ($adapter_count > 0)
 	{
+		$an->data->{sys}{adapter_count} = $adapter_count;
 		$an->Log->entry({log_level => 2, message_key => "scan_storcli_log_0001", message_variables => {
-			count	=>	$adapter_count, 
+			count => $an->data->{sys}{adapter_count}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -2105,6 +764,126 @@ sub get_switches
 	{
 		print_usage($an);
 		exit(0);
+	}
+	
+	return(0);
+}
+
+# This sets the active section to '1' when a storcli header is passed in.
+sub set_active_section
+{
+	my ($an, $type, $line) = @_;
+	
+	# These variables are used to track which section is being parsed.
+	if ($type eq "adapter")
+	{
+		$an->data->{$type}{in_header}                       = 0;
+		$an->data->{$type}{in_basics}                       = 0;
+		$an->data->{$type}{in_version}                      = 0;
+		$an->data->{$type}{in_bus}                          = 0;
+		$an->data->{$type}{in_pending_images_in_flash}      = 0;
+		$an->data->{$type}{in_status}                       = 0;
+		$an->data->{$type}{in_supported_adapter_operations} = 0;
+		$an->data->{$type}{in_supported_pd_operations}      = 0;
+		$an->data->{$type}{in_supported_vd_operations}      = 0;
+		$an->data->{$type}{in_advanced_software_option}     = 0;
+		$an->data->{$type}{in_hardware_config}              = 0;
+		$an->data->{$type}{in_policies}                     = 0;
+		$an->data->{$type}{in_policies_table}               = 0;
+		$an->data->{$type}{in_boot}                         = 0;
+		$an->data->{$type}{in_high_availability}            = 0;
+		$an->data->{$type}{in_defaults}                     = 0;
+		$an->data->{$type}{in_capabilities}                 = 0;
+		$an->data->{$type}{in_scheduled_tasks}              = 0;
+		$an->data->{$type}{in_topology}                     = 0;
+		$an->data->{$type}{in_virtual_disk_list}            = 0;
+		$an->data->{$type}{in_physical_disk_list}           = 0;
+		$an->data->{$type}{in_cachevault_info}              = 0;
+		
+		if ($line =~ /^Basics:$/i)
+		{
+			$an->data->{$type}{in_basics} = 1;
+		}
+		elsif ($line =~ /^Version:$/i)
+		{
+			$an->data->{$type}{in_version} = 1;
+		}
+		elsif ($line =~ /^Bus:$/i)
+		{
+			$an->data->{$type}{in_bus} = 1;
+		}
+		elsif ($line =~ /^Pending Images in Flash:$/i)
+		{
+			$an->data->{$type}{in_pending_images_in_flash} = 1;
+		}
+		elsif ($line =~ /^Status:$/i)
+		{
+			$an->data->{$type}{in_status} = 1;
+		}
+		elsif ($line =~ /^Supported Adapter Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_adapter_operations} = 1;
+		}
+		elsif ($line =~ /^Supported PD Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_pd_operations} = 1;
+		}
+		elsif ($line =~ /^Supported VD Operations:$/i)
+		{
+			$an->data->{$type}{in_supported_vd_operations} = 1;
+		}
+		elsif ($line =~ /^Advanced Software Option:$/i)
+		{
+			$an->data->{$type}{in_advanced_software_option} = 1;
+		}
+		elsif ($line =~ /^HwCfg:$/i)
+		{
+			$an->data->{$type}{in_hardware_config} = 1;
+		}
+		elsif ($line =~ /^Policies:$/i)
+		{
+			$an->data->{$type}{in_policies} = 1;
+		}
+		elsif ($line =~ /^Policies Table:$/i)
+		{
+			$an->data->{$type}{in_policies_table} = 1;
+		}
+		elsif ($line =~ /^Boot:$/i)
+		{
+			$an->data->{$type}{in_boot} = 1;
+		}
+		elsif ($line =~ /^High Availability:$/i)
+		{
+			$an->data->{$type}{in_high_availability} = 1;
+		}
+		elsif ($line =~ /^Defaults:$/i)
+		{
+			$an->data->{$type}{in_defaults} = 1;
+		}
+		elsif ($line =~ /^Capabilities:$/i)
+		{
+			$an->data->{$type}{in_capabilities} = 1;
+		}
+		elsif ($line =~ /^Scheduled Tasks:$/i)
+		{
+			$an->data->{$type}{in_scheduled_tasks} = 1;
+		}
+		elsif ($line =~ /^TOPOLOGY:$/i)
+		{
+			$an->data->{$type}{in_topology} = 1;
+		}
+		elsif ($line =~ /^VD LIST:$/i)
+		{
+			$an->data->{$type}{in_virtual_disk_list} = 1;
+		}
+		elsif ($line =~ /^PD LIST:$/i)
+		{
+			$an->data->{$type}{in_physical_disk_list} = 1;
+		}
+		elsif ($line =~ /^Cachevault_Info:$/i)
+		{
+			$an->data->{$type}{in_cachevault_info} = 1;
+		}
 	}
 	
 	return(0);
