@@ -4378,11 +4378,11 @@ sub do_drbd_connect_on_node
 						my $my_disk_state    = $3;
 						my $peer_disk_state  = $4;
 						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource_minor: [$resource_minor], connection_state: [$connection_state], my_disk_state: [$my_disk_state], peer_disk_state: [$peer_disk_state]\n");
-						if ($connection_state =~ /connected/i)
+						if (($connection_state =~ /connected/i) || ($connection_state =~ /sync/i))
 						{
 							# Connected... What are the disk states?
 							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource_minor: [$resource_minor], my_disk_state: [$my_disk_state], peer_disk_state: [$peer_disk_state]\n");
-							if ((($my_disk_state   =~ /Inconsistent/i) or ($my_disk_state   =~ /Outdated/i) or ($my_disk_state   =~ /Consistent/i) or ($my_disk_state   =~ /UpToDate/i)) &&
+							if ((($my_disk_state   =~ /Inconsistent/i) or ($my_disk_state   =~ /Outdated/i) or ($my_disk_state   =~ /Consistent/i) or ($my_disk_state   =~ /UpToDate/i) or ($my_disk_state   =~ /Sync/i)) &&
 							    (($peer_disk_state =~ /Inconsistent/i) or ($peer_disk_state =~ /Outdated/i) or ($peer_disk_state =~ /Consistent/i) or ($peer_disk_state =~ /UpToDate/i)))
 							{
 								# We're ready.
