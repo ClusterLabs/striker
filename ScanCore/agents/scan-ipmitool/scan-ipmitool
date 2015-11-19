@@ -214,7 +214,7 @@ sub find_changes
 				my $new_ipmitool_sensor_high_warning  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
 				my $new_ipmitool_sensor_low_critical  = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
 				my $new_ipmitool_sensor_low_warning   = $an->data->{ipmi}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 					name1 => "new_ipmitool_value_sensor_value",   value1 => $new_ipmitool_value_sensor_value, 
 					name2 => "new_ipmitool_sensor_units",         value2 => $new_ipmitool_sensor_units, 
 					name3 => "new_ipmitool_sensor_status",        value3 => $new_ipmitool_sensor_status, 
@@ -240,7 +240,7 @@ sub find_changes
 					my $old_ipmitool_sensor_high_warning  = $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_high_warning};
 					my $old_ipmitool_sensor_low_critical  = $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical};
 					my $old_ipmitool_sensor_low_warning   = $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 						name1 => "ipmitool_uuid",                     value1 => $ipmitool_uuid, 
 						name2 => "old_ipmitool_value_sensor_value",   value2 => $old_ipmitool_value_sensor_value, 
 						name3 => "old_ipmitool_sensor_units",         value3 => $old_ipmitool_sensor_units, 
@@ -340,7 +340,7 @@ WHERE
 					else
 					{
 						# No change.
-						$an->Log->entry({log_level => 3, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 2, message_key => "scancore_log_0047", file => $THIS_FILE, line => __LINE__});
 					}
 					
 					# Everything else
@@ -698,8 +698,8 @@ WHERE
 AND 
     temperature_agent_name  = ".$an->data->{sys}{use_db_fh}->quote($THIS_FILE)." 
 AND
-    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine).";
-";
+    temperature_sensor_host = ".$an->data->{sys}{use_db_fh}->quote($machine)."
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1593,7 +1593,7 @@ AND
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_critical}  = $ipmitool_sensor_low_critical  ? $ipmitool_sensor_low_critical  : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_low_warning}   = $ipmitool_sensor_low_warning   ? $ipmitool_sensor_low_warning   : "NULL";
 		$an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_value_sensor_value}   = $ipmitool_value_sensor_value;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_uuid",                 value1 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_uuid}, 
 			name2 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_units",         value2 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_units}, 
 			name3 => "sql::${machine}::ipmitool_sensor_name::${ipmitool_sensor_name}::ipmitool_sensor_status",        value3 => $an->data->{sql}{$machine}{ipmitool_sensor_name}{$ipmitool_sensor_name}{ipmitool_sensor_status}, 

@@ -448,6 +448,8 @@ sub read_conf
 	my $read = IO::Handle->new();
 	
 	# Is it too early to use "$an->error"?
+	my $short_hostname = $an->short_hostname;
+	my $hostname       = $an->hostname;
 	open ($read, "<$file") or die "Can't read: [$file], error was: $!\n";
 	while (<$read>)
 	{
@@ -463,8 +465,8 @@ sub read_conf
 		next if not $variable;
 		
 		# If the variable has '#!hostname!#' or '#!short_hostname!#', convert it now.
-		$variable =~ s/#!hostname!#/$an->hostname/g;
-		$variable =~ s/#!short_hostname!#/$an->short_hostname/g;
+		$value =~ s/#!hostname!#/$hostname/g;
+		$value =~ s/#!short_hostname!#/$short_hostname/g;
 		
 		$an->_make_hash_reference($hash, $variable, $value);
 	}
