@@ -4868,7 +4868,6 @@ subnet $bcn_network netmask $conf->{network}{bcn}{netmask} {
 	# These two options tell clients where to go to get the file needed to
 	# start the boot process.
 	next-server $conf->{network}{bcn}{ip};
-	filename \"pxelinux.0\";
  
 	# Our servers are installed on the BCN where they have no Internet
 	# access, so this value is largely meaningless. We set it to this
