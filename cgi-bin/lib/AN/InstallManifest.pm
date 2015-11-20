@@ -308,7 +308,7 @@ sub run_new_install_manifest
 			configure_ipmi($conf) or return(1);
 		}
 		
-		# Configure storage stage 1 (partitioning.
+		# Configure storage stage 1 (partitioning).
 		configure_storage_stage1($conf) or return(1);
 		
 		# This handles configuring SELinux.
@@ -8882,8 +8882,8 @@ fi;";
 	
 	# These will contain the contents of the file.
 	$conf->{node}{$node}{drbd_file}{global_common} = "";
-	$conf->{node}{$node}{drbd_file}{r0}				   = "";
-	$conf->{node}{$node}{drbd_file}{r1}				   = "";
+	$conf->{node}{$node}{drbd_file}{r0}            = "";
+	$conf->{node}{$node}{drbd_file}{r1}            = "";
 	
 	# And these tell us which file we're looking at.
 	my $in_global = 0;
@@ -12546,8 +12546,9 @@ sub get_storage_pool_partitions
 		
 		# Default to logical partitions.
 		my $create_extended_partition = 0;
-		my $pool1_partition           = 4;
-		my $pool2_partition           = 5;
+		my $pool1_partition           = ($conf->{node}{$node}{disk}{$disk}{partition_count} + 1);
+		my $pool2_partition           = ($conf->{node}{$node}{disk}{$disk}{partition_count} + 2);
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::partition_count: [$conf->{node}{$node}{disk}{$disk}{partition_count}], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 		if ($disk =~ /da$/)
 		{
 			# I need to know the label type to determine the 
@@ -12556,19 +12557,24 @@ sub get_storage_pool_partitions
 			#   then two logical partitions. (4, 5 and 6)
 			# * If it's 'gpt', I just use two logical partition.
 			#   (4 and 5).
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::label: [$conf->{node}{$node}{disk}{$disk}{label}]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::label: [$conf->{node}{$node}{disk}{$disk}{label}]\n");
 			if ($conf->{node}{$node}{disk}{$disk}{label} eq "msdos")
 			{
 				$create_extended_partition = 1;
-				$pool1_partition           = 5;
-				$pool2_partition           = 6;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::partition_count: [$conf->{node}{$node}{disk}{$disk}{partition_count}]\n");
+				if ($conf->{node}{$node}{disk}{$disk}{partition_count} < 4)
+				{
+					$pool1_partition = 5;
+					$pool2_partition = 6;
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
+				}
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 		}
 		else
 		{
 			# I'll use the full disk, so the partition numbers will
-			# be the same regardless of the 
+			# be the same regardless.
 			$create_extended_partition = 0;
 			$pool1_partition           = 1;
 			$pool2_partition           = 2;
@@ -12576,7 +12582,7 @@ sub get_storage_pool_partitions
 		$conf->{node}{$node}{pool1}{create_extended} = $create_extended_partition;
 		$conf->{node}{$node}{pool1}{device}          = "/dev/${disk}${pool1_partition}";
 		$conf->{node}{$node}{pool2}{device}          = "/dev/${disk}${pool2_partition}";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::pool1::device: [$conf->{node}{$node}{pool1}{device}], node::${node}::pool2::device: [$conf->{node}{$node}{pool2}{device}]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::pool1::device: [$conf->{node}{$node}{pool1}{device}], node::${node}::pool2::device: [$conf->{node}{$node}{pool2}{device}]\n");
 	}
 	
 	# OK, if we found a device in DRBD, override the values from the loop.
@@ -12605,7 +12611,7 @@ sub get_storage_pool_partitions
 	$conf->{node}{$node2}{pool1}{partition} = $node2_pool1_partition;
 	$conf->{node}{$node2}{pool2}{disk}      = $node2_pool2_disk;
 	$conf->{node}{$node2}{pool2}{partition} = $node2_pool2_partition;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::disk: [$conf->{node}{$node1}{pool1}{disk}], node::${node1}::pool1::partition: [$conf->{node}{$node1}{pool1}{partition}], node::${node1}::pool2::disk: [$conf->{node}{$node1}{pool2}{disk}], node::${node1}::pool2::partition: [$conf->{node}{$node1}{pool2}{partition}], node::${node2}::pool1::disk: [$conf->{node}{$node2}{pool1}{disk}], node::${node2}::pool1::partition: [$conf->{node}{$node2}{pool1}{partition}], node::${node2}::pool2::disk: [$conf->{node}{$node2}{pool2}{disk}], node::${node2}::pool2::partition: [$conf->{node}{$node2}{pool2}{partition}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node1}::pool1::disk: [$conf->{node}{$node1}{pool1}{disk}], node::${node1}::pool1::partition: [$conf->{node}{$node1}{pool1}{partition}], node::${node1}::pool2::disk: [$conf->{node}{$node1}{pool2}{disk}], node::${node1}::pool2::partition: [$conf->{node}{$node1}{pool2}{partition}], node::${node2}::pool1::disk: [$conf->{node}{$node2}{pool1}{disk}], node::${node2}::pool1::partition: [$conf->{node}{$node2}{pool1}{partition}], node::${node2}::pool2::disk: [$conf->{node}{$node2}{pool2}{disk}], node::${node2}::pool2::partition: [$conf->{node}{$node2}{pool2}{partition}]\n");
 	
 	$conf->{node}{$node1}{pool1}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} : 0;
 	$conf->{node}{$node1}{pool2}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} : 0;
@@ -12725,12 +12731,15 @@ sub get_partition_data
 		
 		push @disks, $name;
 	}
-	
+
 	# Get the details on each disk now.
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Found: [".@disks."] disks.\n");
 	foreach my $disk (@disks)
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
+		# We need to count how many existing partitions there are as we go.
+		$conf->{node}{$node}{disk}{$disk}{partition_count} = 0;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], node::${node}::disk::${disk}::partition_count: [$conf->{node}{$node}{disk}{$disk}{partition_count}]\n");
+		
 		my $shell_call = "
 if [ ! -e /sbin/parted ]; 
 then 
@@ -12800,7 +12809,8 @@ fi";
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start}).")], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}).")], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}).")], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}]\n");
+				$conf->{node}{$node}{disk}{$disk}{partition_count}++;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk], partition: [$partition], start: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start}).")], end: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}).")], size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}).")], type: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}], node::${node}::disk::${disk}::partition_count: [$conf->{node}{$node}{disk}{$disk}{partition_count}]\n");
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
 			{

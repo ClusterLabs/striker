@@ -187,11 +187,13 @@ sub gather_data
 			{
 				# Controller info
 				parse_adapter_basics($an, $adapter, $line);
+				next;
 			}
 			elsif ($an->data->{$type}{in_version})
 			{
 				# Firmware info.
 				parse_adapter_version($an, $adapter, $line);
+				next;
 			}
 			elsif ($an->data->{$type}{in_pending_images_in_flash})
 			{
@@ -225,7 +227,7 @@ sub parse_adapter_status
 	
 	if ($line =~ /^Controller Status = (.*)?/i)
 	{
-		# storcli_status -> storcli_bus_function_number
+		# storcli_status -> storcli_status_function_number
 		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::function_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number}
@@ -387,10 +389,10 @@ sub parse_adapter_version
 	}
 	elsif ($line =~ /^Firmware Version = (.*)?/i)
 	{
-		# storcli_version -> storcli_version_version
-		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{version} = $1;
+		# storcli_version -> storcli_version_firmware_version
+		$an->data->{storcli}{adapter}{$adapter}{storcli_version}{firmware_version} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "storcli::adapter::${adapter}::storcli_version::version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{version}
+			name1 => "storcli::adapter::${adapter}::storcli_version::firmware_version", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_version}{firmware_version}
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($line =~ /^CPLD Version = (.*)?/i)
@@ -494,7 +496,7 @@ sub parse_adapter_basics
 	my $section_key  = "#!string!scan_storcli_section_0001!#";
 	if ($line =~ /^Model = (.*)$/i)
 	{
-		# storcli_adapter -> storcli_adapter_product_name
+		# storcli_adapter -> storcli_adapter_model
 		$an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{model} = $1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storcli::adapter::${adapter}::storcli_adapter::model", value1 => $an->data->{storcli}{adapter}{$adapter}{storcli_adapter}{model}
