@@ -5498,7 +5498,7 @@ then
 else 
     echo \"Off, enabling 'fenced_can_ssh' now...\";
     $conf->{path}{nodes}{setsebool} -P fenced_can_ssh on
-    if $($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+    if \$($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
     then 
         echo 'Now allowed.'
     else
