@@ -71,7 +71,7 @@ scan-ipmitool::thresholds::CPU2::weight		=	2.6
 
 When you are ready to simulate an over-heating event, run:
 
-/sbin/striker/striker-load-cpu
+/sbin/striker/anvil-load-cpu
 
 That program will not close on it's own. Let it run until the system shuts 
 itself down. If you do want to abort, pressing any key will cause the program
