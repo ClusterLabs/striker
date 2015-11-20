@@ -12546,8 +12546,8 @@ sub get_storage_pool_partitions
 		
 		# Default to logical partitions.
 		my $create_extended_partition = 0;
-		my $pool1_partition           = ($conf->{node}{$node}{disk}{$disk}{partition_count} + 1);
-		my $pool2_partition           = ($conf->{node}{$node}{disk}{$disk}{partition_count} + 2);
+		my $pool1_partition           = 4;
+		my $pool2_partition           = 5;
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::partition_count: [$conf->{node}{$node}{disk}{$disk}{partition_count}], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 		if ($disk =~ /da$/)
 		{
@@ -12568,6 +12568,14 @@ sub get_storage_pool_partitions
 					$pool2_partition = 6;
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 				}
+			}
+			elsif ($conf->{node}{$node}{disk}{$disk}{partition_count} >= 4)
+			{
+				### TODO: Actually parse /etc/fstab to confirm...
+				# This is probably a UEFI system, so there will be 4 partitions.
+				$pool1_partition = 5;
+				$pool2_partition = 6;
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 			}
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_extended_partition: [$create_extended_partition], pool1_partition: [$pool1_partition], pool2_partition: [$pool2_partition]\n");
 		}
