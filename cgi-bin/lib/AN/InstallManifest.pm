@@ -12804,7 +12804,7 @@ fi";
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::disk::${disk}::label: [$conf->{node}{$node}{disk}{$disk}{label}]\n");
 			}
 			#              part  start end   size  type  - don't care about the rest.
-			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B (.*)$/)
+			elsif ($line =~ /^(\d+) (\d+)B (\d+)B (\d+)B(.*)$/)
 			{
 				# Existing partitions
 				my $partition = $1;
