@@ -284,6 +284,15 @@ The UPS: [#!variable!ups_name!#] has input power again:
 The total lifetime power output from the UPS: [#!variable!ups_name!#] has increased:
 - [#!variable!old_value!# kWh] -> [#!variable!new_value!# kWh]
 		</key>
+		<key name="scan_apc_ups_note_0059">
+Connection to the UPS: [#!variable!ups_name!#] has been lost!
+Warning: The UPS power state and hold up time can no longer be monitored. 
+         Graceful shutdown in the case of a power loss may not function until 
+         communication is restored!
+		</key>
+		<key name="scan_apc_ups_note_0060">
+Connection to the UPS: [#!variable!ups_name!#] has been restored.
+		</key>
 		
 		<!-- Warnings. -->
 		<key name="scan_apc_ups_warning_0001"></key>

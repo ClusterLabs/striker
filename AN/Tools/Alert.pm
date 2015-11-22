@@ -69,6 +69,13 @@ sub check_alert_sent
 	my $alert_record_locator = $parameter->{alert_record_locator} ? $parameter->{alert_record_locator} : "";
 	my $alert_name           = $parameter->{alert_name}           ? $parameter->{alert_name}           : "";
 	my $modified_date        = $parameter->{modified_date}        ? $parameter->{modified_date}        : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "type",                 value1 => $type, 
+		name2 => "alert_sent_by",        value2 => $alert_sent_by, 
+		name3 => "alert_record_locator", value3 => $alert_record_locator, 
+		name4 => "alert_name",           value4 => $alert_name, 
+		name5 => "modified_date",        value5 => $modified_date, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $query = "
 SELECT 

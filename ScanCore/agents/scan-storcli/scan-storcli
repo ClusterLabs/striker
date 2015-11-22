@@ -16,6 +16,8 @@
 # 5  - Unexpecte status when querying adapter
 # 
 
+exit(255);
+
 # Use my modules.
 use strict;
 use warnings;
@@ -118,8 +120,8 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for
 # help.
-get_switches($an);
 print $an->String->get({key => "scan_storcli_message_0001"}), "\n";
+$an->Get->switches();
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 
 # executable) and then checks to see if any controllers are found in the system (exits '3' if not). 
@@ -299,7 +301,7 @@ sub parse_adapter_status
 	}
 	else
 	{
-		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+		process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
 	}
 	
 	return(0);
@@ -314,7 +316,7 @@ sub parse_adapter_pending_images_in_flash
 	my $section_key  = "#!string!scan_storcli_section_0003!#";
 	
 	# We're not actively monitoring this yet.
-	process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+	process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
 	
 	return(0);
 }
@@ -328,7 +330,7 @@ sub parse_adapter_bus
 	my $section_key  = "#!string!scan_storcli_section_0004!#";
 	
 	# We're not actively monitoring this yet.
-	process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+	process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
 	
 	return(0);
 }
@@ -336,7 +338,7 @@ sub parse_adapter_bus
 # This processes all storcli output lines we aren't actively watching.
 sub process_other_storcl_line
 {
-	my ($conf, $adapter, $line, $section_name, $section_key) = @_;
+	my ($an, $adapter, $line, $section_name, $section_key) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_other_storcl_line", }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "adapter",      value1 => $adapter, 
 		name2 => "line",         value2 => $line, 
@@ -477,7 +479,7 @@ sub parse_adapter_version
 	}
 	else
 	{
-		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+		process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
 	}
 	
 	return(0);
@@ -520,7 +522,7 @@ sub parse_adapter_basics
 	}
 	else
 	{
-		process_other_storcl_line($conf, $adapter, $line, $section_name, $section_key);
+		process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
 	}
 	
 	return(0);
@@ -681,94 +683,6 @@ sub nice_exit
 	}
 	
 	exit(0);
-}
-
-### TODO: Move this into AN::Tools
-# This collects the command line switches
-sub get_switches
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_switches", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $last_argument = "";
-	foreach my $argument (@ARGV)
-	{
-		if ($last_argument eq "raw")
-		{
-			# Don't process anything.
-			$an->data->{switches}{raw} .= " $argument";
-		}
-		elsif ($argument =~ /^-/)
-		{
-			# If the argument is just '--', appeand everything
-			# after it to 'raw'.
-			$an->data->{sys}{switch_count}++;
-			if ($argument eq "--")
-			{
-				$last_argument         = "raw";
-				$an->data->{switches}{raw} = "";
-			}
-			else
-			{
-				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
-				if ($last_argument =~ /=/)
-				{
-					# Break up the variable/value.
-					($last_argument, my $value) = (split /=/, $last_argument, 2);
-					$an->data->{switches}{$last_argument} = $value;
-				}
-				else
-				{
-					$an->data->{switches}{$last_argument} = "#!SET!#";
-				}
-			}
-		}
-		else
-		{
-			if ($last_argument)
-			{
-				$an->data->{switches}{$last_argument} = $argument;
-				$last_argument                    = "";
-			}
-			else
-			{
-				# Got a value without an argument.
-				$an->data->{switches}{error} = 1;
-			}
-		}
-	}
-	# Clean up the initial space added to 'raw'.
-	if ($an->data->{switches}{raw})
-	{
-		$an->data->{switches}{raw} =~ s/^ //;
-	}
-	
-	# Debug
-	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{switches}})
-	{
-		$an->Log->entry({
-			log_level	=>	2,
-			title_key	=>	"scancore_title_0001",
-			message_key	=>	"scancore_log_0010",
-			message_vars	=>	{
-				variable	=>	$variable,
-				value		=>	$an->data->{switches}{$variable},
-			},
-			file		=>	$THIS_FILE,
-			line		=>	__LINE__,
-			language	=>	$an->data->{'scan-storcli'}{log_language},
-			log_to		=>	$an->data->{'scan-storcli'}{log_file},
-		});
-	}
-	
-	# If the user has asked for help, print the usage info.
-	if (($an->data->{switches}{h}) or ($an->data->{switches}{help}) or ($an->data->{switches}{'?'}))
-	{
-		print_usage($an);
-		exit(0);
-	}
-	
-	return(0);
 }
 
 # This sets the active section to '1' when a storcli header is passed in.

@@ -93,7 +93,7 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for
 # help.
 print $an->String->get({key => "scan_bond_message_0001"}), "\n";
-get_switches($an);
+$an->Get->switches();
 
 # Read in bond. If it returns '1', then bond wasn't found and we will
 # exit.
@@ -2606,92 +2606,6 @@ sub nice_exit
 	}
 	
 	exit($exit_code);
-}
-
-### TODO: Move this into AN::Tools
-# This collects the command line switches
-sub get_switches
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_switches", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $last_argument = "";
-	foreach my $argument (@ARGV)
-	{
-		if ($last_argument eq "raw")
-		{
-			# Don't process anything.
-			$an->data->{switches}{raw} .= " $argument";
-		}
-		elsif ($argument =~ /^-/)
-		{
-			# If the argument is just '--', appeand everything
-			# after it to 'raw'.
-			$an->data->{sys}{switch_count}++;
-			if ($argument eq "--")
-			{
-				$last_argument             = "raw";
-				$an->data->{switches}{raw} = "";
-			}
-			else
-			{
-				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
-				if ($last_argument =~ /=/)
-				{
-					# Break up the variable/value.
-					($last_argument, my $value) = (split /=/, $last_argument, 2);
-					$an->data->{switches}{$last_argument} = $value;
-				}
-				else
-				{
-					$an->data->{switches}{$last_argument} = "#!SET!#";
-				}
-			}
-		}
-		else
-		{
-			if ($last_argument)
-			{
-				$an->data->{switches}{$last_argument} = $argument;
-				$last_argument                        = "";
-			}
-			else
-			{
-				# Got a value without an argument.
-				$an->data->{switches}{error} = 1;
-			}
-		}
-	}
-	# Clean up the initial space added to 'raw'.
-	if ($an->data->{switches}{raw})
-	{
-		$an->data->{switches}{raw} =~ s/^ //;
-	}
-	
-	# Debug
-	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{switches}})
-	{
-		$an->Log->entry({
-			log_level	=>	2,
-			message_key	=>	"scancore_log_0010",
-			message_variables	=>	{
-				variable	=>	$variable,
-				value		=>	$an->data->{switches}{$variable},
-			},
-			file		=>	$THIS_FILE,
-			line		=>	__LINE__,
-			log_to		=>	$an->data->{'scan-bond'}{log_file},
-		});
-	}
-	
-	# If the user has asked for help, print the usage info.
-	if (($an->data->{switches}{h}) or ($an->data->{switches}{help}) or ($an->data->{switches}{'?'}))
-	{
-		print_usage($an);
-		exit(0);
-	}
-	
-	return(0);
 }
 
 # Print the usage information.
