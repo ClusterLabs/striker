@@ -1878,7 +1878,7 @@ WHERE
 	}
 	
 	# NOTE: I know I could sort by remaining hold-up time and/or filter by which UPS is on batteries, but
-	#       slurping it all in makes it easier to debug with everything in perl.
+	#       slurping it all in makes it easier to debug with everything in memory.
 	my $last_agent = "";
 	# One or more records were found.
 	foreach my $row (@{$results})

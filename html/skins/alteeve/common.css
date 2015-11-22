@@ -217,27 +217,27 @@ td {
 
 .subtle_text {
 	font-size: 12px;
-	color: #6D6D8D;
+	color: #9D9D9D;
 	text-align: left;
 }
 
 .subtle_link {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 11px;
-	color: #8D8DAD;
+	color: #9D9DBD;
 	text-align: left;
 }
 
 .subtle_text_fixed_width {
 	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
 	font-size: 12px;
-	color: #6D6D8D;
+	color: #9D9D9D;
 	text-align: left;
 }
 
 .subtle_text_wrap {
 	font-size: 12px;
-	color: #6D6D8D;
+	color: #9D9D9D;
 	text-align: left;
 	white-space: normal;
 }
