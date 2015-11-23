@@ -5184,7 +5184,9 @@ sub provision_vm
 		$provision .= "  --disk path=$lv_device";
 		if ($conf->{new_vm}{virtio}{disk})
 		{
-			$provision .= ",bus=virtio";
+			# The 'cache=writeback' is required to support systems built on 4kb native sector 
+			# size disks.
+			$provision .= ",bus=virtio,cache=writeback";
 		}
 		$provision .= " \\\\\n";
 	}
