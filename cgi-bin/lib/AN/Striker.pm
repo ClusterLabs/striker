@@ -27,6 +27,10 @@ package AN::Striker;
 # - When cold-stopping, check if one node is UpToDate and the other not. In such a case, stop the 
 #   Inconsistent one FIRST.
 # 
+# - When recovering disks; If 'Make Good' is an option, suppress other options. Next, if 'clear foreign 
+#   state' is an option, hide others. Ideally, make a "Recover" that does both make good and clear foreign in
+#   one step.
+# 
 
 use strict;
 use warnings;

@@ -45,6 +45,7 @@
 #   error: operation failed: failed to kill qemu process with SIGTERM
 #   ^- qemu fails to respond to virsh, possibly because of high load on host. No current known fix except to
 #      migrate other servers to peer and fence the node.
+# - Live-migration isn't possible with 4k hosts... See: https://bugzilla.redhat.com/show_bug.cgi?id=1285921
 
 
 use strict;

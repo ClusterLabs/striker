@@ -3697,7 +3697,7 @@ sub drbd_first_start
 	# 4 == Failed to install 'wait-for-drbd'
 	
 	# Call 'wait-for-drbd' on node 1 so that we don't move on to clvmd before DRBD (its PV) is ready.
-	my $shell_call = $conf->{path}{nodes}{'wait-for-drbd_initd'};
+	my $shell_call = "$conf->{path}{nodes}{'wait-for-drbd_initd'} start";
 	my $node       = $conf->{cgi}{anvil_node1_current_ip};
 	my $password   = $conf->{cgi}{anvil_node1_current_password};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");

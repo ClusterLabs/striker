@@ -2809,10 +2809,11 @@ sub get_string_from_double_bang
 			$i++;
 			die "$THIS_FILE ".__LINE__."; Exiting on infinite loop parsing pairs out of: [$variables]\n" if $i > 1000;
 			my $pair      =  ($variables =~ /(!!.*?!!)/)[0];
-			   $variables =~ s/$pair//;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "pair",      value1 => $pair, 
-				name2 => "variables", value2 => $variables, 
+			   $variables =~ s/\Q$pair\E//;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "i",         value1 => $i, 
+				name2 => "pair",      value2 => $pair, 
+				name3 => "variables", value3 => $variables, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if not $pair;
 			my ($variable, $value) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
