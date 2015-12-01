@@ -66,6 +66,7 @@ sub find_missing_devices
 			my $mount  = $2;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], mount: [$mount]");
 			$conf->{device}{$device}{local_mount} = $mount;
+			$conf->{mount}{$mount}                = $device;
 		}
 	}
 	close $file_handle;
@@ -148,7 +149,10 @@ sub find_missing_devices
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device is gone, we'll clean it up.");
 			
-			# First, make sure it's unmounted.
+			# Sleep for a few moments to make sure the kernel has done it's thing...                        
+			sleep 5;
+			
+			# now, make sure it's unmounted.
 			my $shell_call = "$conf->{path}{umount} -f /dev/mapper/$device";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
@@ -253,6 +257,22 @@ sub cleanup_remote
 			my $mount = $1;
 			$conf->{remove}{$mount} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Mount point: [$mount] is stale.");
+		}
+		elsif ($line =~ /.*?\@$local_host:(\/mnt\/.*?)\s.*?(\/.*)/)
+		{
+			my $this_local_mount  = $1;
+			my $this_remote_mount = $2;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_local_mount: [$this_local_mount], this_remote_mount: [$this_remote_mount]");
+			
+			$conf->{mount}{$this_local_mount} = "" if not defined $conf->{mount}{$this_local_mount};
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount::$this_local_mount: [$conf->{mount}{$this_local_mount}]");
+			# Make sure this local mount exists...
+			if (not $conf->{mount}{$this_local_mount})
+			{
+				# Mount exists
+				$conf->{remove}{$this_remote_mount} = 1;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Mount point: [$this_remote_mount] is stale.");
+			}
 		}
 	}
 	
