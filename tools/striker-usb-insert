@@ -867,6 +867,7 @@ fi";
 		my $already_mounted = 0;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device], local_mount: [$local_mount]");
 		$shell_call = "
+mount
 if $conf->{path}{mount} | $conf->{path}{grep} -q '$device on $local_mount';
 then 
     echo 'already mounted';

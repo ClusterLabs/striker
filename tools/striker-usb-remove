@@ -96,30 +96,83 @@ sub find_missing_devices
 	# Look for mounts on the remote machine pointing to no-longer existing local mounts.
 	cleanup_remote($conf);
 	
-	# Final step is to look for stale, detached dm devices.
-	$shell_call = "
-for dev in \$($conf->{path}{dmsetup} ls | $conf->{path}{awk} '{print \$1}');
-do
-    if [[ \$dev = 'No' ]];
-    then
-        echo 'No device-mapped devices exist';
-    elif $conf->{path}{lsblk} | $conf->{path}{grep} -q \$dev; 
-    then
-        echo 'device exists'; 
-    else 
-        echo device is stale; 
-        $conf->{path}{dmsetup} remove \$dev
-    fi; 
-done";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	# get a list of device-mapped devices.
+	my $dm_devices = [];
+	   $shell_call = "$conf->{path}{dmsetup} ls";
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line =~ /No devices found/i)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - No device mapper devices found.");
+			last;
+		}
+		elsif ($line =~ /^(sd.*)\s/)
+		{
+			my $device = $1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device: [$device]");
+			push @{$dm_devices}, $device;
+		}
 	}
 	close $file_handle;
+	my $device_count = @{$dm_devices};
+	
+	foreach my $device (sort {$a cmp $b} @{$dm_devices})
+	{
+		# One or more device mapper devices found, check them.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Checking device mapper device: [$device]");
+		my $device_exists = 0;
+		my $shell_call    = "$conf->{path}{lsblk}";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /$device/)
+			{
+				# Match.
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device exists, we'll leave it alone.");
+				$device_exists = 1;
+				last;
+			}
+		}
+		close $file_handle;
+		
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - device_exists: [$device_exists]");
+		if (not $device_exists)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Device is gone, we'll clean it up.");
+			
+			# First, make sure it's unmounted.
+			my $shell_call = "$conf->{path}{umount} -f /dev/mapper/$device";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			}
+			close $file_handle;
+			
+			# Now remove the device
+			$shell_call = "$conf->{path}{dmsetup} remove $device";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			}
+			close $file_handle;
+		}
+	}
 	
 	return(0);
 }
