@@ -31,7 +31,9 @@
 # - Write a 'scan-usb' agent that monitored USB ports for things being plugged in or removed.
 # - Write an agent that monitors the XML definition files and barks on change, too.
 # - An agent to monitor LVM and another for DRBD would be good, too.
-# - 
+# - When examining UPS charge percentage when deciding if it's OK to boot, pull the last X readings and
+#   average them. It's possible for a stray reading to report an unrealistically high charge percent on a
+#   given scan.
 #         
 # BUG:
 # - 
@@ -761,17 +763,6 @@ ORDER BY
 							}, file => $THIS_FILE, line => __LINE__});
 							$an->data->{sys}{reported}{$host_name}{boot_delayed} = 1;
 						}
-					}
-				}
-				elsif ($an->data->{scancore}{disable}{boot_nodes})
-				{
-					# Booting nodes was disabled by the user.
-					if (not $an->data->{sys}{reported}{$host_name}{boot_disabled})
-					{
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0064", message_variables => {
-							node => $host_name, 
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->data->{sys}{reported}{$host_name}{boot_disabled} = 1;
 					}
 				}
 				elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
