@@ -164,7 +164,7 @@ sub report_findings
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	my $average_bps = $an->Math->round({number => ($total / $an->data->{switches}{loops}), places => 0});
-	my $average     = $an->Readable->bytes_to_hr({'bytes' => $average_bps});
+	my $average     = $an->Readable->bytes_to_hr({'bytes' => $average_bps, unit => "M"});
 	
 	print $an->String->get({key => "aft_message_0005", variables => {
 		average	=>	$average,
@@ -231,7 +231,7 @@ sub report_vd_info
 	# Print the summary
 	my ($date_now,  $time_now)  = $an->Get->date_and_time({use_time => time});
 	my ($date_done, $time_done) = $an->Get->date_and_time({use_time => time, offset => ($an->data->{switches}{loops} * $an->data->{switches}{runtime})});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "date_now",  value1 => $date_now, 
 		name2 => "time_now",  value2 => $time_now, 
 		name3 => "date_done", value3 => $date_done, 
@@ -308,7 +308,7 @@ sub call_fio
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Convert back.
-				my $speed = $an->Readable->bytes_to_hr({'bytes' => $an->data->{pass}{$pass}{write_speed}});
+				my $speed = $an->Readable->bytes_to_hr({'bytes' => $an->data->{pass}{$pass}{write_speed}, unit => "M"});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "speed", value1 => $speed, 
 				}, file => $THIS_FILE, line => __LINE__});

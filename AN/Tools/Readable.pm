@@ -262,10 +262,15 @@ sub bytes_to_hr
 	# Now see if the user passed the values in a hash reference or
 	# directly.
 	my $size = 0;
+	my $unit = "";
 	if (ref($param) eq "HASH")
 	{
 		# Values passed in a hash, good.
 		$size = $param->{'bytes'} ? $param->{'bytes'} : 0;
+		
+		# This is the letter representing the desired units to user, rather than the most efficient
+		# unit.
+		$unit = uc($param->{unit}) if $param->{unit};
 	}
 	else
 	{
@@ -324,116 +329,242 @@ sub bytes_to_hr
 	# Do the math.
 	if ($an->Readable->base2)
 	{
-		if ($hr_size >= (2 ** 80))
+		# Has the user requested a certain unit to use?
+		if ($unit)
 		{
-			# Yebibyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
-			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "YiB";
-		}
-		elsif ($hr_size >= (2 ** 70))
-		{
-			# Zebibyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
-			$suffix  = "ZiB";
-		}
-		elsif ($hr_size >= (2 ** 60))
-		{
-			# Exbibyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
-			$suffix  = "EiB";
-		}
-		elsif ($hr_size >= (2 ** 50))
-		{
-			# Pebibyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
-			$suffix  = "PiB";
-		}
-		elsif ($hr_size >= (2 ** 40))
-		{
-			# Tebibyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
-			$suffix  = "TiB";
-		}
-		elsif ($hr_size >= (2 ** 30))
-		{
-			# Gibibyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
-			$suffix  = "GiB";
-		}
-		elsif ($hr_size >= (2 ** 20))
-		{
-			# Mebibyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
-			$suffix  = "MiB";
-		}
-		elsif ($hr_size >= (2 ** 10))
-		{
-			# Kibibyte
-			$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
-			$suffix  = "KiB";
+			# Yup
+			if ($unit =~ /Y/i)
+			{
+				# Yebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "YiB";
+			}
+			elsif ($unit =~ /Z/i)
+			{
+				# Zebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
+				$suffix  = "ZiB";
+			}
+			elsif ($unit =~ /E/i)
+			{
+				# Exbibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
+				$suffix  = "EiB";
+			}
+			elsif ($unit =~ /P/i)
+			{
+				# Pebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
+				$suffix  = "PiB";
+			}
+			elsif ($unit =~ /T/i)
+			{
+				# Tebibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
+				$suffix  = "TiB";
+			}
+			elsif ($unit =~ /G/i)
+			{
+				# Gibibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
+				$suffix  = "GiB";
+			}
+			elsif ($unit =~ /M/i)
+			{
+				# Mebibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
+				$suffix  = "MiB";
+			}
+			elsif ($unit =~ /K/i)
+			{
+				# Kibibyte
+				$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
+				$suffix  = "KiB";
+			}
+			else
+			{
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "B";
+			}
 		}
 		else
 		{
-			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "B";
+			# Nope, use the most efficient.
+			if ($hr_size >= (2 ** 80))
+			{
+				# Yebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 80)));
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "YiB";
+			}
+			elsif ($hr_size >= (2 ** 70))
+			{
+				# Zebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 70)));
+				$suffix  = "ZiB";
+			}
+			elsif ($hr_size >= (2 ** 60))
+			{
+				# Exbibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 60)));
+				$suffix  = "EiB";
+			}
+			elsif ($hr_size >= (2 ** 50))
+			{
+				# Pebibyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (2 ** 50)));
+				$suffix  = "PiB";
+			}
+			elsif ($hr_size >= (2 ** 40))
+			{
+				# Tebibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 40)));
+				$suffix  = "TiB";
+			}
+			elsif ($hr_size >= (2 ** 30))
+			{
+				# Gibibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 30)));
+				$suffix  = "GiB";
+			}
+			elsif ($hr_size >= (2 ** 20))
+			{
+				# Mebibyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (2 ** 20)));
+				$suffix  = "MiB";
+			}
+			elsif ($hr_size >= (2 ** 10))
+			{
+				# Kibibyte
+				$hr_size = sprintf("%.1f", ($hr_size /= (2 ** 10)));
+				$suffix  = "KiB";
+			}
+			else
+			{
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "B";
+			}
 		}
 	}
 	else
 	{
-		if ($hr_size >= (10 ** 24))
+		# Has the user requested a certain unit to use?
+		if ($unit)
 		{
-			# Yottabyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 24)));
-			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "YB";
-		}
-		elsif ($hr_size >= (10 ** 21))
-		{
-			# Zettabyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 21)));
-			$suffix  = "ZB";
-		}
-		elsif ($hr_size >= (10 ** 18))
-		{
-			# Exabyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 18)));
-			$suffix  = "EB";
-		}
-		elsif ($hr_size >= (10 ** 15))
-		{
-			# Petabyte
-			$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 15)));
-			$suffix  = "PB";
-		}
-		elsif ($hr_size >= (10 ** 12))
-		{
-			# Terabyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 12)));
-			$suffix  = "TB";
-		}
-		elsif ($hr_size >= (10 ** 9))
-		{
-			# Gigabyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 9)));
-			$suffix  = "GB";
-		}
-		elsif ($hr_size >= (10 ** 6))
-		{
-			# Megabyte
-			$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 6)));
-			$suffix  = "MB";
-		}
-		elsif ($hr_size >= (10 ** 3))
-		{
-			# Kilobyte
-			$hr_size = sprintf("%.1f", ($hr_size /= (10 ** 3)));
-			$suffix  = "KB";
+			# Yup
+			if ($unit =~ /Y/i)
+			{
+				# Yottabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 24)));
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "YB";
+			}
+			elsif ($unit =~ /Z/i)
+			{
+				# Zettabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 21)));
+				$suffix  = "ZB";
+			}
+			elsif ($unit =~ /E/i)
+			{
+				# Exabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 18)));
+				$suffix  = "EB";
+			}
+			elsif ($unit =~ /P/i)
+			{
+				# Petabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 15)));
+				$suffix  = "PB";
+			}
+			elsif ($unit =~ /T/i)
+			{
+				# Terabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 12)));
+				$suffix  = "TB";
+			}
+			elsif ($unit =~ /G/i)
+			{
+				# Gigabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 9)));
+				$suffix  = "GB";
+			}
+			elsif ($unit =~ /M/i)
+			{
+				# Megabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 6)));
+				$suffix  = "MB";
+			}
+			elsif ($unit =~ /K/i)
+			{
+				# Kilobyte
+				$hr_size = sprintf("%.1f", ($hr_size /= (10 ** 3)));
+				$suffix  = "KB";
+			}
+			else
+			{
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "b";
+			}
 		}
 		else
 		{
-			$hr_size = $an->Readable->comma($hr_size);
-			$suffix  = "b";
+			# Nope, use the most efficient.
+			if ($hr_size >= (10 ** 24))
+			{
+				# Yottabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 24)));
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "YB";
+			}
+			elsif ($hr_size >= (10 ** 21))
+			{
+				# Zettabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 21)));
+				$suffix  = "ZB";
+			}
+			elsif ($hr_size >= (10 ** 18))
+			{
+				# Exabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 18)));
+				$suffix  = "EB";
+			}
+			elsif ($hr_size >= (10 ** 15))
+			{
+				# Petabyte
+				$hr_size = sprintf("%.3f", ($hr_size /= (10 ** 15)));
+				$suffix  = "PB";
+			}
+			elsif ($hr_size >= (10 ** 12))
+			{
+				# Terabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 12)));
+				$suffix  = "TB";
+			}
+			elsif ($hr_size >= (10 ** 9))
+			{
+				# Gigabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 9)));
+				$suffix  = "GB";
+			}
+			elsif ($hr_size >= (10 ** 6))
+			{
+				# Megabyte
+				$hr_size = sprintf("%.2f", ($hr_size /= (10 ** 6)));
+				$suffix  = "MB";
+			}
+			elsif ($hr_size >= (10 ** 3))
+			{
+				# Kilobyte
+				$hr_size = sprintf("%.1f", ($hr_size /= (10 ** 3)));
+				$suffix  = "KB";
+			}
+			else
+			{
+# 				$hr_size = $an->Readable->comma($hr_size);
+				$suffix  = "b";
+			}
 		}
 	}
 	
