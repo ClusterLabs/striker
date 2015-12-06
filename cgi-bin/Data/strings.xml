@@ -2047,6 +2047,10 @@ Creating the directory: [#!variable!directory!#]
 Touching: [#!variable!file!#]
 - Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
 		</key>
+		
+		
+		<!-- anvil-fio-tester; Configure Virtual Machine Manager -->
+		<key name="aft_log_0001">#!variable!this_file!# has started.</key>
 	</lang>
 
 	<!-- Japanese -->
