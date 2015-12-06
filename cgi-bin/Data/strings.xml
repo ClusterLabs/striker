@@ -2051,6 +2051,28 @@ Touching: [#!variable!file!#]
 		
 		<!-- anvil-fio-tester; Configure Virtual Machine Manager -->
 		<key name="aft_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- normal messages -->
+		<key name="aft_message_0001">Testing: [#!variable!location!#], averaging over: [#!variable!loops!#] loop(s), running for: [#!variable!seconds!#] seconds per loop.</key>
+		<key name="aft_message_0002">Please wait, the first loop has started...</key>
+		<key name="aft_message_0003">
+Virtual disk properties:
+- Strip Size: ....... [#!variable!strip_size!# KiB]
+- Disk Cache: ....... [#!variable!disk_cache_policy!#]
+- Active Operations:  [#!variable!active_operations!#]
+- Encryption: ....... [#!variable!encryption!#]
+- Start Time: ....... [#!variable!start_time!#]
+- Estimated End Time: [#!variable!end_time!#]
+		</key>
+		<key name="aft_message_0004">Pass: [#!variable!pass!#], speed: [#!variable!speed!#/sec].</key>
+		<key name="aft_message_0005">Average write speed: [#!variable!average!#/sec].</key>
+		
+		<!-- errors -->
+		<key name="aft_error_0001"><![CDATA[Must be called with '--location </path/to/test/output>'.]]></key>
+		<key name="aft_error_0002"><![CDATA[The '--loops X' switch must be set to an integer.]]></key>
+		<key name="aft_error_0003"><![CDATA[The 'storcli64' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
+		<key name="aft_error_0004"><![CDATA[The 'fio' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
+		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 	</lang>
 
 	<!-- Japanese -->

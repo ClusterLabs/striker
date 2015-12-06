@@ -2,6 +2,14 @@
 # 
 # This tool calls 'fio' against a given path X times and averages the results.
 # 
+# Exit Codes;
+# 0  = OK
+# 1  = No test location given.
+# 2  = --loops was used with a non-digit character
+# 3  = 'storcli64' not installed
+# 4  = 'fio' not installed
+# 5  = --runtime was used with a non-digit character
+# 
 
 use strict;
 use warnings;
@@ -31,11 +39,25 @@ my $time = time;
 my $an = AN::Tools->new({data => {
 		path		=>	{
 			fio		=>	"/usr/bin/fio",
+			log_file	=>	"/var/log/striker.log",
 			storcli64	=>	"/sbin/storcli64",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 		},
-		switches	=>	{},
+		switches	=>	{
+			loops		=>	3,
+			runtime		=>	30,
+		},
+		fio		=>	{
+			name 		=>	"certification",
+			ioengine 	=>	"libaio",
+			direct		=>	1,
+			bs		=>	"4M",
+			rw		=>	"randwrite",
+			size 		=>	"2g",
+			iodepth		=>	64,
+			numjobs		=>	4,
+		},
 		sys		=>	{
 			language	=>	"en_CA",
 			local_users	=>	[],
@@ -53,8 +75,339 @@ $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
+$an->Readable->base2(1);
 
 # Log our startup
 $an->Log->entry({log_level => 2, message_key => "scv_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure the user had told us where to test.
+if (not $an->data->{switches}{location})
+{
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+}
+if ($an->data->{switches}{loops})
+{
+	if ($an->data->{switches}{loops} =~ /\D/)
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0002", code => 2, file => "$THIS_FILE", line => __LINE__});
+	}
+}
+if ($an->data->{switches}{runtime})
+{
+	if ($an->data->{switches}{runtime} =~ /\D/)
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0005", code => 3, file => "$THIS_FILE", line => __LINE__});
+	}
+}
+
+# Make sure I have storcli64 and fio installed.
+if (not -x $an->data->{path}{storcli64})
+{
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0003", message_variables => {
+		path	=>	$an->data->{path}{storcli64}, 
+	}, code => 3, file => "$THIS_FILE", line => __LINE__});
+}
+if (not -x $an->data->{path}{fio})
+{
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "aft_error_0004", message_variables => {
+		path	=>	$an->data->{path}{fio}, 
+	}, code => 4, file => "$THIS_FILE", line => __LINE__});
+}
+
+# Tell the user that we're starting.
+print $an->String->get({key => "aft_message_0001", variables => {
+	location	=>	$an->data->{switches}{location}, 
+	loops		=>	$an->data->{switches}{loops},
+	seconds		=>	$an->data->{switches}{runtime},
+}}), "\n";
+
+# Disable background initialization and consistency checks.
+control_virtual_disk_background_process($an, "pause", "bgi");
+control_virtual_disk_background_process($an, "pause", "cc");
+
+# TODO: We should check for and pause things like PatrolReads, relearn cycles, etc.
+
+# Report the Strip and cache data
+report_vd_info($an);
+
+# Call 'fio'
+print $an->String->get({key => "aft_message_0002"})."\n";
+call_fio($an);
+
+# Resume background initialization and consistency checks.
+control_virtual_disk_background_process($an, "resume", "bgi");
+control_virtual_disk_background_process($an, "resume", "bgi");
+
+# report findings.
+report_findings($an);
+
+exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+sub report_findings
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_findings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $total = 0;
+	foreach my $pass (sort {$a cmp $b} keys %{$an->data->{pass}})
+	{
+		my $speed =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{pass}{$pass}{write_speed}});
+		   $total += $an->data->{pass}{$pass}{write_speed};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "speed", value1 => $speed, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	my $average_bps = $an->Math->round({number => ($total / $an->data->{switches}{loops}), places => 0});
+	my $average     = $an->Readable->bytes_to_hr({'bytes' => $average_bps});
+	
+	print $an->String->get({key => "aft_message_0005", variables => {
+		average	=>	$average,
+	}}), "\n";
+	
+	return(0);
+}
+
+# Reports on the VD state
+sub report_vd_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_vd_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $strip_size        = "";
+	my $disk_cache_policy = "";
+	my $active_operations = "";
+	my $encryption        = "";
+	my $shell_call        = $an->data->{path}{storcli64}." /c0/v0 show all";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Strip Size = (\d+) KB/)
+		{
+			$strip_size = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "strip_size", value1 => $strip_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Disk Cache Policy = (.*)/)
+		{
+			$disk_cache_policy = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "disk_cache_policy", value1 => $disk_cache_policy, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Active Operations = (.*)/)
+		{
+			$active_operations = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "active_operations", value1 => $active_operations, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Encryption = (.*)/)
+		{
+			$encryption = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "encryption", value1 => $encryption, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Print the summary
+	my ($date_now,  $time_now)  = $an->Get->date_and_time({use_time => time});
+	my ($date_done, $time_done) = $an->Get->date_and_time({use_time => time, offset => ($an->data->{switches}{loops} * $an->data->{switches}{runtime})});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "date_now",  value1 => $date_now, 
+		name2 => "time_now",  value2 => $time_now, 
+		name3 => "date_done", value3 => $date_done, 
+		name4 => "time_done", value4 => $time_done, 
+	}, file => $THIS_FILE, line => __LINE__});
+	print $an->String->get({key => "aft_message_0003", variables => {
+		strip_size		=>	$strip_size,
+		disk_cache_policy	=>	$disk_cache_policy,
+		active_operations	=>	$active_operations,
+		encryption		=>	$encryption,
+		start_time	=>	"$date_now, $time_now",
+		end_time	=>	"$date_done, $time_done",
+	}}), "\n";
+	
+	return(0);
+}
+
+# This calls 'fio' the number of loops times and averages the results.
+sub call_fio
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "call_fio" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	foreach my $pass (1..$an->data->{switches}{loops})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "pass", value1 => $pass, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->data->{pass}{$pass}{write_speed} = "";
+		
+		my $shell_call =  $an->data->{path}{fio}." --name ".$an->data->{fio}{name};
+		   $shell_call .= " --filename ".$an->data->{switches}{location};
+		   $shell_call .= " --ioengine ".$an->data->{fio}{ioengine};
+		   $shell_call .= " --direct ".$an->data->{fio}{direct};
+		   $shell_call .= " --bs ".$an->data->{fio}{bs};
+		   $shell_call .= " --rw ".$an->data->{fio}{rw};
+		   $shell_call .= " --size ".$an->data->{fio}{size};
+		   $shell_call .= " --iodepth ".$an->data->{fio}{iodepth};
+		   $shell_call .= " --numjobs ".$an->data->{fio}{numjobs};
+		   $shell_call .= " --runtime ".$an->data->{switches}{runtime};
+		   $shell_call .= " --time_based --group_reporting";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($line =~ /aggrb=(\d+\.\d+)(.*?B)\/s,/) || ($line =~ /aggrb=(\d+)(.*?B)\/s,/))
+			{
+				my $rate  = $1;
+				my $units = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "rate",  value1 => $rate, 
+					name2 => "units", value2 => $units, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# fio defines 'MB' as 2**20, which should be MiB, etc.
+				$units =~ s/B/iB/;
+				$units =~ s/ii/i/;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "units", value1 => $units, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Convert to bytes, then back to MiB.
+				$an->data->{pass}{$pass}{write_speed} = $an->Readable->hr_to_bytes({size => $rate, type => $units});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "pass::${pass}::write_speed", value1 => $an->data->{pass}{$pass}{write_speed}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Convert back.
+				my $speed = $an->Readable->bytes_to_hr({'bytes' => $an->data->{pass}{$pass}{write_speed}});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "speed", value1 => $speed, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				print $an->String->get({key => "aft_message_0004", variables => {
+					pass	=>	$pass,
+					speed	=>	$speed,
+				}}), "\n";
+			}
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
+
+# This controls (pauses or resumes) background processes.
+sub control_virtual_disk_background_process
+{
+	my ($an, $task, $function) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "control_virtual_disk_background_process" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "task",     value1 => $task, 
+		name2 => "function", value2 => $function,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($task eq "resume")
+	{
+		my $shell_call = $an->data->{path}{storcli64}." /c0/v0 resume $function";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Is a BGI in progress?
+		my $in_progress   = 0;
+		my $bgi_time_left = "";
+		my $shell_call    = $an->data->{path}{storcli64}." /c0/v0 show $function";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /\d+\s+\w+\s+\d+\s+In progress\s+(.*)$/i)
+			{
+				$bgi_time_left   = $1;
+				$in_progress = 1;
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "bgi_time_left",   value1 => $bgi_time_left,
+					name2 => "in_progress", value2 => $in_progress,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+		
+		# If there is a BGI running, pause it
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "in_progress", value1 => "$in_progress"
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($in_progress)
+		{
+			# Pause it.
+			my $shell_call = $an->data->{path}{storcli64}." /c0/v0 pause $function";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+	}
+	
+	return(0);
+}
