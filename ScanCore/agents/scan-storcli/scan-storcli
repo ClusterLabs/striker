@@ -15,6 +15,10 @@
 # 4  - Got data from the wrong controller.
 # 5  - Unexpecte status when querying adapter
 # 
+# ToDo:
+# - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
+#   write-through.
+# 
 
 exit(255);
 
@@ -201,16 +205,25 @@ sub gather_data
 			{
 				# Firmware images pending in flash memory
 				parse_adapter_pending_images_in_flash($an, $adapter, $line);
+				next;
 			}
 			elsif ($an->data->{$type}{in_bus})
 			{
 				# Bus info.
 				parse_adapter_bus($an, $adapter, $line);
+				next;
 			}
 			elsif ($an->data->{$type}{in_status})
 			{
 				# System status.
 				parse_adapter_status($an, $adapter, $line);
+				next;
+			}
+			elsif ($an->data->{$type}{in_supported_adapter_operations})
+			{
+				# System status.
+				parse_supported_adapter_operations($an, $adapter, $line);
+				next;
 			}
 		}
 		close $file_handle;
@@ -220,9 +233,41 @@ sub gather_data
 }
 
 # This parses out the 'Status' data from the adapter.
+sub parse_supported_adapter_operations
+{
+	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_supported_adapter_operations", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $section_name = "status";
+	my $section_key  = "#!string!scan_storcli_section_0006!#";
+	
+	if ($line =~ /^Controller Status = (.*)?/i)
+	{
+		# storcli_status -> storcli_status_function_number
+		$an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number} = $1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storcli::${adapter}::adapter::${adapter}::storcli_status::function_number", value1 => $an->data->{storcli}{$adapter}{adapter}{$adapter}{storcli_status}{function_number}
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		process_other_storcl_line($an, $adapter, $line, $section_name, $section_key);
+	}
+	
+	return(0);
+}
+
+# This parses out the 'Status' data from the adapter.
 sub parse_adapter_status
 {
 	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_status", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $section_name = "status";
 	my $section_key  = "#!string!scan_storcli_section_0005!#";
@@ -311,6 +356,10 @@ sub parse_adapter_status
 sub parse_adapter_pending_images_in_flash
 {
 	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_pending_images_in_flash", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $section_name = "pending_images_in_flash";
 	my $section_key  = "#!string!scan_storcli_section_0003!#";
@@ -325,6 +374,10 @@ sub parse_adapter_pending_images_in_flash
 sub parse_adapter_bus
 {
 	my ($an, $adapter, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_adapter_bus", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "adapter", value1 => $adapter, 
+		name2 => "line",    value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $section_name = "bus";
 	my $section_key  = "#!string!scan_storcli_section_0004!#";
@@ -689,6 +742,10 @@ sub nice_exit
 sub set_active_section
 {
 	my ($an, $type, $line) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_active_section", }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "type", value1 => $type, 
+		name2 => "line", value2 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# These variables are used to track which section is being parsed.
 	if ($type eq "adapter")

@@ -38,11 +38,67 @@ my $time = time;
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
+			cat		=>	"/bin/cat",
 			fio		=>	"/usr/bin/fio",
 			log_file	=>	"/var/log/striker.log",
 			storcli64	=>	"/sbin/storcli64",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		proc		=>	{
+			# http://mycusthelp.info/LSI/_cs/AnswerDetail.aspx?inc=8273
+			interrupts	=>	"/proc/interrupts",
+		},
+		sysfs		=>	{
+			# Options are 'noop', 'deadline', 'anticipatory' and 'cfq'.
+			# - https://access.redhat.com/solutions/54164
+			# deadline - Favours reads over writes, good for DBs. Higher write latency, but 
+			#            higher chance that writes can be merged.
+			#            - https://access.redhat.com/articles/425823
+			# cfq      - Completely fair queuing is more balanced. Usually better for VM hosts.
+			#            - https://access.redhat.com/solutions/5427
+			# noop     - This is usually ideal for guests, as it doesn't attempt to schedule.
+			#            Minimal CPU load. Might be most useful, given the controller sits 
+			#            between the kernel and the actual disks.
+			#            - https://access.redhat.com/solutions/5427
+			#            - https://en.wikipedia.org/wiki/Noop_scheduler
+			# anticipatory - This is an deprecated scheduler that basically provided read-ahead
+			#                caching. Replaced by cfq and gone in 2.6.33+.
+			#            - https://en.wikipedia.org/wiki/Anticipatory_scheduling
+			scheduler	=>	"/sys/block/sda/queue/scheduler",
+			# https://www.kernel.org/doc/Documentation/block/queue-sysfs.txt
+			# 
+			# This controls how many requests may be allocated in the block layer for
+			# read or write requests. Note that the total allocated number may be twice
+			# this amount, since it applies only to reads or writes (not the accumulated
+			# sum).
+			# 
+			# To avoid priority inversion through request starvation, a request
+			# queue maintains a separate request pool per each cgroup when
+			# CONFIG_BLK_CGROUP is enabled, and this parameter applies to each such
+			# per-block-cgroup request pool.  IOW, if there are N block cgroups,
+			# each request queue may have up to N request pools, each independently
+			# regulated by nr_requests.
+			# 
+			# Basically; the larger this number, the more RAM is consumed but the better chance
+			# of efficient disk access. LSI recommends '975', default on RHEL 6.7 is '128'.
+			# http://yoshinorimatsunobu.blogspot.com/2009/04/linux-io-scheduler-queue-size-and.html
+			# recommends trying 100,000.
+			nr_requests	=>	"/sys/block/sda/queue/nr_requests",
+			# This is the maximum depth of queued IO commands linux will allow. When hit, this 
+			# will drop and pending commands will be cached. When 'queue_ramp_up_period' ms passes
+			# without overrunning, the queue_depth will increase again.
+			# https://www-01.ibm.com/support/knowledgecenter/linuxonibm/com.ibm.linux.z.lgdd/lgdd_t_fcp_wrk_q_depth.html
+			# Default is '256', LSI recommends '975' and IBM suggests trying 1000.
+			queue_depth	=>	"/sys/block/sda/device/queue_depth",
+			# If this option is '1', the block layer will migrate request completions to the
+			# cpu "group" that originally submitted the request. For some workloads this
+			# provides a significant reduction in CPU cycles due to caching effects.
+			# 
+			# For storage configurations that need to maximize distribution of completion
+			# processing setting this option to '2' forces the completion to run on the
+			# requesting cpu (bypassing the "group" aggregation logic).
+			rq_affinity	=>	"/sys/block/sda/queue/rq_affinity",
 		},
 		switches	=>	{
 			loops		=>	3,
@@ -78,7 +134,7 @@ $an->Get->switches();
 $an->Readable->base2(1);
 
 # Log our startup
-$an->Log->entry({log_level => 2, message_key => "scv_log_0001", message_variables => {
+$an->Log->entry({log_level => 2, message_key => "aft_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -131,6 +187,7 @@ control_virtual_disk_background_process($an, "pause", "cc");
 
 # Report the Strip and cache data
 report_vd_info($an);
+report_os_info($an);
 
 # Call 'fio'
 print $an->String->get({key => "aft_message_0002"})."\n";
@@ -173,6 +230,100 @@ sub report_findings
 	return(0);
 }
 
+# Reports on the OS values
+sub report_os_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_os_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Disk scheduler
+	my $scheduler  = "";
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{sysfs}{scheduler};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /\[(.*?)\]/)
+		{
+			$scheduler = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "scheduler", value1 => $scheduler, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Maximum number of queue requests
+	my $nr_requests = "";
+	   $shell_call  = $an->data->{path}{cat}." ".$an->data->{sysfs}{nr_requests};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$nr_requests = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "nr_requests", value1 => $nr_requests,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	# Maximum queue depth
+	my $queue_depth = "";
+	   $shell_call  = $an->data->{path}{cat}." ".$an->data->{sysfs}{queue_depth};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$queue_depth = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "queue_depth", value1 => $queue_depth,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	# Request affinity
+	my $rq_affinity = "";
+	   $shell_call  = $an->data->{path}{cat}." ".$an->data->{sysfs}{rq_affinity};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$rq_affinity = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "rq_affinity", value1 => $rq_affinity,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	# Print the summary
+	print $an->String->get({key => "aft_message_0006", variables => {
+		scheduler	=>	$scheduler,
+		nr_requests	=>	$nr_requests,
+		queue_depth	=>	$queue_depth,
+		rq_affinity	=>	$rq_affinity,
+	}}), "\n";
+	
+	return(0);
+}
+
 # Reports on the VD state
 sub report_vd_info
 {
@@ -183,6 +334,9 @@ sub report_vd_info
 	my $disk_cache_policy = "";
 	my $active_operations = "";
 	my $encryption        = "";
+	my $write_cache       = "";
+	my $emulation_type    = "";
+	my $read_ahead        = "";
 	my $shell_call        = $an->data->{path}{storcli64}." /c0/v0 show all";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -200,6 +354,14 @@ sub report_vd_info
 		if ($line =~ /Strip Size = (\d+) KB/)
 		{
 			$strip_size = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "strip_size", value1 => $strip_size, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if (($line =~ /Strip Size = (\d+) MB/) or ($line =~ /Strip Size = (\d+\.\d+) MB/))
+		{
+			$strip_size =  $1;
+			$strip_size *= 1024;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "strip_size", value1 => $strip_size, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -225,6 +387,39 @@ sub report_vd_info
 				name1 => "encryption", value1 => $encryption, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		if ($line =~ /Write Cache.*? = (.*)/)
+		{
+			$write_cache = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "write_cache", value1 => $write_cache, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Emulation type = (.*)/)
+		{
+			$emulation_type = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "emulation_type", value1 => $emulation_type, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /0\/0\s+RAID6\s+.*?\s+.*?\s+.*?\s+(.*?)\s+/)
+		{
+			my $cache = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cache", value1 => $cache, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($cache =~ /^NR/)
+			{
+				$read_ahead = "No Read-Ahead";
+			}
+			elsif ($cache =~ /^R/)
+			{
+				$read_ahead = "Read-Ahead";
+			}
+			else
+			{
+				$read_ahead = "?? $line ??";
+			}
+		}
 	}
 	close $file_handle;
 	
@@ -242,8 +437,11 @@ sub report_vd_info
 		disk_cache_policy	=>	$disk_cache_policy,
 		active_operations	=>	$active_operations,
 		encryption		=>	$encryption,
-		start_time	=>	"$date_now, $time_now",
-		end_time	=>	"$date_done, $time_done",
+		write_cache		=>	$write_cache,
+		emulation_type		=>	$emulation_type,
+		read_ahead		=>	$read_ahead,
+		start_time		=>	"$date_now, $time_now",
+		end_time		=>	"$date_done, $time_done",
 	}}), "\n";
 	
 	return(0);

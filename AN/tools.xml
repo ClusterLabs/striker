@@ -407,6 +407,8 @@ Variables:
 		<key name="error_title_0020">System call failed</key>
 		<key name="error_title_0021">Failed to set the ownership of: [#!variable!directory!#] to be owned by the user: [#!variable!user!#] and group: [#!variable!group!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0022">Failed to set the mode of: [#!variable!directory!#] to be: [#!variable!mode!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_title_0023">Unable to read the XML file</key>
+		<key name="error_title_0024">Bad hash reference</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
@@ -450,6 +452,9 @@ Variables:
 		<key name="error_message_0039"><![CDATA[The 'AN::Tools::Get->rsa_public_key()' method wasn't passed a 'user' parameter. Please use 'user => <local_user>' where the 'local_user' is the system users whose RSA key you want to read is.]]></key>
 		<key name="error_message_0040">The 'AN::Tools::Get->users_home()' method failed to read the user: [#!variable!user!#]'s home directory from '/etc/passwd'.</key>
 		<key name="error_message_0041"><![CDATA[The 'AN::Tools::Get->users_home()' method was called without being passed a user name. Please use 'user => <user>' where the 'user' is the local system users whose home directory you want.]]></key>
+		<key name="error_message_0042"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was asked to read an unreadable file: [#!variable!file!#]. If the file exists, check its permissions.]]></key>
+		<key name="error_message_0043"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was called without a file name.]]></key>
+		<key name="error_message_0044"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was passed in a hash reference that contained: [#!variable!hash!#], which isn't actually a hash reference.]]></key>
 	</lang>
 	
 	<!-- 日本語 -->

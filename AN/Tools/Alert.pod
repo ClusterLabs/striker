@@ -392,15 +392,15 @@ The 'AN::Tools::Get->users_home()' method was called without being passed a user
 
 =head2 C<39>
 
-free
+The 'AN::Tools::Storage->read_xml_file()' method was passed a 'file' that was not readable.
 
 =head2 C<40>
 
-free
+The 'AN::Tools::Storage->read_xml_file()' method was called without a file name.
 
 =head2 C<41>
 
-free
+The 'AN::Tools::Storage->read_xml_file()' method was passed a hash reference that wasn't actually a hash reference.
 
 =head2 C<42>
 

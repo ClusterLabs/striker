@@ -2061,11 +2061,21 @@ Virtual disk properties:
 - Disk Cache: ....... [#!variable!disk_cache_policy!#]
 - Active Operations:  [#!variable!active_operations!#]
 - Encryption: ....... [#!variable!encryption!#]
+- Write Cache: ...... [#!variable!write_cache!#]
+- Emulation Type: ... [#!variable!emulation_type!#]
+- Read-Ahead Caching: [#!variable!read_ahead!#]
 - Start Time: ....... [#!variable!start_time!#]
 - Estimated End Time: [#!variable!end_time!#]
 		</key>
 		<key name="aft_message_0004">Pass: [#!variable!pass!#], speed: [#!variable!speed!#/sec].</key>
 		<key name="aft_message_0005">Average write speed: [#!variable!average!#/sec].</key>
+		<key name="aft_message_0006">
+OS Configuration (sda):
+- Scheduler: ...... [#!variable!scheduler!#]
+- Queue Requests: . [#!variable!nr_requests!#]
+- Queue Depth: .... [#!variable!queue_depth!#]
+- Request Affinity: [#!variable!rq_affinity!#]
+		</key>
 		
 		<!-- errors -->
 		<key name="aft_error_0001"><![CDATA[Must be called with '--location </path/to/test/output>'.]]></key>
@@ -2073,6 +2083,20 @@ Virtual disk properties:
 		<key name="aft_error_0003"><![CDATA[The 'storcli64' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
 		<key name="aft_error_0004"><![CDATA[The 'fio' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
+		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
+		
+		<!-- anvil-safe-start; Configure Virtual Machine Manager -->
+		<key name="asst_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- normal messages -->
+		<key name="asst_message_0001"></key>
+		
+		
+		<!-- anvil-network-profiler; Find the optimal network configuration -->
+		<key name="anp_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- normal messages -->
+		<key name="anp_message_0001"></key>
 	</lang>
 
 	<!-- Japanese -->

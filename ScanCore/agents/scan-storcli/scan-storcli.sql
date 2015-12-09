@@ -159,7 +159,6 @@ CREATE TABLE storcli_status (
 	storcli_status_lock_key_assigned		text,
 	storcli_status_failed_to_get_lock_key_on_bootup	text,
 	storcli_status_controller_booted_into_safe_mode	text,
-	
 	modified_date					timestamp with time zone	not null,
 	
 	FOREIGN KEY(storcli_status_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
@@ -224,6 +223,73 @@ ALTER FUNCTION history_storcli_status() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_storcli_status
 	AFTER INSERT OR UPDATE ON storcli_status
 	FOR EACH ROW EXECUTE PROCEDURE history_storcli_status();
+
+-- This stores the data from the 'Status' section of 'storcli64 /cX show all'.
+CREATE TABLE storcli_supported_adapter_operations (
+	storcli_status_uuid				uuid				primary key,
+	storcli_status_storcli_adapter_uuid		uuid				not null,
+
+	modified_date					timestamp with time zone	not null,
+	
+	FOREIGN KEY(storcli_status_uuid) REFERENCES storcli_adapter(storcli_adapter_uuid)
+);
+ALTER TABLE storcli_supported_adapter_operations OWNER TO #!variable!user!#;
+
+CREATE TABLE history.storcli_supported_adapter_operations (
+	history_id					bigserial,
+	storcli_status_uuid				uuid				primary key,
+	storcli_status_storcli_adapter_uuid		uuid				not null,
+
+	modified_date					timestamp with time zone	not null
+);
+ALTER TABLE history.storcli_status OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_storcli_status() RETURNS trigger
+AS $$
+DECLARE
+	history_storcli_status RECORD;
+BEGIN
+	SELECT INTO history_storcli_status * FROM storcli_status WHERE storcli_status_uuid=new.storcli_status_uuid;
+	INSERT INTO history.storcli_status
+		(storcli_status_uuid, 
+		 storcli_status_storcli_adapter_uuid, 
+		 storcli_status_function_number, 
+		 storcli_status_memory_correctable_errors, 
+		 storcli_status_memory_uncorrectable_errors, 
+		 storcli_status_ecc_bucket_count, 
+		 storcli_status_any_offline_vd_cache_preserved, 
+		 storcli_status_bbu_status, 
+		 storcli_status_lock_key_assigned, 
+		 storcli_status_failed_to_get_lock_key_on_bootup, 
+		 storcli_status_controller_booted_into_safe_mode, 
+		 modified_date)
+	VALUES
+		(history_storcli_status.storcli_status_uuid, 
+		 history_storcli_status.storcli_status_storcli_adapter_uuid, 
+		 history_storcli_status.storcli_status_function_number, 
+		 history_storcli_status.storcli_status_memory_correctable_errors, 
+		 history_storcli_status.storcli_status_memory_uncorrectable_errors, 
+		 history_storcli_status.storcli_status_ecc_bucket_count, 
+		 history_storcli_status.storcli_status_any_offline_vd_cache_preserved, 
+		 history_storcli_status.storcli_status_bbu_status, 
+		 history_storcli_status.storcli_status_lock_key_assigned, 
+		 history_storcli_status.storcli_status_failed_to_get_lock_key_on_bootup, 
+		 history_storcli_status.storcli_status_controller_booted_into_safe_mode, 
+		 history_storcli_status.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_storcli_status() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_storcli_status
+	AFTER INSERT OR UPDATE ON storcli_status
+	FOR EACH ROW EXECUTE PROCEDURE history_storcli_status();
+
+
+
+
+
 
 
 -- ------------------------------------------------------------------------------------------------------- --

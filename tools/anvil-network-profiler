@@ -1,0 +1,83 @@
+#!/usr/bin/perl
+# 
+# This tool replaces the old 'network_profiler' program.
+# - https://github.com/digimer/network_profiler
+# 
+# Exit Codes;
+# 0  = OK
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			log_file	=>	"/var/log/striker.log",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		mtu		=>	{
+			
+		},
+		switches	=>	{
+			peer		=>	"",
+		},
+		sys		=>	{
+			language	=>	"en_CA",
+			local_users	=>	[],
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Readable->base2(1);
+
+# Log our startup
+$an->Log->entry({log_level => 2, message_key => "anp_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# If the user didn't tell us where to test, read our hostname and find the peer's hostname from cluster.conf
+# and then set the peer's storage network as the interface to use.
+if (not $an->data->{switches}{peer})
+{
+	$an->data->{switches}{peer} = $an->Cman->peer_hostname();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "switches::peer", value1 => $an->data->{switches}{peer}, 
+	}, file => $THIS_FILE, line => __LINE__});
+}
+
+
+
+exit(0);

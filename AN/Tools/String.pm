@@ -263,6 +263,7 @@ sub get
 	return ($string);
 }
 
+### TODO: Move this to AN::Storage
 # This takes the path/name of an XML file containing AN::Tools type words and reads them into a hash 
 # reference.
 sub read_words

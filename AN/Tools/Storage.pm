@@ -590,4 +590,63 @@ sub read_ssh_config
 	return($hash);
 }
 
+# This reads an XML file into the requested hash reference.
+sub read_xml_file
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If the user didn't give us a file name to read, exit.
+	my $file = $parameter->{file} if $parameter->{file};
+	#print "$THIS_FILE ".__LINE__."; Reading file: [$file]\n";
+	if ($file)
+	{
+		# Can I read it?
+		if (not -e $file)
+		{
+			# Nope :(
+			$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0042", message_variables => { file => $file }, code => 39, file => "$THIS_FILE", line => __LINE__});
+			# Return nothing in case the user is blocking fatal errors.
+			return (undef);
+		}
+	}
+	else
+	{
+		# What file?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0043", code => 40, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
+	my $hash = $parameter->{hash};
+	if (not $hash)
+	{
+		# Use the file name.
+		$hash = {};
+		$an->data->{$file} = $hash;
+		#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
+	}
+	elsif (ref($hash) ne "HASH")
+	{
+		# The user passed ... something.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0024", message_key => "error_message_0044", message_variables => { hash => $hash }, code => 41, file => "$THIS_FILE", line => __LINE__});
+		#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
+		return (undef);
+	}
+	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
+	
+	# Still alive? Good!
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($file, ForceArray => 1);
+	$hash->{data} = $data;
+	
+	return($hash);
+}
+
 1;

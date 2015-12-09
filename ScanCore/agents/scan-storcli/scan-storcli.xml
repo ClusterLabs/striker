@@ -38,7 +38,7 @@ main Striker strings file. Do this by prefixing all strings with 'scan_storcli_'
 		<key name="scan_storcli_section_0003">Pending Images in Flash</key>
 		<key name="scan_storcli_section_0004">Bus</key>
 		<key name="scan_storcli_section_0005">Status</key>
-		<key name="scan_storcli_section_0006"></key>
+		<key name="scan_storcli_section_0006">Supported Adapter Operations</key>
 		<key name="scan_storcli_section_0007"></key>
 		<key name="scan_storcli_section_0008"></key>
 		<key name="scan_storcli_section_0009"></key>

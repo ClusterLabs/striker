@@ -8,11 +8,15 @@ package AN::Tools;
 BEGIN
 {
 	our $VERSION = "0.1.001";
+	# This suppresses the 'could not find ParserDetails.ini in /PerlApp/XML/SAX' warning message in 
+	# XML::Simple calls.
+	$ENV{HARNESS_ACTIVE} = 1;
 }
 
 use strict;
 use warnings;
 use IO::Handle;
+use XML::Simple;
 my $THIS_FILE = "Tools.pm";
 
 # Setup for UTF-8 mode.
@@ -24,6 +28,7 @@ $ENV{'PERL_UNICODE'} = 1;
 # methods via their containing module's name. (A La: $an->Module->method rather than $an->method).
 use AN::Tools::Alert;
 use AN::Tools::Check;
+use AN::Tools::Cman;
 use AN::Tools::Convert;
 use AN::Tools::DB;
 use AN::Tools::Get;
@@ -43,6 +48,7 @@ sub new
 		HANDLE				=>	{
 			ALERT				=>	AN::Tools::Alert->new(),
 			CHECK				=>	AN::Tools::Check->new(),
+			CMAN				=>	AN::Tools::Cman->new(),
 			CONVERT				=>	AN::Tools::Convert->new(),
 			DB				=>	AN::Tools::DB->new(),
 			GET				=>	AN::Tools::Get->new(),
@@ -87,6 +93,7 @@ sub new
 	# modules.
 	$an->Alert->parent($an);
 	$an->Check->parent($an);
+	$an->Cman->parent($an);
 	$an->Convert->parent($an);
 	$an->DB->parent($an);
 	$an->Get->parent($an);
@@ -150,6 +157,7 @@ sub new
 	# Set some system paths
 	$an->data->{path}{'chmod'}       = "/bin/chmod";
 	$an->data->{path}{'chown'}       = "/bin/chown";
+	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
 	$an->data->{path}{echo}          = "/bin/echo";
 	$an->data->{path}{expect}        = "/usr/bin/expect";
 	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
@@ -311,6 +319,14 @@ sub Check
 	my $self = shift;
 	
 	return ($self->{HANDLE}{CHECK});
+}
+
+# Makes my handle to AN::Tools::Cman clearer when using this module to access it's methods.
+sub Cman
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{CMAN});
 }
 
 # Makes my handle to AN::Tools::Convert clearer when using this module to access it's methods.
