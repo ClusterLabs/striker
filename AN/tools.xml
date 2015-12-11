@@ -409,6 +409,7 @@ Variables:
 		<key name="error_title_0022">Failed to set the mode of: [#!variable!directory!#] to be: [#!variable!mode!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0023">Unable to read the XML file</key>
 		<key name="error_title_0024">Bad hash reference</key>
+		<key name="error_title_0025">Failed to parse cman config</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
@@ -455,6 +456,9 @@ Variables:
 		<key name="error_message_0042"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was asked to read an unreadable file: [#!variable!file!#]. If the file exists, check its permissions.]]></key>
 		<key name="error_message_0043"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was called without a file name.]]></key>
 		<key name="error_message_0044"><![CDATA[The 'AN::Tools::Storage->read_xml_file()' method was passed in a hash reference that contained: [#!variable!hash!#], which isn't actually a hash reference.]]></key>
+		<key name="error_message_0045"><![CDATA[The 'AN::Tools::Cman->peer_hostname()' method found the local hostname in the cman configuration file: [#!variable!file!#] but did not find a peer.]]></key>
+		<key name="error_message_0046"><![CDATA[The 'AN::Tools::Cman->peer_hostname()' method failed to find the local hostname in the cman configuration file: [#!variable!file!#]. Unable to determine which node is the peer.]]></key>
+		<key name="error_message_0047"><![CDATA[The 'AN::Tools::Get->ip()' method was called without the 'host' parameter.]]></key>
 	</lang>
 	
 	<!-- 日本語 -->

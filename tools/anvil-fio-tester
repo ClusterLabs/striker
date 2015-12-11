@@ -37,6 +37,27 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $time = time;
 
 my $an = AN::Tools->new({data => {
+		# This is technically sysfs stuff, but I wanted a dedicated hash.
+		# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Performance_Tuning_Guide/ch06s04s02.html
+		deadline	=>	{
+			# This determines the number of reads or writes to issue in a single batch. The 
+			# default is 16. Setting this to a higher value may result in better throughput, 
+			# but will also increase latency. 
+			fifo_batch	=>	"/sys/block/sda/queue/iosched/fifo_batch",
+			# You can set this tunable to 0 if you know your workload will never generate front
+			# merges. Unless you have measured the overhead of this check, it is advisable to 
+			# leave it at its default setting (1). 
+			front_merges	=>	"/sys/block/sda/queue/iosched/front_merges",
+			# This tunable allows you to set the number of milliseconds in which a read request
+			# should be serviced. By default, this is set to 500 ms (half a second).
+			read_expire	=>	"/sys/block/sda/queue/iosched/read_expire",
+			# This tunable allows you to set the number of milliseconds in which a write request
+			# should be serviced. By default, this is set to 5000 ms (five seconds). 
+			write_expire	=>	"/sys/block/sda/queue/iosched/write_expire",
+			# This tunable controls how many read batches can be processed before processing a
+			# single write batch. The higher this is set, the more preference is given to reads. 
+			writes_starved	=>	"/sys/block/sda/queue/iosched/writes_starved",
+		},
 		path		=>	{
 			cat		=>	"/bin/cat",
 			fio		=>	"/usr/bin/fio",
@@ -186,8 +207,9 @@ control_virtual_disk_background_process($an, "pause", "cc");
 # TODO: We should check for and pause things like PatrolReads, relearn cycles, etc.
 
 # Report the Strip and cache data
-report_vd_info($an);
+#report_vd_info($an);
 report_os_info($an);
+report_deadline_info($an);
 
 # Call 'fio'
 print $an->String->get({key => "aft_message_0002"})."\n";
@@ -225,6 +247,105 @@ sub report_findings
 	
 	print $an->String->get({key => "aft_message_0005", variables => {
 		average	=>	$average,
+	}}), "\n";
+	
+	return(0);
+}
+
+# Report on the deadline scheduler tuning variables.
+sub report_deadline_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "report_os_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $fifo_batch     = "";
+	my $front_merges   = "";
+	my $read_expire    = "";
+	my $write_expire   = "";
+	my $writes_starved = "";
+	
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{deadline}{fifo_batch};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$fifo_batch = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "fifo_batch", value1 => $fifo_batch,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{deadline}{front_merges};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$front_merges = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "front_merges", value1 => $front_merges,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{deadline}{read_expire};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$read_expire = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "read_expire", value1 => $read_expire,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{deadline}{write_expire};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$write_expire = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "write_expire", value1 => $write_expire,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{deadline}{writes_starved};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		$writes_starved = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "writes_starved", value1 => $writes_starved,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	# Print the summary
+	print $an->String->get({key => "aft_message_0007", variables => {
+		fifo_batch	=>	$fifo_batch,
+		front_merges	=>	$front_merges,
+		read_expire	=>	$read_expire,
+		write_expire	=>	$write_expire,
+		writes_starved	=>	$writes_starved,
 	}}), "\n";
 	
 	return(0);

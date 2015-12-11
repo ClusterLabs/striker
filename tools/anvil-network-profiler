@@ -5,6 +5,13 @@
 # 
 # Exit Codes;
 # 0  = OK
+# 1  = '--peer' not used and unable to determine the peer's host name from cluster.conf.
+# 2  = Failed to find a local interface with an IP on the same subnet as the peer IP.
+# 3  = '--password' not used and failed to find the password in striker.conf.
+# 4  = The 'iperf3' package isn't installed locally.
+# 5  = Failed to reach the peer.
+# 6  = The 'iperf3' package isn't installed on the peer.
+# 7  = Failed to find a peer's interface with the peer's IP address.
 # 
 
 use strict;
@@ -34,21 +41,39 @@ my $time = time;
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
+			ip		=>	"/sbin/ip",
+			iperf3		=>	"/usr/bin/iperf3",
+			killall		=>	"/usr/bin/killall",
 			log_file	=>	"/var/log/striker.log",
+			ping		=>	"/bin/ping",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 		},
+		iperf3		=>	{
+			server		=>	"--client 10.10.10.2 --port 7788 --time 30 --interval 0 --format b",
+			client		=>	"--server --bind 10.10.10.2 --port 7788 --one-off --interval 0 --format b",
+			port		=>	7788,
+			runtime		=>	30,
+		},
 		mtu		=>	{
 			
+		},
+		network		=>	{
+			local_interface	=>	"",
+			local_ip	=>	"",
+			peer_interface	=>	"",
+			peer_ip		=>	"",
 		},
 		switches	=>	{
 			peer		=>	"",
 		},
 		sys		=>	{
+			pings		=>	3,
 			language	=>	"en_CA",
 			local_users	=>	[],
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			ssh_fh		=>	"",
 		},
 	},
 });
@@ -72,12 +97,366 @@ $an->Log->entry({log_level => 2, message_key => "anp_log_0001", message_variable
 # and then set the peer's storage network as the interface to use.
 if (not $an->data->{switches}{peer})
 {
-	$an->data->{switches}{peer} = $an->Cman->peer_hostname();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "switches::peer", value1 => $an->data->{switches}{peer}, 
-	}, file => $THIS_FILE, line => __LINE__});
+	# Get the peer's short hostname and append '.sn'.
+	$an->data->{switches}{peer} = $an->Cman->peer_short_hostname();
+	
+	if (not $an->data->{switches}{peer})
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+		exit(1);
+	}
+	$an->data->{switches}{peer} .= ".sn";
+	print $an->String->get({key => "anp_message_0001", variables => {
+		peer	=>	$an->data->{switches}{peer}, 
+	}}), "\n";
 }
 
+# Convert the peer to an IP address if it isn't already.
+find_ips($an);
+$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
+	name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
+	name3 => "network::peer_ip",         value3 => $an->data->{network}{peer_ip},
+}, file => $THIS_FILE, line => __LINE__});
 
+# Do I have the peer's password?
+if (not $an->data->{switches}{password})
+{
+	my $cluster_name = $an->Cman->cluster_name();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cluster_name", value1 => $cluster_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now look for this in striker.conf.
+	foreach my $instance (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "cluster::${instance}::name", value1 => $an->data->{cluster}{$instance}{name},
+			name2 => "cluster_name",               value2 => $cluster_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		next if $an->data->{cluster}{$instance}{name} ne $cluster_name;
+		$an->data->{switches}{password} = $an->data->{cluster}{$instance}{root_pw} ? $an->data->{cluster}{$instance}{root_pw} : $an->data->{cluster}{$instance}{ricci_pw};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "cluster::${instance}::root_pw",  value1 => $an->data->{cluster}{$instance}{root_pw},
+			name2 => "cluster::${instance}::ricci_pw", value2 => $an->data->{cluster}{$instance}{ricci_pw},
+			name3 => "switches::password",             value3 => $an->data->{switches}{password},
+		}, file => $THIS_FILE, line => __LINE__});
+		last;
+	}
+}
+if (not $an->data->{switches}{password})
+{
+	# We're done.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0003", code => 3, file => "$THIS_FILE", line => __LINE__});
+	exit(3);
+}
+
+# Second last, is 'iperf3' installed?
+check_iperf3($an);
+
+# Finally, now that we know we can talk to the peer, find the interface with the selected IP.
+find_peer_interface($an);
+
+# Adjust the port and runtime, if requested.
+$an->data->{iperf3}{runtime} = $an->data->{switches}{runtime} if $an->data->{switches}{runtime};
+$an->data->{iperf3}{port}    = $an->data->{switches}{port}    if $an->data->{switches}{port};
+
+print $an->String->get({key => "anp_message_0002", variables => {
+	peer		=>	$an->data->{switches}{peer}, 
+	peer_ip		=>	$an->data->{network}{peer_ip},
+	peer_interface	=>	$an->data->{network}{peer_interface},
+	local_interface	=>	$an->data->{network}{local_interface},
+	local_ip	=>	$an->data->{network}{local_ip},
+	runtime		=>	$an->data->{iperf3}{runtime}, 
+	port		=>	$an->data->{iperf3}{port},
+}}), "\n";
+
+# If the user hasn't confirmed, pause and ask them if we should proceed.
+if ($an->data->{switches}{confirm})
+{
+	# Auto-run, go.
+	print $an->String->get({key => "anp_message_0006"})."\n";
+}
+else
+{
+	# Ask the user to confirm the run.
+	print $an->String->get({key => "anp_warning_0001"})."\n";
+	print $an->String->get({key => "anp_message_0003"})."\n";
+	my $answer = <STDIN>;
+	chomp($answer);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "answer", value1 => $answer,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($answer) && ($answer =~ /^y/i))
+	{
+		# We're good.
+		print $an->String->get({key => "anp_message_0004"})."\n";
+	}
+	else
+	{
+		# Abort!
+		print $an->String->get({key => "anp_message_0005"})."\n";
+		exit(0);
+	}
+}
+
+# Terminate any running processes.
+terminate_remote_process($an, "iperf3");
 
 exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This checks to see if iperf3 is installed locally and on the peer (and that we can reach the peer)
+sub find_peer_interface
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_peer_interface" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $this_interface = "";
+	my $this_ip        = "";
+	my $shell_call     = $an->data->{path}{ip}." addr list";
+	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	"",
+		'close'		=>	1,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^\d+: (.*?): </)
+		{
+			$this_interface = $1;
+			$this_ip        = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_interface", value1 => $this_interface,
+				name2 => "this_ip",        value2 => $this_ip,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		next if not $this_interface;
+		if ($line =~ /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\//)
+		{
+			$this_ip = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_ip",          value1 => $this_ip,
+				name2 => "network::peer_ip", value2 => $an->data->{network}{peer_ip},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_ip eq $an->data->{network}{peer_ip})
+			{
+				$an->data->{network}{peer_interface} = $this_interface;
+				last;
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "network::peer_interface", value1 => $an->data->{network}{peer_interface},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $an->data->{network}{peer_interface})
+	{
+		# No good. :(
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0007", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		exit(7);
+	}
+	
+	return($an->data->{network}{peer_interface});
+}
+
+# This logs into the peer and kills any running processes
+sub terminate_remote_process
+{
+	my ($an, $process) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "terminate_remote_process" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "process", value1 => $process, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{killall}." $process";
+	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This checks to see if iperf3 is installed locally and on the peer (and that we can reach the peer)
+sub check_iperf3
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_iperf3" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if (not -x $an->data->{path}{iperf3})
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0004", code => 4, file => "$THIS_FILE", line => __LINE__});
+		exit(4);
+	}
+	# How about on the peer? (also a test of whether we can ssh into the peer)
+	my $shell_call = "if [ -e ".$an->data->{path}{iperf3}." ]; then echo installed:1; else echo installed:0; fi;";
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	if ($error)
+	{
+		# We can't reach the peer.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0005", message_variables => {
+			peer_ip	=>	$an->data->{network}{peer_ip},
+			error	=>	$error, 
+		}, code => 5, file => "$THIS_FILE", line => __LINE__});
+		exit(5);
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /installed:(\d)/)
+		{
+			my $installed = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "installed", value1 => $installed, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $installed)
+			{
+				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0006", code => 6, file => "$THIS_FILE", line => __LINE__});
+				exit(6);
+			}
+		}
+	}
+}
+
+### TODO: Make this work with subnets other than just /8, /16 and /24
+# This uses 'switches::peer' to find the peer's IP and our local one on the same subnet.
+sub find_ips
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_ips" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{network}{peer_ip} = $an->Get->ip({host => $an->data->{switches}{peer}}); 
+	if (not $an->data->{network}{peer_ip})
+	{
+		# Welp, no go.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+		exit(1);
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "network::peer_ip", value1 => $an->data->{network}{peer_ip}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now call 'ip' and look for a matching network.
+	my $this_interface = "";
+	my $this_ip        = "";
+	my $this_subnet    = "";
+	my $this_broadcast = "";
+	my $shell_call     = $an->data->{path}{ip}." addr";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^\d+: (.*?): </)
+		{
+			$this_interface = $1;
+			$this_ip        = "";
+			$this_subnet    = "";
+			$this_broadcast = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_interface", value1 => $this_interface,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_ip",        value1 => $this_ip,
+				name2 => "this_subnet",    value2 => $this_subnet,
+				name3 => "this_broadcast", value3 => $this_broadcast,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		next if not $this_interface;
+		if ($line =~ /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d+)/)
+		{
+			$this_ip     = $1;
+			$this_subnet = $2;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_ip",     value1 => $this_ip,
+				name2 => "this_subnet", value2 => $this_subnet,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /brd (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)
+		{
+			$this_broadcast = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_broadcast", value1 => $this_broadcast,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if (($this_broadcast) && ($this_ip) && ($this_subnet))
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_ip",        value1 => $this_ip,
+				name2 => "this_subnet",    value2 => $this_subnet,
+				name3 => "this_broadcast", value3 => $this_broadcast,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Remove the trailing '255' from the broadcast.
+			$this_broadcast =~ s/\.255$//g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_broadcast",   value1 => $this_broadcast,
+				name2 => "network::peer_ip", value2 => $an->data->{network}{peer_ip},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{network}{peer_ip} =~ /$this_broadcast/)
+			{
+				$an->data->{network}{local_ip}        = $this_ip;
+				$an->data->{network}{local_interface} = $this_interface;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
+					name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Exit if I didn't find a match.
+	if (not $an->data->{network}{local_interface})
+	{
+		# Woops
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0002", message_variables => { peer_ip => $an->data->{network}{peer_ip} }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		exit(2);
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
+		name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
+	}, file => $THIS_FILE, line => __LINE__});
+	return($an->data->{network}{local_interface}, $an->data->{network}{local_ip}, $an->data->{network}{peer_ip});
+}

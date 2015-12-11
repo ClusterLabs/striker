@@ -160,6 +160,7 @@ sub new
 	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
 	$an->data->{path}{echo}          = "/bin/echo";
 	$an->data->{path}{expect}        = "/usr/bin/expect";
+	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
 	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
 	$an->data->{path}{ls}            = "/bin/ls";
 	$an->data->{path}{'mkdir'}       = "/bin/mkdir";

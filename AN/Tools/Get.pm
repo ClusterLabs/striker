@@ -280,6 +280,7 @@ sub uuid
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
+		close $file_handle;
 	}
 	
 	# Did we get a sane value?
@@ -809,6 +810,47 @@ sub switches
 	}
 	
 	return(0);
+}
+
+# This returns the dotted-decimal IP address for the passed-in host name.
+sub ip
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What PID?
+	my $host = $parameter->{host};
+	
+	# Error if not host given.
+	if (not $host)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0047", code => 47, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $ip         = "";
+	my $shell_call = $an->data->{path}{gethostip}." -d $host";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$ip = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip", value1 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+		last;
+	}
+	close $file_handle;
+	
+	return ($ip);
 }
 
 1;

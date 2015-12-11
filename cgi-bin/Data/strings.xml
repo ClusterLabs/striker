@@ -2076,6 +2076,14 @@ OS Configuration (sda):
 - Queue Depth: .... [#!variable!queue_depth!#]
 - Request Affinity: [#!variable!rq_affinity!#]
 		</key>
+		<key name="aft_message_0007">
+Deadline Scheduler Configuration (sda):
+- FIFO Batch size: [#!variable!fifo_batch!#]
+- Read Expire: ... [#!variable!read_expire!#]
+- Write Expire: .. [#!variable!write_expire!#]
+- Front Merges: .. [#!variable!front_merges!#]
+- Writes Starved:  [#!variable!writes_starved!#]
+		</key>
 		
 		<!-- errors -->
 		<key name="aft_error_0001"><![CDATA[Must be called with '--location </path/to/test/output>'.]]></key>
@@ -2094,9 +2102,35 @@ OS Configuration (sda):
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
 		<key name="anp_log_0001">#!variable!this_file!# has started.</key>
+		<key name="anp_log_0002"></key>
 		
 		<!-- normal messages -->
-		<key name="anp_message_0001"></key>
+		<key name="anp_message_0001"><![CDATA[Called without '--peer', using the peer's storage network address: [#!variable!peer!#].]]></key>
+		<key name="anp_message_0002">Testing will now be run between:
+- Peer Host Name: . [#!variable!peer!#]
+- Peer Interface: . [#!variable!peer_interface!#]
+- Peer IP Address:  [#!variable!peer_ip!#]
+- Local Interafece: [#!variable!local_interface!#]
+- Local IP Address: [#!variable!local_ip!#]
+- TCP Port to use:  [#!variable!port!#]
+- Test Run Time: .. [#!variable!runtime!#]
+		</key>
+		<key name="anp_message_0003">Proceed? [y/N]</key>
+		<key name="anp_message_0004">Proceeding now. Please be patient!</key>
+		<key name="anp_message_0005">Aborting.</key>
+		<key name="anp_message_0006">Run confirmed. Please be patient!</key>
+		
+		<!-- Warning messages -->
+		<key name="anp_warning_0001">[ Warning ] - This test will interrupt network traffic!</key>
+		
+		<!-- Error messages -->
+		<key name="anp_error_0001"><![CDATA[Called without '--peer'. Tried to use the peer's storage network but failed to get the peer's hostname from cluster.conf.]]></key>
+		<key name="anp_error_0002">Failed to find a local network interface with an IP on the same subnet as the peer IP: [#!variable!peer_ip!#].</key>
+		<key name="anp_error_0003"><![CDATA[Called without '--password'. Tried to find the password in striker.conf but failed to do so.]]></key>
+		<key name="anp_error_0004">The 'iperf3' package is not installed.</key>
+		<key name="anp_error_0005">Failed to connect to: [#!variable!peer_ip!#]. The error was: [#!variable!error!#].</key>
+		<key name="anp_error_0006">The 'iperf3' package is not installed on the peer.</key>
+		<key name="anp_error_0007">Failed to find a peer's interface with the peer's IP address: [#!variable!peer_ip!#].</key>
 	</lang>
 
 	<!-- Japanese -->

@@ -49,8 +49,20 @@ sub ping
 		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0003", file => "$THIS_FILE", line => __LINE__});
 		return(2);
 	}
-	my $target = $parameter->{target};
-	my $count  = $parameter->{count} ? $parameter->{count} : 1;
+	
+	my $target   = $parameter->{target};
+	# How many times to try to ping it? Will exit as soon as it succeeds
+	my $count    = $parameter->{count}    ? $parameter->{count}    : 1;
+	# Allow fragmented packets? Set to '0' to check MTU.
+	my $fragment = $parameter->{fragment} ? $parameter->{fragment} : 0;
+	# The size of the ping payload. Use when checking MTU.
+	my $payload  = $parameter->{payload}  ? $parameter->{payload}  : 0;
+	
+	# If the payload was set, take 28 bytes off to account for ICMP overhead.
+	if ($payload)
+	{
+		$payload -= 28;
+	}
 	
 	my $pinged = 0;
 	foreach my $try (1..$count)

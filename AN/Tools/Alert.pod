@@ -404,7 +404,7 @@ The 'AN::Tools::Storage->read_xml_file()' method was passed a hash reference tha
 
 =head2 C<42>
 
-free
+The 'AN::Tools::Cman->peer_hostname()' method found the local hostname in the cman configuration file but did not find a peer.
 
 =head2 C<43>
 
@@ -419,6 +419,14 @@ The C<AN::Tools::Storage-E<gt>find()> was set to be fatal if the requested file 
 =head2 C<45>
 
 The C<AN::Tools::Storage-E<gt>search_dirs()> was passed an argument that wasn't an array reference or a comma-seperated list of directories.
+
+=head2 C<46>
+
+The 'AN::Tools::Cman->peer_hostname()' method failed to find the local hostname in the cman configuration file. Unable to determine which node is the peer.
+
+=head2 C<47>
+
+The 'AN::Tools::Get->ip()' method was called without the 'host' parameter.
 
 =head1 SEE ALSO
 

@@ -41,18 +41,10 @@ sub peer_hostname
 	
 	my $peer_hostname = "";
 	my $hostname      = $an->hostname();
-	print "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n";
+	#print "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n";
 	
-	# Read in cluster.conf.
-	my $cman_file               = $an->data->{path}{cman_config};
-	my $cman_hash               = {};
-	   $an->data->{cman_config} = $cman_hash;
-	if (not $an->Storage->read_xml_file({file => $cman_file, hash => $an->data->{cman_config}}))
-	{
-		# Failed to read the config. The Storage module should have exited, but in case fatal errors
-		# are suppressed, return 'undef'.
-		return (undef);
-	}
+	# Read in cluster.conf. if necessary
+	$an->Cman->_read_cluster_conf();
 	
 	my $nodes = [];
 	foreach my $index1 (@{$an->data->{cman_config}{data}{clusternodes}})
@@ -96,11 +88,17 @@ sub peer_hostname
 		else
 		{
 			# Found myself, but not my peer.
+			$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0045", message_variables => { file => $an->data->{path}{cman_config} }, code => 42, file => "$THIS_FILE", line => __LINE__});
+			# Return nothing in case the user is blocking fatal errors.
+			return (undef);
 		}
 	}
 	else
 	{
 		# I didn't find myself, so I can't trust the peer was found or is accurate.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0025", message_key => "error_message_0046", message_variables => { file => $an->data->{path}{cman_config} }, code => 46, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
 	}
 	
 	return($peer_hostname);
@@ -111,13 +109,49 @@ sub peer_hostname
 sub peer_short_hostname
 {
 	my $self = shift;
-	my $an   = $self;
-	
+	my $an   = $self->parent;
 	
 	my $peer_short_hostname =  $an->Cman->peer_hostname();
 	   $peer_short_hostname =~ s/\..*$//;
 	
 	return($peer_short_hostname);
+}
+
+# This reads cluster.conf to find the cluster name.
+sub cluster_name
+{
+	my $self = shift;
+	my $an   = $self->parent;
+	
+	# Read in cluster.conf. if necessary
+	$an->Cman->_read_cluster_conf();
+	
+	my $cluster_name = $an->data->{cman_config}{data}{name};
+	
+	return($cluster_name);
+}
+
+# This reads in cluster.conf if needed.
+sub _read_cluster_conf
+{
+	my $self = shift;
+	my $an   = $self->parent;
+	
+	my $cman_file = $an->data->{path}{cman_config};
+	if (not exists $an->data->{cman_config}{'read'})
+	{
+		my $cman_hash               = {};
+		   $an->data->{cman_config} = $cman_hash;
+		if (not $an->Storage->read_xml_file({file => $cman_file, hash => $an->data->{cman_config}}))
+		{
+			# Failed to read the config. The Storage module should have exited, but in case fatal errors
+			# are suppressed, return 'undef'.
+			return (undef);
+		}
+		$an->data->{cman_config}{'read'} = 1;
+	}
+	
+	return($an->data->{cman_config});
 }
 
 1;
