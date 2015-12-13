@@ -922,7 +922,8 @@ fi;";
 			}
 			
 			# Finally, mount the FS.
-			$shell_call = "$conf->{path}{mount} $device $local_mount";
+			### TODO: Make mount options a user-configured variable.
+			$shell_call = "$conf->{path}{mount} -o sync $device $local_mount";
 			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 			while (<$file_handle>)
