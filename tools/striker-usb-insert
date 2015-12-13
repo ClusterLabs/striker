@@ -1154,7 +1154,7 @@ fi";
 			}
 			
 			# Try the mount
-			$shell_call  = "$conf->{path}{echo} $local_password | $conf->{path}{sshfs} -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead $local_user\@$local_host:$local_mount $remote_mount";
+			$shell_call  = "$conf->{path}{echo} $local_password | $conf->{path}{sshfs} -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead -o direct_io $local_user\@$local_host:$local_mount $remote_mount";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
 			($error, $ssh_fh, $return) = remote_call($conf, {
 				remote		=>	$remote,
