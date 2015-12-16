@@ -2119,6 +2119,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="anp_message_0004">Proceeding now. Please be patient!</key>
 		<key name="anp_message_0005">Aborting.</key>
 		<key name="anp_message_0006">Run confirmed. Please be patient!</key>
+		<key name="anp_message_0007">Cleaning up any old and uncleanly ended run.</key>
 		
 		<!-- Warning messages -->
 		<key name="anp_warning_0001">[ Warning ] - This test will interrupt network traffic!</key>

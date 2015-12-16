@@ -5492,7 +5492,7 @@ sub configure_selinux_on_node
 	# Create the backup directory if it doesn't exist yet.
 	my $return_code = 0;
 	my $shell_call  = "
-if $($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+if \$($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
 then 
     echo 'Already allowed';
 else 

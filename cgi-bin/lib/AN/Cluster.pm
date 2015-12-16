@@ -1365,9 +1365,13 @@ sub sync_with_peer
 		}
 		close $file_handle;
 	}
+	
+	### BUG: This isn't working well yet, figure out how to tell gnome to not clobber it and how to 
+	###      gracefully handle rebuilt nodes.
 	### NOTE: I don't currently check if this passes or not.
 	# Setup VMM locally
-	if (-e $conf->{path}{'virt-manager'})
+	#if (-e $conf->{path}{'virt-manager'})
+	if (0)
 	{
 		my $shell_call = "$conf->{path}{'call_striker-configure-vmm'}";
 		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
@@ -1383,7 +1387,8 @@ sub sync_with_peer
 	# Setup VMM on the peer.
 	# Note: I don't worry about the fingerprint because it would have been setup by 
 	#       'striker-merge-dashboards'.
-	if ($peer_password)
+	#if ($peer_password)
+	if (0)
 	{
 		my $shell_call = "
 $conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}

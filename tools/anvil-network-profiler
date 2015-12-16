@@ -41,10 +41,13 @@ my $time = time;
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
+			bonding		=>	"/proc/net/bonding",
+			brctl		=>	"/usr/sbin/brctl",
 			ip		=>	"/sbin/ip",
 			iperf3		=>	"/usr/bin/iperf3",
 			killall		=>	"/usr/bin/killall",
 			log_file	=>	"/var/log/striker.log",
+			ls		=>	"/bin/ls",
 			ping		=>	"/bin/ping",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
@@ -113,7 +116,7 @@ if (not $an->data->{switches}{peer})
 
 # Convert the peer to an IP address if it isn't already.
 find_ips($an);
-$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 	name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
 	name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
 	name3 => "network::peer_ip",         value3 => $an->data->{network}{peer_ip},
@@ -184,7 +187,7 @@ else
 	print $an->String->get({key => "anp_message_0003"})."\n";
 	my $answer = <STDIN>;
 	chomp($answer);
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "answer", value1 => $answer,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($answer) && ($answer =~ /^y/i))
@@ -201,13 +204,280 @@ else
 }
 
 # Terminate any running processes.
+print $an->String->get({key => "anp_message_0007"})."\n";
 terminate_remote_process($an, "iperf3");
+
+# Check the starting MTU size of the devices
+get_interface_info($an);
+
 
 exit(0);
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This parses the bond proc file data. For now, it does little more than record which interfaces are slaved
+# to the bond.
+sub parse_bond_output
+{
+	my ($an, $array, $system, $bond) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_bond_output" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "array",  value1 => $array, 
+		name2 => "system", value2 => $system, 
+		name3 => "bond",   value3 => $bond, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $this_slave = "";
+	my $this_mac   = "";
+	
+	foreach my $line (sort {$a cmp $b} @{$array})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /Slave Interface: (.*)$/)
+		{
+			$this_slave = $1;
+			$this_mac   = "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_slave", value1 => $this_slave, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Permanent HW addr: (.*)$/)
+		{
+			$this_mac = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_mac", value1 => $this_mac, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This parses the brctl data for each system.
+sub parse_brctl_output
+{
+	my ($an, $array, $system) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_brctl_output" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "array",  value1 => $array, 
+		name2 => "system", value2 => $system, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $this_bridge = "";
+	foreach my $line (@{$array})
+	{
+		# This matches if at least one slaved interface exists.
+		if ($line =~ /^(\S+)\s+(.*?)\s+(.*?)\s+(.*)$/)
+		{
+			   $this_bridge      = $1;
+			my $bridge_id        = $2;
+			my $stp_enabled      = $3;
+			my $slaved_interface = $4;
+			$an->data->{network}{$system}{bridge}{$this_bridge}{id}  = $bridge_id;
+			$an->data->{network}{$system}{bridge}{$this_bridge}{stp} = $stp_enabled;
+			push @{$an->data->{network}{$system}{bridge}{$this_bridge}{slaves}}, $slaved_interface;
+		}
+		elsif ($line =~ /^(\S+)\s+(.*?)\s+(.*?)/)
+		{
+			# No slaves
+			   $this_bridge = $1;
+			my $bridge_id   = $2;
+			my $stp_enabled = $3;
+			$an->data->{network}{$system}{bridge}{$this_bridge}{id}     = $bridge_id;
+			$an->data->{network}{$system}{bridge}{$this_bridge}{stp}    = $stp_enabled;
+			$an->data->{network}{$system}{bridge}{$this_bridge}{slaves} = [];
+		}
+		elsif (($this_bridge) && ($line =~ /^\s+(.*)$/))
+		{
+			push @{$an->data->{network}{$system}{bridge}{$this_bridge}{slaves}}, $_;
+		}
+	}
+	
+	return(0);
+}
+
+# This pulls the information on the local interface.
+sub get_local_interface_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_local_interface_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will store the raw brctl output for later processing.
+	$an->data->{network}{'local'}{bridge}{raw} = [];
+	
+	# Read in the local bridge data.
+	my $shell_call = $an->data->{path}{brctl}." show";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$an->data->{network}{'local'}{bridge}{raw}}, $line;
+	}
+	close $file_handle;
+	parse_brctl_output($an, $an->data->{network}{'local'}{bridge}{raw}, "local");
+	
+	# Now look for bonds (skipping 'bond0')
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::bonding", value1 => $an->data->{path}{bonding}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	local(*DIRECTORY);
+	opendir(DIRECTORY, $an->data->{path}{bonding});
+	while(my $bond = readdir(DIRECTORY))
+	{
+		next if $bond eq ".";
+		next if $bond eq "..";
+		
+		# Note that if 'bond0' shows 'MII Status: down' and no slaves, it's not actually configured
+		# and just an annoying ghost bond that we can ignore.
+		my $bond_path = $an->data->{path}{bonding}."/$bond";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "bond",      value1 => $bond, 
+			name2 => "bond_path", value2 => $bond_path, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (-r $bond_path)
+		{
+			# Read it in.
+			$an->data->{network}{'local'}{bond}{$bond}{raw} = [];
+			
+			my $shell_call = $bond_path;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$an->data->{network}{'local'}{bond}{$bond}{raw}}, $line;
+			}
+			close $file_handle;
+		}
+	}
+	foreach my $bond (sort {$a cmp $b} keys %{$an->data->{network}{'local'}{bond}})
+	{
+		parse_bond_output($an, $an->data->{network}{'local'}{bond}{$bond}{raw}, "local", $bond);
+	}
+	
+	
+	
+	return(0);
+}
+
+# This pulls the information on the peer interface.
+sub get_peer_interface_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_peer_interface_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will store the raw brctl output for later processing.
+	$an->data->{network}{peer}{bridge}{raw} = [];
+	
+	# Gather bridge info, if any
+	my $shell_call = $an->data->{path}{brctl}." show";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$an->data->{network}{peer}{bridge}{raw}}, $line;
+	}
+	parse_brctl_output($an, $an->data->{network}{peer}{bridge}{raw}, "peer");
+	
+	### Now get the bond information.
+	# First, the list of bonds
+	my $bonds = [];
+	$shell_call = $an->data->{path}{ls}." ".$an->data->{path}{bonding};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $an->data->{sys}{ssh_fh}, $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$bonds}, $line;
+	}
+	# Now walk through the bonds.
+	foreach my $bond (sort {$a cmp $b} @{$bonds})
+	{
+		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{bonding}."/$bond";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+			target		=>	$an->data->{network}{peer_ip},
+			password	=>	$an->data->{switches}{password},
+			ssh_fh		=>	$an->data->{sys}{ssh_fh},
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$an->data->{network}{peer}{bond}{$bond}{raw}}, $line;
+		}
+	}
+	foreach my $bond (sort {$a cmp $b} keys %{$an->data->{network}{peer}{bond}})
+	{
+		parse_bond_output($an, $an->data->{network}{peer}{bond}{$bond}{raw}, "peer", $bond);
+	}
+	
+	# Now 
+	
+	return(0);
+}
+
+# This pulls the information on the interfaces and stores the values in nics::local::X and nics::peer::X.
+sub get_interface_info
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_interface_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the local interface data
+	get_local_interface_info($an);
+	
+	# Now get the peer interface data.
+	get_peer_interface_info($an);
+	
+	return(0);
+}
 
 # This checks to see if iperf3 is installed locally and on the peer (and that we can reach the peer)
 sub find_peer_interface
@@ -221,13 +491,13 @@ sub find_peer_interface
 	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
 		target		=>	$an->data->{network}{peer_ip},
 		password	=>	$an->data->{switches}{password},
-		ssh_fh		=>	"",
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
 		'close'		=>	1,
 		shell_call	=>	$shell_call,
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -235,7 +505,7 @@ sub find_peer_interface
 		{
 			$this_interface = $1;
 			$this_ip        = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_interface", value1 => $this_interface,
 				name2 => "this_ip",        value2 => $this_ip,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -245,7 +515,7 @@ sub find_peer_interface
 		if ($line =~ /inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\//)
 		{
 			$this_ip = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_ip",          value1 => $this_ip,
 				name2 => "network::peer_ip", value2 => $an->data->{network}{peer_ip},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -257,7 +527,7 @@ sub find_peer_interface
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "network::peer_interface", value1 => $an->data->{network}{peer_interface},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{network}{peer_interface})
@@ -274,7 +544,7 @@ sub find_peer_interface
 sub terminate_remote_process
 {
 	my ($an, $process) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "terminate_remote_process" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "terminate_remote_process" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "process", value1 => $process, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -334,7 +604,7 @@ sub check_iperf3
 		if ($line =~ /installed:(\d)/)
 		{
 			my $installed = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "installed", value1 => $installed, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -361,7 +631,7 @@ sub find_ips
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "anp_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
 		exit(1);
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "network::peer_ip", value1 => $an->data->{network}{peer_ip}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -371,7 +641,7 @@ sub find_ips
 	my $this_subnet    = "";
 	my $this_broadcast = "";
 	my $shell_call     = $an->data->{path}{ip}." addr";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -379,7 +649,7 @@ sub find_ips
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -389,10 +659,10 @@ sub find_ips
 			$this_ip        = "";
 			$this_subnet    = "";
 			$this_broadcast = "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_interface", value1 => $this_interface,
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_ip",        value1 => $this_ip,
 				name2 => "this_subnet",    value2 => $this_subnet,
 				name3 => "this_broadcast", value3 => $this_broadcast,
@@ -404,7 +674,7 @@ sub find_ips
 		{
 			$this_ip     = $1;
 			$this_subnet = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_ip",     value1 => $this_ip,
 				name2 => "this_subnet", value2 => $this_subnet,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -412,14 +682,14 @@ sub find_ips
 		if ($line =~ /brd (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/)
 		{
 			$this_broadcast = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "this_broadcast", value1 => $this_broadcast,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		if (($this_broadcast) && ($this_ip) && ($this_subnet))
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_ip",        value1 => $this_ip,
 				name2 => "this_subnet",    value2 => $this_subnet,
 				name3 => "this_broadcast", value3 => $this_broadcast,
@@ -427,7 +697,7 @@ sub find_ips
 			
 			# Remove the trailing '255' from the broadcast.
 			$this_broadcast =~ s/\.255$//g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "this_broadcast",   value1 => $this_broadcast,
 				name2 => "network::peer_ip", value2 => $an->data->{network}{peer_ip},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -436,7 +706,7 @@ sub find_ips
 			{
 				$an->data->{network}{local_ip}        = $this_ip;
 				$an->data->{network}{local_interface} = $this_interface;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
 					name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -454,7 +724,7 @@ sub find_ips
 		exit(2);
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "network::local_ip",        value1 => $an->data->{network}{local_ip},
 		name2 => "network::local_interface", value2 => $an->data->{network}{local_interface},
 	}, file => $THIS_FILE, line => __LINE__});
