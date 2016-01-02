@@ -10599,14 +10599,6 @@ sub map_network_on_node
 	
 	# First, make sure the script is downloaded and ready to run.
 	my $shell_call = "
-if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ]; 
-then
-	if [ ! -e '/sbin/striker' ]
-	then
-		mkdir /sbin/striker
-	fi
-	curl $conf->{url}{'anvil-map-network'} > $conf->{path}{'anvil-map-network'};
-fi;
 if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ];
 then
 	echo 'not found'
@@ -10623,6 +10615,7 @@ else
 		echo ready;
 	fi
 fi";
+	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	if (not $conf->{node}{$node}{internet_access})
 	{
 		### TODO: figure out a way to see if either dashboard is online
@@ -10640,6 +10633,7 @@ else
 		chmod 755 $conf->{path}{'anvil-map-network'};
 	fi
 fi";
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -10816,9 +10810,11 @@ fi";
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]: bcn_link1: [$conf->{conf}{node}{$node}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node}{set_nic}{ifn_link2}]\n");
 	}
 	
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; nics_seen: [$nics_seen], return_code: [$return_code]\n");
 	if (($nics_seen < 6) && (not $return_code))
 	{
 		$return_code = 4;
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; return_code: [$return_code]\n");
 	}
 	
 	# 0 == OK

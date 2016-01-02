@@ -2507,6 +2507,7 @@ sub create_install_manifest
 	{
 		# Show the existing install manifest files.
 		show_existing_install_manifests($conf);
+		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_domain: [$conf->{cgi}{anvil_domain}]\n");
 		
 		# Set some default values if 'save' isn't set.
 		if ($conf->{cgi}{load})
@@ -2522,12 +2523,12 @@ sub create_install_manifest
 		elsif (not $conf->{cgi}{generate})
 		{
 			# This function uses sys::install_manifest::default::x if set.
-			my ($default_prefix, $default_demain) = get_striker_prefix_and_domain($conf);
+			my ($default_prefix, $default_domain) = get_striker_prefix_and_domain($conf);
 			
 			# Primary Config values
 			if (not $conf->{cgi}{anvil_prefix})             { $conf->{cgi}{anvil_prefix}             = $default_prefix; }
 			if (not $conf->{cgi}{anvil_sequence})           { $conf->{cgi}{anvil_sequence}           = $conf->{sys}{install_manifest}{'default'}{sequence}; }
-			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_demain; }
+			if (not $conf->{cgi}{anvil_domain})             { $conf->{cgi}{anvil_domain}             = $default_domain; }
 			if (not $conf->{cgi}{anvil_password})           { $conf->{cgi}{anvil_password}           = $conf->{sys}{install_manifest}{'default'}{password}; }
 			if (not $conf->{cgi}{anvil_bcn_ethtool_opts})   { $conf->{cgi}{anvil_bcn_ethtool_opts}   = $conf->{sys}{install_manifest}{'default'}{bcn_ethtool_opts}; }
 			if (not $conf->{cgi}{anvil_bcn_network})        { $conf->{cgi}{anvil_bcn_network}        = $conf->{sys}{install_manifest}{'default'}{bcn_network}; }
@@ -2683,6 +2684,7 @@ sub create_install_manifest
 			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
 				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
 			});
+			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_domain: [$conf->{cgi}{anvil_domain}]\n");
 			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
 				row		=>	"#!string!row_0160!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0062!#" : "#!string!explain_0062!#",
@@ -3957,23 +3959,23 @@ sub get_striker_prefix_and_domain
 	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
 	
 	my ($hostname) = get_hostname($conf);
-	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
 	
 	my $default_prefix = "";
 	if ($hostname =~ /^(\w+)-/)
 	{
 		$default_prefix = $1;
-		record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
 	}
-	my $default_demain = ($hostname =~ /\.(.*)$/)[0];
-	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
+	my $default_domain = ($hostname =~ /\.(.*)$/)[0];
+	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_domain: [$default_domain]\n");
 	
 	# If the user has defined default prefix and/or domain, use them instead.
 	if ($conf->{sys}{install_manifest}{'default'}{prefix}) { $default_prefix = $conf->{sys}{install_manifest}{'default'}{prefix}; }
-	if ($conf->{sys}{install_manifest}{'default'}{domain}) { $default_demain = $conf->{sys}{install_manifest}{'default'}{domain}; }
+	if ($conf->{sys}{install_manifest}{'default'}{domain}) { $default_domain = $conf->{sys}{install_manifest}{'default'}{domain}; }
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_demain: [$default_demain]\n");
-	return($default_prefix, $default_demain);
+	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_domain: [$default_domain]\n");
+	return($default_prefix, $default_domain);
 }
 
 # This reads in the passed in install manifest file name and loads it into the
@@ -4397,17 +4399,6 @@ sub load_install_manifest
 						my $password_script = $c->{password_script};
 						my $agent           = $c->{agent};
 						
-						# If the password is more than
-						# 16 characters long, truncate
-						# it so that nodes with IPMI
-						# v1.5 don't spazz out.
-						#record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
-						if (length($password) > 16)
-						{
-							$password = substr($password, 0, 16);
-							#record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
-						}
-						
 						$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}          = $name            ? $name            : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}              = $ip              ? $ip              : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}         = $netmask         ? $netmask         : "";
@@ -4416,6 +4407,15 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
 						$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}           = $agent           ? $agent           : "fence_ipmilan";
+						
+						# If the password is more than 16 characters long, truncate
+						# it so that nodes with IPMI v1.5 don't spazz out.
+						#record($conf, "$THIS_FILE ".__LINE__."; >> install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
+						if (length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}) > 16)
+						{
+							$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password} = substr($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}, 0, 16);
+							#record($conf, "$THIS_FILE ".__LINE__."; << install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
+						}
 						
 						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
 					}
@@ -10401,8 +10401,8 @@ sub get_hostname
 
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;

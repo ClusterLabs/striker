@@ -89,6 +89,29 @@ sub new
 	# This isn't needed, but it makes the code below more consistent with and portable to other modules.
 	my $an = $self;
 	
+	# Set some system paths
+	$an->data->{path}{'chmod'}       = "/bin/chmod";
+	$an->data->{path}{'chown'}       = "/bin/chown";
+	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
+	$an->data->{path}{echo}          = "/bin/echo";
+	$an->data->{path}{expect}        = "/usr/bin/expect";
+	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
+	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
+	$an->data->{path}{ls}            = "/bin/ls";
+	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
+	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}        = "/bin/ping",
+	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
+	$an->data->{path}{psql}          = "/usr/bin/psql";
+	$an->data->{path}{pmap}          = "/usr/bin/pmap";
+	$an->data->{path}{ps}            = "/bin/ps";
+	$an->data->{path}{rsync}         = "/usr/bin/rsync",
+	$an->data->{path}{ssh}           = "/usr/bin/ssh";
+	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
+	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
+	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
+	$an->data->{path}{touch}         = "/bin/touch";
+	
 	# This gets handles to my other modules that the child modules will use to talk to other sibling 
 	# modules.
 	$an->Alert->parent($an);
@@ -153,29 +176,6 @@ sub new
 		$an->Get->date_seperator	($parameter->{'Get'}{date_seperator})	if defined $parameter->{'Get'}{date_seperator};
 		$an->Get->time_seperator	($parameter->{'Get'}{time_seperator})	if defined $parameter->{'Get'}{time_seperator};
 	}
-	
-	# Set some system paths
-	$an->data->{path}{'chmod'}       = "/bin/chmod";
-	$an->data->{path}{'chown'}       = "/bin/chown";
-	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
-	$an->data->{path}{echo}          = "/bin/echo";
-	$an->data->{path}{expect}        = "/usr/bin/expect";
-	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
-	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
-	$an->data->{path}{ls}            = "/bin/ls";
-	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
-	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}        = "/bin/ping",
-	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
-	$an->data->{path}{psql}          = "/usr/bin/psql";
-	$an->data->{path}{pmap}          = "/usr/bin/pmap";
-	$an->data->{path}{ps}            = "/bin/ps";
-	$an->data->{path}{rsync}         = "/usr/bin/rsync",
-	$an->data->{path}{ssh}           = "/usr/bin/ssh";
-	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
-	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
-	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
-	$an->data->{path}{touch}         = "/bin/touch";
 	
 	# Call methods that need to be loaded at invocation of the module.
 	if (($an->{DEFAULT}{STRINGS} =~ /^\.\//) && (not -e $an->{DEFAULT}{STRINGS}))
