@@ -217,6 +217,103 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This parses the interface details from the 'ip address show' call, skipping loopback devices.
+sub parse_ip_addr_output
+{
+	my ($an, $array, $system) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_ip_addr_output" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "array",  value1 => $array, 
+		name2 => "system", value2 => $system, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $this_interface  = "";
+	my $is_loopback     = 0;
+	my $interface_count = 0;
+	
+	foreach my $line (@{$array})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^\d+:\s+(.*?):\s</)
+		{
+			$this_interface = $1;
+			$is_loopback    = 0;
+			$interface_count++;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_interface",  value1 => $this_interface, 
+				name2 => "interface_count", value2 => $interface_count, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($line =~ /LOOPBACK/)
+		{
+			# Ignore this interface
+			$is_loopback = 1;
+			$interface_count++;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "is_loopback",     value1 => $is_loopback, 
+				name2 => "this_interface",  value2 => $this_interface, 
+				name3 => "interface_count", value3 => $interface_count, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		next if $is_loopback;
+		
+		# If I am still alive, we've got a real interface.
+		if ($line =~ /mtu (\d+)/)
+		{
+			my $mtu = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "mtu",            value1 => $mtu, 
+				name2 => "this_interface", value2 => $this_interface, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_interface)
+			{
+				$an->data->{network}{$system}{interface}{$this_interface}{mtu} = $mtu;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::${system}::interface::${this_interface}::mtu", value1 => $an->data->{network}{$system}{interface}{$this_interface}{mtu}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		if ($line =~ /qlen (\d+)/)
+		{
+			my $qlen = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "qlen",           value1 => $qlen, 
+				name2 => "this_interface", value2 => $this_interface, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_interface)
+			{
+				$an->data->{network}{$system}{interface}{$this_interface}{qlen} = $qlen;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::${system}::interface::${this_interface}::qlen", value1 => $an->data->{network}{$system}{interface}{$this_interface}{qlen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		if ($line =~ /state (\w+)/)
+		{
+			my $state = $1;
+			# Could be 'DOWN' or 'UNKNOWN', for now we don't care.
+			my $up    = $state =~ /UP/i ? 1 : 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "state",          value1 => $state, 
+				name2 => "up",             value2 => $up, 
+				name3 => "this_interface", value3 => $this_interface, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_interface)
+			{
+				$an->data->{network}{$system}{interface}{$this_interface}{'state'} = $up;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::${system}::interface::${this_interface}::up", value1 => $an->data->{network}{$system}{interface}{$this_interface}{up}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($interface_count);
+}
+
 # This parses the bond proc file data. For now, it does little more than record which interfaces are slaved
 # to the bond.
 sub parse_bond_output
@@ -228,10 +325,11 @@ sub parse_bond_output
 		name3 => "bond",   value3 => $bond, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $this_slave = "";
-	my $this_mac   = "";
+	my $this_slave  = "";
+	my $this_mac    = "";
+	my $slave_count = 0;
 	
-	foreach my $line (sort {$a cmp $b} @{$array})
+	foreach my $line (@{$array})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
@@ -248,13 +346,23 @@ sub parse_bond_output
 		if ($line =~ /Permanent HW addr: (.*)$/)
 		{
 			$this_mac = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "this_mac", value1 => $this_mac, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_mac",   value1 => $this_mac, 
+				name2 => "this_slave", value2 => $this_slave, 
 			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_slave)
+			{
+				$an->data->{network}{$system}{bond}{$bond}{slave}{$this_slave}{mac} = $this_mac;
+				$slave_count++;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "network::${system}::bond::${bond}::slave::${this_slave}::mac", value1 => $an->data->{network}{$system}{bond}{$bond}{slave}{$this_slave}{mac}, 
+					name2 => "slave_count",                                                  value2 => $slave_count, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
-	return(0);
+	return($slave_count);
 }
 
 # This parses the brctl data for each system.
@@ -370,10 +478,32 @@ sub get_local_interface_info
 	}
 	foreach my $bond (sort {$a cmp $b} keys %{$an->data->{network}{'local'}{bond}})
 	{
-		parse_bond_output($an, $an->data->{network}{'local'}{bond}{$bond}{raw}, "local", $bond);
+		my $slave_count = parse_bond_output($an, $an->data->{network}{'local'}{bond}{$bond}{raw}, "local", $bond);
+		if (not $slave_count)
+		{
+			# Empty bond, delete it.
+			delete $an->data->{network}{'local'}{bond}{$bond};
+		}
 	}
 	
-	
+	# Now, read in the details on all interfaces.
+	$shell_call = $an->data->{path}{ip}." address show";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$an->data->{network}{'local'}{interface}{raw}}, $line;
+	}
+	close $file_handle;
+	parse_ip_addr_output($an, $an->data->{network}{'local'}{interface}{raw}, "local");
 	
 	return(0);
 }
@@ -432,7 +562,7 @@ sub get_peer_interface_info
 		push @{$bonds}, $line;
 	}
 	# Now walk through the bonds.
-	foreach my $bond (sort {$a cmp $b} @{$bonds})
+	foreach my $bond (@{$bonds})
 	{
 		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{bonding}."/$bond";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -456,10 +586,35 @@ sub get_peer_interface_info
 	}
 	foreach my $bond (sort {$a cmp $b} keys %{$an->data->{network}{peer}{bond}})
 	{
-		parse_bond_output($an, $an->data->{network}{peer}{bond}{$bond}{raw}, "peer", $bond);
+		my $slave_count = parse_bond_output($an, $an->data->{network}{peer}{bond}{$bond}{raw}, "peer", $bond);
+		if (not $slave_count)
+		{
+			# Empty bond, delete it.
+			delete $an->data->{network}{peer}{bond}{$bond};
+		}
 	}
 	
-	# Now 
+	# Now, read in the details on all interfaces.
+	$shell_call = $an->data->{path}{ip}." address show";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	(my $error, $an->data->{sys}{ssh_fh}, my $return) = $an->Remote->remote_call({
+		target		=>	$an->data->{network}{peer_ip},
+		password	=>	$an->data->{switches}{password},
+		ssh_fh		=>	$an->data->{sys}{ssh_fh},
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$an->data->{network}{peer}{interface}{raw}}, $line;
+	}
+	parse_ip_addr_output($an, $an->data->{network}{peer}{interface}{raw}, "peer");
 	
 	return(0);
 }
@@ -475,6 +630,12 @@ sub get_interface_info
 	
 	# Now get the peer interface data.
 	get_peer_interface_info($an);
+	
+	# Now I should know about bridges, bonds and slaves. If the peer's interface or our interface is a
+	# bridge, we'll need to adjust all connected devices. If it's a bond, or if a bond is attached to a 
+	# bridge, we'll need to adjust all slaves.
+	my $peer_interface  = $an->data->{network}{peer_interface},
+	my $local_interface = $an->data->{network}{local_interface},
 	
 	return(0);
 }
