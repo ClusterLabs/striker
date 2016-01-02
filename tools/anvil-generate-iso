@@ -2,6 +2,8 @@
 # 
 # This takes a stock RHEL or CentOS 6.x ISO as the source for generating a Anvil! install ISO. 
 # 
+# This doesn't rely on AN::Tools perl modules to keep running this simple.
+# 
 # It was created to avoid legal concerns regarding redistributing modified CentOS or RHEL ISOs. Please use it
 # with this spirit in mind and do not make available the resulting ISOs for general download unless you get
 # written permission from Alteeve's Niche! and either Red Hat or CentOS, depending on the generated ISO.

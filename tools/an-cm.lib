@@ -6805,6 +6805,7 @@ sub compare_new_and_old
 			my $new_volts  = $1;
 			my $old_volts  = ($old_value =~ /^(\d+\.*\d*) Volts/i)[0];
 			my $base_volts = ($var =~ /.*_(\d+\.*\d*)v/)[0];
+			   $base_volts if not defined $base_volts;
 			#record($conf, "$THIS_FILE ".__LINE__."; Checking the current voltages for \"$say_translation\"; base: [$base_volts ($var)], old: [$old_state, $old_value ($new_volts)], new: [$new_state, $new_value ($new_volts)]\n");
 			
 			my $new_mv  =  $new_volts * 1000;
