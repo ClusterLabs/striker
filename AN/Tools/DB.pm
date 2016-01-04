@@ -422,24 +422,24 @@ sub connect_to_databases
 			}
 			
 			# Get a time stamp for this run, if not yet gotten.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "dbh::$id",          value1 => $an->data->{dbh}{$id}, 
 				name2 => "sys::db_timestamp", value2 => $an->data->{sys}{db_timestamp}
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{sys}{db_timestamp})
 			{
 				my $query = "SELECT cast(now() AS timestamp with time zone)";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "sys::read_db_id",   value1 => $an->data->{sys}{read_db_id},
 				name2 => "sys::use_db_fh",    value2 => $an->data->{sys}{use_db_fh},
 				name3 => "sys::db_timestamp", value3 => $an->data->{sys}{db_timestamp},
@@ -468,14 +468,14 @@ sub connect_to_databases
 		my $error_array = [];
 		foreach my $hash (@{$an->data->{scancore}{db}{$id}{connection_error}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1  => "hash", value1 => $hash
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$error_array}, $hash;
 		}
 		
 		# Delete this DB so that we don't try to use it later.
-		$an->Log->entry({log_level => 2, message_key => "error_title_0018", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "error_title_0018", message_variables => {
 			id	=>	$id
 		}, file => $THIS_FILE, line => __LINE__});
 		delete $an->data->{scancore}{db}{$id};
@@ -488,7 +488,7 @@ sub connect_to_databases
 			alert_name		=>	"connect_to_db",
 			modified_date		=>	$an->data->{sys}{db_timestamp},
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "set", value1 => $set
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -501,7 +501,7 @@ sub connect_to_databases
 			{
 				my $message_key       = $hash->{message_key};
 				my $message_variables = $hash->{message_variables};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "hash",              value1 => $hash, 
 					name2 => "message_key",       value2 => $message_key, 
 					name3 => "message_variables", value3 => $message_variables, 
@@ -815,14 +815,14 @@ AND
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0031", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0031", message_variables => {
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
 			
 			# A database is behind, resync
 			$an->data->{scancore}{db_resync_needed} = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "scancore::db_to_update::${id}::behind", value1 => $an->data->{scancore}{db_to_update}{$id}{behind}, 
 				name2 => "scancore::db_resync_needed",            value2 => $an->data->{scancore}{db_resync_needed}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1152,12 +1152,12 @@ sub load_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
 		name1 => "id",   value1 => $id, 
 		name2 => "file", value2 => $file 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1231,7 +1231,7 @@ sub load_schema
 	
 	# Create the read shell call.
 	my $shell_call = $file;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
@@ -1307,7 +1307,7 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{

@@ -2261,10 +2261,10 @@ sub load_backup_configuration
 sub create_install_manifest
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
 	
 	my $show_form = 1;
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
 	$conf->{form}{anvil_prefix_star}                   = "";
 	$conf->{form}{anvil_sequence_star}                 = "";
 	$conf->{form}{anvil_domain_star}                   = "";
@@ -3983,11 +3983,11 @@ sub get_striker_prefix_and_domain
 sub load_install_manifest
 {
 	my ($conf, $file) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
 	
 	# Read in the install manifest file.
 	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
-	record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
 	if (-e $manifest_file)
 	{
 		# Load it!
@@ -4114,7 +4114,7 @@ sub load_install_manifest
 				{
 					my $uuid = $data->{node}{$node}{uuid};
 					$conf->{install_manifest}{$file}{node}{$node}{uuid} = $uuid ? $uuid : "";
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], uuid: [$uuid], install_manifest::${file}::node::${node}::uuid: [$conf->{install_manifest}{$file}{node}{$node}{uuid}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], uuid: [$uuid], install_manifest::${file}::node::${node}::uuid: [$conf->{install_manifest}{$file}{node}{$node}{uuid}]\n");
 				}
 				else
 				{
@@ -4205,7 +4205,7 @@ sub load_install_manifest
 					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
-					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$safe_anvil_start], use: 'anvil-kick-apc-ups': [$anvil_kick_apc_ups], use: 'scancore': [$scancore]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$safe_anvil_start], use: 'anvil-kick-apc-ups': [$anvil_kick_apc_ups], use: 'scancore': [$scancore]\n");
 					
 					# Make sure we're using digits.
 					$safe_anvil_start   =~ s/true/1/i;
@@ -4226,7 +4226,7 @@ sub load_install_manifest
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             = defined $scancore           ? $scancore           : $conf->{sys}{install_manifest}{'default'}{use_scancore};
-					record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}], use: 'scancore': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}], use: 'scancore': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}]\n");
 				}
 				elsif ($b eq "media_library")
 				{
@@ -4309,7 +4309,7 @@ sub load_install_manifest
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}         = defined $ntp1         ? $ntp1         : "";
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}         = defined $ntp2         ? $ntp2         : "";
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts} = defined $ethtool_opts ? $ethtool_opts : $conf->{sys}{install_manifest}{'default'}{$ethtool_opts_key};
-							record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}], ethtool_opts: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts}]\n");
+							#record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}], ethtool_opts: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts}]\n");
 						}
 					}
 				}
@@ -4417,7 +4417,7 @@ sub load_install_manifest
 							#record($conf, "$THIS_FILE ".__LINE__."; << install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
 						}
 						
-						record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
 					}
 				}
 				elsif ($b eq "ssh")
@@ -4500,7 +4500,7 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu_size};
 		$conf->{cgi}{striker_user}       = $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     ? $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     : $conf->{sys}{install_manifest}{'default'}{striker_user};
 		$conf->{cgi}{striker_database}   = $conf->{install_manifest}{$file}{common}{anvil}{striker_database} ? $conf->{install_manifest}{$file}{common}{anvil}{striker_database} : $conf->{sys}{install_manifest}{'default'}{striker_database};
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}], cgi::striker_database: [$conf->{cgi}{striker_database}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}], cgi::striker_database: [$conf->{cgi}{striker_database}]\n");
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
@@ -4517,7 +4517,7 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_ifn_ethtool_opts} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ethtool_opts};
 		$conf->{cgi}{anvil_ifn_network}      = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
 		$conf->{cgi}{anvil_ifn_subnet}       = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_ethtool_opts: [$conf->{cgi}{anvil_bcn_ethtool_opts}], cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_ethtool_opts: [$conf->{cgi}{anvil_sn_ethtool_opts}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_ethtool_opts: [$conf->{cgi}{anvil_bcn_ethtool_opts}], cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_ethtool_opts: [$conf->{cgi}{anvil_sn_ethtool_opts}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
 		
 		# iptables
 		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
@@ -4612,7 +4612,7 @@ sub load_install_manifest
 			$conf->{cgi}{$user_key}     = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     : $conf->{cgi}{striker_user};
 			$conf->{cgi}{$password_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} : $conf->{cgi}{anvil_password};
 			$conf->{cgi}{$database_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} : $conf->{cgi}{striker_database};
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$user_key: [$conf->{cgi}{$user_key}], cgi::$password_key: [$conf->{cgi}{$password_key}], cgi::$database_key: [$conf->{cgi}{$database_key}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$user_key: [$conf->{cgi}{$user_key}], cgi::$password_key: [$conf->{cgi}{$password_key}], cgi::$database_key: [$conf->{cgi}{$database_key}]\n");
 			$i++;
 		}
 		
@@ -4719,7 +4719,7 @@ sub load_install_manifest
 			$conf->{cgi}{$pdu3_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu3_reference}{port};
 			$conf->{cgi}{$pdu4_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu4_reference}{port};
 			$conf->{cgi}{$uuid_key}          = $conf->{install_manifest}{$file}{node}{$node}{uuid}                            ? $conf->{install_manifest}{$file}{node}{$node}{uuid}                            : "";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}], cgi::$uuid_key: [$conf->{cgi}{$uuid_key}]\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}], cgi::$uuid_key: [$conf->{cgi}{$uuid_key}]\n");
 			
 			# If the user remapped their network, we don't want to undo the results.
 			if (not $conf->{cgi}{perform_install})
@@ -4784,7 +4784,7 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
 						$j++;
 					}
 				}
@@ -4905,7 +4905,7 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
 				}
 			}
 			if ($device eq "ipmi")
@@ -4983,7 +4983,7 @@ sub load_install_manifest
 		if ((lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "false") || (lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "no"))
 		{
 			$conf->{sys}{update_os} = 0;
-			record($conf, "$THIS_FILE ".__LINE__."; sys::update_os: [$conf->{sys}{update_os}]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; sys::update_os: [$conf->{sys}{update_os}]\n");
 		}
 	}
 	else
@@ -5017,7 +5017,7 @@ sub show_existing_install_manifests
 			my $date  =  $2;
 			my $time  =  $3;
 			   $time  =~ s/-/:/g;
-			record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
@@ -5036,7 +5036,7 @@ sub show_existing_install_manifests
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
-			record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
@@ -5123,25 +5123,25 @@ sub get_netmask_from_ip
 	{
 		$short_ifn = ($conf->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; short_bcn: [$short_bcn], short_sn: [$short_sn], short_ifn: [$short_ifn]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; short_bcn: [$short_bcn], short_sn: [$short_sn], short_ifn: [$short_ifn]\n");
 	
 	if ($ip =~ /^$short_bcn/)
 	{
 		$netmask = $conf->{cgi}{anvil_bcn_subnet};
-		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
 	}
 	elsif ($ip =~ /^$short_sn/)
 	{
 		$netmask = $conf->{cgi}{anvil_sn_subnet};
-		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
 	}
 	elsif ($ip =~ /^$short_ifn/)
 	{
 		$netmask = $conf->{cgi}{anvil_ifn_subnet};
-		record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
 	return($netmask);
 }
 
@@ -5352,7 +5352,7 @@ Striker Version: $conf->{sys}{version}
 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" />
 ";
 
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
 	if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
 	{
 		$xml .= "\t\t\t<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
@@ -5384,11 +5384,11 @@ Striker Version: $conf->{sys}{version}
 			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
 	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
 	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
 	my $say_use_scancore           = $conf->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
-	record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start], say_use_scancore: [$say_use_scancore]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start], say_use_scancore: [$say_use_scancore]\n");
 	
 	$xml .= "
 		</pdu>
@@ -5447,7 +5447,7 @@ Striker Version: $conf->{sys}{version}
 sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; confirm_install_manifest_run()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; confirm_install_manifest_run()\n");
 	
 	# Show the manifest form.
 	$conf->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_bcn_link1_mac};
@@ -5503,7 +5503,7 @@ sub confirm_install_manifest_run
 # 	   $say_repos =~ s/,/<br \/>/;
 # 	   $say_repos =  "--" if not $say_repos;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
 	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
 		form_file			=>	"/cgi-bin/striker",
 		say_storage_pool_1		=>	$say_storage_pool_1,
@@ -5594,7 +5594,7 @@ sub show_summary_manifest
 	my $say_repos =  $conf->{cgi}{anvil_repositories};
 	   $say_repos =~ s/,/<br \/>/;
 	   $say_repos = "#!string!symbol_0011!#" if not $say_repos;
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
 
 	# Open the table.
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-header", {
@@ -5743,12 +5743,12 @@ sub show_summary_manifest
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = AN::Common::get_string($conf, {key => "brand_0017"});
 	my $say_raritan    = AN::Common::get_string($conf, {key => "brand_0018"});
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_pdu1_agent: [$conf->{cgi}{anvil_pdu1_agent}], cgi::anvil_pdu2_agent: [$conf->{cgi}{anvil_pdu2_agent}], cgi::anvil_pdu3_agent: [$conf->{cgi}{anvil_pdu3_agent}], cgi::anvil_pdu4_agent: [$conf->{cgi}{anvil_pdu4_agent}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_pdu1_agent: [$conf->{cgi}{anvil_pdu1_agent}], cgi::anvil_pdu2_agent: [$conf->{cgi}{anvil_pdu2_agent}], cgi::anvil_pdu3_agent: [$conf->{cgi}{anvil_pdu3_agent}], cgi::anvil_pdu4_agent: [$conf->{cgi}{anvil_pdu4_agent}]\n");
 	my $say_pdu1_brand = $conf->{cgi}{anvil_pdu1_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu4_brand = $conf->{cgi}{anvil_pdu4_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	record($conf, "$THIS_FILE ".__LINE__."; say_pdu1_brand: [$say_pdu1_brand], say_pdu2_brand: [$say_pdu2_brand], say_pdu3_brand: [$say_pdu3_brand], say_pdu4_brand: [$say_pdu4_brand]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; say_pdu1_brand: [$say_pdu1_brand], say_pdu2_brand: [$say_pdu2_brand], say_pdu3_brand: [$say_pdu3_brand], say_pdu4_brand: [$say_pdu4_brand]\n");
 	if ($conf->{sys}{install_manifest}{pdu_count} == 2)
 	{
 		### Two PDU setup 
@@ -7263,12 +7263,12 @@ sub is_string_ipv4
 sub configure_dashboard
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}], cgi::task: [$conf->{cgi}{task}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}], cgi::task: [$conf->{cgi}{task}]\n");
 	if ($conf->{cgi}{save})
 	{
 		save_dashboard_configure($conf);
@@ -7300,7 +7300,7 @@ sub configure_dashboard
 	});
 	
 	# If showing an Anvil!, display it's details first.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
 	if ($conf->{cgi}{anvil})
 	{
 		# Show Anvil! header and node settings.
@@ -7642,7 +7642,7 @@ sub convert_html_to_text
 sub ask_which_cluster
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
 	
 	print AN::Common::template($conf, "select-anvil.html", "open-table");
 	
@@ -7701,7 +7701,7 @@ sub ask_which_cluster
 	
 	# See if the global options have been configured yet.
 	my ($global_set) = AN::Common::check_global_settings($conf);
-	record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
 	if (not $global_set)
 	{
 		# Looks like the user hasn't configured the global values yet.
@@ -7716,7 +7716,7 @@ sub ask_which_cluster
 sub control_install_target
 {
 	my ($conf, $action) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; control_install_target(); action: [$action]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; control_install_target(); action: [$action]\n");
 	
 	### TODO: Track what was running and start back up things we turned off
 	###       only.
@@ -7904,13 +7904,13 @@ fi
 ";
 	}
 	$shell_call .= "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		# libvirtd
 		if ($line =~ /libvirtd not installed/)
 		{
@@ -8049,7 +8049,7 @@ fi
 	# 4 == iptables started
 	# 5 == iptables running
 	
-	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
 	return($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc);
 }
 
@@ -8057,13 +8057,13 @@ fi
 sub show_anvil_selection_and_striker_options
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
 	
 	# If I'm toggling the install target (dhcpd), process it first.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
 	if ($conf->{cgi}{install_target})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::confirm: [$conf->{cgi}{confirm}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::confirm: [$conf->{cgi}{confirm}]\n");
 		if (($conf->{cgi}{install_target} eq "start") && (not $conf->{cgi}{confirm}))
 		{
 			# Warn the user about possible DHCPd conflicts and ask
@@ -8077,7 +8077,7 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Stop libvirtd, stop iptables, start shorewall, start dhcpd
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "start");
-			record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
 			
 			# libvirtd_rc:
 			# 0 == not installed
@@ -8180,7 +8180,7 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Disable it.
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "stop");
-			record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
 			# dhcpd_rc:
 			# 0 == not installed
 			# 1 == not running
@@ -8268,7 +8268,7 @@ sub show_anvil_selection_and_striker_options
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
 	# 4 == No access to /etc/dhcpd
-	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
 	
 	# No decide what to show for the "Boot Target" button.
 	my $install_target_template = "disabled-install-target-button";
@@ -8328,18 +8328,18 @@ sub show_anvil_selection_and_striker_options
 sub get_dhcpd_state
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
 	
 	# First, read the dhcpd.conf file, if it exists, and look for the
 	# 'next-server' option.
 	my $dhcpd_state = 2;
 	my $boot_target = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; path::dhcpd_conf: [$conf->{path}{dhcpd_conf}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; path::dhcpd_conf: [$conf->{path}{dhcpd_conf}]\n");
 	if (-e $conf->{path}{dhcpd_conf})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
 		my $shell_call = "$conf->{path}{dhcpd_conf}";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		open (my $file_handle, "<", "$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -8350,7 +8350,7 @@ sub get_dhcpd_state
 			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
 			{
 				$boot_target = 1;
-				record($conf, "$THIS_FILE ".__LINE__."; We're an install target!\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; We're an install target!\n");
 				last;
 			}
 		}
@@ -8358,27 +8358,27 @@ sub get_dhcpd_state
 	}
 	else
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
 		$dhcpd_state = 4;
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
 	if ($boot_target)
 	{
 		### NOTE: Don't use the setuid wrapper as 'root' isn't needed
 		###       for a status check anyway.
 		# See if dhcpd is running.
 		my $shell_call = "/etc/init.d/dhcpd status; echo rc:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /rc:(\d+)/)
 			{
 				my $rc = $1;
-				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
 				if ($rc eq "3")
 				{
 					# Stopped
@@ -8403,7 +8403,7 @@ sub get_dhcpd_state
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
 	# 4 == No access to /etc/dhcpd
-	record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
 	return($dhcpd_state);
 }
 
@@ -8411,7 +8411,7 @@ sub get_dhcpd_state
 sub convert_cluster_config
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
@@ -8734,32 +8734,32 @@ sub header
 	
 	# We only want the auto-refresh function to activate in certain pages.
 	my $use_refresh = 0;
-	record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
 	if ($conf->{sys}{reload_page_timer})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}], ENV{REQUEST_URI}: [$ENV{REQUEST_URI}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}], ENV{REQUEST_URI}: [$ENV{REQUEST_URI}]\n");
 		if (($conf->{sys}{cgi_string} eq "?cluster=$conf->{cgi}{cluster}") && 
 		    ($ENV{REQUEST_URI} !~ /mediaLibrary/i))
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
 			$use_refresh = 1;
 		}
 		else
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
 		}
 		if ($conf->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
 		{
 			my $final = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; final: [$final]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; final: [$final]\n");
 			if ($final !~ /&/)
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
 				$use_refresh = 1;
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
+				#record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
 			}
 		}
 	}
@@ -9052,7 +9052,7 @@ sub build_select
 sub read_files_on_shared
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; read_files_on_shared()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; read_files_on_shared()\n");
 
 	my $connected = "";
 	my $cluster   = $conf->{cgi}{cluster};
@@ -9060,7 +9060,7 @@ sub read_files_on_shared
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		next if $connected;
-		record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
 		my $fail = 0;
 		my ($error, $ssh_fh, $output) = remote_call($conf, {
 			node		=>	$node,
@@ -9308,7 +9308,7 @@ sub record
 sub scan_cluster
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
 	AN::Striker::set_node_names ($conf);
 	
@@ -9335,7 +9335,7 @@ sub scan_cluster
 sub check_node_status
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; check_node_status()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; check_node_status()\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
 	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
@@ -9386,7 +9386,7 @@ sub check_node_status
 sub post_scan_calculations
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; post_scan_calculations()\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; post_scan_calculations()\n");
 	
 	$conf->{resources}{total_ram}     = 0;
 	$conf->{resources}{total_cores}   = 0;
@@ -9763,7 +9763,7 @@ sub hr_to_bytes
 	{
 		# If this is a big size needing "Math::BigInt", check if it's loaded
 		# yet and load it, if not.
-		record($conf, "$THIS_FILE ".__LINE__."; Large number, loading Math::BigInt.\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Large number, loading Math::BigInt.\n");
 		use Math::BigInt;
 	}
 	elsif (( $type ne "t" ) && ( $type ne "g" ) && ( $type ne "m" ) && ( $type ne "k" ))
@@ -9826,20 +9826,20 @@ sub ping_node
 	
 	my $exit;
 	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		if ($line =~ /^ping:(\d+)/)
 		{
 			$exit = $1;
 		}
 	}
 	close $file_handle;
-	record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 	
 	if ($exit)
 	{
@@ -9853,20 +9853,20 @@ sub ping_node
 			$node .= ".remote";
 		}
 		my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if ($line =~ /^ping:(\d+)/)
 			{
 				$exit = $1;
 			}
 		}
 		close $file_handle;
-		record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; exit: [$exit]\n");
 		
 		if ($exit)
 		{
@@ -9883,7 +9883,7 @@ sub ping_node
 		record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is ping-able.\n");
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; Returning node: [$node].\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; Returning node: [$node].\n");
 	return ($node);
 }
 
@@ -9931,14 +9931,14 @@ sub gather_node_details
 		$conf->{node}{$node}{connected} = 1;
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh]\n");
 	if ($conf->{node}{$node}{connected})
 	{
 		# Record that this node is up.
 		$conf->{sys}{online_nodes} = 1;
 		$conf->{node}{$node}{up}   = 1;
 		push @{$conf->{up_nodes}}, $node;
-		record($conf, "$THIS_FILE ".__LINE__."; node::${node}::up: [$conf->{node}{$node}{up}], up_nodes: [".@{$conf->{up_nodes}}."]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::up: [$conf->{node}{$node}{up}], up_nodes: [".@{$conf->{up_nodes}}."]\n");
 		
 		### Get the rest of the shell calls done before starting to
 		### parse.
@@ -10226,7 +10226,7 @@ fi;";
 	else
 	{
 		check_if_on($conf, $node);
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
 		if ($conf->{node}{$node}{is_on} == 0)
 		{
 			$conf->{sys}{online_nodes}            = 1;

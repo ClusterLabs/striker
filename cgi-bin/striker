@@ -90,7 +90,7 @@ my $connections = $an->DB->connect_to_databases({
 	file	=>	$THIS_FILE,
 	quiet	=>	1
 });
-AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DB connections: [$connections]\n");
+#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DB connections: [$connections]\n");
 
 AN::Cluster::find_executables($conf);
 AN::Cluster::read_hosts($conf);
