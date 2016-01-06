@@ -9972,7 +9972,7 @@ sub gather_node_details
 		#foreach my $line (@{$proc_drbd}) { record($conf, "$THIS_FILE ".__LINE__."; proc_drbd line: [$line]\n"); }
 		
 		$shell_call = "drbdadm dump-xml";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
 		($error, $ssh_fh, my $parse_drbdadm_dumpxml) = remote_call($conf, {
 			node		=>	$node,
 			port		=>	$conf->{node}{$node}{port},
@@ -11361,8 +11361,18 @@ sub parse_drbdadm_dumpxml
 						{
 							my $name  = $c->{name};
 							my $value = $c->{value} ? $c->{value} : "--";
-							$conf->{node}{$node}{drbd}{startup}{$name} = $value;
-							#print "Node: [$node], Network; name: [$name] -> [$conf->{node}{$node}{drbd}{startup}{$name}]\n";
+							$conf->{node}{$node}{drbd}{net}{$name} = $value;
+							#print "Node: [$node], Network; name: [$name] -> [$conf->{node}{$node}{drbd}{net}{$name}]\n";
+						}
+					}
+					elsif ($name eq "options")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$conf->{node}{$node}{drbd}{options}{$name} = $value;
+							#print "Node: [$node], Options; name: [$name] -> [$conf->{node}{$node}{drbd}{options}{$name}]\n";
 						}
 					}
 					else
@@ -11428,8 +11438,22 @@ sub parse_drbdadm_dumpxml
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{connection_state} = "--";
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{role}             = "--";
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state}       = "--";
-
 						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor number: [$minor_number], metadisk: [$conf->{node}{$node}{drbd}{resource}{$resource}{metadisk}], DRBD device: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}], backing device: [$conf->{node}{$node}{drbd}{resource}{$resource}{backing_device}], hostname: [$hostname], IP: [$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address}:$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port} ($conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type})]\n");
+					}
+					foreach my $c (@{$b->{section}})
+					{
+						my $name = $c->{name};
+						record($conf, "$THIS_FILE ".__LINE__."; c: [$c], name: [$name]\n");
+						if ($name eq "disk")
+						{
+							foreach my $d (@{$c->{options}})
+							{
+								my $name  = $d->{name};
+								my $value = $d->{value};
+								record($conf, "$THIS_FILE ".__LINE__."; d: [$d], name: [$name], value: [$value]\n");
+								$conf->{node}{$node}{drbd}{res_file}{$resource}{disk}{$name} = $value;
+							}
+						}
 					}
 				}
 			}

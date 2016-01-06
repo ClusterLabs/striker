@@ -4915,25 +4915,25 @@ sub update_network_driver
 		if ($line =~ /<interface type='bridge'>/)
 		{
 			$in_interface = 1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface]\n");
 		}
 		if ($in_interface)
 		{
 			if ($line =~ /<source bridge='(.*?)_bridge1'\/>/)
 			{
 				$this_network = $1;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
 			}
 			if ($line =~ /<driver name='(.*?)'\/>/)
 			{
 				$this_driver = $1;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
 				
 				# See if I need to update it.
 				if ($this_network)
 				{
 					my $key = $this_network."_nic_driver";
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
+					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
 					if ($conf->{sys}{server}{$key})
 					{
 						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
@@ -4956,8 +4956,8 @@ sub update_network_driver
 			if ($line =~ /<\/interface>/)
 			{
 				# Insert the driver, if needed.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_network: [$this_network]\n");
-				if ($this_network)
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_driver: [$this_driver]\n");
+				if (not $this_driver)
 				{
 					my $key = $this_network."_nic_driver";
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], sys::server::$key: [$conf->{sys}{server}{$key}]\n");
@@ -4972,7 +4972,7 @@ sub update_network_driver
 				$in_interface = 0;
 				$this_network = "";
 				$this_driver  = "";
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface], this_network: [$this_network], this_driver: [$this_driver]\n");
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in_interface: [$in_interface], this_network: [$this_network], this_driver: [$this_driver]\n");
 			}
 		}
 		
