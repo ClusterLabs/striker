@@ -89,29 +89,6 @@ sub new
 	# This isn't needed, but it makes the code below more consistent with and portable to other modules.
 	my $an = $self;
 	
-	# Set some system paths
-	$an->data->{path}{'chmod'}       = "/bin/chmod";
-	$an->data->{path}{'chown'}       = "/bin/chown";
-	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
-	$an->data->{path}{echo}          = "/bin/echo";
-	$an->data->{path}{expect}        = "/usr/bin/expect";
-	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
-	$an->data->{path}{hostname}      = "/etc/sysconfig/network";
-	$an->data->{path}{ls}            = "/bin/ls";
-	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
-	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}        = "/bin/ping",
-	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
-	$an->data->{path}{psql}          = "/usr/bin/psql";
-	$an->data->{path}{pmap}          = "/usr/bin/pmap";
-	$an->data->{path}{ps}            = "/bin/ps";
-	$an->data->{path}{rsync}         = "/usr/bin/rsync",
-	$an->data->{path}{ssh}           = "/usr/bin/ssh";
-	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
-	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
-	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
-	$an->data->{path}{touch}         = "/bin/touch";
-	
 	# This gets handles to my other modules that the child modules will use to talk to other sibling 
 	# modules.
 	$an->Alert->parent($an);
@@ -126,6 +103,9 @@ sub new
 	$an->Remote->parent($an);
 	$an->Storage->parent($an);
 	$an->String->parent($an);
+	
+	# Set some system paths
+	$an->_set_paths;
 	
 	# Check the operating system and set any OS-specific values.
 	$an->Check->_os;
@@ -148,6 +128,8 @@ sub new
 		### Local parameters
 		# Set the data hash
 		$an->data			($parameter->{data}) 			if $parameter->{data};
+		# Reset the paths
+		$an->_set_paths;
 		
 		# Set the default languages.
 		$an->default_language		($parameter->{default_language}) 	if $parameter->{default_language};
@@ -260,36 +242,43 @@ sub hostname
 	
 	my $an = $self;
 	my $hostname = "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ENV{HOSTNAME}", value1 => $ENV{HOSTNAME},
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	if ($ENV{HOSTNAME})
 	{
 		# We have an environment variable, so use it.
 		$hostname = $ENV{HOSTNAME};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "hostname", value1 => $hostname,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	}
 	else
 	{
 		# The environment variable isn't set. Can we read the host name from the network file?
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "path::hostname", value1 => $an->data->{path}{hostname},
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		if (-r $an->data->{path}{hostname})
 		{
 			my $shell_call = $an->data->{path}{hostname};
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 			while(<$file_handle>)
 			{
 				chomp;
-				my $line = $_;
+				$hostname = $_;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => ">> line", value1 => "$line"
+					name1 => "hostname", value1 => $hostname,
 				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-				if ($line =~ /HOSTNAME=(.*)$/)
-				{
-					# Got it!
-					$hostname = $1;
-					last;
-				}
+				last;
 			}
 			close $file_handle;
 		}
 	}
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hostname", value1 => $hostname,
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 	return($hostname);
 }
 
@@ -431,7 +420,7 @@ sub nice_exit
 	my $self      = shift;
 	my $exit_code = defined $_[0] ? shift : 99;
 	
-	my $an = $self->parent;
+	my $an = $self;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "nice_exit", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code"}, file => $THIS_FILE, line => __LINE__, language => $an->data->{sys}{log_language}, log_to => $an->data->{path}{log_file}});
 	$exit_code = 99 if not $exit_code;
 	
@@ -442,6 +431,40 @@ sub nice_exit
 	}
 	
 	exit($exit_code);
+}
+
+# This sets a bunch of default paths to executables and a few system files.
+sub _set_paths
+{
+	my ($self) = shift;
+	my $an = $self;
+	
+	$an->data->{path}{cat}           = "/bin/cat";
+	$an->data->{path}{'chmod'}       = "/bin/chmod";
+	$an->data->{path}{'chown'}       = "/bin/chown";
+	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
+	$an->data->{path}{cp}            = "/bin/cp";
+	$an->data->{path}{echo}          = "/bin/echo";
+	$an->data->{path}{expect}        = "/usr/bin/expect";
+	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
+	$an->data->{path}{hostname}      = "/bin/hostname";
+	$an->data->{path}{'less'}        = "/usr/bin/less";
+	$an->data->{path}{ls}            = "/bin/ls";
+	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
+	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}        = "/bin/ping",
+	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
+	$an->data->{path}{psql}          = "/usr/bin/psql";
+	$an->data->{path}{pmap}          = "/usr/bin/pmap";
+	$an->data->{path}{ps}            = "/bin/ps";
+	$an->data->{path}{rsync}         = "/usr/bin/rsync",
+	$an->data->{path}{ssh}           = "/usr/bin/ssh";
+	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
+	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
+	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
+	$an->data->{path}{touch}         = "/bin/touch";
+	
+	return(0);
 }
 
 ### Contributed by Shaun Fryer and Viktor Pavlenko by way of TPM.

@@ -77,11 +77,7 @@ my $an = AN::Tools->new({data => {
 			merged		=>	{},
 		},
 		path		=>	{
-			cat		=>	"/bin/cat",
-			cp		=>	"/bin/cp",
-			echo		=>	"/bin/echo",
 			hosts		=>	"/etc/hosts",
-			'less'		=>	"/usr/bin/less",
 			log_file	=>	"/var/log/striker.log",
 			ssh_config	=>	"/etc/ssh/ssh_config",
 			striker_config	=>	"/etc/striker/striker.conf",
@@ -121,7 +117,7 @@ $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "sps_log_0001", message_variables => {
+$an->Log->entry({log_level => 2, message_key => "sps_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -161,6 +157,10 @@ diff_local_and_peer_hosts($an);
 # Now the manifests... Simple rsync the 'prefer' to the other first, then in the other direction.
 merge_install_manifests($an);
 print $an->String->get({key => "smd_message_0023"}), "\n";
+
+### ToDo:
+# merge_ssh_config($an);    <- Complicated, analyze files
+# merge_striker_cache($an); <- Easy, rsync from 'prefer' to other then back.
 
 exit(0);
 
@@ -1173,10 +1173,9 @@ sub prepare_for_run
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prepare_for_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	### Note: Only support 2 DBs for now
 	# First, read in the scancore::db entries. I'll need these if the peer host and/or password are not
 	# defined.
-	
-	# Only support 2 DBs for now
 	my $db_count   = 0;
 	my $i_am_long  = $an->hostname();
 	my $i_am_short = $an->short_hostname();
@@ -1221,7 +1220,7 @@ sub prepare_for_run
 	}
 	
 	# Do I need to figure out who my peer is?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "switches::peer", value1 => $an->data->{switches}{peer}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{switches}{peer})
@@ -1248,7 +1247,7 @@ sub prepare_for_run
 		}
 		
 		# If I didn't find myself, exit.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::id::local", value1 => $an->data->{node}{id}{'local'}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{node}{id}{'local'} eq "")

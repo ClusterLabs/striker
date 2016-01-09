@@ -1241,6 +1241,7 @@ sub read_configuration_file
 		   $return_code              = 0;
 		my $shell_call               = "$conf->{path}{config_file}";
 		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		binmode $file_handle, ":utf8:";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1364,7 +1365,7 @@ sub template
 	my $in_template = 0;
 	my $shell_call  = "$template_file";
 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-	binmode $file_handle, ":utf8:";
+	#binmode $file_handle, ":utf8:";
 	while (<$file_handle>)
 	{
 		chomp;

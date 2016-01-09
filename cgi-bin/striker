@@ -70,7 +70,7 @@ $an->default_log_file    ($conf->{path}{log_file});
 $an->default_log_language($conf->{sys}{log_language});
 $an->Log->level          ($conf->{sys}{log_level});
 $conf->{handle}{an} = $an;
-AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."], handle::an: [$conf->{handle}{an}], log file: [".$an->default_log_file."], log language: [".$an->default_log_language."]\n");
+#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."], handle::an: [$conf->{handle}{an}], log file: [".$an->default_log_file."], log language: [".$an->default_log_language."]\n");
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});

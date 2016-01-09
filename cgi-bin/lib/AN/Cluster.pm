@@ -186,7 +186,7 @@ sub sanity_check_striker_conf
 	# Now see if I have an Anvil!
 	my $this_cluster = "";
 	my $this_id      = "";
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
 	if ($conf->{cgi}{anvil_id})
 	{
 		# Switch out the global keys to this Anvil!'s keys.
@@ -279,6 +279,7 @@ sub sanity_check_striker_conf
 			(not $this_nodes_2_ip) && 
 			(not $this_nodes_2_port))
 		{
+			### TODO: Delete from the peer, too.
 			# If this isn't 'new', delete this Anvil! from the config.
 			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
 			if ($this_id ne "new")
@@ -334,9 +335,7 @@ sub sanity_check_striker_conf
 			}
 			else
 			{
-				# The minimum information is present,
-				# now make sure the set values are
-				# sane.
+				# The minimum information is present, now make sure the set values are sane.
 				# IPs sane?
 				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_ip: [$this_nodes_1_ip]\n");
 				if (($this_nodes_1_ip) && ($this_nodes_1_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
@@ -387,8 +386,7 @@ sub sanity_check_striker_conf
 						node	=>	$this_nodes_2_name,
 					}); 
 				}
-				# If there is an IP or Port, but no 
-				# node name, well that's just not good.
+				# If there is an IP or Port, but no node name, well that's just not good.
 				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_ip: [$this_nodes_1_ip], this_nodes_1_port: [$this_nodes_1_port]\n");
 				if ((not $this_nodes_1_name) && (($this_nodes_1_ip) || ($this_nodes_1_port)))
 				{
@@ -414,13 +412,13 @@ sub sanity_check_striker_conf
 			}
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	
 	# Now Sanity check the global (or Anvil! override) values.
 	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
 	
 	# Make sure email addresses are.
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
 	if (($conf->{cgi}{$smtp__username_key}) && ($conf->{cgi}{$smtp__username_key} ne "#!inherit!#") && ($conf->{cgi}{$smtp__username_key} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
 	{
 		$save = 0;
@@ -431,7 +429,7 @@ sub sanity_check_striker_conf
 			email	=>	$conf->{cgi}{$smtp__username_key},
 		}); 
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
 	if (($conf->{cgi}{$mail_data__to_key}) && ($conf->{cgi}{$mail_data__to_key} ne "#!inherit!#"))
 	{
 		foreach my $email (split /,/, $conf->{cgi}{$mail_data__to_key})
@@ -451,7 +449,7 @@ sub sanity_check_striker_conf
 	}
 	
 	# Make sure values that should be numerical are.
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
 	if (($conf->{cgi}{$smtp__port_key}) && ($conf->{cgi}{$smtp__port_key} ne "#!inherit!#"))
 	{
 		$conf->{cgi}{$smtp__port_key} =~ s/,//;
@@ -475,13 +473,15 @@ sub sanity_check_striker_conf
 		});
 	}
 
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
 	if ($save)
 	{
+		# If 'anvil_id' is set, then we're editing an Anvil! (new or existing) instead of the global
+		# section.
 		if ($conf->{cgi}{anvil_id})
 		{
-			# Find a free ID after populating the keys above because
-			# they're going to come in from CGI as '...__new__...'.
+			# Find a free ID after populating the keys above because they're going to come in 
+			# from CGI as '...__new__...'.
 			record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
 			if ($this_id eq "new")
 			{
@@ -489,11 +489,11 @@ sub sanity_check_striker_conf
 				my $free_id = 1;
 				foreach my $existing_id (sort {$a cmp $b} keys %{$conf->{cluster}})
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
+					#record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
 					if ($existing_id eq $free_id)
 					{
 						$free_id++;
-						record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
+						#record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
 						next;
 					}
 					else
@@ -507,8 +507,8 @@ sub sanity_check_striker_conf
 				record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
 			}
 			
-			# If I'm still alive, push the passed in keys into $conf->{cluster}...
-			# so that they get written out in the next step.
+			# If I'm still alive, push the passed in keys into $conf->{cluster}... so that they 
+			# get written out in the next step.
 			$conf->{cluster}{$this_id}{name}        = $conf->{cgi}{$name_key};
 			$conf->{cluster}{$this_id}{description} = $conf->{cgi}{$description_key};
 			$conf->{cluster}{$this_id}{url}         = $conf->{cgi}{$url_key};
@@ -538,8 +538,8 @@ sub sanity_check_striker_conf
 			push @{$conf->{hosts}{by_ip}{$this_nodes_1_ip}}, $this_nodes_1_name;
 			push @{$conf->{hosts}{by_ip}{$this_nodes_2_ip}}, $this_nodes_2_name;
 			
-			# Search in 'hosts' and 'ssh_config' for previous
-			# entries with these names and delete them if found.
+			# Search in 'hosts' and 'ssh_config' for previous entries with these names and delete
+			# them if found.
 			foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
 			{
 				my $say_node_1 = $conf->{cgi}{$nodes_1_name_key};
@@ -580,7 +580,7 @@ sub sanity_check_striker_conf
 		}
 	}
 
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	return ($save);
 }
 
@@ -657,26 +657,24 @@ sub write_new_striker_conf
 		my $anvil_id   = $conf->{cgi}{anvil_id};
 		my $shell_call = $conf->{path}{config_file};
 		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		binmode $file_handle, ":utf8:";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			
-			# We don't want to munge the config any more than
-			# necessary as the user may have customizations we
-			# don't want to clobber.
+			# We don't want to munge the config any more than necessary as the user may have 
+			# customizations we don't want to clobber.
 			if (($line =~ /^#/) || ($line =~ /^\s+#/))
 			{
-				# This just makes sure we don't parse commented
-				# out example variable=value pairs
+				# This just makes sure we don't parse commented out example variable=value 
+				# pairs.
 			}
 			elsif ($line =~ /(.*?)=(.*)$/)
 			{
-				# Looks like a variable. Even if it's not
-				# though, that should be OK because we won't
-				# alter any variables we're not explicitely
-				# checking for.
+				# Looks like a variable. Even if it's not though, that should be OK because 
+				# we won't alter any variables we're not explicitely checking for.
 				my $variable = $1;
 				my $value    = $2;
 				
@@ -687,10 +685,8 @@ sub write_new_striker_conf
 				$value    =~ s/\s+$//;
 				#record($conf, "$THIS_FILE ".__LINE__."; variable: [$variable], value: [$value]\n");
 				
-				# We're setting certain values. If this
-				# variable matches on of the ones we're
-				# setting, overwrite the current value. 
-				# Otherwise, leave it as-is.
+				# We're setting certain values. If this variable matches on of the ones we're
+				# setting, overwrite the current value. Otherwise, leave it as-is.
 				
 				if (($variable eq "smtp::encrypt_pass")        && ($conf->{cgi}{smtp__encrypt_pass}))        { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__encrypt_pass}/; }
 				if (($variable eq "smtp::helo_domain")         && ($conf->{cgi}{smtp__helo_domain}))         { $line =~ s/=.*$/=\t$conf->{cgi}{smtp__helo_domain}/; }
@@ -702,11 +698,9 @@ sub write_new_striker_conf
 				if (($variable eq "mail_data::to")             && ($conf->{cgi}{mail_data__to}))             { $line =~ s/=.*$/=\t$conf->{cgi}{mail_data__to}/; }
 				if (($variable eq "mail_data::sending_domain") && ($conf->{cgi}{mail_data__sending_domain})) { $line =~ s/=.*$/=\t$conf->{cgi}{mail_data__sending_domain}/; }
 				
-				# If I am saving a new or edited Anvil!
-				# definition, check to see if it already exists
-				# in the config file. If so, edit it in place.
-				# If the Anvil! is not seen, it will be
-				# appended at the end.
+				# If I am saving a new or edited Anvil! definition, check to see if it 
+				# already exists in the config file. If so, edit it in place. If the Anvil!
+				# is not seen, it will be appended at the end.
 				if (($anvil_id) && ($anvil_id ne "new"))
 				{
 					$conf->{seen_anvil}{$anvil_id} = 1;
@@ -716,6 +710,7 @@ sub write_new_striker_conf
 					my $ricci_pw_key    = "cluster__${anvil_id}__ricci_pw";
 					my $root_pw_key     = "cluster__${anvil_id}__root_pw";
 					my $url_key         = "cluster__${anvil_id}__url";
+					
 					# Nodes
 					my $node1_name_key  = "cluster__${anvil_id}__nodes_1_name";
 					my $node1_ip_key    = "cluster__${anvil_id}__nodes_1_ip";
@@ -734,15 +729,14 @@ sub write_new_striker_conf
 					my $mail_data_to_key             = "cluster__${anvil_id}__mail_data__to";
 					my $mail_data_sending_domain_key = "cluster__${anvil_id}__mail_data__sending_domain";
 					
-					# If the anvil has been deleted, simply
-					# skip this line.
+					# If the anvil has been deleted, simply skip this line.
 					next if ((not $conf->{cgi}{$name_key}) && ($line =~ /cluster::$anvil_id::/));
 					
 					# Anvil! details
 					if ($variable eq "cluster::${anvil_id}::company")     { $line =~ s/=.*$/=\t$conf->{cgi}{$company_key}/; }
 					if ($variable eq "cluster::${anvil_id}::description") { $line =~ s/=.*$/=\t$conf->{cgi}{$description_key}/; }
 					if ($variable eq "cluster::${anvil_id}::name")        { $line =~ s/=.*$/=\t$conf->{cgi}{$name_key}/; }
-					if ($variable eq "cluster::${anvil_id}::nodes")       { $line =~ s/=.*$/=\t$conf->{cgi}{$node1_name_key} $conf->{cgi}{$node2_name_key}/; }
+					if ($variable eq "cluster::${anvil_id}::nodes")       { $line =~ s/=.*$/=\t$conf->{cgi}{$node1_name_key}, $conf->{cgi}{$node2_name_key}/; }
 					if ($variable eq "cluster::${anvil_id}::ricci_pw")    { $line =~ s/=.*$/=\t$conf->{cgi}{$ricci_pw_key}/; }
 					if ($variable eq "cluster::${anvil_id}::root_pw")     { $line =~ s/=.*$/=\t$conf->{cgi}{$root_pw_key}/; }
 					if ($variable eq "cluster::${anvil_id}::url")         { $line =~ s/=.*$/=\t$conf->{cgi}{$url_key}/; }
@@ -832,6 +826,7 @@ sub write_new_striker_conf
 	my $shell_call = $conf->{path}{config_file};
 	#my $shell_call = "/tmp/striker.conf";
 	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
+	binmode $file_handle, ":utf8:";
 	print $file_handle $new_config;
 	close $file_handle;
 	
@@ -843,9 +838,11 @@ sub write_new_striker_conf
 sub generate_anvil_entry_for_striker_conf
 {
 	my ($conf, $this_id) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; generate_anvil_entry_for_striker_conf(); this_id: [$this_id]\n");
 	
 	my $data = "";
 	# Main Anvil! values, always recorded, even when blank.
+	record($conf, "$THIS_FILE ".__LINE__."; cluster::${this_id}::nodes: [$conf->{cluster}{$this_id}{nodes}]\n");
 	$data .= "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
 	$data .= "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
 	$data .= "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
@@ -1131,15 +1128,20 @@ sub write_new_hosts
 		# an array
 		my $hosts      = "";
 		my $seen_hosts = {};
+		my $host_count = 0;
 		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
 		{
 			# Avoid dupes
 			next if $seen_hosts->{$this_ip}{$this_host};
 			$seen_hosts->{$this_ip}{$this_host} = 1;
 			$hosts .= "$this_host ";
-			#record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
+			$host_count++;
+			record($conf, "$THIS_FILE ".__LINE__."; host_count: [$host_count], hosts: [$hosts]\n");
 		}
 		$hosts =~ s/ $//;
+		
+		# Skip IPs with no remaining hosts.
+		next if not $host_count;
 		
 		# Add a space if the first three octals have changed.
 		my $start_octals = ($this_ip =~ /^(\d+\.\d+\.\d+)\./)[0];
@@ -1164,12 +1166,14 @@ sub save_dashboard_configure
 	my ($conf) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
 	
-	my ($save) = sanity_check_striker_conf($conf, $conf->{cgi}{section});
+	my $anvil_id = $conf->{cgi}{anvil_id};
+	record($conf, "$THIS_FILE ".__LINE__."; cluster::${anvil_id}::nodes: [$conf->{cluster}{$anvil_id}{nodes}]\n");
+	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
+	record($conf, "$THIS_FILE ".__LINE__."; cluster::${anvil_id}::nodes: [$conf->{cluster}{$anvil_id}{nodes}]\n");
 	if ($save)
 	{
 		# Get the current date and time.
 		my ($say_date) =  get_date($conf, time);
-		#record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date]\n");
 		my $date       =  $say_date;
 		   $date       =~ s/ /_/g;
 		   $date       =~ s/:/-/g;
@@ -1267,6 +1271,7 @@ sub sync_with_peer
 	record($conf, "$THIS_FILE ".__LINE__."; sync_with_peer()\n");
 	
 	# Return if this is disabled.
+	record($conf, "$THIS_FILE ".__LINE__."; tools::striker::auto-sync: [$conf->{tools}{striker}{'auto-sync'}]\n");
 	if (not $conf->{tools}{striker}{'auto-sync'})
 	{
 		return("");
@@ -1312,7 +1317,7 @@ sub sync_with_peer
 	# Now I know who I am, find the peer.
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; id: [$id], node::id::local: [$conf->{node}{id}{'local'}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; id: [$id], node::id::local: [$conf->{node}{id}{'local'}]\n");
 		if ($id ne $local_id)
 		{
 			$peer_name     = $conf->{scancore}{db}{$id}{host};
@@ -1323,6 +1328,7 @@ sub sync_with_peer
 	}
 	
 	# Final check...
+	#record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
 	if (not $peer_name)
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync can't run because it was unable to determine the peer's host name via analyzing the 'scancore::db::x::host' entries.\n");
@@ -1337,7 +1343,7 @@ sub sync_with_peer
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		record($conf, "$THIS_FILE ".__LINE__."; line: |$line|\n");
 		if ($line =~ /rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -1346,6 +1352,7 @@ sub sync_with_peer
 		}
 	}
 	close $file_handle;
+	
 	if ($conf->{cgi}{anvil})
 	{
 		my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}; echo rc:\$?";
@@ -7337,8 +7344,8 @@ sub convert_text_to_html
 {
 	my ($conf, $string) = @_;
 	$string = "" if not defined $string;
-
 	
+	record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
 	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
 	$string =~ s/#/&#35;/g;		# Number sign - Must be third! /
@@ -7377,7 +7384,7 @@ sub convert_text_to_html
 	$string =~ s/\|/&#124;/g;	# Vertical bar
 	$string =~ s/}/&#125;/g;	# Right curly brace
 	$string =~ s/~/&#126;/g;	# Tilde
-	$string =~ s/\s/&nbsp;/g;	# Non-breaking Space
+	$string =~ s/  /&nbsp; /g;	# Non-breaking Space
 	$string =~ s/¡/&#161;/g;	# Inverted exclamation
 	$string =~ s/¢/&#162;/g;	# Cent sign
 	$string =~ s/£/&#163;/g;	# Pound sterling
@@ -7483,6 +7490,7 @@ sub convert_text_to_html
 	
 	$string =~ s/#!br!#/<br \/>/g;
 	
+	record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 	return ($string);
 }
 
@@ -9269,6 +9277,7 @@ sub record
 			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
 			my $shell_call = $conf->{path}{'touch_striker.log'};
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			binmode $file_handle, ":utf8:";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -9290,6 +9299,7 @@ sub record
 		$file_handle = IO::Handle->new();
 		$file_handle->autoflush(1);
 		open ($file_handle, ">>", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
+		binmode $file_handle, ":utf8:";
 		#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
 		
