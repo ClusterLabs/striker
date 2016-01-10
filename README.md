@@ -33,7 +33,7 @@ cluster stack.
   Once the cluster is up and running, the option to boot,
 live-migrate, gracefully shut down and force-off virtual machines.
 
-  Individual nodes can be withdrwan from the cluster and powered off to enable
+  Individual nodes can be withdrawn from the cluster and powered off to enable
 planned maintenance and emergency service. Once service is completed, the node
 can be powered back on and rejoin the cluster.
 
