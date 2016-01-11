@@ -2073,6 +2073,30 @@ sub setup_striker
 	# labels/contexts.
 	configure_selinux($conf);
 	
+	# If a GUI was installed and unless disabled, call 'tools/striker-configure-vmm --enable' to have 
+	# Virtual Machine Manager be configured on user login.
+	if ($conf->{switches}{gui})
+	{
+		if ($conf->{switches}{'no-striker-configure-vmm'})
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- 'tools/striker-configure-vmm' use disabled by '--no-striker-configure-vmm', skipping it.", 1);
+		}
+		else
+		{
+			# Call 'tools/striker-configure-vmm'.
+			my $shell_call = "/sbin/striker/striker-configure-vmm --enable";
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+			}
+			close $file_handle;
+		}
+	}
+	
 	# NOTE: Always call this last. If the password gets set, there is a
 	#       notice box informing the user that we want to ensure doesn't
 	#       get scrolled off the screen.
@@ -2560,27 +2584,6 @@ sub configure_gui
 		print $file_handle $virt_manager_body;
 		close $file_handle;
 		logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
-	}
-	
-	# Unless disabled, call 'tools/striker-configure-vmm --enable' to have Virtual Machine Manager be 
-	# configured on user login.
-	if ($conf->{switches}{'no-striker-configure-vmm'})
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- 'tools/striker-configure-vmm' use disabled by '--no-striker-configure-vmm', skipping it.", 1);
-	}
-	else
-	{
-		# Call 'tools/striker-configure-vmm'.
-		my $shell_call = "/sbin/striker/striker-configure-vmm --enable";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
-		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
-		}
-		close $file_handle;
 	}
 
 	# Make sure NetworkManager is disabled.
