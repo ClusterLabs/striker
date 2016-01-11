@@ -1198,7 +1198,7 @@ sub save_dashboard_configure
 		my $anvil_name     = $conf->{cgi}{$anvil_name_key};
 		
 		# Configure SSH and Virtual Machine Manager (if configured).
-		configure_ssh_local($conf);
+		configure_ssh_local($conf, $anvil_name);
 		configure_vmm_local($conf);
 		
 		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
@@ -2210,8 +2210,8 @@ sub load_backup_configuration
 # This calls 'striker-push-ssh'
 sub configure_ssh_local
 {
-	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; configure_ssh_local();\n");
+	my ($conf, $anvil_name) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; configure_ssh_local(); anvil_name: [$anvil_name]\n");
 	
 	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
 	my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $anvil_name";
