@@ -1166,10 +1166,8 @@ sub save_dashboard_configure
 	my ($conf) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
 	
-	my $anvil_id = $conf->{cgi}{anvil_id};
-	record($conf, "$THIS_FILE ".__LINE__."; cluster::${anvil_id}::nodes: [$conf->{cluster}{$anvil_id}{nodes}]\n");
 	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
-	record($conf, "$THIS_FILE ".__LINE__."; cluster::${anvil_id}::nodes: [$conf->{cluster}{$anvil_id}{nodes}]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	if ($save)
 	{
 		# Get the current date and time.
@@ -1199,22 +1197,9 @@ sub save_dashboard_configure
 		my $anvil_name_key = "cluster__${anvil_id}__name";
 		my $anvil_name     = $conf->{cgi}{$anvil_name_key};
 		
-		# If requested in the config, add the user's SSH keys to the new anvil!.
-		record($conf, "$THIS_FILE ".__LINE__."; tools::striker-push-ssh::enabled: [$conf->{tools}{'striker-push-ssh'}{enabled}]\n");
-		if ($conf->{tools}{'striker-push-ssh'}{enabled})
-		{
-			# Call 'tools/striker-push-ssh' for this new Anvil!
-			my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $anvil_name";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
-			}
-			close $file_handle;
-		}
+		# Configure SSH and Virtual Machine Manager (if configured).
+		configure_ssh_local($conf);
+		configure_vmm_local($conf);
 		
 		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
 		# then something went wrong. Otherwise the peer's hostname is returned.
@@ -1353,56 +1338,15 @@ sub sync_with_peer
 	}
 	close $file_handle;
 	
-	if ($conf->{cgi}{anvil})
-	{
-		my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}; echo rc:\$?";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-			if ($line =~ /rc:(\d+)/)
-			{
-				my $rc = $1;
-				$merge_striker_ok = $rc eq "0" ? 1 : 0;
-				record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], merge_striker_ok: [$merge_striker_ok]\n");
-			}
-		}
-		close $file_handle;
-	}
-	
-	### BUG: This isn't working well yet, figure out how to tell gnome to not clobber it and how to 
-	###      gracefully handle rebuilt nodes.
-	### NOTE: I don't currently check if this passes or not.
-	# Setup VMM locally
-	#if (-e $conf->{path}{'virt-manager'})
-	if (0)
-	{
-		my $shell_call = "$conf->{path}{'call_striker-configure-vmm'}";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-		}
-		close $file_handle;
-	}
 	# Setup VMM on the peer.
 	# Note: I don't worry about the fingerprint because it would have been setup by 
 	#       'striker-merge-dashboards'.
-	#if ($peer_password)
-	if (0)
+	if ($peer_password)
 	{
+		# Both of these will exit on their own if needed, so we can blindly call them.
 		my $shell_call = "
-$conf->{path}{'call_striker-push-ssh'} --anvil $conf->{cgi}{anvil}
-if [ -e '$conf->{path}{'virt-manager'}' ]; 
-then 
-    $conf->{path}{'striker-configure-vmm'}
-fi;
+$conf->{path}{'striker-push-ssh'} --anvil $conf->{cgi}{anvil}
+$conf->{path}{'striker-configure-vmm'}
 ";
 		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
 		my ($error, $ssh_fh, $output) = remote_call($conf, {
@@ -2263,12 +2207,56 @@ sub load_backup_configuration
 	return(0);
 }
 
+# This calls 'striker-push-ssh'
+sub configure_ssh_local
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; configure_ssh_local();\n");
+	
+	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
+	my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $anvil_name";
+	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
+# This calls 'call_striker-configure-vmm'
+sub configure_vmm_local
+{
+	my ($conf) = @_;
+	record($conf, "$THIS_FILE ".__LINE__."; configure_vmm_local();\n");
+	
+	### NOTE: I don't currently check if this passes or not.
+	# Setup VMM locally (the script exits without doing anything if disabled or if virt-manager is not 
+	# installed).
+	my $shell_call = "$conf->{path}{'call_striker-configure-vmm'}";
+	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	}
+	close $file_handle;
+	
+	return(0);
+}
+
 # This presents a form for the user to complete. When complete, an XML file
 # with the install information for new nodes is created.
 sub create_install_manifest
 {
 	my ($conf) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
+	record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
 	
 	my $show_form = 1;
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");

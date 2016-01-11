@@ -1882,7 +1882,48 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="arv_error_0004">Failed to find the host for the server: [#!variable!server!#] on the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
 		<key name="arv_error_0005">Failed to read the XML definition data for the server: [#!variable!server!#] on the host: [#!variable!host!#].</key>
 		
+		
 		<!-- striker-push-ssh -->
+		<!-- messages -->
+		<key name="sps_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program sets up passwordless SSH to the nodes associated with the given
+'--anvil X' switch. This is designed to allow Virtual Machine Manager the 
+ability to access servers on the nodes without repeated request to enter the
+nodes' password.
+
+== USE OF THIS FEATURE POSES A SECURITY RISK! ==
+
+Please see the comments in #!data!path::striker_config!# -> tools::striker-push-ssh::enabled.
+
+
+SWITCHES
+
+ --anvil
+ 
+	This is the name of the #!string!brand_0004!# to use. The associated
+	nodes are found by reading #!data!path::striker_config!#.
+	
+	The nodes are then configured to accept all local users ssh access 
+	without a password.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+
+		<!-- log entries -->
 		<key name="sps_log_0001">#!variable!this_file!# has started.</key>
 		<key name="sps_log_0002">Looking for the login details for: [#!variable!anvil!#] #!string!brand_0004!#.</key>
 		<key name="sps_log_0003">Gathered the login credentials for the: [#!variable!anvil!#] #!string!brand_0004!#.</key>
@@ -1895,6 +1936,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="sps_log_0010">Added the node: [#!variable!node!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts successfully.</key>
 		<key name="sps_log_0011">The local user: [#!variable!user!#]'s public RSA key was already in to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
 		<key name="sps_log_0012">Added the local user: [#!variable!user!#]'s public RSA key was added to the 'root' user's authorized keys list on: [#!variable!node!#].</key>
+		<key name="sps_log_0013">Disabled (tools::striker-push-ssh::enabled = 0), exiting.</key>
 		
 		<!-- errors -->
 		<key name="sps_error_0001"><![CDATA[Must be called with '--anvil <name>'.]]></key>
@@ -2024,16 +2066,17 @@ Unable to proceed with the merge, exiting.
 		<!-- striker-config-vmm; Configure Virtual Machine Manager -->
 		<key name="scv_log_0001">#!variable!this_file!# has started.</key>
 		<key name="scv_log_0002">No local users were found, so there is nothing to do.</key>
+		<key name="scv_log_0003">Virtual Machine Manager (virt-manager) does not appear to be installed, exiting.</key>
+		<key name="scv_log_0004">Virtual Machine Manager configuration disabled (tools::striker-configure-vmm::enabled = 0), exiting.</key>
+		<key name="scv_log_0005">Virtual Machine Manager configuration disabled (tools::striker-configure-vmm::enabled = 0), but '--force' was used, proceeding.</key>
 		
 		<!-- normal messages -->
 		<key name="scv_message_0001">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
 		<key name="scv_message_0002">
-Writing out: [#!variable!file!#]
-- Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
+Writing out: [#!variable!file!#] (owner: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#]).
 		</key>
 		<key name="scv_message_0003">
-Creating the directory: [#!variable!directory!#]
-- Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
+Creating the directory: [#!variable!directory!#] (owner: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#]).
 		</key>
 		<key name="scv_message_0004">Analyzing: [#!variable!file!#]...</key>
 		<key name="scv_message_0005">Adding the node: [#!variable!node!#] to Virtual Machine Manager's 'auto-connect' list.</key>
@@ -2047,6 +2090,62 @@ Creating the directory: [#!variable!directory!#]
 Touching: [#!variable!file!#]
 - Ownership: [#!variable!owner!#:#!variable!group!# (#!variable!uid!#:#!variable!gid!#)], mode: [#!variable!mode!#].
 		</key>
+		<key name="scv_message_0013">#!variable!this_file!# has been enabled successfully.</key>
+		<key name="scv_message_0014">#!variable!this_file!# has been disenabled successfully.</key>
+		<key name="scv_message_0015"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program configures each system user's Virtual Machine Manager instance by
+creating or editing ~/.gconf/apps/virt-manager.
+
+
+SWITCHES
+
+ --enable
+
+	This enables this program by setting:
+	
+		tools::striker-configure-vmm::enabled = 1
+	
+	in #!data!path::striker_config!#.
+	
+	It also adds a link to this program in GDM's PreSession script so that
+	it will run as the user logs in, ensuring virt-manager is always 
+	configured properly.
+
+ --disable
+ 
+	This disables this program by setting:
+	
+		tools::striker-configure-vmm::enabled = 0
+	
+	in #!data!path::striker_config!#.
+	
+	It also removes the link to this program from GDM's PreSession script.
+
+ --force
+
+	This will prevent the program from confirming with the user before 
+	running. It is needed if the program is run by another program.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		
+		<!-- warning messages -->
+		<key name="scv_warning_0001">Failed to disable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 0' manually.</key>
+		<key name="scv_warning_0002">Failed to enable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 1' manually.</key>
 		
 		
 		<!-- anvil-fio-tester; Configure Virtual Machine Manager -->

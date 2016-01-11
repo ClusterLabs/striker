@@ -566,8 +566,8 @@ sub error
 	return ($code);
 }
 
-# Later, this will support all the translation and logging methods. For now,
-# just print the warning and return;
+# Later, this will support all the translation and logging methods. For now, just print the warning and 
+# return.
 sub warning
 {
 	my $self      = shift;

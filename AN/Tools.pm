@@ -446,6 +446,7 @@ sub _set_paths
 	$an->data->{path}{cp}            = "/bin/cp";
 	$an->data->{path}{echo}          = "/bin/echo";
 	$an->data->{path}{expect}        = "/usr/bin/expect";
+	$an->data->{path}{'grep'}        = "/bin/grep";
 	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
 	$an->data->{path}{hostname}      = "/bin/hostname";
 	$an->data->{path}{'less'}        = "/usr/bin/less";
@@ -458,10 +459,12 @@ sub _set_paths
 	$an->data->{path}{pmap}          = "/usr/bin/pmap";
 	$an->data->{path}{ps}            = "/bin/ps";
 	$an->data->{path}{rsync}         = "/usr/bin/rsync",
+	$an->data->{path}{sed}           = "/bin/sed",
 	$an->data->{path}{ssh}           = "/usr/bin/ssh";
 	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
 	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
 	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
+	$an->data->{path}{'ssh-copy-id'} = "/usr/bin/ssh-copy-id",
 	$an->data->{path}{touch}         = "/bin/touch";
 	
 	return(0);
