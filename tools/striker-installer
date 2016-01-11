@@ -414,6 +414,10 @@ my $conf = {
 			c_file			=>	"/sbin/striker/call_striker-configure-vmm.c",
 			out_file		=>	"call_striker-configure-vmm",
 		},
+		'striker-delete-anvil'	=>	{
+			c_file			=>	"/sbin/striker/call_striker-delete-anvil.c",
+			out_file		=>	"call_striker-delete-anvil",
+		},
 		'striker-merge-dashboards'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-merge-dashboards.c",
 			out_file		=>	"call_striker-merge-dashboards",
@@ -536,6 +540,13 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		'z_call_striker-delete-anvil' =>	{
+			path			=>	"/sbin/striker/call_striker-delete-anvil",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		'z_call_striker-merge-dashboards' =>	{
 			path			=>	"/sbin/striker/call_striker-merge-dashboards",
 			owner			=>	"root",
@@ -632,6 +643,7 @@ my $conf = {
 		'n'			=>	"", # <hostname>
 		'no-an-repo'		=>	"",
 		'no-reboot'		=>	"",
+		'no-striker-configure-vmm' =>	"",
 		ntp			=>	"", # <ip[,ip]>
 		'p'			=>	"", # <start_ip:end_ip>
 		'peer-dashboard'	=>	"", # <hostname=x,bcn_ip=y>
@@ -1896,7 +1908,7 @@ sub add_repo
 					my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install perl-Crypt-SSLeay";
 					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-					open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 					while(<$file_handle>)
 					{
 						print $_;
@@ -1920,7 +1932,7 @@ sub add_repo
 			logger($conf, $THIS_FILE, __LINE__, "- Downloading: [$url]", 1);
 			my $shell_call = "$conf->{executable}{curl} $url > $full_repo_path && $conf->{executable}{yum} clean expire-cache";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 			while(<$file_handle>)
 			{
@@ -1958,7 +1970,7 @@ sub add_repo
 								logger($conf, $THIS_FILE, __LINE__, "- Trying to download: [$key_url].", 1);
 								my $shell_call = "$conf->{executable}{'lwp-download'} $key_url $local_key";
 								logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-								open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+								open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 								logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 								while(<$file_handle>)
 								{
@@ -2096,7 +2108,7 @@ sub compile_c_wrappers
 		# Compile
 		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -2301,7 +2313,7 @@ sub configure_gui
 		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -2346,7 +2358,7 @@ sub configure_gui
 			logger($conf, $THIS_FILE, __LINE__, "- Disabling the just-installed NetworkManager.", 1);
 			my $shell_call = "/etc/init.d/NetworkManager stop";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				print $_;
@@ -2366,7 +2378,7 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- Enabling GUI on boot.", 1);
 		backup_file($conf, $conf->{path}{inittab});
 		my $shell_call = "sed -i 's/id:3:initdefault/id:5:initdefault/' $conf->{path}{inittab}";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -2404,7 +2416,7 @@ sub configure_gui
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating the user account: [$striker_user]", 1);
 			my $shell_call = "useradd $striker_user -m";
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2420,7 +2432,7 @@ sub configure_gui
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating the SSH RSA key for: [$striker_user]", 1);
 			my $shell_call = "$conf->{executable}{su} $striker_user -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2436,7 +2448,7 @@ sub configure_gui
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Setting the system password for: [$striker_user]", 1);
 			my $shell_call = "$conf->{executable}{echo} \"$striker_password\" | $conf->{executable}{passwd} $striker_user --stdin";
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2550,257 +2562,34 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 	}
 	
-	### Disabled for now.
-# 	# Configure virt-manager to not connect to localhost on start.
-# 	if (1)
-# 	{
-# 		# Make the parent directories if needed.
-# 		logger($conf, $THIS_FILE, __LINE__, "- Configuring Virtual Machine Manager:", 1);
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Configuring Virtual Machine Manager:", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf], error was: $!\n";
-# 			$conf->{permissions}{user_gconf}{path}      = "/home/$conf->{sys}{striker_user}/.gconf";
-# 			$conf->{permissions}{user_gconf}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{user_gconf}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{user_gconf}{mode}      = "700";
-# 			$conf->{permissions}{user_gconf}{recursive} = 0;
-# 		}
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps]", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps], error was: $!\n";
-# 			$conf->{permissions}{user_apps}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps";
-# 			$conf->{permissions}{user_apps}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{user_apps}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{user_apps}{mode}      = "700";
-# 			$conf->{permissions}{user_apps}{recursive} = 0;
-# 		}
-# 		# This file has to exist, but it's created empty.
-# 		my $apps_gconf = "/home/$conf->{sys}{striker_user}/.gconf/apps/\%gconf.xml";
-# 		if (not -e $apps_gconf)
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Touching file: [$apps_gconf]", 1);
-# 			my $shell_call = "$apps_gconf";
-# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 			close $file_handle;
-# 			$conf->{permissions}{apps_conf}{path}      = "$apps_gconf";
-# 			$conf->{permissions}{apps_conf}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{apps_conf}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{apps_conf}{mode}      = "600";
-# 			$conf->{permissions}{apps_conf}{recursive} = 0;
-# 		}
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager]", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager], error was: $!\n";
-# 			$conf->{permissions}{user_virt_manager_dir}{path}      = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager";
-# 			$conf->{permissions}{user_virt_manager_dir}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{user_virt_manager_dir}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{user_virt_manager_dir}{mode}      = "700";
-# 			$conf->{permissions}{user_virt_manager_dir}{recursive} = 1;
-# 		}
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections]", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections], error was: $!\n";
-# 		}
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats]", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats], error was: $!\n";
-# 		}
-# 		if (not -e "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields")
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields]", 1);
-# 			mkdir "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields" or die "$THIS_FILE ".__LINE__."; Failed to create: [/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields], error was: $!\n";
-# 		}
-# 		
-# 		# First up, the main virt-manager gconf
-# 		my $vm_connections_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/connections/\%gconf.xml";
-# 		if (not -e $vm_connections_file)
-# 		{
-# 			my $vm_connections_config =  "<?xml version=\"1.0\"?>\n";
-# 			   $vm_connections_config .= "<gconf>\n";
-# 			   $vm_connections_config .= "	<entry name=\"autoconnect\" mtime=\"1422033743\" type=\"list\" ltype=\"string\">\n";
-# 			   $vm_connections_config .= "	</entry>\n";
-# 			   $vm_connections_config .= "	<entry name=\"uris\" mtime=\"1422033710\" type=\"list\" ltype=\"string\">\n";
-# 			   $vm_connections_config .= "		<li type=\"string\">\n";
-# 			   $vm_connections_config .= "			<stringvalue>qemu:///system</stringvalue>\n";
-# 			   $vm_connections_config .= "		</li>\n";
-# # 			   $vm_connections_config .= "		<li type=\"string\">\n";
-# # 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node01.cobra05.bcn/system</stringvalue>\n";
-# # 			   $vm_connections_config .= "		</li>\n";
-# # 			   $vm_connections_config .= "		<li type=\"string\">\n";
-# # 			   $vm_connections_config .= "			<stringvalue>qemu+ssh://root\@node02.cobra05.bcn/system</stringvalue>\n";
-# # 			   $vm_connections_config .= "		</li>\n";
-# 			   $vm_connections_config .= "	</entry>\n";
-# 			   $vm_connections_config .= "</gconf>\n";
-# 			
-# 			my $shell_call = "$vm_connections_file";
-# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 			print $file_handle $vm_connections_config;
-# 			close $file_handle;
-# 			$conf->{permissions}{vm_connections}{path}      = "$vm_connections_file";
-# 			$conf->{permissions}{vm_connections}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{vm_connections}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{vm_connections}{mode}      = "600";
-# 			$conf->{permissions}{vm_connections}{recursive} = 0;
-# 		}
-# 		
-# 		# Second, the stats gconf
-# 		my $stats_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/stats/\%gconf.xml";
-# 		if (not -e $stats_file)
-# 		{
-# 			my $stats_config =  "<?xml version=\"1.0\"?>\n";
-# 			   $stats_config .= "<gconf>\n";
-# 			   $stats_config .= "	<entry name=\"enable-net-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
-# 			   $stats_config .= "	<entry name=\"enable-disk-poll\" mtime=\"1422035543\" type=\"bool\" value=\"true\"/>\n";
-# 			   $stats_config .= "</gconf>\n";
-# 			
-# 			my $shell_call = "$stats_file";
-# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 			print $file_handle $stats_config;
-# 			close $file_handle;
-# 			$conf->{permissions}{vm_stats}{path}      = "$stats_file";
-# 			$conf->{permissions}{vm_stats}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{vm_stats}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{vm_stats}{mode}      = "600";
-# 			$conf->{permissions}{vm_stats}{recursive} = 0;
-# 		}
-# 		
-# 		# Third, the connections file
-# 		my $vmlist_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/vmlist-fields/\%gconf.xml";
-# 		if (not -e $vmlist_file)
-# 		{
-# 			my $vmlist_config =  "<?xml version=\"1.0\"?>\n";
-# 			   $vmlist_config .= "<gconf>\n";
-# 			   $vmlist_config .= "	<entry name=\"network_traffic\" mtime=\"1422035552\" type=\"bool\" value=\"true\"/>\n";
-# 			   $vmlist_config .= "	<entry name=\"disk_usage\" mtime=\"1422035549\" type=\"bool\" value=\"true\"/>\n";
-# 			   $vmlist_config .= "</gconf>\n";
-# 			
-# 			my $shell_call = "$vmlist_file";
-# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 			print $file_handle $vmlist_config;
-# 			close $file_handle;
-# 			$conf->{permissions}{vm_vmlist}{path}      = "$vmlist_file";
-# 			$conf->{permissions}{vm_vmlist}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{vm_vmlist}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{vm_vmlist}{mode}      = "600";
-# 			$conf->{permissions}{vm_vmlist}{recursive} = 0;
-# 		}
-# 		
-# 		# Fourth, the main config file with the window position info.
-# 		my $vm_core_file = "/home/$conf->{sys}{striker_user}/.gconf/apps/virt-manager/\%gconf.xml";
-# 		if (not -e $vm_core_file)
-# 		{
-# 			my $vm_core_config =  "<?xml version=\"1.0\"?>\n";
-# 			   $vm_core_config .= "<gconf>\n";
-# 			   $vm_core_config .= "	<entry name=\"manager_window_height\" mtime=\"1422049529\" type=\"int\" value=\"620\"/>\n";
-# 			   $vm_core_config .= "	<entry name=\"manager_window_width\" mtime=\"1422049529\" type=\"int\" value=\"700\"/>\n";
-# 			   $vm_core_config .= "</gconf>\n";
-# 			
-# 			my $shell_call = "$vm_core_file";
-# 			open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 			print $file_handle $vm_core_config;
-# 			close $file_handle;
-# 			$conf->{permissions}{vm_core}{path}      = "$vm_core_file";
-# 			$conf->{permissions}{vm_core}{owner}     = "$conf->{sys}{striker_user}";
-# 			$conf->{permissions}{vm_core}{group}     = "$conf->{sys}{striker_user}",
-# 			$conf->{permissions}{vm_core}{mode}      = "600";
-# 			$conf->{permissions}{vm_core}{recursive} = 0;
-# 		}
-# 	}
-# 	
-# 	# Configure the desktop to be 1280 x 1024 (1280 x 960 atm)
-# 	if (1)
-# 	{
-# 		# If this is a QXL-based VM, setup a higher resolution.
-# 		my $is_qxl     = 0;
-# 		my $shell_call = "$conf->{executable}{lspci} -m";
-# 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-# 		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
-# 			if ($line =~ /QXL/i)
-# 			{
-# 				$is_qxl = 1;
-# 				logger($conf, $THIS_FILE, __LINE__, "- KVM server with QXL graphics detected.", 1);
-# 				last;
-# 			}
-# 		}
-# 		close $file_handle;
-# 		
-# 		### TODO: This isn't working yet, fix it later.
-# 		if ($is_qxl)
-# 		{
-# 			logger($conf, $THIS_FILE, __LINE__, "- Configuring Desktop screen size:", 1);
-# 			my $config_dir = "/home/$conf->{sys}{striker_user}/.config";
-# 			if (not -e $config_dir)
-# 			{
-# 				logger($conf, $THIS_FILE, __LINE__, "- Creating directory: [$config_dir]", 1);
-# 				mkdir "$config_dir" or die "$THIS_FILE ".__LINE__."; Failed to create: [$config_dir], error was: $!\n";
-# 				$conf->{permissions}{user_config}{path}      = "$config_dir";
-# 				$conf->{permissions}{user_config}{owner}     = "$conf->{sys}{striker_user}";
-# 				$conf->{permissions}{user_config}{group}     = "$conf->{sys}{striker_user}",
-# 				$conf->{permissions}{user_config}{mode}      = "755";
-# 				$conf->{permissions}{user_config}{recursive} = 0;
-# 			}
-# 			
-# 			my $monitors_file = "/home/$conf->{sys}{striker_user}/.config/monitors.xml";
-# 			if (not -e $monitors_file)
-# 			{
-# 				logger($conf, $THIS_FILE, __LINE__, "- Creating monitor configuration file: [$monitors_file]", 1);
-# 				# First up, the main virt-manager gconf
-# 				my $monitor_config =  "<monitors version=\"1\">\n";
-# 				   $monitor_config .= "  <configuration>\n";
-# 				   $monitor_config .= "      <clone>no</clone>\n";
-# 				   $monitor_config .= "      <output name=\"qxl-0\">\n";
-# 				   $monitor_config .= "          <vendor>Generic</vendor>\n";
-# 				   $monitor_config .= "          <product>0x0000</product>\n";
-# 				   $monitor_config .= "          <serial>0x00000000</serial>\n";
-# 				   $monitor_config .= "          <width>1280</width>\n";
-# 				   $monitor_config .= "          <height>960</height>\n";
-# 				   $monitor_config .= "          <rate>60</rate>\n";
-# 				   $monitor_config .= "          <x>0</x>\n";
-# 				   $monitor_config .= "          <y>0</y>\n";
-# 				   $monitor_config .= "          <rotation>normal</rotation>\n";
-# 				   $monitor_config .= "          <reflect_x>no</reflect_x>\n";
-# 				   $monitor_config .= "          <reflect_y>no</reflect_y>\n";
-# 				   $monitor_config .= "          <primary>no</primary>\n";
-# 				   $monitor_config .= "      </output>\n";
-# 				   $monitor_config .= "      <output name=\"qxl-1\">\n";
-# 				   $monitor_config .= "      </output>\n";
-# 				   $monitor_config .= "      <output name=\"qxl-2\">\n";
-# 				   $monitor_config .= "      </output>\n";
-# 				   $monitor_config .= "      <output name=\"qxl-3\">\n";
-# 				   $monitor_config .= "      </output>\n";
-# 				   $monitor_config .= "  </configuration>\n";
-# 				   $monitor_config .= "</monitors>\n";
-# 				
-# 				my $shell_call = "$monitors_file";
-# 				open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-# 				print $file_handle $monitor_config;
-# 				close $file_handle;
-# 				$conf->{permissions}{monitor_config}{path}      = "$monitors_file";
-# 				$conf->{permissions}{monitor_config}{owner}     = "$conf->{sys}{striker_user}";
-# 				$conf->{permissions}{monitor_config}{group}     = "$conf->{sys}{striker_user}",
-# 				$conf->{permissions}{monitor_config}{mode}      = "664";
-# 				$conf->{permissions}{monitor_config}{recursive} = 0;
-# 			}
-# 		}
-# 	}
-	
+	# Unless disabled, call 'tools/striker-configure-vmm --enable' to have Virtual Machine Manager be 
+	# configured on user login.
+	if ($conf->{switches}{'no-striker-configure-vmm'})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- 'tools/striker-configure-vmm' use disabled by '--no-striker-configure-vmm', skipping it.", 1);
+	}
+	else
+	{
+		# Call 'tools/striker-configure-vmm'.
+		my $shell_call = "/sbin/striker/striker-configure-vmm --enable";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+		}
+		close $file_handle;
+	}
+
 	# Make sure NetworkManager is disabled.
 	if (1)
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Disabling 'NetworkManager'", 1);
 		my $shell_call = "if [ -e /etc/init.d/NetworkManager ]; then chkconfig NetworkManager off; fi";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2818,7 +2607,7 @@ sub configure_gui
 		logger($conf, $THIS_FILE, __LINE__, "- Enabling 'network'", 1);
 		my $shell_call = "chkconfig network on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2878,7 +2667,7 @@ sub configure_ipmi
 		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -2943,7 +2732,7 @@ sub configure_ipmi
 					echo 'rc:1'
 				fi";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2994,7 +2783,7 @@ sub configure_ipmi
 			my $rc         = "";
 			my $shell_call = "ipmitool lan print $channel 2>&1; echo rc:\$?";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
@@ -3039,7 +2828,7 @@ sub configure_ipmi
 			my $ipmi_user  = $conf->{sys}{ipmi_user};
 			my $shell_call = "ipmitool user list $channel 2>&1";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $filehandle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+			open (my $filehandle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$filehandle>)
 			{
 				chomp;
@@ -3061,7 +2850,7 @@ sub configure_ipmi
 		# Set the password.
 		my $shell_call = "ipmitool user set password $user_id '$conf->{sys}{ipmi_password}'";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -3076,7 +2865,7 @@ sub configure_ipmi
 			my $password_ok = 0;
 			my $try_20      = 0;
 			my $shell_call  = "ipmitool user test $user_id 16 '$conf->{sys}{ipmi_password}'";
-			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			while (<$file_handle>)
 			{
@@ -3106,7 +2895,7 @@ sub configure_ipmi
 			{
 				my $shell_call = "ipmitool user test $user_id 20 '$conf->{sys}{ipmi_password}'";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-				open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 				while (<$file_handle>)
 				{
 					chomp;
@@ -3135,7 +2924,7 @@ sub configure_ipmi
 		# Setup the IPMI IP to static
 		my $shell_call = "ipmitool lan set $channel ipsrc static";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -3147,7 +2936,7 @@ sub configure_ipmi
 		# Now set the IP
 		$shell_call = "ipmitool lan set $channel ipaddr $conf->{sys}{ipmi_ip}";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -3159,7 +2948,7 @@ sub configure_ipmi
 		# Now the netmask
 		$shell_call = "ipmitool lan set $channel netmask $conf->{sys}{ipmi_netmask}";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -3172,7 +2961,7 @@ sub configure_ipmi
 		{
 			my $shell_call = "ipmitool lan set $channel defgw ipaddr $conf->{sys}{ipmi_gateway}";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 			while (<$file_handle>)
 			{
 				chomp;
@@ -3186,7 +2975,7 @@ sub configure_ipmi
 		# Now the netmask
 		$shell_call = "ipmitool lan print $channel";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open ($file_handle, '-|', $shell_call) or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $?\n";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -3661,7 +3450,7 @@ sub configure_iso_source
 				   $local_copy = "$conf->{directory}{centos_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'centos-iso'} -O $local_copy";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 				while(<$file_handle>)
 				{
@@ -3855,7 +3644,7 @@ sub configure_iso_source
 				   $local_copy = "$conf->{directory}{rhel_pxe_web}/x86_64/iso/$file_name";
 				my $shell_call = "$conf->{executable}{wget} -c $conf->{switches}{'rhel-iso'} -O $local_copy";
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 				while(<$file_handle>)
 				{
@@ -4023,7 +3812,7 @@ sub generate_iso
 	# To divine the file name, and to confirm the disc is still available,
 	# I need to check the disc.
 	my $shell_call = "cd-info --dvd --no-cddb --no-device-info --no-disc-mode --no-vcd";
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4144,7 +3933,7 @@ sub unmount_iso
 	# First make sure the target isn't already mounted.
 	my $shell_call = "$conf->{executable}{umount} $target; echo \"umount:\$?\"";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4191,7 +3980,7 @@ sub mount_iso
 				echo mount:$?; 
 			fi";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -4739,7 +4528,7 @@ sub configure_dhcp
 			# Read in the IP from the bond file.
 			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_bond1";
 			my $shell_call = "grep -e IPADDR -e NETMASK $ifcfg_file";
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -4764,7 +4553,7 @@ sub configure_dhcp
 			# Read in the IP from the link file
 			   $ifcfg_file = "$conf->{path}{network_configs}/ifcfg-bcn_link1";
 			my $shell_call = "grep IPADDR $ifcfg_file";
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -4938,7 +4727,7 @@ sub manage_daemons
 			logger($conf, $THIS_FILE, __LINE__, "- Disabling: [$daemon] on boot and stopping it.", 1);
 		}
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -4966,7 +4755,7 @@ sub manage_daemons
 			logger($conf, $THIS_FILE, __LINE__, "- Enabling: [$daemon] on boot and (re)starting it.", 1);
 		}
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5061,7 +4850,7 @@ sub set_file_ownership_and_modes
 			logger($conf, $THIS_FILE, __LINE__, "  Setting selinux context to: [$selinux].", 1);
 			my $shell_call = "$conf->{executable}{semanage} fcontext -a -t $selinux $path && $conf->{executable}{restorecon} $path";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -5078,7 +4867,7 @@ sub set_file_ownership_and_modes
 		logger($conf, $THIS_FILE, __LINE__, "- Giving apache permission to create network connections.", 1);
 		my $shell_call = "$conf->{executable}{setsebool} -P httpd_can_network_connect on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5094,7 +4883,7 @@ sub set_file_ownership_and_modes
 		logger($conf, $THIS_FILE, __LINE__, "- Allowing fence_virsh to call ssh.", 1);
 		my $shell_call = "$conf->{executable}{setsebool} -P fenced_can_ssh on";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5289,7 +5078,7 @@ sub rsync_files
 	
 	my $shell_call = "$conf->{executable}{rsync} -a $source $destination";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5319,7 +5108,7 @@ sub copy_file
 	
 	my $shell_call = "$conf->{executable}{cp} -af $source $destination";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5420,7 +5209,7 @@ sub download_striker
 		{
 			my $shell_call = "$conf->{executable}{wget} -c $download";
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 			while(<$file_handle>)
 			{
@@ -5464,7 +5253,7 @@ sub download_striker
 				$shell_call = "$conf->{executable}{unzip} $extract";
 			}
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -5524,7 +5313,7 @@ sub configure_iptables
 	logger($conf, $THIS_FILE, __LINE__, "- Reading the current firewall configuration.", 1);
 	my $shell_call = "$conf->{executable}{'iptables-save'}";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -5574,7 +5363,7 @@ sub configure_iptables
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for trivial FTP (needed for PXE booting).", 1);
 		my $shell_call =  "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 69 -j ACCEPT && ";
 		   $shell_call .= "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p udp --dport 69 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5588,7 +5377,7 @@ sub configure_iptables
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for standard web access.", 1);
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 80 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5602,7 +5391,7 @@ sub configure_iptables
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for secure web access.", 1);
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 443 -j ACCEPT";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5618,7 +5407,7 @@ sub configure_iptables
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5800 -j ACCEPT; ";
 		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5900 -j ACCEPT; ";
 		   $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 6000 -j ACCEPT; ";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5632,7 +5421,7 @@ sub configure_iptables
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Opening access for PostgreSQL.", 1);
 		my $shell_call = "$conf->{executable}{iptables} -I INPUT -m state --state NEW -p tcp --dport 5432 -j ACCEPT; ";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5647,7 +5436,7 @@ sub configure_iptables
 		# Save the changes.
 		logger($conf, $THIS_FILE, __LINE__, "- Saving the new iptables configuration.", 1);
 		my $shell_call = "/etc/init.d/iptables save";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5715,7 +5504,7 @@ sub configure_ssh
 		logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient! It might take time to collect entropy.", 1);
 		my $shell_call = "$conf->{executable}{su} apache -c \"$conf->{executable}{'ssh-keygen'} -t rsa -N \\\"\\\" -b 8191 -f ~/.ssh/id_rsa\"";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5731,7 +5520,7 @@ sub configure_ssh
 		logger($conf, $THIS_FILE, __LINE__, "- Creating the SSH RSA key for 'root'.", 1);
 		my $shell_call = "$conf->{executable}{'ssh-keygen'} -t rsa -N \"\" -b 8191 -f ~/.ssh/id_rsa";
 		logger($conf, $THIS_FILE, __LINE__, "- shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -5803,7 +5592,7 @@ sub configure_selinux
 		# Set enforcing to 0.
 		logger($conf, $THIS_FILE, __LINE__, "- Setting selinux to 'permissive'.", 1);
 		my $shell_call = "$conf->{executable}{setenforce} 0";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -6010,7 +5799,7 @@ sub set_root_password
 		$conf->{sys}{striker_password} =~ s/"/\\"/g;
 		my $shell_call = "$conf->{executable}{echo} \"$conf->{sys}{striker_password}\" | $conf->{executable}{passwd} root --stdin";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -6224,7 +6013,7 @@ sub verify_os
 			logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
 			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			my $registered = 0;
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -6259,7 +6048,7 @@ sub verify_os
 				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
 				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
 				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-				open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -6323,7 +6112,7 @@ sub verify_internet_access
 	my $ok         = 0;
 	my $shell_call = "$conf->{executable}{ping} 8.8.8.8 -c 3 -q";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6561,7 +6350,7 @@ sub install_missing_packages
 		my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install $to_install";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -6619,7 +6408,7 @@ sub update_os
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] really think nothing is happening, please open a new terminal and", 3);
 	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] look for activity using 'top' or 'ps aux'.", 3);
 	my $shell_call = "$conf->{executable}{yum} clean all && $conf->{executable}{yum} $conf->{sys}{yum_switches} update";
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 	while(<$file_handle>)
 	{
@@ -6645,7 +6434,7 @@ sub get_list_of_installed_packages
 	
 	logger($conf, $THIS_FILE, __LINE__, "Getting a list of currently installed packages.", 1);
 	my $shell_call = "$conf->{executable}{yum} list installed";
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -6740,7 +6529,7 @@ sub configure_striker_rhel_repo
 		# No clear yum's cache
 		logger($conf, $THIS_FILE, __LINE__, "- Added. Clearing yum's cache.", 1);
 		my $shell_call = "$conf->{executable}{yum} clean all";
-		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -6800,7 +6589,7 @@ sub start_all_nics
 			logger($conf, $THIS_FILE, __LINE__, "- Config file exists, changing BOOTPROTO to 'none'.", 1);
 			my $shell_call = "$conf->{executable}{sed} -i 's/BOOTPROTO=.*/BOOTPROTO=\"none\"/\' $nic_file";
 			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]", 3);
-			open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
 				# TODO: Should this cause the installer to bail?
@@ -6815,7 +6604,7 @@ sub start_all_nics
 		# Now start the nic.
 		logger($conf, $THIS_FILE, __LINE__, "- Attempting to bring up: [$nic]...", 1);
 		my $shell_call = "$conf->{executable}{ifup} $nic";
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -6830,7 +6619,7 @@ sub start_all_nics
 		sleep 2;
 		my $is_up   = 0;
 		$shell_call = "$conf->{executable}{ip} link show $nic";
-		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -7348,7 +7137,7 @@ sub backup_file
 	
 	my $shell_call = "$conf->{executable}{cp} -ab $file $conf->{path}{backups}";
 	logger($conf, $THIS_FILE, __LINE__, "- Copying: [$file] to: [$conf->{path}{backups}]", 1);
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -8166,7 +7955,7 @@ sub remove_an_repo
 		my $shell_call = "$conf->{executable}{yum} remove alteeve-repo";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
-		open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			print $_;
@@ -8356,6 +8145,13 @@ SWITCHES
 	access, this can cause problems. This option prevents the installer
 	from configuring the repository and, if it is installed, will remove
 	it.
+
+ --no-striker-configure-vmm
+
+	When --gui is used, by default, the 'striker-configure-vmm' will be 
+	used to configure Virtual Machine Manager so that Anvil! systems added
+	via Striker are automatically added to and removed from VMM. Using this
+	switch along with --gui disables this feature.
 
  --no-reboot
  
@@ -8783,7 +8579,7 @@ sub load_network_map_cache
 		my $this_iface = "";
 		my $this_mac   = "";
 		   $shell_call = "$conf->{executable}{ip} addr";
-		open ($file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -8898,7 +8694,7 @@ sub check_nic_states
 	my $this_link_state = "";
 	my $this_ip         = "";
 	my $shell_call = "$conf->{executable}{ip} addr";
-	open (my $file_handle, '-|', "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
