@@ -562,15 +562,20 @@ sub read_ssh_config
 	}, file => $THIS_FILE, line => __LINE__});
 	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
 	
+	# This will hold the raw contents of the file.
+	$hash->{raw}{ssh_config} = "";
+	
+	# Now read in the file
 	my $this_host  = "";
 	my $shell_call = $an->data->{path}{ssh_config};
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
-		my $line = $_;
-		$line =~ s/#.*$//;
-		$line =~ s/\s+$//;
+		my $line                    =  $_;
+		   $hash->{raw}{ssh_config} .= "$line\n";
+		   $line                    =~ s/#.*$//;
+		   $line                    =~ s/\s+$//;
 		next if not $line;
 		
 		if ($line =~ /^host (.*)/i)
@@ -588,6 +593,79 @@ sub read_ssh_config
 	close $file_handle;
 	
 	return($hash);
+}
+
+# This reads in the /etc/hosts file so that entries for the deleted nodes can be removed.
+sub read_hosts
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
+		file => $an->data->{path}{etc_hosts}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
+	
+	# This will hold the raw contents of the file.
+	$hash->{raw}{etc_hosts} = "";
+	
+	# Now read in the file
+	my $shell_call = $an->data->{path}{etc_hosts};
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line                   =  $_;
+		   $hash->{raw}{etc_hosts} .= "$line\n";
+		   $line                   =~ s/^\s+//;
+		   $line                   =~ s/#.*$//;
+		   $line                   =~ s/\s+$//;
+		next if not $line;
+		
+		my $this_ip     = "";
+		my $these_hosts = "";
+		### NOTE: We don't support IPv6 yet
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			$this_ip     = $1;
+			$these_hosts = $2;
+			foreach my $this_host (split/ /, $these_hosts)
+			{
+				$hash->{hosts}{$this_host}{ip} = $this_ip;
+				if (not exists $hash->{hosts}{by_ip}{$this_ip})
+				{
+					$hash->{hosts}{by_ip}{$this_ip} = [];
+				}
+				push @{$hash->{hosts}{by_ip}{$this_ip}}, $this_host;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_host", value1 => $this_host, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
+	
+	# Debug
+	foreach my $this_ip (sort {$a cmp $b} keys %{$hash->{hosts}{by_ip}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_ip", value1 => $this_ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $this_host (sort {$a cmp $b} @{$hash->{hosts}{by_ip}{$this_ip}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_host", value1 => $this_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 # This reads an XML file into the requested hash reference.

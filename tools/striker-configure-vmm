@@ -189,7 +189,7 @@ $an->Log->entry({log_level => 3, message_key => "scv_log_0001", message_variable
 if (not -e $an->data->{path}{'virt-manager'})
 {
 	$an->Log->entry({log_level => 2, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
-	print $an->String->get({key => "scv_log_0003"}), "\n";
+	print $an->String->get({key => "scv_log_0003"})."\n";
 	exit(3);
 }
 
@@ -222,14 +222,14 @@ else
 	{
 		# Yup
 		$an->Log->entry({log_level => 2, message_key => "scv_log_0005", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "scv_log_0005"}), "\n";
+		print $an->String->get({key => "scv_log_0005"})."\n";
 	}
 	else
 	{
 		# Remove ourself to GDM's PreSession script, if needed.
 		manage_gdm_presession($an, "remove");
 		$an->Log->entry({log_level => 2, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "scv_log_0004"}), "\n";
+		print $an->String->get({key => "scv_log_0004"})."\n";
 		exit(1);
 	}
 }
@@ -278,16 +278,16 @@ foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 
 
 # If I am still alive, loop through the list of Anvil! systems and make sure they're in the 
-print $an->String->get({key => "scv_message_0009"}), "\n";
+print $an->String->get({key => "scv_message_0009"})."\n";
 foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
 {
 	# Make sure that the base virtual machine manager config is setup.
 	my $variables = { user => $user };
-	print $an->String->get({key => "scv_message_0010", variables => $variables}), "\n";
+	print $an->String->get({key => "scv_message_0010", variables => $variables})."\n";
 	$an->Log->entry({log_level => 3, message_key => "scv_message_0010", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 	setup_virtual_machine_manager_config($an, $user);
 }
-print $an->String->get({key => "scv_message_0011"}), "\n";
+print $an->String->get({key => "scv_message_0011"})."\n";
 
 exit(0);
 
@@ -332,7 +332,7 @@ fi";
 			if ($task eq "enable")
 			{
 				# Good!
-				print $an->String->get({key => "scv_message_0013", variables => $variables}), "\n";
+				print $an->String->get({key => "scv_message_0013", variables => $variables})."\n";
 				$an->Log->entry({log_level => 1, message_key => "scv_message_0013", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -348,7 +348,7 @@ fi";
 			if ($task eq "disable")
 			{
 				# Good!
-				print $an->String->get({key => "scv_message_0014", variables => $variables}), "\n";
+				print $an->String->get({key => "scv_message_0014", variables => $variables})."\n";
 				$an->Log->entry({log_level => 1, message_key => "scv_message_0014", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -416,7 +416,7 @@ sub manage_gdm_presession
 			source      => $path, 
 			destination => $backup, 
 		};
-		print $an->String->get({key => "scv_message_0001", variables => $variables}), "\n";
+		print $an->String->get({key => "scv_message_0001", variables => $variables})."\n";
 		$an->Log->entry({log_level => 2, message_key => "scv_message_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 		$an->Storage->rsync({
 			source      => $path, 
@@ -490,7 +490,7 @@ sub setup_virtual_machine_manager_config
 				gid   => $gid, 
 				mode  => $mode, 
 			};
-			print $an->String->get({key => "scv_message_0003", variables => $variables}), "\n";
+			print $an->String->get({key => "scv_message_0003", variables => $variables})."\n";
 			$an->Log->entry({log_level => 2, message_key => "scv_message_0003", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			mkdir $path             or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0017", message_variables => { directory => $path, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
 			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
@@ -571,7 +571,7 @@ sub setup_virtual_machine_manager_config
 			### Update the '$body'.
 			# Read in the current file.
 			my $variables = { file  => $path };
-			print $an->String->get({key => "scv_message_0004", variables => $variables}), "\n";
+			print $an->String->get({key => "scv_message_0004", variables => $variables})."\n";
 			$an->Log->entry({log_level => 2, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			
 			# If it exists, read it in and analyze it.
@@ -688,13 +688,13 @@ sub setup_virtual_machine_manager_config
 								if ($node)
 								{
 									my $variables = { node => $node };
-									print $an->String->get({key => "scv_message_0005", variables => $variables}), "\n";
+									print $an->String->get({key => "scv_message_0005", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0005", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								else
 								{
 									my $variables = { uri => $uri };
-									print $an->String->get({key => "scv_message_0006", variables => $variables}), "\n";
+									print $an->String->get({key => "scv_message_0006", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0006", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								$body .= "		<li type=\"string\">\n";
@@ -714,13 +714,13 @@ sub setup_virtual_machine_manager_config
 								if ($node)
 								{
 									my $variables = { node => $node };
-									print $an->String->get({key => "scv_message_0007", variables => $variables}), "\n";
+									print $an->String->get({key => "scv_message_0007", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0007", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								else
 								{
 									my $variables = { uri => $uri };
-									print $an->String->get({key => "scv_message_0008", variables => $variables}), "\n";
+									print $an->String->get({key => "scv_message_0008", variables => $variables})."\n";
 									$an->Log->entry({log_level => 2, message_key => "scv_message_0008", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 								}
 								$body .= "		<li type=\"string\">\n";
@@ -775,7 +775,7 @@ sub setup_virtual_machine_manager_config
 				source      => $path, 
 				destination => $backup, 
 			};
-			print $an->String->get({key => "scv_message_0001", variables => $variables}), "\n";
+			print $an->String->get({key => "scv_message_0001", variables => $variables})."\n";
 			$an->Log->entry({log_level => 2, message_key => "scv_message_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 			$an->Storage->rsync({
 				source      => $path, 
@@ -797,7 +797,7 @@ sub setup_virtual_machine_manager_config
 					gid   => $gid, 
 					mode  => $mode, 
 				};
-				print $an->String->get({key => "scv_message_0002", variables => $variables}), "\n";
+				print $an->String->get({key => "scv_message_0002", variables => $variables})."\n";
 				$an->Log->entry({log_level => 2, message_key => "scv_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 				
 				my $shell_call = $path;
@@ -822,7 +822,7 @@ sub setup_virtual_machine_manager_config
 					gid   => $gid, 
 					mode  => $mode, 
 				};
-				print $an->String->get({key => "scv_message_0012", variables => $variables}), "\n";
+				print $an->String->get({key => "scv_message_0012", variables => $variables})."\n";
 				$an->Log->entry({log_level => 2, message_key => "scv_message_0012", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 				
 				my $shell_call  = $an->data->{path}{touch}." $path";
@@ -857,7 +857,7 @@ sub setup_virtual_machine_manager_config
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $help = $an->String->get({key => "scv_message_0015"})."\n";
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";

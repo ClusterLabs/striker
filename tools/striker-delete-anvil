@@ -5,9 +5,9 @@
 # 
 # Return codes:
 # 0  = Normal exit.
-# 1  = Disabled in striker.conf
-# 2  = Failed to create a required path.
-# 3  = virt-manager not installed, nothing to do.
+# 1  = No '--anvil X' passed in
+# 2  = Requested Anvil! was not found in striker.conf.
+# 3  = 
 # 
 
 use strict; 
@@ -27,128 +27,28 @@ $< = $>;
 $( = $);
 
 # Figure out who and where I am.
-my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
-my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $THIS_FILE         = ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
-my $time = time;
 
 my $an = AN::Tools->new({data => {
+		anvil		=>	{
+			id		=>	"",
+			node1		=>	"",
+			node2		=>	"",
+			company		=>	"",
+			description	=>	"",
+		},
 		path		=>	{
-			gdm_presession	=>	"/etc/gdm/PreSession/Default",
+			# 'connection' will be appended to each user's home directory.
+			connections	=>	".gconf/apps/virt-manager/connections/\%gconf.xml",
 			log_file	=>	"/var/log/striker.log",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 			'virt-manager'	=>	"/usr/bin/virt-manager",
-		},
-		# All 'path' entries will have the user's home directory added as a prefix. An owner or group
-		# set to '~' will be converted to the username being processed.
-		permissions	=>	{
-			directories	=>	{
-				'01_.gconf'		=>	{
-					path			=>	".gconf",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-				'02_apps'		=>	{
-					path			=>	".gconf/apps",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-				'03_virt-manager'	=>	{
-					path			=>	".gconf/apps/virt-manager",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-				'04_connections'	=>	{
-					path			=>	".gconf/apps/virt-manager/connections",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-				'05_stats'	=>	{
-					path			=>	".gconf/apps/virt-manager/stats",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-				'06_vmlist-fields'	=>	{
-					path			=>	".gconf/apps/virt-manager/vmlist-fields",
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0700",
-				},
-			},
-			files		=>	{
-				'01_%gconf.xml'		=>	{
-					path			=>	'.gconf/apps/%gconf.xml',
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0600",
-					body			=>	"",
-				},
-				'02_%gconf.xml'		=>	{
-					path			=>	'.gconf/apps/virt-manager/%gconf.xml',
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0600",
-					body			=>	
-'<?xml version="1.0"?>
-<gconf>
-	<entry name="manager_window_height" mtime="'.$time.'" type="int" value="596"/>
-	<entry name="manager_window_width" mtime="'.$time.'" type="int" value="864"/>
-</gconf>',
-				},
-				# Nodes will be added to this file. Don't change the key name without 
-				# updating it below as well.
-				'03_%gconf.xml'		=>	{
-					path			=>	'.gconf/apps/virt-manager/connections/%gconf.xml',
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0600",
-					body			=>	
-'<?xml version="1.0"?>
-<gconf>
-	<entry name="autoconnect" mtime="'.$time.'" type="list" ltype="string">
-	</entry>
-	<entry name="uris" mtime="'.$time.'" type="list" ltype="string">
-		<li type="string">
-			<stringvalue>qemu:///system</stringvalue>
-		</li>
-	</entry>
-</gconf>',
-				},
-				'04_%gconf.xml'		=>	{
-					path			=>	'.gconf/apps/virt-manager/stats/%gconf.xml',
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0600",
-					body			=>	
-'<?xml version="1.0"?>
-<gconf>
-	<entry name="enable-net-poll" mtime="'.$time.'" type="bool" value="true"/>
-	<entry name="enable-disk-poll" mtime="'.$time.'" type="bool" value="true"/>
-</gconf>',
-				},
-				'05_%gconf.xml'		=>	{
-					path			=>	'.gconf/apps/virt-manager/vmlist-fields/%gconf.xml',
-					owner			=>	"~",
-					group			=>	"~",
-					mode			=>	"0600",
-					body			=>	
-'<?xml version="1.0"?>
-<gconf>
-	<entry name="host_cpu_usage" mtime="'.$time.'" type="bool" value="true"/>
-	<entry name="network_traffic" mtime="'.$time.'" type="bool" value="true"/>
-	<entry name="disk_usage" mtime="'.$time.'" type="bool" value="true"/>
-</gconf>',
-				},
-			},
 		},
 		switches	=>	{},
 		sys		=>	{
@@ -177,114 +77,96 @@ if (($an->data->{switches}{h})   or
 	exit(0);
 }
 
+# We'll be backing up files, so prep a time stamp.
+my ($date, $time) = $an->Get->date_and_time();
+$time =~ s/:/-/g;
+$an->data->{sys}{date}   = $date;
+$an->data->{sys}{'time'} = $time;
+$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	name1 => "sys::date", value1 => $an->data->{sys}{date}, 
+	name2 => "sys::time", value2 => $an->data->{sys}{'time'}, 
+}, file => $THIS_FILE, line => __LINE__});
+
+
 # Log our startup
-$an->Log->entry({log_level => 3, message_key => "scv_log_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "sda_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
-# Exit if virt-manager hasn't been installed.
-if (not -e $an->data->{path}{'virt-manager'})
+# Exit if no Anvil! defined.
+if (not $an->data->{switches}{anvil})
 {
-	$an->Log->entry({log_level => 2, message_key => "scv_log_0003", file => $THIS_FILE, line => __LINE__});
-	print $an->String->get({key => "scv_log_0003"}), "\n";
-	exit(3);
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sda_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
 }
 
-# Is the user asking to enable or disable this feature?
-if ($an->data->{switches}{enable})
+# Find the Anvil! ID to delete.
+foreach my $anvil_id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 {
-	# Add ourself to GDM's PreSession script, if needed.
-	manage_gdm_presession($an, "add");
-	update_configuration($an, "enable");
-	exit(0);
-}
-elsif ($an->data->{switches}{disable})
-{
-	# Remove ourself to GDM's PreSession script, if needed.
-	manage_gdm_presession($an, "remove");
-	update_configuration($an, "disable");
-	exit(0);
-}
-
-# Exit if virtual manager manager configuration disabled in striker.conf.
-if ($an->data->{tools}{'striker-configure-vmm'}{enabled})
-{
-	# Add ourself to GDM's PreSession script, if needed.
-	manage_gdm_presession($an, "add");
-}
-else
-{
-	# Has the run been forced?
-	if ($an->data->{switches}{force})
+	if ($an->data->{cluster}{$anvil_id}{name} eq $an->data->{switches}{anvil})
 	{
-		# Yup
-		$an->Log->entry({log_level => 2, message_key => "scv_log_0005", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "scv_log_0005"}), "\n";
-	}
-	else
-	{
-		# Remove ourself to GDM's PreSession script, if needed.
-		manage_gdm_presession($an, "remove");
-		$an->Log->entry({log_level => 2, message_key => "scv_log_0004", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "scv_log_0004"}), "\n";
-		exit(1);
-	}
-}
-
-# Now determine what local users exist.
-$an->data->{sys}{local_users} = $an->Get->local_users();
-my $local_user_count          = @{$an->data->{sys}{local_users}};
-if (not $local_user_count)
-{
-	# No users found, nothing to do.
-	$an->Log->entry({log_level => 3, message_key => "scv_log_0002", file => $THIS_FILE, line => __LINE__});
-	exit(0);
-}
-
-# Create the list of nodes to add to Virtual Machine Manager.
-foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
-{
-	# Split out the node names.
-	my ($node1, $node2) = (split/,/, $an->data->{cluster}{$id}{nodes});
-	$node1 =~ s/^\s+//g;
-	$node1 =~ s/\s+$//g;
-	$node2 =~ s/^\s+//g;
-	$node2 =~ s/\s+$//g;
-	
-	$an->data->{anvil}{id}       = $id;
-	$an->data->{anvil}{node1}    = $node1;
-	$an->data->{anvil}{node2}    = $node2;
-	$an->data->{anvil}{password} = $an->data->{cluster}{$id}{root_pw} ? $an->data->{cluster}{$id}{root_pw} : $an->data->{cluster}{$id}{ricci_pw};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
-		name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
-		name3 => "anvil::node2",    value3 => $an->data->{anvil}{node2}, 
-		name4 => "anvil::password", value4 => $an->data->{anvil}{password}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	foreach my $node ($node1, $node2)
-	{
-		my $uri = "qemu+ssh://root\@$node/system";
-		$an->data->{node}{$uri}{autoconnect} = 1;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",                      value1 => $node, 
-			name2 => "node::${uri}::autoconnect", value2 => $an->data->{node}{$uri}{autoconnect},
+		# Split out the node names.
+		my ($node1, $node2) = (split/,/, $an->data->{cluster}{$anvil_id}{nodes});
+		$node1 =~ s/^\s+//g;
+		$node1 =~ s/\s+$//g;
+		$node2 =~ s/^\s+//g;
+		$node2 =~ s/\s+$//g;
+		
+		$an->data->{anvil}{anvil_id}    = $anvil_id;
+		$an->data->{anvil}{node1}       = $node1;
+		$an->data->{anvil}{node2}       = $node2;
+		$an->data->{anvil}{company}     = $an->data->{cluster}{$anvil_id}{company};
+		$an->data->{anvil}{description} = $an->data->{cluster}{$anvil_id}{description};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "anvil::anvil_id",    value1 => $an->data->{anvil}{anvil_id}, 
+			name2 => "anvil::node1",       value2 => $an->data->{anvil}{node1}, 
+			name3 => "anvil::node2",       value3 => $an->data->{anvil}{node2}, 
+			name4 => "anvil::company",     value4 => $an->data->{anvil}{company}, 
+			name5 => "anvil::description", value5 => $an->data->{anvil}{description}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 }
 
-
-# If I am still alive, loop through the list of Anvil! systems and make sure they're in the 
-print $an->String->get({key => "scv_message_0009"}), "\n";
-foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
+# If I didn't find an Anvil!, exit.
+if ($an->data->{anvil}{anvil_id})
 {
-	# Make sure that the base virtual machine manager config is setup.
-	my $variables = { user => $user };
-	print $an->String->get({key => "scv_message_0010", variables => $variables}), "\n";
-	$an->Log->entry({log_level => 3, message_key => "scv_message_0010", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-	setup_virtual_machine_manager_config($an, $user);
+	# Woot!
+	$an->Log->entry({log_level => 2, message_key => "sda_log_0002", message_variables => {
+		anvil    => $an->data->{switches}{anvil}, 
+		anvil_id => $an->data->{anvil}{anvil_id}, 
+	}, file => $THIS_FILE, line => __LINE__});
 }
-print $an->String->get({key => "scv_message_0011"}), "\n";
+else
+{
+	# Well foo. 
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sda_error_0002", message_variables => {
+		anvil => $an->data->{switches}{anvil},
+	}, code => 2, file => "$THIS_FILE", line => __LINE__});
+}
+
+# Read in the hosts and ssh_config files and then remove them.
+process_hosts($an);
+process_ssh_config($an);
+
+# If virt-manager is installed and 'tools::striker-configure-vmm::enabled = 1', remove the nodes from each
+# user's VMM.
+if ((-e $an->data->{path}{'virt-manager'}) && ($an->data->{tools}{'striker-configure-vmm'}{enabled}))
+{
+	# Now determine what local users exist.
+	$an->data->{sys}{local_users} = $an->Get->local_users();
+	my $local_user_count          = @{$an->data->{sys}{local_users}};
+
+	# Loop through the list of users (if any) and read in their 'connections' file (if it exists) and 
+	# remove any entries for the deleted nodes.
+	foreach my $user (sort {$a cmp $b} @{$an->data->{sys}{local_users}})
+	{
+		### TODO: When moving to the new module methods, we'll need to process the general success/failure as
+		###       it won't report per-user failures.
+		remove_node_from_vmm($an, $user);
+	}
+}
+
+# Now delete the Anvil! from striker.conf.
+write_new_striker_conf($an);
 
 exit(0);
 
@@ -292,558 +174,472 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
-# This updates the striker.conf file to enable or disable this feature.
-sub update_configuration
+# Generate and write out the new striker.conf file.
+sub write_new_striker_conf
 {
-	my ($an, $task) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_configuration" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "task", value1 => $task, 
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_new_striker_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in the existing config file, skipping the deleted Anvil! and comments with it's company and 
+	# description in it.
+	my $changed  = 0;
+	my $new_file = "";
+	
+	my $anvil_id    = $an->data->{anvil}{anvil_id};
+	my $description = $an->data->{anvil}{description};
+	my $shell_call  = $an->data->{path}{striker_config};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $ok         = 1;
-	my $variables  = {this_file => $THIS_FILE};
-	my $shell_call = $an->data->{path}{sed}." -i 's/^tools::striker-configure-vmm::enabled\\(\\s*\\)=\\(\\s*\\)1/tools::striker-configure-vmm::enabled\\1=\\20/' ".$an->data->{path}{striker_config};
-	if ($task eq "enable")
-	{
-		$shell_call = $an->data->{path}{sed}." -i 's/^tools::striker-configure-vmm::enabled\\(\\s*\\)=\\(\\s*\\)0/tools::striker-configure-vmm::enabled\\1=\\21/' ".$an->data->{path}{striker_config};
-	}
-	$shell_call .= "
-if \$(".$an->data->{path}{'grep'}." -q '^tools::striker-configure-vmm::enabled\\s*=\\s*1' ".$an->data->{path}{striker_config}.");
-then 
-    echo enabled; 
-else 
-    echo disabled;
-fi";
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		
-		if ($line =~ /enabled/)
-		{
-			# Did I want this?
-			if ($task eq "enable")
-			{
-				# Good!
-				print $an->String->get({key => "scv_message_0013", variables => $variables}), "\n";
-				$an->Log->entry({log_level => 1, message_key => "scv_message_0013", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				# Woops...
-				$an->Alert->warning({message_key => "scv_warning_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-				$ok = 0;
-			}
-		}
-		elsif ($line =~ /disabled/)
-		{
-			# Did I want this?
-			if ($task eq "disable")
-			{
-				# Good!
-				print $an->String->get({key => "scv_message_0014", variables => $variables}), "\n";
-				$an->Log->entry({log_level => 1, message_key => "scv_message_0014", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				# Woops...
-				$an->Alert->warning({message_key => "scv_warning_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-				$ok = 0;
-			}
-		}
-	}
-	close $file_handle;
-	
-	return($ok);
-}
-
-
-# This reads in the GDM PreSession script and inserts or removes this program, when needed.
-sub manage_gdm_presession
-{
-	my ($an, $task) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manage_gdm_presession" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "task", value1 => $task, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Read in the existing one.
-	my $raw_file     = "";
-	my $changed      = 0;
-	my $entry_exists = 0;
-	my $path         = $an->data->{path}{gdm_presession};
-	my $shell_call   = $path;
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
-			name2 => "0",    value2 => $0,   
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /$0/)
+		
+		if (($line =~ /#.*$description/) or ($line =~ /^cluster::${anvil_id}::/))
 		{
-			if ($task eq "remove")
-			{
-				$changed = 1;
-				next;
-			}
-			$entry_exists = 1;
+			$changed = 1;
+			next;
 		}
-		$raw_file .= "$line\n";
+		$new_file .= "$line\n";
 	}
 	close $file_handle;
 	
-	if ((not $entry_exists) && ($task eq "add"))
-	{
-		$raw_file .= $0."\n";
-		$changed   = 1;
-	}
-	
+	# If there was a change, write out the new file.
 	if ($changed)
 	{
-		# Backup the file before editing it.
-		my ($date, $time) = $an->Get->date_and_time();
-		my $backup    = "$path.${date}_$time";
+		# Backup the original file
+		my $say_date  = $an->data->{sys}{date}."_".$an->data->{sys}{'time'};
+		my $backup    = $an->data->{path}{striker_config}.".".$say_date;
 		my $variables = {
-			source      => $path, 
+			source      => $an->data->{path}{striker_config}, 
 			destination => $backup, 
 		};
-		print $an->String->get({key => "scv_message_0001", variables => $variables}), "\n";
-		$an->Log->entry({log_level => 2, message_key => "scv_message_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "sda_message_0002", variables => $variables})."\n";
+		$an->Log->entry({log_level => 2, message_key => "sda_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 		$an->Storage->rsync({
-			source      => $path, 
+			source      => $an->data->{path}{striker_config}, 
 			destination => $backup, 
 		});
 		
-		# Write the new version out.
-		my $shell_call = $path;
+		# Write out the new one.
+		my $shell_call = $an->data->{path}{striker_config};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		print $file_handle $raw_file;
+		print $file_handle $new_file;
 		close $file_handle;
 	}
 	
 	return(0);
 }
 
-# This makes sure the required directories and files needed by virtual machine manager exist.
-sub setup_virtual_machine_manager_config
+# This deletes an entry from an array by blanking it's value if it's existing value matches the string passed
+# in.
+sub delete_string_from_array
 {
-	my ($an, $user) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_virtual_machine_manager_config" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "user", value1 => $user, 
+	my ($conf, $string, $array) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_string_from_array" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "string", value1 => $string, 
+		name2 => "array",  value2 => $array, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# What is the user's home directory?
-	my $home_directory = $an->Get->users_home({user => $user});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "home_directory", value1 => $home_directory, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# First, make sure the directories exist and create the ones that don't exist.
-	foreach my $directory (sort {$a cmp $b} keys %{$an->data->{permissions}{directories}})
+	# Useful for debugging.
+	foreach my $line (@{$array})
 	{
-		my $path  = $an->data->{permissions}{directories}{$directory}{path};
-		my $owner = $an->data->{permissions}{directories}{$directory}{owner};
-		my $group = $an->data->{permissions}{directories}{$directory}{group};
-		my $mode  = $an->data->{permissions}{directories}{$directory}{mode};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "path",  value1 => $path, 
-			name2 => "owner", value2 => $owner, 
-			name3 => "group", value3 => $group, 
-			name4 => "mode",  value4 => $mode, 
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Convert '~' to the user's name
-		$path  =  "$home_directory/$path";
-		$owner =~ s/~/$user/;
-		$group =~ s/~/$user/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "path",  value1 => $path, 
-			name2 => "owner", value2 => $owner, 
-			name3 => "group", value3 => $group, 
+	}
+	
+	# Delete the nodes (empty values are skipped later)
+	for (my $i = 0; $i < @{$array}; $i++)
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "i",           value1 => $i,
+			name2 => "array->[$i]", value2 => $array->[$i],
+			name3 => "string",      value3 => $string,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Convert the owner to UID and group to GID.
-		my $uid = getpwnam($owner);
-		my $gid = getgrnam($group);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "uid", value1 => $uid, 
-			name2 => "gid", value2 => $gid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if (not -d $path)
+		if (($string) && ($array->[$i] eq $string))
 		{
-			# Make it
-			my $variables = {
-				directory => $path, 
-				owner => $owner, 
-				uid   => $uid, 
-				group => $group, 
-				gid   => $gid, 
-				mode  => $mode, 
-			};
-			print $an->String->get({key => "scv_message_0003", variables => $variables}), "\n";
-			$an->Log->entry({log_level => 2, message_key => "scv_message_0003", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			mkdir $path             or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0017", message_variables => { directory => $path, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => ">> array->[$i]", value1 => $array->[$i],
+				name2 => "string",         value2 => $string,
+			}, file => $THIS_FILE, line => __LINE__});
+			$array->[$i] = "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "<< array->[$i]", value1 => $array->[$i],
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	# Now create the various files, as needed.
-	my ($date, $time) = $an->Get->date_and_time();
-	$time =~ s/:/-/g;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "date", value1 => $date, 
-		name2 => "time", value2 => $time, 
+	return($array);
+}
+
+### NOTE: This isn't smart enough yet to know when nothing has changed.
+# Remove entries for the nodes from /etc/hosts
+sub process_hosts
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Storage->read_hosts;
+	my $node1_name = $an->data->{anvil}{node1};
+	my $node2_name = $an->data->{anvil}{node2};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_name", value1 => $node1_name,
+		name2 => "node2_name", value2 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $file (sort {$a cmp $b} keys %{$an->data->{permissions}{files}})
+	
+	# Build the date stamp.
+	my $say_date  = $an->data->{sys}{date}."_".$an->data->{sys}{'time'};
+	
+	# Delete this from hosts and ssh_config
+	delete $an->data->{hosts}{$node1_name} if exists $an->data->{hosts}{$node1_name};
+	delete $an->data->{hosts}{$node2_name} if exists $an->data->{hosts}{$node2_name};
+	foreach my $this_ip (keys %{$an->data->{hosts}{by_ip}})
 	{
-		my $path  = $an->data->{permissions}{files}{$file}{path};
-		my $owner = $an->data->{permissions}{files}{$file}{owner};
-		my $group = $an->data->{permissions}{files}{$file}{group};
-		my $mode  = $an->data->{permissions}{files}{$file}{mode};
-		my $body  = $an->data->{permissions}{files}{$file}{body};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-			name1 => "file",  value1 => $file, 
-			name2 => "path",  value2 => $path, 
-			name3 => "owner", value3 => $owner, 
-			name4 => "group", value4 => $group, 
-			name5 => "mode",  value5 => $mode, 
-			name6 => "body",  value6 => $body, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Add the user's home directory, convert '~' to the user's name and add a new line to the body.
-		$path  =  "$home_directory/$path";
-		$owner =~ s/~/$user/;
-		$group =~ s/~/$user/;
-		$body  =  "$body\n" if $body;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "path",  value1 => $path, 
-			name2 => "owner", value2 => $owner, 
-			name3 => "group", value3 => $group, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Convert the owner to UID and group to GID.
-		my $uid = getpwnam($owner);
-		my $gid = getgrnam($group);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "uid", value1 => $uid, 
-			name2 => "gid", value2 => $gid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If the file exists, read it in
-		my $raw_file = "";
-		if (-e $path)
-		{
-			my $shell_call = $path;
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
-			my $in_autoconnect = 0;
-			my $in_uris        = 0;
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				$raw_file .= "$line\n";
-			}
-			close $file_handle;
-		}
-		
-		# If this is the connections '%gconf.xml' file, we'll analyse it to preserve entries the user
-		# may have added. All other files we will simply replace (for now, we'll probably make this 
-		# smarter later).
+		# Delete the nodes (empty values are skipped later)
+		delete_string_from_array($an, $node1_name, $an->data->{hosts}{by_ip}{$this_ip});
+		delete_string_from_array($an, $node2_name, $an->data->{hosts}{by_ip}{$this_ip});
+	}
+	
+	# Generate the new hosts file contents.
+	my $new_file        =  "";
+	my $say_date_header =  $an->String->get({key => "text_0003", variables => { date => $say_date }});
+	my $say_host_header =  $an->String->get({key => "text_0005"});
+	   $new_file        .= "$say_date_header\n";
+	   $new_file        .= "$say_host_header\n";
+	
+	# Print 127.0.0.1 first to keep things cleaner.
+	my $hosts      = "";
+	my $seen_hosts = {};
+	my $this_ip    = "127.0.0.1";
+	foreach my $this_host (sort {$a cmp $b} @{$an->data->{hosts}{by_ip}{$this_ip}})
+	{
+		# Avoid dupes
+		next if $seen_hosts->{$this_ip}{$this_host};
+		$seen_hosts->{$this_ip}{$this_host} = 1;
+		$hosts .= "$this_host ";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "path", value1 => $path, 
+			name1 => "hosts", value1 => $hosts,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($path =~ /.gconf\/apps\/virt-manager\/connections\/%gconf.xml/)
+	}
+	$hosts     =~ s/ $//;
+	$new_file .= "$this_ip\t$hosts\n"; 
+	delete $an->data->{hosts}{by_ip}{'127.0.0.1'} if exists $an->data->{hosts}{by_ip}{'127.0.0.1'};
+	
+	# Push the IPs into an array for sorting.
+	my @ip;
+	foreach my $this_ip (sort {$a cmp $b} keys %{$an->data->{hosts}{by_ip}})
+	{
+		push @ip, $this_ip;
+	}
+	
+	# Sort (from gryng's post here: http://www.perlmonks.org/?node=Sorting%20IP%20Addresses%20Quickly)
+	my @sorted_ip = map  { $_->[0] }
+	                sort { $a->[1] <=> $b->[1] }
+	                map  { my ($x, $y) = (0, $_);
+	                       $x = $_ + $x * 256 for split(/\./, $y);
+	                       [$y,$x]
+	                     } @ip;
+	
+	# Cycle through the passed variables and add them to the hashed created when the hosts file was last 
+	# read.
+	my $last_start_octals = "";
+	foreach my $this_ip (@sorted_ip)
+	{
+		# There can be one or more hosts for a given IP, contained in an array
+		my $hosts      = "";
+		my $seen_hosts = {};
+		my $host_count = 0;
+		foreach my $this_host (sort {$a cmp $b} @{$an->data->{hosts}{by_ip}{$this_ip}})
 		{
-			### Update the '$body'.
-			# Read in the current file.
-			my $variables = { file  => $path };
-			print $an->String->get({key => "scv_message_0004", variables => $variables}), "\n";
-			$an->Log->entry({log_level => 2, message_key => "scv_message_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			
-			# If it exists, read it in and analyze it.
-			if ($raw_file)
-			{
-				my $in_autoconnect = 0;
-				my $in_uris        = 0;
-				foreach my $line (split/\n/, $raw_file)
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					if ($line =~ /<entry name="autoconnect"/)
-					{
-						$in_autoconnect = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "in_autoconnect", value1 => $in_autoconnect, 
-						}, file => $THIS_FILE, line => __LINE__});
-						next;
-					}
-					if ($line =~ /<entry name="uris"/)
-					{
-						$in_uris = 1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "in_uris", value1 => $in_uris, 
-						}, file => $THIS_FILE, line => __LINE__});
-						next;
-					}
-					if ($line =~ /<\/entry>/)
-					{
-						$in_autoconnect = 0;
-						$in_uris        = 0;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "in_autoconnect", value1 => $in_autoconnect, 
-							name2 => "in_uris",        value2 => $in_uris, 
-						}, file => $THIS_FILE, line => __LINE__});
-						next;
-					}
-					if ($line =~ /<stringvalue>(.*?)<\/stringvalue>/)
-					{
-						my $uri = $1;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-							name1 => "in_autoconnect", value1 => $in_autoconnect, 
-							name2 => "in_uris",        value2 => $in_uris, 
-							name3 => "uri",            value3 => $uri, 
-						}, file => $THIS_FILE, line => __LINE__});
-						if ($in_autoconnect)
-						{
-							if ($uri =~ /qemu:\/\/\/system/)
-							{
-								# We'll need to remove localhost from 
-								# autoconnect.
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => ">> raw_file", value1 => $raw_file, 
-								}, file => $THIS_FILE, line => __LINE__});
-								$raw_file =~ s/^\s+<li type="string">\n\s+<stringvalue>qemu:\/\/\/system<\/stringvalue>\n\s+<\/li>\n//m;
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "<< raw_file", value1 => $raw_file, 
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-							$an->data->{uri}{$uri}{autoconnect} = 1;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => "in_autoconnect", value1 => $in_autoconnect, 
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-						elsif ($in_uris)
-						{
-							# If I am in URIs and have NOT seen this URI before, set it 
-							# to 'autoconnect = 0' because the user probably turned it 
-							# off.
-							if (not $an->data->{uri}{$uri}{autoconnect})
-							{
-								$an->data->{uri}{$uri}{autoconnect} = 0;
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "uri::${uri}::autoconnect", value1 => $an->data->{uri}{$uri}{autoconnect}, 
-								}, file => $THIS_FILE, line => __LINE__});
-							}
-						}
-					}
-				}
-			}
-			
-			# Now construct the new body. If 'raw' is set, merge in our nodes that haven't been
-			# seen. If raw doesn't exist, then we'll use the default 'body'.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "raw_file", value1 => $raw_file, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $raw_file)
-			{
-				$raw_file = $body;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "raw_file", value1 => $raw_file, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			if ($raw_file)
-			{
-				# Inject our nodes.
-				$body = "";
-				foreach my $line (split/\n/, $raw_file)
-				{
-					$body .= "$line\n";
-					# I will inject new nodes at the start of each 'entry' element.
-					if ($line =~ /<entry name="autoconnect"/)
-					{
-						# Insert unseen entries into autoconnect that are set to be 
-						# autoconnect (which is everything, currently).
-						foreach my $uri (sort {$a cmp $b} keys %{$an->data->{node}})
-						{
-							if ((not exists $an->data->{uri}{$uri}) && ($an->data->{node}{$uri}{autoconnect}))
-							{
-								# It's new, insert it.
-								my $node = ($uri =~ /qemu\+ssh:\/\/root\@(.*?)\/system/)[0];
-								if ($node)
-								{
-									my $variables = { node => $node };
-									print $an->String->get({key => "scv_message_0005", variables => $variables}), "\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0005", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-								}
-								else
-								{
-									my $variables = { uri => $uri };
-									print $an->String->get({key => "scv_message_0006", variables => $variables}), "\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0006", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-								}
-								$body .= "		<li type=\"string\">\n";
-								$body .= "			<stringvalue>$uri</stringvalue>\n";
-								$body .= "		</li>\n";
-							}
-						}
-					}
-					if ($line =~ /<entry name="uris"/)
-					{
-						# Insert all new entries here.
-						foreach my $uri (sort {$a cmp $b} keys %{$an->data->{node}})
-						{
-							if (not exists $an->data->{uri}{$uri})
-							{
-								my $node = ($uri =~ /qemu\+ssh:\/\/root\@(.*?)\/system/)[0];
-								if ($node)
-								{
-									my $variables = { node => $node };
-									print $an->String->get({key => "scv_message_0007", variables => $variables}), "\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0007", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-								}
-								else
-								{
-									my $variables = { uri => $uri };
-									print $an->String->get({key => "scv_message_0008", variables => $variables}), "\n";
-									$an->Log->entry({log_level => 2, message_key => "scv_message_0008", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-								}
-								$body .= "		<li type=\"string\">\n";
-								$body .= "			<stringvalue>$uri</stringvalue>\n";
-								$body .= "		</li>\n";
-							}
-						}
-					}
-				}
-			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "body", value1 => $body, 
+			# Avoid dupes
+			next if $seen_hosts->{$this_ip}{$this_host};
+			$seen_hosts->{$this_ip}{$this_host} = 1;
+			$hosts .= "$this_host ";
+			$host_count++ if $this_host;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "host_count", value1 => $host_count,
+				name2 => "hosts",      value2 => $hosts,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		$hosts =~ s/ $//;
 		
-		my $files_differ = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "body",     value1 => $body, 
-			name2 => "raw_file", value1 => $raw_file, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($body) && ($raw_file))
+		# Skip IPs with no remaining hosts.
+		next if not $host_count;
+		
+		# Add a space if the first three octals have changed.
+		my $start_octals = ($this_ip =~ /^(\d+\.\d+\.\d+)\./)[0];
+		if ($start_octals ne $last_start_octals)
 		{
-			my $test_body     =  $body;
-			my $test_raw_file =  $raw_file;
-			   $test_body     =~ s/mtime="\d+?"/mtime="x"/gs;
-			   $test_raw_file =~ s/mtime="\d+?"/mtime="x"/gs;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "test_body",     value1 => $test_body, 
-				name2 => "test_raw_file", value2 => $test_raw_file, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($test_body eq $test_raw_file)
+			$last_start_octals =  $start_octals;
+			$new_file          .= "\n";
+		}
+		
+		# Record the entry
+		$new_file .= "$this_ip\t$hosts\n";
+	}
+	$new_file .= "\n";
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_file", value1 => $new_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Backup the original file
+	my $backup    = $an->data->{path}{etc_hosts}.".".$say_date;
+	my $variables = {
+		source      => $an->data->{path}{etc_hosts}, 
+		destination => $backup, 
+	};
+	print $an->String->get({key => "sda_message_0002", variables => $variables})."\n";
+	$an->Log->entry({log_level => 2, message_key => "sda_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+	$an->Storage->rsync({
+		source      => $an->data->{path}{etc_hosts}, 
+		destination => $backup, 
+	});
+	
+	# Write out the new file.
+	my $shell_call = $an->data->{path}{etc_hosts};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	print $file_handle $new_file;
+	close $file_handle;
+	
+	return(0);
+}
+
+# Remove entries for the nodes from /etc/ssh/ssh_config
+sub process_ssh_config
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_ssh_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Storage->read_ssh_config;
+	my $node1_name =  $an->data->{anvil}{node1};
+	my $node2_name =  $an->data->{anvil}{node2};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_name", value1 => $node1_name,
+		name2 => "node2_name", value2 => $node2_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Build the date stamp.
+	my $say_date = $an->data->{sys}{date}."_".$an->data->{sys}{'time'};
+	
+	# Get a normal time stamp for the header.
+	my ($date, $time) = $an->Get->date_and_time();
+	
+	# Start building the new file.
+	my $say_date_header = $an->String->get({key => "text_0003", variables => { date => "$date, $time" }});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_date_header", value1 => $say_date_header,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Re print the ssh_config, but skip 'Host' sections for now.
+	my $new_file            = "$say_date_header\n";
+	my $last_line_was_blank = 0;
+	foreach my $line (split/\n/, $an->data->{raw}{ssh_config})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Skip our header and end before hosts so that we don't keep adding it over and over.
+		next if $line =~ /^### /;
+		last if ($line =~ /^Host\s+(.*)$/);
+		last if ($line =~ /^###############/);
+		
+		# This cleans out multiple blank spaces which seem to creep in.
+		if (not $line)
+		{
+			if ($last_line_was_blank)
 			{
-				$files_differ = 0;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "files_differ", value1 => $files_differ, 
-				}, file => $THIS_FILE, line => __LINE__});
+				next;
 			}
 			else
 			{
-				#print "Difference found:\n";
-				#print "test_body:\n====\n$test_body\n====\n";
-				#print "test_raw_file:\n====\n$test_raw_file\n====\n";
-			}
-		}
-		
-		# Backup the existing file, if it exists, has data and is different.
-		if ((-e $path) && ($files_differ) && ($raw_file))
-		{
-			# Create temp copies of the body and raw_file variables, replace their mtime and see if they differ,
-			my $backup    = "$path.${date}_$time";
-			my $variables = {
-				source      => $path, 
-				destination => $backup, 
-			};
-			print $an->String->get({key => "scv_message_0001", variables => $variables}), "\n";
-			$an->Log->entry({log_level => 2, message_key => "scv_message_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-			$an->Storage->rsync({
-				source      => $path, 
-				destination => $backup, 
-			});
-		}
-		
-		# If the 'body' is empty, it will create an empty file, which is fine.
-		if ($body)
-		{
-			# Write out the file if it has changed.
-			if ($body ne $raw_file)
-			{
-				my $variables = {
-					file  => $path, 
-					owner => $owner, 
-					uid   => $uid, 
-					group => $group, 
-					gid   => $gid, 
-					mode  => $mode, 
-				};
-				print $an->String->get({key => "scv_message_0002", variables => $variables}), "\n";
-				$an->Log->entry({log_level => 2, message_key => "scv_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-				
-				my $shell_call = $path;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call, 
-				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-				print $file_handle $body;
-				close $file_handle;
+				$last_line_was_blank = 1;
 			}
 		}
 		else
 		{
-			# Empty file, so just touch it if it doesn't exist.
-			if (not -e $path)
+			$last_line_was_blank = 0;
+		}
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		$new_file .= "$line\n";
+	}
+	
+	# Print the header box that separates the main config from our 'Host ...' entries.
+	my $say_host_header =  $an->String->get({key => "text_0004"});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_host_header", value1 => $say_host_header,
+	}, file => $THIS_FILE, line => __LINE__});
+	$new_file .= "$say_host_header\n\n";
+	
+	# Now add any new entries.
+	foreach my $this_host (sort {$a cmp $b} keys %{$an->data->{hosts}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_host",                 value1 => $this_host,
+			name2 => "hosts::${this_host}::port", value2 => $an->data->{hosts}{$this_host}{port},
+		}, file => $THIS_FILE, line => __LINE__});
+		next if not $an->data->{hosts}{$this_host}{port};
+		$new_file .= "Host $this_host\n";
+		$new_file .= "\tPort $an->data->{hosts}{$this_host}{port}\n\n";
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "new_file", value1 => $new_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Backup the original file
+	my $backup    = $an->data->{path}{ssh_config}.".".$say_date;
+	my $variables = {
+		source      => $an->data->{path}{ssh_config}, 
+		destination => $backup, 
+	};
+	print $an->String->get({key => "sda_message_0002", variables => $variables})."\n";
+	$an->Log->entry({log_level => 3, message_key => "sda_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+	$an->Storage->rsync({
+		source      => $an->data->{path}{ssh_config}, 
+		destination => $backup, 
+	});
+	
+	# Write out the new file.
+	my $shell_call = $an->data->{path}{ssh_config};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	print $file_handle $new_file;
+	close $file_handle;
+	
+	return(0);
+}
+
+# This reads in the given user's .gconf/apps/virt-manager/connections/%gconf.xml file and removes any 
+# reference to the deleted nodes.
+sub remove_node_from_vmm
+{
+	my ($an, $user) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "remove_node_from_vmm" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "user", value1 => $user, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $node1_name      =  $an->data->{anvil}{node1};
+	my $node2_name      =  $an->data->{anvil}{node2};
+	my $home_directory  =  $an->Get->users_home({user => $user});
+	my $connection_path =  $home_directory."/".$an->data->{path}{connections};
+	   $connection_path =~ s/\/\//\//g;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "node1_name",        value1 => $node1_name,
+		name2 => "node2_name",        value2 => $node2_name,
+		name3 => "home_directory",    value3 => $home_directory,
+		name4 => "path::connections", value4 => $an->data->{path}{connections},
+		name5 => "connection_path",   value5 => $connection_path,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-r $connection_path)
+	{
+		# Read in the existing file connections file into an array and note the index number where we
+		# find entries so that we can delete it and the lines before and after it.
+		my $raw_file     = [];
+		my $delete_index = "";
+		my $shell_call   = $connection_path;
+		my $line_number  = 0;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$raw_file}, $line;
+			
+			if (($line =~ /\@$node1_name\//) or ($line =~ /\@$node2_name\//))
 			{
-				my $variables = {
-					file  => $path, 
-					owner => $owner, 
-					uid   => $uid, 
-					group => $group, 
-					gid   => $gid, 
-					mode  => $mode, 
-				};
-				print $an->String->get({key => "scv_message_0012", variables => $variables}), "\n";
-				$an->Log->entry({log_level => 2, message_key => "scv_message_0012", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
-				
-				my $shell_call  = $an->data->{path}{touch}." $path";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call, 
+				my $previous_line =  $line_number - 1;
+				my $next_line     =  $line_number + 1;
+				   $delete_index  .= "$previous_line,$line_number,$next_line,";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "delete_index", value1 => $delete_index, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-				while (<$file_handle>)
+			}
+			
+			$line_number++;
+		}
+		close $file_handle;
+		
+		# Now create a variable with the new body, minus any deleted lines, if I am removing 
+		# anything.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "delete_index", value1 => $delete_index, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($delete_index)
+		{
+			# Generate the new body.
+			   $delete_index =~ s/,$//;
+			my $new_file     =  "";
+			for (my $i = 0; $i < @{$raw_file}; $i++)
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "i",              value1 => $i, 
+					name2 => "raw_file->[$i]", value2 => $raw_file->[$i],
+				}, file => $THIS_FILE, line => __LINE__});
+				my $skip = 0;
+				foreach my $j (split/,/, $delete_index)
 				{
-					chomp;
-					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => "$line"
+					next if $skip;
+					$skip = 1 if $i == $j;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "j",    value1 => $j, 
+						name2 => "skip", value2 => $skip,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				close $file_handle;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "i",    value1 => $i, 
+					name2 => "skip", value2 => $skip,
+				}, file => $THIS_FILE, line => __LINE__});
+				next if $skip;
+				$new_file .= $raw_file->[$i]."\n";
 			}
-		}
-		
-		# Set the owner and mode
-		if (-e $path)
-		{
-			chown $uid, $gid, $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0021", message_variables => { directory => $path, user => $uid, group => $gid, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-			chmod oct($mode), $path or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0022", message_variables => { directory => $path, mode => $mode, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_file", value1 => $new_file, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Backup the old file.
+			my $backup    = "$connection_path.".$an->data->{sys}{date}."_".$an->data->{sys}{'time'};
+			my $variables = {
+				source      => $connection_path, 
+				destination => $backup, 
+			};
+			print $an->String->get({key => "sda_message_0002", variables => $variables})."\n";
+			$an->Log->entry({log_level => 2, message_key => "sda_message_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			$an->Storage->rsync({
+				source      => $connection_path, 
+				destination => $backup, 
+			});
+			
+			# Write out the new file.
+			my $shell_call = $connection_path;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			print $file_handle $new_file;
+			close $file_handle;
 		}
 	}
 	
@@ -854,9 +650,9 @@ sub setup_virtual_machine_manager_config
 sub print_usage
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $help = $an->String->get({key => "scv_message_0015"})."\n";
+	my $help = $an->String->get({key => "sda_message_0001"})."\n";
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
 	print $file_handle $help;
 	close $file_handle;

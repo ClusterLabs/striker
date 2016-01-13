@@ -149,6 +149,7 @@ sub sanity_check_striker_conf
 	
 	# This will flip to '0' if any errors are encountered.
 	my $save = 1;
+	my $an   = $conf->{handle}{an};
 	
 	# Which global values I am sanity checking depends on whether the user
 	# is modifying the global section or an anvil!.
@@ -267,45 +268,70 @@ sub sanity_check_striker_conf
 		
 		# If everything is empty, that's fine.
 		if ((not $this_name) && 
-			(not $this_description) && 
-			(not $this_url) && 
-			(not $this_company) && 
-			(not $this_ricci_pw) && 
-			(not $this_root_pw) && 
-			(not $this_nodes_1_name) && 
-			(not $this_nodes_1_ip) && 
-			(not $this_nodes_1_port) && 
-			(not $this_nodes_2_name) && 
-			(not $this_nodes_2_ip) && 
-			(not $this_nodes_2_port))
+		    (not $this_description) && 
+		    (not $this_url) && 
+		    (not $this_company) && 
+		    (not $this_ricci_pw) && 
+		    (not $this_root_pw) && 
+		    (not $this_nodes_1_name) && 
+		    (not $this_nodes_1_ip) && 
+		    (not $this_nodes_1_port) && 
+		    (not $this_nodes_2_name) && 
+		    (not $this_nodes_2_ip) && 
+		    (not $this_nodes_2_port))
 		{
-			### TODO: Delete from the peer, too.
 			# If this isn't 'new', delete this Anvil! from the config.
 			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
 			if ($this_id ne "new")
 			{
-				# Delete entries from the hosts and ssh_config
-				# files for this Anvil!, too.
-				my ($nodes_1_name, $nodes_2_name) = ($conf->{cluster}{$this_id}{name} =~ /(.*?),(.*)/);
-				$nodes_1_name =~ s/^\s+//;
-				$nodes_1_name =~ s/\s+$//;
-				$nodes_2_name =~ s/^\s+//;
-				$nodes_2_name =~ s/\s+$//;
-				record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$conf->{cluster}{$this_id}{name}], company: [$conf->{cluster}{$this_id}{company} ($conf->{cluster}{$this_id}{description})], node 1: [$nodes_1_name], node 2: [$nodes_2_name]\n");
+				# The Anvil! has been deleted. Call 'striker-anvil-delete --anvil <name>'
+				# locally and on the peer, if accessible. This handles removing the Anvil!
+				# from ssh_config, hosts and the VMM 'connections/%gconf.xml' files as well
+				# as remove it from striker.conf.
+				my $anvil_name = $conf->{cluster}{$this_id}{name};
+				record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$anvil_name]\n");
 				
-				# Delete this from hosts and ssh_config
-				delete $conf->{hosts}{$nodes_1_name};
-				delete $conf->{hosts}{$nodes_2_name};
-				foreach my $this_ip (keys %{$conf->{hosts}{by_ip}})
+				# Delete it locally
+				my $shell_call = "$conf->{path}{'call_striker-delete-anvil'} --anvil $anvil_name";
+				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
 				{
-					# Delete the nodes (empty values are
-					# skipped later)
-					delete_string_from_array($conf, $nodes_1_name, $conf->{hosts}{by_ip}{$this_ip});
-					delete_string_from_array($conf, $nodes_2_name, $conf->{hosts}{by_ip}{$this_ip});
+					chomp;
+					my $line = $_;
+					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 				}
+				close $file_handle;
 				
-				# Now delete the Anvil! from memory.
-				delete $conf->{clusters}{$this_id};
+				### Delete it on the peer, if one exists and if it is up.
+				# Get a list of peer(s). This returns an array of
+				my $peers = $an->Get->striker_peers();
+				foreach my $hash (@{$peers})
+				{
+					next if not $hash;
+					my $peer_name     = $hash->{name};
+					my $peer_password = $hash->{password};
+					record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name], peer_password: [$peer_password]\n");
+					my $shell_call    = "$conf->{path}{'striker-delete-anvil'} --anvil $anvil_name";
+					record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+					my ($error, $ssh_fh, $output) = remote_call($conf, {
+						node		=>	$peer_name,
+						port		=>	22,
+						user		=>	"root",
+						password	=>	$peer_password,
+						ssh_fh		=>	"",
+						'close'		=>	1,
+						shell_call	=>	$shell_call,
+					});
+					#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+					foreach my $line (@{$output})
+					{
+						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					}
+				}
+				# Set 'save' to '2' to tell the caller we deleted the Anvil!.
+				$save = 2;
+				record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 			}
 			else
 			{
@@ -412,7 +438,7 @@ sub sanity_check_striker_conf
 			}
 		}
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	
 	# Now Sanity check the global (or Anvil! override) values.
 	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
@@ -478,7 +504,11 @@ sub sanity_check_striker_conf
 	{
 		# If 'anvil_id' is set, then we're editing an Anvil! (new or existing) instead of the global
 		# section.
-		if ($conf->{cgi}{anvil_id})
+		if ($save eq "2")
+		{
+			record($conf, "$THIS_FILE ".__LINE__."; The Anvil! was deleted, no more sanity checks needed\n");
+		}
+		elsif ($conf->{cgi}{anvil_id})
 		{
 			# Find a free ID after populating the keys above because they're going to come in 
 			# from CGI as '...__new__...'.
@@ -580,7 +610,7 @@ sub sanity_check_striker_conf
 		}
 	}
 
-	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
 	return ($save);
 }
 
@@ -1135,7 +1165,7 @@ sub write_new_hosts
 			next if $seen_hosts->{$this_ip}{$this_host};
 			$seen_hosts->{$this_ip}{$this_host} = 1;
 			$hosts .= "$this_host ";
-			$host_count++;
+			$host_count++ if $this_host;
 			record($conf, "$THIS_FILE ".__LINE__."; host_count: [$host_count], hosts: [$hosts]\n");
 		}
 		$hosts =~ s/ $//;
@@ -1168,7 +1198,7 @@ sub save_dashboard_configure
 	
 	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
-	if ($save)
+	if ($save eq "1")
 	{
 		# Get the current date and time.
 		my ($say_date) =  get_date($conf, time);
@@ -1225,6 +1255,18 @@ sub save_dashboard_configure
 					url	=>	"?cluster=$anvil_name"
 				}});
 		}
+		print AN::Common::template($conf, "config.html", "general-row-good", {
+			row	=>	"#!string!row_0019!#",
+			message	=>	$message,
+		});
+		print AN::Common::template($conf, "config.html", "close-table");
+		footer($conf);
+		exit(0);
+	}
+	elsif ($save eq "2")
+	{
+		# The Anvil! was deleted by 'striker-delete-anvil'.
+		my $message = AN::Common::get_string($conf, {key => "message_0451", variables => { anvil => $conf->{cgi}{anvil} }});
 		print AN::Common::template($conf, "config.html", "general-row-good", {
 			row	=>	"#!string!row_0019!#",
 			message	=>	$message,
@@ -1513,7 +1555,7 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
 	}
 	
 	# Show the right header.
@@ -7333,7 +7375,7 @@ sub convert_text_to_html
 	my ($conf, $string) = @_;
 	$string = "" if not defined $string;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
 	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
 	$string =~ s/#/&#35;/g;		# Number sign - Must be third! /
@@ -7478,7 +7520,7 @@ sub convert_text_to_html
 	
 	$string =~ s/#!br!#/<br \/>/g;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
 	return ($string);
 }
 

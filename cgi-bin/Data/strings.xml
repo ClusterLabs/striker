@@ -1786,7 +1786,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
 		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
-		<key name="message_0451"><![CDATA[]]></key>
+		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
+		<key name="message_0452"><![CDATA[]]></key>
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
@@ -1844,7 +1845,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
-		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2015]]></key>
+		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>
 		<key name="legal_0002"><![CDATA[This program is released under the <a href="http://www.gnu.org/licenses/gpl-2.0.html" target="_new">GNU GPL v2</a>]]></key>
 		<key name="legal_0003">Release version #!conf!sys::version!#</key>
 		
@@ -2231,6 +2232,55 @@ Deadline Scheduler Configuration (sda):
 		<key name="anp_error_0005">Failed to connect to: [#!variable!peer_ip!#]. The error was: [#!variable!error!#].</key>
 		<key name="anp_error_0006">The 'iperf3' package is not installed on the peer.</key>
 		<key name="anp_error_0007">Failed to find a peer's interface with the peer's IP address: [#!variable!peer_ip!#].</key>
+		
+		
+		<!-- striker-delete-anvil -->
+		<!-- messages -->
+		<key name="sda_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program deletes an #!string!brand_0004!# from the #!string!brand_0002!# configuration file. If 
+'virt-manager' is installed and if 'tools::striker-configure-vmm::enabled = 1',
+the nodes for the deleted #!string!brand_0004!# will be removed from any system user's 
+virtual machine manager the next time they log into the desktop.
+
+
+NOTE
+
+This does NOT delete the #!string!brand_0004!# from the peer dashboard! This will need to be
+called on each dashboard before they are sync'ed or else the deleted 
+#!string!brand_0004!# will come back.
+
+
+SWITCHES
+
+ --anvil
+ 
+	This is the name of the #!string!brand_0004!# to delete.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="sda_message_0002">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
+		
+		<!-- logs -->
+		<key name="sda_log_0001">#!variable!this_file!# has started.</key>
+		<key name="sda_log_0002">Deleting the #!string!brand_0004!# named: [#!variable!anvil!#] with ID: [#!variable!anvil_id!#].</key>
+		
+		<!-- errors -->
+		<key name="sda_error_0001"><![CDATA[Must be called with '--anvil <name>'.]]></key>
+		<key name="sda_error_0002">The #!string!brand_0004!# called: [#!variable!anvil!#] was not found in: [#!data!path::striker_config!#]</key>
 	</lang>
 
 	<!-- Japanese -->

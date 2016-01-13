@@ -853,4 +853,66 @@ sub ip
 	return ($ip);
 }
 
+# This returns an array of hash references, each hash reference storing a peer node name and the scancore 
+# password.
+sub striker_peers
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# This array will store the hashes for the peer host names and their passwords.
+	my $peers = [];
+	
+	my $i_am_long  = $an->hostname();
+	my $i_am_short = $an->short_hostname();
+	my $local_id   = "";
+	my $db_count   = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "i_am_long",  value1 => $i_am_long, 
+		name2 => "i_am_short", value2 => $i_am_short, 
+		name3 => "local_id",   value3 => $local_id, 
+		name4 => "db_count",   value4 => $db_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		   $db_count++;
+		my $this_host = $an->data->{scancore}{db}{$id}{host};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_host", value1 => $this_host, 
+			name2 => "db_count",  value2 => $db_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
+		{
+			$local_id = $id;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_id", value1 => $local_id, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Now I know who I am, find the peer.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		if ($id ne $local_id)
+		{
+			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
+			my $peer_password = $an->data->{scancore}{db}{$id}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "peer_name",     value1 => $peer_name, 
+				name2 => "peer_password", value2 => $peer_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$peers}, {name => $peer_name, password => $peer_password};
+		}
+	}
+	
+	return($peers);
+}
+
 1;

@@ -439,10 +439,10 @@ sub _set_paths
 	my ($self) = shift;
 	my $an = $self;
 	
+	# Executables
 	$an->data->{path}{cat}           = "/bin/cat";
 	$an->data->{path}{'chmod'}       = "/bin/chmod";
 	$an->data->{path}{'chown'}       = "/bin/chown";
-	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
 	$an->data->{path}{cp}            = "/bin/cp";
 	$an->data->{path}{echo}          = "/bin/echo";
 	$an->data->{path}{expect}        = "/usr/bin/expect";
@@ -461,11 +461,15 @@ sub _set_paths
 	$an->data->{path}{rsync}         = "/usr/bin/rsync",
 	$an->data->{path}{sed}           = "/bin/sed",
 	$an->data->{path}{ssh}           = "/usr/bin/ssh";
-	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
 	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
 	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
 	$an->data->{path}{'ssh-copy-id'} = "/usr/bin/ssh-copy-id",
 	$an->data->{path}{touch}         = "/bin/touch";
+	
+	# Text files
+	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
+	$an->data->{path}{etc_hosts}     = "/etc/hosts";
+	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
 	
 	return(0);
 }
