@@ -31,6 +31,9 @@ package AN::Striker;
 #   state' is an option, hide others. Ideally, make a "Recover" that does both make good and clear foreign in
 #   one step.
 # 
+# 
+# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
+# 
 
 use strict;
 use warnings;
@@ -54,11 +57,8 @@ my $THIS_FILE = "AN::Striker.pm";
 sub mark_node_as_clean_off
 {
 	my ($conf, $node, $delay) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node], delay: [$delay]\n");
-	
-	# Put the '$an' handle into the variable for cleaner access.
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node], delay: [$delay]\n");
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({
@@ -92,9 +92,23 @@ SET
     host_emergency_stop = FALSE, 
     host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($say_off).", 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
+WHERE ";
+		# If the node's host name is short, use 'ILIKE'.
+		if ($node =~ /\./)
+		{
+			$query .= "
     host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
 ;";
+		}
+		else
+		{
+			### TODO: This should be smarted and actually try to find the full host name by 
+			###       checking cluster.conf on one of the nodes.
+			$node  .= "%";
+			$query .= "
+    host_name ILIKE ".$an->data->{sys}{use_db_fh}->quote($node)."
+;";
+		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
@@ -119,11 +133,8 @@ WHERE
 sub mark_node_as_clean_on
 {
 	my ($conf, $node) = @_;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_on(); node: [$node]\n");
-	
-	# Put the '$an' handle into the variable for cleaner access.
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_on(); node: [$node]\n");
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({
@@ -173,6 +184,7 @@ WHERE
 sub get_peer_node
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	my $peer = "";
 	
 	my $cluster = $conf->{cgi}{cluster};
@@ -195,6 +207,7 @@ sub get_peer_node
 sub process_task
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	if ($conf->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
@@ -485,10 +498,6 @@ sub process_task
 			}
 		}
 	}
-# 	elsif ($conf->{cgi}{task} eq "restart_tomcat")
-# 	{
-# 		restart_tomcat($conf);
-# 	}
 	else
 	{
 		print "<pre>\n";
@@ -502,103 +511,11 @@ sub process_task
 	return(0);
 }
 
-# This restarts tomcat on the local machine.
-# sub restart_tomcat
-# {
-# 	my ($conf, $quiet) = @_;
-# 	   $quiet     = 0 if not defined $quiet;
-# 	my $tries     = 0;
-# 	my $max_tries = 3;
-# 	
-# 	if (not $quiet)
-# 	{
-# 		# Open the table for telling the user that tomcat is restarting.
-# 		print AN::Common::template($conf, "common.html", "restart-guacamole-header");
-# 	}
-# 	
-# 	# Call the restart. It will return '1' if there was a failure and a
-# 	# retry is needed.
-# 	while (call_restart_tomcat_guacd($conf, $quiet))
-# 	{
-# 		$tries++;
-# 		if ($tries > $max_tries)
-# 		{
-# 			if ($quiet)
-# 			{
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
-# 			}
-# 			else
-# 			{
-# 				print AN::Common::template($conf, "common.html", "shell-call-output", {
-# 					line	=>	"message_0336",
-# 				});
-# 			}
-# 			last;
-# 		}
-# 		else
-# 		{
-# 			if ($quiet)
-# 			{
-# 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Restart failed, giving up.\n");
-# 			}
-# 			else
-# 			{
-# 				print AN::Common::template($conf, "common.html", "shell-call-output", {
-# 					line	=>	"message_0335",
-# 				});
-# 			}
-# 		}
-# 		sleep 5;
-# 	}
-# 	
-# 	# Done.
-# 	if (not $quiet)
-# 	{
-# 		print AN::Common::template($conf, "common.html", "restart-guacamole-footer");
-# 	}
-# 	
-# 	return(0);
-# }
-
-# This handles the actual restart calls.
-# sub call_restart_tomcat_guacd
-# {
-# 	my ($conf, $quiet) = @_;
-# 	
-# 	my $retry = 0;
-# 	my $shell_call = "$conf->{path}{restart_tomcat} restart && $conf->{path}{restart_guacd} restart";
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-# 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 	while(<$file_handle>)
-# 	{
-# 		chomp;
-# 		my $line = $_;
-# 		if (($line =~ /Starting/i) && ($line =~ /Failed/i))
-# 		{
-# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failure detected: [$line]. Will retry.\n");
-# 			$retry = 1;
-# 		}
-# 		if ($quiet)
-# 		{
-# 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-# 		}
-# 		else
-# 		{
-# 			$line = parse_text_line($conf, $line);
-# 			print AN::Common::template($conf, "common.html", "shell-call-output", {
-# 				line	=>	$line,
-# 			});
-# 		}
-# 	}
-# 	close $file_handle;
-# 
-# 	return($retry);
-# }
-
 # This unmarks a disk as a hot spare.
 sub lsi_control_unmake_disk_as_hot_spare
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_unmake_disk_as_hot_spare()\n");
 	
 	my $success           = 0;
@@ -662,6 +579,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 sub lsi_control_clear_foreign_state
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_clear_foreign_state()\n");
 	
 	my $success           = 0;
@@ -723,6 +641,7 @@ sub lsi_control_clear_foreign_state
 sub lsi_control_make_disk_hot_spare
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_hot_spare()\n");
 	
 	my $success           = 0;
@@ -786,6 +705,7 @@ sub lsi_control_make_disk_hot_spare
 sub lsi_control_mark_disk_missing
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_mark_disk_missing()\n");
 	
 	my $success           = 0;
@@ -866,6 +786,7 @@ sub lsi_control_mark_disk_missing
 sub lsi_control_spin_disk_up
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_up()\n");
 	
 	my $success           = 0;
@@ -928,6 +849,7 @@ sub lsi_control_spin_disk_up
 sub lsi_control_spin_disk_down
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_down()\n");
 	
 	my $success           = 0;
@@ -1012,6 +934,7 @@ sub lsi_control_spin_disk_down
 sub lsi_control_get_rebuild_progress
 {
 	my ($conf, $disk_address, $adapter) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_rebuild_progress(); disk_address: [$disk_address], adapter: [$adapter]\n");
 	
 	my $rebuild_percent   = "";
@@ -1051,6 +974,7 @@ sub lsi_control_get_rebuild_progress
 sub lsi_control_put_disk_offline
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_offline()\n");
 	
 	### NOTE: I don't think I need this function. For now, I simply
@@ -1174,6 +1098,7 @@ sub lsi_control_put_disk_offline
 sub lsi_control_put_disk_online
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_online()\n");
 	
 	my $success           = 0;
@@ -1235,6 +1160,7 @@ sub lsi_control_put_disk_online
 sub lsi_control_add_disk_to_array
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_add_disk_to_array()\n");
 	
 	my $success           = 0;
@@ -1304,6 +1230,7 @@ sub lsi_control_add_disk_to_array
 sub lsi_control_get_missing_disks
 {
 	my ($conf, $this_adapter, $this_logical_disk) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_missing_disks(); this_adapter: [$this_adapter] this_logical_disk: [$this_logical_disk]\n");
 	
 	my $cluster           = $conf->{cgi}{cluster};
@@ -1342,6 +1269,7 @@ sub lsi_control_get_missing_disks
 sub lsi_control_make_disk_good
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_good()\n");
 	
 	my $success           = 0;
@@ -1403,6 +1331,7 @@ sub lsi_control_make_disk_good
 sub lsi_control_disk_id_led
 {
 	my ($conf, $action) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_disk_id_led(); action: [$action]\n");
 	
 	my $success           = 0;
@@ -1477,6 +1406,7 @@ sub lsi_control_disk_id_led
 sub display_node_health
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
@@ -1894,6 +1824,7 @@ sub display_node_health
 sub get_storage_data
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	$conf->{storage}{is}{lsi}   = "";
 	$conf->{storage}{is}{hp}    = "";
@@ -1954,6 +1885,7 @@ sub get_storage_data
 sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_storage_data_lsi(); node: [$node]\n");
 	
 	# This is used when recording all fields.
@@ -2532,6 +2464,7 @@ sub get_storage_data_lsi
 sub change_vm
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster             = $conf->{cgi}{cluster};
 	my $vm                  = $conf->{cgi}{vm};
@@ -2802,6 +2735,7 @@ sub change_vm
 sub vm_insert_media
 {
 	my ($conf, $node, $insert_media, $insert_drive, $vm_is_running) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster         = $conf->{cgi}{cluster};
 	my $vm              = $conf->{cgi}{vm};
@@ -2952,6 +2886,7 @@ sub vm_insert_media
 sub vm_eject_media
 {
 	my ($conf, $node, $vm_is_running) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster         = $conf->{cgi}{cluster};
 	my $vm              = $conf->{cgi}{vm};
@@ -3130,6 +3065,7 @@ sub vm_eject_media
 sub manage_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
 	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
@@ -3708,6 +3644,7 @@ sub manage_vm
 sub switch_vm_xml_to_vnc
 {
 	my ($conf, $node, $vm, $backup_file) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm], backup_file: [$backup_file]\n");
 	
 	my $proceed         = 1;
@@ -3895,187 +3832,12 @@ sub switch_vm_xml_to_vnc
 	return(0);
 }
 
-### Disabled
-# # This reads the current guacamole configuration file and, if necessary,
-# # updates it to add/modify the given VM's host and port.
-# sub update_guacamole_config
-# {
-# 	my ($conf, $say_vm, $node, $port) = @_;
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_guacamole_config; say_vm: [$say_vm], node: [$node], port: [$port]\n");
-# 	
-# 	# Read the guacamole config file.
-# 	$conf->{guacamole}{config}{old} = [];
-# 	my $shell_call = $conf->{path}{guacamole_config};
-# 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
-# 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-# 	while(<$file_handle>)
-# 	{
-# 		chomp;
-# 		my $line = $_;
-# 		$line =~ s/^\s+//;
-# 		$line =~ s/\s+$//;
-# 		$line =~ s/\s+/ /g;
-# 		next if not $line;
-# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-# 		push @{$conf->{guacamole}{config}{old}}, $line;
-# 	}
-# 	close $file_handle;
-# 	
-# 	my $match_found    = 0;
-# 	my $rewrite_needed = 0;
-# 	my $this_vm        = "";
-# 	my $this_host      = "";
-# 	my $this_port      = "";
-# 	foreach my $line (@{$conf->{guacamole}{config}{old}})
-# 	{
-# 		$line =~ s/^\s+//;
-# 		$line =~ s/\s+$//;
-# 		$line =~ s/\s+/ /g;
-# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-# 		if ($line =~ /^<\/config>/)
-# 		{
-# 			# Save the data.
-# 			$conf->{guacamole}{vm}{$this_vm}{host} = $this_host;
-# 			$conf->{guacamole}{vm}{$this_vm}{port} = $this_port;
-# 			
-# 			# See of this entry matches my current VM and, if so,
-# 			# see if the port or host needs to be updated.
-# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking if this_vm: [$this_vm] matches say_vm: [$say_vm]\n");
-# 			if ($this_vm eq $say_vm)
-# 			{
-# 				$match_found = 1;
-# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matched. Checking now if this_host: [$this_host] matches node: [$node] and if this_port: [$this_port] matches port: [$port]\n");
-# 				if (($node ne $this_host) || ($port ne $this_port))
-# 				{
-# 					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Difference found, rewrite needed.\n");
-# 					$rewrite_needed                        = 1;
-# 					$conf->{guacamole}{vm}{$this_vm}{host} = $node;
-# 					$conf->{guacamole}{vm}{$this_vm}{port} = $port;
-# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${this_vm}::host: [$conf->{guacamole}{vm}{$this_vm}{host}], guacamole::vm::${this_vm}::port: [$conf->{guacamole}{vm}{$this_vm}{port}]!\n");
-# 				}
-# 				else
-# 				{
-# 					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Same, rewrite not needed.\n");
-# 				}
-# 			}
-# 			else
-# 			{
-# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm], host: [$conf->{guacamole}{vm}{$this_vm}{host}], port: [$conf->{guacamole}{vm}{$this_vm}{port}]\n");
-# 				# See if this VM still exists on the cluster.
-# 				my $exists =  0;
-# 				foreach my $existing_vm (sort {$a cmp $b} keys %{$conf->{vm}})
-# 				{
-# 					$existing_vm =~ s/^vm://;
-# 					if ($existing_vm eq $this_vm)
-# 					{
-# 						#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm] still exists on the Anvil!.\n");
-# 						$exists = 1;
-# 					}
-# 				}
-# 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; exists: [$exists], this_vm: [$this_vm], say_vm: [$say_vm].\n");
-# 				if ((not $exists) && ($this_vm ne $say_vm))
-# 				{
-# 					# Delete it so that it's removed from guacamole.
-# 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Existing server: [$this_vm] no longer exists, deleting it from guacamole.\n");
-# 					delete $conf->{guacamole}{vm}{$this_vm};
-# 					$rewrite_needed = 1;
-# 				}
-# 			}
-# 			
-# 			$this_vm   = "";
-# 			$this_host = "";
-# 			$this_port = "";
-# 			next;
-# 		}
-# 		
-# 		if ($line =~ /^<config /)
-# 		{
-# 			($this_vm) = ($line =~ /name="(.*?)"/);
-# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_vm: [$this_vm]\n");
-# 		}
-# 		
-# 		next if not $this_vm;
-# 		if (($line =~ /^<param /) && ($line =~ /name="hostname"/))
-# 		{
-# 			($this_host) = ($line =~ /value="(.*?)"/);
-# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host]\n");
-# 		}
-# 		if (($line =~ /^<param /) && ($line =~ /name="port"/))
-# 		{
-# 			($this_port) = ($line =~ /value="(.*?)"/);
-# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_port: [$this_port]\n");
-# 		}
-# 	}
-# 	if (not $match_found)
-# 	{
-# 		$rewrite_needed                       = 1;
-# 		$conf->{guacamole}{vm}{$say_vm}{host} = $node;
-# 		$conf->{guacamole}{vm}{$say_vm}{port} = $port;
-# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; This server not found, rewrite needed to add it.\n");
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; New values; guacamole::vm::${say_vm}::host: [$conf->{guacamole}{vm}{$say_vm}{host}], guacamole::vm::${say_vm}::port: [$conf->{guacamole}{vm}{$say_vm}{port}].\n");
-# 	}
-# 	
-# 	# Now look to see if we need to update the config.
-# 	if ($rewrite_needed)
-# 	{
-# 		my ($date) = AN::Cluster::get_date($conf);
-# 		my $say_warning = AN::Common::get_string($conf, {key => "text_0006"});
-# 		my $say_updated = AN::Common::get_string($conf, {key => "text_0007", variables => {
-# 				date	=>	$date,
-# 			}});
-# 		my $new_config;
-# 		$new_config .= "<configs>\n";
-# 		$new_config .= "	<!-- $say_warning -->\n";
-# 		$new_config .= "	<!-- $say_updated -->\n";
-# 		foreach my $this_vm (sort {$a cmp $b} keys %{$conf->{guacamole}{vm}})
-# 		{
-# 			my $this_host = $conf->{guacamole}{vm}{$this_vm}{host};
-# 			my $this_port = $conf->{guacamole}{vm}{$this_vm}{port};
-# 			$new_config .= "	<config name=\"$this_vm\" protocol=\"vnc\">\n";
-# 			$new_config .= "		<param name=\"hostname\" value=\"$this_host\" />\n";
-# 			$new_config .= "		<param name=\"port\" value=\"$this_port\" />\n";
-# 			$new_config .= "	</config>\n";
-# 		}
-# 		$new_config .= "</configs>\n";
-# 		
-# 		# Save the new config.
-# 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; new guacamole config:\n===\n$new_config\n===\n");
-# 		
-# 		# Backup the last config.
-# 		my $backup_file =  "$conf->{path}{guacamole_config}.$date";
-# 		   $backup_file =~ s/ /_/;
-# 		my $shell_call  =  "cp $conf->{path}{guacamole_config} $backup_file";
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-# 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 		while(<$file_handle>)
-# 		{
-# 			chomp;
-# 			my $line = $_;
-# 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
-# 		}
-# 		close $file_handle;
-# 		
-# 		# Save the new config.
-# 		$shell_call = "$conf->{path}{guacamole_config}";
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-# 		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-# 		print $file_handle $new_config;
-# 		close $file_handle;
-# 	}
-# 	else
-# 	{
-# 		# Rewrite not needed.
-# 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Guacamole config update is not needed.\n");
-# 	}
-# 	
-# 	return(0);
-# }
-
 # This figures out which node a VM is running on, calls 'virsh dumpxml $vm',
 # parses out the currently used VNC port and returns the host and port.
 sub get_current_vm_vnc_info
 {
 	my ($conf, $vm, $node) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:/)
@@ -4138,6 +3900,7 @@ sub get_current_vm_vnc_info
 sub read_live_xml
 {
 	my ($conf, $vm, $say_vm, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	$conf->{vm}{$vm}{live_xml} = [];
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -4166,6 +3929,7 @@ sub read_live_xml
 sub find_node_storage_pool
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_node_storage_pool().\n");
 	
 	my $vm     = $conf->{cgi}{vm};
@@ -4206,6 +3970,7 @@ sub find_node_storage_pool
 sub update_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
+	my $an = $conf->{handle}{an};
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:(.*)/)
 	{
@@ -4273,6 +4038,7 @@ sub update_vm_definition
 sub add_vm_to_cluster
 {
 	my ($conf, $skip_scan) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster(); skip_scan: [$skip_scan]\n");
 	
 	# If this is being called after provisioning a VM, we'll skip scanning the cluster and we'll not 
@@ -4896,6 +4662,7 @@ sub add_vm_to_cluster
 sub update_network_driver
 {
 	my ($conf, $new_xml) = @_;
+	my $an = $conf->{handle}{an};
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::server::bcn_nic_driver: [$conf->{sys}{server}{bcn_nic_driver}], sys::server::sn_nic_driver: [$conf->{sys}{server}{sn_nic_driver}], sys::server::ifn_nic_driver: [$conf->{sys}{server}{ifn_nic_driver}]\n");
 	# Clear out the old array and refill it with the possibly-edited 'new_xml'.
@@ -4988,6 +4755,7 @@ sub update_network_driver
 sub find_vm_host
 {
 	my ($conf, $node, $peer, $vm) = @_;
+	my $an = $conf->{handle}{an};
 	my $host = "none";
 	
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -5077,6 +4845,7 @@ sub find_vm_host
 sub get_bridge_name
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_bridge_name(); node: [$node]\n");
 	
 	my $bridge     = "";
@@ -5110,6 +4879,7 @@ sub get_bridge_name
 sub provision_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $say_title = AN::Common::get_string($conf, {key => "title_0115", variables => {
 			server	=>	$conf->{new_vm}{name},
@@ -5347,6 +5117,7 @@ sub provision_vm
 sub verify_vm_config
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_vm_config()\n");
 	
 	# First, get a current view of the cluster.
@@ -5699,6 +5470,7 @@ sub verify_vm_config
 sub confirm_provision_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read file list from node: [$node]\n");
@@ -5837,6 +5609,7 @@ sub confirm_provision_vm
 sub confirm_withdraw_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0035", variables => {
@@ -5859,6 +5632,7 @@ sub confirm_withdraw_node
 sub confirm_join_cluster
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0036", variables => {
@@ -5881,6 +5655,7 @@ sub confirm_join_cluster
 sub confirm_dual_join
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0037", variables => {
@@ -5902,6 +5677,7 @@ sub confirm_dual_join
 sub confirm_fence_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0038", variables => {
@@ -5925,6 +5701,7 @@ sub confirm_fence_node
 sub confirm_poweroff_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0039", variables => {
@@ -5948,6 +5725,7 @@ sub confirm_poweroff_node
 sub confirm_poweron_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0040", variables => {
@@ -5969,6 +5747,7 @@ sub confirm_poweron_node
 sub confirm_dual_boot
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_message = AN::Common::get_string($conf, {key => "message_0161", variables => {
@@ -5986,6 +5765,7 @@ sub confirm_dual_boot
 sub confirm_cold_stop_anvil
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_message = AN::Common::get_string($conf, {key => "message_0418", variables => {
@@ -6020,6 +5800,7 @@ sub confirm_cold_stop_anvil
 sub confirm_start_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0042", variables => {
@@ -6043,6 +5824,7 @@ sub confirm_start_vm
 sub confirm_stop_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0043", variables => {
@@ -6075,6 +5857,7 @@ sub confirm_stop_vm
 sub confirm_force_off_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0044", variables => {
@@ -6099,6 +5882,7 @@ sub confirm_force_off_vm
 sub confirm_delete_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0045", variables => {
@@ -6120,6 +5904,7 @@ sub confirm_delete_vm
 sub confirm_migrate_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Calculate roughly how long the migration will take.
 	my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
@@ -6149,6 +5934,7 @@ sub confirm_migrate_vm
 sub start_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
@@ -6438,6 +6224,7 @@ sub start_vm
 sub parse_text_line
 {
 	my ($conf, $line) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
 	
 	# 'Da good ^_^
@@ -6464,6 +6251,7 @@ sub parse_text_line
 sub migrate_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $target = $conf->{cgi}{target};
 	my $vm     = $conf->{cgi}{vm};
@@ -6541,6 +6329,7 @@ sub migrate_vm
 sub stop_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
@@ -6609,6 +6398,7 @@ sub stop_vm
 sub join_cluster
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
@@ -6688,6 +6478,7 @@ sub join_cluster
 sub dual_join
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $proceed = 1;
@@ -6850,6 +6641,7 @@ sub dual_join
 sub force_off_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
@@ -6918,6 +6710,7 @@ sub force_off_vm
 sub delete_vm
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $say_vm  = $conf->{cgi}{vm};
@@ -7182,6 +6975,7 @@ sub delete_vm
 sub remove_vm_definition
 {
 	my ($conf, $node, $file) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# We only delete server definition files.
 	if ($file !~ /^\/shared\/definitions\/.*?\.xml/)
@@ -7251,6 +7045,7 @@ sub remove_vm_definition
 sub archive_file
 {
 	my ($conf, $node, $file, $quiet, $table_type) = @_;
+	my $an = $conf->{handle}{an};
 	$table_type = "hidden_table" if not $table_type;
 	$quiet = 0 if not defined $quiet;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; archive_file(); node: [$node], file: [$file], quiet: [$quiet], table_type: [$table_type]\n");
@@ -7351,6 +7146,7 @@ sub archive_file
 sub update_cluster_conf
 {
 	my ($conf, $do, $vm, $node) = @_;
+	my $an = $conf->{handle}{an};
 	my $say_vm  = ($vm =~ /vm:(.*)/)[0];
 	my $success = 1;
 	
@@ -7370,6 +7166,7 @@ sub update_cluster_conf
 sub poweroff_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -7470,6 +7267,7 @@ sub poweroff_node
 sub cold_stop_anvil
 {
 	my ($conf, $cancel_ups) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_stop(); cancel_ups: [$cancel_ups]\n");
 	
 	my $anvil   = $conf->{cgi}{cluster};
@@ -7869,6 +7667,7 @@ poweroff";
 sub dual_boot
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $proceed      = 1;
 	my $cluster      = $conf->{cgi}{cluster};
@@ -8011,6 +7810,7 @@ sub dual_boot
 sub poweron_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -8177,6 +7977,7 @@ sub poweron_node
 sub fence_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -8485,6 +8286,7 @@ sub fence_node
 sub withdraw_node
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -8663,6 +8465,7 @@ sub withdraw_node
 sub recover_rgmanager
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Tell the user we're recovering rgmanager
 	print AN::Common::template($conf, "server.html", "recover-resource-manager-header");
@@ -8877,6 +8680,7 @@ sub recover_rgmanager
 sub display_details
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#print AN::Common::template($conf, "server.html", "display-details-header");
 	# Display the status of each node's daemons
@@ -8961,6 +8765,7 @@ sub display_details
 sub display_watchdog_panel
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in display_watchdog_panel()\n");
 	
 	my $watchdog_panel = "";
@@ -9029,6 +8834,7 @@ fi";
 sub display_free_resources
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-header");
 	
@@ -9187,6 +8993,7 @@ sub display_free_resources
 sub long_host_name_to_node_name
 {
 	my ($conf, $host) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in long_host_name_to_node_name(), host: [$host]\n");
 	
 	my $cluster   = $conf->{cgi}{cluster};
@@ -9215,6 +9022,7 @@ sub long_host_name_to_node_name
 sub node_name_to_long_host_name
 {
 	my ($conf, $host) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in node_name_to_long_host_name(), host: [$host]\n");
 	
 	my $node_name = $conf->{node}{$host}{me}{name};
@@ -9227,6 +9035,7 @@ sub node_name_to_long_host_name
 sub display_vm_details
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $node1 = $conf->{sys}{cluster}{node1_name};
 	my $node2 = $conf->{sys}{cluster}{node2_name};
@@ -9375,6 +9184,7 @@ sub display_vm_details
 sub check_node_daemons
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	if (not $node)
 	{
 		AN::Cluster::error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
@@ -9406,6 +9216,7 @@ sub check_node_daemons
 sub check_node_readiness
 {
 	my ($conf, $vm, $node) = @_;
+	my $an = $conf->{handle}{an};
 	if (not $node)
 	{
 		AN::Cluster::error($conf, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
@@ -9474,6 +9285,7 @@ sub check_node_readiness
 sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_vm_definition(); node: [$node], vm: [$vm]\n");
 	if (not $vm)
 	{
@@ -9665,6 +9477,7 @@ sub read_vm_definition
 sub check_lv
 {
 	my ($conf, $node, $vm, $lv) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv]\n");
 	
 	# If this node is down, just return.
@@ -9713,6 +9526,7 @@ sub check_lv
 sub check_vms
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -9900,6 +9714,7 @@ sub check_vms
 sub find_prefered_host
 {
 	my ($conf, $vm) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_prefered_host(), vm: [$vm]\n");
 	my $prefered_host = "";
 	
@@ -9930,6 +9745,7 @@ sub find_prefered_host
 sub set_node_names
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# First pull the names into easier to follow variables.
 	my $this_cluster = $conf->{cgi}{cluster};
@@ -9945,6 +9761,7 @@ sub set_node_names
 sub display_vm_state_and_controls
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10131,6 +9948,7 @@ sub display_vm_state_and_controls
 sub display_drbd_details
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10264,6 +10082,7 @@ sub display_drbd_details
 sub display_gfs2_details
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10368,6 +10187,7 @@ sub display_gfs2_details
 sub display_node_details
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10425,6 +10245,7 @@ sub display_node_details
 sub display_node_controls
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; display_node_controls()\n");
 
 	# Variables for the full template.

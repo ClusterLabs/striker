@@ -2,6 +2,9 @@ package AN::Common;
 #
 # This will store general purpose functions.
 # 
+# 
+# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
+# 
 
 use strict;
 use warnings;
@@ -23,6 +26,7 @@ my $THIS_FILE = 'AN::Common.pm';
 sub convert_cidr_to_dotted_decimal
 {
 	my ($conf, $netmask) = @_;
+	my $an = $conf->{handle}{an};
 	
 	if ($netmask =~ /^\d{1,2}$/)
 	{
@@ -80,6 +84,7 @@ sub convert_cidr_to_dotted_decimal
 sub convert_dotted_decimal_to_cidr
 {
 	my ($conf, $netmask) = @_;
+	my $an = $conf->{handle}{an};
 	
 	if    ($netmask eq "128.0.0.0")       { $netmask = 1; }
 	elsif ($netmask eq "192.0.0.0")       { $netmask = 2; }
@@ -124,6 +129,7 @@ sub convert_dotted_decimal_to_cidr
 sub create_rsync_wrapper
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $password ? $password : $conf->{clusters}{$cluster}{root_pw};
@@ -150,6 +156,7 @@ chmod 755 ~/rsync.$node;";
 sub test_ssh_fingerprint
 {
 	my ($conf, $node, $silent) = @_;
+	my $an = $conf->{handle}{an};
 	$silent = 0 if not defined $silent;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node], silent: [$silent]\n");
 	
@@ -224,6 +231,7 @@ sub test_ssh_fingerprint
 sub get_current_directory
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $current_dir = "/var/www/html/";
 	if ($ENV{DOCUMENT_ROOT})
@@ -246,6 +254,7 @@ sub get_current_directory
 sub get_date_and_time
 {
 	my ($conf, $variables) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Set default values then check for passed parameters to over-write
 	# them with.
@@ -462,6 +471,7 @@ sub get_date_and_time
 sub get_languages
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	my $language_options = [];
 	
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{strings}{lang}})
@@ -477,6 +487,7 @@ sub get_languages
 sub get_string
 {
 	my ($conf, $vars) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
@@ -536,6 +547,7 @@ sub get_string
 sub get_wrapped_string
 {
 	my ($conf, $vars) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#print __LINE__."; vars: [$vars]\n";
 	my $string = wrap_string($conf, get_string($conf, $vars));
@@ -549,6 +561,7 @@ sub get_wrapped_string
 sub hard_die
 {
 	my ($conf, $file, $line, $exit_code, $message) = @_;
+	my $an = $conf->{handle}{an};
 	
 	$file      = "--" if not defined $file;
 	$line      = 0    if not defined $line;
@@ -567,7 +580,7 @@ sub hard_die
 	exit ($exit_code);
 }
 
-# This initializes a call; reads variables, etc.
+# This initializes a call; reads variables, etc. In this function, '$an' is not yet defined.
 sub initialize
 {
 	# Set default configuration variable values
@@ -588,7 +601,7 @@ sub initialize
 	return($conf);
 }
 
-# Set default configuration variable values
+# Set default configuration variable values. In this function, '$an' is not yet defined.
 sub initialize_conf
 {
 	# Setup (sane) defaults
@@ -1155,6 +1168,7 @@ sub initialize_conf
 sub check_global_settings
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_global_settings()\n");
 	
 	my $global_set = 1;
@@ -1188,6 +1202,7 @@ sub check_global_settings
 sub initialize_http
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	print "Content-type: text/html; charset=utf-8\n\n";
 	
@@ -1198,6 +1213,7 @@ sub initialize_http
 sub insert_variables_into_string
 {
 	my ($conf, $string, $variables) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $i = 0;
 	#print "$THIS_FILE ".__LINE__."; string: [$string], variables: [$variables]\n";
@@ -1235,6 +1251,7 @@ sub insert_variables_into_string
 sub read_configuration_file
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $return_code = 1;
 	if (-e $conf->{path}{config_file})
@@ -1274,6 +1291,7 @@ sub read_configuration_file
 sub to_log
 {
 	my ($conf, $variables) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $line    = $variables->{line}    ? $variables->{line}    : "--";
 	my $file    = $variables->{file}    ? $variables->{file}    : "--";
@@ -1342,6 +1360,7 @@ sub to_log
 sub template
 {
 	my ($conf, $file, $template, $replace, $variables, $hide_template_name) = @_;
+	my $an = $conf->{handle}{an};
 	$replace            = {} if not defined $replace;
 	$variables          = {} if not defined $variables;
 	$hide_template_name = 0 if not defined $hide_template_name;
@@ -1425,6 +1444,7 @@ sub template
 sub process_string
 {
 	my ($conf, $string, $variables) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	#print __LINE__."; i. string: [$string], variables: [$variables]\n";
 	
@@ -1474,6 +1494,7 @@ sub process_string
 sub process_string_insert_strings
 {
 	my ($conf, $string, $variables) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#print __LINE__."; A. string: [$string], variables: [$variables]\n";
 	while ($string =~ /#!string!(.+?)!#/)
@@ -1505,6 +1526,7 @@ sub process_string_insert_strings
 sub process_string_conf_escape_variables
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 
 	while ($string =~ /#!conf!(.+?)!#/)
 	{
@@ -1533,6 +1555,7 @@ sub process_string_conf_escape_variables
 sub process_string_protect_escape_variables
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 
 	foreach my $check ($string =~ /#!(.+?)!#/)
 	{
@@ -1555,6 +1578,7 @@ sub process_string_protect_escape_variables
 sub process_string_replace
 {
 	my ($conf, $string, $replace, $template_file, $template) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $i = 0;
 	while ($string =~ /#!replace!(.+?)!#/)
@@ -1580,6 +1604,7 @@ sub process_string_replace
 sub process_string_restore_escape_variables
 {
 	my ($conf, $string)=@_;
+	my $an = $conf->{handle}{an};
 
 	# Restore and unrecognized substitution values.
 	my $i = 0;
@@ -1603,6 +1628,7 @@ sub process_string_restore_escape_variables
 sub read_strings
 {
 	my ($conf, $file) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $string_ref = $conf;
 
@@ -1840,6 +1866,7 @@ sub read_strings
 sub wrap_string
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $wrap_to = get_screen_width($conf);
 	
@@ -1917,6 +1944,7 @@ sub wrap_string
 sub get_screen_width
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cols = 0;
 	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
@@ -1961,6 +1989,7 @@ sub _add_hash_reference
 sub _get_hash_value_from_string
 {
 	my ($conf, $key_string) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my @keys      = split /::/, $key_string;
 	my $last_key  = pop @keys;

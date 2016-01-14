@@ -22,6 +22,8 @@ package AN::Cluster;
 # Alteeve's Niche!  -  https://alteeve.ca
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
+# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
+# 
 
 use strict;
 use warnings;
@@ -43,6 +45,7 @@ our $VERSION  = "1.2.0b";
 sub configure_local_system
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -66,6 +69,7 @@ sub configure_local_system
 sub check_for_updates
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	
 	return(0);
@@ -75,6 +79,7 @@ sub check_for_updates
 sub read_network_settings
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	call_gather_system_info($conf);
 	
@@ -86,6 +91,7 @@ sub read_network_settings
 sub call_gather_system_info
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
 	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
@@ -146,10 +152,10 @@ sub call_gather_system_info
 sub sanity_check_striker_conf
 {
 	my ($conf, $sections) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# This will flip to '0' if any errors are encountered.
 	my $save = 1;
-	my $an   = $conf->{handle}{an};
 	
 	# Which global values I am sanity checking depends on whether the user
 	# is modifying the global section or an anvil!.
@@ -620,6 +626,7 @@ sub delete_string_from_array
 {
 	my ($conf, $string, $array) = @_;
 	#record($conf, "$THIS_FILE ".__LINE__."; delete_string_from_array(); string: [$string]\n");
+	my $an = $conf->{handle}{an};
 	
 	# Delete the nodes (empty values are
 	# skipped later)
@@ -640,6 +647,7 @@ sub delete_string_from_array
 sub write_new_striker_conf
 {
 	my ($conf, $say_date) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; write_new_striker_conf(); say_date: [$say_date]\n");
 	
 	# Tell the user where ready to go.
@@ -868,6 +876,7 @@ sub write_new_striker_conf
 sub generate_anvil_entry_for_striker_conf
 {
 	my ($conf, $this_id) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; generate_anvil_entry_for_striker_conf(); this_id: [$this_id]\n");
 	
 	my $data = "";
@@ -914,6 +923,7 @@ sub generate_anvil_entry_for_striker_conf
 sub read_hosts
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
 	
 	my $shell_call = "$conf->{path}{hosts}";
@@ -966,6 +976,7 @@ sub read_hosts
 sub read_ssh_config
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
 	
 	$conf->{raw}{ssh_config} = [];
@@ -1009,6 +1020,7 @@ sub read_ssh_config
 sub copy_file
 {
 	my ($conf, $source, $destination) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; copy_file(); source: [$source], destination: [$destination]\n");
 	
 	my $output     = "";
@@ -1041,6 +1053,7 @@ sub copy_file
 sub write_new_ssh_config
 {
 	my ($conf, $say_date) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; write_new_ssh_config(); say_date: [$say_date]\n");
 	
 	my $shell_call = $conf->{path}{ssh_config};
@@ -1103,6 +1116,7 @@ sub write_new_ssh_config
 sub write_new_hosts
 {
 	my ($conf, $say_date) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date]\n");
 	
 	# Open the file
@@ -1194,6 +1208,7 @@ sub write_new_hosts
 sub save_dashboard_configure
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
 	
 	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
@@ -1295,6 +1310,7 @@ sub save_dashboard_configure
 sub sync_with_peer
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; sync_with_peer()\n");
 	
 	# Return if this is disabled.
@@ -1423,6 +1439,7 @@ $conf->{path}{'striker-configure-vmm'}
 sub load_configuration_defaults
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# In all cases, load the global values.
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
@@ -1504,6 +1521,7 @@ sub load_configuration_defaults
 sub show_anvil_config_header
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $this_cluster          = $conf->{cgi}{anvil};
 	my $say_this_cluster      = $this_cluster;
@@ -1640,6 +1658,7 @@ sub show_anvil_config_header
 sub show_global_config_header
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0011!#",
@@ -1654,6 +1673,7 @@ sub show_global_config_header
 sub show_common_config_section
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# We display the global values or the per-Anvil! ones below. Load the
 	# global, the override with the Anvil! if needed.
@@ -1792,6 +1812,7 @@ sub show_common_config_section
 sub show_global_anvil_list
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0009!#",
@@ -1841,6 +1862,7 @@ sub push_config_to_anvil
 {
 	my ($conf) = @_;
 	record($conf, "$THIS_FILE ".__LINE__."; push_config_to_anvil()\n");
+	my $an = $conf->{handle}{an};
 	
 	my $anvil = $conf->{cgi}{anvil};
 	record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
@@ -2017,6 +2039,7 @@ ls $striker_directory";
 sub show_archive_options
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; show_archive_options()\n");
 	
 	# First up, collect the config files and make them available for download.
@@ -2034,6 +2057,7 @@ sub show_archive_options
 sub create_backup_file
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; create_backup_file()\n");
 	
 	my $config_data =  "<!-- Striker Backup -->\n";
@@ -2100,6 +2124,7 @@ sub create_backup_file
 sub load_backup_configuration
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; load_backup_configuration()\n");
 	
 	# This file handle will contain the uploaded file, so be careful.
@@ -2253,6 +2278,7 @@ sub load_backup_configuration
 sub configure_ssh_local
 {
 	my ($conf, $anvil_name) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; configure_ssh_local(); anvil_name: [$anvil_name]\n");
 	
 	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
@@ -2274,6 +2300,7 @@ sub configure_ssh_local
 sub configure_vmm_local
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; configure_vmm_local();\n");
 	
 	### NOTE: I don't currently check if this passes or not.
@@ -2298,6 +2325,7 @@ sub configure_vmm_local
 sub create_install_manifest
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
 	
 	my $show_form = 1;
@@ -3993,6 +4021,7 @@ sub create_install_manifest
 sub get_striker_prefix_and_domain
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
 	
 	my ($hostname) = get_hostname($conf);
@@ -4020,6 +4049,7 @@ sub get_striker_prefix_and_domain
 sub load_install_manifest
 {
 	my ($conf, $file) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
 	
 	# Read in the install manifest file.
@@ -5041,6 +5071,7 @@ sub load_install_manifest
 sub show_existing_install_manifests
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $header_printed = 0;
 	local(*DIR);
@@ -5109,6 +5140,7 @@ sub show_existing_install_manifests
 sub get_netmask_from_ip
 {
 	my ($conf, $ip) = @_;
+	my $an = $conf->{handle}{an};
 	
 	### TODO: Make this support all possible subnet masks.
 	my $netmask = "";
@@ -5186,6 +5218,7 @@ sub get_netmask_from_ip
 sub generate_uuid
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $uuid = "";
 	my $shell_call = "$conf->{path}{uuidgen} -r";
@@ -5214,6 +5247,7 @@ sub generate_uuid
 sub generate_install_manifest
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Break up hostsnames
 	my ($node1_short_name)    = ($conf->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
@@ -5484,6 +5518,7 @@ Striker Version: $conf->{sys}{version}
 sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; confirm_install_manifest_run()\n");
 	
 	# Show the manifest form.
@@ -5626,6 +5661,7 @@ sub confirm_install_manifest_run
 sub show_summary_manifest
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Show the manifest form.
 	my $say_repos =  $conf->{cgi}{anvil_repositories};
@@ -6020,6 +6056,7 @@ sub show_summary_manifest
 sub sanity_check_manifest_answers
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Clear all variables.
 	my $problem = 0;
@@ -7124,6 +7161,7 @@ sub sanity_check_manifest_answers
 sub is_string_url
 {   
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 	my $valid = 1;
 	
 	if ($string =~ /^(.*?):\/\/(.*?)\/(.*)$/)
@@ -7184,6 +7222,7 @@ sub is_string_url
 sub is_string_integer_or_unsigned_float
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 	my $valid = 1;
 	
 	if ($string =~ /^\D/)
@@ -7204,6 +7243,7 @@ sub is_string_integer_or_unsigned_float
 sub is_domain_name
 {
 	my ($conf, $name) = @_;
+	my $an = $conf->{handle}{an};
 	my $valid = 1;
 	
 	if (not $name)
@@ -7224,6 +7264,7 @@ sub is_domain_name
 sub is_string_ipv4_with_subnet
 {
 	my ($conf, $ip) = @_;
+	my $an = $conf->{handle}{an};
 	my $subnet = "";
 	my $valid  = 1;
 	
@@ -7268,6 +7309,7 @@ sub is_string_ipv4_with_subnet
 sub is_string_ipv4
 {
 	my ($conf, $ip) = @_;
+	my $an = $conf->{handle}{an};
 	my $valid  = 1;
 	
 	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
@@ -7300,6 +7342,7 @@ sub is_string_ipv4
 sub configure_dashboard
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
 	
 	read_hosts($conf);
@@ -7373,6 +7416,7 @@ sub configure_dashboard
 sub convert_text_to_html
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 	$string = "" if not defined $string;
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
@@ -7529,6 +7573,7 @@ sub convert_text_to_html
 sub convert_html_to_text
 {
 	my ($conf, $string) = @_;
+	my $an = $conf->{handle}{an};
 	$string = "" if not defined $string;
 
 	$string =~ s/&quot;/"/g;
@@ -7680,6 +7725,7 @@ sub convert_html_to_text
 sub ask_which_cluster
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
 	
 	print AN::Common::template($conf, "select-anvil.html", "open-table");
@@ -7754,6 +7800,7 @@ sub ask_which_cluster
 sub control_install_target
 {
 	my ($conf, $action) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; control_install_target(); action: [$action]\n");
 	
 	### TODO: Track what was running and start back up things we turned off
@@ -8095,6 +8142,7 @@ fi
 sub show_anvil_selection_and_striker_options
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
 	
 	# If I'm toggling the install target (dhcpd), process it first.
@@ -8366,6 +8414,7 @@ sub show_anvil_selection_and_striker_options
 sub get_dhcpd_state
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
 	
 	# First, read the dhcpd.conf file, if it exists, and look for the
@@ -8449,6 +8498,7 @@ sub get_dhcpd_state
 sub convert_cluster_config
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
@@ -8496,6 +8546,7 @@ sub convert_cluster_config
 sub error
 {
 	my ($conf, $message, $fatal) = @_;
+	my $an = $conf->{handle}{an};
 	$fatal = 1 if not defined $fatal;
 	
 	print AN::Common::template($conf, "common.html", "error-table", {
@@ -8510,6 +8561,7 @@ sub error
 sub header
 {
 	my ($conf, $caller) = @_;
+	my $an = $conf->{handle}{an};
 	$caller = "striker" if not $caller;
 	
 	# Header buttons.
@@ -8827,6 +8879,7 @@ sub header
 sub find_executables
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $search = $ENV{'PATH'};
 	#print "Searching in: [$search] for programs.\n";
@@ -8855,83 +8908,11 @@ sub find_executables
 	return (0);
 }
 
-# This is the new 'get_guacamole_link()' that assumes 'mod_proxy' is in use.
-# sub get_guacamole_link
-# {
-# 	my ($conf, $node) = @_;
-# 	#record($conf, "$THIS_FILE ".__LINE__."; get_guacamole_link(); node: [$node]\n");
-# 	
-# 	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV{$key}: [$ENV{$key}].\n"); }
-# 	my $guacamole_url;
-# 	#record($conf, "$THIS_FILE ".__LINE__."; HTTP_REFERER: [$ENV{HTTP_REFERER}], ENV{HTTP_HOST}: [$ENV{HTTP_HOST}]\n");
-# 	if ($ENV{HTTP_REFERER})
-# 	{
-# 		if ($guacamole_url =~ /cgi-bin/)
-# 		{
-# 			($guacamole_url) = ($ENV{HTTP_REFERER} =~ /^(.*?)\/cgi-bin/);
-# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 		}
-# 		else
-# 		{
-# 			$guacamole_url = $ENV{HTTP_REFERER};
-# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 		}
-# 		$guacamole_url =~ s/(\w)\/\w.*$/$1/;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 	}
-# 	elsif ($ENV{HTTP_HOST})
-# 	{
-# 		if ($ENV{SERVER_PORT} eq "443")
-# 		{
-# 			$guacamole_url = "https://".$ENV{HTTP_HOST};
-# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 		}
-# 		else
-# 		{
-# 			$guacamole_url = "http://".$ENV{HTTP_HOST};
-# 			#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 		}
-# 	}
-# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 	
-# 	my $cluster = $conf->{cgi}{cluster};
-# 	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster]\n");
-# 	
-# 	$guacamole_url .= "/guacamole/client.xhtml";
-# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 
-# 	# No node specified, so return a link to the guacamole main page.
-# 	if (not $node)
-# 	{
-# 		$guacamole_url =~ s/\/client.xhtml.*$/\//;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 	}
-# 	
-# 	#record($conf, "$THIS_FILE ".__LINE__."; guacamole_url: [$guacamole_url]\n");
-# 	return ($guacamole_url);
-# }
-
-### Old footer with guacamole support.
-# sub old_footer
-# {
-# 	my ($conf) = @_;
-# 	
-# 	return(0) if $conf->{sys}{footer_printed}; 
-# 	my ($guacamole_url) = get_guacamole_link($conf, "");
-# 	
-# 	print AN::Common::template($conf, "common.html", "footer", {
-# 		guacamole_url	=>	$guacamole_url,
-# 	});
-# 	
-# 	$conf->{sys}{footer_printed} = 1;
-# 	
-# 	return (0);
-# }
-
 # Footer that closes out all pages.
 sub footer
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	return(0) if $conf->{sys}{footer_printed}; 
 	
@@ -8946,6 +8927,7 @@ sub footer
 sub get_date
 {
 	my ($conf, $time, $time_only) = @_;
+	my $an = $conf->{handle}{an};
 	$time      = time if not defined $time;
 	$time_only = 0 if not $time_only;
 	
@@ -8967,6 +8949,7 @@ sub get_date
 sub get_cgi_vars
 {
 	my ($conf, $vars) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Needed to read in passed CGI variables
 	my $cgi = new CGI;
@@ -9027,6 +9010,7 @@ sub get_cgi_vars
 sub build_select
 {
 	my ($conf, $name, $sort, $blank, $width, $selected, $options) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $select = "<select name=\"$name\">\n";
 	if ($width)
@@ -9090,6 +9074,7 @@ sub build_select
 sub read_files_on_shared
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; read_files_on_shared()\n");
 
 	my $connected = "";
@@ -9293,6 +9278,7 @@ sub read_files_on_shared
 sub record
 {
 	my ($conf, $message)=@_;
+	my $an = $conf->{handle}{an};
 	
 	my $file_handle = $conf->{handles}{'log'} ? $conf->{handles}{'log'} : "";
 	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
@@ -9348,6 +9334,7 @@ sub record
 sub scan_cluster
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
 	
 	AN::Striker::set_node_names ($conf);
@@ -9375,6 +9362,7 @@ sub scan_cluster
 sub check_node_status
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; check_node_status()\n");
 	
 	my $cluster = $conf->{cgi}{cluster};
@@ -9426,6 +9414,7 @@ sub check_node_status
 sub post_scan_calculations
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; post_scan_calculations()\n");
 	
 	$conf->{resources}{total_ram}     = 0;
@@ -9553,6 +9542,7 @@ sub post_scan_calculations
 sub post_node_calculations
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
@@ -9579,6 +9569,7 @@ sub post_node_calculations
 sub comma
 {
 	my ($conf, $number) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; >> comma(); number: [$number]\n");
 	
 	# Return if nothing passed.
@@ -9621,6 +9612,7 @@ sub comma
 sub bytes_to_hr
 {
 	my ($conf, $size) = @_;
+	my $an = $conf->{handle}{an};
 
 	# Expand exponential numbers.
 	if ($size =~ /(\d+)e\+(\d+)/)
@@ -9734,6 +9726,7 @@ sub bytes_to_hr
 sub hr_to_bytes
 {
 	my ($conf, $size, $type, $use_base2) = @_;
+	my $an = $conf->{handle}{an};
 	# use_base2 will be set automatically *if* not passed by the caller.
 	
 	$type =  "" if not defined $type;
@@ -9863,6 +9856,7 @@ sub hr_to_bytes
 sub ping_node
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $exit;
 	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
@@ -9931,6 +9925,7 @@ sub ping_node
 sub gather_node_details
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
 	
 	# This will flip true if I see dmidecode data, the first command I call
@@ -10388,6 +10383,7 @@ fi;";
 sub get_rsa_public_key
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; get_rsa_public_key()\n");
 	
 	my $rsa_public_key  = "";
@@ -10437,6 +10433,7 @@ sub get_rsa_public_key
 sub get_hostname
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
 
 	my $hostname;
@@ -10462,6 +10459,7 @@ sub get_hostname
 sub remote_call
 {
 	my ($conf, $parameters) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	my $cluster    = $conf->{cgi}{cluster};
@@ -10697,6 +10695,7 @@ sub remote_call
 sub parse_hosts
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; parse_hosts(); node: [$node], array: [$array (".@{$array}." lines)]\n");
 	
 	foreach my $line (@{$array})
@@ -10737,6 +10736,7 @@ sub parse_hosts
 sub parse_dmesg
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	foreach my $line (@{$array})
 	{
@@ -10758,6 +10758,7 @@ sub parse_dmesg
 sub parse_bonds
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $this_bond;
 	foreach my $line (@{$array})
@@ -10778,6 +10779,7 @@ sub parse_bonds
 sub parse_vm_defs_in_mem
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs_in_mem() for node: [$node]\n");
 	my $this_vm    = "";
@@ -10823,6 +10825,7 @@ sub parse_vm_defs_in_mem
 sub parse_vm_defs
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs() for node: [$node]\n");
 	my $this_vm    = "";
@@ -10868,6 +10871,7 @@ sub parse_vm_defs
 sub parse_dmidecode
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
 	#foreach my $line (@{$array}) { record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
@@ -11093,6 +11097,7 @@ sub parse_dmidecode
 sub parse_meminfo
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
 	
 	foreach my $line (@{$array})
@@ -11113,6 +11118,7 @@ sub parse_meminfo
 sub parse_proc_drbd
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_proc_drbd() for node: [$node]\n");
 	my $resource     = "";
@@ -11280,6 +11286,7 @@ sub parse_proc_drbd
 sub old_parse_drbd_status
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbd_status() for node: [$node]\n");
 	my $resources = 0;
@@ -11334,6 +11341,7 @@ sub old_parse_drbd_status
 sub parse_drbdadm_dumpxml
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbdadm_dumpxml() for node: [$node], array: [$array]\n");
 	
 	# Some variables we will fill later.
@@ -11511,6 +11519,7 @@ sub parse_drbdadm_dumpxml
 sub parse_clustat
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Setup some variables.
 	my $in_member  = 0;
@@ -11756,6 +11765,7 @@ sub parse_clustat
 sub parse_cluster_conf
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
 	
 	my $in_fod          = 0;
@@ -12053,6 +12063,7 @@ sub parse_cluster_conf
 sub parse_daemons
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# If all daemons are down, record here that I can shut down
 	# this VM. If any are up, enable withdrawl.
@@ -12135,6 +12146,7 @@ sub parse_daemons
 sub parse_lvm_scan
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_scan() for node: [$node]\n");
 	foreach my $line (@{$array})
@@ -12192,6 +12204,7 @@ sub parse_lvm_scan
 sub parse_lvm_data
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $in_pvs = 0;
 	my $in_vgs = 0;
@@ -12298,6 +12311,7 @@ sub parse_lvm_data
 sub parse_virsh
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_virsh(), node: [$node], array: [$array (".@{$array}." lines)]\n");
 	
 	foreach my $line (@{$array})
@@ -12332,6 +12346,7 @@ sub parse_virsh
 sub parse_gfs2
 {
 	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $in_fs = 0;
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_gfs2() for node: [$node]\n");
@@ -12386,6 +12401,7 @@ sub parse_gfs2
 sub set_daemons
 {
 	my ($conf, $node, $state, $class) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
 	foreach my $daemon (@daemons)
@@ -12400,6 +12416,7 @@ sub set_daemons
 sub check_if_on
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; in check_if_on(); node: [$node]\n");
 	
 	# If the peer is on, use it to check the power.
@@ -12538,6 +12555,7 @@ sub check_if_on
 sub on_same_network
 {
 	my ($conf, $target_host, $node) = @_;
+	my $an = $conf->{handle}{an};
 	#record($conf, "$THIS_FILE ".__LINE__."; in on_same_network(); target host: [$target_host], node: [$node]\n");
 	
 	my $local_access = 0;
@@ -12699,6 +12717,7 @@ sub on_same_network
 sub write_node_cache
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
 	
 	# It's a program error to try and write the cache file when the node
@@ -12757,6 +12776,7 @@ sub write_node_cache
 sub read_node_cache
 {
 	my ($conf, $node) = @_;
+	my $an = $conf->{handle}{an};
 	record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
 	
 	# Write the command to disk so that I can check the power state

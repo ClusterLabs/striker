@@ -15,6 +15,9 @@ package AN::MediaLibrary;
 # - When an upload fails, do NOT clear the previous selection
 # - Show file time-stamps
 #
+# 
+# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
+# 
 
 use strict;
 use warnings;
@@ -33,6 +36,7 @@ my $THIS_FILE = "mediaLibrary.pm";
 sub process_task
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Task: [$conf->{cgi}{task}]\n");
 	if ($conf->{cgi}{task} eq "image_and_upload")
@@ -86,6 +90,7 @@ sub process_task
 sub download_url
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -255,6 +260,7 @@ sub download_url
 sub confirm_download_url
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $url     = $conf->{cgi}{url};
@@ -282,6 +288,7 @@ sub confirm_download_url
 sub save_file_to_disk
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	print AN::Common::template($conf, "media-library.html", "save-to-disk-header");
@@ -336,6 +343,7 @@ sub save_file_to_disk
 sub image_and_upload
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Let the user know that this might take a bit.
 	print AN::Common::template($conf, "common.html", "scanning-message", {
@@ -508,6 +516,7 @@ sub image_and_upload
 sub upload_to_shared
 {
 	my ($conf, $node, $source_file) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; upload_to_shared(); source_file: [$source_file]\n");
 	
 	# Some prep work.
@@ -584,6 +593,7 @@ sub upload_to_shared
 sub confirm_image_and_upload
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
@@ -650,6 +660,7 @@ sub confirm_image_and_upload
 sub confirm_delete_file
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
@@ -683,6 +694,7 @@ sub confirm_delete_file
 sub delete_file
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	### TODO: Make sure to unmount from (and rewrite definition files of)
 	###       VMs currently using the file being deleted.
@@ -742,6 +754,7 @@ sub delete_file
 sub check_local_dvd
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $dev        = "";
 	my $shell_call = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
@@ -795,6 +808,7 @@ sub check_local_dvd
 sub check_status
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_status()\n");
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::status: [$conf->{path}{status}]\n");
@@ -831,6 +845,7 @@ sub check_status
 sub read_shared
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; In read_shared().\n");
 	
 	check_status($conf);

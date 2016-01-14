@@ -32,6 +32,9 @@ package AN::InstallManifest;
 # - When assembling DRBD, watch syslog for "Sep 28 23:44:34 node2 kernel: block drbd0: The peer's disk size is too small!"
 #   This is likely caused by the replacement machine having a smaller disk.
 # - 
+# 
+# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
+# 
 
 use strict;
 use warnings;
@@ -46,6 +49,7 @@ my $THIS_FILE = "AN::InstallManifest.pm";
 sub run_new_install_manifest
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	print AN::Common::template($conf, "common.html", "scanning-message");
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-header");
@@ -384,6 +388,7 @@ sub run_new_install_manifest
 sub enable_tools
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_tools()\n");
 	
 	# sas_rc  == safe_anvil_start, return code
@@ -626,6 +631,7 @@ sub enable_tools
 sub enable_tools_on_node
 {
 	my ($conf, $node, $password, $node_name) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
 	### safe_anvil_start
@@ -819,6 +825,7 @@ fi
 sub configure_striker_tools
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
 	
 	# Configure Striker tools and Scancore.
@@ -850,6 +857,7 @@ sub configure_striker_tools
 sub configure_scancore_on_node
 {
 	my ($conf, $node, $password, $node_name) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
 	
 	my $return_code = 255;
@@ -1318,6 +1326,7 @@ fi
 sub configure_scancore
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
 	
 	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
@@ -1471,6 +1480,7 @@ sub configure_scancore
 sub enable_anvil_kick_apc_ups_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups_on_node(); node: [$node]\n");
 	
 	my $return_code = 0;
@@ -1537,6 +1547,7 @@ fi";
 sub configure_safe_anvil_start_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start_on_node(); node: [$node]\n");
 	
 	my $return_code = 0;
@@ -1605,6 +1616,7 @@ fi";
 sub enable_anvil_kick_apc_ups
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups()\n");
 	
 	my $ok = 1;
@@ -1677,6 +1689,7 @@ sub enable_anvil_kick_apc_ups
 sub configure_safe_anvil_start
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start()\n");
 	
 	my $ok = 1;
@@ -1750,6 +1763,7 @@ sub configure_safe_anvil_start
 sub update_install_manifest
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_install_manifest()\n");
 	
 	my $node1           = $conf->{cgi}{anvil_node1_current_ip};
@@ -2003,6 +2017,7 @@ sub update_install_manifest
 sub check_local_repo
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_local_repo()\n");
 	
 	# Call the gather system info tool to get the BCN and IFN IPs.
@@ -2075,6 +2090,7 @@ sub check_local_repo
 sub check_if_in_cluster
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_if_in_cluster()\n");
 	
 	my $shell_call = "
@@ -2164,6 +2180,7 @@ fi";
 sub check_config_for_anvil
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
 	
 	my $anvil_configured = 0;
@@ -2188,6 +2205,7 @@ sub check_config_for_anvil
 sub configure_storage_stage3
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage3()\n");
 	
 	my $ok = 1;
@@ -2268,6 +2286,7 @@ sub configure_storage_stage3
 sub watch_clustat
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watch_clustat(); node: [$node]\n");
 	
 	# If a service comes up 'failed', we will try to restart it because, if it failed in a previous run,
@@ -2488,6 +2507,7 @@ sub watch_clustat
 sub restart_rgmanager_service
 {
 	my ($conf, $node, $password, $service, $do) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_rgmanager_service(); node: [$node], service: [$service], do: [$do]\n");
 	
 	# This is something of a 'hail mary' pass, so not much sanity checking
@@ -2521,6 +2541,7 @@ sub restart_rgmanager_service
 sub start_rgmanager_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_rgmanager_on_node(); node: [$node]\n");
 	
 	my $ok = 1;
@@ -2562,6 +2583,7 @@ sub start_rgmanager_on_node
 sub configure_gfs2
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_gfs2()\n");
 	
 	my $ok = 1;
@@ -2678,6 +2700,7 @@ sub configure_gfs2
 sub setup_gfs2_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2_on_node(); node: [$node]\n");
 	
 	# If I have the UUID, then check/set fstab
@@ -2933,6 +2956,7 @@ fi";
 sub setup_gfs2
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2(); node: [$node]\n");
 	
 	my ($lv_ok) = create_shared_lv($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -3077,6 +3101,7 @@ sub setup_gfs2
 sub create_shared_lv
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_shared_lv(); node: [$node]\n");
 	
 	my $return_code = 0;
@@ -3191,6 +3216,7 @@ sub create_shared_lv
 sub setup_lvm_pv_and_vgs
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_lvm_pv_and_vgs()\n");
 	
 	# Start 'clvmd' on both nodes.
@@ -3312,6 +3338,7 @@ sub setup_lvm_pv_and_vgs
 sub create_lvm_vgs
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_vgs(); node: [$node]\n");
 	
 	# If a VG name exists, use it. Otherwise, use the generated names
@@ -3475,6 +3502,7 @@ sub create_lvm_vgs
 sub create_lvm_pvs
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_pvs(); node: [$node]\n");
 	
 	### TODO: This seems to occassionally see only the first PV despite
@@ -3623,6 +3651,7 @@ sub create_lvm_pvs
 sub start_clvmd_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_clvmd_on_node(); node: [$node]\n");
 	
 	my $return_code = 255;
@@ -3681,6 +3710,7 @@ fi";
 sub drbd_first_start
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drbd_first_start()\n");
 	
 	my $return_code = 255;
@@ -3973,6 +4003,7 @@ sub drbd_first_start
 sub verify_drbd_resources_are_connected
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_drbd_resources_are_connected()\n");
 	
 	# Give the previous start call a few seconds to take effect.
@@ -4043,6 +4074,7 @@ sub verify_drbd_resources_are_connected
 sub do_drbd_primary_on_node
 {
 	my ($conf, $node, $password, $force_r0, $force_r1) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_primary_on_node(); force_r0: [$force_r0], force_r1: [$force_r1]\n");
 	
 	# Resource 0
@@ -4164,6 +4196,7 @@ sub do_drbd_primary_on_node
 sub check_drbd_if_force_primary_is_needed
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_drbd_if_force_primary_is_needed(); node: [$node]\n");
 	
 	my $return_code = 0;
@@ -4252,6 +4285,7 @@ sub check_drbd_if_force_primary_is_needed
 sub do_drbd_connect_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_connect_on_node(); node: [$node]\n");
 	
 	my $message     = "";
@@ -4448,6 +4482,7 @@ fi
 sub do_drbd_attach_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_attach_on_node(); node: [$node]\n");
 	
 	my $message     = "";
@@ -4634,6 +4669,7 @@ fi;
 sub configure_ssh
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ssh()\n");
 	
 	# Three steps; 
@@ -4725,6 +4761,7 @@ sub configure_ssh
 sub populate_authorized_keys_on_node
 {
 	my ($conf, $node, $password, $node1_rsa, $node2_rsa) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_authorized_keys_on_node(); node: [$node]\n");
 	
 	# If a node is being rebuilt, it's old keys will no longer be valid. To
@@ -4859,6 +4896,7 @@ fi";
 sub populate_known_hosts_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_known_hosts_on_node(); node: [$node]\n");
 	
 	my $ok = 1;
@@ -4920,6 +4958,7 @@ fi;";
 sub get_node_rsa_public_key
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_node_rsa_public_key(); node: [$node]\n");
 	
 	my $rsa_key = "";
@@ -4972,6 +5011,7 @@ fi";
 sub start_cman
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman()\n");
 	
 	my $node1_rc = 0;
@@ -5168,6 +5208,7 @@ sub start_cman
 sub check_fencing_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_fencing_on_node(); node: [$node]\n");
 	
 	my $message = "";
@@ -5217,6 +5258,7 @@ sub check_fencing_on_node
 sub start_cman_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman_on_node(); node: [$node]\n");
 	
 	my $shell_call = "/etc/init.d/cman start";
@@ -5244,6 +5286,7 @@ sub start_cman_on_node
 sub start_cman_on_both_nodes
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman_on_both_nodes()\n");
 	
 	my $ok = 1;
@@ -5353,6 +5396,7 @@ sub start_cman_on_both_nodes
 sub ping_node_from_other
 {
 	my ($conf, $node, $password, $target_ip) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_node_from_other(); node: [$node], target_ip: [$target_ip]\n");
 	
 	my $success    = 0;
@@ -5396,6 +5440,7 @@ sub ping_node_from_other
 sub set_ricci_password
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_ricci_password()\n");
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
@@ -5445,6 +5490,7 @@ sub set_ricci_password
 sub configure_selinux
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux()\n");
 	
 	# For now, this always returns "success".
@@ -5487,6 +5533,7 @@ sub configure_selinux
 sub configure_selinux_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux_on_node(); node: [$node], password: [--]\n");
 	
 	# Create the backup directory if it doesn't exist yet.
@@ -5536,6 +5583,7 @@ fi
 sub set_root_password
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_root_password()\n");
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
@@ -5587,6 +5635,7 @@ sub set_root_password
 sub set_password_on_node
 {
 	my ($conf, $node, $password, $user, $new_password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_password_on_node(); node: [$node], user: [$user], new_password: [$new_password]\n");
 	
 	# Set the 'ricci' password first.
@@ -5614,6 +5663,7 @@ sub set_password_on_node
 sub backup_files
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; backup_files()\n");
 	
 	backup_files_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -5639,6 +5689,7 @@ sub backup_files
 sub backup_files_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Create the backup directory if it doesn't exist yet.
 	my $shell_call = "
@@ -5815,6 +5866,7 @@ fi";
 sub configure_ipmi
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $ok = 1;
 	my ($node1_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_ipmi_ip}, $conf->{cgi}{anvil_node1_ipmi_netmask}, $conf->{cgi}{anvil_node1_ipmi_password}, $conf->{cgi}{anvil_node1_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
@@ -5949,6 +6001,7 @@ sub configure_ipmi
 sub configure_ipmi_on_node
 {
 	my ($conf, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ipmi_on_node(); node: [$node], ipmi_ip: [$ipmi_ip], ipmi_netmask: [$ipmi_netmask], ipmi_password: [$ipmi_password], ipmi_user: [$ipmi_user], ipmi_gateway: [$ipmi_gateway]\n");
 	
 	my $return_code = 255;
@@ -6313,6 +6366,7 @@ sub configure_ipmi_on_node
 sub configure_daemons
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons()\n");
 	
 	### TODO:
@@ -6401,6 +6455,7 @@ sub configure_daemons
 sub configure_daemons_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons_on_node(); node: [$node]\n");
 	
 	my $ok     = 1;
@@ -6543,6 +6598,7 @@ sub configure_daemons_on_node
 sub set_daemon_state
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_daemon_state(); node: [$node], daemon: [$daemon] setting state: [$state]\n");
 	
 	my $rc         = "";
@@ -6576,6 +6632,7 @@ sub set_daemon_state
 sub get_daemon_state
 {
 	my ($conf, $node, $password, $daemon) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_daemon_state(); node: [$node], daemon: [$daemon]\n");
 	
 	# LSB says
@@ -6649,6 +6706,7 @@ sub get_daemon_state
 sub set_chkconfig
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_chkconfig(); node: [$node], daemon: [$daemon], state: [$state]\n");
 
 	my $shell_call = "chkconfig $daemon $state";
@@ -6677,6 +6735,7 @@ sub set_chkconfig
 sub get_chkconfig_data
 {
 	my ($conf, $node, $password, $daemon) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_chkconfig_data(); node: [$node], daemon: [$daemon]\n");
 	
 	my $init3 = 255;
@@ -6723,6 +6782,7 @@ sub get_chkconfig_data
 sub configure_clvmd
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_clvmd()\n");
 	
 	# This will read in the existing lvm.conf on both nodes and, if either
@@ -6787,6 +6847,7 @@ sub configure_clvmd
 sub generate_lvm_conf
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_lvm_conf()\n");
 	
 	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom
@@ -6865,6 +6926,7 @@ sub generate_lvm_conf
 sub write_lvm_conf_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; write_lvm_conf_on_node(); node: [$node]\n");
 	
 	my $rc = 0;
@@ -6895,6 +6957,7 @@ sub write_lvm_conf_on_node
 sub read_lvm_conf_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Read it in
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -6997,6 +7060,7 @@ sub read_lvm_conf_on_node
 sub reboot_nodes
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# If neither node needs a reboot, don't print the lengthy message.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -7120,6 +7184,7 @@ sub reboot_nodes
 sub do_node_reboot
 {
 	my ($conf, $node, $password, $new_bcn_ip) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_node_reboot(); node: [$node], password: [$password], new_bcn_ip: [$new_bcn_ip]\n");
 	
 	my $return_code = 255;
@@ -7243,6 +7308,7 @@ sub do_node_reboot
 sub ping_ip
 {
 	my ($conf, $ip) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_ip(); ip: [$ip]\n");
 	
 	my $success    = 0;
@@ -7281,6 +7347,7 @@ sub ping_ip
 sub connect_to_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connect_to_node(); node: [$node]\n");
 	
 	# 0 = Successfully logged in
@@ -7313,6 +7380,7 @@ sub connect_to_node
 sub add_repo_to_node
 {
 	my ($conf, $node, $password, $url) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_repo_to_node(); node: [$node], url: [$url]\n");
 	
 	my $rc = 0;
@@ -7374,6 +7442,7 @@ fi";
 sub add_user_repositories
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_repositories: [$conf->{cgi}{anvil_repositories}]\n");
 	if ($conf->{cgi}{anvil_repositories})
@@ -7471,6 +7540,7 @@ sub add_user_repositories
 sub create_partitions_on_node
 {
 	my ($conf, $node, $password, $disk, $pool1_size, $pool2_size) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partitions_on_node(); node: [$node], password: [$password], disk: [$disk], pool1_size: [$pool1_size], pool2_size: [$pool2_size]\n");
 	
 	# If the disk to use is 'Xda', skip the first three partitions
@@ -7648,6 +7718,7 @@ sub create_partitions_on_node
 sub create_partition_on_node
 {
 	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partition_on_node(); node: [$node], disk: [$disk], type: [$type], partition_size: [$partition_size]\n");
 	
 	my $created = 0;
@@ -7813,6 +7884,7 @@ sub create_partition_on_node
 sub check_device_for_drbd_metadata
 {
 	my ($conf, $node, $password, $device) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_device_for_drbd_metadata(); node: [$node], device: [$device].\n");
 	
 	my $is_drbd    = 0;
@@ -7854,6 +7926,7 @@ sub check_device_for_drbd_metadata
 sub check_blkid_partition
 {
 	my ($conf, $node, $password, $device) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_blkid_partition(); node: [$node], device: [$device].\n");
 	
 	my $uuid       = "";
@@ -7889,6 +7962,7 @@ sub check_blkid_partition
 sub check_for_drbd_metadata
 {
 	my ($conf, $node, $password, $device) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_for_drbd_metadata(); node: [$node], device: [$device].\n");
 	
 	return(3) if not $device;
@@ -8007,6 +8081,7 @@ sub check_for_drbd_metadata
 sub get_partition_data_from_node
 {
 	my ($conf, $node, $disk, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_partition_data_from_node(); node: [$node], disk: [$disk], password: [$password]\n");
 	
 	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
@@ -8083,6 +8158,7 @@ sub get_partition_data_from_node
 sub configure_storage_stage1
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage1()\n");
 	
 	my $ok    = 1;
@@ -8379,6 +8455,7 @@ sub configure_storage_stage1
 sub configure_storage_stage2
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage2()\n");
 	
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -8630,6 +8707,7 @@ sub configure_storage_stage2
 sub generate_drbd_config_files
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_drbd_config_files()\n");
 	
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -8923,6 +9001,7 @@ resource r1 {
 sub read_drbd_config_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $global_common = $conf->{path}{nodes}{drbd_global_common};
 	my $r0            = $conf->{path}{nodes}{drbd_r0};
@@ -9023,6 +9102,7 @@ fi;";
 sub setup_drbd_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	### Write out the config files if missing.
 	# Global common file
@@ -9119,6 +9199,7 @@ sub setup_drbd_on_node
 sub register_with_rhn
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; register_with_rhn();\n");
 	
 	if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
@@ -9254,6 +9335,7 @@ sub register_with_rhn
 sub register_node_with_rhn
 {
 	my ($conf, $node, $password, $name) = @_;
+	my $an = $conf->{handle}{an};
 	
 	### TODO: This will fail when there isn't an internet connection! We
 	###       check that, so write an rsync function to move the script
@@ -9308,6 +9390,7 @@ sub register_node_with_rhn
 sub summarize_build_plan
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; summarize_build_plan()\n");
 	
 	my $node1                = $conf->{cgi}{anvil_node1_current_ip};
@@ -9482,6 +9565,7 @@ sub summarize_build_plan
 sub configure_ntp_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp_on_node(); node: [$node]\n");
 	
 	# We're going to do a grep for each defined NTP IP and, if the IP isn't
@@ -9545,6 +9629,7 @@ fi";
 sub configure_network_on_node
 {
 	my ($conf, $node, $password, $node_number) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network_on_node(); node: [$node], node_number: [$node_number]\n");
 	
 	# I need to make the node keys.
@@ -10262,6 +10347,7 @@ COMMIT";
 sub configure_ntp
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp()\n");
 	
 	my $ok = 1;
@@ -10321,6 +10407,7 @@ sub configure_ntp
 sub configure_network
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network()\n");
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
@@ -10387,6 +10474,7 @@ sub configure_network
 sub parse_script_line
 {
 	my ($conf, $source, $node, $line) = @_;
+	my $an = $conf->{handle}{an};
 
 	return($line) if $line eq "";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
@@ -10438,6 +10526,7 @@ sub parse_script_line
 sub map_network
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
 	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
@@ -10672,6 +10761,7 @@ sub map_network
 sub map_network_on_node
 {
 	my ($conf, $node, $password, $remap, $say_node) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; map_network_on_node(); node: [$node], remap: [$remap], say_node: [$say_node]\n");
 	
 	$conf->{cgi}{update_manifest} = 0 if not $conf->{cgi}{update_manifest};
@@ -10919,6 +11009,7 @@ fi";
 sub install_programs
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# This could take a while
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
@@ -10993,6 +11084,7 @@ sub install_programs
 sub install_missing_packages
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $ok = 1;
 	get_installed_package_list($conf, $node, $password);
@@ -11215,6 +11307,7 @@ fi";
 sub get_installed_package_list
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $ok = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -11295,6 +11388,7 @@ sub get_installed_package_list
 sub add_local_repo
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo()\n");
 	
 	# If I don't know my local IPs and if I don't have any local repos,
@@ -11415,6 +11509,7 @@ sub add_local_repo
 sub add_local_repo_to_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo_to_node(); node: [$node]\n");
 	
 	my $rc = 0;
@@ -11545,6 +11640,7 @@ sub add_local_repo_to_node
 sub update_nodes
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# This could take a while
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
@@ -11600,6 +11696,7 @@ sub update_nodes
 sub remove_priority_from_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; remove_priority_from_node(); node: [$node]\n");
 	
 	# Remove the 'priority=' line from our repos so that the update hits
@@ -11635,6 +11732,7 @@ done
 sub update_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_node(); node: [$node]\n");
 	
 	# Skip if the user has decided not to run OS updates.
@@ -11677,6 +11775,7 @@ sub update_node
 sub verify_perl_is_installed
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($node1_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -11735,6 +11834,7 @@ sub verify_perl_is_installed
 sub verify_perl_is_installed_on_node
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# Set to '1' if perl was found, '0' if it wasn't found and couldn't be
 	# installed, set to '2' if installed successfully.
@@ -11789,6 +11889,7 @@ fi";
 sub verify_internet_access
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_internet_access()\n");
 	
 	# If the user knows they will never be online, they may have set to
@@ -11863,6 +11964,7 @@ sub verify_internet_access
 sub ping_website
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# After installing, sometimes/often the system will come up with
 	# multiple interfaces on the same subnet, causing default route
@@ -12004,6 +12106,7 @@ sub ping_website
 sub create_dvd_repo
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	# A wee bit of bash in this one...
 	my $mount_name = "optical";
@@ -12101,6 +12204,7 @@ fi
 sub calculate_storage_pool_sizes
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; calculate_storage_pool_sizes();\n");
 	
 	# These will be set to the lower of the two nodes.
@@ -12523,6 +12627,7 @@ sub calculate_storage_pool_sizes
 sub check_storage
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_storage()\n");
 	
 	### TODO: When the drive is partitioned, write a file out indicating
@@ -12618,6 +12723,7 @@ sub check_storage
 sub get_storage_pool_partitions
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	### TODO: Determine if I still need this function at all...
 	# First up, check for /etc/drbd.d/r{0,1}.res on both nodes.
@@ -12716,6 +12822,7 @@ sub get_storage_pool_partitions
 sub read_drbd_resource_files
 {
 	my ($conf, $node, $password, $hostname) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_drbd_resource_files(); node: [$node], hostname: [$hostname]\n");
 	
 	my $r0_device = "";
@@ -12786,6 +12893,7 @@ fi";
 sub get_partition_data
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_partition_data(); node: [$node]\n");
 	
 	my $device = "";
@@ -12938,6 +13046,7 @@ fi";
 sub generate_cluster_conf
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_cluster_conf();\n");
 	
 	my ($node1_short_name) = ($conf->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
@@ -13066,6 +13175,7 @@ sub generate_cluster_conf
 sub configure_cman
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_cman()\n");
 	
 	# Generate a new cluster.conf, then check to see if one already exists.
@@ -13218,6 +13328,7 @@ sub configure_cman
 sub write_cluster_conf
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; write_cluster_conf(); node: [$node]\n");
 	
 	my $message     = "";
@@ -13284,6 +13395,7 @@ sub write_cluster_conf
 sub read_cluster_conf
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_cluster_conf(); node: [$node]\n");
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I
@@ -13331,6 +13443,7 @@ fi";
 sub verify_os
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
 	
 	my $ok = 1;
@@ -13383,6 +13496,7 @@ sub verify_os
 sub get_node_os_version
 {
 	my ($conf, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -13454,6 +13568,7 @@ sub get_node_os_version
 sub check_connection
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -13502,6 +13617,7 @@ sub check_connection
 sub get_local_bcn_ip
 {
 	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
 	
 	my $in_dev     = "";
 	my $bcn_ip     = "";
@@ -13546,7 +13662,8 @@ sub get_local_bcn_ip
 sub check_node_access
 {
 	my ($conf, $node, $password) = @_;
- 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_node_access(); node: [$node]\n");
+	my $an = $conf->{handle}{an};
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_node_access(); node: [$node]\n");
 	
 	my $access = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
