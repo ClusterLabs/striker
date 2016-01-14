@@ -166,8 +166,6 @@ sub entry
 	### TODO: Record the file handles so we don't incure the overhead of 
 	###       opening the file for every message.
 	# Write the entry
-	#print $filehandle $string, "\n" if $debug;
-	#print "$THIS_FILE ".__LINE__."; string: [$string]\n" if $debug;
 	if ($log_to)
 	{
 		my $shell_call = ">>$log_to";

@@ -60,7 +60,7 @@ sub do_db_write
 		print $an->String->get({ key => "scancore_message_0002", variables => {
 			title		=>	$an->String->get({key => "scancore_title_0003"}),
 			message		=>	$an->String->get({key => "scancore_error_0011"}),
-		}}), "\n";
+		}})."\n";
 		exit(1);
 	}
 	
@@ -457,7 +457,7 @@ sub connect_to_databases
 		print $an->String->get({ key => "scancore_message_0002", variables => {
 			title		=>	$an->String->get({key => "scancore_title_0003"}),
 			message		=>	$an->String->get({key => "scancore_error_0004"}),
-		}}), "\n";
+		}})."\n";
 		exit(1);
 	}
 	
@@ -1173,7 +1173,7 @@ sub load_schema
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_error_0007"}),
 			},
-		}), "\n";
+		})."\n";
 		exit(1);
 	}
 	
@@ -1187,7 +1187,7 @@ sub load_schema
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_error_0008"}),
 			},
-		}), "\n";
+		})."\n";
 		exit(1);
 	}
 	# Does the file exist?
@@ -1200,7 +1200,7 @@ sub load_schema
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_error_0009", variables => { file => $file }}),
 			},
-		}), "\n";
+		})."\n";
 		exit(1);
 	}
 	# And can I read it?
@@ -1213,7 +1213,7 @@ sub load_schema
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_error_0010", variables => { file => $file }}),
 			},
-		}), "\n";
+		})."\n";
 		exit(1);
 	}
 	
@@ -1286,7 +1286,7 @@ sub initialize_db
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_error_0005"}),
 			},
-		}), "\n";
+		})."\n";
 		exit(1);
 	}
 	

@@ -259,7 +259,6 @@ my $conf = {
 	},
 };
 
-
 # No switches is OK, we'll try to detect UPSes via /etc/hosts.
 get_switches($conf);
 if (($conf->{switches}{h})   || 
@@ -293,7 +292,7 @@ read_configuration($conf);
 # Cancel is always allowed.
 if ($conf->{switches}{cancel})
 {
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling the UPS watchdog timer.");
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling the UPS watchdog timer.");
 	get_ups_ips($conf);
 	my $ok   = cancel_countdown($conf);
 	my $exit = $ok ? 0 : 4;
@@ -303,7 +302,7 @@ if ($conf->{switches}{cancel})
 # Disabling is also always allowed.
 if ($conf->{switches}{disable})
 {
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling and disabling the UPS watchdog timer.");
+	logger($conf, $THIS_FILE, __LINE__, "Cancelling and disabling the UPS watchdog timer.");
 	get_ups_ips($conf);
 	my $ok   = cancel_countdown($conf);
 	my $exit = 0;
@@ -321,7 +320,7 @@ if ($conf->{switches}{disable})
 # If the user enabled the program, update the cron table and exit so that it starts in the background.
 if ($conf->{switches}{enable})
 {
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Enabling the UPS watchdog timer.");
+	logger($conf, $THIS_FILE, __LINE__, "Enabling the UPS watchdog timer.");
 	my $exit = 0;
 	my $ok   = update_configuration($conf, "enable");
 	if (not $ok)
@@ -376,7 +375,6 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - Sleep time; Group 2: .... [$sleep_time_group2 seconds]");
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Setting power off delay to: [$conf->{sys}{apc}{ups}{power_off_delay} seconds]");
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Setting sleep time to: .... [$conf->{sys}{apc}{ups}{sleep_time} seconds]");
-		#die "$THIS_FILE ".__LINE__."; testing...\n";
 		
 		# Make sure the UPS is healty enough
 		if ($current_state_ups eq "1")
@@ -398,7 +396,7 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		else
 		{
 			# We're good.
-			logger($conf, $THIS_FILE, __LINE__, "Watchdog timer is kicking the UPS: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Watchdog timer is kicking the UPS: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
 		
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling any pending power off.");
@@ -728,12 +726,12 @@ sub get_current_settings
 sub convert_ticks_to_seconds
 {
 	my ($conf, $ticks) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "convert_ticks_to_seconds(); ticks: [$ticks]");
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - convert_ticks_to_seconds(); ticks: [$ticks]");
 	
 	my $ticks_per_second = (1000 / $conf->{sys}{apc}{ups}{ticks});
 	my $seconds          = ($ticks / $ticks_per_second);
 	
-	logger($conf, $THIS_FILE, __LINE__, "seconds: [$seconds]");
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - seconds: [$seconds]");
 	return($seconds);
 }
 
@@ -1331,8 +1329,7 @@ sub logger
 	
 	# We split on new-lines so that multi-line message render better in
 	# syslog.
-	my $is_debug = $message =~ /\[ Debug \]/ ? 1 : 0;
-	if (($is_debug) && (not $conf->{sys}{debug}))
+	if (($message =~ /\[ Debug \]/i) && (not $conf->{sys}{debug}))
 	{
 		# User is suppressing debug messages.
 		return(0);
@@ -1407,6 +1404,6 @@ sub _catch_sig
 {
 	my $signame = shift;
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Process with PID $$ Exiting on SIG${signame}.");
+	logger($conf, $THIS_FILE, __LINE__, "Process with PID $$ Exiting on SIG${signame}.");
 	exit(3);
 }

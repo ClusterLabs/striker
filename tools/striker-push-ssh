@@ -84,7 +84,7 @@ if (not $an->data->{switches}{anvil})
 if (not $an->data->{tools}{'striker-push-ssh'}{enabled})
 {
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0013", file => $THIS_FILE, line => __LINE__});
-	print $an->String->get({key => "sps_log_0013"}), "\n";
+	print $an->String->get({key => "sps_log_0013"})."\n";
 	exit(1);
 }
 

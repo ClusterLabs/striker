@@ -186,7 +186,7 @@ sub get
 		print "$THIS_FILE ".__LINE__."; [ ERROR ] Exiting in file: [$THIS_FILE] at line: [".__LINE__."]<br />\n";
 		use Data::Dumper;
 		print "<pre>\n";
-		print Dumper $hash, "\n";
+		print Dumper $hash."\n";
 		print "</pre>\n";
 		exit(17);
 	}

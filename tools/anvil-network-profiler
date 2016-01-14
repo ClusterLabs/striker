@@ -111,7 +111,7 @@ if (not $an->data->{switches}{peer})
 	$an->data->{switches}{peer} .= ".sn";
 	print $an->String->get({key => "anp_message_0001", variables => {
 		peer	=>	$an->data->{switches}{peer}, 
-	}}), "\n";
+	}})."\n";
 }
 
 # Convert the peer to an IP address if it isn't already.
@@ -172,7 +172,7 @@ print $an->String->get({key => "anp_message_0002", variables => {
 	local_ip	=>	$an->data->{network}{local_ip},
 	runtime		=>	$an->data->{iperf3}{runtime}, 
 	port		=>	$an->data->{iperf3}{port},
-}}), "\n";
+}})."\n";
 
 # If the user hasn't confirmed, pause and ask them if we should proceed.
 if ($an->data->{switches}{confirm})

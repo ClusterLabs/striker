@@ -123,7 +123,7 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 				language		=>	"#!string!$log_key!#",
 				units			=>	$units eq "imperial" ? "#!string!scancore_tools_0003!#" : "#!string!scancore_tools_0004!#",
 			},
-		}), "\n";
+		})."\n";
 	}
 	elsif ($an->data->{alerts}{recipient}{$integer}{file})
 	{
@@ -181,7 +181,7 @@ foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 				language		=>	"#!string!$log_key!#",
 				units			=>	$units eq "imperial" ? "#!string!scancore_tools_0003!#" : "#!string!scancore_tools_0004!#",
 			},
-		}), "\n";
+		})."\n";
 	}
 	else
 	{

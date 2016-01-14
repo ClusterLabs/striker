@@ -198,7 +198,7 @@ print $an->String->get({key => "aft_message_0001", variables => {
 	location	=>	$an->data->{switches}{location}, 
 	loops		=>	$an->data->{switches}{loops},
 	seconds		=>	$an->data->{switches}{runtime},
-}}), "\n";
+}})."\n";
 
 # Disable background initialization and consistency checks.
 control_virtual_disk_background_process($an, "pause", "bgi");
@@ -247,7 +247,7 @@ sub report_findings
 	
 	print $an->String->get({key => "aft_message_0005", variables => {
 		average	=>	$average,
-	}}), "\n";
+	}})."\n";
 	
 	return(0);
 }
@@ -346,7 +346,7 @@ sub report_deadline_info
 		read_expire	=>	$read_expire,
 		write_expire	=>	$write_expire,
 		writes_starved	=>	$writes_starved,
-	}}), "\n";
+	}})."\n";
 	
 	return(0);
 }
@@ -440,7 +440,7 @@ sub report_os_info
 		nr_requests	=>	$nr_requests,
 		queue_depth	=>	$queue_depth,
 		rq_affinity	=>	$rq_affinity,
-	}}), "\n";
+	}})."\n";
 	
 	return(0);
 }
@@ -563,7 +563,7 @@ sub report_vd_info
 		read_ahead		=>	$read_ahead,
 		start_time		=>	"$date_now, $time_now",
 		end_time		=>	"$date_done, $time_done",
-	}}), "\n";
+	}})."\n";
 	
 	return(0);
 }
@@ -635,7 +635,7 @@ sub call_fio
 				print $an->String->get({key => "aft_message_0004", variables => {
 					pass	=>	$pass,
 					speed	=>	$speed,
-				}}), "\n";
+				}})."\n";
 			}
 		}
 		close $file_handle;

@@ -197,7 +197,7 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
-print $an->String->get({key => "scan_apc_ups_message_0001"}), "\n";
+print $an->String->get({key => "scan_apc_ups_message_0001"})."\n";
 
 # Find the UPSes.
 find_upses($an);
@@ -4901,7 +4901,7 @@ sub print_usage
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print $an->String->get({key => "scan_apc_ups_message_0002"}), "\n";
+	print $an->String->get({key => "scan_apc_ups_message_0002"})."\n";
 
 	return(0);
 }

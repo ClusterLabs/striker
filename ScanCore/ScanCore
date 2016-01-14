@@ -185,7 +185,7 @@ if ($an->data->{switches}{enable})
 	if ($rc eq "1")
 	{
 		# Tell the user that it was enabled.
-		print $an->String->get({key => "scancore_message_0005"}), "\n";
+		print $an->String->get({key => "scancore_message_0005"})."\n";
 	}
 	exit($exit);
 }
@@ -196,7 +196,7 @@ elsif ($an->data->{switches}{disable})
 	if ($rc eq "1")
 	{
 		# Tell the user that it was disabled.
-		print $an->String->get({key => "scancore_message_0006"}), "\n";
+		print $an->String->get({key => "scancore_message_0006"})."\n";
 	}
 	exit($exit);
 }
@@ -213,7 +213,7 @@ avoid_duplicate_run($an);
 exit(0) if not $an->data->{scancore}{enabled};
 
 # Number 5 is Alive!
-print $an->String->get({key => "scancore_message_0001"}), "\n";
+print $an->String->get({key => "scancore_message_0001"})."\n";
 
 # Get (create if needed) my UUID.
 $an->Storage->prep_local_uuid($an);
@@ -230,7 +230,7 @@ if (not $connections)
 			title		=>	$an->String->get({key => "scancore_title_0003"}),
 			message		=>	$an->String->get({key => "scancore_message_0004"}),
 		},
-	}), "\n";
+	})."\n";
 	
 	# TODO: Send an email.
 	
@@ -340,7 +340,7 @@ while(1)
 				title		=>	$an->String->get({key => "scancore_title_0003"}),
 				message		=>	$an->String->get({key => "scancore_message_0004"}),
 			},
-		}), "\n";
+		})."\n";
 	}
 	
 	# Check for and process alerts
