@@ -377,18 +377,10 @@ while(1)
 	
 	### TODO: change this to level 2 before final release.
 	# Sleep.
-	$an->Log->entry({
-		log_level	=>	1,
-		title_key	=>	"scancore_title_0001",
-		message_key	=>	"scancore_log_0012",	# Sleeping for X seconds.
-		message_variables	=>	{
-			run_time	=>	(time - $start_time),
-			sleep_time	=>	$an->data->{scancore}{sleep_time},
-		},
-		file		=>	$THIS_FILE,
-		line		=>	__LINE__,
-		log_to		=>	$an->data->{scancore}{log_file},
-	});
+	$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_log_0012", message_variables => {
+		run_time	=>	(time - $start_time),
+		sleep_time	=>	$an->data->{scancore}{sleep_time},
+	}, file => $THIS_FILE, line => __LINE__});
 	sleep $an->data->{scancore}{sleep_time};
 }
 

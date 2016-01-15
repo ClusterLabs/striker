@@ -87,7 +87,6 @@ $an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_var
 	name2 => "sys::time", value2 => $an->data->{sys}{'time'}, 
 }, file => $THIS_FILE, line => __LINE__});
 
-
 # Log our startup
 $an->Log->entry({log_level => 3, message_key => "sda_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 

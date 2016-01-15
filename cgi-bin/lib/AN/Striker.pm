@@ -4,11 +4,10 @@ package AN::Striker;
 # 
 # This software is released under the GNU GPL v2+ license.
 # 
-# No warranty is provided. Do not use this software unless you are willing and
-# able to take full liability for it's use. The authors take care to prevent
-# unexpected side effects when using this program. However, no software is
-# perfect and bugs may exist which could lead to hangs or crashes in the
-# program, in your Anvil and possibly even data loss.
+# No warranty is provided. Do not use this software unless you are willing and able to take full liability 
+# for it's use. The authors take care to prevent unexpected side effects when using this program. However, no
+# software is perfect and bugs may exist which could lead to hangs or crashes in the program, in your Anvil!
+# and possibly even data loss.
 # 
 # If you are concerned about these risks, please stick to command line tools.
 # 
@@ -51,14 +50,16 @@ $ENV{'PERL_UNICODE'} = 1;
 my $THIS_FILE = "AN::Striker.pm";
 
 
-# Update the ScanCore database(s) to mark the node's 
-# (hosts -> host_stop_reason = 'clean') so that they don't just turn right back
-# on.
+# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = 'clean') so that they don't
+# just turn right back on.
 sub mark_node_as_clean_off
 {
 	my ($conf, $node, $delay) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_off(); node: [$node], delay: [$delay]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_off" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",  value1 => $node, 
+		name2 => "delay", value2 => $delay, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({
@@ -134,7 +135,9 @@ sub mark_node_as_clean_on
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; mark_node_as_clean_on(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Connect to the databases.
 	my $connections = $an->DB->connect_to_databases({
@@ -185,8 +188,11 @@ sub get_peer_node
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	my $peer = "";
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_peer_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $peer    = "";
 	my $cluster = $conf->{cgi}{cluster};
 	foreach my $this_node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
@@ -208,6 +214,8 @@ sub process_task
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
 	if ($conf->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
@@ -516,7 +524,7 @@ sub lsi_control_unmake_disk_as_hot_spare
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_unmake_disk_as_hot_spare()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_unmake_disk_as_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -580,7 +588,7 @@ sub lsi_control_clear_foreign_state
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_clear_foreign_state()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_clear_foreign_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -642,7 +650,7 @@ sub lsi_control_make_disk_hot_spare
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_hot_spare()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_make_disk_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -706,7 +714,7 @@ sub lsi_control_mark_disk_missing
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_mark_disk_missing()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_mark_disk_missing" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -787,7 +795,7 @@ sub lsi_control_spin_disk_up
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_up()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_spin_disk_up" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -850,7 +858,7 @@ sub lsi_control_spin_disk_down
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_spin_disk_down()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_spin_disk_down" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -935,7 +943,10 @@ sub lsi_control_get_rebuild_progress
 {
 	my ($conf, $disk_address, $adapter) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_rebuild_progress(); disk_address: [$disk_address], adapter: [$adapter]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_get_rebuild_progress" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "disk_address", value1 => $disk_address, 
+		name2 => "adapter",      value2 => $adapter, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rebuild_percent   = "";
 	my $time_to_complete  = "";
@@ -975,7 +986,7 @@ sub lsi_control_put_disk_offline
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_offline()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_put_disk_offline" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: I don't think I need this function. For now, I simply
 	###       redirect to the "prepare for removal" function.
@@ -1099,7 +1110,7 @@ sub lsi_control_put_disk_online
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_put_disk_online()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_put_disk_online" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1161,7 +1172,7 @@ sub lsi_control_add_disk_to_array
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_add_disk_to_array()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_add_disk_to_array" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1231,7 +1242,10 @@ sub lsi_control_get_missing_disks
 {
 	my ($conf, $this_adapter, $this_logical_disk) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_get_missing_disks(); this_adapter: [$this_adapter] this_logical_disk: [$this_logical_disk]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_get_missing_disks" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "this_adapter",      value1 => $this_adapter, 
+		name2 => "this_logical_disk", value2 => $this_logical_disk, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
@@ -1270,7 +1284,7 @@ sub lsi_control_make_disk_good
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_make_disk_good()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_make_disk_good" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1332,7 +1346,9 @@ sub lsi_control_disk_id_led
 {
 	my ($conf, $action) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lsi_control_disk_id_led(); action: [$action]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_disk_id_led" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "action", value1 => $action, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
@@ -1407,6 +1423,7 @@ sub display_node_health
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster           = $conf->{cgi}{cluster};
 	my $node              = $conf->{cgi}{node};
@@ -1819,12 +1836,15 @@ sub display_node_health
 	return(0);
 }
 
-# This determines what kind of storage the user has and then calls the
-# appropriate function to gather the details.
+# This determines what kind of storage the user has and then calls the appropriate function to gather the 
+# details.
 sub get_storage_data
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_data" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{storage}{is}{lsi}   = "";
 	$conf->{storage}{is}{hp}    = "";
@@ -1880,13 +1900,14 @@ sub get_storage_data
 	return(0);
 }
 
-# This uses the 'MegaCli64' program to gather information about the LSI-based
-# storage of a node.
+# This uses the 'MegaCli64' program to gather information about the LSI-based storage of a node.
 sub get_storage_data_lsi
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_storage_data_lsi(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_data_lsi" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This is used when recording all fields.
 	my $this_adapter = "";
@@ -2465,6 +2486,9 @@ sub change_vm
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "change_vm" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster             = $conf->{cgi}{cluster};
 	my $vm                  = $conf->{cgi}{vm};
@@ -2736,6 +2760,12 @@ sub vm_insert_media
 {
 	my ($conf, $node, $insert_media, $insert_drive, $vm_is_running) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "vm_insert_media" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "node",          value1 => $node, 
+		name2 => "insert_media",  value2 => $insert_media, 
+		name3 => "insert_drive",  value3 => $insert_drive, 
+		name4 => "vm_is_running", value4 => $vm_is_running, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster         = $conf->{cgi}{cluster};
 	my $vm              = $conf->{cgi}{vm};
@@ -2817,8 +2847,8 @@ sub vm_insert_media
 	}
 	else
 	{
-		# The VM isn't running. Directly re-write the XML file.
-		# The variable hash feeds into 'message_0070'.
+		# The VM isn't running. Directly re-write the XML file. The variable hash feeds into
+		# 'message_0070'.
 		print AN::Common::template($conf, "server.html", "insert-media-server-off", {}, {
 			server	=>	$say_vm,
 		});
@@ -2887,6 +2917,10 @@ sub vm_eject_media
 {
 	my ($conf, $node, $vm_is_running) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "vm_eject_media" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",          value1 => $node, 
+		name2 => "vm_is_running", value2 => $vm_is_running, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster         = $conf->{cgi}{cluster};
 	my $vm              = $conf->{cgi}{vm};
@@ -3066,6 +3100,7 @@ sub manage_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manage_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
 	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
@@ -3639,13 +3674,16 @@ sub manage_vm
 	return (0);
 }
 
-# This modifies the VM's XML definition file to tell it to use VNC instead of
-# spice or another protocol.
+# This modifies the VM's XML definition file to tell it to use VNC instead of spice or another protocol.
 sub switch_vm_xml_to_vnc
 {
 	my ($conf, $node, $vm, $backup_file) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; switch_vm_xml_to_vnc(); node: [$node], vm: [$vm], backup_file: [$backup_file]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "switch_vm_xml_to_vnc" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",        value1 => $node, 
+		name2 => "vm",          value2 => $vm, 
+		name3 => "backup_file", value3 => $backup_file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $proceed         = 1;
 	my $definition_file = $conf->{vm}{$vm}{definition_file};
@@ -3832,13 +3870,17 @@ sub switch_vm_xml_to_vnc
 	return(0);
 }
 
-# This figures out which node a VM is running on, calls 'virsh dumpxml $vm',
-# parses out the currently used VNC port and returns the host and port.
+# This figures out which node a VM is running on, calls 'virsh dumpxml $vm', parses out the currently used 
+# VNC port and returns the host and port.
 sub get_current_vm_vnc_info
 {
 	my ($conf, $vm, $node) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_current_vm_vnc_info(); vm: [$vm]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_current_vm_vnc_info" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "vm",   value1 => $vm, 
+		name2 => "node", value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:/)
 	{
@@ -3901,6 +3943,11 @@ sub read_live_xml
 {
 	my ($conf, $vm, $say_vm, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_live_xml" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "vm",     value1 => $vm, 
+		name2 => "say_vm", value2 => $say_vm, 
+		name3 => "node",   value3 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{vm}{$vm}{live_xml} = [];
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
@@ -3930,7 +3977,7 @@ sub find_node_storage_pool
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_node_storage_pool().\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_node_storage_pool" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $vm     = $conf->{cgi}{vm};
 	my $say_vm = ($vm =~ /^vm:(.*)/)[0];
@@ -3971,6 +4018,11 @@ sub update_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "vm",   value2 => $vm, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $say_vm = $vm;
 	if ($vm =~ /^vm:(.*)/)
 	{
@@ -4039,7 +4091,9 @@ sub add_vm_to_cluster
 {
 	my ($conf, $skip_scan) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_vm_to_cluster(); skip_scan: [$skip_scan]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_vm_to_cluster" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "skip_scan", value1 => $skip_scan, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If this is being called after provisioning a VM, we'll skip scanning the cluster and we'll not 
 	# print the opening header. 
@@ -4663,6 +4717,9 @@ sub update_network_driver
 {
 	my ($conf, $new_xml) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_network_driver" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "new_xml", value1 => $new_xml, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::server::bcn_nic_driver: [$conf->{sys}{server}{bcn_nic_driver}], sys::server::sn_nic_driver: [$conf->{sys}{server}{sn_nic_driver}], sys::server::ifn_nic_driver: [$conf->{sys}{server}{ifn_nic_driver}]\n");
 	# Clear out the old array and refill it with the possibly-edited 'new_xml'.
@@ -4750,14 +4807,19 @@ sub update_network_driver
 	return($new_xml);
 }
 
-# This looks for a VM on the cluster and returns the current host node, if any.
-# If the VM is not running, then "none" is returned.
+# This looks for a VM on the cluster and returns the current host node, if any. If the VM is not running, 
+# then "none" is returned.
 sub find_vm_host
 {
 	my ($conf, $node, $peer, $vm) = @_;
 	my $an = $conf->{handle}{an};
-	my $host = "none";
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_vm_host" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "peer", value2 => $peer, 
+		name3 => "vm",   value3 => $vm, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $host = "none";
 	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
 		port		=>	$conf->{node}{$node}{port},
@@ -4846,7 +4908,9 @@ sub get_bridge_name
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_bridge_name(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_bridge_name" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $bridge     = "";
 	my $shell_call = "brctl show";
@@ -4880,6 +4944,7 @@ sub provision_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "provision_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $say_title = AN::Common::get_string($conf, {key => "title_0115", variables => {
 			server	=>	$conf->{new_vm}{name},
@@ -4932,6 +4997,7 @@ sub provision_vm
 	$provision .= "  --ram $conf->{new_vm}{ram} \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
 	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
+	$provision .= "  --cpu host \\\\\n";
 	$provision .= "  --cdrom '/shared/files/$conf->{new_vm}{install_iso}' \\\\\n";
 	$provision .= "  --boot menu=on \\\\\n";
 	if ($conf->{cgi}{driver_iso})
@@ -5118,7 +5184,7 @@ sub verify_vm_config
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_vm_config()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_vm_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, get a current view of the cluster.
 	my $proceed = 1;
@@ -5465,12 +5531,12 @@ sub verify_vm_config
 	return ($proceed);
 }
 
-# This doesn't so much confirm as it does ask the user how they want to build
-# the VM.
+# This doesn't so much confirm as it does ask the user how they want to build the VM.
 sub confirm_provision_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_provision_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read file list from node: [$node]\n");
@@ -5610,6 +5676,7 @@ sub confirm_withdraw_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0035", variables => {
@@ -5633,6 +5700,7 @@ sub confirm_join_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_join_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0036", variables => {
@@ -5656,6 +5724,7 @@ sub confirm_dual_join
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0037", variables => {
@@ -5678,6 +5747,7 @@ sub confirm_fence_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0038", variables => {
@@ -5702,6 +5772,7 @@ sub confirm_poweroff_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0039", variables => {
@@ -5726,6 +5797,7 @@ sub confirm_poweron_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0040", variables => {
@@ -5748,6 +5820,7 @@ sub confirm_dual_boot
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_message = AN::Common::get_string($conf, {key => "message_0161", variables => {
@@ -5766,6 +5839,7 @@ sub confirm_cold_stop_anvil
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_message = AN::Common::get_string($conf, {key => "message_0418", variables => {
@@ -5801,6 +5875,7 @@ sub confirm_start_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0042", variables => {
@@ -5825,6 +5900,7 @@ sub confirm_stop_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0043", variables => {
@@ -5858,6 +5934,7 @@ sub confirm_force_off_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_force_off_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0044", variables => {
@@ -5883,6 +5960,7 @@ sub confirm_delete_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_delete_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	# Ask the user to confirm
 	my $say_title = AN::Common::get_string($conf, {key => "title_0045", variables => {
@@ -5905,6 +5983,7 @@ sub confirm_migrate_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_migrate_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Calculate roughly how long the migration will take.
 	my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
@@ -5935,6 +6014,7 @@ sub start_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
@@ -6225,7 +6305,9 @@ sub parse_text_line
 {
 	my ($conf, $line) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; parse_text_line(); line: [$line]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_text_line" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "line", value1 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# 'Da good ^_^
 	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
@@ -6252,6 +6334,7 @@ sub migrate_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "migrate_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $target = $conf->{cgi}{target};
 	my $vm     = $conf->{cgi}{vm};
@@ -6330,6 +6413,7 @@ sub stop_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
@@ -6399,6 +6483,7 @@ sub join_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "join_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
@@ -6479,6 +6564,7 @@ sub dual_join
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $proceed = 1;
@@ -6642,6 +6728,7 @@ sub force_off_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "force_off_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node = $conf->{cgi}{node};
 	my $vm   = $conf->{cgi}{vm};
@@ -6711,6 +6798,7 @@ sub delete_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $say_vm  = $conf->{cgi}{vm};
@@ -6976,6 +7064,10 @@ sub remove_vm_definition
 {
 	my ($conf, $node, $file) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "file", value2 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# We only delete server definition files.
 	if ($file !~ /^\/shared\/definitions\/.*?\.xml/)
@@ -7047,8 +7139,13 @@ sub archive_file
 	my ($conf, $node, $file, $quiet, $table_type) = @_;
 	my $an = $conf->{handle}{an};
 	$table_type = "hidden_table" if not $table_type;
-	$quiet = 0 if not defined $quiet;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; archive_file(); node: [$node], file: [$file], quiet: [$quiet], table_type: [$table_type]\n");
+	$quiet      = 0 if not defined $quiet;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_file" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "node",       value1 => $node, 
+		name2 => "file",       value2 => $file, 
+		name3 => "quiet",      value3 => $quiet, 
+		name4 => "table_type", value4 => $table_type, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Check/create the archive directory.
 	
@@ -7147,6 +7244,12 @@ sub update_cluster_conf
 {
 	my ($conf, $do, $vm, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "do",   value1 => $do, 
+		name2 => "vm",   value2 => $vm, 
+		name3 => "node", value3 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $say_vm  = ($vm =~ /vm:(.*)/)[0];
 	my $success = 1;
 	
@@ -7167,6 +7270,7 @@ sub poweroff_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -7262,13 +7366,14 @@ sub poweroff_node
 	return(0);
 }
 
-# This sequentially stops all servers, withdraws both nodes and powers down the
-# Anvil!.
+# This sequentially stops all servers, withdraws both nodes and powers down the Anvil!.
 sub cold_stop_anvil
 {
 	my ($conf, $cancel_ups) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cold_stop(); cancel_ups: [$cancel_ups]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "cold_stop_anvil" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "cancel_ups", value1 => $cancel_ups, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil   = $conf->{cgi}{cluster};
 	my $proceed = 1;
@@ -7662,12 +7767,12 @@ poweroff";
 	return(0);
 }
 
-# This uses the local machine to call "power on" against both nodes in the
-# cluster.
+# This uses the local machine to call "power on" against both nodes in the cluster.
 sub dual_boot
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $proceed      = 1;
 	my $cluster      = $conf->{cgi}{cluster};
@@ -7811,6 +7916,7 @@ sub poweron_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -7972,12 +8078,12 @@ sub poweron_node
 	return(0);
 }
 
-# This uses the fence methods, as defined in cluster.conf and in the proper
-# order, to fence the target node.
+# This uses the fence methods, as defined in cluster.conf and in the proper order, to fence the target node.
 sub fence_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -8281,12 +8387,12 @@ sub fence_node
 	return(0);
 }
 
-# This does a final check of the target node then withdraws it from the
-# cluster.
+# This does a final check of the target node then withdraws it from the cluster.
 sub withdraw_node
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
@@ -8460,12 +8566,14 @@ sub withdraw_node
 	return(0);
 }
 
-# This restarts rgmanager and, if necessary, disables and re-enables the 
-# storage service
+# This restarts rgmanager and, if necessary, disables and re-enables the storage service.
 sub recover_rgmanager
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recover_rgmanager" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user we're recovering rgmanager
 	print AN::Common::template($conf, "server.html", "recover-resource-manager-header");
@@ -8681,6 +8789,7 @@ sub display_details
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#print AN::Common::template($conf, "server.html", "display-details-header");
 	# Display the status of each node's daemons
@@ -8766,7 +8875,7 @@ sub display_watchdog_panel
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in display_watchdog_panel()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_watchdog_panel" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $watchdog_panel = "";
 	my $use_node       = "";
@@ -8835,6 +8944,7 @@ sub display_free_resources
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_free_resources" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-header");
 	
@@ -8994,7 +9104,9 @@ sub long_host_name_to_node_name
 {
 	my ($conf, $host) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in long_host_name_to_node_name(), host: [$host]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "long_host_name_to_node_name" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "host", value1 => $host, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster   = $conf->{cgi}{cluster};
 	my $node_name = "";
@@ -9023,7 +9135,9 @@ sub node_name_to_long_host_name
 {
 	my ($conf, $host) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in node_name_to_long_host_name(), host: [$host]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_name_to_long_host_name" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "host", value1 => $host, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $node_name = $conf->{node}{$host}{me}{name};
 
@@ -9036,6 +9150,7 @@ sub display_vm_details
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_vm_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $conf->{sys}{cluster}{node1_name};
 	my $node2 = $conf->{sys}{cluster}{node2_name};
@@ -9185,6 +9300,10 @@ sub check_node_daemons
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_daemons" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	if (not $node)
 	{
 		AN::Cluster::error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
@@ -9217,6 +9336,10 @@ sub check_node_readiness
 {
 	my ($conf, $vm, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_readiness" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "vm",   value1 => $vm, 
+		name2 => "node", value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node)
 	{
 		AN::Cluster::error($conf, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
@@ -9286,7 +9409,11 @@ sub read_vm_definition
 {
 	my ($conf, $node, $vm) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_vm_definition(); node: [$node], vm: [$vm]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "vm",   value2 => $vm, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	if (not $vm)
 	{
 		AN::Cluster::error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
@@ -9472,13 +9599,16 @@ sub read_vm_definition
 	return (0);
 }
 
-# This takes a node name and an LV and checks the DRBD resources to see if they
-# are Primary and UpToDate.
+# This takes a node name and an LV and checks the DRBD resources to see if they are Primary and UpToDate.
 sub check_lv
 {
 	my ($conf, $node, $vm, $lv) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VM: [$vm], LV: [$lv]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lv" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "vm",   value2 => $vm, 
+		name3 => "lv",   value3 => $lv, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If this node is down, just return.
 	if ($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
@@ -9527,6 +9657,7 @@ sub check_vms
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_vms" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -9715,7 +9846,10 @@ sub find_prefered_host
 {
 	my ($conf, $vm) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; in find_prefered_host(), vm: [$vm]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_prefered_host" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "vm", value1 => $vm, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $prefered_host = "";
 	
 	my $failover_domain = $conf->{vm}{$vm}{failover_domain};
@@ -9746,6 +9880,7 @@ sub set_node_names
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_node_names" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First pull the names into easier to follow variables.
 	my $this_cluster = $conf->{cgi}{cluster};
@@ -9756,12 +9891,12 @@ sub set_node_names
 	return (0);
 }
 
-# This shows the current state of the VMs as well as the available control
-# buttons.
+# This shows the current state of the VMs as well as the available control buttons.
 sub display_vm_state_and_controls
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_vm_state_and_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -9949,6 +10084,7 @@ sub display_drbd_details
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_drbd_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10083,6 +10219,7 @@ sub display_gfs2_details
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_gfs2_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10188,6 +10325,7 @@ sub display_node_details
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{sys}{cluster}{node1_name};
@@ -10246,7 +10384,7 @@ sub display_node_controls
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; display_node_controls()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	# Variables for the full template.
 	my $i                = 0;

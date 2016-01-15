@@ -16,6 +16,7 @@ use lib 'lib';
 use AN::Common;
 use AN::Cluster;
 use AN::MediaLibrary;
+use AN::Tools;
 
 my $THIS_FILE = "mediaLibrary";
 # Turn off buffering so that the pinwheel will display while waiting
@@ -23,6 +24,39 @@ my $THIS_FILE = "mediaLibrary";
 $| = 1;
 
 my ($conf) = AN::Common::initialize($THIS_FILE);
+
+# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
+my $an = AN::Tools->new({data => $conf});
+$an->default_log_file    ($conf->{path}{log_file});
+$an->default_log_language($conf->{sys}{log_language});
+$an->Log->level          ($conf->{sys}{log_level});
+$conf->{handle}{an} = $an;
+
+# Set some defaults
+$an->default_language    ($an->data->{scancore}{language});
+$an->default_log_language($an->data->{scancore}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+
+# Read my stuff
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+$an->String->read_words({file => $an->data->{path}{scancore_strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+# Log our startup
+my ($date, $time) = $an->Get->date_and_time();
+$an->Log->entry({log_level => 1, message_key => "log_0001", message_variables => {
+	date	=>	$date, 
+	'time'	=>	$time,
+}, file => $THIS_FILE, line => __LINE__});
+
+# Get (create if needed) my UUID.
+$an->Storage->prep_local_uuid($an);
+
+# Connect to the databases.
+my $connections = $an->DB->connect_to_databases({
+	file	=>	$THIS_FILE,
+	quiet	=>	1
+});
 
 AN::Cluster::find_executables($conf);
 AN::Cluster::read_hosts($conf);

@@ -37,6 +37,7 @@ sub process_task
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Task: [$conf->{cgi}{task}]\n");
 	if ($conf->{cgi}{task} eq "image_and_upload")
@@ -91,6 +92,7 @@ sub download_url
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "download_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -261,6 +263,7 @@ sub confirm_download_url
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_download_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $url     = $conf->{cgi}{url};
@@ -289,6 +292,7 @@ sub save_file_to_disk
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_file_to_disk" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	print AN::Common::template($conf, "media-library.html", "save-to-disk-header");
@@ -344,6 +348,7 @@ sub image_and_upload
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "image_and_upload" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Let the user know that this might take a bit.
 	print AN::Common::template($conf, "common.html", "scanning-message", {
@@ -594,6 +599,7 @@ sub confirm_image_and_upload
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_image_and_upload" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
@@ -661,6 +667,7 @@ sub confirm_delete_file
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_delete_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
@@ -695,6 +702,7 @@ sub delete_file
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make sure to unmount from (and rewrite definition files of)
 	###       VMs currently using the file being deleted.
@@ -755,6 +763,7 @@ sub check_local_dvd
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_local_dvd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $dev        = "";
 	my $shell_call = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
@@ -803,13 +812,12 @@ sub check_local_dvd
 	return(0);
 }
 
-# This prints a small header with the current status of any background running
-# jobs
+# This prints a small header with the current status of any background running jobs
 sub check_status
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_status()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::status: [$conf->{path}{status}]\n");
 	if (not -e $conf->{path}{status})

@@ -46,6 +46,7 @@ sub configure_local_system
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_local_system" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -70,6 +71,7 @@ sub check_for_updates
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_updates" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	
 	return(0);
@@ -80,6 +82,7 @@ sub read_network_settings
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_network_settings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	call_gather_system_info($conf);
 	
@@ -92,9 +95,12 @@ sub call_gather_system_info
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "call_gather_system_info" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $conf->{path}{'call_gather-system-info'};
-	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or AN::Common::hard_die($conf, $THIS_FILE, __LINE__, 14, "Failed to call the setuid root C-wrapper: [$shell_call]. The error was: $!\n");
 	binmode $file_handle, ":utf8:";
 	while (<$file_handle>)
@@ -153,6 +159,9 @@ sub sanity_check_striker_conf
 {
 	my ($conf, $sections) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sanity_check_striker_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "sections", value1 => $sections, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This will flip to '0' if any errors are encountered.
 	my $save = 1;
@@ -318,21 +327,25 @@ sub sanity_check_striker_conf
 					my $peer_name     = $hash->{name};
 					my $peer_password = $hash->{password};
 					record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name], peer_password: [$peer_password]\n");
-					my $shell_call    = "$conf->{path}{'striker-delete-anvil'} --anvil $anvil_name";
-					record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-					my ($error, $ssh_fh, $output) = remote_call($conf, {
-						node		=>	$peer_name,
-						port		=>	22,
-						user		=>	"root",
+					
+					my $shell_call = "$conf->{path}{'striker-delete-anvil'} --anvil $anvil_name";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "peer_name",  value2 => $peer_name,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$peer_name,
+						port		=>	22, 
 						password	=>	$peer_password,
 						ssh_fh		=>	"",
-						'close'		=>	1,
+						'close'		=>	0,
 						shell_call	=>	$shell_call,
 					});
-					#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
-						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				# Set 'save' to '2' to tell the caller we deleted the Anvil!.
@@ -625,11 +638,12 @@ sub sanity_check_striker_conf
 sub delete_string_from_array
 {
 	my ($conf, $string, $array) = @_;
-	#record($conf, "$THIS_FILE ".__LINE__."; delete_string_from_array(); string: [$string]\n");
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_string_from_array" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Delete the nodes (empty values are
-	# skipped later)
+	# Delete the nodes (empty values are skipped later)
 	for (my $i = 0; $i < @{$array}; $i++)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], value: [$array->[$i]], string: [$string]\n");
@@ -648,7 +662,9 @@ sub write_new_striker_conf
 {
 	my ($conf, $say_date) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; write_new_striker_conf(); say_date: [$say_date]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_new_striker_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "say_date", value1 => $say_date, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user where ready to go.
 	print AN::Common::template($conf, "config.html", "general-row-good", {
@@ -877,7 +893,9 @@ sub generate_anvil_entry_for_striker_conf
 {
 	my ($conf, $this_id) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; generate_anvil_entry_for_striker_conf(); this_id: [$this_id]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_anvil_entry_for_striker_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "this_id", value1 => $this_id, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $data = "";
 	# Main Anvil! values, always recorded, even when blank.
@@ -924,7 +942,7 @@ sub read_hosts
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; read_hosts()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "$conf->{path}{hosts}";
 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
@@ -977,7 +995,7 @@ sub read_ssh_config
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; read_ssh_config()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_ssh_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
@@ -1021,7 +1039,10 @@ sub copy_file
 {
 	my ($conf, $source, $destination) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; copy_file(); source: [$source], destination: [$destination]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "copy_file" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "source",      value1 => $source, 
+		name2 => "destination", value2 => $destination, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $output     = "";
 	my $shell_call = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
@@ -1054,7 +1075,9 @@ sub write_new_ssh_config
 {
 	my ($conf, $say_date) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; write_new_ssh_config(); say_date: [$say_date]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_new_ssh_config" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "say_date", value1 => $say_date, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = $conf->{path}{ssh_config};
 	open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
@@ -1117,7 +1140,9 @@ sub write_new_hosts
 {
 	my ($conf, $say_date) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; write_new_hosts(); say_date: [$say_date]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_new_hosts" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "say_date", value1 => $say_date, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the file
 	my $shell_call = $conf->{path}{hosts};
@@ -1209,7 +1234,7 @@ sub save_dashboard_configure
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; save_dashboard_configure()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_dashboard_configure" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
 	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
@@ -1311,7 +1336,7 @@ sub sync_with_peer
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; sync_with_peer()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sync_with_peer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Return if this is disabled.
 	record($conf, "$THIS_FILE ".__LINE__."; tools::striker::auto-sync: [$conf->{tools}{striker}{'auto-sync'}]\n");
@@ -1380,7 +1405,9 @@ sub sync_with_peer
 	# Configure the local virtual machine manager, if it is installed.
 	my $merge_striker_ok = 1;
 	my $shell_call = "$conf->{path}{'call_striker-merge-dashboards'} --force --prefer local; echo rc:\$?";
-	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -1406,20 +1433,23 @@ sub sync_with_peer
 $conf->{path}{'striker-push-ssh'} --anvil $conf->{cgi}{anvil}
 $conf->{path}{'striker-configure-vmm'}
 ";
-		record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
-			node		=>	$peer_name,
-			port		=>	22,
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "peer_name",  value2 => $peer_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$peer_name,
+			port		=>	22, 
 			password	=>	$peer_password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1440,6 +1470,7 @@ sub load_configuration_defaults
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_configuration_defaults" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# In all cases, load the global values.
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{cgi}{smtp__server}], smtp::server: [$conf->{smtp}{server}]\n");
@@ -1522,6 +1553,7 @@ sub show_anvil_config_header
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_anvil_config_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $this_cluster          = $conf->{cgi}{anvil};
 	my $say_this_cluster      = $this_cluster;
@@ -1659,6 +1691,7 @@ sub show_global_config_header
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_global_config_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0011!#",
@@ -1674,6 +1707,7 @@ sub show_common_config_section
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_common_config_section" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# We display the global values or the per-Anvil! ones below. Load the
 	# global, the override with the Anvil! if needed.
@@ -1813,6 +1847,7 @@ sub show_global_anvil_list
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_global_anvil_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "config.html", "config-header", {
 		title_1	=>	"#!string!title_0009!#",
@@ -1861,8 +1896,8 @@ sub show_global_anvil_list
 sub push_config_to_anvil
 {
 	my ($conf) = @_;
-	record($conf, "$THIS_FILE ".__LINE__."; push_config_to_anvil()\n");
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "push_config_to_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil = $conf->{cgi}{anvil};
 	record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
@@ -1927,24 +1962,24 @@ then
     echo 'Create: [$striker_directory]';
 fi;
 ls $striker_directory";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-			my ($error, $ssh_fh, $output) = remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
 				password	=>	$conf->{sys}{root_password},
 				ssh_fh		=>	"",
 				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
-				## This will show all the files in the directory, which isn't needed.
-				## So instead we just look for the config file in the output and
-				## report 'Found' if so.
-				record($conf, "$THIS_FILE ".__LINE__."; conf: [$config_file]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "line",        value1 => $line, 
+					name2 => "config_file", value2 => $config_file, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($config_file =~ /$line$/)
 				{
 					$line = AN::Common::get_string($conf, {key => "message_0283"});
@@ -1954,31 +1989,35 @@ ls $striker_directory";
 				}
 			}
 			$error      = "";
-			$output     = "";
+			$return     = "";
 			$shell_call = "";
 			
 			# Backup, but don't care if it fails.
 			my $backup_file = "$config_file.$date";
-			   $shell_call  = "if [ -e \"$config_file\" ]; 
-					then 
-						cp $config_file $backup_file; 
-					fi; 
-					ls $backup_file";
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-			($error, $ssh_fh, $output) = remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
+			   $shell_call  = "
+if [ -e \"$config_file\" ]; 
+then 
+    cp $config_file $backup_file; 
+fi; 
+ls $backup_file";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
 				password	=>	$conf->{sys}{root_password},
-				ssh_fh		=>	$ssh_fh,
-				'close'		=>	1,
+				ssh_fh		=>	"",
+				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; backup: [$backup_file]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; line:   [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "line",        value1 => $line, 
+					name2 => "backup_file", value2 => $backup_file, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($backup_file =~ /$line$/)
 				{
 					$line = AN::Common::get_string($conf, {key => "message_0284"});
@@ -1991,6 +2030,8 @@ ls $striker_directory";
 					line	=>	$line,
 				});
 			}
+			
+			
 			print AN::Common::template($conf, "config.html", "close-push-entry");
 			
 			# See if I need to add the target node to the
@@ -2040,7 +2081,7 @@ sub show_archive_options
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; show_archive_options()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_archive_options" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First up, collect the config files and make them available for download.
 	my $backup_url = create_backup_file($conf);
@@ -2058,7 +2099,7 @@ sub create_backup_file
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; create_backup_file()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_backup_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $config_data =  "<!-- Striker Backup -->\n";
 	   $config_data .= "<!-- Striker version $conf->{sys}{version} -->\n";
@@ -2125,7 +2166,7 @@ sub load_backup_configuration
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; load_backup_configuration()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_backup_configuration" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This file handle will contain the uploaded file, so be careful.
 	my $in_fh = $conf->{cgi_fh}{file};
@@ -2279,7 +2320,9 @@ sub configure_ssh_local
 {
 	my ($conf, $anvil_name) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; configure_ssh_local(); anvil_name: [$anvil_name]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh_local" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "anvil_name", value1 => $anvil_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
 	my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $anvil_name";
@@ -2301,13 +2344,15 @@ sub configure_vmm_local
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; configure_vmm_local();\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_vmm_local" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: I don't currently check if this passes or not.
 	# Setup VMM locally (the script exits without doing anything if disabled or if virt-manager is not 
 	# installed).
 	my $shell_call = "$conf->{path}{'call_striker-configure-vmm'}";
-	record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open(my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -2326,7 +2371,7 @@ sub create_install_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; create_install_manifest();\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $show_form = 1;
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
@@ -4022,7 +4067,7 @@ sub get_striker_prefix_and_domain
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; get_striker_prefix_and_domain()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_striker_prefix_and_domain" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($hostname) = get_hostname($conf);
 	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
@@ -4050,7 +4095,9 @@ sub load_install_manifest
 {
 	my ($conf, $file) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; load_install_manifest(); file: [$file]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_install_manifest" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "file", value1 => $file, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the install manifest file.
 	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
@@ -5072,6 +5119,7 @@ sub show_existing_install_manifests
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $header_printed = 0;
 	local(*DIR);
@@ -5141,6 +5189,9 @@ sub get_netmask_from_ip
 {
 	my ($conf, $ip) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_netmask_from_ip" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this support all possible subnet masks.
 	my $netmask = "";
@@ -5219,6 +5270,7 @@ sub generate_uuid
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_uuid" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $uuid = "";
 	my $shell_call = "$conf->{path}{uuidgen} -r";
@@ -5248,6 +5300,7 @@ sub generate_install_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Break up hostsnames
 	my ($node1_short_name)    = ($conf->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
@@ -5519,7 +5572,7 @@ sub confirm_install_manifest_run
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; confirm_install_manifest_run()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_install_manifest_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the manifest form.
 	$conf->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $conf->{cgi}{anvil_node1_bcn_link1_mac};
@@ -5662,6 +5715,7 @@ sub show_summary_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_summary_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the manifest form.
 	my $say_repos =  $conf->{cgi}{anvil_repositories};
@@ -6057,6 +6111,7 @@ sub sanity_check_manifest_answers
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sanity_check_manifest_answers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Clear all variables.
 	my $problem = 0;
@@ -7162,8 +7217,11 @@ sub is_string_url
 {   
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
-	my $valid = 1;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_url" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $valid = 1;
 	if ($string =~ /^(.*?):\/\/(.*?)\/(.*)$/)
 	{
 		my $protocol = $1;
@@ -7223,8 +7281,11 @@ sub is_string_integer_or_unsigned_float
 {
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
-	my $valid = 1;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_integer_or_unsigned_float" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $valid = 1;
 	if ($string =~ /^\D/)
 	{
 		# Non-digit could mean it's signed or just garbage.
@@ -7244,8 +7305,11 @@ sub is_domain_name
 {
 	my ($conf, $name) = @_;
 	my $an = $conf->{handle}{an};
-	my $valid = 1;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_domain_name" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "name", value1 => $name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $valid = 1;
 	if (not $name)
 	{
 		$valid = 0;
@@ -7265,6 +7329,10 @@ sub is_string_ipv4_with_subnet
 {
 	my ($conf, $ip) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_ipv4_with_subnet" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $subnet = "";
 	my $valid  = 1;
 	
@@ -7310,6 +7378,10 @@ sub is_string_ipv4
 {
 	my ($conf, $ip) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_ipv4" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $valid  = 1;
 	
 	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
@@ -7343,7 +7415,7 @@ sub configure_dashboard
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; configure_dashboard()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
@@ -7418,6 +7490,9 @@ sub convert_text_to_html
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
 	$string = "" if not defined $string;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_text_to_html" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
@@ -7568,13 +7643,15 @@ sub convert_text_to_html
 	return ($string);
 }
 
-# This takes a string with (possible) HTML escape codes and converts them to
-# plain-text.
+# This takes a string with (possible) HTML escape codes and converts them to plain-text.
 sub convert_html_to_text
 {
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
 	$string = "" if not defined $string;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_html_to_text" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	$string =~ s/&quot;/"/g;
 	$string =~ s/&#09;/\t/g;	# Horizontal tab
@@ -7726,7 +7803,7 @@ sub ask_which_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; ask_which_cluster()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ask_which_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "select-anvil.html", "open-table");
 	
@@ -7801,7 +7878,9 @@ sub control_install_target
 {
 	my ($conf, $action) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; control_install_target(); action: [$action]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "control_install_target" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "action", value1 => $action, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Track what was running and start back up things we turned off
 	###       only.
@@ -7989,7 +8068,9 @@ fi
 ";
 	}
 	$shell_call .= "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
-	#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -8143,7 +8224,7 @@ sub show_anvil_selection_and_striker_options
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; show_anvil_selection_and_striker_options()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_anvil_selection_and_striker_options" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If I'm toggling the install target (dhcpd), process it first.
 	#record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
@@ -8415,7 +8496,7 @@ sub get_dhcpd_state
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; get_dhcpd_state()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_dhcpd_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, read the dhcpd.conf file, if it exists, and look for the
 	# 'next-server' option.
@@ -8426,7 +8507,9 @@ sub get_dhcpd_state
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
 		my $shell_call = "$conf->{path}{dhcpd_conf}";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<", "$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -8455,7 +8538,9 @@ sub get_dhcpd_state
 		###       for a status check anyway.
 		# See if dhcpd is running.
 		my $shell_call = "/etc/init.d/dhcpd status; echo rc:\$?";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -8499,7 +8584,7 @@ sub convert_cluster_config
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; convert_cluster_config()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_cluster_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
@@ -8542,7 +8627,8 @@ sub convert_cluster_config
 	return (0);
 }
 
-# This prints an error and exits.
+# This prints an error and exits. We don't log this in case the error was trigger when parsing a log entry or
+# string.
 sub error
 {
 	my ($conf, $message, $fatal) = @_;
@@ -8563,6 +8649,9 @@ sub header
 	my ($conf, $caller) = @_;
 	my $an = $conf->{handle}{an};
 	$caller = "striker" if not $caller;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "header" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "caller", value1 => $caller, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Header buttons.
 	my $say_back        = "&nbsp;";
@@ -8880,6 +8969,7 @@ sub find_executables
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_executables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $search = $ENV{'PATH'};
 	#print "Searching in: [$search] for programs.\n";
@@ -8913,6 +9003,7 @@ sub footer
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "footer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	return(0) if $conf->{sys}{footer_printed}; 
 	
@@ -8922,14 +9013,17 @@ sub footer
 	return (0);
 }
 
-# This returns a 'YY-MM-DD_hh:mm:ss' formatted string based on the given time
-# stamp
+# This returns a 'YY-MM-DD_hh:mm:ss' formatted string based on the given time stamp
 sub get_date
 {
 	my ($conf, $time, $time_only) = @_;
 	my $an = $conf->{handle}{an};
 	$time      = time if not defined $time;
 	$time_only = 0 if not $time_only;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "time",      value1 => $time, 
+		name2 => "time_only", value2 => $time_only, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my @time   = localtime($time);
 	my $year   = ($time[5] + 1900);
@@ -8950,6 +9044,9 @@ sub get_cgi_vars
 {
 	my ($conf, $vars) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cgi_vars" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "vars", value1 => $vars, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Needed to read in passed CGI variables
 	my $cgi = new CGI;
@@ -9001,7 +9098,6 @@ sub get_cgi_vars
 		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
 	}
 	$conf->{sys}{cgi_string} =~ s/&$//;
-	#AN::Common::to_log($conf, {file => $THIS_FILE, line => __LINE__, level => 2, message => "sys::cgi_string: [$conf->{sys}{cgi_string}]\n"});
 	
 	return (0);
 }
@@ -9011,6 +9107,14 @@ sub build_select
 {
 	my ($conf, $name, $sort, $blank, $width, $selected, $options) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "build_select" }, message_key => "an_variables_0006", message_variables => { 
+		name1 => "name",     value1 => $name, 
+		name2 => "sort",     value2 => $sort, 
+		name3 => "blank",    value3 => $blank, 
+		name4 => "width",    value4 => $width, 
+		name5 => "selected", value5 => $selected, 
+		name6 => "options",  value6 => $options, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $select = "<select name=\"$name\">\n";
 	if ($width)
@@ -9075,7 +9179,7 @@ sub read_files_on_shared
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; read_files_on_shared()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_files_on_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	my $connected = "";
 	my $cluster   = $conf->{cgi}{cluster};
@@ -9084,26 +9188,30 @@ sub read_files_on_shared
 	{
 		next if $connected;
 		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
-		my $fail = 0;
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		my $fail       = 0;
+		my $raw        = "";
+		my $shell_call = "df -P && ls -l /shared/files/";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"df -P && ls -l /shared/files/",
+			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		
-		my $raw = "";
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$raw .= "$line\n";
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 			next if $fail;
 			
 			### TODO: Move these checks into a function. They duplicate gather_node_details().
@@ -9273,12 +9381,10 @@ sub read_files_on_shared
 	return ($connected);
 }
 
-### TODO: Switch to 'to_log'
 # Record a message to the log file.
 sub record
 {
 	my ($conf, $message)=@_;
-	my $an = $conf->{handle}{an};
 	
 	my $file_handle = $conf->{handles}{'log'} ? $conf->{handles}{'log'} : "";
 	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
@@ -9335,9 +9441,9 @@ sub scan_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; scan_cluster()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	AN::Striker::set_node_names ($conf);
+	AN::Striker::set_node_names($conf);
 	
 	# Show the 'scanning in progress' table.
 	# variables hash feeds 'message_0272'.
@@ -9363,7 +9469,7 @@ sub check_node_status
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; check_node_status()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
@@ -9415,7 +9521,7 @@ sub post_scan_calculations
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; post_scan_calculations()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "post_scan_calculations" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{resources}{total_ram}     = 0;
 	$conf->{resources}{total_cores}   = 0;
@@ -9506,34 +9612,6 @@ sub post_scan_calculations
 	{
 		$conf->{sys}{cman_down} = 1;
 	}
-	
-	# I want to map storage service to nodes for the "Withdraw" buttons.
-# 	foreach my $service (sort {$a cmp $b} keys %{$conf->{service}})
-# 	{
-# 		#record($conf, "$THIS_FILE ".__LINE__."; service: [$service]\n");
-# 		my $service_host  = $conf->{service}{$service}{host};
-# 		my $service_state = $conf->{service}{$service}{'state'};
-# 		next if $service !~ /storage/;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; service_host: [$service_host], service_state: [$service_state]\n");
-# 
-# 		my $short_host_name =  $service_host;
-# 		   $short_host_name =~ s/\..*?//;
-# 		#record($conf, "$THIS_FILE ".__LINE__."; short_host_name: [$short_host_name]\n");
-# 		#record($conf, "$THIS_FILE ".__LINE__."; node1:           [$conf->{node}{$node1}{info}{short_host_name}]\n");
-# 		#record($conf, "$THIS_FILE ".__LINE__."; node2:           [$conf->{node}{$node2}{info}{short_host_name}]\n");
-# 		if ($short_host_name eq $conf->{node}{$node1}{info}{short_host_name})
-# 		{
-# 			$conf->{node}{$node1}{storage_service_name}  = $service;
-# 			$conf->{node}{$node1}{storage_service_state} = $service_state;
-# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node1}{storage_service_name}], state: [$conf->{node}{$node1}{storage_service_state}]\n");
-# 		}
-# 		elsif ($short_host_name eq $conf->{node}{$node2}{info}{short_host_name})
-# 		{
-# 			$conf->{node}{$node2}{storage_service_name}  = $service;
-# 			$conf->{node}{$node2}{storage_service_state} = $service_state;
-# 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], storage service: [$conf->{node}{$node2}{storage_service_name}], state: [$conf->{node}{$node2}{storage_service_state}]\n");
-# 		}
-# 	}
 
 	return (0);
 }
@@ -9543,6 +9621,9 @@ sub post_node_calculations
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "post_node_calculations" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
@@ -9570,7 +9651,9 @@ sub comma
 {
 	my ($conf, $number) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; >> comma(); number: [$number]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "comma" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "number", value1 => $number, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Return if nothing passed.
 	return undef if not defined $number;
@@ -9613,6 +9696,9 @@ sub bytes_to_hr
 {
 	my ($conf, $size) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "bytes_to_hr" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "size", value1 => $size, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Expand exponential numbers.
 	if ($size =~ /(\d+)e\+(\d+)/)
@@ -9727,6 +9813,11 @@ sub hr_to_bytes
 {
 	my ($conf, $size, $type, $use_base2) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "hr_to_bytes" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "size",      value1 => $size, 
+		name2 => "type",      value2 => $type, 
+		name3 => "use_base2", value3 => $use_base2, 
+	}, file => $THIS_FILE, line => __LINE__});
 	# use_base2 will be set automatically *if* not passed by the caller.
 	
 	$type =  "" if not defined $type;
@@ -9850,13 +9941,15 @@ sub hr_to_bytes
 	return ($sign.$bytes);
 }
 
-# This tries to ping a node given it's name. If it doesn't answer, it tries 
-# again after adding/subtracting the '.remote' suffix. If that works, it will
-# change the node name.
+# This tries to ping a node given it's name. If it doesn't answer, it tries again after adding/subtracting
+# the '.remote' suffix. If that works, it will change the node name.
 sub ping_node
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $exit;
 	my $shell_call = "$conf->{path}{ping} -c 1 $node; echo ping:\$?";
@@ -9926,7 +10019,9 @@ sub gather_node_details
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; in gather_node_details() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_node_details" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This will flip true if I see dmidecode data, the first command I call
 	# on the node.
@@ -9941,113 +10036,123 @@ sub gather_node_details
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root], password: [$conf->{sys}{root_password}]\n");
 	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root]\n");
 	my $shell_call = "dmidecode -t 4,16,17";
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $dmidecode) = remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
 		password	=>	$conf->{sys}{root_password},
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmidecode: [$dmidecode (".@{$dmidecode}." lines)]\n");
+	my $dmidecode = $return;
 	if ($error)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Error: [$error], setting daemon states to 'Unknown'.\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "error", value1 => $error,
+		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{info}{'state'} = "<span class=\"highlight_warning_bold\">#!string!row_0041!#</span>";
 		$conf->{node}{$node}{info}{note}    = $error;
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 	}
-	
-	#record($conf, "$THIS_FILE ".__LINE__."; \@{$dmidecode}: [".@{$dmidecode}."]\n");
 	if ((ref($dmidecode)) && (@{$dmidecode} > 0))
 	{
 		$conf->{node}{$node}{connected} = 1;
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; connected: [$conf->{node}{$node}{connected}], ssh_fh: [$ssh_fh]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node::${node}::connected", value1 => $conf->{node}{$node}{connected},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{node}{$node}{connected})
 	{
 		# Record that this node is up.
 		$conf->{sys}{online_nodes} = 1;
 		$conf->{node}{$node}{up}   = 1;
 		push @{$conf->{up_nodes}}, $node;
-		#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::up: [$conf->{node}{$node}{up}], up_nodes: [".@{$conf->{up_nodes}}."]\n");
 		
-		### Get the rest of the shell calls done before starting to
-		### parse.
+		### Get the rest of the shell calls done before starting to parse.
 		# Get meminfo
 		my $shell_call = "cat /proc/meminfo";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $meminfo) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], meminfo: [$meminfo (".@{$meminfo}." lines)]\n");
+		my $meminfo = $return;
 		
 		# Get drbd info
 		$shell_call = "if [ -e /proc/drbd ]; then cat /proc/drbd; else echo 'drbd offline'; fi";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $proc_drbd) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], proc_drbd: [$proc_drbd (".@{$proc_drbd}." lines)]\n");
-		#foreach my $line (@{$proc_drbd}) { record($conf, "$THIS_FILE ".__LINE__."; proc_drbd line: [$line]\n"); }
+		my $proc_drbd = $return;
 		
 		$shell_call = "drbdadm dump-xml";
-		record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $parse_drbdadm_dumpxml) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], drbd_res_file: [$parse_drbdadm_dumpxml (".@{$parse_drbdadm_dumpxml}." lines)]\n");
+		my $parse_drbdadm_dumpxml = $return;
 		
 		# clustat info
 		$shell_call = "clustat";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $clustat) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], clustat: [$clustat (".@{$clustat}." lines)]\n");
+		my $clustat = $return;
 		
 		# Read cluster.conf
 		$shell_call = "cat /etc/cluster/cluster.conf";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $cluster_conf) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], cluster_conf: [$cluster_conf (".@{$cluster_conf}." lines)]\n");
+		my $cluster_conf = $return;
 		
-		### TODO: Break these up into individual calls to be cleaner.
 		# Read the daemon states
 		$shell_call = "
 /etc/init.d/rgmanager status; echo striker:rgmanager:\$?; 
@@ -10056,89 +10161,102 @@ sub gather_node_details
 /etc/init.d/clvmd status; echo striker:clvmd:\$?; 
 /etc/init.d/gfs2 status; echo striker:gfs2:\$?; 
 /etc/init.d/libvirtd status; echo striker:libvirtd:\$?;";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $daemons) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], daemons: [$daemons (".@{$daemons}." lines)]\n");
+		my $daemons = $return;
 		
 		# LVM data
 		$shell_call = "pvscan; vgscan; lvscan";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $lvm_scan) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], lvm_scan: [$lvm_scan (".@{$lvm_scan}." lines)]\n");
+		my $lvm_scan = $return;
+		
 		$shell_call = "
 pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
 vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
 lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $lvm_data) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], lvm_data: [$lvm_data (".@{$lvm_data}." lines)]\n");
+		my $lvm_data = $return;
 		
 		# GFS2 data
 		$shell_call = "cat /etc/fstab | grep gfs2 && df -hP";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $gfs2) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], gfs2: [$gfs2 (".@{$gfs2}." lines)]\n");
+		my $gfs2 = $return;
 		
 		# virsh data
 		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [virsh list --all]\n");
 		$shell_call = "virsh list --all";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $virsh) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], virsh: [$virsh (".@{$virsh}." lines)]\n");
+		my $virsh = $return;
 		
 		# VM definitions - from file
 		$shell_call = "cat /shared/definitions/*";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $vm_defs) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
+		my $vm_defs = $return;
 		
 		# VM definitions - in memory
 		$shell_call = "
@@ -10147,31 +10265,35 @@ do
     virsh dumpxml \$server; 
 done
 ";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $vm_defs_in_mem) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], vm_defs: [$vm_defs (".@{$vm_defs}." lines)]\n");
+		my $vm_defs_in_mem = $return;
 		
 		# Host name, in case the cluster isn't configured yet.
 		$shell_call = "hostname";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $hostname) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
-			'close'		=>	1,
+			ssh_fh		=>	"",
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hostname->[0]: [$hostname->[0]]\n");
+		my $hostname = $return;
 		if ($hostname->[0])
 		{
 			$conf->{node}{$node}{info}{host_name} = $hostname->[0]; 
@@ -10180,31 +10302,35 @@ done
 		
 		# Read the node's host file.
 		$shell_call = "cat /etc/hosts";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $hosts) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
-			'close'		=>	1,
+			ssh_fh		=>	"",
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], hosts: [$hosts]\n");
+		my $hosts = $return;
 		
 		# Read the node's dmesg.
 		$shell_call = "dmesg";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $dmesg) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
-			'close'		=>	1,
+			ssh_fh		=>	"",
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], dmesg: [$dmesg]\n");
+		my $dmesg = $return;
 		
 		### Last call, close the door on our way out.
 		# Bond data
@@ -10226,17 +10352,19 @@ else
         cat \$i;
     done;
 fi;";
-		#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		($error, $ssh_fh, my $bond) = remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
+			ssh_fh		=>	"",
 			'close'		=>	1,
 			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], bond: [$bond (".@{$bond}." lines)]\n");
+		my $bond = $return;
 		
 		parse_dmidecode      ($conf, $node, $dmidecode);
 		parse_meminfo        ($conf, $node, $meminfo);
@@ -10384,7 +10512,7 @@ sub get_rsa_public_key
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; get_rsa_public_key()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $rsa_public_key  = "";
 	my $rsa_public_file = "$conf->{path}{'striker_files'}/.ssh/id_rsa.pub";
@@ -10434,7 +10562,7 @@ sub get_hostname
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; get_hostname()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
@@ -10460,6 +10588,7 @@ sub remote_call
 {
 	my ($conf, $parameters) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remote_call" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]\n");
 	my $cluster    = $conf->{cgi}{cluster};
@@ -10606,7 +10735,10 @@ sub remote_call
 		}
 		else
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel], shell_call: [$shell_call]\n");
+			### NOTE: This will duplicate most shell calls log entries
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			$channel->exec("$shell_call");
 			
 			# This keeps the connection open when the remote side is slow
@@ -10690,13 +10822,15 @@ sub remote_call
 	return($error, $ssh_fh, $output);
 }
 
-# This parses the node's /etc/hosts file so that it can pull out the IPs for
-# anything matching the node's short name and record it in the local cache.
+# This parses the node's /etc/hosts file so that it can pull out the IPs for anything matching the node's 
+# short name and record it in the local cache.
 sub parse_hosts
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; parse_hosts(); node: [$node], array: [$array (".@{$array}." lines)]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_hosts" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})
 	{
@@ -10737,6 +10871,9 @@ sub parse_dmesg
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_dmesg" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})
 	{
@@ -10759,6 +10896,9 @@ sub parse_bonds
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_bonds" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $this_bond;
 	foreach my $line (@{$array})
@@ -10780,6 +10920,9 @@ sub parse_vm_defs_in_mem
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_vm_defs_in_mem" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs_in_mem() for node: [$node]\n");
 	my $this_vm    = "";
@@ -10826,6 +10969,9 @@ sub parse_vm_defs
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_vm_defs" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs() for node: [$node]\n");
 	my $this_vm    = "";
@@ -10872,6 +11018,9 @@ sub parse_dmidecode
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_dmidecode" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
 	#foreach my $line (@{$array}) { record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
@@ -11098,7 +11247,9 @@ sub parse_meminfo
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_meminfo() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_meminfo" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})
 	{
@@ -11119,6 +11270,9 @@ sub parse_proc_drbd
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_proc_drbd" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_proc_drbd() for node: [$node]\n");
 	my $resource     = "";
@@ -11287,6 +11441,9 @@ sub old_parse_drbd_status
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "old_parse_drbd_status" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbd_status() for node: [$node]\n");
 	my $resources = 0;
@@ -11342,7 +11499,9 @@ sub parse_drbdadm_dumpxml
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_drbdadm_dumpxml() for node: [$node], array: [$array]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_drbdadm_dumpxml" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Some variables we will fill later.
 	my $xml_data  = "";
@@ -11520,6 +11679,9 @@ sub parse_clustat
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_clustat" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Setup some variables.
 	my $in_member  = 0;
@@ -11617,22 +11779,27 @@ sub parse_clustat
 				if ($state eq "failed")
 				{
 					# Disable the VM.
-					my ($error, $ssh_fh, $output) = remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
+					my $shell_call = "clusvcadm -d $vm";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
 						password	=>	$conf->{sys}{root_password},
 						ssh_fh		=>	"",
-						'close'		=>	1,
-						shell_call	=>	"clusvcadm -d $vm",
+						'close'		=>	0,
+						shell_call	=>	$shell_call,
 					});
-					record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
-						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				
@@ -11672,43 +11839,53 @@ sub parse_clustat
 				
 				if ($state eq "failed")
 				{
-					# Disable the service and then call a
-					# start against it.
-					# Disable the VM.
-					my ($error, $ssh_fh, $output) = remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
+					# Disable the service.
+					my $shell_call = "clusvcadm -d service:$name";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
 						password	=>	$conf->{sys}{root_password},
 						ssh_fh		=>	"",
 						'close'		=>	0,
-						shell_call	=>	"clusvcadm -d service:$name",
+						shell_call	=>	$shell_call,
 					});
-					record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
-						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
+					
+					# Sleep for a short bit and the start the service back up.
 					sleep 5;
-					($error, $ssh_fh, $output) = remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
+					$shell_call = "clusvcadm -e service:$name";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
 						password	=>	$conf->{sys}{root_password},
-						ssh_fh		=>	$ssh_fh,
-						'close'		=>	1,
-						shell_call	=>	"clusvcadm -e service:$name",
+						ssh_fh		=>	"",
+						'close'		=>	0,
+						shell_call	=>	$shell_call,
 					});
-					record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
-						record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				
@@ -11766,7 +11943,9 @@ sub parse_cluster_conf
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; in parse_cluster_conf(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $in_fod          = 0;
 	my $current_fod     = "";
@@ -12000,21 +12179,26 @@ sub parse_cluster_conf
 						{
 							# Convert the script to a password.
 							my $shell_call = $password_script;
-							#record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-							my ($error, $ssh_fh, $output) = remote_call($conf, {
-								node		=>	$node,
-								port		=>	$conf->{node}{$node}{port},
-								user		=>	"root",
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "shell_call", value1 => $shell_call,
+								name2 => "node",       value2 => $node,
+							}, file => $THIS_FILE, line => __LINE__});
+							my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+								target		=>	$node,
+								port		=>	$conf->{node}{$node}{port}, 
 								password	=>	$conf->{sys}{root_password},
 								ssh_fh		=>	"",
 								'close'		=>	0,
 								shell_call	=>	$shell_call,
 							});
-							#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-							foreach my $line (@{$output})
+							foreach my $line (@{$return})
 							{
+								### NOTE: This exposes a password, log level 
+								###       is 4.
 								$password = $line;
-								#record($conf, "$THIS_FILE ".__LINE__."; password: [$password]\n");
+								$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+									name1 => "password", value1 => $password, 
+								}, file => $THIS_FILE, line => __LINE__});
 								last;
 							}
 						}
@@ -12064,6 +12248,9 @@ sub parse_daemons
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_daemons" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If all daemons are down, record here that I can shut down
 	# this VM. If any are up, enable withdrawl.
@@ -12147,6 +12334,9 @@ sub parse_lvm_scan
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_lvm_scan" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_scan() for node: [$node]\n");
 	foreach my $line (@{$array})
@@ -12205,6 +12395,9 @@ sub parse_lvm_data
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_lvm_data" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $in_pvs = 0;
 	my $in_vgs = 0;
@@ -12312,7 +12505,9 @@ sub parse_virsh
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_virsh(), node: [$node], array: [$array (".@{$array}." lines)]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_virsh" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})
 	{
@@ -12347,6 +12542,9 @@ sub parse_gfs2
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_gfs2" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $in_fs = 0;
 	#record($conf, "$THIS_FILE ".__LINE__."; in parse_gfs2() for node: [$node]\n");
@@ -12402,6 +12600,11 @@ sub set_daemons
 {
 	my ($conf, $node, $state, $class) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_daemons" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",  value1 => $node, 
+		name2 => "state", value2 => $state, 
+		name3 => "class", value3 => $class, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my @daemons = ("cman", "rgmanager", "drbd", "clvmd", "gfs2", "libvirtd");
 	foreach my $daemon (@daemons)
@@ -12417,7 +12620,9 @@ sub check_if_on
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; in check_if_on(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_on" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the peer is on, use it to check the power.
 	my $peer                    = "";
@@ -12450,22 +12655,24 @@ sub check_if_on
 			#$conf->{node}{$node}{info}{power_check_command} =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
 			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], calling: [$conf->{node}{$node}{info}{power_check_command} -o status]\n");
-		my ($error, $ssh_fh, $output) = remote_call($conf, {
-			node		=>	$peer,
-			port		=>	$conf->{node}{$peer}{port},
-			user		=>	"root",
+		my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
-			channel		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"$conf->{node}{$node}{info}{power_check_command} -o status",
+			shell_call	=>	$shell_call,
 		});
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
@@ -12550,13 +12757,15 @@ sub check_if_on
 	return(0);
 }
 
-# This takes a host name (or IP) and sees if it's reachable from the machine
-# running this program.
+# This takes a host name (or IP) and sees if it's reachable from the machine running this program.
 sub on_same_network
 {
 	my ($conf, $target_host, $node) = @_;
 	my $an = $conf->{handle}{an};
-	#record($conf, "$THIS_FILE ".__LINE__."; in on_same_network(); target host: [$target_host], node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "on_same_network" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "target_host", value1 => $target_host, 
+		name2 => "node",        value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $local_access = 0;
 	my $target_ip;
@@ -12718,7 +12927,9 @@ sub write_node_cache
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; in write_node_cache(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_node_cache" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# It's a program error to try and write the cache file when the node
 	# is down.
@@ -12777,10 +12988,12 @@ sub read_node_cache
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	record($conf, "$THIS_FILE ".__LINE__."; in read_node_cache(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_node_cache" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Write the command to disk so that I can check the power state
-	# in the future when both nodes are offline.
+	# Write the command to disk so that I can check the power state in the future when both nodes are
+	# offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
 	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");

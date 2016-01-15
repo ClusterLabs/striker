@@ -21,12 +21,15 @@ use AN::Cluster;
 my $THIS_FILE = 'AN::Common.pm';
 
 
-# This takes an integer and, if it is a valid CIDR range, returns the 
-# dotted-decimal equivalent. If it's not, it returns '#!INVALID!#'.
+# This takes an integer and, if it is a valid CIDR range, returns the dotted-decimal equivalent. If it's not,
+# it returns '#!INVALID!#'.
 sub convert_cidr_to_dotted_decimal
 {
 	my ($conf, $netmask) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_cidr_to_dotted_decimal" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "netmask", value1 => $netmask, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($netmask =~ /^\d{1,2}$/)
 	{
@@ -79,12 +82,15 @@ sub convert_cidr_to_dotted_decimal
 	return($netmask);
 }
 
-# This takes a dotted-decimal subnet mask and converts it to it's CIDR
-# equivalent. If it's not, it returns '#!INVALID!#'.
+# This takes a dotted-decimal subnet mask and converts it to it's CIDR equivalent. If it's not, it returns
+# '#!INVALID!#'.
 sub convert_dotted_decimal_to_cidr
 {
 	my ($conf, $netmask) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "convert_dotted_decimal_to_cidr" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "netmask", value1 => $netmask, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if    ($netmask eq "128.0.0.0")       { $netmask = 1; }
 	elsif ($netmask eq "192.0.0.0")       { $netmask = 2; }
@@ -130,6 +136,9 @@ sub create_rsync_wrapper
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rsync_wrapper" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
 	my $root_pw = $password ? $password : $conf->{clusters}{$cluster}{root_pw};
@@ -140,7 +149,9 @@ echo 'eval spawn rsync \$argv' >> ~/rsync.$node
 echo 'expect \"password:\" \{ send \"$root_pw\\n\" \}' >> ~/rsync.$node
 echo 'expect eof' >> ~/rsync.$node
 chmod 755 ~/rsync.$node;";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -151,23 +162,27 @@ chmod 755 ~/rsync.$node;";
 	return(0);
 }
 
-# This checks to see if we've see the peer before and if not, add it's ssh
-# fingerprint to known_hosts
+# This checks to see if we've see the peer before and if not, add it's ssh fingerprint to known_hosts.
 sub test_ssh_fingerprint
 {
 	my ($conf, $node, $silent) = @_;
 	my $an = $conf->{handle}{an};
 	$silent = 0 if not defined $silent;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; test_ssh_fingerprint(); node: [$node], silent: [$silent]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "test_ssh_fingerprint" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "silent", value2 => $silent, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: This won't detect when the target's SSH key changed after a node was replaced! Need to fix
-	###       this.
+	### NOTE: If the node is rebuilt, this will fail. We can't automate recovery because that would open
+	###       up a significant security vulnerability.
 	my $failed     = 0;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $root_pw    = $conf->{clusters}{$cluster}{root_pw};
 	my $shell_call = "grep ^\"$node\[, \]\" ~/.ssh/known_hosts -q; echo rc:\$?";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
-	open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -208,8 +223,10 @@ sub test_ssh_fingerprint
 					#print template($conf, "common.html", "shell-output-header");
 				}
 				my $shell_call = "$conf->{path}{'ssh-keyscan'} $node 2>&1 >> ~/.ssh/known_hosts";
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
-				open (my $file_handle, '-|', "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -232,6 +249,7 @@ sub get_current_directory
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_current_directory" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $current_dir = "/var/www/html/";
 	if ($ENV{DOCUMENT_ROOT})
@@ -255,6 +273,7 @@ sub get_date_and_time
 {
 	my ($conf, $variables) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date_and_time" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Set default values then check for passed parameters to over-write
 	# them with.
@@ -472,6 +491,7 @@ sub get_languages
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_languages" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	my $language_options = [];
 	
 	foreach my $key (sort {$a cmp $b} keys %{$conf->{strings}{lang}})
@@ -488,6 +508,7 @@ sub get_string
 {
 	my ($conf, $vars) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_string" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
@@ -548,6 +569,7 @@ sub get_wrapped_string
 {
 	my ($conf, $vars) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_wrapped_string" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#print __LINE__."; vars: [$vars]\n";
 	my $string = wrap_string($conf, get_string($conf, $vars));
@@ -555,13 +577,11 @@ sub get_wrapped_string
 	return($string);
 }
 
-# This funtion does not try to parse anything, use templates or what have you.
-# It's very close to a simple 'die'. This should be used as rarely as possible
-# as translations can't be used.
+# This funtion does not try to parse anything, use templates or what have you. It's very close to a simple
+# 'die'. This should be used as rarely as possible as translations can't be used.
 sub hard_die
 {
 	my ($conf, $file, $line, $exit_code, $message) = @_;
-	my $an = $conf->{handle}{an};
 	
 	$file      = "--" if not defined $file;
 	$line      = 0    if not defined $line;
@@ -1169,7 +1189,7 @@ sub check_global_settings
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_global_settings()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_global_settings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $global_set = 1;
 	
@@ -1197,12 +1217,11 @@ sub check_global_settings
 	return($global_set);
 }
 
-# At this point in time, all this does is print the content type needed for
-# printing to browsers.
+# At this point in time, all this does is print the content type needed for printing to browsers. '$an' is 
+# not set yet here.
 sub initialize_http
 {
 	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
 	
 	print "Content-type: text/html; charset=utf-8\n\n";
 	
@@ -1214,6 +1233,9 @@ sub insert_variables_into_string
 {
 	my ($conf, $string, $variables) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_variables_into_string" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $i = 0;
 	#print "$THIS_FILE ".__LINE__."; string: [$string], variables: [$variables]\n";
@@ -1247,11 +1269,10 @@ sub insert_variables_into_string
 	return($string);
 }
 
-# This reads in the configuration file.
+# This reads in the configuration file. '$an' is not set yet here.
 sub read_configuration_file
 {
 	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
 	
 	my $return_code = 1;
 	if (-e $conf->{path}{config_file})
@@ -1259,7 +1280,7 @@ sub read_configuration_file
 		   $conf->{raw}{config_file} = [];
 		   $return_code              = 0;
 		my $shell_call               = "$conf->{path}{config_file}";
-		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		binmode $file_handle, ":utf8:";
 		while (<$file_handle>)
 		{
@@ -1287,76 +1308,9 @@ sub read_configuration_file
 	return($return_code);
 }
 
-# This records log messages to the log file.
-sub to_log
-{
-	my ($conf, $variables) = @_;
-	my $an = $conf->{handle}{an};
-	
-	my $line    = $variables->{line}    ? $variables->{line}    : "--";
-	my $file    = $variables->{file}    ? $variables->{file}    : "--";
-	my $level   = $variables->{level}   ? $variables->{level}   : 1;
-	my $message = $variables->{message} ? $variables->{message} : "--";
-	
-	#print "<pre>record; line: [$line], file: [$file], level: [$level] (sys::log_level: [$conf->{sys}{log_level}]), message: [$message]</pre>\n";
-	if ($conf->{sys}{log_level} >= $level)
-	{
-		# Touch the file if it doesn't exist yet.
-		#print "[ Debug ] - Checking if: [$conf->{path}{log_file}] is writable...\n";
-		if (not -w $conf->{path}{log_file})
-		{
-			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
-			#       is hard-coded to use '/var/log/striker.log'.
-			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
-			my $shell_call = $conf->{path}{'touch_striker.log'};
-			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				#print "[ Debug ] - Output: [$line]\n";
-			}
-			close $file_handle;
-			
-			#print "[ Debug ] - Checking if it is writable now...\n";
-			if (not -w $conf->{path}{log_file})
-			{
-				#print "[ Error ] - Failed to make: [$conf->{path}{log_file}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
-				exit(1);
-			}
-		}
-		
-		my $file_handle = $conf->{handles}{'log'};
-		if (not $file_handle)
-		{
-			my $shell_call = $conf->{path}{log_file};
-			open (my $file_handle, ">>", "$shell_call") or hard_die($conf, $THIS_FILE, __LINE__, 13, "Unable to open the file: [$shell_call] for writing. The error was: $!.\n");
-			$file_handle->autoflush(1);
-			$conf->{handles}{'log'} = $file_handle;
-			
-			my $current_dir         = get_current_directory($conf);
-			my $log_file            = $current_dir."/".$conf->{path}{log_file};
-			if ($conf->{path}{log_file} =~ /^\//)
-			{
-				$log_file = $conf->{path}{log_file};
-			}
-			my ($date, $time)  = get_date_and_time($conf);
-			my $say_log_header = get_string($conf, {language => $conf->{sys}{log_language}, key => "log_0001", variables => {
-				date	=>	$date,
-				'time'	=>	$time,
-			}});
-			print $file_handle "-=] $say_log_header\n";
-		}
-		print $file_handle "$file $line; $message";
-	}
-	
-	return(0);
-}
-
-# This takes the name of a template file, the name of a template section within
-# the file, an optional hash containing replacement variables to feed into the
-# template and an optional hash containing variables to pass into strings, and
-# generates a page to display formatted according to the page.
+# This takes the name of a template file, the name of a template section within the file, an optional hash
+# containing replacement variables to feed into the template and an optional hash containing variables to
+# pass into strings, and generates a page to display formatted according to the page.
 sub template
 {
 	my ($conf, $file, $template, $replace, $variables, $hide_template_name) = @_;
@@ -1364,6 +1318,11 @@ sub template
 	$replace            = {} if not defined $replace;
 	$variables          = {} if not defined $variables;
 	$hide_template_name = 0 if not defined $hide_template_name;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "template" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "file",               value1 => $file, 
+		name2 => "template",           value2 => $template, 
+		name3 => "hide_template_name", value3 => $hide_template_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my @contents;
 	# Down the road, I may want to have different suffixes depending on the
@@ -1385,7 +1344,10 @@ sub template
 	# Read in the raw template.
 	my $in_template = 0;
 	my $shell_call  = "$template_file";
-	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	#binmode $file_handle, ":utf8:";
 	while (<$file_handle>)
 	{
@@ -1445,8 +1407,9 @@ sub process_string
 {
 	my ($conf, $string, $variables) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
-	#print __LINE__."; i. string: [$string], variables: [$variables]\n";
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Insert variables into #!variable!x!# 
 	my $i = 0;
@@ -1495,6 +1458,9 @@ sub process_string_insert_strings
 {
 	my ($conf, $string, $variables) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_insert_strings" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	#print __LINE__."; A. string: [$string], variables: [$variables]\n";
 	while ($string =~ /#!string!(.+?)!#/)
@@ -1527,6 +1493,9 @@ sub process_string_conf_escape_variables
 {
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_conf_escape_variables" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	while ($string =~ /#!conf!(.+?)!#/)
 	{
@@ -1556,6 +1525,9 @@ sub process_string_protect_escape_variables
 {
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_protect_escape_variables" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	foreach my $check ($string =~ /#!(.+?)!#/)
 	{
@@ -1573,12 +1545,17 @@ sub process_string_protect_escape_variables
 	return($string);
 }
 
-# This is used by the 'template()' function to insert '#!replace!...!#' 
-# replacement variables in templates.
+# This is used by the 'template()' function to insert '#!replace!...!#' replacement variables in templates.
 sub process_string_replace
 {
 	my ($conf, $string, $replace, $template_file, $template) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_replace" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "string",        value1 => $string, 
+		name2 => "replace",       value2 => $replace, 
+		name3 => "template_file", value3 => $template_file, 
+		name4 => "template",      value4 => $template, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $i = 0;
 	while ($string =~ /#!replace!(.+?)!#/)
@@ -1605,6 +1582,9 @@ sub process_string_restore_escape_variables
 {
 	my ($conf, $string)=@_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_restore_escape_variables" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Restore and unrecognized substitution values.
 	my $i = 0;
@@ -1624,12 +1604,16 @@ sub process_string_restore_escape_variables
 	return($string);
 }
 
+### NOTE: In this function, I have to check to see if '$an' is defined because very early on, it isn't.
 # This reads in the strings XML file.
 sub read_strings
 {
 	my ($conf, $file) = @_;
 	my $an = $conf->{handle}{an};
-	
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_strings" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "file", value1 => $file, 
+	}, file => $THIS_FILE, line => __LINE__}) if defined $an;
+
 	my $string_ref = $conf;
 
 	my $in_comment  = 0;	# Set to '1' when in a comment stanza that spans more than one line.
@@ -1641,8 +1625,10 @@ sub read_strings
 	my $key_name    = "";	# This is a double-colon list of hash keys used to build each hash element.
 	
 	my $shell_call  = "$file";
-	#print "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n";
-	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__}) if defined $an;
+	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	if ($conf->{strings}{force_utf8})
 	{
 		binmode $file_handle, "encoding(utf8)";
@@ -1867,6 +1853,9 @@ sub wrap_string
 {
 	my ($conf, $string) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wrap_string" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "string", value1 => $string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $wrap_to = get_screen_width($conf);
 	
@@ -1945,6 +1934,7 @@ sub get_screen_width
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_screen_width" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cols = 0;
 	open my $file_handle, '-|', "$conf->{path}{tput}", "cols" or die "Failed to call: [$conf->{path}{tput} cols]\n";
@@ -1983,13 +1973,15 @@ sub _add_hash_reference
 	}
 }
 
-# This is the reverse of '_make_hash_reference()'. It takes a double-colon
-# separated string, breaks it up and returns the value stored in the
-# corosponding $conf hash.
+# This is the reverse of '_make_hash_reference()'. It takes a double-colon separated string, breaks it up and
+# returns the value stored in the corosponding $conf hash.
 sub _get_hash_value_from_string
 {
 	my ($conf, $key_string) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_get_hash_value_from_string" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "key_string", value1 => $key_string, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my @keys      = split /::/, $key_string;
 	my $last_key  = pop @keys;

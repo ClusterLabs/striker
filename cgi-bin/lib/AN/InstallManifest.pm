@@ -50,6 +50,7 @@ sub run_new_install_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "run_new_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "common.html", "scanning-message");
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-header");
@@ -389,7 +390,7 @@ sub enable_tools
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_tools()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# sas_rc  == safe_anvil_start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
@@ -632,7 +633,10 @@ sub enable_tools_on_node
 {
 	my ($conf, $node, $password, $node_name) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",      value1 => $node, 
+		name2 => "node_name", value2 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### safe_anvil_start
 	# If requested, enable safe_anvil_start, otherwise, disable it.
@@ -826,29 +830,10 @@ sub configure_striker_tools
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_striker_tools()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_striker_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Configure Striker tools and Scancore.
 	my ($ok) = configure_scancore($conf);
-	
-	### NOTE: No longer needed, simply calling '--enable' or '--disable' in needed now.
-	#if ($ok)
-	#{
-		# This sets up an rc3.d link. When called, it will enable safe_anvil_start in striker.conf
-		# if called with the argument 'start'. This will let the crontab entry run once, and then
-		# safe_anvil_start will disable itself again. This way, it will run on boot without blocking
-		# the boot process.
-		#($ok) = configure_safe_anvil_start($conf);
-		
-		### Disabled, moving to having it always run and simply disable/enable it via striker.conf.
-		### So the rc3.d link shouldn't be needed anymore.
-		#if ($ok)
-		#{
-		#	# This does the same this for 'anvil-kick-apc-ups'. The only main difference is that
-		#	# it keeps running until it is disabled.
-		#	($ok) = enable_anvil_kick_apc_ups($conf);
-		#}
-	#}
 	
 	return($ok);
 }
@@ -858,7 +843,10 @@ sub configure_scancore_on_node
 {
 	my ($conf, $node, $password, $node_name) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore_on_node(); node: [$node], node_name: [$node_name]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore_on_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",      value1 => $node, 
+		name2 => "node_name", value2 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	my $message     = "";
@@ -1327,7 +1315,7 @@ sub configure_scancore
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_scancore()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
@@ -1481,7 +1469,9 @@ sub enable_anvil_kick_apc_ups_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_anvil_kick_apc_ups_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 0;
 	my $shell_call = "
@@ -1548,7 +1538,9 @@ sub configure_safe_anvil_start_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_safe_anvil_start_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 0;
 	
@@ -1617,7 +1609,7 @@ sub enable_anvil_kick_apc_ups
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; enable_anvil_kick_apc_ups()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_anvil_kick_apc_ups" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my ($node1_rc) = enable_anvil_kick_apc_ups_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -1690,7 +1682,7 @@ sub configure_safe_anvil_start
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_safe_anvil_start()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_safe_anvil_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my ($node1_rc) = configure_safe_anvil_start_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -1764,7 +1756,7 @@ sub update_install_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_install_manifest()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1           = $conf->{cgi}{anvil_node1_current_ip};
 	my $node1_bcn_link1 = $conf->{conf}{node}{$node1}{set_nic}{bcn_link1};
@@ -2018,7 +2010,7 @@ sub check_local_repo
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_local_repo()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Call the gather system info tool to get the BCN and IFN IPs.
 	my $shell_call = "$conf->{path}{'call_gather-system-info'}";
@@ -2091,7 +2083,7 @@ sub check_if_in_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_if_in_cluster()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "
 if [ -e '/etc/init.d/cman' ];
@@ -2181,7 +2173,7 @@ sub check_config_for_anvil
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_config_for_anvil()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_config_for_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_configured = 0;
 	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
@@ -2206,7 +2198,7 @@ sub configure_storage_stage3
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage3()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage3" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	
@@ -2287,7 +2279,9 @@ sub watch_clustat
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; watch_clustat(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "watch_clustat" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If a service comes up 'failed', we will try to restart it because, if it failed in a previous run,
 	# it will stay failed until it is disabled so this provides something of an ability to self-heal.
@@ -2502,13 +2496,16 @@ sub watch_clustat
 	return($ok);
 }
 
-# This will call disable -> enable on a given service to try and recover if
-# from a 'failed' state.
+# This will call disable -> enable on a given service to try and recover if from a 'failed' state.
 sub restart_rgmanager_service
 {
 	my ($conf, $node, $password, $service, $do) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; restart_rgmanager_service(); node: [$node], service: [$service], do: [$do]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "restart_rgmanager_service" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",    value1 => $node, 
+		name2 => "service", value2 => $service, 
+		name3 => "do",      value3 => $do, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This is something of a 'hail mary' pass, so not much sanity checking
 	# is done (yet).
@@ -2542,7 +2539,9 @@ sub start_rgmanager_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_rgmanager_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my $shell_call = "/etc/init.d/rgmanager start; echo rc:\$?";
@@ -2584,7 +2583,7 @@ sub configure_gfs2
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_gfs2()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my ($node1_rc) = setup_gfs2_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -2695,13 +2694,14 @@ sub configure_gfs2
 	return($ok);
 }
 
-# This will manually mount the GFS2 partition on the node, configuring
-# /etc/fstab in the process if needed.
+# This will manually mount the GFS2 partition on the node, configuring /etc/fstab in the process if needed.
 sub setup_gfs2_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I have the UUID, then check/set fstab
 	my $return_code = 0;
@@ -2957,7 +2957,9 @@ sub setup_gfs2
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_gfs2(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($lv_ok) = create_shared_lv($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; lv_ok: [$lv_ok]\n");
@@ -3102,7 +3104,9 @@ sub create_shared_lv
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_shared_lv(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_shared_lv" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 0;
 	my $create_lv   = 1;
@@ -3217,7 +3221,7 @@ sub setup_lvm_pv_and_vgs
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; setup_lvm_pv_and_vgs()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_lvm_pv_and_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Start 'clvmd' on both nodes.
 	my $return_code = 0;
@@ -3339,7 +3343,9 @@ sub create_lvm_vgs
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_vgs(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_vgs" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If a VG name exists, use it. Otherwise, use the generated names
 	# below.
@@ -3503,7 +3509,9 @@ sub create_lvm_pvs
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_lvm_pvs(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_pvs" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: This seems to occassionally see only the first PV despite
 	###       both existing. Unable to reproduce on the shell.
@@ -3652,7 +3660,9 @@ sub start_clvmd_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_clvmd_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_clvmd_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	my $shell_call  = "
@@ -3711,7 +3721,7 @@ sub drbd_first_start
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drbd_first_start()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "drbd_first_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	
@@ -3998,13 +4008,14 @@ sub drbd_first_start
 	return($ok);
 }
 
-# This connects to node 1 and checks to ensure both resource are in the
-# 'Connected' state
+# This connects to node 1 and checks to ensure both resource are in the 'Connected' state.
 sub verify_drbd_resources_are_connected
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_drbd_resources_are_connected()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_drbd_resources_are_connected" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Give the previous start call a few seconds to take effect.
 	sleep 5;
@@ -4075,7 +4086,11 @@ sub do_drbd_primary_on_node
 {
 	my ($conf, $node, $password, $force_r0, $force_r1) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_primary_on_node(); force_r0: [$force_r0], force_r1: [$force_r1]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_primary_on_node" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",     value1 => $node, 
+		name2 => "force_r0", value2 => $force_r0, 
+		name3 => "force_r1", value3 => $force_r1, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Resource 0
 	my $return_code = 0;
@@ -4191,13 +4206,14 @@ sub do_drbd_primary_on_node
 	return($return_code, $message);
 }
 
-# This uses node 1 to check the Connected disk states of the resources are both
-# Inconsistent.
+# This uses node 1 to check the Connected disk states of the resources are both Inconsistent.
 sub check_drbd_if_force_primary_is_needed
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_drbd_if_force_primary_is_needed(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_drbd_if_force_primary_is_needed" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 0;
 	my $found_r0    = 0;
@@ -4286,7 +4302,9 @@ sub do_drbd_connect_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_connect_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_connect_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $message     = "";
 	my $return_code = 0;
@@ -4483,7 +4501,9 @@ sub do_drbd_attach_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_drbd_attach_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_attach_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $message     = "";
 	my $return_code = 0;
@@ -4670,7 +4690,7 @@ sub configure_ssh
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ssh()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Three steps; 
 	# 1. Get/generate RSA keys
@@ -4756,13 +4776,16 @@ sub configure_ssh
 	return($ok);
 }
 
-# This adds each node's RSA public key to the node's ~/.ssh/authorized_keys
-# file if needed.
+# This adds each node's RSA public key to the node's ~/.ssh/authorized_keys file if needed.
 sub populate_authorized_keys_on_node
 {
 	my ($conf, $node, $password, $node1_rsa, $node2_rsa) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_authorized_keys_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_authorized_keys_on_node" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",      value1 => $node, 
+		name2 => "node1_rsa", value2 => $node1_rsa, 
+		name3 => "node2_rsa", value3 => $node2_rsa, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If a node is being rebuilt, it's old keys will no longer be valid. To
 	# deal with this, we simply remove existing keys and re-add them.
@@ -4897,7 +4920,9 @@ sub populate_known_hosts_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; populate_known_hosts_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_known_hosts_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	foreach my $name (@{$conf->{sys}{node_names}})
@@ -4959,7 +4984,9 @@ sub get_node_rsa_public_key
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_node_rsa_public_key(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_rsa_public_key" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rsa_key = "";
 	#ssh-keygen -t rsa -N "" -b 8191 -f ~/.ssh/id_rsa
@@ -5012,7 +5039,7 @@ sub start_cman
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1_rc = 0;
 	my $node2_rc = 0;
@@ -5209,7 +5236,9 @@ sub check_fencing_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_fencing_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fencing_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $message = "";
 	my $ok      = 1;
@@ -5259,7 +5288,9 @@ sub start_cman_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "/etc/init.d/cman start";
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
@@ -5287,7 +5318,7 @@ sub start_cman_on_both_nodes
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; start_cman_on_both_nodes()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_both_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	### NOTE: This is heavily based on AN::Striker::dual_join, but stripped
@@ -5397,7 +5428,10 @@ sub ping_node_from_other
 {
 	my ($conf, $node, $password, $target_ip) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_node_from_other(); node: [$node], target_ip: [$target_ip]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_node_from_other" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node",      value1 => $node, 
+		name2 => "target_ip", value2 => $target_ip, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success    = 0;
 	my $ping_rc    = 255;
@@ -5441,7 +5475,7 @@ sub set_ricci_password
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_ricci_password()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_ricci_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
 	###       This might change later, so this function is designed to
@@ -5491,7 +5525,7 @@ sub configure_selinux
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# For now, this always returns "success".
 	my ($node1_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -5534,7 +5568,9 @@ sub configure_selinux_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_selinux_on_node(); node: [$node], password: [--]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Create the backup directory if it doesn't exist yet.
 	my $return_code = 0;
@@ -5584,7 +5620,7 @@ sub set_root_password
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_root_password()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_root_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
 	###       This might change later, so this function is designed to
@@ -5630,13 +5666,16 @@ sub set_root_password
 	return($ok);
 }
 
-# This updates the ricci and root passwords, and closes the connection after
-# 'root' is changed. After this function, the next login will be a new one.
+# This updates the ricci and root passwords, and closes the connection after 'root' is changed. After this 
+# function, the next login will be a new one.
 sub set_password_on_node
 {
 	my ($conf, $node, $password, $user, $new_password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_password_on_node(); node: [$node], user: [$user], new_password: [$new_password]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_password_on_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "user", value2 => $user, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Set the 'ricci' password first.
 	my $shell_call = "echo '$new_password' | passwd $user --stdin";
@@ -5664,7 +5703,7 @@ sub backup_files
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; backup_files()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	backup_files_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	backup_files_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -5690,6 +5729,9 @@ sub backup_files_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Create the backup directory if it doesn't exist yet.
 	my $shell_call = "
@@ -5867,6 +5909,7 @@ sub configure_ipmi
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my ($node1_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_ipmi_ip}, $conf->{cgi}{anvil_node1_ipmi_netmask}, $conf->{cgi}{anvil_node1_ipmi_password}, $conf->{cgi}{anvil_node1_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
@@ -6002,7 +6045,12 @@ sub configure_ipmi_on_node
 {
 	my ($conf, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ipmi_on_node(); node: [$node], ipmi_ip: [$ipmi_ip], ipmi_netmask: [$ipmi_netmask], ipmi_password: [$ipmi_password], ipmi_user: [$ipmi_user], ipmi_gateway: [$ipmi_gateway]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi_on_node" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "node",         value1 => $node, 
+		name2 => "ipmi_netmask", value2 => $ipmi_netmask, 
+		name3 => "ipmi_user",    value3 => $ipmi_user, 
+		name4 => "ipmi_gateway", value4 => $ipmi_gateway, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	# 0 = Configured
@@ -6367,7 +6415,7 @@ sub configure_daemons
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO:
 	my ($node1_ok, $node1_messages) = configure_daemons_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -6456,7 +6504,9 @@ sub configure_daemons_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_daemons_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok     = 1;
 	my $return = "";
@@ -6599,7 +6649,11 @@ sub set_daemon_state
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_daemon_state(); node: [$node], daemon: [$daemon] setting state: [$state]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_daemon_state" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "daemon", value2 => $daemon, 
+		name3 => "state",  value3 => $state, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc         = "";
 	my $shell_call = "/etc/init.d/$daemon $state; echo rc:\$?";
@@ -6633,7 +6687,10 @@ sub get_daemon_state
 {
 	my ($conf, $node, $password, $daemon) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_daemon_state(); node: [$node], daemon: [$daemon]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "daemon", value2 => $daemon, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# LSB says
 	# 0 == running
@@ -6707,7 +6764,11 @@ sub set_chkconfig
 {
 	my ($conf, $node, $password, $daemon, $state) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; set_chkconfig(); node: [$node], daemon: [$daemon], state: [$state]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_chkconfig" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "daemon", value2 => $daemon, 
+		name3 => "state",  value3 => $state, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	my $shell_call = "chkconfig $daemon $state";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
@@ -6730,13 +6791,15 @@ sub set_chkconfig
 }
 
 
-# This calls 'chkconfig' and return '1' or '0' based on whether the daemon is
-# set to run on boot or not
+# This calls 'chkconfig' and return '1' or '0' based on whether the daemon is set to run on boot or not.
 sub get_chkconfig_data
 {
 	my ($conf, $node, $password, $daemon) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_chkconfig_data(); node: [$node], daemon: [$daemon]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_chkconfig_data" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "daemon", value2 => $daemon, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $init3 = 255;
 	my $init5 = 255;
@@ -6783,7 +6846,7 @@ sub configure_clvmd
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_clvmd()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_clvmd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will read in the existing lvm.conf on both nodes and, if either
 	# has a custom filter, preserve it and use it on the peer. If this
@@ -6848,7 +6911,7 @@ sub generate_lvm_conf
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_lvm_conf()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_lvm_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom
 	# filter line. The rest of the config will be loaded into memory and,
@@ -6927,7 +6990,9 @@ sub write_lvm_conf_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; write_lvm_conf_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_lvm_conf_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc = 0;
 	my $shell_call =  "cat > $conf->{path}{nodes}{lvm_conf} << EOF\n";
@@ -6952,12 +7017,15 @@ sub write_lvm_conf_on_node
 	return($rc);
 }
 
-# This reads in the actual lvm.conf from the node, updating the config in the
-# process, storing a version suitable for clustered LVM.
+# This reads in the actual lvm.conf from the node, updating the config in the process, storing a version 
+# suitable for clustered LVM.
 sub read_lvm_conf_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_lvm_conf_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read it in
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -7061,6 +7129,7 @@ sub reboot_nodes
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "reboot_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If neither node needs a reboot, don't print the lengthy message.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -7185,7 +7254,10 @@ sub do_node_reboot
 {
 	my ($conf, $node, $password, $new_bcn_ip) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; do_node_reboot(); node: [$node], password: [$password], new_bcn_ip: [$new_bcn_ip]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_node_reboot" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",       value1 => $node, 
+		name2 => "new_bcn_ip", value2 => $new_bcn_ip, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::reboot_needed: [$conf->{node}{$node}{reboot_needed}]\n");
@@ -7309,7 +7381,9 @@ sub ping_ip
 {
 	my ($conf, $ip) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_ip(); ip: [$ip]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_ip" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success    = 0;
 	my $ping_rc    = 255;
@@ -7342,13 +7416,14 @@ sub ping_ip
 	return($success);
 }
 
-# This function first tries to ping a node. If the ping is successful, it will
-# try to log into the node.
+# This function first tries to ping a node. If the ping is successful, it will try to log into the node..
 sub connect_to_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; connect_to_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "connect_to_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# 0 = Successfully logged in
 	# 1 = Could ping, but couldn't log in
@@ -7381,7 +7456,10 @@ sub add_repo_to_node
 {
 	my ($conf, $node, $password, $url) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_repo_to_node(); node: [$node], url: [$url]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_repo_to_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "url",  value2 => $url, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc = 0;
 	my $repo_file = ($url =~ /^.*\/(.*?)$/)[0];
@@ -7443,6 +7521,7 @@ sub add_user_repositories
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_user_repositories" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; anvil_repositories: [$conf->{cgi}{anvil_repositories}]\n");
 	if ($conf->{cgi}{anvil_repositories})
@@ -7541,7 +7620,12 @@ sub create_partitions_on_node
 {
 	my ($conf, $node, $password, $disk, $pool1_size, $pool2_size) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partitions_on_node(); node: [$node], password: [$password], disk: [$disk], pool1_size: [$pool1_size], pool2_size: [$pool2_size]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_partitions_on_node" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "node",       value1 => $node, 
+		name2 => "disk",       value2 => $disk, 
+		name3 => "pool1_size", value3 => $pool1_size, 
+		name4 => "pool2_size", value4 => $pool2_size, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the disk to use is 'Xda', skip the first three partitions
 	# as they will be for the OS.
@@ -7719,7 +7803,12 @@ sub create_partition_on_node
 {
 	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; create_partition_on_node(); node: [$node], disk: [$disk], type: [$type], partition_size: [$partition_size]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "an_variables_0004", message_variables => { 
+		name1 => "node",           value1 => $node, 
+		name2 => "disk",           value2 => $disk, 
+		name3 => "type",           value3 => $type, 
+		name4 => "partition_size", value4 => $partition_size, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $created = 0;
 	my $ok      = 1;
@@ -7885,7 +7974,10 @@ sub check_device_for_drbd_metadata
 {
 	my ($conf, $node, $password, $device) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_device_for_drbd_metadata(); node: [$node], device: [$device].\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_device_for_drbd_metadata" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "device", value2 => $device, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $is_drbd    = 0;
 	my $shell_call = "drbdmeta --force 0 v08 $device internal dump-md; echo rc:\$?";
@@ -7927,7 +8019,10 @@ sub check_blkid_partition
 {
 	my ($conf, $node, $password, $device) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_blkid_partition(); node: [$node], device: [$device].\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_blkid_partition" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "device", value2 => $device, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $uuid       = "";
 	my $type       = "";
@@ -7963,7 +8058,10 @@ sub check_for_drbd_metadata
 {
 	my ($conf, $node, $password, $device) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_for_drbd_metadata(); node: [$node], device: [$device].\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_drbd_metadata" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",   value1 => $node, 
+		name2 => "device", value2 => $device, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(3) if not $device;
 	
@@ -8082,7 +8180,10 @@ sub get_partition_data_from_node
 {
 	my ($conf, $node, $disk, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_partition_data_from_node(); node: [$node], disk: [$disk], password: [$password]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "disk", value2 => $disk, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
 	my $shell_call = "parted /dev/$disk unit GiB print free";
@@ -8159,7 +8260,7 @@ sub configure_storage_stage1
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage1()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage1" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -8399,56 +8500,6 @@ sub configure_storage_stage1
 		node2_message	=>	$node2_pool1_message,
 	});
 	
-	### Pool 2 no longer supported.
-# 	# Pool 2 message
-# 	# Default to 'created'.
-# 	my $node1_pool2_class   = "highlight_good_bold";
-# 	my $node1_pool2_message = "#!string!state_0045!#";
-# 	my $node2_pool2_class   = "highlight_good_bold";
-# 	my $node2_pool2_message = "#!string!state_0045!#";
-# 	if ($node1_pool2_created eq "0")
-# 	{
-# 		# Failed
-# 		$node1_pool2_class   = "highlight_warning_bold";
-# 		$node1_pool2_message = "#!string!state_0018!#",
-# 		$ok                  = 0;
-# 	}
-# 	elsif ($node1_pool2_created eq "2")
-# 	{
-# 		# Already existed.
-# 		$node1_pool2_message = "#!string!state_0020!#",
-# 	}
-# 	elsif ($node1_pool2_created eq "3")
-# 	{
-# 		# Not needed..
-# 		$node1_pool2_message = "#!string!state_0047!#",
-# 	}
-# 	if ($node2_pool2_created eq "0")
-# 	{
-# 		# Failed
-# 		$node2_pool2_class   = "highlight_warning_bold";
-# 		$node2_pool2_message = "#!string!state_0018!#",
-# 		$ok                  = 0;
-# 	}
-# 	elsif ($node2_pool2_created eq "2")
-# 	{
-# 		# Already existed.
-# 		$node2_pool2_message = "#!string!state_0020!#",
-# 	}
-# 	elsif ($node2_pool2_created eq "3")
-# 	{
-# 		# Not needed..
-# 		$node2_pool2_message = "#!string!state_0047!#",
-# 	}
-# 	# Pool 1 message
-# 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-# 		row		=>	"#!string!row_0248!#",
-# 		node1_class	=>	$node1_pool2_class,
-# 		node1_message	=>	$node1_pool2_message,
-# 		node2_class	=>	$node2_pool2_class,
-# 		node2_message	=>	$node2_pool2_message,
-# 	});
-	
 	return($ok);
 }
 
@@ -8456,7 +8507,7 @@ sub configure_storage_stage2
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_storage_stage2()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
@@ -8583,105 +8634,6 @@ sub configure_storage_stage2
 		node2_message	=>	$node2_message,
 	});
 	
-	### Pool 2 no longer supported
-# 	## Now Pool 2
-# 	$node1_class   = "highlight_good_bold";
-# 	$node1_message = "#!string!state_0045!#";
-# 	$node2_class   = "highlight_good_bold";
-# 	$node2_message = "#!string!state_0045!#";
-# 	$message       = "";
-# 	# Node 1, Pool 2
-# 	if ($node1_pool2_rc eq "1")
-# 	{
-# 		# Already existed
-# 		$node1_message = "#!string!state_0020!#";
-# 	}
-# 	elsif ($node1_pool2_rc eq "2")
-# 	{
-# 		$node1_class   = "highlight_warning_bold";
-# 		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node1_pool2_rc eq "3")
-# 	{
-# 		$node1_class   = "highlight_warning_bold";
-# 		$node1_message = "#!string!state_0056!#";
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node1_pool2_rc eq "4")
-# 	{
-# 		$node1_class   = "highlight_warning_bold";
-# 		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-# 		$show_lvm_note = 1;
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node1_pool2_rc eq "5")
-# 	{
-# 		$node1_class   = "highlight_warning_bold";
-# 		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool2}{device} }});
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node1_pool2_rc eq "6")
-# 	{
-# 		$node1_class   = "highlight_warning_bold";
-# 		$node1_message = "#!string!state_0059!#";
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node1_pool2_rc eq "7")
-# 	{
-# 		$node1_class   = "highlight_good_bold";
-# 		$node1_message = "#!string!state_0047!#";
-# 	}
-# 	# Node 2, Pool 2
-# 	if ($node2_pool2_rc eq "1")
-# 	{
-# 		# Already existed
-# 		$node2_message = "#!string!state_0020!#";
-# 	}
-# 	elsif ($node2_pool2_rc eq "2")
-# 	{
-# 		$node2_class   = "highlight_warning_bold";
-# 		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node2_pool2_rc eq "3")
-# 	{
-# 		$node2_class   = "highlight_warning_bold";
-# 		$node2_message = "#!string!state_0056!#";
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node2_pool2_rc eq "4")
-# 	{
-# 		$node2_class   = "highlight_warning_bold";
-# 		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-# 		$show_lvm_note = 1;
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node2_pool2_rc eq "5")
-# 	{
-# 		$node2_class   = "highlight_warning_bold";
-# 		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool2}{device} }});
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node2_pool2_rc eq "6")
-# 	{
-# 		$node2_class   = "highlight_warning_bold";
-# 		$node2_message = "#!string!state_0059!#";
-# 		$ok            = 0;
-# 	}
-# 	elsif ($node2_pool2_rc eq "7")
-# 	{
-# 		$node2_class   = "highlight_good_bold";
-# 		$node2_message = "#!string!state_0047!#";
-# 	}
-# 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-# 		row		=>	"#!string!row_0250!#",
-# 		node1_class	=>	$node1_class,
-# 		node1_message	=>	$node1_message,
-# 		node2_class	=>	$node2_class,
-# 		node2_message	=>	$node2_message,
-# 	});
-	
 	if (not $ok)
 	{
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
@@ -8708,7 +8660,7 @@ sub generate_drbd_config_files
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_drbd_config_files()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_drbd_config_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
@@ -9002,6 +8954,9 @@ sub read_drbd_config_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_config_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $global_common = $conf->{path}{nodes}{drbd_global_common};
 	my $r0            = $conf->{path}{nodes}{drbd_r0};
@@ -9103,6 +9058,9 @@ sub setup_drbd_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_drbd_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Write out the config files if missing.
 	# Global common file
@@ -9200,7 +9158,7 @@ sub register_with_rhn
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; register_with_rhn();\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
 	{
@@ -9336,6 +9294,10 @@ sub register_node_with_rhn
 {
 	my ($conf, $node, $password, $name) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_node_with_rhn" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node", value1 => $node, 
+		name2 => "name", value2 => $name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: This will fail when there isn't an internet connection! We
 	###       check that, so write an rsync function to move the script
@@ -9385,13 +9347,12 @@ sub register_node_with_rhn
 	return($return_code);
 }
 
-# This summarizes the install plan and gives the use a chance to tweak it or
-# re-run the cable mapping.
+# This summarizes the install plan and gives the use a chance to tweak it or re-run the cable mapping.
 sub summarize_build_plan
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; summarize_build_plan()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1                = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2                = $conf->{cgi}{anvil_node2_current_ip};
@@ -9560,13 +9521,14 @@ sub summarize_build_plan
 	return(0);
 }
 
-# This reads in the /etc/ntp.conf file and adds custom NTP server if they
-# aren't already there.
+# This reads in the /etc/ntp.conf file and adds custom NTP server if they aren't already there.
 sub configure_ntp_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp_on_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# We're going to do a grep for each defined NTP IP and, if the IP isn't
 	# found, it will be added.
@@ -9630,7 +9592,10 @@ sub configure_network_on_node
 {
 	my ($conf, $node, $password, $node_number) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network_on_node(); node: [$node], node_number: [$node_number]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network_on_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",        value1 => $node, 
+		name1 => "node_number", value1 => $node_number, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# I need to make the node keys.
 	my $return_code       = 0;
@@ -10341,14 +10306,13 @@ COMMIT";
 	return($return_code);
 }
 
-# If NTP servers are set, this will read in each node's '/etc/ntp.conf' and
-# look to see if the defined NTP servers need to be added. It will add any that
-# are missing.
+# If NTP servers are set, this will read in each node's '/etc/ntp.conf' and look to see if the defined NTP 
+# servers need to be added. It will add any that are missing.
 sub configure_ntp
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_ntp()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	# Only proceed if at least one NTP server is defined.
@@ -10408,7 +10372,7 @@ sub configure_network
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_network()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}]\n");
@@ -10469,12 +10433,17 @@ sub configure_network
 	return($ok);
 }
 
-# This parses a line coming back from one of our shell scripts to convert
-# string keys and possible variables into the current user's language.
+# This parses a line coming back from one of our shell scripts to convert string keys and possible variables
+# into the current user's language.
 sub parse_script_line
 {
 	my ($conf, $source, $node, $line) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_script_line" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "source", value1 => $source, 
+		name2 => "node",   value2 => $node, 
+		name3 => "line",   value3 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
 
 	return($line) if $line eq "";
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $source: [$line].\n");
@@ -10527,6 +10496,7 @@ sub map_network
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
 	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
@@ -10762,7 +10732,11 @@ sub map_network_on_node
 {
 	my ($conf, $node, $password, $remap, $say_node) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; map_network_on_node(); node: [$node], remap: [$remap], say_node: [$say_node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network_on_node" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "node",     value1 => $node, 
+		name2 => "remap",    value2 => $remap, 
+		name3 => "say_node", value3 => $say_node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{cgi}{update_manifest} = 0 if not $conf->{cgi}{update_manifest};
 	if ($remap)
@@ -11010,6 +10984,7 @@ sub install_programs
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_programs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
@@ -11085,6 +11060,9 @@ sub install_missing_packages
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_missing_packages" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	get_installed_package_list($conf, $node, $password);
@@ -11308,6 +11286,9 @@ sub get_installed_package_list
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_installed_package_list" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -11389,7 +11370,7 @@ sub add_local_repo
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't know my local IPs and if I don't have any local repos,
 	# return.
@@ -11504,13 +11485,14 @@ sub add_local_repo
 	return(0);
 }
 
-# This adds the local repo(s) to the node if the node doesn't have an Internet
-# connection.
+# This adds the local repo(s) to the node if the node doesn't have an Internet connection.
 sub add_local_repo_to_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; add_local_repo_to_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_local_repo_to_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc = 0;
 	if ($conf->{node}{$node}{internet})
@@ -11641,6 +11623,7 @@ sub update_nodes
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
@@ -11697,7 +11680,9 @@ sub remove_priority_from_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; remove_priority_from_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_priority_from_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Remove the 'priority=' line from our repos so that the update hits
 	# the web.
@@ -11727,13 +11712,14 @@ done
 	return(0);
 }
 
-# This calls the yum update and flags the node for a reboot if the kernel is
-# updated.
+# This calls the yum update and flags the node for a reboot if the kernel is updated.
 sub update_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; update_node(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Skip if the user has decided not to run OS updates.
 	return(1) if not $conf->{sys}{update_os};
@@ -11776,6 +11762,7 @@ sub verify_perl_is_installed
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -11829,12 +11816,14 @@ sub verify_perl_is_installed
 	return($ok);
 }
 
-# This will check to see if perl is installed and, if it's not, it will try to
-# install it.
+# This will check to see if perl is installed and, if it's not, it will try to install it.
 sub verify_perl_is_installed_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Set to '1' if perl was found, '0' if it wasn't found and couldn't be
 	# installed, set to '2' if installed successfully.
@@ -11890,7 +11879,7 @@ sub verify_internet_access
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_internet_access()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_internet_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the user knows they will never be online, they may have set to
 	# hide the Internet check. In this case, don't waste time checking.
@@ -11959,12 +11948,15 @@ sub verify_internet_access
 	return(1);
 }
 
-# This pings as website to check for an internet connection. Will clean up
-# routes that conflict with the default one as well.
+# This pings as website to check for an internet connection. Will clean up routes that conflict with the
+# default one as well.
 sub ping_website
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_website" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# After installing, sometimes/often the system will come up with
 	# multiple interfaces on the same subnet, causing default route
@@ -12100,13 +12092,16 @@ sub ping_website
 	return($ok);
 }
 
-# This checks to see if the DVD repo has been added to the node yet. If not,
-# and if there is a disk in the drive, it will mount sr0, check that it's got
-# RPMs and, if so, create the repo. If not, it unmounts the DVD.
+# This checks to see if the DVD repo has been added to the node yet. If not, and if there is a disk in the
+# drive, it will mount sr0, check that it's got RPMs and, if so, create the repo. If not, it unmounts the 
+# DVD.
 sub create_dvd_repo
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_dvd_repo" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# A wee bit of bash in this one...
 	my $mount_name = "optical";
@@ -12199,13 +12194,13 @@ fi
 	return($return_code);
 }
 
-# This calculates the sizes of the partitions to create, or selects the size
-# based on existing partitions if found.
+# This calculates the sizes of the partitions to create, or selects the size based on existing partitions if 
+# found.
 sub calculate_storage_pool_sizes
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; calculate_storage_pool_sizes();\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "calculate_storage_pool_sizes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# These will be set to the lower of the two nodes.
 	my $node1      = $conf->{cgi}{anvil_node1_current_ip};
@@ -12628,7 +12623,7 @@ sub check_storage
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_storage()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: When the drive is partitioned, write a file out indicating
 	###       which partitions we created so that we don't error out for
@@ -12718,12 +12713,13 @@ sub check_storage
 	return($ok);
 }
 
-# This determines which partitions to use for storage pool 1 and 2. Existing
-# partitions override anything else for determining sizes.
+# This determines which partitions to use for storage pool 1 and 2. Existing partitions override anything
+# else for determining sizes.
 sub get_storage_pool_partitions
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_pool_partitions" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Determine if I still need this function at all...
 	# First up, check for /etc/drbd.d/r{0,1}.res on both nodes.
@@ -12817,13 +12813,15 @@ sub get_storage_pool_partitions
 	return(0);
 }
 
-# This looks for the two DRBD resource files and, if found, pulls the
-# partitions to use out of them.
+# This looks for the two DRBD resource files and, if found, pulls the partitions to use out of them.
 sub read_drbd_resource_files
 {
 	my ($conf, $node, $password, $hostname) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_drbd_resource_files(); node: [$node], hostname: [$hostname]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_resource_files" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",     value1 => $node, 
+		name2 => "hostname", value2 => $hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $r0_device = "";
 	my $r1_device = "";
@@ -12894,7 +12892,9 @@ sub get_partition_data
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; get_partition_data(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $device = "";
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
@@ -13047,7 +13047,7 @@ sub generate_cluster_conf
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; generate_cluster_conf();\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_short_name) = ($conf->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
 	my  $node1_full_name   =  $conf->{cgi}{anvil_node1_name};
@@ -13170,13 +13170,12 @@ sub generate_cluster_conf
 	return(0);
 }
 
-# This checks to see if /etc/cluster/cluster.conf is available and aborts if
-# so.
+# This checks to see if /etc/cluster/cluster.conf is available and aborts if so.
 sub configure_cman
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; configure_cman()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Generate a new cluster.conf, then check to see if one already exists.
 	generate_cluster_conf($conf);
@@ -13329,7 +13328,9 @@ sub write_cluster_conf
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; write_cluster_conf(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $message     = "";
 	my $return_code = 255;
@@ -13396,7 +13397,9 @@ sub read_cluster_conf
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; read_cluster_conf(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I
 	# only care if the file exists at all.
@@ -13444,7 +13447,7 @@ sub verify_os
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; verify_os()\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_os" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	my ($node1_major_version, $node1_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -13497,6 +13500,9 @@ sub get_node_os_version
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_os_version" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {
 		node		=>	$node,
@@ -13569,6 +13575,7 @@ sub check_connection
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -13618,6 +13625,7 @@ sub get_local_bcn_ip
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_local_bcn_ip" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $in_dev     = "";
 	my $bcn_ip     = "";
@@ -13663,7 +13671,9 @@ sub check_node_access
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; check_node_access(); node: [$node]\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_access" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $access = 0;
 	my ($error, $ssh_fh, $return) = AN::Cluster::remote_call($conf, {

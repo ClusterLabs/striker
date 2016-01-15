@@ -47,7 +47,6 @@
 #      migrate other servers to peer and fence the node.
 # - Live-migration isn't possible with 4k hosts... See: https://bugzilla.redhat.com/show_bug.cgi?id=1285921
 
-
 use strict;
 use warnings;
 use lib 'lib';
@@ -70,7 +69,6 @@ $an->default_log_file    ($conf->{path}{log_file});
 $an->default_log_language($conf->{sys}{log_language});
 $an->Log->level          ($conf->{sys}{log_level});
 $conf->{handle}{an} = $an;
-#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; an: [".$an."], handle::an: [$conf->{handle}{an}], log file: [".$an->default_log_file."], log language: [".$an->default_log_language."]\n");
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -82,6 +80,13 @@ $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
+# Log our startup
+my ($date, $time) = $an->Get->date_and_time();
+$an->Log->entry({log_level => 1, message_key => "log_0001", message_variables => {
+	date	=>	$date, 
+	'time'	=>	$time,
+}, file => $THIS_FILE, line => __LINE__});
+
 # Get (create if needed) my UUID.
 $an->Storage->prep_local_uuid($an);
 
@@ -90,7 +95,6 @@ my $connections = $an->DB->connect_to_databases({
 	file	=>	$THIS_FILE,
 	quiet	=>	1
 });
-#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DB connections: [$connections]\n");
 
 AN::Cluster::find_executables($conf);
 AN::Cluster::read_hosts($conf);
