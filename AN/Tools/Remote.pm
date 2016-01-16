@@ -307,19 +307,25 @@ sub add_target_to_known_hosts
 	return(0);
 }
 
-# This does a remote call over SSH.
+# This does a remote call over SSH. The connection is held open and the file handle for the target is cached
+# and re-used unless a specific ssh_fh is passed or a request to close the connection is received. 
 sub remote_call
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
 	my $an        = $self->parent;
 	
-	my $target     = $parameter->{target};
+	# Get the target
+	my $target = $parameter->{target};
+	
+	# This will store the SSH file handle for the given target after the initial connection.
+	$an->data->{target}{$target}{ssh_fh} = defined $an->data->{target}{$target}{ssh_fh} ? $an->data->{target}{$target}{ssh_fh} : "";
+	
+	# Now pick up the rest of the variables.
 	my $port       = $parameter->{port}             ? $parameter->{port}     : 22;
 	my $user       = $parameter->{user}             ? $parameter->{user}     : "root";
 	my $password   = $parameter->{password}         ? $parameter->{password} : $an->data->{sys}{root_password};
-	my $ssh_fh     = $parameter->{ssh_fh}           ? $parameter->{ssh_fh}   : "";
+	my $ssh_fh     = $parameter->{ssh_fh}           ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
 	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 1;
 	my $shell_call = $parameter->{shell_call};
 	
@@ -462,7 +468,7 @@ sub remote_call
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $error)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 				name1 => "user",     value1 => $user, 
 				name2 => "password", value2 => $password, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -480,6 +486,8 @@ sub remote_call
 			}
 			else
 			{
+				# We're in! Record the file handle for this target.
+				$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
 				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => {
 					target => $target, 
 				}, file => $THIS_FILE, line => __LINE__});
