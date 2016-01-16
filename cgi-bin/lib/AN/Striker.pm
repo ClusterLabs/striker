@@ -533,23 +533,30 @@ sub lsi_control_unmake_disk_as_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /as Hot Spare Success/i)
 		{
 			$success = 1;
@@ -597,23 +604,30 @@ sub lsi_control_clear_foreign_state
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}",
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /is cleared/i)
 		{
 			$success = 1;
@@ -659,23 +673,30 @@ sub lsi_control_make_disk_hot_spare
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /as Hot Spare Success/i)
 		{
 			$success = 1;
@@ -722,23 +743,30 @@ sub lsi_control_mark_disk_missing
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /is marked missing/i)
 		{
 			$success = 1;
@@ -804,23 +832,30 @@ sub lsi_control_spin_disk_up
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
 	# This spins the drive back up.
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /Undo Prepare for removal Success/i)
 		{
 			$success = 1;
@@ -866,23 +901,30 @@ sub lsi_control_spin_disk_down
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /Prepare for removal Success/i)
 		{
 			$success = 1;
@@ -954,23 +996,30 @@ sub lsi_control_get_rebuild_progress
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /completed (\d+)% in (.*?)\./i)
 		{
 			$rebuild_percent  = $1;
@@ -1050,23 +1099,30 @@ sub lsi_control_put_disk_offline
 		return (0);
 	}
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /state changed to offline/i)
 		{
 			$success = 1;
@@ -1118,23 +1174,30 @@ sub lsi_control_put_disk_online
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /started rebuild progress on device/i)
 		{
 			$success = 1;
@@ -1180,23 +1243,30 @@ sub lsi_control_add_disk_to_array
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if (($line =~ /successfully added the disk/i) || ($line =~ /missing pd at array/i))
 		{
 			$success = 1;
