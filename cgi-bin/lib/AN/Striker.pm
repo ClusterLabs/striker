@@ -1321,22 +1321,29 @@ sub lsi_control_get_missing_disks
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /\d+\s+\d+\s+(\d+)\s(\d+)/i)
 		{
 			my $this_row     =  $1;
@@ -1362,23 +1369,30 @@ sub lsi_control_make_disk_good
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /state changed to unconfigured-good/i)
 		{
 			$success = 1;
@@ -1436,23 +1450,30 @@ sub lsi_control_disk_id_led
 	}
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; action: [$action], say_action: [$say_action]\n");
 	
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		$return_string .= "$line<br />\n";
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$return_string .= "$line<br />\n";
 		if ($line =~ /command was successfully sent to firmware/i)
 		{
 			$success = 1;
@@ -1919,23 +1940,29 @@ sub get_storage_data
 	$conf->{storage}{is}{lsi}   = "";
 	$conf->{storage}{is}{hp}    = "";
 	$conf->{storage}{is}{mdadm} = "";
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "whereis MegaCli64 hpacucli";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		#shell_call	=>	"whereis MegaCli64 hpacucli mdadm",
-		shell_call	=>	"whereis MegaCli64 hpacucli",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /^(.*?):\s(.*)/)
 		{
 			my $program = $1;
@@ -2014,24 +2041,29 @@ sub get_storage_data_lsi
 	   $shell_call     .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
 	   $shell_call     .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
 	   $shell_call     .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \"PD Locate\" /root/MegaSAS.log;";
-	##AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$shell_call",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	##AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /==] Start (.*)/)
 		{
 			$in_section        = $1;
@@ -2658,22 +2690,28 @@ sub change_vm
 				requested_cpus		=>	$requested_cpus,
 				requested_boot_device	=>	$say_requested_boot_device,
 			}});
-			my $new_definition = "";
+			my $new_definition = "cat $definition_file";
 			my $in_os          = 0;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
-			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
+			my $shell_call     = "";
+			my $password       = $conf->{sys}{root_password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
-				shell_call	=>	"cat $definition_file",
+				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$vm], line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				if ($line =~ /^(.*?)<memory>\d+<\/memory>/)
 				{
 					my $prefix = $1;
@@ -2773,18 +2811,25 @@ sub change_vm
 			$new_definition = update_network_driver($conf, $new_definition);
 			
 			# Write the new definition file.
-			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
-				ssh_fh		=>	$ssh_fh,
-				'close'		=>	1,
-				shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+			$shell_call = "echo \"$new_definition\" > $definition_file && chmod 644 $definition_file";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
 				});
@@ -2859,23 +2904,30 @@ sub vm_insert_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "/usr/bin/virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"/usr/bin/virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			next if not $line;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
@@ -2923,19 +2975,26 @@ sub vm_insert_media
 			server	=>	$say_vm,
 		});
 		my $new_definition = "";
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call     = "cat $definition_file";
+		my $password       = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"cat $definition_file",
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /dev='(.*?)'/)
 			{
 				my $this_device = $1;
@@ -2955,18 +3014,25 @@ sub vm_insert_media
 		
 		# Write the new definition file.
 		print AN::Common::template($conf, "server.html", "saving-server-config");
-		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
-			'close'		=>	1,
-			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+		$shell_call = "echo \"$new_definition\" > $definition_file && chmod 644 $definition_file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
@@ -3014,23 +3080,30 @@ sub vm_eject_media
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "/usr/bin/virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"/usr/bin/virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
 			next if not $line;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
@@ -3080,18 +3153,26 @@ sub vm_eject_media
 		my $this_media     = "";
 		my $this_device    = "";
 		my $new_definition = "";
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call     = "cat $definition_file";
+		my $password       = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"cat $definition_file",
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$new_definition .= "$line\n";
 			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
 			if (($line =~ /type='file'/) && ($line =~ /device='cdrom'/))
@@ -3138,18 +3219,25 @@ sub vm_eject_media
 		
 		# Write the new definition file.
 		print AN::Common::template($conf, "server.html", "saving-server-config");
-		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	$ssh_fh,
-			'close'		=>	1,
-			shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
+		$shell_call = "echo \"$new_definition\" > $definition_file && chmod 644 $definition_file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
@@ -3366,22 +3454,29 @@ sub manage_vm
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "df -P && ls -l /shared/files/";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"df -P && ls -l /shared/files/",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /\s(\d+)-blocks\s/)
 		{
 			$conf->{partition}{shared}{block_size} = $1;
@@ -3844,58 +3939,71 @@ sub switch_vm_xml_to_vnc
 	# Write the new definition file.
 	if ($proceed)
 	{
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "cat > $definition_file << EOF\n$new_definition\nEOF";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"cat > $definition_file << EOF\n$new_definition\nEOF",
+			shell_call	=>	$shell_call,
 		});
-			#shell_call	=>	"echo \"$new_definition\" > $definition_file && chmod 644 $definition_file",
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Set the permissions
-		$error  = "";
-		$output = "";
-		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		$shell_call = "chmod 644 $definition_file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"chmod 644 $definition_file",
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Read it back.
-		$error  = "";
-		$output = "";
-		($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
-			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"cat $definition_file",
-		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 		my $recover         = 0;
 		my $first_line_read = 0;
-		my $read_content     = "";
-		foreach my $line (@{$output})
+		my $read_content    = "";
+		   $shell_call      = "cat $definition_file";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if (not $first_line_read)
 			{
 				$read_content .= "$line\n";
@@ -3911,19 +4019,24 @@ sub switch_vm_xml_to_vnc
 		}
 		if ($recover)
 		{
-			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
+			my $shell_call = "cp -f $backup_file $definition_file && chmod 644 $definition_file";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
-				shell_call	=>	"cp -f $backup_file $definition_file && chmod 644 $definition_file",
+				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			my $say_error = AN::Common::get_string($conf, {key => "message_0340", variables => {
@@ -4020,22 +4133,28 @@ sub read_live_xml
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$conf->{vm}{$vm}{live_xml} = [];
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "/usr/bin/virsh dumpxml $say_vm";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"/usr/bin/virsh dumpxml $say_vm",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
 		push @{$conf->{vm}{$vm}{live_xml}}, $line;
 	}
 	
@@ -4107,43 +4226,56 @@ sub update_vm_definition
 	
 	my $new_definition = "";
 	my $shell_call     = "/usr/bin/virsh dumpxml $say_vm";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password       = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
+		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$new_definition .= "$line\n";
 	}
 	
 	# See if I need to insert or edit any network interface driver elements.
 	$new_definition = update_network_driver($conf, $new_definition);
 	
+	# Die if the definition_file data is an array because wtf.
+	die if $new_definition =~ /ARRAY/;
+	
 	# Write out the new one.
 	$shell_call = "cat > $definition_file << EOF\n$new_definition\nEOF";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	die if $new_definition =~ /ARRAY/;
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Rebuild the $conf->{vm}{$vm}{xml} array.
@@ -4314,24 +4446,29 @@ sub add_vm_to_cluster
 		});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I will now boot the VM.\n");
 		my $virsh_exit_code;
-		my $shell_call      = "/usr/bin/virsh start $vm; echo virsh:\$?";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "/usr/bin/virsh start $vm; echo virsh:\$?";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			next if not $line;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /virsh:(\d+)/)
 			{
 				$virsh_exit_code = $1;
@@ -4357,24 +4494,28 @@ sub add_vm_to_cluster
 			});
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; It didn't start on the first try. Trying again with the definition file.\n");
 			my $virsh_exit_code;
-			my $shell_call      = "/usr/bin/virsh create /shared/definitions/${vm}.xml; echo virsh:\$?";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
-				ssh_fh		=>	$ssh_fh,
-				'close'		=>	1,
+			my $shell_call = "/usr/bin/virsh create /shared/definitions/${vm}.xml; echo virsh:\$?";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				next if not $line;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				if ($line =~ /virsh:(\d+)/)
 				{
 					$virsh_exit_code = $1;
@@ -4441,23 +4582,26 @@ sub add_vm_to_cluster
 	my @new_vm_xml;
 	my $virsh_exit_code;
 	my $shell_call = "/usr/bin/virsh dumpxml $vm; echo virsh:\$?";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		#$line =~ s/^\s+//;
-		#$line =~ s/\s+$//;
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
@@ -4536,23 +4680,25 @@ sub add_vm_to_cluster
 	
 	# Now write out the XML.
 	$shell_call = "cat > $definition << EOF\n$new_xml\nEOF";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		#$line =~ s/^\s+//;
-		#$line =~ s/\s+$//;
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
@@ -4570,23 +4716,29 @@ sub add_vm_to_cluster
 	});
 
 	undef $virsh_exit_code;
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
-		ssh_fh		=>	$ssh_fh,
-		'close'		=>	0,
-		shell_call	=>	"/usr/bin/virsh undefine $vm; echo virsh:\$?",
-	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $undefine_ok = 0;
-	foreach my $line (@{$output})
+	   $shell_call  = "/usr/bin/virsh undefine $vm; echo virsh:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /virsh:(\d+)/)
 		{
 			$virsh_exit_code = $1;
@@ -4629,32 +4781,36 @@ sub add_vm_to_cluster
 	});
 	
 	my $ccs_exit_code;
-	my $ccs_call =  "ccs ";
-	   $ccs_call .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
-	   $ccs_call .= "domain=\"$failover_domain\" ";
-	   $ccs_call .= "path=\"/shared/definitions/\" ";
-	   $ccs_call .= "autostart=\"0\" ";
-	   $ccs_call .= "exclusive=\"0\" ";
-	   $ccs_call .= "recovery=\"restart\" ";
-	   $ccs_call .= "max_restarts=\"2\" ";
-	   $ccs_call .= "restart_expire_time=\"600\" ";
-	   #$ccs_call .= "no_kill=\"1\"; echo ccs:\$?";
-	   $ccs_call .= "; echo ccs:\$?";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$ccs_call]\n");
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
-		ssh_fh		=>	$ssh_fh,
+	   $shell_call =  "ccs ";
+	   $shell_call .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
+	   $shell_call .= "domain=\"$failover_domain\" ";
+	   $shell_call .= "path=\"/shared/definitions/\" ";
+	   $shell_call .= "autostart=\"0\" ";
+	   $shell_call .= "exclusive=\"0\" ";
+	   $shell_call .= "recovery=\"restart\" ";
+	   $shell_call .= "max_restarts=\"2\" ";
+	   $shell_call .= "restart_expire_time=\"600\" ";
+	   #$shell_call .= "no_kill=\"1\"; echo ccs:\$?";
+	   $shell_call .= "; echo ccs:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"$ccs_call"
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /ccs:(\d+)/)
 		{
 			$ccs_exit_code = $1;
@@ -4723,21 +4879,26 @@ sub add_vm_to_cluster
 	# Tell the cluster to start the VM. I don't bother to check for 
 	# readiness because I confirmed it was running on this node earlier.
 	my $clusvcadm_exit_code;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [clusvcadm -e vm:$vm; echo clusvcadm:\$?]\n");
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
-		ssh_fh		=>	$ssh_fh,
-		'close'		=>	1,
-		shell_call	=>	"clusvcadm -e vm:$vm; echo clusvcadm:\$?",
+	   $shell_call = "clusvcadm -e vm:$vm; echo clusvcadm:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /clusvcadm:(\d+)/)
 		{
 			$clusvcadm_exit_code = $1;
@@ -4889,23 +5050,30 @@ sub find_vm_host
 		name3 => "vm",   value3 => $vm, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $host = "none";
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $host       = "none";
+	my $shell_call = "/usr/bin/virsh list --all";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"/usr/bin/virsh list --all",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /\s$vm\s/)
 		{
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the VM.\n");
@@ -4927,24 +5095,30 @@ sub find_vm_host
 	if ($host eq "none")
 	{
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Looking for the VM on the peer node: [$peer].\n");
-		my $on_peer = 0;
-		my $found   = 0;
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$peer,
-			port		=>	$conf->{node}{$peer}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $on_peer    = 0;
+		my $found      = 0;
+		my $shell_call = "/usr/bin/virsh list --all";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"/usr/bin/virsh list --all",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			next if not $line;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /\s$vm\s/)
 			{
 				#print "Found it on the peer node. Checking if it's running there.<br />\n";
@@ -4984,19 +5158,25 @@ sub get_bridge_name
 	
 	my $bridge     = "";
 	my $shell_call = "brctl show";
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /^(.*?)\s+\d/)
 		{
 			$bridge = $1;
@@ -5117,20 +5297,25 @@ sub provision_vm
 		script	=>	$shell_script,
 	});
 	my $shell_call = "echo \"$provision\" > $shell_script && chmod 755 $shell_script";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 	}
 	print AN::Common::template($conf, "server.html", "one-line-message", {
 		message	=>	"#!string!message_0119!#",
@@ -5138,25 +5323,30 @@ sub provision_vm
 		server	=>	$conf->{new_vm}{name},
 	});
 	
-	### NOTE: Don't try to redirect output (2>&1 |), it causes errors I've
-	###       not yet solved.
+	### NOTE: Don't try to redirect output (2>&1 |), it causes errors I've not yet solved.
 	# Run the script.
-	$shell_call = "$shell_script";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
-		ssh_fh		=>	$ssh_fh,
-		'close'		=>	1,
+	$shell_call = $shell_script;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	$error = 0;
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		next if $line =~ /One or more specified logical volume\(s\) not found./;
 		if ($line =~ /No such file or directory/i)
 		{
@@ -5202,22 +5392,27 @@ sub provision_vm
 		
 		# Verify that the new VM is running.
 		my $shell_call = "sleep 3; virsh list | grep -q '$conf->{new_vm}{name}'; echo rc:\$?";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
-			chomp;
-			my $line = $_;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /^rc:(\d+)/)
 			{
 				# 0 == found
@@ -6110,22 +6305,29 @@ sub start_vm
 		});
 
 		my $show_remote_desktop_link = 0;
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "clusvcadm -e vm:$vm -m $node_cluster_name";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /Success/i)
 			{
 				# Set the host manually as the server wasn't
@@ -6145,22 +6347,28 @@ sub start_vm
 			{
 				# The VM failed to start. Call a stop against it.
 				print AN::Common::template($conf, "server.html", "start-server-failed");
-				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
-					ssh_fh		=>	$ssh_fh,
+				my $shell_call = "clusvcadm -d vm:$vm";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
 					'close'		=>	0,
-					shell_call	=>	"clusvcadm -d vm:$vm",
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6175,22 +6383,28 @@ sub start_vm
 					});
 				}
 				print AN::Common::template($conf, "server.html", "start-server-failed-trying-again");
-				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
-					ssh_fh		=>	$ssh_fh,
-					'close'		=>	1,
-					shell_call	=>	"clusvcadm -e vm:$vm -m $node_cluster_name",
+				$shell_call = "clusvcadm -e vm:$vm -m $node_cluster_name";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$line = parse_text_line($conf, $line);
 					if ($line =~ /Fail/i)
 					{
@@ -6426,23 +6640,28 @@ sub migrate_vm
 			title	=>	$say_title,
 		});
 		my $shell_call = "$conf->{path}{clusvcadm} -M vm:$vm -m $target";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6513,23 +6732,30 @@ sub stop_vm
 		title	=>	$say_title,
 	});
 	my $say_node = node_name_to_long_host_name($conf, $node);
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "$conf->{path}{clusvcadm} -d vm:$vm";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"$conf->{path}{clusvcadm} -d vm:$vm",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		$line =~ s/Local machine/$say_node/;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$line = parse_text_line($conf, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6583,22 +6809,29 @@ sub join_cluster
 		print AN::Common::template($conf, "server.html", "join-anvil-header", {
 			title	=>	$say_title,
 		});
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6688,26 +6921,32 @@ sub dual_join
 			}
 			else
 			{
-				# This is the child thread, so do the call.
-				# Note that, without the 'die', we could end
-				# up here if the fork() failed.
-				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
+				# This is the child thread, so do the call. Note that, without the 'die', we 
+				# could end up here if the fork() failed.
+				my $shell_call = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
+				my $password   = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
 					ssh_fh		=>	"",
-					'close'		=>	1,
-					shell_call	=>	"/etc/init.d/cman start && /etc/init.d/rgmanager start",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
 					next if not $line;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; $node; $line\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$line = parse_text_line($conf, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6827,22 +7066,29 @@ sub force_off_vm
 	print AN::Common::template($conf, "server.html", "force-off-server-header", {
 		title	=>	$say_title,
 	});
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "/usr/bin/virsh destroy $vm";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"/usr/bin/virsh destroy $vm",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$line = parse_text_line($conf, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6861,9 +7107,8 @@ sub force_off_vm
 	return(0);
 }
 
-# This stops the VM, if it's running, edits the cluster.conf to remove the VM's
-# entry, pushes the changed cluster out, deletes the VM's definition file and 
-# finally deletes the LV.
+# This stops the VM, if it's running, edits the cluster.conf to remove the VM's entry, pushes the changed 
+# cluster out, deletes the VM's definition file and finally deletes the LV.
 sub delete_vm
 {
 	my ($conf) = @_;
@@ -6944,21 +7189,26 @@ sub delete_vm
 		my $ccs_exit_code;
 		   $proceed = 0;
 		my $shell_call = "ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$host,
-			port		=>	$conf->{node}{$host}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			next if not $line;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /ccs:(\d+)/)
 			{
 				$ccs_exit_code = $1;
@@ -6998,24 +7248,27 @@ sub delete_vm
 			print AN::Common::template($conf, "server.html", "delete-server-force-off-header");
 			
 			   $proceed = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 			my $virsh_exit_code;
 			my $shell_call = "/usr/bin/virsh destroy $say_vm; echo virsh:\$?";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$host,
-				port		=>	$conf->{node}{$host}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
-				ssh_fh		=>	$ssh_fh,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
 				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
 				next if not $line;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				if ($line =~ /virsh:(\d+)/)
 				{
 					$virsh_exit_code = $1;
@@ -7063,20 +7316,26 @@ sub delete_vm
 					lv	=>	$lv,
 				});
 				my $lvremove_exit_code;
-				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$host,
-					port		=>	$conf->{node}{$host}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
-					ssh_fh		=>	$ssh_fh,
-					'close'		=>	1,
-					shell_call	=>	"lvremove -f $lv; echo lvremove:\$?",
+				my $shell_call = "lvremove -f $lv; echo lvremove:\$?";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					next if not $line;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					if ($line =~ /lvremove:(\d+)/)
 					{
 						$lvremove_exit_code = $1;
@@ -7153,20 +7412,27 @@ sub remove_vm_definition
 	# 'rm' seems to return '0' no matter what. So I use the 'ls' to ensure
 	# the file is gone. 'ls' will return '2' on file not found.
 	my $ls_exit_code;
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call = "rm -f $file; ls $file; echo ls:\$?";
+	my $password   = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"rm -f $file; ls $file; echo ls:\$?",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		next if not $line;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /ls:(\d+)/)
 		{
 			$ls_exit_code = $1;
@@ -7225,21 +7491,28 @@ sub archive_file
 	   $destination             =~ s/ /_/;
 
 	my $cp_exit_code;
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
-		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"cp $file $destination; echo cp:\$?",
-	});
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
 	my $header_printed = 0;
-	foreach my $line (@{$output})
+	my $shell_call     = "cp $file $destination; echo cp:\$?";
+	my $password       = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
 	{
 		next if not $line;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /cp:(\d+)/)
 		{
 			$cp_exit_code = $1;
@@ -7385,23 +7658,28 @@ sub poweroff_node
 		mark_node_as_clean_off($conf, $node, 0);	# 0 == no delay reboot time
 		
 		my $shell_call = "poweroff && echo \"Power down initiated. Please return to the main page now.\"";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -7502,24 +7780,31 @@ sub cold_stop_anvil
 				});
 				
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling server: [$server]...\n");
-				my $shell_call = "$conf->{path}{clusvcadm} -d $server";
-				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
+				my $shell_output = "";
+				my $shell_call   = "$conf->{path}{clusvcadm} -d $server";
+				my $password     = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
 					ssh_fh		=>	"",
-					'close'		=>	1,
+					'close'		=>	0,
 					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				my $shell_output = "";
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
 					$line =~ s/Local machine/$node/;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$line =  parse_text_line($conf, $line);
 					$shell_output .= "$line<br />\n";
 					if ($line =~ /success/i)
@@ -7610,24 +7895,31 @@ sub cold_stop_anvil
 						message		=>	"$say_message",
 					});
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Disabling node: [$node]...\n");
-					my $shell_call = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop; echo rc:\$?";
-					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
-						password	=>	$conf->{sys}{root_password},
+					my $shell_output = "";
+					my $shell_call   = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop; echo rc:\$?";
+					my $password     = $conf->{sys}{root_password};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
+						password	=>	$password,
 						ssh_fh		=>	"",
-						'close'		=>	1,
+						'close'		=>	0,
 						shell_call	=>	$shell_call,
 					});
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					my $shell_output = "";
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
 						$line =~ s/Local machine/$node/;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
 						if ($line =~ /rc:(\d+)/i)
 						{
 							my $rc = $1;
@@ -7709,22 +8001,26 @@ then
 fi;
 poweroff";
 					}
-					my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
-						password	=>	$conf->{sys}{root_password},
+					my $password   = $conf->{sys}{root_password};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
+						password	=>	$password,
 						ssh_fh		=>	"",
-						'close'		=>	1,
+						'close'		=>	0,
 						shell_call	=>	$shell_call,
 					});
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
-						# Only output should be from
-						# the stopping of the APC UPS 
+						# Only output should be from the stopping of the APC UPS 
 						# watchdog app.
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					my $message = "#!string!message_0436!#";
 					if ($cancel_ups eq "1")
@@ -8059,20 +8355,25 @@ sub poweron_node
 				AN::Cluster::error($conf, "$error\n");
 			}
 			my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], shell_call: [$shell_call]\n");
-			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$peer,
-				port		=>	$conf->{node}{$peer}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
+			my $password   = $conf->{sys}{root_password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
 				ssh_fh		=>	"",
-				'close'		=>	1,
+				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				print AN::Common::template($conf, "server.html", "one-line-message", {
 					message	=>	$line,
 				});
@@ -8285,18 +8586,27 @@ sub fence_node
 			my $shell_call = "$off_command";
 			if ($shell_call =~ /ssh:(.*?),(.*)$/)
 			{
-				my $node    = $1;
-				my $command = $2;
-				(my $error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
+				my $node       = $1;
+				my $shell_call = $2;
+				my $password   = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
-					shell_call	=>	"$command",
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			else
 			{
@@ -8360,18 +8670,27 @@ sub fence_node
 			$shell_call = "$on_command";
 			if ($shell_call =~ /ssh:(.*?),(.*)$/)
 			{
-				my $node    = $1;
-				my $command = $2;
-				(my $error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
-					ssh_fh		=>	$ssh_fh,
-					'close'		=>	1,
-					shell_call	=>	"$command",
+				my $node       = $1;
+				my $shell_call = $2;
+				my $password   = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			else
 			{
@@ -8483,21 +8802,29 @@ sub withdraw_node
 		});
 
 		my $rgmanager_stop = 1;
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call     = "/etc/init.d/rgmanager stop";
+		my $password       = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"/etc/init.d/rgmanager stop",
+			shell_call	=>	$shell_call,
 		});
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			if ($line =~ /failed/i)
 			{
 				$rgmanager_stop = 0;
@@ -8520,22 +8847,30 @@ sub withdraw_node
 		if ($rgmanager_stop)
 		{
 			print AN::Common::template($conf, "server.html", "withdraw-node-resource-manager-stopped");
-			my $cman_stop = 1;
-			($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
-				ssh_fh		=>	$ssh_fh,
+			my $cman_stop  = 1;
+			my $shell_call = "/etc/init.d/cman stop";
+			my $password   = $conf->{sys}{root_password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
 				'close'		=>	0,
-				shell_call	=>	"/etc/init.d/cman stop",
+				shell_call	=>	$shell_call,
 			});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				if ($line =~ /failed/i)
 				{
 					$cman_stop = 0;
@@ -8561,21 +8896,29 @@ sub withdraw_node
 				# Crap...
 				print AN::Common::template($conf, "server.html", "withdraw-node-membership-withdrawl-failed");
 				my $cman_start = 1;
-				($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
-					ssh_fh		=>	$ssh_fh,
-					'close'		=>	1,
-					shell_call	=>	"/etc/init.d/cman start",
+				my $shell_call = "/etc/init.d/cman start";
+				my $password   = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					if ($line =~ /failed/i)
 					{
 						$cman_start = 0;
@@ -8648,21 +8991,29 @@ sub recover_rgmanager
 	# Tell the user we're recovering rgmanager
 	print AN::Common::template($conf, "server.html", "recover-resource-manager-header");
 	my $rgmanager_start = 1;
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call      = "/etc/init.d/rgmanager start";
+	my $password        = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
-		'close'		=>	1,
-		shell_call	=>	"/etc/init.d/rgmanager start",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /failed/i)
 		{
 			$rgmanager_start = 0;
@@ -8706,25 +9057,32 @@ sub recover_rgmanager
 					cycle	=>	$say_cycle,
 				});
 
-				# NOTE: This will return 'Warning' because of
-				# whatever is holding open the storage. This is
-				# fine, as the goal is to enable, not stop.
+				# NOTE: This will return 'Warning' because of whatever is holding open the 
+				#       storage. This is fine, as the goal is to enable, not stop.
 				my $storage_stop = 1;
-				my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-					node		=>	$node,
-					port		=>	$conf->{node}{$node}{port},
-					user		=>	"root",
-					password	=>	$conf->{sys}{root_password},
+				my $shell_call   = "$conf->{path}{clusvcadm} -d $storage_service";
+				my $password     = $conf->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
-					shell_call	=>	"$conf->{path}{clusvcadm} -d $storage_service",
+					shell_call	=>	$shell_call,
 				});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-				foreach my $line (@{$output})
+				foreach my $line (@{$return})
 				{
 					$line =~ s/^\s+//;
 					$line =~ s/\s+$//;
 					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					if ($line =~ /failed/i)
 					{
 						$storage_stop = 0;
@@ -8755,21 +9113,29 @@ sub recover_rgmanager
 					});
 					
 					my $storage_start = 1;
-					($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-						node		=>	$node,
-						port		=>	$conf->{node}{$node}{port},
-						user		=>	"root",
-						password	=>	$conf->{sys}{root_password},
+					my $shell_call    = "$conf->{path}{clusvcadm} -e $storage_service";
+					my $password      = $conf->{sys}{root_password};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "shell_call", value1 => $shell_call,
+						name2 => "node",       value2 => $node,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$conf->{node}{$node}{port}, 
+						password	=>	$password,
 						ssh_fh		=>	"",
-						'close'		=>	1,
-						shell_call	=>	"$conf->{path}{clusvcadm} -e $storage_service",
+						'close'		=>	0,
+						shell_call	=>	$shell_call,
 					});
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-					foreach my $line (@{$output})
+					foreach my $line (@{$return})
 					{
 						$line =~ s/^\s+//;
 						$line =~ s/\s+$//;
 						$line =~ s/\s+/ /g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "line", value1 => $line, 
+						}, file => $THIS_FILE, line => __LINE__});
+						
 						if ($line =~ /failed/i)
 						{
 							$storage_start = 0;
@@ -8974,20 +9340,25 @@ then
 else 
     echo disabled;
 fi";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; shell_call: [$shell_call]\n");
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $password = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line eq "enabled")
 		{
 			$enable = 1;
@@ -9510,23 +9881,30 @@ sub read_vm_definition
 	{
 		$conf->{vm}{$vm}{raw_xml} = [];
 		$conf->{vm}{$vm}{xml}     = [];
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "cat $conf->{vm}{$vm}{definition_file}";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
-			'close'		=>	1,
-			shell_call	=>	"cat $conf->{vm}{$vm}{definition_file}",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
 			push @{$conf->{vm}{$vm}{raw_xml}}, $line;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			push @{$conf->{vm}{$vm}{xml}}, $line;
 		}
 	}
@@ -9855,26 +10233,32 @@ sub check_vms
 		{
 			# This is a bit expensive, but read the VM's running
 			# definition.
-			my $node   = $conf->{vm}{$vm}{current_host};
-			my $say_vm = $vm;
-			$say_vm =~ s/^vm://;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Reading the XML for the VM: [$vm] which is currently running on: [$conf->{vm}{$vm}{current_host}]\n");
-			my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-				node		=>	$node,
-				port		=>	$conf->{node}{$node}{port},
-				user		=>	"root",
-				password	=>	$conf->{sys}{root_password},
+			my $node       =  $conf->{vm}{$vm}{current_host};
+			my $say_vm     =  $vm;
+			   $say_vm     =~ s/^vm://;
+			my $shell_call =  "/usr/bin/virsh dumpxml $say_vm";
+			my $password   =  $conf->{sys}{root_password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
 				ssh_fh		=>	"",
-				'close'		=>	1,
-				shell_call	=>	"/usr/bin/virsh dumpxml $say_vm",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
 			});
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-			foreach my $line (@{$output})
+			foreach my $line (@{$return})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
 				push @{$conf->{vm}{$vm}{xml}}, $line;
 			}
 		}
