@@ -381,8 +381,7 @@ if ($conf->{cgi}{logo})
 	}
 	else
 	{
-		# This is also where we provide options for backup/restore, 
-		# install manifests, etc.
+		# This is also where we provide options for backup/restore, install manifests, etc.
 		AN::Cluster::show_anvil_selection_and_striker_options($conf);
 	}
 }

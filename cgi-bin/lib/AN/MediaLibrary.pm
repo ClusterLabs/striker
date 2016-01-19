@@ -114,26 +114,32 @@ sub download_url
 	my $header_printed  = 0;
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
-	my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-		node		=>	$node,
-		port		=>	$conf->{node}{$node}{port},
-		user		=>	"root",
-		password	=>	$conf->{sys}{root_password},
+	my $shell_call      = "wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file";
+	my $password        = $conf->{sys}{root_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
-		shell_call	=>	"wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file",
+		shell_call	=>	$shell_call,
 	});
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-	foreach my $line (@{$output})
+	foreach my $line (@{$return})
 	{
-		### TODO: This doesn't work anymore because the 'remote_call()'
-		### function returns all output in one go. Add a section to
-		### remote_call that does this for wget calls.
+		### TODO: This doesn't work anymore because the 'remote_call()' function returns all output
+		###       in one go. Add a section to remote_call that does this for wget calls.
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/“/"/g;
 		$line =~ s/”/"/g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($line =~ /^(\d+)K .*? (\d+)% (.*?)(\w) (.*?)$/)
 		{
 			my $received = $1;
@@ -719,18 +725,26 @@ sub delete_file
 			title		=>	$say_title,
 		});
 		
-		my ($error, $ssh_fh, $output) = AN::Cluster::remote_call($conf, {
-			node		=>	$node,
-			port		=>	$conf->{node}{$node}{port},
-			user		=>	"root",
-			password	=>	$conf->{sys}{root_password},
+		my $shell_call = "rm -f \"/shared/files/$name\"";
+		my $password   = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	"rm -f \"/shared/files/$name\"",
+			shell_call	=>	$shell_call,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
-		foreach my $line (@{$output})
+		foreach my $line (@{$return})
 		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
 			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});

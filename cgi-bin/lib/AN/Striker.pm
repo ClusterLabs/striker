@@ -4161,47 +4161,6 @@ sub read_live_xml
 	return(0);
 }
 
-# This looks at a VM and determines which storage pool it is on.
-sub find_node_storage_pool
-{
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_node_storage_pool" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $vm     = $conf->{cgi}{vm};
-	my $say_vm = ($vm =~ /^vm:(.*)/)[0];
-	
-	my $current_lv = "";
-	my $in_block   = 0;
-	foreach my $line (sort {$a cmp $b} @{$conf->{vm}{$vm}{xml}})
-	{
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], xml line: [$line]\n");
-		if (($line =~ /<disk/) && ($line =~ /type='block'/))
-		{
-			$in_block = 1;
-			next;
-		}
-		if ($in_block)
-		{
-			if ($line =~ /<\/disk>/)
-			{
-				$in_block = 0;
-				next;
-			}
-			elsif (($line =~ /source/) && ($line =~ /dev='(.*?)'/))
-			{
-				$current_lv = $1;
-				last;
-			}
-		}
-	}
-	my $lv_size = $conf->{resources}{lv}{$current_lv}{size};
-	my $on_vg   = $conf->{resources}{lv}{$current_lv}{on_vg};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; vm: [$say_vm], current_lv: [$current_lv], size: [$lv_size], on_vg: [$on_vg]\n");
-	
-	return($on_vg, $lv_size);
-}
-
 # This calls 'virsh dumpxml' against the given VM.
 sub update_vm_definition
 {
@@ -7580,32 +7539,6 @@ sub archive_file
 	}
 	
 	return ($destination);
-}
-
-# This adds or removes a VM from the cluster.conf file.
-sub update_cluster_conf
-{
-	my ($conf, $do, $vm, $node) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "do",   value1 => $do, 
-		name2 => "vm",   value2 => $vm, 
-		name3 => "node", value3 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $say_vm  = ($vm =~ /vm:(.*)/)[0];
-	my $success = 1;
-	
-	# I 'cat' the current cluster.conf, incrementing 'config_version="x"'
-	# by one, add or remove the <vm ...> line and then write out the edited
-	# version locally. Next I backup the current cluster.conf to 
-	# '/shared/archive/vX.cluster.conf', 'rsync' the updated local copy to
-	# the target node, 'ccs_config_validate' it and, if all is well, 
-	# 'cman_tool version -r' to push out the changes.
-	
-	# Read in the current cluster.conf.
-	
-	return($success);
 }
 
 # This makes an ssh call to the node and sends a simple 'poweroff' command.
