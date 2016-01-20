@@ -80,7 +80,9 @@ sub test_ssh_fingerprint
 		   $line =~ s/\n/ /g;
 		   $line =~ s/\r/ /g;
 		   $line =~ s/\s+$//;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -100,7 +102,9 @@ sub test_ssh_fingerprint
 					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [$node].\n");
 				}
 				# Add fingerprint to known_hosts
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; silent: [$silent]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "silent", value1 => $silent,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (not $silent)
 				{
 					my $message = get_string($conf, {key => "message_0279", variables => {
@@ -121,7 +125,9 @@ sub test_ssh_fingerprint
 				{
 					chomp;
 					my $line = $_;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				close $file_handle;
 				sleep 5;
@@ -130,7 +136,9 @@ sub test_ssh_fingerprint
 	}
 	close $file_handle;
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failed: [$failed]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "failed", value1 => $failed,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($failed);
 }
 
@@ -168,7 +176,11 @@ sub get_string
 	my $key       = $vars->{key};
 	my $language  = $vars->{language}  ? $vars->{language}  : $conf->{sys}{language};
 	my $variables = $vars->{variables} ? $vars->{variables} : "";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; key: [$key], language: [$language], variables: [$variables]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "key",       value1 => $key,
+		name2 => "language",  value2 => $language,
+		name3 => "variables", value3 => $variables,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $key)
 	{
@@ -183,11 +195,15 @@ sub get_string
 		hard_die($conf, $THIS_FILE, __LINE__, 4, "The language key: [$language] does not exist in the 'strings.xml' file.\n");
 	}
 	my $say_language = $language;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; say_language: [$say_language]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_language", value1 => $say_language,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{strings}{lang}{$language}{lang}{long_name})
 	{
 		$say_language = "$language ($conf->{strings}{lang}{$language}{lang}{long_name})";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 2. say_language: [$say_language]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "2. say_language", value1 => $say_language,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
@@ -203,18 +219,24 @@ sub get_string
 	
 	# Grab the string and start cleaning it up.
 	my $string = $conf->{strings}{lang}{$language}{key}{$key}{content};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 1. string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "1. string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This clears off the new-line and trailing white-spaces caused by the
 	# indenting of the '</key>' field in the words XML file when printing
 	# to the command line.
 	$string =~ s/^\n//;
 	$string =~ s/\n(\s+)$//;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 2. string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "2. string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Process all the #!...!# escape variables.
 	($string) = process_string($conf, $string, $variables);
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; 3. string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "3. string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($string);
 }
@@ -848,14 +870,18 @@ sub check_global_settings
 	
 	# TODO: Make this smarter... For now, just check the SMTP username to
 	# see if it is default.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; smtp__username: [$smtp__username]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "smtp__username", value1 => $smtp__username,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $smtp__username) or ($smtp__username =~ /example\.com/))
 	{
 		# Not configured yet.
 		$global_set = 0;
 	}
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "global_set", value1 => $global_set,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($global_set);
 }
 
@@ -1024,9 +1050,13 @@ sub template
 	foreach my $string (@contents)
 	{
 		# Replace the '#!replace!...!#' substitution keys.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> string", value1 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
 		($string) = process_string_replace($conf, $string, $replace, $template_file, $template);
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< string", value1 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Process all the #!...!# escape variables.
 		#print "$THIS_FILE ".__LINE__."; >> string: [$string]\n";
@@ -1055,9 +1085,13 @@ sub process_string
 	
 	# Insert variables into #!variable!x!# 
 	my $i = 0;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	($string) = insert_variables_into_string($conf, $string, $variables);
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	while ($string =~ /#!(.+?)!#/s)
 	{
@@ -1205,7 +1239,9 @@ sub process_string_replace
 		my $key   =  $1;
 		my $value =  defined $replace->{$key} ? $replace->{$key} : "!! Undefined replacement key: [$key] !!\n";
 		$string   =~ s/#!replace!$key!#/$value/;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; string: [$string]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "string", value1 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Die if I've looped too many times.
 		if ($i > $conf->{sys}{error_limit})

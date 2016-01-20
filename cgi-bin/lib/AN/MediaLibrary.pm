@@ -39,7 +39,9 @@ sub process_task
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Task: [$conf->{cgi}{task}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "Task", value1 => $conf->{cgi}{task},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{task} eq "image_and_upload")
 	{
 		if ($conf->{cgi}{confirm})
@@ -244,7 +246,9 @@ sub download_url
 		}
 		else
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $header_printed)
 			{
 				print AN::Common::template($conf, "common.html", "open-shell-call-output");
@@ -363,7 +367,10 @@ sub image_and_upload
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], name: [$name]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "dev",  value1 => $dev,
+		name2 => "name", value2 => $name,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], files::shared::${name}: [$conf->{files}{shared}{$name}]\n");
@@ -384,7 +391,9 @@ sub image_and_upload
 		print AN::Common::template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
 			name	=>	$name,
 		});
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; name: [$name]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "name", value1 => $name,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -444,19 +453,27 @@ sub image_and_upload
 			#my $out_file = $conf->{path}{media}.$name;
 			my $out_file = "'$conf->{path}{media}/$name'";
 			my $in_dev   = $dev;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; dev: [$dev], directory: [$conf->{path}{media}], name: [$name]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "dev",       value1 => $dev,
+				name2 => "directory", value2 => $conf->{path}{media},
+				name3 => "name",      value3 => $name,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $message  = AN::Common::get_string($conf, {key => "explain_0059", variables => {
 				device		=>	$dev,
 				name		=>	$name,
 				directory	=>	$conf->{path}{media},
 			}});
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; message: [$message]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "message", value1 => $message,
+			}, file => $THIS_FILE, line => __LINE__});
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-header", {
 				message		=>	$message,
 			});
 			
 			my $shell_call = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{sys}{dd_block_size}";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "Calling", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $header_printed = 0;
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -471,7 +488,9 @@ sub image_and_upload
 					print AN::Common::template($conf, "common.html", "open-shell-call-output");
 					$header_printed = 1;
 				}
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; output: [$line]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "output", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /Is a directory/i)
 				{
 					$error .= AN::Common::get_string($conf, {key => "message_0333"});
@@ -528,12 +547,16 @@ sub upload_to_shared
 {
 	my ($conf, $node, $source_file) = @_;
 	my $an = $conf->{handle}{an};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; upload_to_shared(); source_file: [$source_file]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "upload_to_shared(); source_file", value1 => $source_file,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Some prep work.
 	my $failed = 0;
 	($failed) = AN::Common::test_ssh_fingerprint($conf, $node);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; failed: [$failed]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "failed", value1 => $failed,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($failed)
 	{
@@ -574,7 +597,9 @@ sub upload_to_shared
 		{
 			chomp;
 			my $line = $_;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /Permission denied/i)
 			{
 				$failed = 1;
@@ -655,7 +680,9 @@ sub confirm_image_and_upload
 		class	=>	"bold_button",
 	}, "", 1);
 	$submit_button =~ s/^\s+//; $submit_button =~ s/\s+$//s;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; submit_button: [$submit_button]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "submit_button", value1 => $submit_button,
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Display the confirmation window now.
 	print AN::Common::template($conf, "media-library.html", "image-and-upload-confirm", {
@@ -781,7 +808,9 @@ sub check_local_dvd
 	
 	my $dev        = "";
 	my $shell_call = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -879,12 +908,17 @@ sub read_shared
 	
 	my $cluster   = $conf->{cgi}{cluster};
 	my $connected = 0;
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], connecter: [$connected]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cluster",   value1 => $cluster,
+		name2 => "connecter", value2 => $connected,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This returns the name of the node used to read /shared/files/. If no
 	# node was available, it returns an empty string.
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "media-library.html", "read-shared-header");
 	if ($node)

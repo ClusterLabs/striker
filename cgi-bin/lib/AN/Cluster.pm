@@ -107,7 +107,9 @@ sub call_gather_system_info
 	{
 		chomp;
 		my $line = $_;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /hostname,(.*)/)
 		{
 			$conf->{sys}{hostname} = $1;
@@ -144,7 +146,9 @@ sub call_gather_system_info
 	}
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; interface: [$interface]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "interface", value1 => $interface,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
 		{
 			record($conf, "$THIS_FILE ".__LINE__."; - $key:\t[$conf->{interface}{$interface}{$key}]\n");
@@ -222,7 +226,9 @@ sub sanity_check_striker_conf
 		
 		my $this_name         =  $conf->{cgi}{$name_key};
 		   $this_cluster      =  $this_name;
-		record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_cluster", value1 => $this_cluster,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $this_description  =  $conf->{cgi}{$description_key};
 		my $this_url          =  $conf->{cgi}{$url_key};
 		my $this_company      =  $conf->{cgi}{$company_key};
@@ -250,7 +256,10 @@ sub sanity_check_striker_conf
 		# Start the (in)sanity!
 		# Add the passed in port and IP (if exists) into the hashed
 		# created in read_hosts() and read_ssh_config;
-		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_ip: [$this_nodes_1_ip]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_nodes_1_name", value1 => $this_nodes_1_name,
+			name2 => "this_nodes_1_ip",   value2 => $this_nodes_1_ip,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($this_nodes_1_name) && ($this_nodes_1_ip))
 		{
 			$conf->{hosts}{$this_nodes_1_name}{ip} = $this_nodes_1_ip;
@@ -260,7 +269,10 @@ sub sanity_check_striker_conf
 			}
 			push @{$conf->{hosts}{by_ip}{$this_nodes_1_ip}}, $this_nodes_1_name;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_ip: [$this_nodes_2_ip]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_nodes_2_name", value1 => $this_nodes_2_name,
+			name2 => "this_nodes_2_ip",   value2 => $this_nodes_2_ip,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($this_nodes_2_name) && ($this_nodes_2_ip))
 		{
 			$conf->{hosts}{$this_nodes_2_name}{ip} = $this_nodes_2_ip;
@@ -270,12 +282,18 @@ sub sanity_check_striker_conf
 			}
 			push @{$conf->{hosts}{by_ip}{$this_nodes_2_ip}}, $this_nodes_2_name;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_port: [$this_nodes_1_port]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_nodes_1_name", value1 => $this_nodes_1_name,
+			name2 => "this_nodes_1_port", value2 => $this_nodes_1_port,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($this_nodes_1_name) && ($this_nodes_1_port))
 		{
 			$conf->{hosts}{$this_nodes_1_name}{port} = $this_nodes_1_port;
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_port: [$this_nodes_2_port]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_nodes_2_name", value1 => $this_nodes_2_name,
+			name2 => "this_nodes_2_port", value2 => $this_nodes_2_port,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($this_nodes_2_name) && ($this_nodes_2_port))
 		{
 			$conf->{hosts}{$this_nodes_2_name}{port} = $this_nodes_2_port;
@@ -304,17 +322,23 @@ sub sanity_check_striker_conf
 				# from ssh_config, hosts and the VMM 'connections/%gconf.xml' files as well
 				# as remove it from striker.conf.
 				my $anvil_name = $conf->{cluster}{$this_id}{name};
-				record($conf, "$THIS_FILE ".__LINE__."; Deleting Anvil!: [$anvil_name]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "Deleting Anvil!", value1 => $anvil_name,
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Delete it locally
 				my $shell_call = "$conf->{path}{'call_striker-delete-anvil'} --anvil $anvil_name";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "Calling", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
-					record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				close $file_handle;
 				
@@ -326,7 +350,10 @@ sub sanity_check_striker_conf
 					next if not $hash;
 					my $peer_name     = $hash->{name};
 					my $peer_password = $hash->{password};
-					record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name], peer_password: [$peer_password]\n");
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+						name1 => "peer_name",     value1 => $peer_name,
+						name2 => "peer_password", value2 => $peer_password,
+					}, file => $THIS_FILE, line => __LINE__});
 					
 					my $shell_call = "$conf->{path}{'striker-delete-anvil'} --anvil $anvil_name";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -350,7 +377,9 @@ sub sanity_check_striker_conf
 				}
 				# Set 'save' to '2' to tell the caller we deleted the Anvil!.
 				$save = 2;
-				record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "save", value1 => $save,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -365,7 +394,11 @@ sub sanity_check_striker_conf
 		else
 		{
 			# Something is defined, make sure it's sane.
-			record($conf, "$THIS_FILE ".__LINE__."; this_name: [$this_name], this_nodes_1_name: [$this_nodes_1_name], this_nodes_2_name: [$this_nodes_2_name]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_name",         value1 => $this_name,
+				name2 => "this_nodes_1_name", value2 => $this_nodes_1_name,
+				name3 => "this_nodes_2_name", value3 => $this_nodes_2_name,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ((not $this_name) || (not $this_nodes_1_name) || (not $this_nodes_2_name))
 			{
 				$save = 0;
@@ -382,7 +415,9 @@ sub sanity_check_striker_conf
 			{
 				# The minimum information is present, now make sure the set values are sane.
 				# IPs sane?
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_ip: [$this_nodes_1_ip]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nodes_1_ip", value1 => $this_nodes_1_ip,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($this_nodes_1_ip) && ($this_nodes_1_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
@@ -394,7 +429,9 @@ sub sanity_check_striker_conf
 						node	=>	$this_nodes_1_name,
 					}); 
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_ip: [$this_nodes_2_ip]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nodes_2_ip", value1 => $this_nodes_2_ip,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($this_nodes_2_ip) && ($this_nodes_2_ip !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/))
 				{
 					$save = 0;
@@ -407,7 +444,9 @@ sub sanity_check_striker_conf
 					}); 
 				}
 				# Ports sane?
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_port: [$this_nodes_1_port]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nodes_1_port", value1 => $this_nodes_1_port,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($this_nodes_1_port) && (($this_nodes_1_port =~ /\D/) || ($this_nodes_1_port < 1) || ($this_nodes_1_port > 65535)))
 				{
 					$save = 0;
@@ -419,7 +458,9 @@ sub sanity_check_striker_conf
 						node	=>	$this_nodes_1_name,
 					}); 
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_port: [$this_nodes_2_port]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nodes_2_port", value1 => $this_nodes_2_port,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($this_nodes_2_port) && (($this_nodes_2_port =~ /\D/) || ($this_nodes_2_port < 1) || ($this_nodes_2_port > 65535)))
 				{
 					$save = 0;
@@ -432,7 +473,11 @@ sub sanity_check_striker_conf
 					}); 
 				}
 				# If there is an IP or Port, but no node name, well that's just not good.
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_1_name: [$this_nodes_1_name], this_nodes_1_ip: [$this_nodes_1_ip], this_nodes_1_port: [$this_nodes_1_port]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "this_nodes_1_name", value1 => $this_nodes_1_name,
+					name2 => "this_nodes_1_ip",   value2 => $this_nodes_1_ip,
+					name3 => "this_nodes_1_port", value3 => $this_nodes_1_port,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ((not $this_nodes_1_name) && (($this_nodes_1_ip) || ($this_nodes_1_port)))
 				{
 					$save = 0;
@@ -443,7 +488,11 @@ sub sanity_check_striker_conf
 						name	=>	$this_name,
 					}); 
 				}
-				record($conf, "$THIS_FILE ".__LINE__."; this_nodes_2_name: [$this_nodes_2_name], this_nodes_2_ip: [$this_nodes_2_ip], this_nodes_2_port: [$this_nodes_2_port]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "this_nodes_2_name", value1 => $this_nodes_2_name,
+					name2 => "this_nodes_2_ip",   value2 => $this_nodes_2_ip,
+					name3 => "this_nodes_2_port", value3 => $this_nodes_2_port,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ((not $this_nodes_2_name) && (($this_nodes_2_ip) || ($this_nodes_2_port)))
 				{
 					$save = 0;
@@ -457,7 +506,9 @@ sub sanity_check_striker_conf
 			}
 		}
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "save", value1 => $save,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now Sanity check the global (or Anvil! override) values.
 	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
@@ -531,14 +582,19 @@ sub sanity_check_striker_conf
 		{
 			# Find a free ID after populating the keys above because they're going to come in 
 			# from CGI as '...__new__...'.
-			record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_id", value1 => $this_id,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($this_id eq "new")
 			{
 				# Find the next free ID number.
 				my $free_id = 1;
 				foreach my $existing_id (sort {$a cmp $b} keys %{$conf->{cluster}})
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; free_id: [$free_id], existing_id: [$existing_id]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "free_id",     value1 => $free_id,
+						name2 => "existing_id", value2 => $existing_id,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ($existing_id eq $free_id)
 					{
 						$free_id++;
@@ -548,12 +604,16 @@ sub sanity_check_striker_conf
 					else
 					{
 						# Got a free one.
-						record($conf, "$THIS_FILE ".__LINE__."; free; free_id: [$free_id]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "free; free_id", value1 => $free_id,
+						}, file => $THIS_FILE, line => __LINE__});
 						last;
 					}
 				}
 				$this_id = $free_id;
-				record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_id", value1 => $this_id,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# If I'm still alive, push the passed in keys into $conf->{cluster}... so that they 
@@ -629,7 +689,9 @@ sub sanity_check_striker_conf
 		}
 	}
 
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "save", value1 => $save,
+	}, file => $THIS_FILE, line => __LINE__});
 	return ($save);
 }
 
@@ -716,7 +778,9 @@ sub write_new_striker_conf
 		{
 			chomp;
 			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# We don't want to munge the config any more than necessary as the user may have 
 			# customizations we don't want to clobber.
@@ -737,7 +801,10 @@ sub write_new_striker_conf
 				$variable =~ s/\s+$//;
 				$value    =~ s/^\s+//;
 				$value    =~ s/\s+$//;
-				#record($conf, "$THIS_FILE ".__LINE__."; variable: [$variable], value: [$value]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "variable", value1 => $variable,
+					name2 => "value",    value2 => $value,
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				# We're setting certain values. If this variable matches on of the ones we're
 				# setting, overwrite the current value. Otherwise, leave it as-is.
@@ -954,7 +1021,9 @@ sub read_hosts
 		   $line =~ s/#.*$//;
 		   $line =~ s/\s+$//;
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my ($this_ip, $these_hosts);
 		### NOTE: We don't support IPv6 yet
@@ -982,7 +1051,9 @@ sub read_hosts
 		#record($conf, "$THIS_FILE ".__LINE__."; $this_ip\n");
 		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; - this_host: [$this_host]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "- this_host", value1 => $this_host,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1000,7 +1071,9 @@ sub read_ssh_config
 	$conf->{raw}{ssh_config} = [];
 	my $this_host;
 	my $shell_call = "$conf->{path}{ssh_config}";
-	#record($conf, "$THIS_FILE ".__LINE__."; reading: [$shell_call]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "reading", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
@@ -1009,12 +1082,16 @@ sub read_ssh_config
 		# I skip this to avoid multiple 'Last updated...' lines at the
 		# top of the file when I rewrite this.
 		next if $line =~ /^### Last updated: /;
-		#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		push @{$conf->{raw}{ssh_config}}, $line;
 		$line =~ s/#.*$//;
 		$line =~ s/\s+$//;
 		next if not $line;
-		#record($conf, "$THIS_FILE ".__LINE__."; << line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^host (.*)/i)
 		{
@@ -1046,14 +1123,18 @@ sub copy_file
 	
 	my $output     = "";
 	my $shell_call = "$conf->{path}{cp} -f $source $destination; $conf->{path}{sync}";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
 		$output .= "$line\n";
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
@@ -1093,7 +1174,9 @@ sub write_new_ssh_config
 		$say_date_header =~ s/\[.*?\]/\[\]/;
 		next if $line =~ /$say_date_header/;
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; >> ssh_config line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> ssh_config line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		last if ($line =~ /^Host\s+(.*)$/);
 		last if ($line =~ /^###############/);
 		# This cleans out multiple blank spaces which seem to creep in.
@@ -1122,12 +1205,19 @@ sub write_new_ssh_config
 	# Now add any new entries.
 	foreach my $this_host (sort {$a cmp $b} keys %{$conf->{hosts}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host], port: [$conf->{hosts}{$this_host}{port}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_host", value1 => $this_host,
+			name2 => "port",      value2 => $conf->{hosts}{$this_host}{port},
+		}, file => $THIS_FILE, line => __LINE__});
 		next if not $conf->{hosts}{$this_host}{port};
 		print $file_handle "Host $this_host\n";
 		print $file_handle "\tPort $conf->{hosts}{$this_host}{port}\n\n";
-		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [Host $this_host]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; << ssh_config line: [\tPort $conf->{hosts}{$this_host}{port}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< ssh_config line", value1 => Host $this_host,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< ssh_config line", value1 => \tPort $conf->{hosts}{$this_host}{port},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 
@@ -1165,11 +1255,15 @@ sub write_new_hosts
 		next if $seen_hosts->{$this_ip}{$this_host};
 		$seen_hosts->{$this_ip}{$this_host} = 1;
 		$hosts .= "$this_host ";
-		#record($conf, "$THIS_FILE ".__LINE__."; hosts: [$hosts]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "hosts", value1 => $hosts,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	   $hosts =~ s/ $//;
 	my $line  =  "$this_ip\t$hosts";
-	#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line,
+	}, file => $THIS_FILE, line => __LINE__});
 	print $file_handle "$line\n";
 	delete $conf->{hosts}{by_ip}{"127.0.0.1"};
 	
@@ -1205,7 +1299,10 @@ sub write_new_hosts
 			$seen_hosts->{$this_ip}{$this_host} = 1;
 			$hosts .= "$this_host ";
 			$host_count++ if $this_host;
-			record($conf, "$THIS_FILE ".__LINE__."; host_count: [$host_count], hosts: [$hosts]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "host_count", value1 => $host_count,
+				name2 => "hosts",      value2 => $hosts,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$hosts =~ s/ $//;
 		
@@ -1221,7 +1318,9 @@ sub write_new_hosts
 		}
 		
 		my $line  =  "$this_ip\t$hosts";
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		print $file_handle "$line\n";
 	}
 	close $file_handle;
@@ -1237,7 +1336,9 @@ sub save_dashboard_configure
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_dashboard_configure" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
-	record($conf, "$THIS_FILE ".__LINE__."; save: [$save]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "save", value1 => $save,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($save eq "1")
 	{
 		# Get the current date and time.
@@ -1246,7 +1347,10 @@ sub save_dashboard_configure
 		   $date       =~ s/ /_/g;
 		   $date       =~ s/:/-/g;
 		   $say_date   =~ s/ /, /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date], date: [$date]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "say_date", value1 => $say_date,
+			name2 => "date",     value2 => $date,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Write out the new config file.
 		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date]\n");
@@ -1274,7 +1378,9 @@ sub save_dashboard_configure
 		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
 		# then something went wrong. Otherwise the peer's hostname is returned.
 		my $peer = sync_with_peer($conf);
-		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "[ Debug ] - peer", value1 => $peer,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($peer) && ($peer ne "#!error!#"))
 		{
 			# Tell the user
@@ -1353,29 +1459,41 @@ sub sync_with_peer
 	my $i_am_long     =  get_hostname($conf);
 	my $i_am_short    =  $i_am_long;
 	   $i_am_short    =~ s/\..*$//;
-	record($conf, "$THIS_FILE ".__LINE__."; i_am_long: [$i_am_long], i_am_short: [$i_am_short]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "i_am_long",  value1 => $i_am_long,
+		name2 => "i_am_short", value2 => $i_am_short,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
 	{
 		$db_count++;
 		my $this_host = $conf->{scancore}{db}{$id}{host};
-		record($conf, "$THIS_FILE ".__LINE__."; id: [$id], this_host: [$this_host]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",        value1 => $id,
+			name2 => "this_host", value2 => $this_host,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
 		{
 			$local_id = $id;
-			record($conf, "$THIS_FILE ".__LINE__."; local_id: [$local_id]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_id", value1 => $local_id,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# If there were too many peers, exit.
-	record($conf, "$THIS_FILE ".__LINE__."; db_count: [$db_count]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "db_count", value1 => $db_count,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($db_count ne "2")
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host'. I found: [$db_count] entries\n");
 		return("");
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; local_id: [$local_id]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "local_id", value1 => $local_id,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $local_id)
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host' and one of them matches this dashboard's host name: [$i_am_long ($i_am_short)].\n");
@@ -1390,13 +1508,18 @@ sub sync_with_peer
 		{
 			$peer_name     = $conf->{scancore}{db}{$id}{host};
 			$peer_password = $conf->{scancore}{db}{$id}{password};
-			record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name], peer_password: [$peer_password]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+				name1 => "peer_name",     value1 => $peer_name,
+				name2 => "peer_password", value2 => $peer_password,
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
 	
 	# Final check...
-	#record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "peer_name", value1 => $peer_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $peer_name)
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync can't run because it was unable to determine the peer's host name via analyzing the 'scancore::db::x::host' entries.\n");
@@ -1418,7 +1541,10 @@ sub sync_with_peer
 		{
 			my $rc = $1;
 			$merge_striker_ok = $rc eq "0" ? 1 : 0;
-			record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], merge_striker_ok: [$merge_striker_ok]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "rc",               value1 => $rc,
+				name2 => "merge_striker_ok", value2 => $merge_striker_ok,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
@@ -1454,14 +1580,20 @@ $conf->{path}{'striker-configure-vmm'}
 	}
 	
 	# If either program errors, change the host name to '#!error!#'.
-	record($conf, "$THIS_FILE ".__LINE__."; merge_striker_ok: [$merge_striker_ok]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "merge_striker_ok", value1 => $merge_striker_ok,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $merge_striker_ok)
 	{
 		$peer_name = "#!error!#";
-		record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_name", value1 => $peer_name,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; peer_name: [$peer_name]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "peer_name", value1 => $peer_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($peer_name);
 }
 
@@ -1646,7 +1778,17 @@ sub show_common_config_section
 		"1#!#Yes",
 		"0#!#No"
 	];
-	#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+		name1 => "smtp__server_key",              value1 => $smtp__server_key,
+		name2 => "smtp__port_key",                value2 => $smtp__port_key,
+		name3 => "smtp__username_key",            value3 => $smtp__username_key,
+		name4 => "smtp__password_key",            value4 => $smtp__password_key,
+		name5 => "smtp__security_key",            value5 => $smtp__security_key,
+		name6 => "smtp__encrypt_pass_key",        value6 => $smtp__encrypt_pass_key,
+		name7 => "smtp__helo_domain_key",         value7 => $smtp__helo_domain_key,
+		name8 => "mail_data__to_key",             value8 => $mail_data__to_key,
+		name9 => "mail_data__sending_domain_key", value9 => $mail_data__sending_domain_key,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $conf->{cgi}{save})
 	{
 		# First time loading the config, so pre-populate the values
@@ -1680,7 +1822,17 @@ sub show_common_config_section
 		$smtp__helo_domain_key         = "cluster__${this_id}__smtp__helo_domain";
 		$mail_data__to_key             = "cluster__${this_id}__mail_data__to";
 		$mail_data__sending_domain_key = "cluster__${this_id}__mail_data__sending_domain";
-		#record($conf, "$THIS_FILE ".__LINE__."; smtp__server_key: [$smtp__server_key], smtp__port_key: [$smtp__port_key], smtp__username_key: [$smtp__username_key], smtp__password_key: [$smtp__password_key], smtp__security_key: [$smtp__security_key], smtp__encrypt_pass_key: [$smtp__encrypt_pass_key], smtp__helo_domain_key: [$smtp__helo_domain_key], mail_data__to_key: [$mail_data__to_key], mail_data__sending_domain_key: [$mail_data__sending_domain_key]\n");
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+			name1 => "smtp__server_key",              value1 => $smtp__server_key,
+			name2 => "smtp__port_key",                value2 => $smtp__port_key,
+			name3 => "smtp__username_key",            value3 => $smtp__username_key,
+			name4 => "smtp__password_key",            value4 => $smtp__password_key,
+			name5 => "smtp__security_key",            value5 => $smtp__security_key,
+			name6 => "smtp__encrypt_pass_key",        value6 => $smtp__encrypt_pass_key,
+			name7 => "smtp__helo_domain_key",         value7 => $smtp__helo_domain_key,
+			name8 => "mail_data__to_key",             value8 => $mail_data__to_key,
+			name9 => "mail_data__sending_domain_key", value9 => $mail_data__sending_domain_key,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Add the 'inherit' options.
 		push @{$security_select_options},     "#!inherit!#";
@@ -1696,15 +1848,29 @@ sub show_common_config_section
 	my $say_smtp__helo_domain         = $conf->{cgi}{$smtp__helo_domain_key};
 	my $say_mail_data__to             = $conf->{cgi}{$mail_data__to_key};
 	my $say_mail_data__sending_domain = $conf->{cgi}{$mail_data__sending_domain_key};
-	#record($conf, "$THIS_FILE ".__LINE__."; say_smtp__server: [$say_smtp__server], say_smtp__port: [$say_smtp__port], say_smtp__username: [$say_smtp__username], say_smtp__password: [$say_smtp__password], say_smtp__security: [$say_smtp__security], say_smtp__encrypt_pass: [$say_smtp__encrypt_pass], say_smtp__helo_domain: [$say_smtp__helo_domain], say_mail_data__to: [$say_mail_data__to], say_mail_data__sending_domain: [$say_mail_data__sending_domain]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+		name1 => "say_smtp__server",              value1 => $say_smtp__server,
+		name2 => "say_smtp__port",                value2 => $say_smtp__port,
+		name3 => "say_smtp__username",            value3 => $say_smtp__username,
+		name4 => "say_smtp__password",            value4 => $say_smtp__password,
+		name5 => "say_smtp__security",            value5 => $say_smtp__security,
+		name6 => "say_smtp__encrypt_pass",        value6 => $say_smtp__encrypt_pass,
+		name7 => "say_smtp__helo_domain",         value7 => $say_smtp__helo_domain,
+		name8 => "say_mail_data__to",             value8 => $say_mail_data__to,
+		name9 => "say_mail_data__sending_domain", value9 => $say_mail_data__sending_domain,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Build the security and encrypt password select boxes.
 	my $say_security_select     = build_select($conf, "$smtp__security_key",     0, 0, 300, $conf->{cgi}{$smtp__security_key},     $security_select_options);
 	my $say_encrypt_pass_select = build_select($conf, "$smtp__encrypt_pass_key", 0, 0, 300, $conf->{cgi}{$smtp__encrypt_pass_key}, $encrypt_pass_select_options);
 	$say_security_select     =~ s/<select name=/<select tabindex="18" name=/;
 	$say_encrypt_pass_select =~ s/<select name=/<select tabindex="19" name=/;
-	#record($conf, "$THIS_FILE ".__LINE__."; say_security_select: [$say_security_select]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; say_encrypt_pass_select: [$say_encrypt_pass_select]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_security_select", value1 => $say_security_select,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_encrypt_pass_select", value1 => $say_encrypt_pass_select,
+	}, file => $THIS_FILE, line => __LINE__});
 	# If both nodes are up, enable the 'Push' button.
 	my $push_button = "";
 	if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
@@ -1817,7 +1983,9 @@ sub push_config_to_anvil
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "push_config_to_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil = $conf->{cgi}{anvil};
-	record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil", value1 => $anvil,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure both nodes are up.
 	$conf->{cgi}{cluster}       = $conf->{cgi}{anvil};
@@ -1825,7 +1993,9 @@ sub push_config_to_anvil
 	scan_cluster($conf);
 	
 	my $up = @{$conf->{up_nodes}};
-	record($conf, "$THIS_FILE ".__LINE__."; online nodes: [$up]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "online nodes", value1 => $up,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($up == 0)
 	{
 		# Neither node is reachable or online.
@@ -1848,12 +2018,17 @@ sub push_config_to_anvil
 		
 		# We're going to want to backup each file before pushing the updates.
 		my ($say_date) =  get_date($conf, time);
-		record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "say_date", value1 => $say_date,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $date       =  $say_date;
 		   $date       =~ s/ /_/g;
 		   $date       =~ s/:/-/g;
 		   $say_date   =~ s/ /, /g;
-		record($conf, "$THIS_FILE ".__LINE__."; say_date: [$say_date], date: [$date]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "say_date", value1 => $say_date,
+			name2 => "date",     value2 => $date,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		print AN::Common::template($conf, "config.html", "open-push-table");
 		foreach my $node (@{$conf->{up_nodes}})
@@ -1871,7 +2046,9 @@ sub push_config_to_anvil
 			# Make sure there is an '/etc/an' directory on the node
 			# and create it, if not.
 			my $striker_directory = ($conf->{path}{config_file} =~ /^(.*)\/.*$/)[0];
-			record($conf, "$THIS_FILE ".__LINE__."; striker_directory: [$striker_directory]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "striker_directory", value1 => $striker_directory,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $shell_call = "
 if [ ! -e '$striker_directory' ]; 
 then 
@@ -1972,7 +2149,9 @@ ls $backup_file";
 				AN::Common::create_rsync_wrapper($conf, $node);
 				$shell_call = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "Calling", value1 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			my $no_key = 0;
 			while(<$file_handle>)
@@ -2026,17 +2205,23 @@ sub create_backup_file
 	my @manifests;
 	my $manifest_directory =  $conf->{path}{apache_manifests_dir};
 	   $manifest_directory =~ s/\/$//g;
-	record($conf, "$THIS_FILE ".__LINE__."; manifest_directory: [$manifest_directory]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "manifest_directory", value1 => $manifest_directory,
+	}, file => $THIS_FILE, line => __LINE__});
 	local(*DIRECTORY);
 	opendir(DIRECTORY, $manifest_directory);
 	while(my $file = readdir(DIRECTORY))
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; file: [$file]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "file", value1 => $file,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($file =~ /^install-manifest_(.*?).xml$/)
 		{
 			my $full_path = "$manifest_directory/$file";
 			push @manifests, $full_path;
-			record($conf, "$THIS_FILE ".__LINE__."; full_path: [$full_path]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "full_path", value1 => $full_path,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	   
@@ -2044,7 +2229,9 @@ sub create_backup_file
 	foreach my $file ($conf->{path}{config_file}, $conf->{path}{hosts}, $conf->{path}{ssh_config}, @manifests)
 	{
 		# Read in /etc/striker/striker.conf.
-		record($conf, "$THIS_FILE ".__LINE__."; reading: [$file]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "reading", value1 => $file,
+		}, file => $THIS_FILE, line => __LINE__});
 		$config_data .= "<!-- start $file -->\n";
 		my $shell_call = "$file";
 		open (my $file_handle, "<:encoding(UTF-8)", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
@@ -2055,7 +2242,9 @@ sub create_backup_file
 		close $file_handle;
 		$config_data .= "<!-- end $file -->\n\n";
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; config_data: [\n$config_data]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "config_data", value1 => \n$config_data,
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Modify the backup file and URL file names to insert this dashboard's hostname.
 	my $date                    =  get_date($conf);
@@ -2069,7 +2258,9 @@ sub create_backup_file
 	
 	# Now write out the file.
 	my $shell_call = "$backup_file";
-	record($conf, "$THIS_FILE ".__LINE__."; Writing: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "Writing", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">", $shell_call) or die "Failed to write: [$shell_call], the error was: $!\n";
 	print $file_handle $config_data;
 	close $file_handle;
@@ -2174,15 +2365,24 @@ sub load_backup_configuration
 				elsif ($file)
 				{
 					# Unknown file...
-					record($conf, "$THIS_FILE ".__LINE__."; Unknown file: [$file], line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "Unknown file", value1 => $file,
+						name2 => "line",         value2 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; striker.conf contents: [\n$striker_conf]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; hosts contents: [\n$hosts]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; ssh_config contents: [\n$ssh_config]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "striker.conf contents", value1 => \n$striker_conf,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hosts contents", value1 => \n$hosts,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ssh_config contents", value1 => \n$ssh_config,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($striker_conf) && ($hosts) && ($ssh_config))
 	{
 		### TODO: examine the contents of each file to ensure it looks sane.
@@ -2202,7 +2402,9 @@ sub load_backup_configuration
 		# Load any manifests.
 		foreach my $file (sort {$a cmp $b} keys %{$conf->{install_manifest}})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; writing manifest file: [$file]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "writing manifest file", value1 => $file,
+			}, file => $THIS_FILE, line => __LINE__});
 			open (my $manifest_fh, ">", "$file") or die "$THIS_FILE ".__LINE__."; Can't write to: [$file], error: $!\n";
 			print $manifest_fh $conf->{install_manifest}{$file}{config};
 			close $manifest_fh;
@@ -2211,7 +2413,9 @@ sub load_backup_configuration
 		# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to '#!error!#',
 		# then something went wrong. Otherwise the peer's hostname is returned.
 		my $peer = sync_with_peer($conf);
-		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "[ Debug ] - peer", value1 => $peer,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($peer) && ($peer ne "#!error!#"))
 		{
 			# Tell the user
@@ -2243,13 +2447,17 @@ sub configure_ssh_local
 	
 	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
 	my $shell_call = "$conf->{path}{'call_striker-push-ssh'} --anvil $anvil_name";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "[ Debug ] - line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
@@ -2275,7 +2483,9 @@ sub configure_vmm_local
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
@@ -2443,7 +2653,9 @@ sub create_install_manifest
 				# '#!error!#', then something went wrong. Otherwise the peer's hostname is 
 				# returned.
 				my $peer = sync_with_peer($conf);
-				record($conf, "$THIS_FILE ".__LINE__."; [ Debug ] - peer: [$peer]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "[ Debug ] - peer", value1 => $peer,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($peer) && ($peer ne "#!error!#"))
 				{
 					# Tell the user
@@ -2529,7 +2741,9 @@ sub create_install_manifest
 		}
 	}
 	
-	record($conf, "$THIS_FILE ".__LINE__."; show_form: [$show_form]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "show_form", value1 => $show_form,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($show_form)
 	{
 		# Show the existing install manifest files.
@@ -3987,22 +4201,32 @@ sub get_striker_prefix_and_domain
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_striker_prefix_and_domain" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($hostname) = get_hostname($conf);
-	record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "hostname", value1 => $hostname,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $default_prefix = "";
 	if ($hostname =~ /^(\w+)-/)
 	{
 		$default_prefix = $1;
-		#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "default_prefix", value1 => $default_prefix,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	my $default_domain = ($hostname =~ /\.(.*)$/)[0];
-	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_domain: [$default_domain]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "default_prefix", value1 => $default_prefix,
+		name2 => "default_domain", value2 => $default_domain,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the user has defined default prefix and/or domain, use them instead.
 	if ($conf->{sys}{install_manifest}{'default'}{prefix}) { $default_prefix = $conf->{sys}{install_manifest}{'default'}{prefix}; }
 	if ($conf->{sys}{install_manifest}{'default'}{domain}) { $default_domain = $conf->{sys}{install_manifest}{'default'}{domain}; }
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; default_prefix: [$default_prefix], default_domain: [$default_domain]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "default_prefix", value1 => $default_prefix,
+		name2 => "default_domain", value2 => $default_domain,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($default_prefix, $default_domain);
 }
 
@@ -4018,7 +4242,9 @@ sub load_install_manifest
 	
 	# Read in the install manifest file.
 	my $manifest_file = $conf->{path}{apache_manifests_dir}."/".$file;
-	#record($conf, "$THIS_FILE ".__LINE__."; manifest_file: [$manifest_file]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "manifest_file", value1 => $manifest_file,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $manifest_file)
 	{
 		# Load it!
@@ -4033,7 +4259,9 @@ sub load_install_manifest
 			#print Dumper $data;
 			#print "</pre>\n";
 			#die;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node", value1 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $a (keys %{$data->{node}{$node}})
 			{
 				if ($a eq "interfaces")
@@ -4064,7 +4292,11 @@ sub load_install_manifest
 					{
 						my $ip = $data->{node}{$node}{network}->[0]->{$network}->[0]->{ip};
 						$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip} = $ip ? $ip : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], Network: [$network], IP: [$conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip}]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "Node",    value1 => $node,
+							name2 => "Network", value2 => $network,
+							name3 => "IP",      value3 => $conf->{install_manifest}{$file}{node}{$node}{network}{$network}{ip},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($a eq "pdu")
@@ -4083,7 +4315,15 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], PDU: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password}], Password Script: [$conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0007", message_variables => {
+							name1 => "Node",            value1 => $node,
+							name2 => "PDU",             value2 => $reference,
+							name3 => "Name",            value3 => $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{name},
+							name4 => "Port",            value4 => $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{port},
+							name5 => "User",            value5 => $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{user},
+							name6 => "Password",        value6 => $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password},
+							name7 => "Password Script", value7 => $conf->{install_manifest}{$file}{node}{$node}{pdu}{$reference}{password_script},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($a eq "kvm")
@@ -4102,14 +4342,25 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script} = $password_script ? $password_script : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], KVM: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{name}], Port: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{port}], User: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0007", message_variables => {
+							name1 => "Node",            value1 => $node,
+							name2 => "KVM",             value2 => $reference,
+							name3 => "Name",            value3 => $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{name},
+							name4 => "Port",            value4 => $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{port},
+							name5 => "User",            value5 => $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{user},
+							name6 => "Password",        value6 => $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password},
+							name7 => "password_script", value7 => $conf->{install_manifest}{$file}{node}{$node}{kvm}{$reference}{password_script},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($a eq "ipmi")
 				{
 					foreach my $b (@{$data->{node}{$node}{ipmi}->[0]->{on}})
 					{
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ipmi b: [$b]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",   value1 => $node,
+							name2 => "ipmi b", value2 => $b,
+						}, file => $THIS_FILE, line => __LINE__});
 						#foreach my $key (keys %{$b}) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ipmi b: [$b], key: [$key] -> [$b->{$key}]\n"); }
 						my $reference       = $b->{reference};
 						my $name            = $b->{name};
@@ -4124,11 +4375,17 @@ sub load_install_manifest
 						# 16 characters long, truncate
 						# it so that nodes with IPMI
 						# v1.5 don't spazz out.
-						#record($conf, "$THIS_FILE ".__LINE__."; >> password: [$password], length: [".length($password)."]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+							name1 => ">> password", value1 => $password,
+							name2 => "length",      value2 => length($password),
+						}, file => $THIS_FILE, line => __LINE__});
 						if (length($password) > 16)
 						{
 							$password = substr($password, 0, 16);
-							#record($conf, "$THIS_FILE ".__LINE__."; << password: [$password], length: [".length($password)."]\n");
+							$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+								name1 => "<< password", value1 => $password,
+								name2 => "length",      value2 => length($password),
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}            = $name            ? $name            : "";
@@ -4138,7 +4395,17 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user}            = $user            ? $user            : "";
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script} = $password_script ? $password_script : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip}/$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{netmask}, gw: $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway}], User: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user}], Password: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+							name1 => "node",            value1 => $node,
+							name2 => "ipmi",            value2 => $reference,
+							name3 => "name",            value3 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{name},
+							name4 => "IP",              value4 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{ip},
+							name5 => "netmask",         value5 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{netmask}, 
+							name6 => "gateway",         value6 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{gateway},
+							name7 => "User",            value7 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{user},
+							name8 => "Password",        value8 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password},
+							name9 => "password_script", value9 => $conf->{install_manifest}{$file}{node}{$node}{ipmi}{$reference}{password_script},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($a eq "uuid")
@@ -4221,14 +4488,18 @@ sub load_install_manifest
 				{
 					my $ports = $a->{$b}->[0]->{vnc}->[0]->{ports};
 					$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports} = $ports ? $ports : 100;
-					#record($conf, "$THIS_FILE ".__LINE__."; Firewall iptables; VNC port count: [$conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "Firewall iptables; VNC port count", value1 => $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "servers")
 				{
 					# I may use this later for other things.
 					#my $use_spice_graphics = $a->{$b}->[0]->{provision}->[0]->{use_spice_graphics};
 					#$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics} = $use_spice_graphics ? $use_spice_graphics : "0";
-					#record($conf, "$THIS_FILE ".__LINE__."; Server provisioning; Use spice graphics: [$conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "Server provisioning; Use spice graphics", value1 => $conf->{install_manifest}{$file}{common}{cluster}{servers}{provision}{use_spice_graphics},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "tools")
 				{
@@ -4284,7 +4555,9 @@ sub load_install_manifest
 									# Global bonding options.
 									my $options = $a->{$b}->[0]->{$c}->[0]->{opts};
 									$conf->{install_manifest}{$file}{common}{network}{bond}{options} = $options ? $options : "";
-									#record($conf, "$THIS_FILE ".__LINE__."; Common bonding options: [$conf->{install_manifest}{$file}{common}{network}{bonds}{options}]\n");
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+										name1 => "Common bonding options", value1 => $conf->{install_manifest}{$file}{common}{network}{bonds}{options},
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 								else
 								{
@@ -4294,7 +4567,11 @@ sub load_install_manifest
 									my $secondary = $a->{$b}->[0]->{$c}->[0]->{$d}->[0]->{secondary};
 									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}   = $primary   ? $primary   : "";
 									$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary} = $secondary ? $secondary : "";
-									#record($conf, "$THIS_FILE ".__LINE__."; Bond: [$name], Primary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary}], Secondary: [$conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary}]\n");
+									$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+										name1 => "Bond",      value1 => $name,
+										name2 => "Primary",   value2 => $conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{primary},
+										name3 => "Secondary", value3 => $conf->{install_manifest}{$file}{common}{network}{bond}{name}{$name}{secondary},
+									}, file => $THIS_FILE, line => __LINE__});
 								}
 							}
 						}
@@ -4340,7 +4617,18 @@ sub load_install_manifest
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}         = defined $ntp1         ? $ntp1         : "";
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}         = defined $ntp2         ? $ntp2         : "";
 							$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts} = defined $ethtool_opts ? $ethtool_opts : $conf->{sys}{install_manifest}{'default'}{$ethtool_opts_key};
-							#record($conf, "$THIS_FILE ".__LINE__."; Network: [$c], netblock: [$conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock}], netmask: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask}], gateway [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway}], defroute: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute}], dns1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1}], dns2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2}], ntp1: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1}], ntp2: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2}], ethtool_opts: [$conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts}]\n");
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+								name1  => "Network",      value1  => $c,
+								name2  => "netblock",     value2  => $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{netblock},
+								name3  => "netmask",      value3  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{netmask},
+								name4  => "gateway",      value4  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{gateway},
+								name5  => "defroute",     value5  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{defroute},
+								name6  => "dns1",         value6  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns1},
+								name7  => "dns2",         value7  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{dns2},
+								name8  => "ntp1",         value8  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp1},
+								name9  => "ntp2",         value9  => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{ntp2},
+								name10 => "ethtool_opts", value10 => $conf->{install_manifest}{$file}{common}{network}{name}{$c}{ethtool_opts},
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -4392,7 +4680,15 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script} = $password_script ? $password_script : "";
 						$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}           = $agent           ? $agent           : $conf->{sys}{install_manifest}{pdu_agent};
-						#record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], Name: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0007", message_variables => {
+							name1 => "PDU reference",   value1 => $reference,
+							name2 => "Name",            value2 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{name},
+							name3 => "IP",              value3 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip},
+							name4 => "user",            value4 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{user},
+							name5 => "password",        value5 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{password},
+							name6 => "password_script", value6 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{password_script},
+							name7 => "agent",           value7 => $conf->{install_manifest}{$file}{common}{pdu}{$reference}{agent},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($b eq "kvm")
@@ -4413,7 +4709,15 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password}        = $password        ? $password        : "";
 						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script} = $password_script ? $password_script : "";
 						$conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent}           = $agent           ? $agent           : "fence_virsh";
-						#record($conf, "$THIS_FILE ".__LINE__."; KVM: [$reference], Name: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{ip}], user: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0007", message_variables => {
+							name1 => "KVM",             value1 => $reference,
+							name2 => "Name",            value2 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{name},
+							name3 => "IP",              value3 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{ip},
+							name4 => "user",            value4 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{user},
+							name5 => "password",        value5 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{password},
+							name6 => "password_script", value6 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{password_script},
+							name7 => "agent",           value7 => $conf->{install_manifest}{$file}{common}{kvm}{$reference}{agent},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($b eq "ipmi")
@@ -4448,7 +4752,17 @@ sub load_install_manifest
 							#record($conf, "$THIS_FILE ".__LINE__."; << install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
 						}
 						
-						#record($conf, "$THIS_FILE ".__LINE__."; IPMI: [$reference], Name: [$conf->{install_manifest}{$file}{common}{namemi}{$reference}{name}], IP: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip}], Netmask: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask}], Gateway: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway}], user: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user}], password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], password_script: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script}], agent: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+							name1 => "IPMI",            value1 => $reference,
+							name2 => "Name",            value2 => $conf->{install_manifest}{$file}{common}{namemi}{$reference}{name},
+							name3 => "IP",              value3 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{ip},
+							name4 => "Netmask",         value4 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{netmask},
+							name5 => "Gateway",         value5 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{gateway},
+							name6 => "user",            value6 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{user},
+							name7 => "password",        value7 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
+							name8 => "password_script", value8 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password_script},
+							name9 => "agent",           value9 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{agent},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($b eq "ssh")
@@ -4463,7 +4777,10 @@ sub load_install_manifest
 					my $units = $a->{$b}->[0]->{units};
 					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size}  = $size  ? $size  : "";
 					$conf->{install_manifest}{$file}{common}{storage_pool}{1}{units} = $units ? $units : "";
-					#record($conf, "$THIS_FILE ".__LINE__."; Storage Pool 1: [$conf->{install_manifest}{$file}{common}{storage_pool}{1}{size} $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "install_manifest::${file}::common::storage_pool::1::size",  value1 => $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size},
+						name2 => "install_manifest::${file}::common::storage_pool::1::units", value2 => $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "striker")
 				{
@@ -4491,14 +4808,19 @@ sub load_install_manifest
 						my $name = $c->{name};
 						my $ip   = $c->{ip};
 						$conf->{install_manifest}{$file}{common}{switch}{$name}{ip} = $ip ? $ip : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Switch: [$name], IP: [$conf->{install_manifest}{$file}{common}{switch}{$name}{ip}]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "Switch", value1 => $name,
+							name2 => "IP",     value2 => $conf->{install_manifest}{$file}{common}{switch}{$name}{ip},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($b eq "update")
 				{
 					my $os = $a->{$b}->[0]->{os};
 					$conf->{install_manifest}{$file}{common}{update}{os} = $os ? $os : "";
-					#record($conf, "$THIS_FILE ".__LINE__."; Update OS: [$conf->{install_manifest}{$file}{common}{update}{os}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "Update OS", value1 => $conf->{install_manifest}{$file}{common}{update}{os},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "ups")
 				{
@@ -4511,7 +4833,12 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}   = $ip   ? $ip   : "";
 						$conf->{install_manifest}{$file}{common}{ups}{$name}{type} = $type ? $type : "";
 						$conf->{install_manifest}{$file}{common}{ups}{$name}{port} = $port ? $port : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$name], IP: [$conf->{install_manifest}{$file}{common}{ups}{$name}{ip}], type: [$conf->{install_manifest}{$file}{common}{ups}{$name}{type}], port: [$conf->{install_manifest}{$file}{common}{ups}{$name}{port}]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+							name1 => "UPS",  value1 => $name,
+							name2 => "IP",   value2 => $conf->{install_manifest}{$file}{common}{ups}{$name}{ip},
+							name3 => "type", value3 => $conf->{install_manifest}{$file}{common}{ups}{$name}{type},
+							name4 => "port", value4 => $conf->{install_manifest}{$file}{common}{ups}{$name}{port},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				else
@@ -4604,7 +4931,13 @@ sub load_install_manifest
 			my $ip_key   = "anvil_switch".$i."_ip";
 			$conf->{cgi}{$name_key} = $switch;
 			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{switch}{$switch}{ip};
-			#record($conf, "$THIS_FILE ".__LINE__."; Switch: [$switch], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "Switch",    value1 => $switch,
+				name2 => "name_key",  value2 => $name_key,
+				name3 => "ip_key",    value3 => $ip_key,
+				name4 => "CGI; Name", value4 => $conf->{cgi}{$name_key},
+				name5 => "IP",        value5 => $conf->{cgi}{$ip_key},
+			}, file => $THIS_FILE, line => __LINE__});
 			$i++;
 		}
 		# PDUs
@@ -4617,7 +4950,13 @@ sub load_install_manifest
 			my $ip       = $conf->{install_manifest}{$file}{common}{pdu}{$reference}{ip};
 			$conf->{cgi}{$name_key} = $name ? $name : "";
 			$conf->{cgi}{$ip_key}   = $ip   ? $ip   : "";
-			#record($conf, "$THIS_FILE ".__LINE__."; PDU reference: [$reference], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "PDU reference", value1 => $reference,
+				name2 => "name_key",      value2 => $name_key,
+				name3 => "ip_key",        value3 => $ip_key,
+				name4 => "CGI; Name",     value4 => $conf->{cgi}{$name_key},
+				name5 => "IP",            value5 => $conf->{cgi}{$ip_key},
+			}, file => $THIS_FILE, line => __LINE__});
 			$i++;
 		}
 		# UPSes
@@ -4628,7 +4967,13 @@ sub load_install_manifest
 			my $ip_key   = "anvil_ups".$i."_ip";
 			$conf->{cgi}{$name_key} = $ups;
 			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{ups}{$ups}{ip};
-			#record($conf, "$THIS_FILE ".__LINE__."; UPS: [$ups], name_key: [$name_key], ip_key: [$ip_key], CGI; Name: [$conf->{cgi}{$name_key}], IP: [$conf->{cgi}{$ip_key}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "UPS",       value1 => $ups,
+				name2 => "name_key",  value2 => $name_key,
+				name3 => "ip_key",    value3 => $ip_key,
+				name4 => "CGI; Name", value4 => $conf->{cgi}{$name_key},
+				name5 => "IP",        value5 => $conf->{cgi}{$ip_key},
+			}, file => $THIS_FILE, line => __LINE__});
 			$i++;
 		}
 		# Striker Dashboards
@@ -4714,36 +5059,54 @@ sub load_install_manifest
 			foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{pdu}})
 			{
 				# There should be two or four PDUs
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; j: [$j], reference: [$reference]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "j",         value1 => $j,
+					name2 => "reference", value2 => $reference,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($j == 1)
 				{
 					$pdu1_reference = $reference;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu1_reference: [$pdu1_reference]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdu1_reference", value1 => $pdu1_reference,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($j == 2)
 				{
 					$pdu2_reference = $reference;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu2_reference: [$pdu2_reference]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdu2_reference", value1 => $pdu2_reference,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($j == 3)
 				{
 					$pdu3_reference = $reference;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu3_reference: [$pdu3_reference]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdu3_reference", value1 => $pdu3_reference,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($j == 4)
 				{
 					$pdu4_reference = $reference;
-					#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu4_reference: [$pdu4_reference]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pdu4_reference", value1 => $pdu4_reference,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				$j++;
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; pdu1_reference: [$pdu1_reference], pdu2_reference: [$pdu2_reference], pdu3_reference: [$pdu3_reference], pdu4_reference: [$pdu4_reference]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "pdu1_reference", value1 => $pdu1_reference,
+				name2 => "pdu2_reference", value2 => $pdu2_reference,
+				name3 => "pdu3_reference", value3 => $pdu3_reference,
+				name4 => "pdu4_reference", value4 => $pdu4_reference,
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{kvm}})
 			{
 				# There should only be one entry
 				$kvm_reference = $reference;
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; kvm_reference: [$kvm_reference]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "kvm_reference", value1 => $kvm_reference,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			$conf->{cgi}{$name_key}          = $node;
 			$conf->{cgi}{$bcn_ip_key}        = $conf->{install_manifest}{$file}{node}{$node}{network}{bcn}{ip};
@@ -4789,7 +5152,9 @@ sub load_install_manifest
 		my $delay_time = $conf->{install_manifest}{$file}{common}{cluster}{fence}{delay};
 		foreach my $node ($conf->{cgi}{anvil_node1_name}, $conf->{cgi}{anvil_node2_name})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node", value1 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $i = 1;
 			foreach my $method (split/,/, $fence_order)
 			{
@@ -4825,7 +5190,11 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "node",         value1 => $node,
+							name2 => "fence method", value2 => "$method ($i)",
+							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
 				}
@@ -4865,7 +5234,11 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "node",         value1 => $node,
+							name2 => "fence method", value2 => "$method ($i)",
+							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
 				}
@@ -4904,7 +5277,11 @@ sub load_install_manifest
 						$string .= " action=\"reboot\" />";
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence method: [$method ($i)], string: [$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "node",         value1 => $node,
+							name2 => "fence method", value2 => "$method ($i)",
+							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
 				}
@@ -4946,7 +5323,11 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "fence device", value1 => $device,
+						name2 => "name",         value2 => $name,
+						name3 => "string",       value3 => $conf->{fence}{device}{$device}{name}{$reference}{string},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			if ($device eq "ipmi")
@@ -4979,7 +5360,11 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "fence device", value1 => $device,
+						name2 => "name",         value2 => $name,
+						name3 => "string",       value3 => $conf->{fence}{device}{$device}{name}{$reference}{string},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			if ($device eq "pdu")
@@ -5012,7 +5397,11 @@ sub load_install_manifest
 					$string .= " />";
 					$string =~ s/\s+/ /g;
 					$conf->{fence}{device}{$device}{name}{$reference}{string} = $string;
-					#record($conf, "$THIS_FILE ".__LINE__."; fence device: [$device], name: [$name], string: [$conf->{fence}{device}{$device}{name}{$reference}{string}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "fence device", value1 => $device,
+						name2 => "name",         value2 => $name,
+						name3 => "string",       value3 => $conf->{fence}{device}{$device}{name}{$reference}{string},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -5060,7 +5449,11 @@ sub show_existing_install_manifests
 			my $date  =  $2;
 			my $time  =  $3;
 			   $time  =~ s/-/:/g;
-			#record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "anvil", value1 => $anvil,
+				name2 => "date",  value2 => $date,
+				name3 => "time",  value3 => $time,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
@@ -5079,7 +5472,11 @@ sub show_existing_install_manifests
 			my $anvil   = $1;
 			my $date    = $2;
 			my $time    = $3;
-			#record($conf, "$THIS_FILE ".__LINE__."; anvil: [$anvil], date: [$date], time: [$time]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "anvil", value1 => $anvil,
+				name2 => "date",  value2 => $date,
+				name3 => "time",  value3 => $time,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{manifest_file}{$file}{anvil} = AN::Common::get_string($conf, { key => "message_0346", variables => {
 									anvil	=>	$anvil,
 									date	=>	$date,
@@ -5170,25 +5567,37 @@ sub get_netmask_from_ip
 	{
 		$short_ifn = ($conf->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; short_bcn: [$short_bcn], short_sn: [$short_sn], short_ifn: [$short_ifn]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "short_bcn", value1 => $short_bcn,
+		name2 => "short_sn",  value2 => $short_sn,
+		name3 => "short_ifn", value3 => $short_ifn,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ($ip =~ /^$short_bcn/)
 	{
 		$netmask = $conf->{cgi}{anvil_bcn_subnet};
-		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($ip =~ /^$short_sn/)
 	{
 		$netmask = $conf->{cgi}{anvil_sn_subnet};
-		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($ip =~ /^$short_ifn/)
 	{
 		$netmask = $conf->{cgi}{anvil_ifn_subnet};
-		#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; netmask: [$netmask]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "netmask", value1 => $netmask,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($netmask);
 }
 
@@ -5439,7 +5848,11 @@ Striker Version: $conf->{sys}{version}
 	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
 	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
 	my $say_use_scancore           = $conf->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
-	#record($conf, "$THIS_FILE ".__LINE__."; say_use_anvil_kick_apc_ups: [$say_use_anvil_kick_apc_ups], say_use_safe_anvil_start: [$say_use_safe_anvil_start], say_use_scancore: [$say_use_scancore]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
+		name2 => "say_use_safe_anvil_start",   value2 => $say_use_safe_anvil_start,
+		name3 => "say_use_scancore",           value3 => $say_use_scancore,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	$xml .= "
 		</pdu>
@@ -5709,7 +6122,10 @@ sub show_summary_manifest
 		elsif ($i == 2) { $say_pdu = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0012!#" : "#!string!device_0008!#"; }
 		elsif ($i == 3) { $say_pdu = "#!string!device_0009!#"; }
 		elsif ($i == 4) { $say_pdu = "#!string!device_0010!#"; }
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_pdu: [$say_pdu]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "i",       value1 => $i,
+			name2 => "say_pdu", value2 => $say_pdu,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $say_pdu_name         = AN::Common::get_string($conf, {key => "row_0176", variables => { say_pdu => "$say_pdu" }});
 		my $node1_pdu_outlet_key = "anvil_node1_pdu${i}_outlet";
@@ -5802,7 +6218,12 @@ sub show_summary_manifest
 	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu4_brand = $conf->{cgi}{anvil_pdu4_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
-	#record($conf, "$THIS_FILE ".__LINE__."; say_pdu1_brand: [$say_pdu1_brand], say_pdu2_brand: [$say_pdu2_brand], say_pdu3_brand: [$say_pdu3_brand], say_pdu4_brand: [$say_pdu4_brand]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "say_pdu1_brand", value1 => $say_pdu1_brand,
+		name2 => "say_pdu2_brand", value2 => $say_pdu2_brand,
+		name3 => "say_pdu3_brand", value3 => $say_pdu3_brand,
+		name4 => "say_pdu4_brand", value4 => $say_pdu4_brand,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{sys}{install_manifest}{pdu_count} == 2)
 	{
 		### Two PDU setup 
@@ -6548,7 +6969,13 @@ sub sanity_check_manifest_answers
 		my $ip_key        = "anvil_pdu${i}_ip";
 		my $name_star_key = "anvil_pdu${i}_name_star";
 		my $ip_star_key   = "anvil_pdu${i}_ip_star";
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], name_key: [$name_key], ip_key: [$ip_key], name_star_key: [$name_star_key], ip_star_key: [$ip_star_key]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "i",             value1 => $i,
+			name2 => "name_key",      value2 => $name_key,
+			name3 => "ip_key",        value3 => $ip_key,
+			name4 => "name_star_key", value4 => $name_star_key,
+			name5 => "ip_star_key",   value5 => $ip_star_key,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Some clients/users want PDUs name '1,2,3,4', others 
 		# '1A,1B,2A,2B'. This allows for that.
@@ -6557,21 +6984,32 @@ sub sanity_check_manifest_answers
 		elsif ($i == 2) { $say_pdu = $conf->{sys}{install_manifest}{pdu_count} == 2 ? "#!string!device_0012!#" : "#!string!device_0008!#"; }
 		elsif ($i == 3) { $say_pdu = "#!string!device_0009!#"; }
 		elsif ($i == 4) { $say_pdu = "#!string!device_0010!#"; }
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_pdu: [$say_pdu]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "i",       value1 => $i,
+			name2 => "say_pdu", value2 => $say_pdu,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $say_pdu_name = AN::Common::get_string($conf, {key => "row_0174", variables => { 
 					say_pdu	=>	"$say_pdu",
 				}});
 		my $say_pdu_ip   = AN::Common::get_string($conf, {key => "row_0175", variables => { 
 					say_pdu	=>	"$say_pdu",
 				}});
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], say_pdu_name: [$say_pdu_name], say_pdu_ip: [$say_pdu_ip]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "i",            value1 => $i,
+			name2 => "say_pdu_name", value2 => $say_pdu_name,
+			name3 => "say_pdu_ip",   value3 => $say_pdu_ip,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If either the IP or name is set, validate.
 		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$ip_key: [$conf->{cgi}{$ip_key}]\n");
 		if (($conf->{cgi}{$name_key}) || ($conf->{cgi}{$ip_key}))
 		{
 			$defined_pdus++;
-			#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], defined_pdus: [$defined_pdus], pdus: [$pdus]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "i",            value1 => $i,
+				name2 => "defined_pdus", value2 => $defined_pdus,
+				name3 => "pdus",         value3 => $pdus,
+			}, file => $THIS_FILE, line => __LINE__});
 			$pdus->[$i] = 1;
 			#record($conf, "$THIS_FILE ".__LINE__."; pdus->[$i]: [$pdus->[$i]]\n");
 			if (not $conf->{cgi}{$name_key})
@@ -7372,7 +7810,9 @@ sub convert_text_to_html
 		name1 => "string", value1 => $string, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; >> string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
 	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
 	$string =~ s/#/&#35;/g;		# Number sign - Must be third! /
@@ -7517,7 +7957,9 @@ sub convert_text_to_html
 	
 	$string =~ s/#!br!#/<br \/>/g;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; << string: [$string]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< string", value1 => $string,
+	}, file => $THIS_FILE, line => __LINE__});
 	return ($string);
 }
 
@@ -7585,7 +8027,9 @@ sub ask_which_cluster
 	
 	# See if the global options have been configured yet.
 	my ($global_set) = AN::Common::check_global_settings($conf);
-	#record($conf, "$THIS_FILE ".__LINE__."; global_set: [$global_set]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "global_set", value1 => $global_set,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $global_set)
 	{
 		# Looks like the user hasn't configured the global values yet.
@@ -7799,7 +8243,9 @@ fi
 	{
 		chomp;
 		my $line = $_;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		# libvirtd
 		if ($line =~ /libvirtd not installed/)
 		{
@@ -7938,7 +8384,12 @@ fi
 	# 4 == iptables started
 	# 5 == iptables running
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "dhcpd_ok",     value1 => $dhcpd_rc,
+		name2 => "libvirtd_rc",  value2 => $libvirtd_rc,
+		name3 => "shorewall_rc", value3 => $shorewall_rc,
+		name4 => "iptables_rc",  value4 => $iptables_rc,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc);
 }
 
@@ -7967,7 +8418,12 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Stop libvirtd, stop iptables, start shorewall, start dhcpd
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "start");
-			#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "dhcpd_ok",     value1 => $dhcpd_rc,
+				name2 => "libvirtd_rc",  value2 => $libvirtd_rc,
+				name3 => "shorewall_rc", value3 => $shorewall_rc,
+				name4 => "iptables_rc",  value4 => $iptables_rc,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# libvirtd_rc:
 			# 0 == not installed
@@ -8070,7 +8526,12 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Disable it.
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "stop");
-			#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_ok: [$dhcpd_rc], libvirtd_rc: [$libvirtd_rc], shorewall_rc: [$shorewall_rc], iptables_rc: [$iptables_rc]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "dhcpd_ok",     value1 => $dhcpd_rc,
+				name2 => "libvirtd_rc",  value2 => $libvirtd_rc,
+				name3 => "shorewall_rc", value3 => $shorewall_rc,
+				name4 => "iptables_rc",  value4 => $iptables_rc,
+			}, file => $THIS_FILE, line => __LINE__});
 			# dhcpd_rc:
 			# 0 == not installed
 			# 1 == not running
@@ -8158,7 +8619,9 @@ sub show_anvil_selection_and_striker_options
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
 	# 4 == No access to /etc/dhcpd
-	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "dhcpd_state", value1 => $dhcpd_state,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# No decide what to show for the "Boot Target" button.
 	my $install_target_template = "disabled-install-target-button";
@@ -8199,13 +8662,20 @@ sub show_anvil_selection_and_striker_options
 	}
 	
 	# Now show the other configuration options
-	#record($conf, "$THIS_FILE ".__LINE__."; install_target_template: [$install_target_template], install_target_button: [$install_target_button], install_target_message: [$install_target_message], install_target_url: [$install_target_url]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "install_target_template", value1 => $install_target_template,
+		name2 => "install_target_button",   value2 => $install_target_button,
+		name3 => "install_target_message",  value3 => $install_target_message,
+		name4 => "install_target_url",      value4 => $install_target_url,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $install_manifest_tr = AN::Common::template($conf, "select-anvil.html", $install_target_template, {
 		install_target_button	=>	$install_target_button,
 		install_target_message	=>	$install_target_message,
 		install_target_url	=>	$install_target_url,
 	});
-	#record($conf, "$THIS_FILE ".__LINE__."; install_manifest_tr: [$install_manifest_tr]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "install_manifest_tr", value1 => $install_manifest_tr,
+	}, file => $THIS_FILE, line => __LINE__});
 	print AN::Common::template($conf, "select-anvil.html", "close-table", {
 		install_manifest_tr	=>	$install_manifest_tr,
 	});
@@ -8239,7 +8709,9 @@ sub get_dhcpd_state
 			chomp;
 			my $line =  $_;
 			   $line =~ s/^\s+//;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
 			{
 				$boot_target = 1;
@@ -8254,7 +8726,9 @@ sub get_dhcpd_state
 		#record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
 		$dhcpd_state = 4;
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; boot_target: [$boot_target]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "boot_target", value1 => $boot_target,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($boot_target)
 	{
 		### NOTE: Don't use the setuid wrapper as 'root' isn't needed
@@ -8269,11 +8743,15 @@ sub get_dhcpd_state
 		{
 			chomp;
 			my $line = $_;
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /rc:(\d+)/)
 			{
 				my $rc = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "rc", value1 => $rc,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "3")
 				{
 					# Stopped
@@ -8298,7 +8776,9 @@ sub get_dhcpd_state
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
 	# 4 == No access to /etc/dhcpd
-	#record($conf, "$THIS_FILE ".__LINE__."; dhcpd_state: [$dhcpd_state]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "dhcpd_state", value1 => $dhcpd_state,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($dhcpd_state);
 }
 
@@ -8311,7 +8791,9 @@ sub convert_cluster_config
 	
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{cluster}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$id]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cluster", value1 => $id,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $name = $conf->{cluster}{$id}{name};
 		#record($conf, "$THIS_FILE ".__LINE__."; name: [$name], cluster::${id}::nodes: [$conf->{cluster}{$id}{nodes}]\n");
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$id}{nodes}];
@@ -8321,19 +8803,31 @@ sub convert_cluster_config
 		$conf->{clusters}{$name}{ricci_pw}    = $conf->{cluster}{$id}{ricci_pw};
 		$conf->{clusters}{$name}{root_pw}     = $conf->{cluster}{$id}{root_pw} ? $conf->{cluster}{$id}{root_pw} : $conf->{cluster}{$id}{ricci_pw};
 		$conf->{clusters}{$name}{id}          = $id;
-		#record($conf, "$THIS_FILE ".__LINE__."; ID: [$id], name: [$name], company: [$conf->{clusters}{$name}{company}], description: [$conf->{clusters}{$name}{description}], ricci_pw: [$conf->{clusters}{$name}{ricci_pw}], root_pw: [$conf->{cluster}{$id}{root_pw}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			name1 => "ID",          value1 => $id,
+			name2 => "name",        value2 => $name,
+			name3 => "company",     value3 => $conf->{clusters}{$name}{company},
+			name4 => "description", value4 => $conf->{clusters}{$name}{description},
+			name5 => "ricci_pw",    value5 => $conf->{clusters}{$name}{ricci_pw},
+			name6 => "root_pw",     value6 => $conf->{cluster}{$id}{root_pw},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		for (my $i = 0; $i< @{$conf->{clusters}{$name}{nodes}}; $i++)
 		{
 			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/^\s+//;
 			@{$conf->{clusters}{$name}{nodes}}[$i] =~ s/\s+$//;
 			my $node = @{$conf->{clusters}{$name}{nodes}}[$i];
-			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [$node]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "$i - node", value1 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($node =~ /^(.*?):(\d+)$/)
 			{
 				   $node = $1;
 				my $port = $2;
-				#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [$node], port: [$port]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "$i - node", value1 => $node,
+					name2 => "port",      value2 => $port,
+				}, file => $THIS_FILE, line => __LINE__});
 				@{$conf->{clusters}{$name}{nodes}}[$i] = $node;
 				$conf->{node}{$node}{port}             = $port;
 				#record($conf, "$THIS_FILE ".__LINE__."; $i - clusters::${name}::nodes[$i]: [@{$conf->{clusters}{$name}{nodes}}[$i]], port: [$conf->{node}{$name}{port}]\n");
@@ -8653,7 +9147,9 @@ sub header
 		if ($conf->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
 		{
 			my $final = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; final: [$final]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "final", value1 => $final,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($final !~ /&/)
 			{
 				#record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
@@ -8797,7 +9293,9 @@ sub get_cgi_vars
 		{
 			if ($var eq "file")
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; var: [$var]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "var", value1 => $var,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (not $cgi->upload($var))
 				{
 					record($conf, "$THIS_FILE ".__LINE__."; Empty file passed, looks like the user forgot to select a file to upload.\n");
@@ -9032,7 +9530,9 @@ sub read_files_on_shared
 			if ($line =~ /\s(\d+)-blocks\s/)
 			{
 				$conf->{partition}{shared}{block_size} = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; block_size: [$conf->{partition}{shared}{block_size}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "block_size", value1 => $conf->{partition}{shared}{block_size},
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
@@ -9041,7 +9541,12 @@ sub read_files_on_shared
 				$conf->{partition}{shared}{used_space}   = $2;
 				$conf->{partition}{shared}{free_space}   = $3;
 				$conf->{partition}{shared}{used_percent} = $4;
-				#record($conf, "$THIS_FILE ".__LINE__."; total_space: [$conf->{partition}{shared}{total_space}], used_space: [$conf->{partition}{shared}{used_space} / $conf->{partition}{shared}{used_percent}%], free_space: [$conf->{partition}{shared}{free_space}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "total_space",  value1 => $conf->{partition}{shared}{total_space},
+					name2 => "used_space",   value2 => $conf->{partition}{shared}{used_space},
+					name3 => "used_percent", value3 => $conf->{partition}{shared}{used_percent},
+					name4 => "free_space",   value4 => $conf->{partition}{shared}{free_space},
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
@@ -9070,7 +9575,18 @@ sub read_files_on_shared
 				$conf->{files}{shared}{$file}{day}    = $day;
 				$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
 				$conf->{files}{shared}{$file}{target} = $target;
-				#record($conf, "$THIS_FILE ".__LINE__."; file: [$file], mode: [$conf->{files}{shared}{$file}{type}, $conf->{files}{shared}{$file}{mode}], owner: [$conf->{files}{shared}{$file}{user} / $conf->{files}{shared}{$file}{group}], size: [$conf->{files}{shared}{$file}{size}], modified: [$conf->{files}{shared}{$file}{month} $conf->{files}{shared}{$file}{day} $conf->{files}{shared}{$file}{'time'}], target: [$conf->{files}{shared}{$file}{target}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+					name1  => "file",     value1  => $file,
+					name2  => "type",     value2  => $conf->{files}{shared}{$file}{type},
+					name3  => "mode",     value3  => $conf->{files}{shared}{$file}{mode},
+					name4  => "user",     value4  => $conf->{files}{shared}{$file}{user},
+					name5  => "group",    value5  => $conf->{files}{shared}{$file}{group},
+					name6  => "size",     value6  => $conf->{files}{shared}{$file}{size},
+					name7  => "month",    value7  => $conf->{files}{shared}{$file}{month}, 
+					name8  => "day",      value8  => $conf->{files}{shared}{$file}{day},
+					name9  => "time",     value9  => $conf->{files}{shared}{$file}{'time'},
+					name10 => "target",   value10 => $conf->{files}{shared}{$file}{target},
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 		}
@@ -9177,7 +9693,9 @@ sub scan_cluster
 	# Start your engines!
 	check_node_status($conf);
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "up nodes", value1 => $conf->{sys}{up_nodes},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{sys}{up_nodes} > 0)
 	{
 		AN::Striker::check_vms($conf);
@@ -9208,7 +9726,10 @@ sub check_node_status
 	# If I have no nodes up, exit.
 	$conf->{sys}{up_nodes}     = @{$conf->{up_nodes}};
 	$conf->{sys}{online_nodes} = @{$conf->{online_nodes}};
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}], online nodes: [$conf->{sys}{online_nodes}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "up nodes",     value1 => $conf->{sys}{up_nodes},
+		name2 => "online nodes", value2 => $conf->{sys}{online_nodes},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{sys}{up_nodes} < 1)
 	{
 		# Neither node is up. If I can power them on, then I will show
@@ -9254,33 +9775,63 @@ sub post_scan_calculations
 		# Record this node's RAM and CPU as the maximum available if
 		# the max cores and max ram is 0 or greater than that on this
 		# node.
-		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], res. total RAM: [$conf->{resources}{total_ram}], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => ">> node",               value1 => $node,
+			name2 => "res. total RAM",        value2 => $conf->{resources}{total_ram},
+			name3 => "hardware total memory", value3 => $conf->{node}{$node}{hardware}{total_memory},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",           value1 => $node,
+				name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "<< node",        value1 => $node,
+			name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Set by meminfo, if less (needed to catch mirrored RAM)
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                 value1 => $node,
+			name2 => "meminfo total memory", value2 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{node}{$node}{hardware}{meminfo}{memtotal} < $conf->{resources}{total_ram})
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total RAM: [$conf->{resources}{total_ram}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",           value1 => $node,
+				name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}], hardware total node cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",                      value1 => $node,
+			name2 => "res. total cores",          value2 => $conf->{resources}{total_cores},
+			name3 => "hardware total node cores", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
 		{
 			$conf->{resources}{total_cores} = $conf->{node}{$node}{hardware}{total_node_cores};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total cores: [$conf->{resources}{total_cores}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",             value1 => $node,
+				name2 => "res. total cores", value2 => $conf->{resources}{total_cores},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}], hardware total node threads: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",                        value1 => $node,
+			name2 => "res. total threads",          value2 => $conf->{resources}{total_threads},
+			name3 => "hardware total node threads", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_threads}) || ($conf->{node}{$node}{hardware}{total_node_threads} < $conf->{resources}{total_threads}))
 		{
 			$conf->{resources}{total_threads} = $conf->{node}{$node}{hardware}{total_node_threads};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], res. total threads: [$conf->{resources}{total_threads}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",               value1 => $node,
+				name2 => "res. total threads", value2 => $conf->{resources}{total_threads},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Record the VG info. I only record the first node I see as I
@@ -9288,7 +9839,15 @@ sub post_scan_calculations
 		# identical.
 		foreach my $vg (sort {$a cmp $b} keys %{$conf->{node}{$node}{hardware}{lvm}{vg}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size}], used: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space}], free: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space}], PV: [$conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "node",      value1 => $node,
+				name2 => "VG",        value2 => $vg,
+				name3 => "clustered", value3 => $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered},
+				name4 => "size",      value4 => $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{size},
+				name5 => "used",      value5 => $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{used_space},
+				name6 => "free",      value6 => $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space},
+				name7 => "PV",        value7 => $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name},
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{resources}{vg}{$vg}{clustered}  = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{clustered}  if not $conf->{resources}{vg}{$vg}{clustered};
 			$conf->{resources}{vg}{$vg}{pe_size}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pe_size}    if not $conf->{resources}{vg}{$vg}{pe_size};
 			$conf->{resources}{vg}{$vg}{total_pe}   = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{total_pe}   if not $conf->{resources}{vg}{$vg}{total_pe};
@@ -9299,7 +9858,15 @@ sub post_scan_calculations
 			$conf->{resources}{vg}{$vg}{free_pe}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_pe}    if not $conf->{resources}{vg}{$vg}{free_pe};
 			$conf->{resources}{vg}{$vg}{free_space} = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{free_space} if not $conf->{resources}{vg}{$vg}{free_space};
 			$conf->{resources}{vg}{$vg}{pv_name}    = $conf->{node}{$node}{hardware}{lvm}{vg}{$vg}{pv_name}    if not $conf->{resources}{vg}{$vg}{pv_name};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$vg], clustered: [$conf->{resources}{vg}{$vg}{clustered}], size: [$conf->{resources}{vg}{$vg}{size}], used: [$conf->{resources}{vg}{$vg}{used_space}], free: [$conf->{resources}{vg}{$vg}{free_space}], PV: [$conf->{resources}{vg}{$vg}{pv_name}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "node",      value1 => $node,
+				name2 => "VG",        value2 => $vg,
+				name3 => "clustered", value3 => $conf->{resources}{vg}{$vg}{clustered},
+				name4 => "size",      value4 => $conf->{resources}{vg}{$vg}{size},
+				name5 => "used",      value5 => $conf->{resources}{vg}{$vg}{used_space},
+				name6 => "free",      value6 => $conf->{resources}{vg}{$vg}{free_space},
+				name7 => "PV",        value7 => $conf->{resources}{vg}{$vg}{pv_name},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -9349,12 +9916,19 @@ sub post_node_calculations
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], hardware total memory: [$conf->{node}{$node}{hardware}{total_memory}], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",                  value1 => $node,
+		name2 => "hardware total memory", value2 => $conf->{node}{$node}{hardware}{total_memory},
+		name3 => "meminfo total memory",  value3 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
+	}, file => $THIS_FILE, line => __LINE__});
 	#if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
 	if (not $conf->{node}{$node}{hardware}{total_memory})
 	{
 		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",         value1 => $node,
+			name2 => "total memory", value2 => $conf->{node}{$node}{hardware}{total_memory},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If the host name was set, then I can trust that I had good data.
@@ -9384,14 +9958,22 @@ sub comma
 	# Strip out any existing commas.
 	$number =~ s/,//g;
 	$number =~ s/^\+//g;
-	#record($conf, "$THIS_FILE ".__LINE__."; 1. number: [$number]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "1. number", value1 => $number,
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Split on the left-most period.
 	my ($whole, $decimal) = split/\./, $number, 2;
-	#record($conf, "$THIS_FILE ".__LINE__."; >> whole: [$whole], decimal: [$decimal]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => ">> whole", value1 => $whole,
+		name2 => "decimal",  value2 => $decimal,
+	}, file => $THIS_FILE, line => __LINE__});
 	$whole   = "" if not defined $whole;
 	$decimal = "" if not defined $decimal;
-	#record($conf, "$THIS_FILE ".__LINE__."; << whole: [$whole], decimal: [$decimal]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "<< whole", value1 => $whole,
+		name2 => "decimal",  value2 => $decimal,
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Now die if either number has a non-digit character in it.
 	if (($whole =~ /\D/) || ($decimal =~ /\D/))
@@ -9409,7 +9991,9 @@ sub comma
 
 	my $return = $decimal ? "$whole.$decimal" : $whole;
 
-	#record($conf, "$THIS_FILE ".__LINE__."; << comma(); number: [$number]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< comma(); number", value1 => $number,
+	}, file => $THIS_FILE, line => __LINE__});
 	return ($return);
 }
 
@@ -9513,10 +10097,14 @@ sub bytes_to_hr
 	{
 		### TODO: I don't know why, but $hr_size is being set to "" 
 		###       when comma() returns 0. Fix this.
-		#record($conf, "$THIS_FILE ".__LINE__."; >> bytes_to_hr; hr_size: [$hr_size]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> bytes_to_hr; hr_size", value1 => $hr_size,
+		}, file => $THIS_FILE, line => __LINE__});
 		$hr_size = comma($conf, $hr_size);
 		$hr_size = 0 if $hr_size eq "";
-		#record($conf, "$THIS_FILE ".__LINE__."; << bytes_to_hr; hr_size: [$hr_size]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< bytes_to_hr; hr_size", value1 => $hr_size,
+		}, file => $THIS_FILE, line => __LINE__});
 		$suffix  = AN::Common::get_string($conf, {key => "suffix_0009"});
 	}
 
@@ -9546,7 +10134,11 @@ sub hr_to_bytes
 	$type =  "" if not defined $type;
 	$size =~ s/ //g;
 	$type =~ s/ //g;
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "size",      value1 => $size,
+		name2 => "type",      value2 => $type,
+		name3 => "use_base2", value3 => $use_base2,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Store and strip the sign
 	my $sign = "";
@@ -9565,7 +10157,11 @@ sub hr_to_bytes
 		($size, $type) = ($size =~ /^(.*\d)(\D+)/);
 	}
 	$type = lc($type);
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "size",      value1 => $size,
+		name2 => "type",      value2 => $type,
+		name3 => "use_base2", value3 => $use_base2,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure that 'size' is now an integer or float.
 	if ($size !~ /\d+[\.\d+]?/)
@@ -9602,7 +10198,11 @@ sub hr_to_bytes
 		$use_base2 = 0 if not defined $use_base2;
 		$type      = $1;
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; size: [$size], type: [$type], use_base2: [$use_base2]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "size",      value1 => $size,
+		name2 => "type",      value2 => $type,
+		name3 => "use_base2", value3 => $use_base2,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Check if we have a valid '$type' and that 'Math::BigInt' is loaded,
 	# if the size is big enough to require it.
@@ -9683,8 +10283,14 @@ sub gather_node_details
 	
 	my $cluster                     = $conf->{cgi}{cluster};
 	$conf->{node}{$node}{connected} = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root], password: [$conf->{sys}{root_password}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], port: [$conf->{node}{$node}{port}], user: [root]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "node", value1 => $node,
+		name2 => "port", value2 => $conf->{node}{$node}{port},
+		name3 => "user", value3 => "root",
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $conf->{sys}{root_password},
+	}, file => $THIS_FILE, line => __LINE__});
 	my $shell_call = "dmidecode -t 4,16,17";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -9876,7 +10482,6 @@ lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uui
 		my $gfs2 = $return;
 		
 		# virsh data
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [virsh list --all]\n");
 		$shell_call = "virsh list --all";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -10039,7 +10644,10 @@ fi;";
 	else
 	{
 		check_if_on($conf, $node);
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",  value1 => $node,
+			name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{node}{$node}{is_on} == 0)
 		{
 			$conf->{sys}{online_nodes}            = 1;
@@ -10144,7 +10752,10 @@ fi;";
 		}
 		
 		# If I have confirmed the node is powered off, don't display this.
-		#record($conf, "$THIS_FILE ".__LINE__."; enable power on: [$conf->{node}{$node}{enable_poweron}], task: [$conf->{cgi}{task}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "enable power on", value1 => $conf->{node}{$node}{enable_poweron},
+			name2 => "task",            value2 => $conf->{cgi}{task},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
 			print AN::Common::template($conf, "main-page.html", "node-state-table", {
@@ -10166,7 +10777,9 @@ sub get_hostname
 
 	my $hostname;
 	my $shell_call = "$conf->{path}{hostname}";
-	record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -10175,11 +10788,15 @@ sub get_hostname
 		next if $line =~ /NETWORKING=/;
 		$hostname =  $line;
 		$hostname =~ s/HOSTNAME=//;
-		#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "hostname", value1 => $hostname,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "hostname", value1 => $hostname,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($hostname);
 }
 
@@ -10199,8 +10816,22 @@ sub remote_call
 	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
 	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
 	my $shell_call = $parameters->{shell_call};
-	#record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], node: [$node], port: [$port], user: [$user], password: [$password], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ssh_fh: [$ssh_fh], close: [$close], shell_call: [$shell_call]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0008", message_variables => {
+		name1 => "cluster",    value1 => $cluster,
+		name2 => "node",       value2 => $node,
+		name3 => "port",       value3 => $port,
+		name4 => "user",       value4 => $user,
+		name5 => "password",   value5 => $password,
+		name6 => "ssh_fh",     value6 => $ssh_fh,
+		name7 => "close",      value7 => $close,
+		name8 => "shell_call", value8 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "node",       value1 => $node,
+		name2 => "ssh_fh",     value2 => $ssh_fh,
+		name3 => "close",      value3 => $close,
+		name4 => "shell_call", value4 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this a better looking error.
 	if (not $node)
@@ -10215,13 +10846,21 @@ sub remote_call
 	# Break out the port, if needed.
 	my $state;
 	my $error;
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($node =~ /^(.*):(\d+)$/)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; >> node: [$node], port: [$port]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => ">> node", value1 => $node,
+			name2 => "port",    value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
 		$node = $1;
 		$port = $2;
-		#record($conf, "$THIS_FILE ".__LINE__."; << node: [$node], port: [$port]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "<< node", value1 => $node,
+			name2 => "port",    value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($port < 0) || ($port > 65536))
 		{
 			# Variables for 'message_0373'.
@@ -10242,21 +10881,27 @@ sub remote_call
 		if ($conf->{hosts}{$node}{port})
 		{
 			$port = $conf->{hosts}{$node}{port};
-			#record($conf, "$THIS_FILE ".__LINE__."; port: [$port]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "port", value1 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# These will be merged into a single 'output' array before returning.
 	my $stdout_output = [];
 	my $stderr_output = [];
-	#record($conf, "$THIS_FILE ".__LINE__."; ssh_fh: [$ssh_fh]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ssh_fh", value1 => $ssh_fh,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
 		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($node, $port, Timeout => 10))
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; error: [$@]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "error", value1 => $@,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($@ =~ /Bad hostname/)
 			{
 				$error = AN::Common::get_string($conf, {key => "message_0038", variables => {
@@ -10296,10 +10941,16 @@ sub remote_call
 				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
 			}
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "error",  value1 => $error,
+			name2 => "ssh_fh", value2 => $ssh_fh,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $error)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; user: [$user], password: [$password]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+				name1 => "user",     value1 => $user,
+				name2 => "password", value2 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
 				$error = AN::Common::get_string($conf, {key => "message_0043"});
@@ -10317,7 +10968,10 @@ sub remote_call
 	### collection in this section.
 	#
 	# Open a channel and make the call.
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "error",  value1 => $error,
+		name2 => "ssh_fh", value2 => $ssh_fh,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
 	{
 		# We need to open a channel every time for 'exec' calls. We
@@ -10402,14 +11056,18 @@ sub remote_call
 	
 	foreach my $line (@{$stderr_output}, @{$stdout_output})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Merge; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "Merge; line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		push @{$output}, $line;
 	}
 	
 	# Close the connection if requested.
 	if ($close)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Disconnecting from: [$node]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "Disconnecting from", value1 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
 		$ssh_fh->disconnect() if $ssh_fh;
 		
 		# For good measure, blank both variables.
@@ -10418,7 +11076,11 @@ sub remote_call
 	}
 	
 	$error = "" if not defined $error;
-	#record($conf, "$THIS_FILE ".__LINE__."; error: [$error], ssh_fh: [$ssh_fh], output: [$output (".@{$output}." lines)]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "error",  value1 => $error,
+		name2 => "ssh_fh", value2 => $ssh_fh,
+		name3 => "output", value3 => "$output (".@{$output}." lines)",
+	}, file => $THIS_FILE, line => __LINE__});
 	return($error, $ssh_fh, $output);
 }
 
@@ -10435,13 +11097,17 @@ sub parse_hosts
 	foreach my $line (@{$array})
 	{
 		# This code is copy-pasted from read_hosts(), save for the hash is records to.
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/#.*$//;
 		$line =~ s/\s+$//;
 		next if not $line;
 		next if $line =~ /^127.0.0.1\s/;
 		next if $line =~ /^::1\s/;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my ($this_ip, $these_hosts);
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
@@ -10509,7 +11175,10 @@ sub parse_bonds
 			$this_bond = $1;
 		}
 		next if not $this_bond;
-		#record($conf, "$THIS_FILE ".__LINE__."; this_bond: [$this_bond], line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_bond", value1 => $this_bond,
+			name2 => "line",      value2 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return (0);
@@ -10524,13 +11193,17 @@ sub parse_vm_defs_in_mem
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs_in_mem() for node: [$node]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_vm_defs_in_mem() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $this_vm    = "";
 	my $in_domain  = 0;
 	my $this_array = [];
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		# Find the start of a domain.
 		if ($line =~ /<domain/)
 		{
@@ -10554,7 +11227,11 @@ sub parse_vm_defs_in_mem
 		if ($line =~ /<\/domain>/)
 		{
 			my $vm_key = "vm:$this_vm";
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$this_vm], array: [$this_array], lines: [".@{$this_array}."]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "vm",    value1 => $this_vm,
+				name2 => "array", value2 => $this_array,
+				name3 => "lines", value3 => ".@{$this_array}.",
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{vm}{$vm_key}{xml} = $this_array;
 			$in_domain  = 0;
 			$this_array = [];
@@ -10573,13 +11250,17 @@ sub parse_vm_defs
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_vm_defs() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_vm_defs() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $this_vm    = "";
 	my $in_domain  = 0;
 	my $this_array = [];
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		# Find the start of a domain.
 		if ($line =~ /<domain/)
 		{
@@ -10603,7 +11284,11 @@ sub parse_vm_defs
 		if ($line =~ /<\/domain>/)
 		{
 			my $vm_key = "vm:$this_vm";
-			#record($conf, "$THIS_FILE ".__LINE__."; vm: [$this_vm], array: [$this_array], lines: [".@{$this_array}."]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "vm",    value1 => $this_vm,
+				name2 => "array", value2 => $this_array,
+				name3 => "lines", value3 => ".@{$this_array}.",
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{vm}{$vm_key}{xml} = $this_array;
 			$in_domain  = 0;
 			$this_array = [];
@@ -10622,8 +11307,15 @@ sub parse_dmidecode
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_dmidecode() for node: [$node]\n");
-	#foreach my $line (@{$array}) { record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n"); }
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_dmidecode() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	#foreach my $line (@{$array})
+	#{
+	#	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	#		name1 => "line", value1 => $line,
+	#	}, file => $THIS_FILE, line => __LINE__});
+	#}
 	
 	# Some variables I will need.
 	my $in_cpu           = 0;
@@ -10650,7 +11342,12 @@ sub parse_dmidecode
 	$conf->{node}{$node}{hardware}{total_node_cores}   = 0;
 	$conf->{node}{$node}{hardware}{total_node_threads} = 0;
 	$conf->{node}{$node}{hardware}{total_memory}       = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "node",          value1 => $node,
+		name2 => "total cores",   value2 => $conf->{node}{$node}{hardware}{total_node_cores},
+		name3 => "total threads", value3 => $conf->{node}{$node}{hardware}{total_node_threads},
+		name4 => "total memory",  value4 => $conf->{node}{$node}{hardware}{total_memory},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# These will be set to the lowest available RAM, and CPU core
 	# available.
@@ -10662,7 +11359,11 @@ sub parse_dmidecode
 	# all done, we have 0 cores listed.
 	$conf->{resources}{total_cpus}    = 0;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; Cluster; total cores: [$conf->{resources}{total_cores}], total threads: [$conf->{resources}{total_threads}], total memory: [$conf->{resources}{total_ram}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "Cluster; total cores", value1 => $conf->{resources}{total_cores},
+		name2 => "total threads",        value2 => $conf->{resources}{total_threads},
+		name3 => "total memory",         value3 => $conf->{resources}{total_ram},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})
 	{
@@ -10670,7 +11371,10 @@ sub parse_dmidecode
 		{
 			die "$THIS_FILE ".__LINE__."; Unable to read system information on node: [$node]. Is 'dmidecode' installed?";
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node", value1 => $node,
+			name2 => "line", value2 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Find out what I am looking at.
 		if (not $line)
@@ -10685,7 +11389,15 @@ sub parse_dmidecode
 				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}        = $dimm_type;
 				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}       = $dimm_speed;
 				$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor} = $dimm_form_factor;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], dimm: [$dimm_locator], bank: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank}], size: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size}], type: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type}], speed: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed}], form factor: [$conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+					name1 => "node",        value1 => $node,
+					name2 => "dimm",        value2 => $dimm_locator,
+					name3 => "bank",        value3 => $conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{bank},
+					name4 => "size",        value4 => $conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{size},
+					name5 => "type",        value5 => $conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{type},
+					name6 => "speed",       value6 => $conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{speed},
+					name7 => "form factor", value7 => $conf->{node}{$node}{hardware}{dimm}{$dimm_locator}{form_factor},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			$in_cpu         = 0;
@@ -10725,7 +11437,10 @@ sub parse_dmidecode
 			if ($line =~ /Socket Designation: (.*)/)
 			{
 				$this_socket = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], this_socket: [$this_socket]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",        value1 => $node,
+					name2 => "this_socket", value2 => $this_socket,
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			
@@ -10733,39 +11448,69 @@ sub parse_dmidecode
 			if ($line =~ /Family: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{family}    = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu family: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{family}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",       value1 => $node,
+					name2 => "socket",     value2 => $this_socket,
+					name3 => "cpu family", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{family},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Manufacturer: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem}       = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu oem: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",    value1 => $node,
+					name2 => "socket",  value2 => $this_socket,
+					name3 => "cpu oem", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{oem},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Version: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{version}   = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu version: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{version}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",        value1 => $node,
+					name2 => "socket",      value2 => $this_socket,
+					name3 => "cpu version", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{version},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Max Speed: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed} = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu max speed: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",          value1 => $node,
+					name2 => "socket",        value2 => $this_socket,
+					name3 => "cpu max speed", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{max_speed},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Status: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{status}    = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], cpu status: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{status}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",       value1 => $node,
+					name2 => "socket",     value2 => $this_socket,
+					name3 => "cpu status", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{status},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Core Count: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores} =  $1;
 				$conf->{node}{$node}{hardware}{total_node_cores}         += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores};
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], socket cores: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores}], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "node",         value1 => $node,
+					name2 => "socket",       value2 => $this_socket,
+					name3 => "socket cores", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{cores},
+					name4 => "total cores",  value4 => $conf->{node}{$node}{hardware}{total_node_cores},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Thread Count: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads} =  $1;
 				$conf->{node}{$node}{hardware}{total_node_threads}         += $conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads};
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], socket: [$this_socket], socket threads: [$conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "node",           value1 => $node,
+					name2 => "socket",         value2 => $this_socket,
+					name3 => "socket threads", value3 => $conf->{node}{$node}{hardware}{cpu}{$this_socket}{threads},
+					name4 => "total threads",  value4 => $conf->{node}{$node}{hardware}{total_node_threads},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		if ($in_system_ram)
@@ -10774,12 +11519,18 @@ sub parse_dmidecode
 			if ($line =~ /Error Correction Type: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{ram}{ecc_support} = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], RAM ECC: [$conf->{node}{$node}{hardware}{ram}{ecc_support}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",    value1 => $node,
+					name2 => "RAM ECC", value2 => $conf->{node}{$node}{hardware}{ram}{ecc_support},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Number Of Devices: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{ram}{slots}       = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], RAM slots: [$conf->{node}{$node}{hardware}{ram}{slots}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",      value1 => $node,
+					name2 => "RAM slots", value2 => $conf->{node}{$node}{hardware}{ram}{slots},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			# This needs to be converted to bytes.
 			if ($line =~ /Maximum Capacity: (\d+) (.*)$/)
@@ -10787,13 +11538,19 @@ sub parse_dmidecode
 				my $size   = $1;
 				my $suffix = $2;
 				$conf->{node}{$node}{hardware}{ram}{max_support} = hr_to_bytes($conf, $size, $suffix, 1);
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], max. supported RAM: [$conf->{node}{$node}{hardware}{ram}{max_support}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",               value1 => $node,
+					name2 => "max. supported RAM", value2 => $conf->{node}{$node}{hardware}{ram}{max_support},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /Maximum Capacity: (.*)/)
 			{
 				$conf->{node}{$node}{hardware}{ram}{max_support} = $1;
 				$conf->{node}{$node}{hardware}{ram}{max_support} = hr_to_bytes($conf, $conf->{node}{$node}{hardware}{ram}{max_support}, "", 1);
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], max. supported RAM: [$conf->{node}{$node}{hardware}{ram}{max_support}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",               value1 => $node,
+					name2 => "max. supported RAM", value2 => $conf->{node}{$node}{hardware}{ram}{max_support},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		if ($in_dimm_module)
@@ -10806,20 +11563,30 @@ sub parse_dmidecode
 			if ($line =~ /Size: (.*)/)
 			{
 				$dimm_size = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",      value1 => $node,
+					name2 => "DIMM Size", value2 => $dimm_size,
+				}, file => $THIS_FILE, line => __LINE__});
 				# If the DIMM couldn't be read, it will
 				# show "Unknown". I set this to 0 in 
 				# that case.
 				if ($dimm_size !~ /^\d/)
 				{
 					$dimm_size = 0;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "node",      value1 => $node,
+						name2 => "DIMM Size", value2 => $dimm_size,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					$dimm_size                                   =  hr_to_bytes($conf, $dimm_size, "", 1);
 					$conf->{node}{$node}{hardware}{total_memory} += $dimm_size;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], DIMM Size: [$dimm_size], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "node",         value1 => $node,
+						name2 => "DIMM Size",    value2 => $dimm_size,
+						name3 => "total memory", value3 => $conf->{node}{$node}{hardware}{total_memory},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -10837,8 +11604,17 @@ sub parse_dmidecode
 		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::hardware::total_node_threads: [$conf->{node}{$node}{hardware}{total_node_threads}]\n");
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], total cores: [$conf->{node}{$node}{hardware}{total_node_cores}], total threads: [$conf->{node}{$node}{hardware}{total_node_threads}], total memory: [$conf->{node}{$node}{hardware}{total_memory}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; Cluster; total cores: [$conf->{resources}{total_cores}], total threads: [$conf->{resources}{total_threads}], total memory: [$conf->{resources}{total_ram}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "node",          value1 => $node,
+		name2 => "total cores",   value2 => $conf->{node}{$node}{hardware}{total_node_cores},
+		name3 => "total threads", value3 => $conf->{node}{$node}{hardware}{total_node_threads},
+		name4 => "total memory",  value4 => $conf->{node}{$node}{hardware}{total_memory},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "Cluster; total cores", value1 => $conf->{resources}{total_cores},
+		name2 => "total threads",        value2 => $conf->{resources}{total_threads},
+		name3 => "total memory",         value3 => $conf->{resources}{total_ram},
+	}, file => $THIS_FILE, line => __LINE__});
 	return(0);
 }
 
@@ -10853,12 +11629,17 @@ sub parse_meminfo
 	
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /MemTotal:\s+(.*)/)
 		{
 			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = $1;
 			$conf->{node}{$node}{hardware}{meminfo}{memtotal} = hr_to_bytes($conf, $conf->{node}{$node}{hardware}{meminfo}{memtotal}, "", 1);
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], meminfo total memory: [$conf->{node}{$node}{hardware}{meminfo}{memtotal}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",                 value1 => $node,
+				name2 => "meminfo total memory", value2 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -10874,24 +11655,33 @@ sub parse_proc_drbd
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_proc_drbd() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_proc_drbd() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $resource     = "";
 	my $minor_number = "";
 	foreach my $line (@{$array})
 	{
 		if ($line =~ /drbd offline/)
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; DRBD does not appear to be running on node: [$node]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "DRBD does not appear to be running on node", value1 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		if ($line =~ /version: (.*?) \(/)
 		{
 			$conf->{node}{$node}{drbd}{version} = $1;
-			record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD version: [$conf->{node}{$node}{drbd}{version}]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "Node",         value1 => $node,
+				name2 => "DRBD version", value2 => $conf->{node}{$node}{drbd}{version},
+			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
 		elsif ($line =~ /GIT-hash: (.*?) build by (.*?), (\S+) (.*)$/)
@@ -10905,7 +11695,9 @@ sub parse_proc_drbd
 		else
 		{
 			# This is just for hash key consistency
-			#record($conf, "$THIS_FILE ".__LINE__."; >> line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => ">> line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
 			{
 				   $minor_number     = $1;
@@ -10917,7 +11709,12 @@ sub parse_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
-				#record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "== node",          value1 => $node,
+					name2 => "resource",         value2 => $resource,
+					name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+					name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+				}, file => $THIS_FILE, line => __LINE__});
 				   
 				$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} = $connection_state;
@@ -10927,8 +11724,24 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
-				#record($conf, "$THIS_FILE ".__LINE__."; == node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], cs: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}], my ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_role}], peer ro: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_role}], my ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}], peer ds: [$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}], protocol: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}], io flags: [$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "== node",          value1 => $node,
+					name2 => "resource",         value2 => $resource,
+					name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+					name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+					name1  => "node",     value1  => $node,
+					name2  => "resource", value2  => $resource,
+					name3  => "minor",    value3  => $minor_number,
+					name4  => "cs",       value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+					name5  => "my ro",    value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_role},
+					name6  => "peer ro",  value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_role},
+					name7  => "my ds",    value7  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state},
+					name8  => "peer ds",  value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state},
+					name9  => "protocol", value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol},
+					name10 => "io flags", value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{io_flags},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
 			{
@@ -10970,13 +11783,20 @@ sub parse_proc_drbd
 			else
 			{
 				# The resync lines aren't consistent, so I pull out data one piece at a time.
-				#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /sync'ed: (.*?)%/)
 				{
 					my $percent_synced = $1;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{syncing}        = 1;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} = $percent_synced;
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], percent synced: [$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} %]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+						name1 => "node",           value1 => $node,
+						name2 => "resource",       value2 => $resource,
+						name3 => "minor",          value3 => $minor_number,
+						name4 => "percent synced", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /\((\d+)\/(\d+)\)M/)
 				{
@@ -10986,7 +11806,13 @@ sub parse_proc_drbd
 					
 					$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync}  = hr_to_bytes($conf, $left_to_sync, "MiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} = hr_to_bytes($conf, $total_to_sync, "MiB", 1);
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], left to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes], total to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+						name1 => "node",          value1 => $node,
+						name2 => "resource",      value2 => $resource,
+						name3 => "minor",         value3 => $minor_number,
+						name4 => "left to sync",  value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes",
+						name5 => "total to sync", value5 => "$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /finish: (\d+):(\d+):(\d+)/)
 				{
@@ -10995,7 +11821,12 @@ sub parse_proc_drbd
 					my $seconds = $3;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
 					
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], eta to sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+						name1 => "node",        value1 => $node,
+						name2 => "resource",    value2 => $resource,
+						name3 => "minor",       value3 => $minor_number,
+						name4 => "eta to sync", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /speed: (.*?) \((.*?)\)/)
 				{
@@ -11005,7 +11836,13 @@ sub parse_proc_drbd
 					   $average_speed =~ s/,//g;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} = hr_to_bytes($conf, $current_speed, "KiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} = hr_to_bytes($conf, $average_speed, "KiB", 1);
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], current_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec], average_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+						name1 => "node",          value1 => $node,
+						name2 => "resource",      value2 => $resource,
+						name3 => "minor",         value3 => $minor_number,
+						name4 => "current_speed", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec",
+						name5 => "average_speed", value5 => "$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /want: (.*?) K/)
 				{
@@ -11013,7 +11850,12 @@ sub parse_proc_drbd
 					my $want_speed =  $1;
 					   $want_speed =~ s/,//g;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} = hr_to_bytes($conf, $want_speed, "KiB", 1);
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], want_speed: [$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+						name1 => "node",       value1 => $node,
+						name2 => "resource",   value2 => $resource,
+						name3 => "minor",      value3 => $minor_number,
+						name4 => "want_speed", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -11022,7 +11864,12 @@ sub parse_proc_drbd
 	foreach my $resource (sort {$a cmp $b} keys %{$conf->{node}{$node}{drbd}{resource}})
 	{
 		next if not $resource;
-		#record($conf, "$THIS_FILE ".__LINE__."; -- node: [$node], resource: [$resource], minor: [$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}], connection state: [$conf->{node}{$node}{drbd}{resource}{$resource}{connection_state}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "-- node",          value1 => $node,
+			name2 => "resource",         value2 => $resource,
+			name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+			name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		$conf->{drbd}{$resource}{node}{$node}{minor}            = $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     ? $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     : "--";
 		$conf->{drbd}{$resource}{node}{$node}{connection_state} = $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} ? $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state} : "--";
@@ -11030,7 +11877,16 @@ sub parse_proc_drbd
 		$conf->{drbd}{$resource}{node}{$node}{disk_state}       = $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}    ? $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state}    : "--";
 		$conf->{drbd}{$resource}{node}{$node}{device}           = $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      ? $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      : "--";
 		$conf->{drbd}{$resource}{node}{$node}{resync_percent}   = $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   ? $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   : "--";
-#		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$conf->{drbd}{$resource}{node}{$node}{minor}], connection state: [$conf->{drbd}{$resource}{node}{$node}{connection_state}], role: [$conf->{drbd}{$resource}{node}{$node}{role}], disk_state: [$conf->{drbd}{$resource}{node}{$node}{device}], device: [$conf->{drbd}{$resource}{node}{$node}{device}], resync percent: [$conf->{drbd}{$resource}{node}{$node}{resync_percent} %]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "node",             value1 => $node,
+			name2 => "resource",         value2 => $resource,
+			name3 => "minor",            value3 => $conf->{drbd}{$resource}{node}{$node}{minor},
+			name4 => "connection state", value4 => $conf->{drbd}{$resource}{node}{$node}{connection_state},
+			name5 => "role",             value5 => $conf->{drbd}{$resource}{node}{$node}{role},
+			name6 => "disk_state",       value6 => $conf->{drbd}{$resource}{node}{$node}{device},
+			name7 => "device",           value7 => $conf->{drbd}{$resource}{node}{$node}{device},
+			name8 => "resync percent",   value8 => $conf->{drbd}{$resource}{node}{$node}{resync_percent},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -11051,7 +11907,9 @@ sub parse_drbdadm_dumpxml
 	# Convert the XML array into a string.
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$xml_data .= "$line\n";
 	}
 	
@@ -11061,7 +11919,9 @@ sub parse_drbdadm_dumpxml
 	{
 		my $xml  = XML::Simple->new();
 		my $data = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
-		#record($conf, "$THIS_FILE ".__LINE__."; data: [$data]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "data", value1 => $data,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		foreach my $a (keys %{$data})
 		{
@@ -11187,19 +12047,37 @@ sub parse_drbdadm_dumpxml
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{connection_state} = "--";
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{role}             = "--";
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state}       = "--";
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor number: [$minor_number], metadisk: [$conf->{node}{$node}{drbd}{resource}{$resource}{metadisk}], DRBD device: [$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}], backing device: [$conf->{node}{$node}{drbd}{resource}{$resource}{backing_device}], hostname: [$hostname], IP: [$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address}:$conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port} ($conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type})]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+							name1  => "node",           value1  => $node,
+							name2  => "resource",       value2  => $resource,
+							name3  => "minor number",   value3  => $minor_number,
+							name4  => "metadisk",       value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{metadisk},
+							name5  => "DRBD device",    value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device},
+							name6  => "backing device", value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{backing_device},
+							name7  => "hostname",       value7  => $hostname,
+							name8  => "IP",             value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address},
+							name9  => "tcp_port",       value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port},
+							name10 => "ip_type",        value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					foreach my $c (@{$b->{section}})
 					{
 						my $name = $c->{name};
-						record($conf, "$THIS_FILE ".__LINE__."; c: [$c], name: [$name]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "c",    value1 => $c,
+							name2 => "name", value2 => $name,
+						}, file => $THIS_FILE, line => __LINE__});
 						if ($name eq "disk")
 						{
 							foreach my $d (@{$c->{options}})
 							{
 								my $name  = $d->{name};
 								my $value = $d->{value};
-								record($conf, "$THIS_FILE ".__LINE__."; d: [$d], name: [$name], value: [$value]\n");
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									name1 => "d",     value1 => $d,
+									name2 => "name",  value2 => $name,
+									name3 => "value", value3 => $value,
+								}, file => $THIS_FILE, line => __LINE__});
 								$conf->{node}{$node}{drbd}{res_file}{$resource}{disk}{$name} = $value;
 							}
 						}
@@ -11244,7 +12122,9 @@ sub parse_clustat
 	### NOTE: This check seems odd, but I've run intp cases where a node,
 	###       otherwise behaving fine, simple returns nothing when cman is
 	###       off. Couldn't reproduce on the command line.
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_clustat() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_clustat() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $line_count = @{$array};
 	if (not $line_count)
 	{
@@ -11256,14 +12136,18 @@ sub parse_clustat
 	#record($conf, "$THIS_FILE ".__LINE__."; Will parse: [$line_count] lines.\n");
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
-			#record($conf, "$THIS_FILE ".__LINE__."; CMAN does not appear to be running on node: [$node]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "CMAN does not appear to be running on node", value1 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 			$conf->{node}{$node}{enable_join}                = 1;
 		}
@@ -11284,7 +12168,9 @@ sub parse_clustat
 		}
 		if ($in_member)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /Local/)
 			{
 				($conf->{node}{$node}{me}{name}, undef, my $services) = (split/ /, $line, 3);
@@ -11312,7 +12198,12 @@ sub parse_clustat
 			if ($line =~ /^vm:/)
 			{
 				my ($vm, $host, $state) = split/ /, $line, 3;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$host], state: [$state]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "node",  value1 => $node,
+					name2 => "vm",    value2 => $vm,
+					name3 => "host",  value3 => $host,
+					name4 => "state", value4 => $state,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($state eq "disabled") || ($state eq "stopped"))
 				{
 					# Set host to 'none'.
@@ -11350,26 +12241,47 @@ sub parse_clustat
 				$host =~ s/\(//g;
 				$host =~ s/\)//g;
 				
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$host]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "vm",   value2 => $vm,
+					name3 => "host", value3 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
 				$host = "none" if not $host;
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
 				# TODO: If the state is "failed", call 
 				# 'virsh list --all' against both nodes. If the
 				# VM is found, try to recover the service.
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], host: [$conf->{vm}{$vm}{host}], state: [$conf->{vm}{$vm}{'state'}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "node",  value1 => $node,
+					name2 => "vm",    value2 => $vm,
+					name3 => "host",  value3 => $conf->{vm}{$vm}{host},
+					name4 => "state", value4 => $conf->{vm}{$vm}{'state'},
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Pick out who the peer node is.
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host: [$host], me: [$conf->{node}{$node}{me}{name}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "host", value2 => $host,
+					name3 => "me",   value3 => $conf->{node}{$node}{me}{name},
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($host eq $conf->{node}{$node}{me}{name})
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{peer}{name};
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "node", value1 => $node,
+						name2 => "vm",   value2 => $vm,
+						name3 => "peer", value3 => $conf->{vm}{$vm}{peer},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{me}{name};
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm: [$vm], peer: [$conf->{vm}{$vm}{peer}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "node", value1 => $node,
+						name2 => "vm",   value2 => $vm,
+						name3 => "peer", value3 => $conf->{vm}{$vm}{peer},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			elsif ($line =~ /^service:(.*?)\s+(.*?)\s+(.*)$/)
@@ -11444,11 +12356,17 @@ sub parse_clustat
 	}
 	
 	# If this is set, the cluster isn't running.
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",                       value1 => $node,
+		name2 => "get host from cluster.conf", value2 => $conf->{node}{$node}{get_host_from_cluster_conf},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $conf->{node}{$node}{get_host_from_cluster_conf})
 	{
 		$host_name = $conf->{node}{$node}{me}{name};
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",      value1 => $node,
+			name2 => "host name", value2 => $host_name,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $name (sort {$a cmp $b} keys %{$conf->{service}})
 		{
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name]\n");
@@ -11459,7 +12377,10 @@ sub parse_clustat
 			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - storage name: [$storage_name], storage state: [$storage_state]\n");
 		}
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], host name: [$host_name]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",      value1 => $node,
+			name2 => "host name", value2 => $host_name,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($host_name)
 		{
 			$conf->{node}{$node}{info}{host_name}            =  $host_name;
@@ -11471,7 +12392,10 @@ sub parse_clustat
 		{
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		}
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                       value1 => $node,
+			name2 => "get host from cluster.conf", value2 => $conf->{node}{$node}{get_host_from_cluster_conf},
+		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{info}{storage_name}    = $storage_name;
 		$conf->{node}{$node}{info}{storage_state}   = $storage_state;
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - host name: [$conf->{node}{$node}{info}{host_name}], short host name: [$conf->{node}{$node}{info}{short_host_name}], storage name: [$conf->{node}{$node}{info}{storage_name}], storage state: [$conf->{node}{$node}{info}{storage_state}]\n");
@@ -11502,13 +12426,18 @@ sub parse_cluster_conf
 	
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node", value1 => $node,
+			name2 => "line", value2 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Find failover domains.
 		if ($line =~ /<failoverdomain /)
 		{
 			$current_fod = ($line =~ /name="(.*?)"/)[0];
-			#record($conf, "$THIS_FILE ".__LINE__."; current_fod: [$current_fod]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "current_fod", value1 => $current_fod,
+			}, file => $THIS_FILE, line => __LINE__});
 			$in_fod      = 1;
 			next;
 		}
@@ -11524,7 +12453,11 @@ sub parse_cluster_conf
 			my $node     = ($line =~ /name="(.*?)"/)[0];
 			my $priority = ($line =~ /priority="(.*?)"/)[0] ? $1 : 0;
 			$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node} = $node;
-			#record($conf, "$THIS_FILE ".__LINE__."; failover domain: [$current_fod], node: [$conf->{failoverdomain}{$current_fod}{priority}{$priority}{node}], priority: [$priority]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "failover domain", value1 => $current_fod,
+				name2 => "node",            value2 => $conf->{failoverdomain}{$current_fod}{priority}{$priority}{node},
+				name3 => "priority",        value3 => $priority,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# If I didn't get the hostname from clustat, try to find it here.
@@ -11538,7 +12471,12 @@ sub parse_cluster_conf
 			   
 			# If I need to record the host name from cluster.conf,
 			# do so here.
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], short host name: [$short_host_name], short node name: [$short_node_name], get host from cluster.conf: [$conf->{node}{$node}{get_host_from_cluster_conf}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "node",                       value1 => $node,
+				name2 => "short host name",            value2 => $short_host_name,
+				name3 => "short node name",            value3 => $short_node_name,
+				name4 => "get host from cluster.conf", value4 => $conf->{node}{$node}{get_host_from_cluster_conf},
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($short_host_name eq $short_node_name)
 			{
 				# Found it.
@@ -11607,7 +12545,18 @@ sub parse_cluster_conf
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}           = $login;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password}        = $password;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password_script} = $password_script;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}], address: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address}], login: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}], password: [".length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long], password_script: [$password_script]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0010", message_variables => {
+				name1  => "node",            value1  => $this_node,
+				name2  => "method",          value2  => $in_method,
+				name3  => "method count",    value3  => $device_count,
+				name4  => "name",            value4  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
+				name5  => "port",            value5  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
+				name6  => "action",          value6  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
+				name7  => "address",         value7  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address},
+				name8  => "login",           value8  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login},
+				name9  => "password",        value9  => length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long",
+				name10 => "password_script", value10 => $password_script,
+			}, file => $THIS_FILE, line => __LINE__});
 			$device_count++;
 		}
 		
@@ -11639,13 +12588,25 @@ sub parse_cluster_conf
 			$conf->{fence}{$name}{login}           = $login;
 			$conf->{fence}{$name}{password}        = $password;
 			$conf->{fence}{$name}{password_script} = $password_script;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence name: [$name], agent: [$conf->{fence}{$name}{agent}], address: [$conf->{fence}{$name}{address}], login: [$conf->{fence}{$name}{login}], password: [$conf->{fence}{$name}{password}], action: [$conf->{fence}{$name}{action}], password_script: [$conf->{fence}{$name}{password_script}]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0008", message_variables => {
+				name1 => "node",            value1 => $node,
+				name2 => "fence name",      value2 => $name,
+				name3 => "agent",           value3 => $conf->{fence}{$name}{agent},
+				name4 => "address",         value4 => $conf->{fence}{$name}{address},
+				name5 => "login",           value5 => $conf->{fence}{$name}{login},
+				name6 => "password",        value6 => $conf->{fence}{$name}{password},
+				name7 => "action",          value7 => $conf->{fence}{$name}{action},
+				name8 => "password_script", value8 => $conf->{fence}{$name}{password_script},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Find VMs.
 		if ($line =~ /<vm.*?name="(.*?)"/)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node", value1 => $node,
+				name2 => "line", value2 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $vm     = $1;
 			my $vm_key = "vm:$vm";
 			my $def    = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
@@ -11653,17 +12614,29 @@ sub parse_cluster_conf
 			# I need to set the host to 'none' to avoid triggering
 			# the error caused by seeing and foo.xml VM def outside
 			# of here.
-			#record($conf, "$THIS_FILE ".__LINE__."; vm_key: [$vm_key], def: [$def], domain: [$domain]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "vm_key", value1 => $vm_key,
+				name2 => "def",    value2 => $def,
+				name3 => "domain", value3 => $domain,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{vm}{$vm_key}{definition_file} = $def;
 			$conf->{vm}{$vm_key}{failover_domain} = $domain;
 			$conf->{vm}{$vm_key}{host}            = "none" if not $conf->{vm}{$vm_key}{host};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], vm_key: [$vm_key], definition: [$conf->{vm}{$vm_key}{definition_file}], host: [$conf->{vm}{$vm_key}{host}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "node",       value1 => $node,
+				name2 => "vm_key",     value2 => $vm_key,
+				name3 => "definition", value3 => $conf->{vm}{$vm_key}{definition_file},
+				name4 => "host",       value4 => $conf->{vm}{$vm_key}{host},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# See if I got the fence details for both nodes.
 	my $peer = AN::Striker::get_peer_node($conf, $node);
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node", value1 => $node,
+		name2 => "peer", value2 => $peer,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $this_node ($node, $peer)
 	{
 		# This will contain possible fence methods.
@@ -11673,15 +12646,27 @@ sub parse_cluster_conf
 		# power.
 		$conf->{node}{$this_node}{info}{power_check_command} = "";
 		
-		#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this node", value1 => $this_node,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $in_method (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this node", value1 => $this_node,
+				name2 => "method",    value2 => $in_method,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $fence_command = "$in_method: ";
 			foreach my $device_count (sort {$a cmp $b} keys %{$conf->{node}{$this_node}{fence}{method}{$in_method}{device}})
 			{
 				#$fence_command .= " [$device_count]";
-				#record($conf, "$THIS_FILE ".__LINE__."; this node: [$this_node], method: [$in_method], method count: [$device_count], name: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name}], port: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port}], action: [$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "this node",    value1 => $this_node,
+					name2 => "method",       value2 => $in_method,
+					name3 => "method count", value3 => $device_count,
+					name4 => "name",         value4 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
+					name5 => "port",         value5 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
+					name6 => "action",       value6 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
+				}, file => $THIS_FILE, line => __LINE__});
 				#Find the matching fence device entry.
 				foreach my $name (sort {$a cmp $b} keys %{$conf->{fence}})
 				{
@@ -11753,7 +12738,10 @@ sub parse_cluster_conf
 						   $command .= "-n $port "            if $port;
 						   $command =~ s/ $//;
 						$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node], fence command: [$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command}]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",          value1 => $this_node,
+							name2 => "fence command", value2 => $conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command},
+						}, file => $THIS_FILE, line => __LINE__});
 						if (($agent eq "fence_ipmilan") || ($agent eq "fence_virsh"))
 						{
 							$conf->{node}{$this_node}{info}{power_check_command} = $command;
@@ -11779,8 +12767,14 @@ sub parse_cluster_conf
 		$conf->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
 	### NOTE: These expose passwords!
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], fence command: [$conf->{node}{$node}{info}{fence_methods}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; peer: [$peer], fence command: [$conf->{node}{$peer}{info}{fence_methods}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",          value1 => $node,
+		name2 => "fence command", value2 => $conf->{node}{$node}{info}{fence_methods},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "peer",          value1 => $peer,
+		name2 => "fence command", value2 => $conf->{node}{$peer}{info}{fence_methods},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -11804,24 +12798,37 @@ sub parse_daemons
 	#record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Stopped'.\n");
 	set_daemons($conf, $node, "Stopped", "highlight_bad");
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_daemons() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_daemons() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if $line !~ /^striker:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
 		$exit_code = "" if not defined $exit_code;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit_code: [$exit_code]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",      value1 => $node,
+			name2 => "daemon",    value2 => $daemon,
+			name3 => "exit_code", value3 => $exit_code,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($exit_code eq "0")
 		{
 			$conf->{node}{$node}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
 			$conf->{node}{$node}{enable_poweroff}         = 0;
 		}
 		$conf->{node}{$node}{daemon}{$daemon}{exit_code} = defined $exit_code ? $exit_code : "";
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], exit code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}], status: [$conf->{node}{$node}{daemon}{$daemon}{status}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "node",      value1 => $node,
+			name2 => "daemon",    value2 => $daemon,
+			name3 => "exit code", value3 => $conf->{node}{$node}{daemon}{$daemon}{exit_code},
+			name4 => "status",    value4 => $conf->{node}{$node}{daemon}{$daemon}{status},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If cman is running, enable withdrawl. If not, enable shut down.
@@ -11838,7 +12845,10 @@ sub parse_daemons
 	else
 	{
 		# If something went wrong, one of the storage resources might still be running.
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rgmanager_exit: [$rgmanager_exit]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",           value1 => $node,
+			name2 => "rgmanager_exit", value2 => $rgmanager_exit,
+		}, file => $THIS_FILE, line => __LINE__});
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd_exit:      [$drbd_exit]\n");
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd_exit:     [$clvmd_exit]\n");
 		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2_exit:      [$gfs2_exit]\n");
@@ -11865,8 +12875,11 @@ sub parse_daemons
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], enable poweroff: [$conf->{node}{$node}{enable_poweroff}], enable withdrawl: [$conf->{node}{$node}{enable_withdraw}]\n");
-	#foreach my $daemon (@daemons) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], status: [$conf->{node}{$node}{daemon}{$daemon}{status}], exit_code: [$conf->{node}{$node}{daemon}{$daemon}{exit_code}]\n"); }
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",             value1 => $node,
+		name2 => "enable poweroff",  value2 => $conf->{node}{$node}{enable_poweroff},
+		name3 => "enable withdrawl", value3 => $conf->{node}{$node}{enable_withdraw},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -11880,13 +12893,17 @@ sub parse_lvm_scan
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_scan() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_lvm_scan() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
 		{
 			my $state     = $1;
@@ -11894,7 +12911,14 @@ sub parse_lvm_scan
 			my $size      = $3;
 			my $bytes     = hr_to_bytes($conf, $size);
 			my $vg        = ($lv =~ /^\/dev\/(.*?)\//)[0];
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], state: [$state], vg: [$vg], lv: [$lv], size: [$size], bytes: [$bytes]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "node",  value1 => $node,
+				name2 => "state", value2 => $state,
+				name3 => "vg",    value3 => $vg,
+				name4 => "lv",    value4 => $lv,
+				name5 => "size",  value5 => $size,
+				name6 => "bytes", value6 => $bytes,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			if (lc($state) eq "inactive")
 			{
@@ -11924,7 +12948,11 @@ sub parse_lvm_scan
 			{
 				$conf->{resources}{lv}{$lv}{on_vg} = $vg;
 				$conf->{resources}{lv}{$lv}{size}  = $bytes;
-				#record($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], vg: [$conf->{resources}{lv}{$lv}{on_vg}], size: [$conf->{resources}{lv}{$lv}{size}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "lv",   value1 => $lv,
+					name2 => "vg",   value2 => $conf->{resources}{lv}{$lv}{on_vg},
+					name3 => "size", value3 => $conf->{resources}{lv}{$lv}{size},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -11944,13 +12972,20 @@ sub parse_lvm_data
 	my $in_pvs = 0;
 	my $in_vgs = 0;
 	my $in_lvs = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_lvm_data() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_lvm_data() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line], in_pvs: [$in_pvs], in_vgs: [$in_vgs], in_lvs: [$in_lvs]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "line",   value1 => $line,
+			name2 => "in_pvs", value2 => $in_pvs,
+			name3 => "in_vgs", value3 => $in_vgs,
+			name4 => "in_lvs", value4 => $in_lvs,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^PV/)
 		{
 			$in_pvs = 1;
@@ -11976,25 +13011,47 @@ sub parse_lvm_data
 		if ($in_pvs)
 		{
 			# pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			#   pv_name,  vg_name,     pv_fmt,  pv_attr,     pv_size,     pv_free,   pv_used,     pv_uuid
 			my ($this_pv, $used_by_vg, $format, $attributes, $total_size, $free_size, $used_size, $uuid) = (split /#!#/, $line);
 			$total_size =~ s/B$//;
 			$free_size  =~ s/B$//;
 			$used_size  =~ s/B$//;
-			#record($conf, "$THIS_FILE ".__LINE__."; PV: [$this_pv], used by VG: [$used_by_vg], format: [$format], attributes: [$attributes], total size: [$total_size], free size: [$free_size], used size: [$used_size], uuid: [$uuid]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "PV",         value1 => $this_pv,
+				name2 => "used by VG", value2 => $used_by_vg,
+				name3 => "format",     value3 => $format,
+				name4 => "attributes", value4 => $attributes,
+				name5 => "total size", value5 => $total_size,
+				name6 => "free size",  value6 => $free_size,
+				name7 => "used size",  value7 => $used_size,
+				name8 => "uuid",       value8 => $uuid,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_by_vg} = $used_by_vg;
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{attributes} = $attributes;
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{total_size} = $total_size;
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{free_size}  = $free_size;
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_size}  = $used_size;
 			$conf->{node}{$node}{lvm}{pv}{$this_pv}{uuid}       = $uuid;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], PV: [$this_pv], used by VG: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_by_vg}], attributes: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{attributes}], total size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{total_size}], free size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{free_size}], used size: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{used_size}], uuid: [$conf->{node}{$node}{lvm}{pv}{$this_pv}{uuid}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "node",       value1 => $node,
+				name2 => "PV",         value2 => $this_pv,
+				name3 => "used by VG", value3 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{used_by_vg},
+				name4 => "attributes", value4 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{attributes},
+				name5 => "total size", value5 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{total_size},
+				name6 => "free size",  value6 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{free_size},
+				name7 => "used size",  value7 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{used_size},
+				name8 => "uuid",       value8 => $conf->{node}{$node}{lvm}{pv}{$this_pv}{uuid},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($in_vgs)
 		{
 			# vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			#   vg_name,  vg_attr,     vg_extent_size, vg_extent_count, vg_uuid, vg_size,  vg_free_count, vg_free,  pv_name
 			my ($this_vg, $attributes, $pe_size,       $total_pe,       $uuid,   $vg_size, $free_pe,      $vg_free, $pv_name) = split /#!#/, $line;
 			$pe_size    = "" if not defined $pe_size;
@@ -12006,7 +13063,20 @@ sub parse_lvm_data
 			$vg_free =~ s/B$//;
 			my $used_pe    = $total_pe - $free_pe if (($total_pe) && ($free_pe));
 			my $used_space = $vg_size - $vg_free  if (($vg_size) && ($vg_free));
-			#record($conf, "$THIS_FILE ".__LINE__."; VG: [$this_vg], attributes: [$attributes], PE size: [$pe_size], total PE: [$total_pe], uuid: [$uuid], VG size: [$vg_size], used PE: [$used_pe], used space: [$used_space], free PE: [$free_pe], free space: [$vg_free], VG free: [$vg_free], pv_name: [$pv_name]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				name1  => "VG",         value1  => $this_vg,
+				name2  => "attributes", value2  => $attributes,
+				name3  => "PE size",    value3  => $pe_size,
+				name4  => "total PE",   value4  => $total_pe,
+				name5  => "uuid",       value5  => $uuid,
+				name6  => "VG size",    value6  => $vg_size,
+				name7  => "used PE",    value7  => $used_pe,
+				name8  => "used space", value8  => $used_space,
+				name9  => "free PE",    value9  => $free_pe,
+				name10 => "free space", value10 => $vg_free,
+				name11 => "VG free",    value11 => $vg_free,
+				name12 => "pv_name",    value12 => $pv_name,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}  = $attributes =~ /c$/ ? 1 : 0;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}    = $pe_size;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}   = $total_pe;
@@ -12017,14 +13087,37 @@ sub parse_lvm_data
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}    = $free_pe;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space} = $vg_free;
 			$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pv_name}    = $pv_name;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], VG: [$this_vg], clustered: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered}], pe size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size}], total pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe}], uuid: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid}], size: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size}], used pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe}], used space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space}], free pe: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe}], free space: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space}], PV name: [$conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pv_name}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				name1  => "node",       value1  => $node,
+				name2  => "VG",         value2  => $this_vg,
+				name3  => "clustered",  value3  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{clustered},
+				name4  => "pe size",    value4  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pe_size},
+				name5  => "total pe",   value5  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{total_pe},
+				name6  => "uuid",       value6  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{uuid},
+				name7  => "size",       value7  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{size},
+				name8  => "used pe",    value8  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_pe},
+				name9  => "used space", value9  => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{used_space},
+				name10 => "free pe",    value10 => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_pe},
+				name11 => "free space", value11 => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{free_space},
+				name12 => "PV name",    value12 => $conf->{node}{$node}{hardware}{lvm}{vg}{$this_vg}{pv_name},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($in_lvs)
 		{
 			# lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices
-			#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($lv_name, $on_vg, $attributes, $total_size, $uuid, $path, $devices) = (split /#!#/, $line);
-			#record($conf, "$THIS_FILE ".__LINE__."; LV name: [$lv_name], on VG: [$on_vg], attributes: [$attributes], total size: [$total_size], uuid: [$uuid], path: [$path], device(s): [$devices]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "LV name",    value1 => $lv_name,
+				name2 => "on VG",      value2 => $on_vg,
+				name3 => "attributes", value3 => $attributes,
+				name4 => "total size", value4 => $total_size,
+				name5 => "uuid",       value5 => $uuid,
+				name6 => "path",       value6 => $path,
+				name7 => "device(s)",  value7 => $devices,
+			}, file => $THIS_FILE, line => __LINE__});
 			$total_size =~ s/B$//;
 			$devices    =~ s/\(\d+\)//g;	# Strip the starting PE number
 			$conf->{node}{$node}{lvm}{lv}{$path}{name}       = $lv_name;
@@ -12034,8 +13127,25 @@ sub parse_lvm_data
 			$conf->{node}{$node}{lvm}{lv}{$path}{total_size} = $total_size;
 			$conf->{node}{$node}{lvm}{lv}{$path}{uuid}       = $uuid;
 			$conf->{node}{$node}{lvm}{lv}{$path}{on_devices} = $devices;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], path: [$path], name: [$conf->{node}{$node}{lvm}{lv}{$path}{name}], on VG: [$conf->{node}{$node}{lvm}{lv}{$path}{on_vg}], active: [$conf->{node}{$node}{lvm}{lv}{$path}{active}], attribute: [$conf->{node}{$node}{lvm}{lv}{$path}{attributes}], total size: [$conf->{node}{$node}{lvm}{lv}{$path}{total_size}], uuid: [$conf->{node}{$node}{lvm}{lv}{$path}{uuid}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$path}{on_devices}]\n");
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], path: [$path], name: [$conf->{node}{$node}{lvm}{lv}{$path}{name}], on VG: [$conf->{node}{$node}{lvm}{lv}{$path}{on_vg}], total size: [$conf->{node}{$node}{lvm}{lv}{$path}{total_size}], on device(s): [$conf->{node}{$node}{lvm}{lv}{$path}{on_devices}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "path",         value2 => $path,
+				name3 => "name",         value3 => $conf->{node}{$node}{lvm}{lv}{$path}{name},
+				name4 => "on VG",        value4 => $conf->{node}{$node}{lvm}{lv}{$path}{on_vg},
+				name5 => "active",       value5 => $conf->{node}{$node}{lvm}{lv}{$path}{active},
+				name6 => "attribute",    value6 => $conf->{node}{$node}{lvm}{lv}{$path}{attributes},
+				name7 => "total size",   value7 => $conf->{node}{$node}{lvm}{lv}{$path}{total_size},
+				name8 => "uuid",         value8 => $conf->{node}{$node}{lvm}{lv}{$path}{uuid},
+				name9 => "on device(s)", value9 => $conf->{node}{$node}{lvm}{lv}{$path}{on_devices},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "path",         value2 => $path,
+				name3 => "name",         value3 => $conf->{node}{$node}{lvm}{lv}{$path}{name},
+				name4 => "on VG",        value4 => $conf->{node}{$node}{lvm}{lv}{$path}{on_vg},
+				name5 => "total size",   value5 => $conf->{node}{$node}{lvm}{lv}{$path}{total_size},
+				name6 => "on device(s)", value6 => $conf->{node}{$node}{lvm}{lv}{$path}{on_devices},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -12053,14 +13163,20 @@ sub parse_virsh
 	
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if $line !~ /^\d/;
 		
 		my ($id, $say_vm, $state) = split/ /, $line, 3;
-		#record($conf, "$THIS_FILE ".__LINE__."; id: [$id], saw vm: [$say_vm], state: [$state]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "id",     value1 => $id,
+			name2 => "saw vm", value2 => $say_vm,
+			name3 => "state",  value3 => $state,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $vm = "vm:$say_vm";
 		$conf->{vm}{$vm}{node}{$node}{virsh}{'state'} = $state;
@@ -12089,10 +13205,14 @@ sub parse_gfs2
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $in_fs = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; in parse_gfs2() for node: [$node]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "in parse_gfs2() for node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /Filesystem/)
 		{
 			$in_fs = 1;
@@ -12109,28 +13229,58 @@ sub parse_gfs2
 			$free_space   = "" if not defined $free_space;
 			$percent_used = "" if not defined $percent_used;
 			next if not exists $conf->{node}{$node}{gfs}{$mount_point};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device path: [$device_path], total size: [$total_size], used space: [$used_space], free space: [$free_space], percent used: [$percent_used], mount point: [$mount_point]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "device path",  value2 => $device_path,
+				name3 => "total size",   value3 => $total_size,
+				name4 => "used space",   value4 => $used_space,
+				name5 => "free space",   value5 => $free_space,
+				name6 => "percent used", value6 => $percent_used,
+				name7 => "mount point",  value7 => $mount_point,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = $device_path;
 			$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = $total_size;
 			$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = $used_space;
 			$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = $free_space;
 			$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = $percent_used;
 			$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], device path: [$conf->{node}{$node}{gfs}{$mount_point}{device_path}], total size: [$conf->{node}{$node}{gfs}{$mount_point}{total_size}], used space: [$conf->{node}{$node}{gfs}{$mount_point}{used_space}], free space: [$conf->{node}{$node}{gfs}{$mount_point}{free_space}], percent used: [$conf->{node}{$node}{gfs}{$mount_point}{percent_used}], mounted: [$conf->{node}{$node}{gfs}{$mount_point}{mounted}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "mount point",  value2 => $mount_point,
+				name3 => "device path",  value3 => $conf->{node}{$node}{gfs}{$mount_point}{device_path},
+				name4 => "total size",   value4 => $conf->{node}{$node}{gfs}{$mount_point}{total_size},
+				name5 => "used space",   value5 => $conf->{node}{$node}{gfs}{$mount_point}{used_space},
+				name6 => "free space",   value6 => $conf->{node}{$node}{gfs}{$mount_point}{free_space},
+				name7 => "percent used", value7 => $conf->{node}{$node}{gfs}{$mount_point}{percent_used},
+				name8 => "mounted",      value8 => $conf->{node}{$node}{gfs}{$mount_point}{mounted},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Read the GFS info.
 			next if $line !~ /gfs2/;
 			my (undef, $mount_point, $fs) = ($line =~ /^(.*?)\s+(.*?)\s+(.*?)\s/);
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], fs: [$fs]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "node",        value1 => $node,
+				name2 => "mount point", value2 => $mount_point,
+				name3 => "fs",          value3 => $fs,
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{gfs}{$mount_point}{device_path}  = "--";
 			$conf->{node}{$node}{gfs}{$mount_point}{total_size}   = "--";
 			$conf->{node}{$node}{gfs}{$mount_point}{used_space}   = "--";
 			$conf->{node}{$node}{gfs}{$mount_point}{free_space}   = "--";
 			$conf->{node}{$node}{gfs}{$mount_point}{percent_used} = "--";
 			$conf->{node}{$node}{gfs}{$mount_point}{mounted}      = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], mount point: [$mount_point], device path: [$conf->{node}{$node}{gfs}{$mount_point}{device_path}], total size: [$conf->{node}{$node}{gfs}{$mount_point}{total_size}], used space: [$conf->{node}{$node}{gfs}{$mount_point}{used_space}], free space: [$conf->{node}{$node}{gfs}{$mount_point}{free_space}], percent used: [$conf->{node}{$node}{gfs}{$mount_point}{percent_used}], mounted: [$conf->{node}{$node}{gfs}{$mount_point}{mounted}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "mount point",  value2 => $mount_point,
+				name3 => "device path",  value3 => $conf->{node}{$node}{gfs}{$mount_point}{device_path},
+				name4 => "total size",   value4 => $conf->{node}{$node}{gfs}{$mount_point}{total_size},
+				name5 => "used space",   value5 => $conf->{node}{$node}{gfs}{$mount_point}{used_space},
+				name6 => "free space",   value6 => $conf->{node}{$node}{gfs}{$mount_point}{free_space},
+				name7 => "percent used", value7 => $conf->{node}{$node}{gfs}{$mount_point}{percent_used},
+				name8 => "mounted",      value8 => $conf->{node}{$node}{gfs}{$mount_point}{mounted},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -12169,7 +13319,9 @@ sub check_if_on
 	# If the peer is on, use it to check the power.
 	my $peer                    = "";
 	$conf->{node}{$node}{is_on} = 9;
-	#record($conf, "$THIS_FILE ".__LINE__."; up nodes: [$conf->{sys}{up_nodes}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "up nodes", value1 => $conf->{sys}{up_nodes},
+	}, file => $THIS_FILE, line => __LINE__});
 	### TODO: This fails when node 1 is down because it has not yet looked
 	###       for node 2 to see if it is on or not. Check manually.
 	if ($conf->{sys}{up_nodes} == 1)
@@ -12178,7 +13330,10 @@ sub check_if_on
 		$peer = @{$conf->{up_nodes}}[0];
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], peer: [$peer]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node", value1 => $node,
+		name2 => "peer", value2 => $peer,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($peer)
 	{
 		# Check the power state using the peer node.
@@ -12218,12 +13373,18 @@ sub check_if_on
 			if ($line =~ / On$/i)
 			{
 				$conf->{node}{$node}{is_on} = 1;
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",  value1 => $node,
+					name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ / Off$/i)
 			{
 				$conf->{node}{$node}{is_on} = 0;
-				record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",  value1 => $node,
+					name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -12232,7 +13393,10 @@ sub check_if_on
 		# Read the cache and check the power directly, if possible.
 		read_node_cache($conf, $node);
 		$conf->{node}{$node}{info}{power_check_command} = "" if not defined $conf->{node}{$node}{info}{power_check_command};
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                value1 => $node,
+			name2 => "power check command", value2 => $conf->{node}{$node}{info}{power_check_command},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{node}{$node}{info}{power_check_command})
 		{
 			# Get the address from the command and see if it's in
@@ -12240,27 +13404,41 @@ sub check_if_on
 			my ($target_host)              = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 			my ($local_access, $target_ip) = on_same_network($conf, $target_host, $node);
 			
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], local_access: [$local_access]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "local_access", value2 => $local_access,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($local_access)
 			{
 				# I can reach it directly
 				my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
-				record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "Calling", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
 					my $line = $_;
-					record($conf, "$THIS_FILE ".__LINE__."; node: [$node], line: [$line]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node", value1 => $node,
+						name2 => "line", value2 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ($line =~ / On$/i)
 					{
 						$conf->{node}{$node}{is_on} = 1;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",  value1 => $node,
+							name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					if ($line =~ / Off$/i)
 					{
 						$conf->{node}{$node}{is_on} = 0;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",  value1 => $node,
+							name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					if ($line =~ / Unknown$/i)
 					{
@@ -12285,7 +13463,10 @@ sub check_if_on
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",  value1 => $node,
+		name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{node}{$node}{is_on} == 0)
 	{
 		# I need to preset the services as stopped because the little
@@ -12313,7 +13494,9 @@ sub on_same_network
 	my $target_ip;
 	
 	my $shell_call = "$conf->{path}{gethostip} -d $target_host";
-	#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
@@ -12322,11 +13505,15 @@ sub on_same_network
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		#record($conf, "$THIS_FILE ".__LINE__."; line: [$line]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)$/)
 		{
 			$target_ip = $1;
-			#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "target_ip", value1 => $target_ip,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /Unknown host/i)
 		{
@@ -12362,7 +13549,9 @@ sub on_same_network
 	}
 	close $file_handle;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "target_ip", value1 => $target_ip,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($target_ip)
 	{
 		# Find out my own IP(s) and subnet(s).
@@ -12370,7 +13559,9 @@ sub on_same_network
 		my $this_ip    = "";
 		my $this_nm    = "";
 		my $shell_call = "$conf->{path}{ifconfig}";
-		#record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "Calling", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -12379,13 +13570,17 @@ sub on_same_network
 			if ($line =~ /^(.*?)\s+Link encap/)
 			{
 				$in_dev = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_dev", value1 => $in_dev,
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			elsif ($line =~ /^(.*?): flags/)
 			{
 				$in_dev = $1;
-				#record($conf, "$THIS_FILE ".__LINE__."; in_dev: [$in_dev]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "in_dev", value1 => $in_dev,
+				}, file => $THIS_FILE, line => __LINE__});
 				next;
 			}
 			if (not $line)
@@ -12394,34 +13589,51 @@ sub on_same_network
 				# to the power check device.
 				my $target_ip_range = $target_ip;
 				my $this_ip_range   = $this_ip;
-				#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip: [$this_ip]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip_range", value1 => $target_ip_range,
+					name2 => "this_ip",         value2 => $this_ip,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($this_nm eq "255.255.255.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+$//;
 					$this_ip_range   =~ s/.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "target_ip_range", value1 => $target_ip_range,
+						name2 => "this_ip_range",   value2 => $this_ip_range,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($this_nm eq "255.255.0.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+.\d+$//;
 					$this_ip_range   =~ s/.\d+.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "target_ip_range", value1 => $target_ip_range,
+						name2 => "this_ip_range",   value2 => $this_ip_range,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($this_nm eq "255.0.0.0")
 				{
 					# Match the first three octals.
 					$target_ip_range =~ s/.\d+.\d+.\d+$//;
 					$this_ip_range   =~ s/.\d+.\d+.\d+$//;
-					#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "target_ip_range", value1 => $target_ip_range,
+						name2 => "this_ip_range",   value2 => $this_ip_range,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
-				#record($conf, "$THIS_FILE ".__LINE__."; target_ip_range: [$target_ip_range], this_ip_range: [$this_ip_range]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip_range", value1 => $target_ip_range,
+					name2 => "this_ip_range",   value2 => $this_ip_range,
+				}, file => $THIS_FILE, line => __LINE__});
 				if ($this_ip_range eq $target_ip_range)
 				{
 					# Match! I can reach it directly.
 					$local_access = 1;
-					#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "local_access", value1 => $local_access,
+					}, file => $THIS_FILE, line => __LINE__});
 					last;
 				}
 				
@@ -12437,30 +13649,40 @@ sub on_same_network
 				if ($line =~ /inet addr:(\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_ip = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_ip", value1 => $this_ip,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($line =~ /inet (\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_ip = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; this_ip: [$this_ip]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_ip", value1 => $this_ip,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
 				if ($line =~ /Mask:(\d+\.\d+\.\d+\.\d+)/i)
 				{
 					$this_nm = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; this_nm: [$this_nm]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_nm", value1 => $this_nm,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($line =~ /netmask (\d+\.\d+\.\d+\.\d+) /)
 				{
 					$this_nm = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; this_nm: [$this_nm]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "this_nm", value1 => $this_nm,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
 		close $file_handle;
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; local_access: [$local_access]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "local_access", value1 => $local_access,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($local_access, $target_ip);
 }
 
@@ -12483,7 +13705,10 @@ sub write_node_cache
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                value1 => $node,
+			name2 => "power check command", value2 => $conf->{node}{$node}{info}{power_check_command},
+		}, file => $THIS_FILE, line => __LINE__});
 		push @lines, "host_name = $conf->{node}{$node}{info}{host_name}\n";
 		push @lines, "power_check_command = $conf->{node}{$node}{info}{power_check_command}\n";
 		push @lines, "fence_methods = $conf->{node}{$node}{info}{fence_methods}\n";
@@ -12508,7 +13733,9 @@ sub write_node_cache
 	
 	if (@lines > 0)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; writing: [$cache_file]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "writing", value1 => $cache_file,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "$cache_file";
 		open (my $file_handle, ">", "$shell_call") or error($conf, AN::Common::get_string($conf, {key => "message_0050", variables => {
 				cache_file	=>	$cache_file,
@@ -12538,7 +13765,10 @@ sub read_node_cache
 	# offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], cache file: [$cache_file]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cluster",    value1 => $cluster,
+		name2 => "cache file", value2 => $cache_file,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not -e $cache_file)
 	{
 		# See if there is a version with or without '<node>.remote'
@@ -12558,14 +13788,19 @@ sub read_node_cache
 		# It exists! Read it.
 		my $in_hosts   = 0;
 		my $shell_call = $cache_file;
-		record($conf, "$THIS_FILE ".__LINE__."; Reading: [$shell_call]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "Reading", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
 			$line =~ s/\s+/ /g;
-			#record($conf, "$THIS_FILE ".__LINE__."; in_hosts: [$in_hosts], line: [$line]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "in_hosts", value1 => $in_hosts,
+				name2 => "line",     value2 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line eq "#! start hosts !#")
 			{
@@ -12593,7 +13828,10 @@ sub read_node_cache
 				$val =~ s/^\s+//;
 				$val =~ s/\s+$//;
 				
-				#record($conf, "$THIS_FILE ".__LINE__."; var: [$var], val: [$val]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "var", value1 => $var,
+					name2 => "val", value2 => $val,
+				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{info}{$var} = $val;
 				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
 			}
@@ -12606,7 +13844,10 @@ sub read_node_cache
 		$conf->{clusters}{$cluster}{cache_exists} = 0;
 		$conf->{node}{$node}{info}{host_name}     = $node;
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; host name: [$conf->{node}{$node}{info}{host_name}], power check command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "host name",           value1 => $conf->{node}{$node}{info}{host_name},
+		name2 => "power check command", value2 => $conf->{node}{$node}{info}{power_check_command},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }

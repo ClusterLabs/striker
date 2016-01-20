@@ -317,7 +317,9 @@ AN::Cluster::get_cgi_vars($conf, [
 if ($conf->{cgi}{anvil_id})
 {
 	my $this_id = $conf->{cgi}{anvil_id};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; this_id: [$this_id]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "this_id", value1 => $this_id,
+	}, file => $THIS_FILE, line => __LINE__});
 	AN::Cluster::get_cgi_vars($conf, [
 		"cluster__${this_id}__name",
 		"cluster__${this_id}__description",
