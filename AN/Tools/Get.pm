@@ -153,6 +153,11 @@ sub rsa_public_key
 	my $an        = $self->parent;
 	
 	my $user     = $parameter->{user};
+	if (not $user)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0039", code => 33, file => "$THIS_FILE", line => __LINE__});
+	}
+	
 	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",     value1 => $user, 

@@ -4563,7 +4563,11 @@ sub load_install_manifest
 		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 		$conf->{sys}{install_manifest}{use_scancore}             = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             : $conf->{sys}{install_manifest}{'default'}{use_scancore};
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "sys::install_manifest::use_safe_anvil_start",   value1 => $conf->{sys}{install_manifest}{use_safe_anvil_start},
+			name2 => "sys::install_manifest::use_anvil-kick-apc-ups", value2 => $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
+			name3 => "sys::install_manifest::use_scancore",           value3 => $conf->{sys}{install_manifest}{use_scancore},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Shared Variables
 		$conf->{cgi}{anvil_name}        = $conf->{install_manifest}{$file}{common}{cluster}{name};
@@ -4651,7 +4655,10 @@ sub load_install_manifest
 		$i = 1;
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}})
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], i: [$i]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "i",    value1 => $i,
+				name2 => "node", value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $name_key          = "anvil_node".$i."_name";
 			my $bcn_ip_key        = "anvil_node".$i."_bcn_ip";
 			my $bcn_link1_mac_key = "anvil_node".$i."_bcn_link1_mac";
@@ -4674,11 +4681,9 @@ sub load_install_manifest
 			my $pdu3_key          = "anvil_node".$i."_pdu3_outlet";
 			my $pdu4_key          = "anvil_node".$i."_pdu4_outlet";
 			
-			# IPMI is, by default, tempremental about passwords. If
-			# the manifest doesn't specify the password to use, 
-			# we'll copy the cluster password but then strip out
-			# special characters and shorten it to 16 characters or
-			# less.
+			# IPMI is, by default, tempremental about passwords. If the manifest doesn't specify 
+			# the password to use, we'll copy the cluster password but then strip out special 
+			# characters and shorten it to 16 characters or less.
 			my $default_ipmi_pw =  $conf->{cgi}{anvil_password};
 			   $default_ipmi_pw =~ s/!//g;
 			if (length($default_ipmi_pw) > 16)
@@ -4698,9 +4703,14 @@ sub load_install_manifest
 				# There should only be one entry
 				$ipmi_reference = $reference;
 			}
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ipmi_reference: [$ipmi_reference]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "ipmi_reference", value1 => $ipmi_reference,
+			}, file => $THIS_FILE, line => __LINE__});
 			my $j = 1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; j: [$j], install_manifest::${file}::node::${node}::pdu: [$conf->{install_manifest}{$file}{node}{$node}{pdu}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "j",                                             value1 => $j,
+				name2 => "install_manifest::${file}::node::${node}::pdu", value2 => $conf->{install_manifest}{$file}{node}{$node}{pdu},
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $reference (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{node}{$node}{pdu}})
 			{
 				# There should be two or four PDUs

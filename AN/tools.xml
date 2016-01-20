@@ -430,7 +430,7 @@ Variables:
 		<key name="error_message_0016">The passed byte size: [#!variable!size!#] contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
 		<key name="error_message_0017">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] contains an illegal value. Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.</key>
 		<key name="error_message_0018">The passed byte size: [#!variable!size!#] in the string: [sign: #!variable!sign!#, size: #!variable!size!#, type: #!variable!type!#] appears to be a byte size already but the size does not seem to be an integer. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.</key>
-		<key name="error_message_0019">The passed: [size: #!variable!size!#, type: #!variable!type!#] is not recognized. Either an invalid size type was passed or I failed to properly parse the size type. Valid size types are: 'b', 'k', 'm', 'g', 't', 'p', 'e', 'z' or 'y'.</key>
+		<key name="error_message_0019">...free...</key>
 		<key name="error_message_0020">The passed real number: [#!variable!number!#] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.</key>
 		<key name="error_message_0021">Loading the perl module '#!variable!module!#' failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
