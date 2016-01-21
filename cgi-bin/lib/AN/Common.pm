@@ -218,7 +218,9 @@ sub get_string
 		hard_die($conf, $THIS_FILE, __LINE__, 5, "The 'variables' string passed into common.lib's 'get_string()' function is not a hash reference. The string's data is: [$variables].\n");
 	}
 	
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; string::lang::${language}::key::${key}::content: [$conf->{strings}{lang}{$language}{key}{$key}{content}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "string::lang::${language}::key::${key}::content", value1 => $conf->{strings}{lang}{$language}{key}{$key}{content},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not exists $conf->{strings}{lang}{$language}{key}{$key}{content})
 	{
 		#use Data::Dumper; print Dumper %{$conf->{strings}{lang}{$language}};
@@ -975,7 +977,6 @@ sub read_configuration_file
 			$value    =~ s/^\s+//;
 			$value    =~ s/\s+$//;
 			next if (not $variable);
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; variable: [$variable], value: [$value]\n") if $variable =~ /drbd/;
 			_make_hash_reference($conf, $variable, $value);
 		}
 		close $file_handle;
@@ -1104,16 +1105,12 @@ sub process_string
 	while ($string =~ /#!(.+?)!#/s)
 	{
 		# Insert strings that are referenced in this string.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 2.\n");
 		($string) = process_string_insert_strings($conf, $string, $variables);
 		
 		# Protect unmatchable keys.
-		#print __LINE__."; [$i], 3.\n";
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 3.\n");
 		($string) = process_string_protect_escape_variables($conf, $string, "string");
 
 		# Inject any 'conf' values.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [$i], 4.\n");
 		($string) = process_string_conf_escape_variables($conf, $string);
 		
 		# Die if I've looped too many times.
@@ -1126,7 +1123,6 @@ sub process_string
 
 	# Restore and unrecognized substitution values.
 	($string) = process_string_restore_escape_variables($conf, $string);
-	#print __LINE__."; << string: [$string]\n";
 	
 	if ($string =~ /Etc\/GMT\+0/)
 	{
