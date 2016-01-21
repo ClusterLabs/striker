@@ -1028,7 +1028,7 @@ fi
 	if (($return_code eq "0") && ($generate_config))
 	{
 		# Read in the base striker.conf from /sbin/striker/
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating initial Striker config.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0034", file => $THIS_FILE, line => __LINE__});
 		my $base_striker_config_file = "$path/striker.conf";
 		my $striker_config           = "";
 		my $skip_db                  = "";
@@ -1209,10 +1209,15 @@ fi
 			# Now rsync it to the node (using an 'expect' wrapper).
 			my $bad_file = "";
 			my $bad_line = "";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Ensuring we've recorded: [$node]'s RSA fingerprint.");
+			$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 			AN::Common::test_ssh_fingerprint($conf, $node, 1);	# 1 == silent
 			
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
+			$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "log_0009", file => $THIS_FILE, line => __LINE__});
 			AN::Common::create_rsync_wrapper($conf, $node, $password);
 			
 			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{striker_config}";
@@ -1314,7 +1319,10 @@ fi
 	}
 	else
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Striker config already exists, skipping.\n");
+		# Config already exists
+		$an->Log->entry({log_level => 2, message_key => "log_0036", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	if (not $return_code)
@@ -1323,35 +1331,35 @@ fi
 		my $shell_call = "
 if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
 then
-	echo 'creating empty crontab for root.'
-	echo 'MAILTO=\"\"' > $conf->{path}{nodes}{cron_root}
-	echo \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
-	chown root:root $conf->{path}{nodes}{cron_root}
-	chmod 600 $conf->{path}{nodes}{cron_root}
+    echo 'creating empty crontab for root.'
+    echo 'MAILTO=\"\"' > $conf->{path}{nodes}{cron_root}
+    echo \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
+    chown root:root $conf->{path}{nodes}{cron_root}
+    chmod 600 $conf->{path}{nodes}{cron_root}
 fi
 grep -q ScanCore $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-	echo 'ScanCore exits'
+    echo 'ScanCore exits'
 else
-	echo \"Adding ScanCore to root's cron table.\"
-	echo '*/1 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
+    echo \"Adding ScanCore to root's cron table.\"
+    echo '*/1 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q safe_anvil_start $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-	echo 'safe_anvil_start exits'
+    echo 'safe_anvil_start exits'
 else
-	echo \"Adding 'safe_anvil_start' to root's cron table.\"
-	echo '*/1 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
+    echo \"Adding 'safe_anvil_start' to root's cron table.\"
+    echo '*/1 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-	echo 'anvil-kick-apc-ups exits'
+    echo 'anvil-kick-apc-ups exits'
 else
-	echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
-	echo '*/1 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
+    echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
+    echo '*/1 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
 fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -1578,8 +1586,8 @@ sub update_install_manifest
 	my $node2_sn_link2  = $conf->{conf}{node}{$node2}{set_nic}{sn_link2};
 	my $node2_ifn_link1 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link1};
 	my $node2_ifn_link2 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link2};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]; node1_bcn_link2: [$node1_bcn_link1], node1_bcn_link2: [$node1_bcn_link2], node1_sn_link1: [$node1_sn_link1], node1_sn_link2: [$node1_sn_link2], node1_ifn_link1: [$node1_ifn_link1], node1_ifn_link2: [$node1_ifn_link2].\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]; node2_bcn_link2: [$node2_bcn_link1], node2_bcn_link2: [$node2_bcn_link2], node2_sn_link1: [$node2_sn_link1], node2_sn_link2: [$node2_sn_link2], node2_ifn_link1: [$node2_ifn_link1], node2_ifn_link2: [$node2_ifn_link2].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node1_bcn_link2: [$node1_bcn_link1], node1_bcn_link2: [$node1_bcn_link2], node1_sn_link1: [$node1_sn_link1], node1_sn_link2: [$node1_sn_link2], node1_ifn_link1: [$node1_ifn_link1], node1_ifn_link2: [$node1_ifn_link2].\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], node2_bcn_link2: [$node2_bcn_link1], node2_bcn_link2: [$node2_bcn_link2], node2_sn_link1: [$node2_sn_link1], node2_sn_link2: [$node2_sn_link2], node2_ifn_link1: [$node2_ifn_link1], node2_ifn_link2: [$node2_ifn_link2].\n");
 	
 	my $save       = 0;
 	my $in_node1   = 0;
@@ -1747,7 +1755,11 @@ sub update_install_manifest
 				else
 				{
 					# Unknown NIC.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - node1 has an unknown NIC: [$this_nic] (line: [$line])\n");
+					$an->Log->entry({log_level => 1, message_key => "log_0037", message_variables => {
+						node     => "1", 
+						this_nic => $this_nic, 
+						line     => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			elsif ($in_node2)
@@ -1843,13 +1855,17 @@ sub update_install_manifest
 				else
 				{
 					# Unknown NIC.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - node2 has an unknown NIC: [$this_nic] (line: [$line])\n");
+					$an->Log->entry({log_level => 1, message_key => "log_0037", message_variables => {
+						node     => "2", 
+						this_nic => $this_nic, 
+						line     => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			else
 			{
 				# failed to determine the node...
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; [ Warning ] - Saw an interface without first determining if we're in node 1 or 2's element. Are the node names using 'n0X', 'nX', 'node0X' or 'nodeX' (where 'X' is 1 or 2)?\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0038", file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		$raw_file .= "$line\n";
@@ -1864,9 +1880,9 @@ sub update_install_manifest
 	{
 		### TODO: Make a backup directory and save a pre-modified
 		###       backup to it.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Updated manifest:\n========\n$raw_file\n========\n");
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Writing out update manifest file", value1 => $conf->{cgi}{run},
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; raw_file:\n========\n$raw_file\n========\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0039", message_variables => {
+			file => $conf->{cgi}{run}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1965,7 +1981,9 @@ sub check_local_repo
 	if (-e $conf->{path}{repo_centos})
 	{
 		$conf->{sys}{'local'}{repo}{centos} = 1;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local CentOS repo.\n");
+		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+			type => "CentOS", 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "Looking for", value1 => $conf->{path}{repo_generic},
@@ -1973,7 +1991,9 @@ sub check_local_repo
 	if (-e $conf->{path}{repo_generic})
 	{
 		$conf->{sys}{'local'}{repo}{generic} = 1;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local generic repo.\n");
+		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+			type => "generic", 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "Looking for", value1 => $conf->{path}{repo_rhel},
@@ -1981,14 +2001,15 @@ sub check_local_repo
 	if (-e $conf->{path}{repo_rhel})
 	{
 		$conf->{sys}{'local'}{repo}{rhel} = 1;
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found local RHEL repo.\n");
+		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
+			type => "RHEL", 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
 }
 
-# See if the node is in a cluster already. If so, we'll set a flag to block
-# reboots if needed.
+# See if the node is in a cluster already. If so, we'll set a flag to block reboots if needed.
 sub check_if_in_cluster
 {
 	my ($conf) = @_;
@@ -2111,8 +2132,9 @@ sub check_config_for_anvil
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cluster::${cluster}::name: [$conf->{cluster}{$cluster}{name}]\n");
 		if ($conf->{cgi}{anvil_name} eq $conf->{cluster}{$cluster}{name})
 		{
+			# Match!
 			$anvil_configured = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Match!\n");
+			$an->Log->entry({log_level => 3, message_key => "log_0041", file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 	}
@@ -2123,9 +2145,8 @@ sub check_config_for_anvil
 	return($anvil_configured);
 }
 
-# This manually starts DRBD, forcing one to primary if needed, configures
-# clvmd, sets up the PVs and VGs, creates the /shared LV, creates the GFS2
-# partition and configures fstab.
+# This manually starts DRBD, forcing one to primary if needed, configures clvmd, sets up the PVs and VGs, 
+# creates the /shared LV, creates the GFS2 partition and configures fstab.
 sub configure_storage_stage3
 {
 	my ($conf) = @_;
@@ -2211,7 +2232,7 @@ sub configure_storage_stage3
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $clustat_ok)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more services failed to start.\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0042", file => $THIS_FILE, line => __LINE__});
 			$ok = 0;
 		}
 	}
@@ -2222,8 +2243,7 @@ sub configure_storage_stage3
 	return($ok);
 }
 
-# This watches clustat for up to 300 seconds for the storage and libvirt
-# services to start (or fail)
+# This watches clustat for up to 300 seconds for the storage and libvirt services to start (or fail).
 sub watch_clustat
 {
 	my ($conf, $node, $password) = @_;
@@ -2382,14 +2402,15 @@ sub watch_clustat
 		
 		if (time > $abort_time)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Timed out waiting for clustat to show services.\n");
+			# Timed out.
+			$an->Log->entry({log_level => 3, message_key => "log_0043", file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		sleep 2;
 	}
 	
 	my $ok = 1;
-	# Report on the storage as one line and then libvirtd as a second.
+	### Report on the storage as one line and then libvirtd as a second.
 	# Storage first
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0014!#";
@@ -2543,12 +2564,15 @@ sub start_rgmanager_on_node
 			my $rc = $1;
 			if ($rc eq "0")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Started rgmanager successfully.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0044", message_variables => {
+					service     => "rgmanager", 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Failed to start rgmanager. The return code was", value1 => $?,
+				$an->Log->entry({log_level => 1, message_key => "log_0045", message_variables => {
+					service     => "rgmanager", 
+					return_code => $?, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
@@ -2761,7 +2785,9 @@ fi";
 			if ($line =~ /failed to add/)
 			{
 				# Failed to append to fstab
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to append: [$fstab_string] to '/etc/fstab'.\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0046", message_variables => {
+					string => $fstab_string, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$return_code = 1;
 			}
 		}
@@ -2793,12 +2819,15 @@ fi";
 					my $rc = $1;
 					if ($rc eq "0")
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfuly mounted '/shared'.\n");
+						# Success
+						$an->Log->entry({log_level => 2, message_key => "log_0047", file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
 						# Failed to mount
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to mount '/shared', return code was: [$rc].\n");
+						$an->Log->entry({log_level => 1, message_key => "log_0048", message_variables => {
+							return_code => $rc, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 2;
 					}
 				}
@@ -2831,11 +2860,15 @@ fi";
 						my $rc = $1;
 						if ($rc eq "0")
 						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The GFS2 LSB script sees that '/shared' is mounted.\n");
+							# Success
+							$an->Log->entry({log_level => 2, message_key => "log_0049", file => $THIS_FILE, line => __LINE__});
 						}
 						else
 						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The GFS2 LSB script failed to see the '/shared' file system. The return code was: [$rc].\n");
+							# The GFS2 LSB script failed to see the '/shared' file system.
+							$an->Log->entry({log_level => 1, message_key => "log_0050", message_variables => {
+								return_code => $rc, 
+							}, file => $THIS_FILE, line => __LINE__});
 							$return_code = 3;
 						}
 					}
@@ -2881,11 +2914,18 @@ fi";
 						my $rc = $1;
 						if ($rc eq "0")
 						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created '/shared/$directory' subdirectory.\n");
+							# Success
+							$an->Log->entry({log_level => 2, message_key => "log_0051", message_variables => {
+								directory => $directory, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						else
 						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create the '/shared/$directory' subdirectory. The return code was: [$rc].\n");
+							# Failed
+							$an->Log->entry({log_level => 1, message_key => "log_0052", message_variables => {
+								directory   => $directory, 
+								return_code => $rc, 
+							}, file => $THIS_FILE, line => __LINE__});
 							$return_code = 4;
 						}
 					}
@@ -2932,15 +2972,18 @@ fi";
 				
 				if ($line =~ /context updated/)
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SElinux context on '/shared' updated.\n");
+					# Updated
+					$an->Log->entry({log_level => 2, message_key => "log_0053", file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /context ok/)
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SElinux context on '/shared' was already ok.\n");
+					# Was already OK.
+					$an->Log->entry({log_level => 2, message_key => "log_0054", file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /failed to update/)
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to update SElinux context on '/shared'.\n");
+					# Failed for some reason.
+					$an->Log->entry({log_level => 1, message_key => "log_0055", file => $THIS_FILE, line => __LINE__});
 					$return_code = 5;
 				}
 			}
@@ -3011,7 +3054,10 @@ sub setup_gfs2
 				# This will be useful later in the fstab stage
 				$conf->{sys}{shared_fs_uuid} = $1;
 				$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition exists on: [/dev/$conf->{sys}{vg_pool1_name}/shared] with UUID: [$conf->{sys}{shared_fs_uuid}]!\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0056", message_variables => {
+					device => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
+					uuid   => "$conf->{sys}{shared_fs_uuid}", 
+				}, file => $THIS_FILE, line => __LINE__});
 				$create_gfs2 = 0;
 				$return_code = 1;
 			}
@@ -3021,13 +3067,13 @@ sub setup_gfs2
 				if ($rc eq "0")
 				{
 					# GFS2 FS exists
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition exists!\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0057", file => $THIS_FILE, line => __LINE__});
 					$create_gfs2 = 0;
 				}
 				else
 				{
 					# Doesn't appear to exist
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition doesn't exist, will create it.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0058", file => $THIS_FILE, line => __LINE__});
 					$create_gfs2 = 1;
 				}
 			}
@@ -3063,7 +3109,10 @@ sub setup_gfs2
 					# This will be useful later in the fstab stage
 					$conf->{sys}{shared_fs_uuid} = $1;
 					$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition created on: [/dev/$conf->{sys}{vg_pool1_name}/shared] with UUID: [$conf->{sys}{shared_fs_uuid}]!\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0059", message_variables => {
+						device => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
+						uuid   => "$conf->{sys}{shared_fs_uuid}", 
+					}, file => $THIS_FILE, line => __LINE__});
 					$create_gfs2 = 0;
 				}
 				if ($line =~ /^rc:(\d+)/)
@@ -3072,12 +3121,15 @@ sub setup_gfs2
 					if ($rc eq "0")
 					{
 						# GFS2 FS created
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 partition created!\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0060", file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
 						# Format appears to have failed.
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; GFS2 format of: [/dev/$conf->{sys}{vg_pool1_name}/shared] appears to have failed. The return code was: [$rc]\n");
+						$an->Log->entry({log_level => 1, message_key => "log_0061", message_variables => {
+							device      => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
+							return_code => $rc, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 2;
 					}
 				}
@@ -3214,13 +3266,13 @@ sub create_shared_lv
 				if ($rc eq "0")
 				{
 					# lvcreate succeeded
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully create the logical volume for the '/shared' GFS2 partition.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0062", file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					# lvcreate failed
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Creating the logical volume for the '/shared' GFS2 partition failed. The 'lvcreate' return code was", value1 => $rc,
+					$an->Log->entry({log_level => 1, message_key => "log_0063", message_variables => {
+						return_code => $rc, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$return_code = 2;
 				}
@@ -3451,27 +3503,37 @@ sub create_lvm_vgs
 			{
 				# VG on r0 doesn't exist, create it.
 				$create_vg0 = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 1 needs to be created.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0064", message_variables => {
+					pool   => "1",
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /\/dev\/drbd0,(.*?),/)
 			{
 				# VG on r0 doesn't exist, create it.
 				$conf->{sys}{vg_pool1_name} = $1;
 				$create_vg0                 = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 1 was found, called: [$conf->{sys}{vg_pool1_name}].\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0065", message_variables => {
+					pool   => "1",
+					device => $conf->{sys}{vg_pool1_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /\/dev\/drbd1,,/)
 			{
 				# VG on r0 doesn't exist, create it.
 				$create_vg1 = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 2 needs to be created.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0064", message_variables => {
+					pool   => "2",
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /\/dev\/drbd1,(.*?),/)
 			{
 				# VG on r0 doesn't exist, create it.
 				$conf->{sys}{vg_pool2_name} = $1;
 				$create_vg1                 = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The VG for pool 2 was found, called: [$conf->{sys}{vg_pool2_name}].\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0065", message_variables => {
+					pool   => "2",
+					device => $conf->{sys}{vg_pool1_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -3508,12 +3570,22 @@ sub create_lvm_vgs
 				my $rc = $1;
 				if ($rc eq "0")
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the pool 1 volume group: [$conf->{sys}{vg_pool1_name}] using the '/dev/drbd0' PV.\n");
+					# Success
+					$an->Log->entry({log_level => 2, message_key => "log_0066", message_variables => {
+						pool   => "1", 
+						device => $conf->{sys}{vg_pool1_name}, 
+						pv     => "/dev/drbd0",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					# Created
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the pool 1 volume group: [$conf->{sys}{vg_pool1_name}] on the '/dev/drbd0' PVs. The 'vgcreate' call exited with return code: [$rc]\n");
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0067", message_variables => {
+						pool        => "1", 
+						device      => $conf->{sys}{vg_pool1_name}, 
+						pv          => "/dev/drbd0",
+						return_code => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
 					$return_code = 2;
 				}
 			}
@@ -3546,12 +3618,22 @@ sub create_lvm_vgs
 				my $rc = $1;
 				if ($rc eq "0")
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the pool 2 volume group: [$conf->{sys}{vg_pool2_name}] using the '/dev/drbd1' PV.\n");
+					# Success
+					$an->Log->entry({log_level => 2, message_key => "log_0066", message_variables => {
+						pool   => "2", 
+						device => $conf->{sys}{vg_pool1_name}, 
+						pv     => "/dev/drbd1",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					# Created
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unable to create the pool 2 volume group: [$conf->{sys}{vg_pool2_name}] on the '/dev/drbd1' PVs. The 'vgcreate' call exited with return code: [$rc]\n");
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0067", message_variables => {
+						pool        => "2", 
+						device      => $conf->{sys}{vg_pool1_name}, 
+						pv          => "/dev/drbd1",
+						return_code => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
 					$return_code = 2;
 				}
 			}
@@ -3559,7 +3641,8 @@ sub create_lvm_vgs
 	}
 	if (($return_code ne "2") && (not $create_vg0) && (not $create_vg1))
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Both LVM VGs already existed.\n");
+		# Both LVM VGs already existed.
+		$an->Log->entry({log_level => 2, message_key => "log_0068", file => $THIS_FILE, line => __LINE__});
 		$return_code = 1;
 	}
 	
@@ -3629,15 +3712,21 @@ sub create_lvm_pvs
 		}
 		if ($line =~ /\/dev\/drbd0 /)
 		{
+			# Already a PV
 			$found_drbd0  = 1;
 			$create_drbd0 = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The DRBD device '/dev/drbd0' is already a PV.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0069", message_variables => {
+				device => "/dev/drbd0", 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /\/dev\/drbd1 /)
 		{
+			# Already a PV
 			$found_drbd1  = 1;
 			$create_drbd1 = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The DRBD device '/dev/drbd1' is already a PV.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0069", message_variables => {
+				device => "/dev/drbd1", 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -3673,13 +3762,17 @@ sub create_lvm_pvs
 				my $rc = $1;
 				if ($rc eq "0")
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the '/dev/drbd0' LVM PV.\n");
+					# Success
+					$an->Log->entry({log_level => 2, message_key => "log_0070", message_variables => {
+						device => "/dev/drbd0", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					# Created
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Unable to create the '/dev/drbd0' LVM PVs. The 'pvcreate' call exited with return code", value1 => $rc,
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0071", message_variables => {
+						device      => "/dev/drbd0", 
+						return_code => $rc, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$return_code = 2;
 				}
@@ -3713,13 +3806,17 @@ sub create_lvm_pvs
 				my $rc = $1;
 				if ($rc eq "0")
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created the '/dev/drbd1' LVM PV.\n");
+					# Success
+					$an->Log->entry({log_level => 2, message_key => "log_0070", message_variables => {
+						device => "/dev/drbd1", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					# Created
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Unable to create the '/dev/drbd1' LVM PVs. The 'pvcreate' call exited with return code", value1 => $rc,
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0071", message_variables => {
+						device      => "/dev/drbd1", 
+						return_code => $rc, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$return_code = 2;
 				}
@@ -3728,12 +3825,14 @@ sub create_lvm_pvs
 	}
 	if (($found_drbd0) && ($found_drbd1))
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Both LVM PVs already existed.\n");
+		# Both already exist
+		$an->Log->entry({log_level => 2, message_key => "log_0072", file => $THIS_FILE, line => __LINE__});
 		$return_code = 1;
 	}
 	elsif (($found_drbd0) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LVM PV was already existed (pool 2 not used).\n");
+		# Pool 1 already exists and pool 2 isn't used.
+		$an->Log->entry({log_level => 2, message_key => "log_0073", file => $THIS_FILE, line => __LINE__});
 		$return_code = 1;
 	}
 	
@@ -3951,42 +4050,48 @@ sub drbd_first_start
 						if ((not $node1_primary_rc) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $node2_primary_rc)))
 						{
 							# Woohoo!
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD promoted to 'Primary' on both nodes.\n");
+							$an->Log->entry({log_level => 2, message_key => "log_0074", file => $THIS_FILE, line => __LINE__});
 						}
 						else
 						{
+							# Failed
 							$return_code = 5;
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to promote to 'Primary'.\n");
+							$an->Log->entry({log_level => 1, message_key => "log_0075", file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
 				else
 				{
+					# Failed to connect
 					$return_code = 4;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both resource failed to connect.\n");
+					$an->Log->entry({log_level => 1, message_key => "log_0076", file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			else
 			{
+				# Failed to enter WFConnection
 				$return_code = 3;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to enter connecting state.\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0077", file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else
 		{
+			# Failed to ping peer on SN
 			$return_code = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to ping peer on SN.\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0078", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif (($node1_attach_rc eq "4") or ($node2_attach_rc eq "4"))
 	{
+		# Failed to install 'wait-for-drbd'
 		$return_code = 6;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to install 'wait-for-drbd' into '/etc/init.d/'.\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0079", file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
+		# Failed to attach.
 		$return_code = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or more resources failed to attach.\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0080", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# 0 == OK
@@ -4184,12 +4289,19 @@ sub verify_drbd_resources_are_connected
 			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
 			if (($connected_state =~ /Connected/i) || ($connected_state =~ /Sync/i))
 			{
+				# Connected
 				$r0_connected = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' is connected.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => {
+					resource => "r0", 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' is NOT connected! The connection state is: [$connected_state].\n");
+				# Failed to connect.
+				$an->Log->entry({log_level => 1, message_key => "log_0082", message_variables => {
+					resource         => "r0", 
+					connection_state => $connected_state, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		if ($line =~ /^1: /)
@@ -4197,12 +4309,19 @@ sub verify_drbd_resources_are_connected
 			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
 			if (($connected_state =~ /Connected/i) || ($connected_state =~ /Sync/i))
 			{
+				# Connected
 				$r1_connected = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' is connected.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0081", message_variables => {
+					resource => "r1", 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' is NOT connected! The connection state is: [$connected_state].\n");
+				# Failed to connect.
+				$an->Log->entry({log_level => 1, message_key => "log_0082", message_variables => {
+					resource         => "r1", 
+					connection_state => $connected_state, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -4213,8 +4332,9 @@ sub verify_drbd_resources_are_connected
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $r0_connected) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $r1_connected)))
 	{
+		# Something isn't connected.
 		$return_code = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both of the resources is not connected.\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0083", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# 0 == Both resources found, safe to proceed
