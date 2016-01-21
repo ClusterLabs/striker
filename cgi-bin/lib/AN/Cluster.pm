@@ -120,12 +120,16 @@ sub call_gather_system_info
 			my $key       = $2;
 			my $value     = $3;
 			$conf->{interface}{$interface}{$key} = $value;
-			#record($conf, "$THIS_FILE ".__LINE__."; interface::${interface}::$key: [$conf->{interface}{$interface}{$key}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "interface::${interface}::$key", value1 => $conf->{interface}{$interface}{$key},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
 	
-	record($conf, "$THIS_FILE ".__LINE__."; sys::hostname: [$conf->{sys}{hostname}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::hostname", value1 => $conf->{sys}{hostname},
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $interface (sort {$a cmp $b} keys %{$conf->{interface}})
 	{
 		if (lc($conf->{interface}{$interface}{type}) eq "wireless")
@@ -151,7 +155,9 @@ sub call_gather_system_info
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $key (sort {$a cmp $b} keys %{$conf->{interface}{$interface}})
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; - $key:\t[$conf->{interface}{$interface}{$key}]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "$key", value1 => $conf->{interface}{$interface}{$key},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -206,7 +212,9 @@ sub sanity_check_striker_conf
 	# Now see if I have an Anvil!
 	my $this_cluster = "";
 	my $this_id      = "";
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_id", value1 => $conf->{cgi}{anvil_id},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{anvil_id})
 	{
 		# Switch out the global keys to this Anvil!'s keys.
@@ -314,7 +322,7 @@ sub sanity_check_striker_conf
 		    (not $this_nodes_2_port))
 		{
 			# If this isn't 'new', delete this Anvil! from the config.
-			record($conf, "$THIS_FILE ".__LINE__."; Deleted or empty Anvil!\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0002", file => $THIS_FILE, line => __LINE__});
 			if ($this_id ne "new")
 			{
 				# The Anvil! has been deleted. Call 'striker-anvil-delete --anvil <name>'
@@ -514,7 +522,9 @@ sub sanity_check_striker_conf
 	print AN::Common::template($conf, "config.html", "sanity-check-global-header"); 
 	
 	# Make sure email addresses are.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::$smtp__username_key", value1 => $conf->{cgi}{$smtp__username_key},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{cgi}{$smtp__username_key}) && ($conf->{cgi}{$smtp__username_key} ne "#!inherit!#") && ($conf->{cgi}{$smtp__username_key} !~ /^\w[\w\.\-]*\w\@\w[\w\.\-]*\w(\.\w+)$/))
 	{
 		$save = 0;
@@ -525,7 +535,9 @@ sub sanity_check_striker_conf
 			email	=>	$conf->{cgi}{$smtp__username_key},
 		}); 
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::$mail_data__to_key", value1 => $conf->{cgi}{$mail_data__to_key},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{cgi}{$mail_data__to_key}) && ($conf->{cgi}{$mail_data__to_key} ne "#!inherit!#"))
 	{
 		foreach my $email (split /,/, $conf->{cgi}{$mail_data__to_key})
@@ -545,7 +557,10 @@ sub sanity_check_striker_conf
 	}
 	
 	# Make sure values that should be numerical are.
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::$smtp__port_key",   value1 => $conf->{cgi}{$smtp__port_key},
+		name2 => "cgi::$smtp__server_key", value2 => $conf->{cgi}{$smtp__server_key},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{cgi}{$smtp__port_key}) && ($conf->{cgi}{$smtp__port_key} ne "#!inherit!#"))
 	{
 		$conf->{cgi}{$smtp__port_key} =~ s/,//;
@@ -569,14 +584,18 @@ sub sanity_check_striker_conf
 		});
 	}
 
-	#record($conf, "$THIS_FILE ".__LINE__."; save: [$save], cgi::anvil_id: [$conf->{cgi}{anvil_id}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "save",          value1 => $save,
+		name2 => "cgi::anvil_id", value2 => $conf->{cgi}{anvil_id},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($save)
 	{
 		# If 'anvil_id' is set, then we're editing an Anvil! (new or existing) instead of the global
 		# section.
 		if ($save eq "2")
 		{
-			record($conf, "$THIS_FILE ".__LINE__."; The Anvil! was deleted, no more sanity checks needed\n");
+			# The Anvil! was deleted, no more sanity checks needed.
+			$an->Log->entry({log_level => 2, message_key => "log_0003", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($conf->{cgi}{anvil_id})
 		{
@@ -597,8 +616,9 @@ sub sanity_check_striker_conf
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($existing_id eq $free_id)
 					{
+						# ID used.
 						$free_id++;
-						#record($conf, "$THIS_FILE ".__LINE__."; Used.\n");
+						$an->Log->entry({log_level => 3, message_key => "log_0004", file => $THIS_FILE, line => __LINE__});
 						next;
 					}
 					else
@@ -708,10 +728,14 @@ sub delete_string_from_array
 	# Delete the nodes (empty values are skipped later)
 	for (my $i = 0; $i < @{$array}; $i++)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], value: [$array->[$i]], string: [$string]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "i",      value1 => $i,
+			name2 => "value",  value2 => $array->[$i],
+			name3 => "string", value3 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($array->[$i] eq $string)
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; Value matches, blanking.\n");
+			$an->Log->entry({log_level => 3, message_key => "log_0005", file => $THIS_FILE, line => __LINE__});
 			$array->[$i] = "";
 		}
 	}
@@ -772,7 +796,7 @@ sub write_new_striker_conf
 	{
 		my $anvil_id   = $conf->{cgi}{anvil_id};
 		my $shell_call = $conf->{path}{config_file};
-		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		binmode $file_handle, ":utf8:";
 		while(<$file_handle>)
 		{
@@ -905,18 +929,26 @@ sub write_new_striker_conf
 		# The user doesn't currently set the 'smtp::helo_domain' or 
 		# 'mail_data::sending_domain', so for now we'll devine it from the user's 
 		# 'smtp::username'.
-		record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "smtp::helo_domain",         value1 => $conf->{smtp}{helo_domain},
+			name2 => "mail_data::sending_domain", value2 => $conf->{mail_data}{sending_domain},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{smtp}{helo_domain} eq "example.com")
 		{
 			my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
 			$conf->{smtp}{helo_domain} = $domain if $domain;
-			record($conf, "$THIS_FILE ".__LINE__."; smtp::helo_domain: [$conf->{smtp}{helo_domain}], domain: [$domain]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "smtp::helo_domain", value1 => $conf->{smtp}{helo_domain},
+				name2 => "domain",            value2 => $domain,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($conf->{mail_data}{sending_domain} eq "example.com")
 		{
 			my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
 			$conf->{mail_data}{sending_domain} = $domain if $domain;
-			record($conf, "$THIS_FILE ".__LINE__."; mail_data::sending_domain: [$conf->{mail_data}{sending_domain}]: domain: [$domain]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "mail_data::sending_domain", value1 => "$conf->{mail_data}{sending_domain}]: domain: [$domain",
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Write out the global values.
@@ -966,7 +998,9 @@ sub generate_anvil_entry_for_striker_conf
 	
 	my $data = "";
 	# Main Anvil! values, always recorded, even when blank.
-	record($conf, "$THIS_FILE ".__LINE__."; cluster::${this_id}::nodes: [$conf->{cluster}{$this_id}{nodes}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cluster::${this_id}::nodes", value1 => $conf->{cluster}{$this_id}{nodes},
+	}, file => $THIS_FILE, line => __LINE__});
 	$data .= "\n# $conf->{cluster}{$this_id}{company} - $conf->{cluster}{$this_id}{description}\n";
 	$data .= "cluster::${this_id}::company\t\t\t=\t$conf->{cluster}{$this_id}{company}\n";
 	$data .= "cluster::${this_id}::description\t\t\t=\t$conf->{cluster}{$this_id}{description}\n";
@@ -1012,7 +1046,7 @@ sub read_hosts
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "$conf->{path}{hosts}";
-	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -1039,7 +1073,9 @@ sub read_hosts
 					$conf->{hosts}{by_ip}{$this_ip} = [];
 				}
 				push @{$conf->{hosts}{by_ip}{$this_ip}}, $this_host;
-				#record($conf, "$THIS_FILE ".__LINE__."; Added this_host: [$this_host] to array: [$conf->{hosts}{by_ip}{$this_ip}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "Added this_host", value1 => "$this_host] to array: [$conf->{hosts}{by_ip}{$this_ip}",
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -1048,7 +1084,9 @@ sub read_hosts
 	# Debug
 	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; $this_ip\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_ip", value1 => $this_ip,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1074,7 +1112,7 @@ sub read_ssh_config
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "reading", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -1103,7 +1141,10 @@ sub read_ssh_config
 		{
 			my $port = $1;
 			$conf->{hosts}{$this_host}{port} = $port;
-			#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> port: [$conf->{hosts}{$this_host}{port}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "this_host", value1 => $this_host, 
+				name2 => "port",      value2 => $conf->{hosts}{$this_host}{port},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	close $file_handle;
@@ -1353,12 +1394,16 @@ sub save_dashboard_configure
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Write out the new config file.
-		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "Backing up", value1 => "$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date",
+		}, file => $THIS_FILE, line => __LINE__});
 		copy_file($conf, $conf->{path}{config_file}, "$conf->{path}{home}/archive/striker.conf.$date");
 		write_new_striker_conf($conf, $say_date);
 		
 		# Write out the 'hosts' file.
-		record($conf, "$THIS_FILE ".__LINE__."; Backing up: [$conf->{path}{hosts}] to: [$conf->{path}{home}/archive/hosts.$date]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "Backing up", value1 => "$conf->{path}{hosts}] to: [$conf->{path}{home}/archive/hosts.$date",
+		}, file => $THIS_FILE, line => __LINE__});
 		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/archive/hosts.$date");
 		write_new_hosts($conf, $say_date);
 		
@@ -1379,7 +1424,7 @@ sub save_dashboard_configure
 		# then something went wrong. Otherwise the peer's hostname is returned.
 		my $peer = sync_with_peer($conf);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "[ Debug ] - peer", value1 => $peer,
+			name1 => "peer", value1 => $peer,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($peer) && ($peer ne "#!error!#"))
 		{
@@ -1429,7 +1474,9 @@ sub save_dashboard_configure
 			message	=>	"#!string!message_0018!#",
 		});
 	}
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster__new__name: [$conf->{cgi}{cluster__new__name}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::cluster__new__name", value1 => $conf->{cgi}{cluster__new__name},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "config.html", "close-table");
 
@@ -1445,7 +1492,9 @@ sub sync_with_peer
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sync_with_peer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Return if this is disabled.
-	record($conf, "$THIS_FILE ".__LINE__."; tools::striker::auto-sync: [$conf->{tools}{striker}{'auto-sync'}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "tools::striker::auto-sync", value1 => $conf->{tools}{striker}{'auto-sync'},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $conf->{tools}{striker}{'auto-sync'})
 	{
 		return("");
@@ -1487,7 +1536,10 @@ sub sync_with_peer
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($db_count ne "2")
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host'. I found: [$db_count] entries\n");
+		# Wrong number of DBs
+		$an->Log->entry({log_level => 2, message_key => "log_0006", message_variables => {
+			db_count => $db_count,
+		}, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
@@ -1496,14 +1548,21 @@ sub sync_with_peer
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $local_id)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host' and one of them matches this dashboard's host name: [$i_am_long ($i_am_short)].\n");
+		# Configured scancore hosts don't match local hostname
+		$an->Log->entry({log_level => 2, message_key => "log_0007", message_variables => {
+			i_am_long  => $i_am_long, 
+			i_am_short => $i_am_short, 
+		}, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
 	# Now I know who I am, find the peer.
 	foreach my $id (sort {$a cmp $b} keys %{$conf->{scancore}{db}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; id: [$id], node::id::local: [$conf->{node}{id}{'local'}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",              value1 => $id,
+			name2 => "node::id::local", value2 => $conf->{node}{id}{'local'},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($id ne $local_id)
 		{
 			$peer_name     = $conf->{scancore}{db}{$id}{host};
@@ -1522,7 +1581,8 @@ sub sync_with_peer
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $peer_name)
 	{
-		record($conf, "$THIS_FILE ".__LINE__."; Auto-sync can't run because it was unable to determine the peer's host name via analyzing the 'scancore::db::x::host' entries.\n");
+		# Unable to determine local host name.
+		$an->Log->entry({log_level => 2, message_key => "log_0008", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Configure the local virtual machine manager, if it is installed.
@@ -1536,7 +1596,9 @@ sub sync_with_peer
 	{
 		chomp;
 		my $line = $_;
-		record($conf, "$THIS_FILE ".__LINE__."; line: |$line|\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /rc:(\d+)/)
 		{
 			my $rc = $1;
@@ -1654,7 +1716,17 @@ sub show_anvil_config_header
 		$conf->{cgi}{$smtp__helo_domain_key}         = defined $conf->{cluster}{$this_id}{smtp}{helo_domain}         ? $conf->{cluster}{$this_id}{smtp}{helo_domain}         : "#!inherit!#";
 		$conf->{cgi}{$mail_data__to_key}             = defined $conf->{cluster}{$this_id}{mail_data}{to}             ? $conf->{cluster}{$this_id}{mail_data}{to}             : "#!inherit!#";
 		$conf->{cgi}{$mail_data__sending_domain_key} = defined $conf->{cluster}{$this_id}{mail_data}{sending_domain} ? $conf->{cluster}{$this_id}{mail_data}{sending_domain} : "#!inherit!#";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::$smtp__server_key: [$conf->{cgi}{$smtp__server_key}], cgi::$smtp__port_key: [$conf->{cgi}{$smtp__port_key}], cgi::$smtp__username_key: [$conf->{cgi}{$smtp__username_key}], cgi::$smtp__password_key: [$conf->{cgi}{$smtp__password_key}], cgi::$smtp__security_key: [$conf->{cgi}{$smtp__security_key}], cgi::$smtp__encrypt_pass_key: [$conf->{cgi}{$smtp__encrypt_pass_key}], cgi::$smtp__helo_domain_key: [$conf->{cgi}{$smtp__helo_domain_key}], cgi::$mail_data__to_key: [$conf->{cgi}{$mail_data__to_key}], cgi::$mail_data__sending_domain_key: [$conf->{cgi}{$mail_data__sending_domain_key}]\n");
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+			name1 => "cgi::$smtp__server_key",              value1 => $conf->{cgi}{$smtp__server_key},
+			name2 => "cgi::$smtp__port_key",                value2 => $conf->{cgi}{$smtp__port_key},
+			name3 => "cgi::$smtp__username_key",            value3 => $conf->{cgi}{$smtp__username_key},
+			name4 => "cgi::$smtp__password_key",            value4 => $conf->{cgi}{$smtp__password_key},
+			name5 => "cgi::$smtp__security_key",            value5 => $conf->{cgi}{$smtp__security_key},
+			name6 => "cgi::$smtp__encrypt_pass_key",        value6 => $conf->{cgi}{$smtp__encrypt_pass_key},
+			name7 => "cgi::$smtp__helo_domain_key",         value7 => $conf->{cgi}{$smtp__helo_domain_key},
+			name8 => "cgi::$mail_data__to_key",             value8 => $conf->{cgi}{$mail_data__to_key},
+			name9 => "cgi::$mail_data__sending_domain_key", value9 => $conf->{cgi}{$mail_data__sending_domain_key},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Show the right header.
@@ -1802,13 +1874,25 @@ sub show_common_config_section
 		$conf->{cgi}{smtp__helo_domain}         = defined $conf->{smtp}{helo_domain}         ? $conf->{smtp}{helo_domain}         : "";
 		$conf->{cgi}{mail_data__to}             = defined $conf->{mail_data}{to}             ? $conf->{mail_data}{to}             : "";
 		$conf->{cgi}{mail_data__sending_domain} = defined $conf->{mail_data}{sending_domain} ? $conf->{mail_data}{sending_domain} : "";
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::smtp__server: [$conf->{cgi}{smtp__server}], cgi::smtp__port: [$conf->{cgi}{smtp__port}], cgi::smtp__username: [$conf->{cgi}{smtp__username}], cgi::smtp__password: [$conf->{cgi}{smtp__password}], cgi::smtp__security: [$conf->{cgi}{smtp__security}], cgi::smtp__encrypt_pass: [$conf->{cgi}{smtp__encrypt_pass}], cgi::smtp__helo_domain: [$conf->{cgi}{smtp__helo_domain}], cgi::mail_data__to: [$conf->{cgi}{mail_data__to}], cgi::mail_data__sending_domain: [$conf->{cgi}{mail_data__sending_domain}]\n");
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
+			name1 => "cgi::smtp__server",              value1 => $conf->{cgi}{smtp__server},
+			name2 => "cgi::smtp__port",                value2 => $conf->{cgi}{smtp__port},
+			name3 => "cgi::smtp__username",            value3 => $conf->{cgi}{smtp__username},
+			name4 => "cgi::smtp__password",            value4 => $conf->{cgi}{smtp__password},
+			name5 => "cgi::smtp__security",            value5 => $conf->{cgi}{smtp__security},
+			name6 => "cgi::smtp__encrypt_pass",        value6 => $conf->{cgi}{smtp__encrypt_pass},
+			name7 => "cgi::smtp__helo_domain",         value7 => $conf->{cgi}{smtp__helo_domain},
+			name8 => "cgi::mail_data__to",             value8 => $conf->{cgi}{mail_data__to},
+			name9 => "cgi::mail_data__sending_domain", value9 => $conf->{cgi}{mail_data__sending_domain},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Switch to the per-Anvil! values if an Anvil! is defined.
 	my $this_cluster = "";
 	my $this_id      = "";
-	record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil", value1 => $conf->{cgi}{anvil},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{anvil})
 	{
 		$this_cluster                  = $conf->{cgi}{anvil};
@@ -1940,7 +2024,10 @@ sub show_global_anvil_list
 	my $ids = "";
 	foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; this_cluster: [$this_cluster], clusters:${this_cluster}::name: [$conf->{clusters}{$this_cluster}{name}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_cluster",                   value1 => $this_cluster,
+			name2 => "clusters:${this_cluster}::name", value2 => $conf->{clusters}{$this_cluster}{name},
+		}, file => $THIS_FILE, line => __LINE__});
 		my $this_id           = defined $conf->{clusters}{$this_cluster}{id}          ? $conf->{clusters}{$this_cluster}{id}          : "new";
 		my $this_company      = defined $conf->{clusters}{$this_cluster}{company}     ? $conf->{clusters}{$this_cluster}{company}     : "--";
 		$this_company      = convert_text_to_html($conf, $this_company);
@@ -2145,7 +2232,8 @@ ls $backup_file";
 			# This is a dumb way to check, try a test upload and see if it fails.
 			if ( -e "/usr/bin/expect" )
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Creating 'expect' rsync wrapper.");
+				# Create the 'expect' wrapper.
+				$an->Log->entry({log_level => 2, message_key => "log_0009", file => $THIS_FILE, line => __LINE__});
 				AN::Common::create_rsync_wrapper($conf, $node);
 				$shell_call = "~/rsync.$node $conf->{args}{rsync} $config_file root\@$node:$config_file";
 			}
@@ -2288,7 +2376,10 @@ sub load_backup_configuration
 	
 	### NOTE: If this fails, we want to re-display the archive page.
 	# If the file handle is empty, nothing was uploaded.
-	record($conf, "$THIS_FILE ".__LINE__."; in_fh: [$in_fh], cgi_mimetype::file: [$conf->{cgi_mimetype}{file}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "in_fh",              value1 => $in_fh,
+		name2 => "cgi_mimetype::file", value2 => $conf->{cgi_mimetype}{file},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $in_fh)
 	{
 		print AN::Common::template($conf, "config.html", "no-backup-file-uploaded");
@@ -2414,7 +2505,7 @@ sub load_backup_configuration
 		# then something went wrong. Otherwise the peer's hostname is returned.
 		my $peer = sync_with_peer($conf);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "[ Debug ] - peer", value1 => $peer,
+			name1 => "peer", value1 => $peer,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (($peer) && ($peer ne "#!error!#"))
 		{
@@ -2456,7 +2547,7 @@ sub configure_ssh_local
 		chomp;
 		my $line = $_;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "[ Debug ] - line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
@@ -2501,7 +2592,9 @@ sub create_install_manifest
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $show_form = 1;
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::do: [$conf->{cgi}{'do'}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::do", value1 => $conf->{cgi}{'do'},
+	}, file => $THIS_FILE, line => __LINE__});
 	$conf->{form}{anvil_prefix_star}                   = "";
 	$conf->{form}{anvil_sequence_star}                 = "";
 	$conf->{form}{anvil_domain_star}                   = "";
@@ -2654,7 +2747,7 @@ sub create_install_manifest
 				# returned.
 				my $peer = sync_with_peer($conf);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "[ Debug ] - peer", value1 => $peer,
+					name1 => "peer", value1 => $peer,
 				}, file => $THIS_FILE, line => __LINE__});
 				if (($peer) && ($peer ne "#!error!#"))
 				{
@@ -2694,12 +2787,30 @@ sub create_install_manifest
 						try_again_button	=>	$button,
 					},
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}], cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac: [$conf->{cgi}{anvil_node1_sn_link1_mac}], cgi::anvil_node1_sn_link2_mac: [$conf->{cgi}{anvil_node1_sn_link2_mac}]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}], cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}], cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac: [$conf->{cgi}{anvil_node2_sn_link1_mac}], cgi::anvil_node2_sn_link2_mac: [$conf->{cgi}{anvil_node2_sn_link2_mac}]\n");
-				record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}], cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}]\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
+					name2 => "cgi::anvil_node1_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
+					name2 => "cgi::anvil_node1_sn_link2_mac", value2 => $conf->{cgi}{anvil_node1_sn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
+					name2 => "cgi::anvil_node1_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
+					name2 => "cgi::anvil_node2_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
+					name2 => "cgi::anvil_node2_sn_link2_mac", value2 => $conf->{cgi}{anvil_node2_sn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
+					name2 => "cgi::anvil_node2_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
+				}, file => $THIS_FILE, line => __LINE__});
 				my $restart_html = AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
 					form_file			=>	"/cgi-bin/striker",
 					button_class			=>	"bold_button", 
@@ -2729,7 +2840,9 @@ sub create_install_manifest
 					rhn_user			=>	$conf->{cgi}{rhn_user},
 					rhn_password			=>	$conf->{cgi}{rhn_password},
 				});
-				record($conf, "$THIS_FILE ".__LINE__."; restart_html:\n======\n$restart_html\n======\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "restart_html", value1 => $restart_html,
+				}, file => $THIS_FILE, line => __LINE__});
 				print $restart_html;
 			}
 		}
@@ -2748,18 +2861,38 @@ sub create_install_manifest
 	{
 		# Show the existing install manifest files.
 		show_existing_install_manifests($conf);
-		record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_domain: [$conf->{cgi}{anvil_domain}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Set some default values if 'save' isn't set.
 		if ($conf->{cgi}{load})
 		{
 			load_install_manifest($conf, $conf->{cgi}{load});
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}], cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac: [$conf->{cgi}{anvil_node1_sn_link1_mac}], cgi::anvil_node1_sn_link2_mac: [$conf->{cgi}{anvil_node1_sn_link2_mac}]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_ifn_link1_mac: [$conf->{cgi}{anvil_node1_ifn_link1_mac}], cgi::anvil_node1_ifn_link2_mac: [$conf->{cgi}{anvil_node1_ifn_link2_mac}]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}], cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac: [$conf->{cgi}{anvil_node2_sn_link1_mac}], cgi::anvil_node2_sn_link2_mac: [$conf->{cgi}{anvil_node2_sn_link2_mac}]\n");
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_ifn_link1_mac: [$conf->{cgi}{anvil_node2_ifn_link1_mac}], cgi::anvil_node2_ifn_link2_mac: [$conf->{cgi}{anvil_node2_ifn_link2_mac}]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
+				name2 => "cgi::anvil_node1_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
+				name2 => "cgi::anvil_node1_sn_link2_mac", value2 => $conf->{cgi}{anvil_node1_sn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
+				name2 => "cgi::anvil_node1_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
+				name2 => "cgi::anvil_node2_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
+				name2 => "cgi::anvil_node2_sn_link2_mac", value2 => $conf->{cgi}{anvil_node2_sn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
+				name2 => "cgi::anvil_node2_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $conf->{cgi}{generate})
 		{
@@ -2925,7 +3058,9 @@ sub create_install_manifest
 			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
 				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
 			});
-			record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_domain: [$conf->{cgi}{anvil_domain}]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
+			}, file => $THIS_FILE, line => __LINE__});
 			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
 				row		=>	"#!string!row_0160!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0062!#" : "#!string!explain_0062!#",
@@ -4254,11 +4389,6 @@ sub load_install_manifest
 		# Nodes.
 		foreach my $node (keys %{$data->{node}})
 		{
-			#print "<pre>\n";
-			#use Data::Dumper;
-			#print Dumper $data;
-			#print "</pre>\n";
-			#die;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node", value1 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4280,14 +4410,22 @@ sub load_install_manifest
 							elsif ($mac)
 							{
 								# Malformed MAC
-								record($conf, "$THIS_FILE ".__LINE__."; Install Manifest: [$file], Node: [$node], interface: [$name] has a malformed MAC address: [$mac], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.\n");
+								$an->Log->entry({log_level => 2, message_key => "log_0010", message_variables => {
+									file => $file, 
+									node => $node, 
+									name => $name, 
+									mac  => $mac, 
+								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
 					}
 				}
 				elsif ($a eq "network")
 				{
-					#record($conf, "$THIS_FILE ".__LINE__."; a: [$a], -> b: [$data->{node}{$node}{network}->[0]]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "a", value1 => $a,
+						name2 => "b", value2 => $data->{node}{$node}{network}->[0],
+					}, file => $THIS_FILE, line => __LINE__});
 					foreach my $network (keys %{$data->{node}{$node}{network}->[0]})
 					{
 						my $ip = $data->{node}{$node}{network}->[0]->{$network}->[0]->{ip};
@@ -4361,7 +4499,15 @@ sub load_install_manifest
 							name1 => "node",   value1 => $node,
 							name2 => "ipmi b", value2 => $b,
 						}, file => $THIS_FILE, line => __LINE__});
-						#foreach my $key (keys %{$b}) { record($conf, "$THIS_FILE ".__LINE__."; node: [$node], ipmi b: [$b], key: [$key] -> [$b->{$key}]\n"); }
+						foreach my $key (keys %{$b})
+						{
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+								name1 => "node",         value1 => $node,
+								name2 => "ipmi b",       value2 => $b,
+								name3 => "key",          value3 => $key, 
+								name4 => "\$b->{\$key}", value4 => $b->{$key}, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
 						my $reference       = $b->{reference};
 						my $name            = $b->{name};
 						my $ip              = $b->{ip};
@@ -4412,15 +4558,24 @@ sub load_install_manifest
 				{
 					my $uuid = $data->{node}{$node}{uuid};
 					$conf->{install_manifest}{$file}{node}{$node}{uuid} = $uuid ? $uuid : "";
-					#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], uuid: [$uuid], install_manifest::${file}::node::${node}::uuid: [$conf->{install_manifest}{$file}{node}{$node}{uuid}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "node",                                           value1 => $node,
+						name2 => "uuid",                                           value2 => $uuid,
+						name3 => "install_manifest::${file}::node::${node}::uuid", value3 => $conf->{install_manifest}{$file}{node}{$node}{uuid},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					# What's this?
-					record($conf, "$THIS_FILE ".__LINE__."; Extra element in node: [$node]'s install manifest file: [$file]; a: [$a]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "Extra element in node", value1 => "$node]'s install manifest file: [$file]; a: [$a",
+					}, file => $THIS_FILE, line => __LINE__});
 					foreach my $b (@{$data->{node}{$node}{$a}})
 					{
-						record($conf, "$THIS_FILE ".__LINE__."; - b: [$b] -> [$data->{node}{$node}{$a}->[$b]]\n");
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "- b",                               value1 => $b, 
+							name2 => "data->node::${node}::${a}->[${b}]", value2 => $data->{node}{$node}{$a}->[$b],
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
@@ -4507,7 +4662,11 @@ sub load_install_manifest
 					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
-					#record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$safe_anvil_start], use: 'anvil-kick-apc-ups': [$anvil_kick_apc_ups], use: 'scancore': [$scancore]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "Tools; use 'safe_anvil_start'", value1 => $safe_anvil_start,
+						name2 => "use: 'anvil-kick-apc-ups'",     value2 => $anvil_kick_apc_ups,
+						name3 => "use: 'scancore'",               value3 => $scancore,
+					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Make sure we're using digits.
 					$safe_anvil_start   =~ s/true/1/i;
@@ -4528,7 +4687,11 @@ sub load_install_manifest
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             = defined $scancore           ? $scancore           : $conf->{sys}{install_manifest}{'default'}{use_scancore};
-					#record($conf, "$THIS_FILE ".__LINE__."; Tools; use 'safe_anvil_start': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}], use: 'anvil-kick-apc-ups': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'}], use: 'scancore': [$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}]\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+						name1 => "Tools; use 'safe_anvil_start'", value1 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start},
+						name2 => "use: 'anvil-kick-apc-ups'",     value2 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'},
+						name3 => "use: 'scancore'",               value3 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "media_library")
 				{
@@ -4582,7 +4745,9 @@ sub load_install_manifest
 								my $name = $d->{name};
 								my $on   = $d->{on};
 								$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on} = $on ? $on : "";
-								#record($conf, "$THIS_FILE ".__LINE__."; Bridge; name: [$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}]\n");
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+									name1 => "Bridge; name", value1 => "$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}",
+								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
 						elsif ($c eq "mtu")
@@ -4745,11 +4910,17 @@ sub load_install_manifest
 						
 						# If the password is more than 16 characters long, truncate
 						# it so that nodes with IPMI v1.5 don't spazz out.
-						#record($conf, "$THIS_FILE ".__LINE__."; >> install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+							name1 => ">> install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
+							name2 => "length",                                                             value2 => ".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}).",
+						}, file => $THIS_FILE, line => __LINE__});
 						if (length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}) > 16)
 						{
 							$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password} = substr($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}, 0, 16);
-							#record($conf, "$THIS_FILE ".__LINE__."; << install_manifest::${file}::common::ipmi::${reference}::password: [$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}], length: [".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password})."]\n");
+							$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+								name1 => "<< install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
+								name2 => "length",                                                             value2 => ".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}).",
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						
 						$an->Log->entry({log_level => 4, message_key => "an_variables_0009", message_variables => {
@@ -4769,7 +4940,9 @@ sub load_install_manifest
 				{
 					my $keysize = $a->{$b}->[0]->{keysize};
 					$conf->{install_manifest}{$file}{common}{ssh}{keysize} = $keysize ? $keysize : "";
-					#record($conf, "$THIS_FILE ".__LINE__."; SSH keysize: [$conf->{install_manifest}{$file}{common}{ssh}{keysize}] bytes\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "SSH keysize", value1 => "$conf->{install_manifest}{$file}{common}{ssh}{keysize} bytes",
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "storage_pool_1")
 				{
@@ -4798,7 +4971,14 @@ sub load_install_manifest
 						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{password} = $password ? $password : "";
 						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{user}     = $user     ? $user     : "";
 						$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{database} = $database ? $database : "";
-						#record($conf, "$THIS_FILE ".__LINE__."; Striker: [$name], BCN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip}], IFN IP: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip}], install_manifest${file}::common::striker::name::${name}::password: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{password}], install_manifest::${file}::common::striker::name::${name}::user: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{user}], install_manifest::${file}::common::striker::name::${name}::database: [$conf->{install_manifest}{$file}{common}{striker}{name}{$name}{database}]\n");
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0006", message_variables => {
+							name1 => "Striker",                                                             value1 => $name,
+							name2 => "BCN IP",                                                              value2 => $conf->{install_manifest}{$file}{common}{striker}{name}{$name}{bcn_ip},
+							name3 => "IFN IP",                                                              value3 => $conf->{install_manifest}{$file}{common}{striker}{name}{$name}{ifn_ip},
+							name4 => "install_manifest${file}::common::striker::name::${name}::password",   value4 => $conf->{install_manifest}{$file}{common}{striker}{name}{$name}{password},
+							name5 => "install_manifest::${file}::common::striker::name::${name}::user",     value5 => $conf->{install_manifest}{$file}{common}{striker}{name}{$name}{user},
+							name6 => "install_manifest::${file}::common::striker::name::${name}::database", value6 => $conf->{install_manifest}{$file}{common}{striker}{name}{$name}{database},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($b eq "switch")
@@ -4843,7 +5023,12 @@ sub load_install_manifest
 				}
 				else
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Extra element in install manifest file: [$file]; b: [$b] -> [$a->{$b}]\n");
+					# Extra element.
+					$an->Log->entry({log_level => 2, message_key => "log_0033", message_variables => {
+						file    => $file, 
+						element => $b, 
+						value   => $a->{$b}, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -4858,12 +5043,23 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_mtu_size}     = $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      ? $conf->{install_manifest}{$file}{common}{network}{mtu}{size}      : $conf->{sys}{install_manifest}{'default'}{mtu_size};
 		$conf->{cgi}{striker_user}       = $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     ? $conf->{install_manifest}{$file}{common}{anvil}{striker_user}     : $conf->{sys}{install_manifest}{'default'}{striker_user};
 		$conf->{cgi}{striker_database}   = $conf->{install_manifest}{$file}{common}{anvil}{striker_database} ? $conf->{install_manifest}{$file}{common}{anvil}{striker_database} : $conf->{sys}{install_manifest}{'default'}{striker_database};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_prefix: [$conf->{cgi}{anvil_prefix}], cgi::anvil_domain: [$conf->{cgi}{anvil_domain}], cgi::anvil_sequence: [$conf->{cgi}{anvil_sequence}], cgi::anvil_password: [$conf->{cgi}{anvil_password}], cgi::anvil_repositories: [$conf->{cgi}{anvil_repositories}], cgi::anvil_ssh_keysize: [$conf->{cgi}{anvil_ssh_keysize}], cgi::striker_database: [$conf->{cgi}{striker_database}]\n");
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_prefix",       value1 => $conf->{cgi}{anvil_prefix},
+			name2 => "cgi::anvil_domain",       value2 => $conf->{cgi}{anvil_domain},
+			name3 => "cgi::anvil_sequence",     value3 => $conf->{cgi}{anvil_sequence},
+			name4 => "cgi::anvil_password",     value4 => $conf->{cgi}{anvil_password},
+			name5 => "cgi::anvil_repositories", value5 => $conf->{cgi}{anvil_repositories},
+			name6 => "cgi::anvil_ssh_keysize",  value6 => $conf->{cgi}{anvil_ssh_keysize},
+			name7 => "cgi::striker_database",   value7 => $conf->{cgi}{striker_database},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Media Library values
 		$conf->{cgi}{anvil_media_library_size} = $conf->{install_manifest}{$file}{common}{media_library}{size};
 		$conf->{cgi}{anvil_media_library_unit} = $conf->{install_manifest}{$file}{common}{media_library}{units};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_media_library_size: [$conf->{cgi}{anvil_media_library_size}], cgi::anvil_media_library_unit: [$conf->{cgi}{anvil_media_library_unit}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_media_library_size", value1 => $conf->{cgi}{anvil_media_library_size},
+			name2 => "cgi::anvil_media_library_unit", value2 => $conf->{cgi}{anvil_media_library_unit},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Networks
 		$conf->{cgi}{anvil_bcn_ethtool_opts} = $conf->{install_manifest}{$file}{common}{network}{name}{bcn}{ethtool_opts};
@@ -4875,16 +5071,31 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_ifn_ethtool_opts} = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ethtool_opts};
 		$conf->{cgi}{anvil_ifn_network}      = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netblock};
 		$conf->{cgi}{anvil_ifn_subnet}       = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{netmask};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_bcn_ethtool_opts: [$conf->{cgi}{anvil_bcn_ethtool_opts}], cgi::anvil_bcn_network: [$conf->{cgi}{anvil_bcn_network}], cgi::anvil_bcn_subnet: [$conf->{cgi}{anvil_bcn_subnet}], cgi::anvil_sn_ethtool_opts: [$conf->{cgi}{anvil_sn_ethtool_opts}], cgi::anvil_sn_network: [$conf->{cgi}{anvil_sn_network}], cgi::anvil_sn_subnet: [$conf->{cgi}{anvil_sn_subnet}], cgi::anvil_ifn_ethtool_opts: [$conf->{cgi}{anvil_ifn_ethtool_opts}], cgi::anvil_ifn_network: [$conf->{cgi}{anvil_ifn_network}], cgi::anvil_ifn_subnet: [$conf->{cgi}{anvil_ifn_subnet}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+			name1 => "cgi::anvil_bcn_ethtool_opts", value1 => $conf->{cgi}{anvil_bcn_ethtool_opts},
+			name2 => "cgi::anvil_bcn_network",      value2 => $conf->{cgi}{anvil_bcn_network},
+			name3 => "cgi::anvil_bcn_subnet",       value3 => $conf->{cgi}{anvil_bcn_subnet},
+			name4 => "cgi::anvil_sn_ethtool_opts",  value4 => $conf->{cgi}{anvil_sn_ethtool_opts},
+			name5 => "cgi::anvil_sn_network",       value5 => $conf->{cgi}{anvil_sn_network},
+			name6 => "cgi::anvil_sn_subnet",        value6 => $conf->{cgi}{anvil_sn_subnet},
+			name7 => "cgi::anvil_ifn_ethtool_opts", value7 => $conf->{cgi}{anvil_ifn_ethtool_opts},
+			name8 => "cgi::anvil_ifn_network",      value8 => $conf->{cgi}{anvil_ifn_network},
+			name9 => "cgi::anvil_ifn_subnet",       value9 => $conf->{cgi}{anvil_ifn_subnet},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# iptables
 		$conf->{cgi}{anvil_open_vnc_ports} = $conf->{install_manifest}{$file}{common}{cluster}{iptables}{vnc_ports};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_open_vnc_ports: [$conf->{cgi}{anvil_open_vnc_ports}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_open_vnc_ports", value1 => $conf->{cgi}{anvil_open_vnc_ports},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Storage Pool 1
 		$conf->{cgi}{anvil_storage_pool1_size} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{size};
 		$conf->{cgi}{anvil_storage_pool1_unit} = $conf->{install_manifest}{$file}{common}{storage_pool}{1}{units};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool1_size: [$conf->{cgi}{anvil_storage_pool1_size}], cgi::anvil_storage_pool1_unit: [$conf->{cgi}{anvil_storage_pool1_unit}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_storage_pool1_size", value1 => $conf->{cgi}{anvil_storage_pool1_size},
+			name2 => "cgi::anvil_storage_pool1_unit", value2 => $conf->{cgi}{anvil_storage_pool1_unit},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Tools
 		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
@@ -4903,16 +5114,39 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_dns2}        = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{dns2};
 		$conf->{cgi}{anvil_ntp1}        = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ntp1};
 		$conf->{cgi}{anvil_ntp2}        = $conf->{install_manifest}{$file}{common}{network}{name}{ifn}{ntp2};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_name: [$conf->{cgi}{anvil_name}], cgi::anvil_ifn_gateway: [$conf->{cgi}{anvil_ifn_gateway}], cgi::anvil_dns1: [$conf->{cgi}{anvil_dns1}], cgi::anvil_dns2: [$conf->{cgi}{anvil_dns2}], cgi::anvil_ntp1: [$conf->{cgi}{anvil_ntp1}], cgi::anvil_ntp2: [$conf->{cgi}{anvil_ntp2}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			name1 => "cgi::anvil_name",        value1 => $conf->{cgi}{anvil_name},
+			name2 => "cgi::anvil_ifn_gateway", value2 => $conf->{cgi}{anvil_ifn_gateway},
+			name3 => "cgi::anvil_dns1",        value3 => $conf->{cgi}{anvil_dns1},
+			name4 => "cgi::anvil_dns2",        value4 => $conf->{cgi}{anvil_dns2},
+			name5 => "cgi::anvil_ntp1",        value5 => $conf->{cgi}{anvil_ntp1},
+			name6 => "cgi::anvil_ntp2",        value6 => $conf->{cgi}{anvil_ntp2},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# DRBD variables
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-barrier: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}], sys::install_manifest::default::anvil_drbd_disk_disk-barrier: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::disk-flushes: [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}], sys::install_manifest::default::anvil_drbd_disk_disk-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::disk::md-flushes:   [$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::options::cpu-mask:  [$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::max-buffers:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::sndbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; install_manifest::${file}::common::drbd::net::rcvbuf-size:   [$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::disk::disk-barrier",  value1 => $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'},
+			name2 => "sys::install_manifest::default::anvil_drbd_disk_disk-barrier", value2 => $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::disk::disk-flushes",  value1 => $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'},
+			name2 => "sys::install_manifest::default::anvil_drbd_disk_disk-flushes", value2 => $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::disk::md-flushes", value1 => "$conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}],   sys::install_manifest::default::anvil_drbd_disk_md-flushes: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'}",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::options::cpu-mask", value1 => "$conf->{install_manifest}{$file}{common}{drbd}{options}{'cpu-mask'}],  sys::install_manifest::default::anvil_drbd_options_cpu-mask: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_options_cpu-mask'}",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::net::max-buffers", value1 => "$conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}],   sys::install_manifest::default::anvil_drbd_net_max-buffers: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'}",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::net::sndbuf-size", value1 => "$conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_sndbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'}",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "install_manifest::${file}::common::drbd::net::rcvbuf-size", value1 => "$conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}],   sys::install_manifest::default::anvil_drbd_net_rcvbuf-size: [$conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'}",
+		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-barrier'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-barrier'};
 		$conf->{cgi}{'anvil_drbd_disk_disk-flushes'} = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'disk-flushes'}    : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_disk-flushes'};
 		$conf->{cgi}{'anvil_drbd_disk_md-flushes'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      ? $conf->{install_manifest}{$file}{common}{drbd}{disk}{'md-flushes'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_disk_md-flushes'};
@@ -4920,7 +5154,15 @@ sub load_install_manifest
 		$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'max-buffers'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_max-buffers'};
 		$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'sndbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_sndbuf-size'};
 		$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = defined $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      ? $conf->{install_manifest}{$file}{common}{drbd}{net}{'rcvbuf-size'}      : $conf->{sys}{install_manifest}{'default'}{'anvil_drbd_net_rcvbuf-size'};
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}], cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}], cgi::anvil_drbd_disk_md-flushes: [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}], cgi::anvil_drbd_options_cpu-mask: [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}], cgi::anvil_drbd_net_max-buffers: [$conf->{cgi}{'anvil_drbd_net_max-buffers'}], cgi::anvil_drbd_net_sndbuf-size: [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}], cgi::anvil_drbd_net_rcvbuf-size: [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
+			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		### Foundation Pack
 		# Switches
@@ -4992,7 +5234,14 @@ sub load_install_manifest
 			$conf->{cgi}{$user_key}     = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{user}     : $conf->{cgi}{striker_user};
 			$conf->{cgi}{$password_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{password} : $conf->{cgi}{anvil_password};
 			$conf->{cgi}{$database_key} = $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} ? $conf->{install_manifest}{$file}{common}{striker}{name}{$striker}{database} : $conf->{cgi}{striker_database};
-			#record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$user_key: [$conf->{cgi}{$user_key}], cgi::$password_key: [$conf->{cgi}{$password_key}], cgi::$database_key: [$conf->{cgi}{$database_key}]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0006", message_variables => {
+				name1 => "cgi::$name_key",     value1 => $conf->{cgi}{$name_key},
+				name2 => "cgi::$bcn_ip_key",   value2 => $conf->{cgi}{$bcn_ip_key},
+				name3 => "cgi::$ifn_ip_key",   value3 => $conf->{cgi}{$ifn_ip_key},
+				name4 => "cgi::$user_key",     value4 => $conf->{cgi}{$user_key},
+				name5 => "cgi::$password_key", value5 => $conf->{cgi}{$password_key},
+				name6 => "cgi::$database_key", value6 => $conf->{cgi}{$database_key},
+			}, file => $THIS_FILE, line => __LINE__});
 			$i++;
 		}
 		
@@ -5123,7 +5372,22 @@ sub load_install_manifest
 			$conf->{cgi}{$pdu3_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu3_reference}{port};
 			$conf->{cgi}{$pdu4_key}          = $conf->{install_manifest}{$file}{node}{$node}{pdu}{$pdu4_reference}{port};
 			$conf->{cgi}{$uuid_key}          = $conf->{install_manifest}{$file}{node}{$node}{uuid}                            ? $conf->{install_manifest}{$file}{node}{$node}{uuid}                            : "";
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$bcn_ip_key: [$conf->{cgi}{$bcn_ip_key}], cgi::$ipmi_ip_key: [$conf->{cgi}{$ipmi_ip_key}], cgi::$ipmi_netmask_key: [$conf->{cgi}{$ipmi_netmask_key}], cgi::$ipmi_gateway_key: [$conf->{cgi}{$ipmi_gateway_key}], cgi::$ipmi_password_key: [$conf->{cgi}{$ipmi_password_key}], cgi::$ipmi_user_key: [$conf->{cgi}{$ipmi_user_key}], cgi::$sn_ip_key: [$conf->{cgi}{$sn_ip_key}], cgi::$ifn_ip_key: [$conf->{cgi}{$ifn_ip_key}], cgi::$pdu1_key: [$conf->{cgi}{$pdu1_key}], cgi::$pdu2_key: [$conf->{cgi}{$pdu2_key}], cgi::$pdu3_key: [$conf->{cgi}{$pdu3_key}], cgi::$pdu4_key: [$conf->{cgi}{$pdu4_key}], cgi::$uuid_key: [$conf->{cgi}{$uuid_key}]\n");
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0014", message_variables => {
+				name1  => "cgi::$name_key",          value1  => $conf->{cgi}{$name_key},
+				name2  => "cgi::$bcn_ip_key",        value2  => $conf->{cgi}{$bcn_ip_key},
+				name3  => "cgi::$ipmi_ip_key",       value3  => $conf->{cgi}{$ipmi_ip_key},
+				name4  => "cgi::$ipmi_netmask_key",  value4  => $conf->{cgi}{$ipmi_netmask_key},
+				name5  => "cgi::$ipmi_gateway_key",  value5  => $conf->{cgi}{$ipmi_gateway_key},
+				name6  => "cgi::$ipmi_password_key", value6  => $conf->{cgi}{$ipmi_password_key},
+				name7  => "cgi::$ipmi_user_key",     value7  => $conf->{cgi}{$ipmi_user_key},
+				name8  => "cgi::$sn_ip_key",         value8  => $conf->{cgi}{$sn_ip_key},
+				name9  => "cgi::$ifn_ip_key",        value9  => $conf->{cgi}{$ifn_ip_key},
+				name10 => "cgi::$pdu1_key",          value10 => $conf->{cgi}{$pdu1_key},
+				name11 => "cgi::$pdu2_key",          value11 => $conf->{cgi}{$pdu2_key},
+				name12 => "cgi::$pdu3_key",          value12 => $conf->{cgi}{$pdu3_key},
+				name13 => "cgi::$pdu4_key",          value13 => $conf->{cgi}{$pdu4_key},
+				name14 => "cgi::$uuid_key",          value14 => $conf->{cgi}{$uuid_key},
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# If the user remapped their network, we don't want to undo the results.
 			if (not $conf->{cgi}{perform_install})
@@ -5134,7 +5398,14 @@ sub load_install_manifest
 				$conf->{cgi}{$sn_link2_mac_key}  = $conf->{install_manifest}{$file}{node}{$node}{interface}{sn_link2}{mac};
 				$conf->{cgi}{$ifn_link1_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link1}{mac};
 				$conf->{cgi}{$ifn_link2_mac_key} = $conf->{install_manifest}{$file}{node}{$node}{interface}{ifn_link2}{mac};
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::$bcn_link1_mac_key: [$conf->{cgi}{$bcn_link1_mac_key}], cgi::$bcn_link2_mac_key: [$conf->{cgi}{$bcn_link2_mac_key}], cgi::$sn_link1_mac_key: [$conf->{cgi}{$sn_link1_mac_key}], cgi::$sn_link2_mac_key: [$conf->{cgi}{$sn_link2_mac_key}], cgi::$ifn_link1_mac_key: [$conf->{cgi}{$ifn_link1_mac_key}], cgi::$ifn_link2_mac_key: [$conf->{cgi}{$ifn_link2_mac_key}].\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+					name1 => "cgi::$bcn_link1_mac_key", value1 => $conf->{cgi}{$bcn_link1_mac_key},
+					name2 => "cgi::$bcn_link2_mac_key", value2 => $conf->{cgi}{$bcn_link2_mac_key},
+					name3 => "cgi::$sn_link1_mac_key",  value3 => $conf->{cgi}{$sn_link1_mac_key},
+					name4 => "cgi::$sn_link2_mac_key",  value4 => $conf->{cgi}{$sn_link2_mac_key},
+					name5 => "cgi::$ifn_link1_mac_key", value5 => $conf->{cgi}{$ifn_link1_mac_key},
+					name6 => "cgi::$ifn_link2_mac_key", value6 => $conf->{cgi}{$ifn_link2_mac_key},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			$i++;
 		}
@@ -5144,7 +5415,10 @@ sub load_install_manifest
 		$conf->{cgi}{anvil_fence_order} = $fence_order;
 		
 		# Nodes
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::anvil_node1_name", value1 => $conf->{cgi}{anvil_node1_name},
+			name2 => "cgi::anvil_node2_name", value2 => $conf->{cgi}{anvil_node2_name},
+		}, file => $THIS_FILE, line => __LINE__});
 		my $node1_name = $conf->{cgi}{anvil_node1_name};
 		my $node2_name = $conf->{cgi}{anvil_node2_name};
 		my $delay_set  = 0;
@@ -5409,11 +5683,16 @@ sub load_install_manifest
 		# Some system stuff.
 		$conf->{sys}{post_join_delay} = $conf->{install_manifest}{$file}{common}{cluster}{fence}{post_join_delay};
 		$conf->{sys}{update_os}       = $conf->{install_manifest}{$file}{common}{update}{os};
-		#record($conf, "$THIS_FILE ".__LINE__."; sys::post_join_delay: [$conf->{sys}{post_join_delay}], sys::update_os: [$conf->{sys}{update_os}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::post_join_delay", value1 => $conf->{sys}{post_join_delay},
+			name2 => "sys::update_os",       value2 => $conf->{sys}{update_os},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ((lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "false") || (lc($conf->{install_manifest}{$file}{common}{update}{os}) eq "no"))
 		{
 			$conf->{sys}{update_os} = 0;
-			#record($conf, "$THIS_FILE ".__LINE__."; sys::update_os: [$conf->{sys}{update_os}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::update_os", value1 => $conf->{sys}{update_os},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
@@ -5677,13 +5956,27 @@ sub generate_install_manifest
 	my $node2_ipmi_netmask = get_netmask_from_ip($conf, $conf->{cgi}{anvil_node2_ipmi_ip});
 	
 	### Setup the DRBD lines.
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; >> cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => ">> cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+	}, file => $THIS_FILE, line => __LINE__});
 	# Standardize
 	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($conf->{cgi}{'anvil_drbd_disk_disk-barrier'});
 	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
@@ -5702,13 +5995,27 @@ sub generate_install_manifest
 	$conf->{cgi}{'anvil_drbd_net_max-buffers'}   = $conf->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $conf->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
 	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
 	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-barrier: [$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_disk-flushes: [$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_disk_md-flushes:   [$conf->{cgi}{'anvil_drbd_disk_md-flushes'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_options_cpu-mask:  [$conf->{cgi}{'anvil_drbd_options_cpu-mask'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_max-buffers:   [$conf->{cgi}{'anvil_drbd_net_max-buffers'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_sndbuf-size:   [$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}]\n");
-	#record($conf, "$THIS_FILE ".__LINE__."; << cgi::anvil_drbd_net_rcvbuf-size:   [$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "<< cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Get the node and dashboard UUIDs if not yet set.
 	
@@ -5812,7 +6119,9 @@ Striker Version: $conf->{sys}{version}
 			<switch name=\"$conf->{cgi}{anvil_switch1_name}\" ip=\"$conf->{cgi}{anvil_switch1_ip}\" />
 ";
 
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_switch2_name: [$conf->{cgi}{anvil_switch2_name}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_switch2_name", value1 => $conf->{cgi}{anvil_switch2_name},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{cgi}{anvil_switch2_name}) && ($conf->{cgi}{anvil_switch2_name} ne "--"))
 	{
 		$xml .= "\t\t\t<switch name=\"$conf->{cgi}{anvil_switch2_name}\" ip=\"$conf->{cgi}{anvil_switch2_ip}\" />";
@@ -5844,7 +6153,11 @@ Striker Version: $conf->{sys}{version}
 			<pdu reference=\"pdu04\" name=\"$conf->{cgi}{anvil_pdu4_name}\" ip=\"$conf->{cgi}{anvil_pdu4_ip}\" agent=\"$pdu4_agent\" />";
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; sys::install_manifest::use_anvil-kick-apc-ups: [$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'}], sys::install_manifest::use_safe_anvil_start: [$conf->{sys}{install_manifest}{use_safe_anvil_start}], sys::install_manifest::use_scancore: [$conf->{sys}{install_manifest}{use_scancore}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
+		name2 => "sys::install_manifest::use_safe_anvil_start",   value2 => $conf->{sys}{install_manifest}{use_safe_anvil_start},
+		name3 => "sys::install_manifest::use_scancore",           value3 => $conf->{sys}{install_manifest}{use_scancore},
+	}, file => $THIS_FILE, line => __LINE__});
 	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
 	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
 	my $say_use_scancore           = $conf->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
@@ -5968,7 +6281,10 @@ sub confirm_install_manifest_run
 # 	   $say_repos =~ s/,/<br \/>/;
 # 	   $say_repos =  "--" if not $say_repos;
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::anvil_node1_name", value1 => $conf->{cgi}{anvil_node1_name},
+		name2 => "cgi::anvil_node2_name", value2 => $conf->{cgi}{anvil_node2_name},
+	}, file => $THIS_FILE, line => __LINE__});
 	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
 		form_file			=>	"/cgi-bin/striker",
 		say_storage_pool_1		=>	$say_storage_pool_1,
@@ -6061,7 +6377,10 @@ sub show_summary_manifest
 	my $say_repos =  $conf->{cgi}{anvil_repositories};
 	   $say_repos =~ s/,/<br \/>/;
 	   $say_repos = "#!string!symbol_0011!#" if not $say_repos;
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_name: [$conf->{cgi}{anvil_node1_name}], cgi::anvil_node2_name: [$conf->{cgi}{anvil_node2_name}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::anvil_node1_name", value1 => $conf->{cgi}{anvil_node1_name},
+		name2 => "cgi::anvil_node2_name", value2 => $conf->{cgi}{anvil_node2_name},
+	}, file => $THIS_FILE, line => __LINE__});
 
 	# Open the table.
 	print AN::Common::template($conf, "config.html", "install-manifest-summay-header", {
@@ -6213,7 +6532,12 @@ sub show_summary_manifest
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = AN::Common::get_string($conf, {key => "brand_0017"});
 	my $say_raritan    = AN::Common::get_string($conf, {key => "brand_0018"});
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_pdu1_agent: [$conf->{cgi}{anvil_pdu1_agent}], cgi::anvil_pdu2_agent: [$conf->{cgi}{anvil_pdu2_agent}], cgi::anvil_pdu3_agent: [$conf->{cgi}{anvil_pdu3_agent}], cgi::anvil_pdu4_agent: [$conf->{cgi}{anvil_pdu4_agent}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "cgi::anvil_pdu1_agent", value1 => $conf->{cgi}{anvil_pdu1_agent},
+		name2 => "cgi::anvil_pdu2_agent", value2 => $conf->{cgi}{anvil_pdu2_agent},
+		name3 => "cgi::anvil_pdu3_agent", value3 => $conf->{cgi}{anvil_pdu3_agent},
+		name4 => "cgi::anvil_pdu4_agent", value4 => $conf->{cgi}{anvil_pdu4_agent},
+	}, file => $THIS_FILE, line => __LINE__});
 	my $say_pdu1_brand = $conf->{cgi}{anvil_pdu1_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu2_brand = $conf->{cgi}{anvil_pdu2_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
 	my $say_pdu3_brand = $conf->{cgi}{anvil_pdu3_agent} eq "fence_raritan_snmp" ? $say_raritan : $say_apc;
@@ -6962,7 +7286,14 @@ sub sanity_check_manifest_answers
 	# Check that PDU #1's host name and IP are sane.
 	my $defined_pdus = 0;
 	my $pdus         = [0, 0, 0, 0];
-	#record($conf, "$THIS_FILE ".__LINE__."; defined_pdus: [$defined_pdus], pdus: [$pdus] ($pdus->[0], $pdus->[1], $pdus->[2], $pdus->[3])\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		name1 => "defined_pdus", value1 => $defined_pdus,
+		name2 => "pdus",         value2 => $pdus,
+		name3 => "pdus->[0]",    value3 => $pdus->[0],
+		name4 => "pdus->[1]",    value4 => $pdus->[1],
+		name5 => "pdus->[2]",    value5 => $pdus->[2],
+		name6 => "pdus->[3]",    value6 => $pdus->[3],
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $i (1..4)
 	{
 		my $name_key      = "anvil_pdu${i}_name";
@@ -7001,7 +7332,11 @@ sub sanity_check_manifest_answers
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If either the IP or name is set, validate.
-		#record($conf, "$THIS_FILE ".__LINE__."; i: [$i], cgi::$name_key: [$conf->{cgi}{$name_key}], cgi::$ip_key: [$conf->{cgi}{$ip_key}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "i",              value1 => $i,
+			name2 => "cgi::$name_key", value2 => $conf->{cgi}{$name_key},
+			name3 => "cgi::$ip_key",   value3 => $conf->{cgi}{$ip_key},
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($conf->{cgi}{$name_key}) || ($conf->{cgi}{$ip_key}))
 		{
 			$defined_pdus++;
@@ -7011,7 +7346,9 @@ sub sanity_check_manifest_answers
 				name3 => "pdus",         value3 => $pdus,
 			}, file => $THIS_FILE, line => __LINE__});
 			$pdus->[$i] = 1;
-			#record($conf, "$THIS_FILE ".__LINE__."; pdus->[$i]: [$pdus->[$i]]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "pdus->[$i]", value1 => $pdus->[$i],
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $conf->{cgi}{$name_key})
 			{
 				# Not allowed to be blank.
@@ -7593,7 +7930,12 @@ sub is_string_url
 		my $host     = $2;
 		my $path     = $3;
 		my $port     = "";
-		#print "[ Debug ] - >> protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "protocol", value1 => $protocol,
+			name2 => "host",     value2 => $host,
+			name3 => "path",     value3 => $path,
+			name4 => "port",     value4 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($protocol eq "http")
 		{
 			$port = 80;
@@ -7630,7 +7972,12 @@ sub is_string_url
 				$valid = 0;
 			}
 		}
-		#print "[ Debug ] - << protocol: [$protocol], host: [$host], path: [$path], port: [$port]\n";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "protocol", value1 => $protocol,
+			name2 => "host",     value2 => $host,
+			name3 => "path",     value3 => $path,
+			name4 => "port",     value4 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{   
@@ -7736,7 +8083,10 @@ sub configure_dashboard
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::save: [$conf->{cgi}{save}], cgi::task: [$conf->{cgi}{task}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::save", value1 => $conf->{cgi}{save},
+		name2 => "cgi::task", value2 => $conf->{cgi}{task},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{save})
 	{
 		save_dashboard_configure($conf);
@@ -7768,7 +8118,9 @@ sub configure_dashboard
 	});
 	
 	# If showing an Anvil!, display it's details first.
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil: [$conf->{cgi}{anvil}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil", value1 => $conf->{cgi}{anvil},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{anvil})
 	{
 		# Show Anvil! header and node settings.
@@ -8170,7 +8522,7 @@ then
         then 
             echo 'libvirtd stopped'
         else
-            echo 'libvirtd failed to stop'
+#             echo 'libvirtd failed to stop'
         fi;
     else
         echo 'libvirtd not running'
@@ -8401,10 +8753,14 @@ sub show_anvil_selection_and_striker_options
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_anvil_selection_and_striker_options" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If I'm toggling the install target (dhcpd), process it first.
-	#record($conf, "$THIS_FILE ".__LINE__."; cgi::install_target: [$conf->{cgi}{install_target}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::install_target", value1 => $conf->{cgi}{install_target},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{install_target})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; cgi::confirm: [$conf->{cgi}{confirm}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::confirm", value1 => $conf->{cgi}{confirm},
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($conf->{cgi}{install_target} eq "start") && (not $conf->{cgi}{confirm}))
 		{
 			# Warn the user about possible DHCPd conflicts and ask
@@ -8695,15 +9051,19 @@ sub get_dhcpd_state
 	# 'next-server' option.
 	my $dhcpd_state = 2;
 	my $boot_target = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; path::dhcpd_conf: [$conf->{path}{dhcpd_conf}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::dhcpd_conf", value1 => $conf->{path}{dhcpd_conf},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $conf->{path}{dhcpd_conf})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Parsing dhcpd.conf\n");
+		$an->Log->entry({log_level => 3, message_key => "log_0011", message_variables => {
+			file => "dhcpd.conf", 
+		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "$conf->{path}{dhcpd_conf}";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<", "$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
+		open (my $file_handle, "<$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -8715,7 +9075,7 @@ sub get_dhcpd_state
 			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
 			{
 				$boot_target = 1;
-				#record($conf, "$THIS_FILE ".__LINE__."; We're an install target!\n");
+				$an->Log->entry({log_level => 3, message_key => "log_0012", file => $THIS_FILE, line => __LINE__});
 				last;
 			}
 		}
@@ -8723,7 +9083,11 @@ sub get_dhcpd_state
 	}
 	else
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; DHCP daemon config file: [$conf->{path}{dhcpd_conf}] not found or not readable. Is '/etc/dhcp' readable by UID: [$<]?\n");
+		# DHCP daemon config file not found or not readable. Is '/etc/dhcp' readable by the current UID?
+		$an->Log->entry({log_level => 3, message_key => "log_0013", message_variables => {
+			file => $conf->{path}{dhcpd_conf},
+			uid  => $<, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$dhcpd_state = 4;
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -8795,7 +9159,10 @@ sub convert_cluster_config
 			name1 => "cluster", value1 => $id,
 		}, file => $THIS_FILE, line => __LINE__});
 		my $name = $conf->{cluster}{$id}{name};
-		#record($conf, "$THIS_FILE ".__LINE__."; name: [$name], cluster::${id}::nodes: [$conf->{cluster}{$id}{nodes}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "name",                  value1 => $name,
+			name2 => "cluster::${id}::nodes", value2 => $conf->{cluster}{$id}{nodes},
+		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{clusters}{$name}{nodes}       = [split/,/, $conf->{cluster}{$id}{nodes}];
 		$conf->{clusters}{$name}{company}     = $conf->{cluster}{$id}{company};
 		$conf->{clusters}{$name}{description} = $conf->{cluster}{$id}{description};
@@ -8830,14 +9197,23 @@ sub convert_cluster_config
 				}, file => $THIS_FILE, line => __LINE__});
 				@{$conf->{clusters}{$name}{nodes}}[$i] = $node;
 				$conf->{node}{$node}{port}             = $port;
-				#record($conf, "$THIS_FILE ".__LINE__."; $i - clusters::${name}::nodes[$i]: [@{$conf->{clusters}{$name}{nodes}}[$i]], port: [$conf->{node}{$name}{port}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "$i - clusters::${name}::nodes[$i]", value1 => @{$conf->{clusters}{$name}{nodes}}[$i],
+					name2 => "port",                              value2 => $conf->{node}{$name}{port},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$conf->{node}{$node}{port} = $conf->{hosts}{$node}{port} ? $conf->{hosts}{$node}{port} : 22;
-				#record($conf, "$THIS_FILE ".__LINE__."; $i - node::${node}::port: [$conf->{node}{$node}{port}], hosts::${node}::port: [$conf->{hosts}{$node}{port}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "$i - node::${node}::port", value1 => $conf->{node}{$node}{port},
+					name2 => "hosts::${node}::port",     value2 => $conf->{hosts}{$node}{port},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			#record($conf, "$THIS_FILE ".__LINE__."; $i - node: [@{$conf->{clusters}{$name}{nodes}}[$i]], port: [$conf->{node}{$node}{port}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "$i - node", value1 => @{$conf->{clusters}{$name}{nodes}}[$i],
+				name2 => "port",      value2 => $conf->{node}{$node}{port},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -8968,8 +9344,12 @@ sub header
 						my $back_url =  $conf->{sys}{cgi_string};
 						   $back_url =~ s/confirm=.*?&//; $back_url =~ s/confirm=.*$//;
 						   
-						#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}]\n");
-						#record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "sys::cgi_string", value1 => $conf->{sys}{cgi_string},
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "back_url", value1 => $back_url,
+						}, file => $THIS_FILE, line => __LINE__});
 						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 							button_link	=>	"$back_url",
 							button_text	=>	"$back_image",
@@ -8982,8 +9362,12 @@ sub header
 						   $back_url =~ s/confirm=.*?&//; $back_url =~ s/confirm=.*$//;
 						   $back_url =~ s/delete=.*?&//;  $back_url =~ s/delete=.*$//;
 						   
-						#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}]\n");
-						#record($conf, "$THIS_FILE ".__LINE__."; back_url:           [$back_url]\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "sys::cgi_string", value1 => $conf->{sys}{cgi_string},
+						}, file => $THIS_FILE, line => __LINE__});
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "back_url", value1 => $back_url,
+						}, file => $THIS_FILE, line => __LINE__});
 						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 							button_link	=>	"$back_url",
 							button_text	=>	"$back_image",
@@ -9125,24 +9509,36 @@ sub header
 		}, "", 1);
 	}
 	
-	#foreach my $key (sort {$a cmp $b} keys %ENV) { record($conf, "$THIS_FILE ".__LINE__."; ENV key: [$key]\t->\t[$ENV{$key}]\n"); }
-	#$conf->{sys}{reload_page_timer} = 1;
+	foreach my $key (sort {$a cmp $b} keys %ENV)
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "key",        value1 => $key, 
+			name2 => "ENV{\$key}", value2 => $ENV{$key},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# We only want the auto-refresh function to activate in certain pages.
 	my $use_refresh = 0;
-	#record($conf, "$THIS_FILE ".__LINE__."; sys::reload_page_timer: [$conf->{sys}{reload_page_timer}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::reload_page_timer", value1 => $conf->{sys}{reload_page_timer},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{sys}{reload_page_timer})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; sys::cgi_string: [$conf->{sys}{cgi_string}], ENV{REQUEST_URI}: [$ENV{REQUEST_URI}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::cgi_string",  value1 => $conf->{sys}{cgi_string},
+			name2 => "ENV{REQUEST_URI}", value2 => $ENV{REQUEST_URI},
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($conf->{sys}{cgi_string} eq "?cluster=$conf->{cgi}{cluster}") && 
 		    ($ENV{REQUEST_URI} !~ /mediaLibrary/i))
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
+			# Use refresh
+			$an->Log->entry({log_level => 3, message_key => "log_0014", file => $THIS_FILE, line => __LINE__});
 			$use_refresh = 1;
 		}
 		else
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
+			# Do not use refresh
+			$an->Log->entry({log_level => 3, message_key => "log_0015", file => $THIS_FILE, line => __LINE__});
 		}
 		if ($conf->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
 		{
@@ -9152,12 +9548,14 @@ sub header
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($final !~ /&/)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; use refresh.\n");
+				# Use refresh
+				$an->Log->entry({log_level => 3, message_key => "log_0014", file => $THIS_FILE, line => __LINE__});
 				$use_refresh = 1;
 			}
 			else
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; do not use refresh.\n");
+				# Do not use refresh
+				$an->Log->entry({log_level => 3, message_key => "log_0015", file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -9191,24 +9589,22 @@ sub find_executables
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_executables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $search = $ENV{'PATH'};
-	#print "Searching in: [$search] for programs.\n";
 	foreach my $prog (keys %{$conf->{path}})
 	{
-		#print "Seeing if: [$prog] is really at: [$conf->{path}{$prog}]: ";
 		if ( -e $conf->{path}{$prog} )
 		{
-			#print "Found it.\n";
+			# Found it.
 		}
 		else
 		{
-			#print "Not found, searching for it now.\n";
+			# Not found, searching for it now.;
 			foreach my $dir (split /:/, $search)
 			{
 				my $full_path = "$dir/$prog";
 				if ( -e $full_path )
 				{
 					$conf->{path}{$prog} = $full_path;
-					#print "Found it in: [$full_path]\n";
+					# Found it in: [$full_path]\n";
 				}
 			}
 		}
@@ -9283,7 +9679,10 @@ sub get_cgi_vars
 		if (($var eq "cluster") && ($conf->{cgi}{cluster}))
 		{
 			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
-			record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "var",   value1 => $var, 
+				name2 => "value", value2 => $conf->{cgi}{$var},
+			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
 		
@@ -9298,14 +9697,19 @@ sub get_cgi_vars
 				}, file => $THIS_FILE, line => __LINE__});
 				if (not $cgi->upload($var))
 				{
-					record($conf, "$THIS_FILE ".__LINE__."; Empty file passed, looks like the user forgot to select a file to upload.\n");
+					# Empty file passed, looks like the user forgot to select a file to upload.
+					$an->Log->entry({log_level => 2, message_key => "log_0016", file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					$conf->{cgi_fh}{$var}       = $cgi->upload($var);
 					my $file                    = $conf->{cgi_fh}{$var};
 					$conf->{cgi_mimetype}{$var} = $cgi->uploadInfo($file)->{'Content-Type'};
-					record($conf, "$THIS_FILE ".__LINE__."; cgi FH: [$var] -> [$conf->{cgi_fh}{$var}], mimetype: [$conf->{cgi_mimetype}{$var}]\n");
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "cgi FH",       value1 => $var,
+						name2 => "cgi_fh::$var", value2 => $conf->{cgi_fh}{$var},
+						name3 => "mimetype",     value3 => $conf->{cgi_mimetype}{$var},
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			$conf->{cgi}{$var} = $cgi->param($var);
@@ -9316,7 +9720,13 @@ sub get_cgi_vars
 			}
 			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
 		}
-		record($conf, "$THIS_FILE ".__LINE__."; var: [$var] -> [$conf->{cgi}{$var}]\n") if $conf->{cgi}{$var};
+		if ($conf->{cgi}{$var})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "var",       value1 => $var,
+				name2 => "cgi::$var", value2 => $conf->{cgi}{$var},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	$conf->{sys}{cgi_string} =~ s/&$//;
 	
@@ -9408,7 +9818,9 @@ sub read_files_on_shared
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		next if $connected;
-		#record($conf, "$THIS_FILE ".__LINE__."; trying to connect to node: [$node].\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "trying to connect to node", value1 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
 		my $fail       = 0;
 		my $raw        = "";
 		my $shell_call = "df -P && ls -l /shared/files/";
@@ -9633,9 +10045,8 @@ sub record
 		#print "<pre>[ Debug ] $THIS_FILE ".__LINE__."; - Checking if: [$conf->{path}{log_file}] is writable...</pre>\n";
 		if (not -w $conf->{path}{log_file})
 		{
-			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}'
-			#       is hard-coded to use '/var/log/striker.log'.
-			#print "[ Debug ] - It is not. Running: [$conf->{path}{'touch_striker.log'}]\n";
+			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}' is hard-coded to use 
+			#       '/var/log/striker.log'.
 			my $shell_call = $conf->{path}{'touch_striker.log'};
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			binmode $file_handle, ":utf8:";
@@ -9643,14 +10054,11 @@ sub record
 			{
 				chomp;
 				my $line = $_;
-				#print "[ Debug ] - Output: [$line]\n";
 			}
 			close $file_handle;
 			
-			#print "[ Debug ] - Checking if it is writable now...\n";
 			if (not -w $conf->{path}{log_file})
 			{
-				#print "[ Error ] - Failed to make: [$conf->{path}{log_file}] writable! Is: [$conf->{path}{'touch_striker.log'}] setuid root?\n";
 				exit(1);
 			}
 		}
@@ -9661,15 +10069,12 @@ sub record
 		$file_handle->autoflush(1);
 		open ($file_handle, ">>", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
 		binmode $file_handle, ":utf8:";
-		#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
 		
 		# Store the handle.
 		$conf->{handles}{'log'} = $file_handle;
-		#print "[ Debug ] $THIS_FILE ".__LINE__."; - handles::log: [$conf->{handles}{'log'}]\n";
 	}
 	my $time = get_date($conf, time, 1);
-	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
 	print $file_handle "$time $message";
 	
 	return (0);
@@ -9713,12 +10118,19 @@ sub check_node_status
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
-	#record($conf, "$THIS_FILE ".__LINE__."; In check_node_status() checking nodes in cluster: [$cluster].\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "In check_node_status() checking nodes in cluster", value1 => $cluster,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
+		# set daemon states to 'Unknown'.
+		$an->Log->entry({log_level => 3, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 		set_daemons($conf, $node, "Unknown", "highlight_unavailable");
-		#record($conf, "$THIS_FILE ".__LINE__."; Gathering details on: [$node].\n");
+		
+		# Gather details on the node.
+		$an->Log->entry({log_level => 3, message_key => "log_0018", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 		gather_node_details($conf, $node);
 		push @{$conf->{online_nodes}}, $node if AN::Striker::check_node_daemons($conf, $node);
 	}
@@ -10208,9 +10620,8 @@ sub hr_to_bytes
 	# if the size is big enough to require it.
 	if (( $type eq "p" ) || ( $type eq "e" ) || ( $type eq "z" ) || ( $type eq "y" ))
 	{
-		# If this is a big size needing "Math::BigInt", check if it's loaded
-		# yet and load it, if not.
-		#record($conf, "$THIS_FILE ".__LINE__."; Large number, loading Math::BigInt.\n");
+		# If this is a big size needing "Math::BigInt", check if it's loaded yet and load it, if not.
+		$an->Log->entry({log_level => 3, message_key => "log_0019", file => $THIS_FILE, line => __LINE__});
 		use Math::BigInt;
 	}
 	elsif (( $type ne "t" ) && ( $type ne "g" ) && ( $type ne "m" ) && ( $type ne "k" ))
@@ -10232,7 +10643,9 @@ sub hr_to_bytes
 	my $bytes;
 	if ($use_base2)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; << type: [$type], size:  [$size].\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "<< type", value1 => "$type], size:  [$size",
+		}, file => $THIS_FILE, line => __LINE__});
 		if ( $type eq "y" ) { $bytes=Math::BigInt->new('2')->bpow('80')->bmul($size); }		# Yobibyte
 		elsif ( $type eq "z" ) { $bytes=Math::BigInt->new('2')->bpow('70')->bmul($size); }	# Zibibyte
 		elsif ( $type eq "e" ) { $bytes=Math::BigInt->new('2')->bpow('60')->bmul($size); }	# Exbibyte
@@ -10241,7 +10654,10 @@ sub hr_to_bytes
 		elsif ( $type eq "g" ) { $bytes=($size*(2**30)) }					# Gibibyte
 		elsif ( $type eq "m" ) { $bytes=($size*(2**20)) }					# Mebibyte
 		elsif ( $type eq "k" ) { $bytes=($size*(2**10)) }					# Kibibyte
-		#record($conf, "$THIS_FILE ".__LINE__."; >> type: [$type], bytes: [$bytes].\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => ">> type", value1 => $type,
+			name2 => "bytes",   value2 => $bytes,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
@@ -10552,7 +10968,9 @@ done
 		if ($hostname->[0])
 		{
 			$conf->{node}{$node}{info}{host_name} = $hostname->[0]; 
-			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::info::host_name", value1 => $conf->{node}{$node}{info}{host_name},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Read the node's host file.
@@ -10682,7 +11100,7 @@ fi;";
 					node	=>	$node,
 				}});
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		elsif ($conf->{node}{$node}{is_on} == 2)
@@ -10704,7 +11122,7 @@ fi;";
 					node	=>	$node,
 				}});
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		elsif ($conf->{node}{$node}{is_on} == 3)
@@ -10727,7 +11145,7 @@ fi;";
 					node	=>	$node,
 				}});
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		else
@@ -10747,7 +11165,7 @@ fi;";
 					node	=>	$node,
 				}});
 			}
-			record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Unknown'.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0017", file => $THIS_FILE, line => __LINE__});
 			set_daemons($conf, $node, "Unknown", "highlight_unavailable");
 		}
 		
@@ -10807,7 +11225,10 @@ sub remote_call
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remote_call" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; parameters->{password}: [$parameters->{password}], sys::root_password: [$conf->{sys}{root_password}]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "parameters->{password}", value1 => $parameters->{password},
+		name2 => "sys::root_password",     value2 => $conf->{sys}{root_password},
+	}, file => $THIS_FILE, line => __LINE__});
 	my $cluster    = $conf->{cgi}{cluster};
 	my $node       = $parameters->{node};
 	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
@@ -10868,16 +11289,21 @@ sub remote_call
 				node	=>	"$node",
 				port	=>	"$port",
 			}});
-			record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "error", value1 => $error,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
 	{
-		# In case the user is using ports in /etc/ssh/ssh_config,
-		# we'll want to check for an entry.
-		#record($conf, "$THIS_FILE ".__LINE__."; reading ssh_config...\n");
+		# In case the user is using ports in /etc/ssh/ssh_config, we'll want to check for an entry.
+		$an->Log->entry({log_level => 3, message_key => "log_0020", message_variables => {
+			file => $conf->{path}{ssh_config}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		read_ssh_config($conf);
-		#record($conf, "$THIS_FILE ".__LINE__."; hosts::${node}::port: [$conf->{hosts}{$node}{port}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "hosts::${node}::port", value1 => $conf->{hosts}{$node}{port},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{hosts}{$node}{port})
 		{
 			$port = $conf->{hosts}{$node}{port};
@@ -10895,7 +11321,11 @@ sub remote_call
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		#record($conf, "$THIS_FILE ".__LINE__."; Opening an SSH connection to: [$user\@$node:$port].\n");
+		$an->Log->entry({log_level => 3, message_key => "log_0032", message_variables => {
+			user => $user, 
+			node => $node, 
+			port => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($node, $port, Timeout => 10))
 		{
@@ -10907,7 +11337,9 @@ sub remote_call
 				$error = AN::Common::get_string($conf, {key => "message_0038", variables => {
 					node	=>	$node,
 				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($@ =~ /Connection refused/)
 			{
@@ -10916,21 +11348,27 @@ sub remote_call
 					port	=>	$port,
 					user	=>	$user,
 				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($@ =~ /No route to host/)
 			{
 				$error = AN::Common::get_string($conf, {key => "message_0040", variables => {
 					node	=>	$node,
 				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($@ =~ /timeout/)
 			{
 				$error = AN::Common::get_string($conf, {key => "message_0041", variables => {
 					node	=>	$node,
 				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -10938,7 +11376,9 @@ sub remote_call
 					node	=>	$node,
 					error	=>	$@,
 				}});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -10954,11 +11394,15 @@ sub remote_call
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
 				$error = AN::Common::get_string($conf, {key => "message_0043"});
-				record($conf, "$THIS_FILE ".__LINE__."; $error\n");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "error", value1 => $error,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; SSH session opened to: [$node].\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "SSH session opened to", value1 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -11019,7 +11463,9 @@ sub remote_call
 				while ($stdout =~ s/^(.*)\n//)
 				{
 					my $line = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; STDOUT: [$line].\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "STDOUT", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 					push @{$stdout_output}, $line;
 				}
 				
@@ -11031,7 +11477,9 @@ sub remote_call
 				while ($stderr =~ s/^(.*)\n//)
 				{
 					my $line = $1;
-					#record($conf, "$THIS_FILE ".__LINE__."; STDERR: [$line].\n");
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "STDERR", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 					push @{$stderr_output}, $line;
 				}
 				
@@ -11040,12 +11488,16 @@ sub remote_call
 			}
 			if ($stdout)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; stdout: [$stdout].\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "stdout", value1 => $stdout,
+				}, file => $THIS_FILE, line => __LINE__});
 				push @{$stdout_output}, $stdout;
 			}
 			if ($stderr)
 			{
-				#record($conf, "$THIS_FILE ".__LINE__."; stderr: [$stderr].\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "stderr", value1 => $stderr,
+				}, file => $THIS_FILE, line => __LINE__});
 				push @{$stderr_output}, $stderr;
 			}
 		}
@@ -11123,7 +11575,11 @@ sub parse_hosts
 					$conf->{node}{$node}{hosts}{by_ip}{$this_ip} = "";
 				}
 				$conf->{node}{$node}{hosts}{by_ip}{$this_ip} .= "$this_host,";
-				#record($conf, "$THIS_FILE ".__LINE__."; this_host: [$this_host] -> this_ip: [$conf->{node}{$node}{hosts}{$this_host}{ip}] ($conf->{node}{$node}{hosts}{by_ip}{$this_ip})\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "this_host",                              value1 => $this_host,
+					name2 => "node::${node}::hosts::${this_host}::ip", value2 => $conf->{node}{$node}{hosts}{$this_host}{ip},
+					name3 => "node::${node}::hosts::by_ip::$this_ip",  value3 => $conf->{node}{$node}{hosts}{by_ip}{$this_ip},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -11592,16 +12048,26 @@ sub parse_dmidecode
 		}
 	}
 	
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resources::total_cpus: [$conf->{resources}{total_cpus}], node::${node}::hardware::total_node_cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",                                      value1 => $node,
+		name2 => "resources::total_cpus",                     value2 => $conf->{resources}{total_cpus},
+		name3 => "node::${node}::hardware::total_node_cores", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_cores}))
 	{
 		$conf->{node}{$node}{hardware}{total_node_cores}   = $conf->{resources}{total_cpus};
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::hardware::total_node_cores: [$conf->{node}{$node}{hardware}{total_node_cores}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                                      value1 => $node,
+			name2 => "node::${node}::hardware::total_node_cores", value2 => $conf->{node}{$node}{hardware}{total_node_cores},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_threads}))
 	{
 		$conf->{node}{$node}{hardware}{total_node_threads} = $conf->{node}{$node}{hardware}{total_node_cores};
-		record($conf, "$THIS_FILE ".__LINE__."; node: [$node], node::${node}::hardware::total_node_threads: [$conf->{node}{$node}{hardware}{total_node_threads}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                                        value1 => $node,
+			name2 => "node::${node}::hardware::total_node_threads", value2 => $conf->{node}{$node}{hardware}{total_node_threads},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
@@ -11690,7 +12156,11 @@ sub parse_proc_drbd
 			$conf->{node}{$node}{drbd}{builder}    = $2;
 			$conf->{node}{$node}{drbd}{build_date} = $3;
 			$conf->{node}{$node}{drbd}{build_time} = $4;
-			#record($conf, "$THIS_FILE ".__LINE__."; Node: [$node], DRBD git hash: [$conf->{node}{$node}{drbd}{git_hash}], build by: [$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "Node",          value1 => $node,
+				name2 => "DRBD git hash", value2 => $conf->{node}{$node}{drbd}{git_hash},
+				name3 => "build by",      value3 => "$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}",
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -11778,7 +12248,22 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}             = $write_order;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync}             = hr_to_bytes($conf, $out_of_sync, "KiB", 1);
 				
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [$resource], minor: [$minor_number], network sent: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes], network received: [$conf->{node}{$node}{drbd}{resource}{$resource}{network_received} bytes], disk write: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_write} bytes], disk read: [$conf->{node}{$node}{drbd}{resource}{$resource}{disk_read} bytes], activity log updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{activity_log_updates}], bitmap updates: [$conf->{node}{$node}{drbd}{resource}{$resource}{bitmap_updates}], local count: [$conf->{node}{$node}{drbd}{resource}{$resource}{local_count}], pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{pending_requests}], unacknowledged requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{unacknowledged_requests}], application pending requests: [$conf->{node}{$node}{drbd}{resource}{$resource}{app_pending_requests}], epoch objects: [$conf->{node}{$node}{drbd}{resource}{$resource}{epoch_objects}], write order: [$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}], out of sync: [$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync} bytes]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+					name1  => "node",         value1  => $node,
+					name2  => "resource",     value2  => $resource,
+					name3  => "minor",        value3  => $minor_number,
+					name4  => "network sent", value4  => "$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes",
+					name5  => "",             value5  => ,
+					name6  => "",             value6  => ,
+					name7  => "",             value7  => ,
+					name8  => "",             value8  => ,
+					name9  => "",             value9  => ,
+					name10 => "",             value10 => ,
+					name11 => "",             value11 => ,
+					name12 => "",             value12 => ,
+					name13 => "",             value13 => ,
+					name14 => "",             value14 => ,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -11914,7 +12399,9 @@ sub parse_drbdadm_dumpxml
 	}
 	
 	# Now feed the string into XML::Simple.
-	#record($conf, "$THIS_FILE ".__LINE__."; xml_data: ====\n$xml_data\n====\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($xml_data)
 	{
 		my $xml  = XML::Simple->new();
@@ -11925,7 +12412,9 @@ sub parse_drbdadm_dumpxml
 		
 		foreach my $a (keys %{$data})
 		{
-			#print "a: [$a]\n";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "a", value1 => $a,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($a eq "file")
 			{
 				# This is just "/dev/drbd.conf", not needed.
@@ -11933,26 +12422,43 @@ sub parse_drbdadm_dumpxml
 			elsif ($a eq "common")
 			{
 				$conf->{node}{$node}{drbd}{protocol} = $data->{common}->[0]->{protocol};
-				#print "Node: [$node], Common: [$data->{common}->[0]], Protocol: [$conf->{node}{$node}{drbd}{protocol}]\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",     value1 => $node,
+					name2 => "common",   value2 => $data->{common}->[0],
+					name3 => "protocol", value3 => $conf->{node}{$node}{drbd}{protocol},
+				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $b (@{$data->{common}->[0]->{section}})
 				{
 					my $name = $b->{name};
-					#print "b: [$b], name: [$name]\n";
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "b",    value1 => $b,
+						name2 => "name", value2 => $name,
+					}, file => $THIS_FILE, line => __LINE__});
 					if ($name eq "handlers")
 					{
 						$conf->{node}{$node}{drbd}{fence}{handler}{name} = $b->{option}->[0]->{name};
 						$conf->{node}{$node}{drbd}{fence}{handler}{path} = $b->{option}->[0]->{value};
-						#print "Node: [$node], Fence handler: [$conf->{node}{$node}{drbd}{fence}{handler}{name}], path: [$conf->{node}{$node}{drbd}{fence}{handler}{path}]\n";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "node",                                      value1 => $node,
+							name2 => "node::${node}::drbd::fence::handler::name", value2 => $conf->{node}{$node}{drbd}{fence}{handler}{name},
+							name3 => "node::${node}::drbd::fence::handler::path", value3 => $conf->{node}{$node}{drbd}{fence}{handler}{path},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($name eq "disk")
 					{
 						$conf->{node}{$node}{drbd}{fence}{policy} = $b->{option}->[0]->{value};
-						#print "Node: [$node], Fence policy: [$conf->{node}{$node}{drbd}{fence}{policy}]\n";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",                               value1 => $node,
+							name2 => "node::${node}::drbd::fence::policy", value2 => $conf->{node}{$node}{drbd}{fence}{policy},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($name eq "syncer")
 					{
 						$conf->{node}{$node}{drbd}{syncer}{rate} = $b->{option}->[0]->{value};
-						#print "Node: [$node], Sync rate: [$conf->{node}{$node}{drbd}{syncer}{rate}]\n";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",                              value1 => $node,
+							name2 => "node::${node}::drbd::syncer::rate", value2 => $conf->{node}{$node}{drbd}{syncer}{rate},
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($name eq "startup")
 					{
@@ -11961,7 +12467,11 @@ sub parse_drbdadm_dumpxml
 							my $name  = $c->{name};
 							my $value = $c->{value} ? $c->{value} : "--";
 							$conf->{node}{$node}{drbd}{startup}{$name} = $value;
-							#print "Node: [$node], Startup; name: [$name] -> [$conf->{node}{$node}{drbd}{startup}{$name}]\n";
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+								name1 => "node",                                value1 => $node,
+								name2 => "name",                                value2 => $name,
+								name3 => "node::${node}::drbd::startup::$name", value3 => $conf->{node}{$node}{drbd}{startup}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 					elsif ($name eq "net")
@@ -11971,7 +12481,11 @@ sub parse_drbdadm_dumpxml
 							my $name  = $c->{name};
 							my $value = $c->{value} ? $c->{value} : "--";
 							$conf->{node}{$node}{drbd}{net}{$name} = $value;
-							#print "Node: [$node], Network; name: [$name] -> [$conf->{node}{$node}{drbd}{net}{$name}]\n";
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+								name1 => "node",                            value1 => $node,
+								name2 => "name",                            value2 => $name,
+								name3 => "node::${node}::drbd::net::$name", value3 => $conf->{node}{$node}{drbd}{net}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 					elsif ($name eq "options")
@@ -11981,18 +12495,30 @@ sub parse_drbdadm_dumpxml
 							my $name  = $c->{name};
 							my $value = $c->{value} ? $c->{value} : "--";
 							$conf->{node}{$node}{drbd}{options}{$name} = $value;
-							#print "Node: [$node], Options; name: [$name] -> [$conf->{node}{$node}{drbd}{options}{$name}]\n";
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+								name1 => "node",                                value1 => $node,
+								name2 => "name",                                value2 => $name,
+								name3 => "node::${node}::drbd::options::$name", value3 => $conf->{node}{$node}{drbd}{options}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 					else
 					{
-						record($conf, "$THIS_FILE ".__LINE__."; Unexpected element: [$b] while parsing node: [$node]'s 'drbdadm dump-xml' data.\n");
+						# Unexpected element
+						$an->Log->entry({log_level => 2, message_key => "log_0021", message_variables => {
+							element     => $b, 
+							node        => $node, 
+							source_data => "drbdadm dump-xml", 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
 			elsif ($a eq "resource")
 			{
-				#print "node: [$node], resource; [$data->{resource}]\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",             value1 => $node,
+					name2 => "data->{resource}", value2 => $data->{resource},
+				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $b (@{$data->{resource}})
 				{
 					my $resource = $b->{name};
@@ -12028,7 +12554,11 @@ sub parse_drbdadm_dumpxml
 						
 						# This is used for locating a resource by it's minor number
 						$conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource} = $resource;
-						#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], minor_number: [$minor_number], resource: [$conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource}].\n");
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+							name1 => "node",         value1 => $node,
+							name2 => "minor_number", value2 => $minor_number,
+							name3 => "resource",     value3 => $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource},
+						}, file => $THIS_FILE, line => __LINE__});
 						
 						# This is where the data itself is stored.
 						$conf->{node}{$node}{drbd}{resource}{$resource}{metadisk}       = $metadisk;
@@ -12086,7 +12616,11 @@ sub parse_drbdadm_dumpxml
 			}
 			else
 			{
-				record($conf, "$THIS_FILE ".__LINE__."; Unexpected element: [$a] while parsing node: [$node]'s 'drbdadm dump-xml' data.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0021", message_variables => {
+					element     => $a, 
+					node        => $node, 
+					source_data => "drbdadm dump-xml", 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -12129,11 +12663,15 @@ sub parse_clustat
 	if (not $line_count)
 	{
 		# CMAN isn't running.
-		record($conf, "$THIS_FILE ".__LINE__."; The cluster manager, cman, does not appear to be running on node: [$node] (nothing returned by the 'clustat' call).\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0022", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		$conf->{node}{$node}{enable_join}                = 1;
 	}
-	#record($conf, "$THIS_FILE ".__LINE__."; Will parse: [$line_count] lines.\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "line_count", value1 => $line_count,
+	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12145,8 +12683,8 @@ sub parse_clustat
 		if ($line =~ /Could not connect to CMAN/i)
 		{
 			# CMAN isn't running.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "CMAN does not appear to be running on node", value1 => $node,
+			$an->Log->entry({log_level => 2, message_key => "log_0022", message_variables => {
+				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 			$conf->{node}{$node}{enable_join}                = 1;
@@ -12174,23 +12712,37 @@ sub parse_clustat
 			if ($line =~ /Local/)
 			{
 				($conf->{node}{$node}{me}{name}, undef, my $services) = (split/ /, $line, 3);
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - me: [$conf->{node}{$node}{me}{name}], services: [$services]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => "$node", 
+					name2 => "me",   value2 => $conf->{node}{$node}{me}{name},
+				}, file => $THIS_FILE, line => __LINE__});
 				$services =~ s/local//;
 				$services =~ s/ //g;
 				$services =~ s/,,/,/g;
 				$conf->{node}{$node}{me}{cman}      =  1 if $services =~ /Online/;
 				$conf->{node}{$node}{me}{rgmanager} =  1 if $services =~ /rgmanager/;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - Me   -> [$conf->{node}{$node}{me}{name}]; cman: [$conf->{node}{$node}{me}{cman}], rgmanager: [$conf->{node}{$node}{me}{rgmanager}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => "$node", 
+					name2 => "me",   value2 => $conf->{node}{$node}{me}{name},
+					name3 => "cman", value3 => $conf->{node}{$node}{me}{cman},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				($conf->{node}{$node}{peer}{name}, undef, my $services) = split/ /, $line, 3;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - peer: [$conf->{node}{$node}{peer}{name}], services: [$services]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "peer", value2 => $conf->{node}{$node}{peer}{name}, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$services =~ s/ //g;
 				$services =~ s/,,/,/g;
 				$conf->{node}{peer}{cman}      = 1 if $services =~ /Online/;
 				$conf->{node}{peer}{rgmanager} = 1 if $services =~ /rgmanager/;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - Peer -> [$conf->{node}{$node}{peer}{name}]; cman: [$conf->{node}{peer}{cman}], rgmanager: [$conf->{node}{peer}{rgmanager}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => $node, 
+					name2 => "peer", value2 => $conf->{node}{$node}{peer}{name}, 
+					name3 => "cman", value3 => $conf->{node}{peer}{cman}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		elsif ($in_service)
@@ -12289,7 +12841,11 @@ sub parse_clustat
 				my $name  = $1;
 				my $host  = $2;
 				my $state = $3;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name], host: [$host], state: [$state]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => "$node] - service name: [$name",
+					name2 => "",     value2 => ,
+					name3 => "",     value3 => ,
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($state eq "failed")
 				{
@@ -12350,7 +12906,11 @@ sub parse_clustat
 				
 				$conf->{service}{$name}{host}    = $host;
 				$conf->{service}{$name}{'state'} = $state;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name], host: [$conf->{service}{$name}{host}], state: [$conf->{service}{$name}{'state'}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "node", value1 => "$node] - service name: [$name",
+					name2 => "",     value2 => ,
+					name3 => "",     value3 => ,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -12369,12 +12929,18 @@ sub parse_clustat
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $name (sort {$a cmp $b} keys %{$conf->{service}})
 		{
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - service name: [$name]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",         value1 => $node, 
+				name2 => "service name", value2 => $name,
+			}, file => $THIS_FILE, line => __LINE__});
 			next if $conf->{service}{$name}{host} ne $host_name;
 			next if $name !~ /storage/;
 			$storage_name  = $name;
 			$storage_state = $conf->{service}{$name}{'state'};
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - storage name: [$storage_name], storage state: [$storage_state]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",         value1 => $node,
+				name2 => "storage_name", value2 => $storage_name,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -12392,13 +12958,15 @@ sub parse_clustat
 		{
 			$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
 		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",                       value1 => $node,
-			name2 => "get host from cluster.conf", value2 => $conf->{node}{$node}{get_host_from_cluster_conf},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node}::get_host_from_cluster_conf", value1 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{info}{storage_name}    = $storage_name;
 		$conf->{node}{$node}{info}{storage_state}   = $storage_state;
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node] - host name: [$conf->{node}{$node}{info}{host_name}], short host name: [$conf->{node}{$node}{info}{short_host_name}], storage name: [$conf->{node}{$node}{info}{storage_name}], storage state: [$conf->{node}{$node}{info}{storage_state}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                           value1 => $node, ,
+			name2 => "node::${node}::info::host_name", value2 => $conf->{node}{$node}{info}{host_name},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -12745,7 +13313,9 @@ sub parse_cluster_conf
 						if (($agent eq "fence_ipmilan") || ($agent eq "fence_virsh"))
 						{
 							$conf->{node}{$this_node}{info}{power_check_command} = $command;
-							#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}]\n");
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "node", value1 => "$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}",
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						$fence_command .= "$command -o #!action!#; ";
 					}
@@ -12756,12 +13326,18 @@ sub parse_cluster_conf
 			if ($node eq $this_node)
 			{
 				$conf->{node}{$node}{info}{fence_methods} .= "$fence_command";
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: fence command: $conf->{node}{$node}{info}{fence_methods}\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",                               value1 => $node, 
+					name2 => "node::${node}::info::fence_methods", value2 => $conf->{node}{$node}{info}{fence_methods},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$conf->{node}{$peer}{info}{fence_methods} .= "$fence_command";
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$this_node]: peer: [$peer], fence command: $conf->{node}{$peer}{info}{fence_methods}\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $this_node,
+					name2 => "peer", value2 => $peer,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		$conf->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
@@ -12788,14 +13364,13 @@ sub parse_daemons
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# If all daemons are down, record here that I can shut down
-	# this VM. If any are up, enable withdrawl.
+	# If all daemons are down, record here that I can shut down this VM. If any are up, enable withdrawl.
 	$conf->{node}{$node}{enable_poweroff} = 0;
 	$conf->{node}{$node}{enable_withdraw} = 0;
 	
-	# I need to pre-set the services as stopped because the little
-	# hack I have below doesn't echo when a service isn't running.
-	#record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Stopped'.\n");
+	# I need to pre-set the services as stopped because the little hack I have below doesn't echo when a
+	# service isn't running.
+	$an->Log->entry({log_level => 3, message_key => "log_0024", file => $THIS_FILE, line => __LINE__});
 	set_daemons($conf, $node, "Stopped", "highlight_bad");
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12837,7 +13412,9 @@ sub parse_daemons
 	my $drbd_exit      = $conf->{node}{$node}{daemon}{drbd}{exit_code};
 	my $clvmd_exit     = $conf->{node}{$node}{daemon}{clvmd}{exit_code};
 	my $gfs2_exit      = $conf->{node}{$node}{daemon}{gfs2}{exit_code};
-	#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], cman_exit:      [$cman_exit]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "node", value1 => "$node], cman_exit:      [$cman_exit",
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($cman_exit eq "0")
 	{
 		$conf->{node}{$node}{enable_withdraw} = 1;
@@ -12849,9 +13426,15 @@ sub parse_daemons
 			name1 => "node",           value1 => $node,
 			name2 => "rgmanager_exit", value2 => $rgmanager_exit,
 		}, file => $THIS_FILE, line => __LINE__});
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], drbd_exit:      [$drbd_exit]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], clvmd_exit:     [$clvmd_exit]\n");
-		#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], gfs2_exit:      [$gfs2_exit]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => "$node], drbd_exit:      [$drbd_exit",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => "$node], clvmd_exit:     [$clvmd_exit",
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => "$node], gfs2_exit:      [$gfs2_exit",
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($rgmanager_exit eq "0") ||
 		    ($drbd_exit eq "0") ||
 		    ($clvmd_exit eq "0") ||
@@ -13180,7 +13763,9 @@ sub parse_virsh
 		
 		my $vm = "vm:$say_vm";
 		$conf->{vm}{$vm}{node}{$node}{virsh}{'state'} = $state;
-		#record($conf, "$THIS_FILE ".__LINE__."; vm::${vm}::node::${node}::virsh::state: [$conf->{vm}{$vm}{node}{$node}{virsh}{'state'}]\n");
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "vm::${vm}::node::${node}::virsh::state", value1 => $conf->{vm}{$vm}{node}{$node}{virsh}{'state'},
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($state eq "paused")
 		{
@@ -13350,7 +13935,9 @@ sub check_if_on
 			### NOTE: Not needed with the new SSH method.
 			# Escape out password double-quotes.
 			#$conf->{node}{$node}{info}{power_check_command} =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
-			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -13442,8 +14029,12 @@ sub check_if_on
 					}
 					if ($line =~ / Unknown$/i)
 					{
+						# Failed to get info from IPMI.
 						$conf->{node}{$node}{is_on} = 2;
-						record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Failed to get info from IPMI!\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0025", message_variables => {
+							node  => $node, 
+							is_in => $conf->{node}{$node}{is_on}, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				close $file_handle;
@@ -13451,7 +14042,10 @@ sub check_if_on
 			else
 			{
 				# I can't reach it from here.
-				#record($conf, "$THIS_FILE ".__LINE__."; This machine is not on the same network out of band management interface: [$target_host] for node: [$node], unable to check power state.\n");
+				$an->Log->entry({log_level => 3, message_key => "log_0026", message_variables => {
+					target_host => $target_host, 
+					node        => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{is_on} = 3;
 			}
 		}
@@ -13459,7 +14053,10 @@ sub check_if_on
 		{
 			# No power-check command
 			$conf->{node}{$node}{is_on} = 4;
-			#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], is on: [$conf->{node}{$node}{is_on}] - Unable to find power check command!\n");
+			$an->Log->entry({log_level => 3, message_key => "log_0027", message_variables => {
+				node  => $node, 
+				is_on => $conf->{node}{$node}{is_on}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -13469,10 +14066,10 @@ sub check_if_on
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{node}{$node}{is_on} == 0)
 	{
-		# I need to preset the services as stopped because the little
-		# hack I have below doesn't echo when a service isn't running.
+		# I need to preset the services as stopped because the little hack I have below doesn't echo 
+		# when a service isn't running.
 		$conf->{node}{$node}{enable_poweron} = 1;
-		record($conf, "$THIS_FILE ".__LINE__."; setting daemon states to 'Offline'.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0028", file => $THIS_FILE, line => __LINE__});
 		my $say_offline = AN::Common::get_string($conf, {key => "state_0004"});
 		set_daemons($conf, $node, $say_offline, "highlight_unavailable");
 	}
@@ -13520,17 +14117,26 @@ sub on_same_network
 			# Failed to resolve directly, see if the target host
 			# was read from the cache file.
 			read_node_cache($conf, $node);
-			#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::hosts::${target_host}::ip: [$conf->{node}{$node}{hosts}{$target_host}{ip}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::hosts::${target_host}::ip", value1 => $conf->{node}{$node}{hosts}{$target_host}{ip},
+			}, file => $THIS_FILE, line => __LINE__});
 			if ((defined $conf->{node}{$node}{hosts}{$target_host}{ip}) && ($conf->{node}{$node}{hosts}{$target_host}{ip} =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/))
 			{
 				$target_ip = $conf->{node}{$node}{hosts}{$target_host}{ip};
-				#record($conf, "$THIS_FILE ".__LINE__."; target_ip: [$target_ip], node::${node}::hosts::${target_host}::ip: [$conf->{node}{$node}{hosts}{$target_host}{ip}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip",                                value1 => $target_ip,
+					name2 => "node::${node}::hosts::${target_host}::ip", value2 => $conf->{node}{$node}{hosts}{$target_host}{ip},
+				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Convert the power check command's address to
 				# use the raw IP.
-				#record($conf, "$THIS_FILE ".__LINE__."; > node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "> node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{info}{power_check_command} =~ s/-a (.*?) /-a $target_ip /;
-				#record($conf, "$THIS_FILE ".__LINE__."; < node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "< node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -13700,7 +14306,10 @@ sub write_node_cache
 	my @lines;
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::info::host_name: [$conf->{node}{$node}{info}{host_name}], node::${node}::info::power_check_command: [$conf->{node}{$node}{info}{power_check_command}]\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node}::info::host_name",           value1 => $conf->{node}{$node}{info}{host_name},
+		name2 => "node::${node}::info::power_check_command", value2 => $conf->{node}{$node}{info}{power_check_command},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{node}{$node}{info}{host_name}) && ($conf->{node}{$node}{info}{power_check_command}))
 	{
 		# Write the command to disk so that I can check the power state
@@ -13789,9 +14398,9 @@ sub read_node_cache
 		my $in_hosts   = 0;
 		my $shell_call = $cache_file;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Reading", value1 => $shell_call,
+			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
+		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -13817,7 +14426,9 @@ sub read_node_cache
 				my $this_ip   = $1;
 				my $this_host = $2;
 				$conf->{node}{$node}{hosts}{$this_host}{ip} = $this_ip;
-				#record($conf, "$THIS_FILE ".__LINE__."; node::${node}::hosts::${this_host}::ip: [$conf->{node}{$node}{hosts}{$this_host}{ip}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node}::hosts::${this_host}::ip", value1 => $conf->{node}{$node}{hosts}{$this_host}{ip},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -13833,7 +14444,9 @@ sub read_node_cache
 					name2 => "val", value2 => $val,
 				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{info}{$var} = $val;
-				#record($conf, "$THIS_FILE ".__LINE__."; node: [$node], var: [$var] -> [$conf->{node}{$node}{info}{$var}]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node}::info::$var", value1 => $conf->{node}{$node}{info}{$var}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;

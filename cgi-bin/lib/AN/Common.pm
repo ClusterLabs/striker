@@ -88,18 +88,26 @@ sub test_ssh_fingerprint
 			my $rc = $1;
 			if ($rc eq "0")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] already in '~/.ssh/known_hosts'.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0029", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
 			elsif (($rc eq "1") or ($rc eq "2"))
 			{
 				if ($rc eq "1")
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] not in '~/.ssh/known_hosts', adding.\n");
+					# Add it
+					$an->Log->entry({log_level => 2, message_key => "log_0030", message_variables => {
+						node => $node, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [$node].\n");
+					# Add it and create ~/.ssh/known_hosts at the same time
+					$an->Log->entry({log_level => 2, message_key => "log_0031", message_variables => {
+						node => $node, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				# Add fingerprint to known_hosts
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {

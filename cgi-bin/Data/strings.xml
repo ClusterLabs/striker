@@ -1773,6 +1773,45 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		
 		<!-- Log messages -->
 		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
+		<key name="log_0002">Deleted or empty #!string!brand_0004!#.</key>
+		<key name="log_0003">The #!string!brand_0004!# was deleted, no more sanity checks needed.</key>
+		<key name="log_0004">ID used already.</key>
+		<key name="log_0005">Value matches, blanking.</key>
+		<key name="log_0006">Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host'. I found: [#!variable!db_count!#] entries.</key>
+		<key name="log_0007">Auto-sync currently only works if two dashboards are configured via 'scancore::db::x::host' and one of them matches this dashboard's host name: [#!variable!i_am_long!# (#!variable!i_am_short!#)].</key>
+		<key name="log_0008">Auto-sync can't run because it was unable to determine the peer's host name via analyzing the 'scancore::db::x::host' entries.</key>
+		<key name="log_0009">Creating 'expect' rsync wrapper.</key>
+		<key name="log_0010">Install Manifest: [#!variable!file!#], Node: [#!variable!node!#], interface: [#!variable!name!#] has a malformed MAC address: [#!variable!mac!#], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.</key>
+		<key name="log_0011">Parsing: [#!variable!file!#]</key>
+		<key name="log_0012">We're an install target!</key>
+		<key name="log_0013">DHCP daemon config file: [#!variable!file!#] not found or not readable. Is '/etc/dhcp' readable by UID: [#!variable!uid!#]?</key>
+		<key name="log_0014">Use refresh</key>
+		<key name="log_0015">Do not use refresh.</key>
+		<key name="log_0016">Empty file passed, looks like the user forgot to select a file to upload.</key>
+		<key name="log_0017">Setting daemon states to 'Unknown'.</key>
+		<key name="log_0018">Gathering details on: [#!variable!node!#].</key>
+		<key name="log_0019">Large number, loading Math::BigInt.</key>
+		<key name="log_0020">Reading: [#!variable!file!#]</key>
+		<key name="log_0021">Unexpected element: [#!variable!element!#] while parsing node: [#!variable!node!#]'s: [#!variable!source_data!#] data.</key>
+		<key name="log_0022">The cluster manager, cman, does not appear to be running on node: [#!variable!node!#] (nothing returned by the 'clustat' call).</key>
+		<key name="log_0023">The cluster manager, cman, does not appear to be running on node: [#!variable!node!#].</key>
+		<key name="log_0024">Setting daemon states to 'Stopped'.</key>
+		<key name="log_0025">Node: [#!variable!node!#], is on: [#!variable!is_on!#] - Failed to get info from IPMI!</key>
+		<key name="log_0026">This machine is not on the same network out of band management interface: [#!variable!target_host!#] for node: [#!variable!node!#], unable to check power state.</key>
+		<key name="log_0027">Node: [#!variable!node!#], is on: [#!variable!is_on!#] - Unable to find power check command!</key>
+		<key name="log_0028">Setting daemon states to 'Offline'.</key>
+		<key name="log_0029">Node: [#!variable!node!#] already in '~/.ssh/known_hosts'.</key>
+		<key name="log_0030">Node: [#!variable!node!#] is not in '~/.ssh/known_hosts', adding it now.</key>
+		<key name="log_0031">The '~/.ssh/known_hosts' file doesn't exist, creating it and adding node: [#!variable!node!#].</key>
+		<key name="log_0032">Opening an SSH connection to: [#!variable!user!#@#!variable!node!#:#!variable!port!#].</key>
+		<key name="log_0033">Extra element in install manifest file: [#!variable!file!#]; element: [#!variable!element!#], value: [#!variable!value!#].</key>
+		<key name="log_0034"></key>
+		<key name="log_0035"></key>
+		<key name="log_0036"></key>
+		<key name="log_0037"></key>
+		<key name="log_0038"></key>
+		<key name="log_0039"></key>
+		<key name="log_0040"></key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>
