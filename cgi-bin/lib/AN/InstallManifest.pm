@@ -4362,9 +4362,9 @@ sub do_drbd_primary_on_node
 	my $shell_call  = "$conf->{path}{nodes}{drbdadm} primary r0; echo rc:\$?";
 	if ($force_r0)
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r0' to 'Primary' and overwriting data on peer!\n");
-		### This was the DRBD 8.3 way.
-		#$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r0; echo rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
+			resource => "r0", 
+		}, file => $THIS_FILE, line => __LINE__});
 		$shell_call = "$conf->{path}{nodes}{drbdadm} primary r0 --force; echo rc:\$?";
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4391,11 +4391,18 @@ sub do_drbd_primary_on_node
 			if ($rc eq "0")
 			{
 				# Success!
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource 'r0' promoted to 'Primary' successfully.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0085", message_variables => {
+					node     => $node,
+					resource => "r0", 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to promote resource 'r0' on node: [$node] to 'Primary'!\n");
+				# Failed to promote.
+				$an->Log->entry({log_level => 1, message_key => "log_0086", message_variables => {
+					node     => $node,
+					resource => "r0", 
+				}, file => $THIS_FILE, line => __LINE__});
 				$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
 				$return_code = 1;
 			}
@@ -4408,9 +4415,9 @@ sub do_drbd_primary_on_node
 		$shell_call  = "$conf->{path}{nodes}{drbdadm} primary r1; echo rc:\$?";
 		if ($force_r0)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Forcing 'r1' to 'Primary' and overwriting data on peer!\n");
-			### This was the DRBD 8.3 way.
-			#$shell_call = "$conf->{path}{nodes}{drbdadm} -- --overwrite-data-of-peer primary r1; echo rc:\$?";
+			$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
+				resource => "r1", 
+			}, file => $THIS_FILE, line => __LINE__});
 			$shell_call = "$conf->{path}{nodes}{drbdadm} primary r1 --force; echo rc:\$?";
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4437,11 +4444,18 @@ sub do_drbd_primary_on_node
 				if ($rc eq "0")
 				{
 					# Success!
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource 'r1' promoted to 'Primary' successfully.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0085", message_variables => {
+						node     => $node,
+						resource => "r1", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to promote resource 'r1' on node: [$node] to 'Primary'!\n");
+					# Failed to promote.
+					$an->Log->entry({log_level => 1, message_key => "log_0086", message_variables => {
+						node     => $node,
+						resource => "r1", 
+					}, file => $THIS_FILE, line => __LINE__});
 					$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
 					$return_code = 1;
 				}
@@ -4537,12 +4551,18 @@ sub check_drbd_if_force_primary_is_needed
 				}, file => $THIS_FILE, line => __LINE__});
 				if (($node1_ds =~ /Inconsistent/i) && ($node2_ds =~ /Inconsistent/i))
 				{
+					# Force
 					$force_r0 = 1;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r0' needs to be forced to primary.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0087", message_variables => {
+						resource => "r0", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Will NOT force 'r0' to primary.\n");
+					# Don't force
+					$an->Log->entry({log_level => 2, message_key => "log_0088", message_variables => {
+						resource => "r0", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -4563,12 +4583,18 @@ sub check_drbd_if_force_primary_is_needed
 				}, file => $THIS_FILE, line => __LINE__});
 				if (($node1_ds =~ /Inconsistent/i) && ($node2_ds =~ /Inconsistent/i))
 				{
+					# Force
 					$force_r0 = 1;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; resource 'r1' needs to be forced to primary.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0087", message_variables => {
+						resource => "r1", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Will NOT force 'r1' to primary.\n");
+					# Don't force
+					$an->Log->entry({log_level => 2, message_key => "log_0088", message_variables => {
+						resource => "r1", 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -4580,8 +4606,9 @@ sub check_drbd_if_force_primary_is_needed
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $found_r0) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $found_r1)))
 	{
+		# One or both of the resources was not found.
 		$return_code = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; One or both of the resources was not found.\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0089", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# 0 == Both resources found, safe to proceed
@@ -4644,12 +4671,21 @@ sub do_drbd_connect_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($connection_state =~ /StandAlone/i)
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is stand-alone, will connect it.\n");
+					# StandAlone, connect it.
+					$an->Log->entry({log_level => 2, message_key => "log_0090", message_variables => {
+						node     => $node, 
+						resource => "r$resource", 
+					}, file => $THIS_FILE, line => __LINE__});
 					$connected = 0;
 				}
 				elsif ($connection_state)
 				{
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is already in connection state: [$connection_state].\n");
+					# Already connected
+					$an->Log->entry({log_level => 2, message_key => "log_0091", message_variables => {
+						node             => $node, 
+						resource         => "r$resource", 
+						connection_state => $connection_state, 
+					}, file => $THIS_FILE, line => __LINE__});
 					$connected = 1;
 				}
 			}
@@ -4688,11 +4724,18 @@ sub do_drbd_connect_on_node
 					if ($rc eq "0")
 					{
 						# Success!
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource] connected successfully.\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0092", message_variables => {
+							node             => $node, 
+							resource         => "r$resource", 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to connect resource: [r$resource] on node: [$node]!\n");
+						# Failed to connect.
+						$an->Log->entry({log_level => 1, message_key => "log_0093", message_variables => {
+							node             => $node, 
+							resource         => "r$resource", 
+						}, file => $THIS_FILE, line => __LINE__});
 						$message .= AN::Common::get_string($conf, {key => "message_0401", variables => { resource => "r$resource", node => $node }});
 						$return_code = 1;
 					}
@@ -4782,7 +4825,11 @@ sub do_drbd_connect_on_node
 			}
 			if (not $ready)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Problem connecting resource: [r$resource] on node: [$node]!\n");
+				# Problem connecting a resource.
+				$an->Log->entry({log_level => 1, message_key => "log_0094", message_variables => {
+					node             => $node, 
+					resource         => "r$resource", 
+				}, file => $THIS_FILE, line => __LINE__});
 				$message .= AN::Common::get_string($conf, {key => "message_0450", variables => { resource => "r$resource", node => $node }});
 				$return_code = 1;
 			}
@@ -4902,15 +4949,24 @@ fi;
 		}
 		elsif ($line =~ /already loaded/i)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] 'drbd' kernel module already loaded.\n");
+			# 'drbd' already loaded.
+			$an->Log->entry({log_level => 2, message_key => "log_0095", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /loaded DRBD/i)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] 'drbd' kernel was loaded.\n");
+			# Loaded the module.
+			$an->Log->entry({log_level => 2, message_key => "log_0096", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /Failed to copy 'wait-for-drbd'/i)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node: [$node] failed to copy 'wait-for-drbd' to init.d.\n");
+			# wait-for-drbd isn't installed
+			$an->Log->entry({log_level => 1, message_key => "log_0097", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$return_code = 4;
 		}
 	}
@@ -4962,13 +5018,21 @@ fi;
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($disk_state =~ /Diskless/i)
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is diskless! This might be the sign of a failed array or disk.\n");
+						# Failed disk/array?
+						$an->Log->entry({log_level => 1, message_key => "log_0098", message_variables => {
+							node     => $node, 
+							resource => "r$resource",
+						}, file => $THIS_FILE, line => __LINE__});
 						$message .= AN::Common::get_string($conf, {key => "message_0399", variables => { resource => "r$resource", node => $node }});
 						$attached = 2;
 					}
 					elsif ($disk_state)
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], is already attached.\n");
+						# Already attached
+						$an->Log->entry({log_level => 2, message_key => "log_0099", message_variables => {
+							node     => $node, 
+							resource => "r$resource",
+						}, file => $THIS_FILE, line => __LINE__});
 						$attached = 1;
 					}
 				}
@@ -5004,10 +5068,15 @@ fi;
 					
 					if ($line =~ /No valid meta-data signature found/i)
 					{
-						# resource 0 == poo1 1, 1 == pool 2
+						# No metadata found
 						my $pool     = $resource eq "0" ? "pool1" : "pool2";
 						my $device   = $conf->{node}{$node}{$pool}{device};
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource], pool: [$pool], device: [$device] - No metadata found!\n");
+						$an->Log->entry({log_level => 1, message_key => "log_0100", message_variables => {
+							node     => $node, 
+							resource => "r$resource",
+							pool     => $pool, 
+							device   => $device, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$no_metadata = 1;
 						$return_code = 3;
 						$message .= AN::Common::get_string($conf, {key => "message_0403", variables => { device => $device, resource => "r$resource", node => $node }});
@@ -5018,12 +5087,18 @@ fi;
 						if ($rc eq "0")
 						{
 							# Success!
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], resource: [r$resource] attached successfully.\n");
+							$an->Log->entry({log_level => 2, message_key => "log_0101", message_variables => {
+								node     => $node, 
+								resource => "r$resource",
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif (not $no_metadata)
 						{
 							# I skip this if '$no_metadata' is set as I've already generated a message for the user.
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to attach resource: [r$resource] on node: [$node]!\n");
+							$an->Log->entry({log_level => 1, message_key => "log_0102", message_variables => {
+								node     => $node, 
+								resource => "r$resource",
+							}, file => $THIS_FILE, line => __LINE__});
 							$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r$resource", node => $node }});
 							$return_code = 3;
 						}
@@ -5071,7 +5146,8 @@ sub configure_ssh
 	my $node2_ak_ok = 255;
 	if (($node1_rsa) && ($node2_rsa))
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I have both node's RSA keys, checking/populating /root/.ssh/authorized_keys\n");
+		# Have RSA keys, check nodes.
+		$an->Log->entry({log_level => 2, message_key => "log_0103", file => $THIS_FILE, line => __LINE__});
 		($node1_ak_ok) = populate_authorized_keys_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_rsa, $node2_rsa);
 		($node2_ak_ok) = populate_authorized_keys_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node1_rsa, $node2_rsa);
 	}
@@ -5220,12 +5296,20 @@ fi";
 			
 			if ($line =~ /added/)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 1 RSA key added to node: [$node].\n");
+				# Success
+				$an->Log->entry({log_level => 2, message_key => "log_0104", message_variables => {
+					key_owner => "1", 
+					node      => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /failed/)
 			{
+				# Failed to add.
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to add Node 1's RSA key to node: [$node]!\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0105", message_variables => {
+					key_owner => "1", 
+					node      => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -5281,12 +5365,20 @@ fi";
 			
 			if ($line =~ /added/)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node 2 RSA key added to node: [$node].\n");
+				# Success
+				$an->Log->entry({log_level => 2, message_key => "log_0104", message_variables => {
+					key_owner => "2", 
+					node      => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /failed/)
 			{
+				# Failed to add.
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to add Node 2's RSA key to node: [$node]!\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0105", message_variables => {
+					key_owner => "2", 
+					node      => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -5346,21 +5438,33 @@ fi;";
 			
 			if ($line =~ /fingerprint recorded/)
 			{
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] name: [$name] previously recorded.\n");
+				# Already recorded
+				$an->Log->entry({log_level => 3, message_key => "log_0106", message_variables => {
+					node => $node, 
+					name => $name, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /fingerprint added/)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] name: [$name] added.\n");
+				# Added
+				$an->Log->entry({log_level => 2, message_key => "log_0107", message_variables => {
+					node => $node, 
+					name => $name, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /failed to record/)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to record name: [$name]'s fingerprint on node: [$node]!\n");
+				# Failed
+				$an->Log->entry({log_level => 1, message_key => "log_0108", message_variables => {
+					node => $node, 
+					name => $name, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
 		}
 	}
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]!\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ok: [$ok]\n");
 	return($ok);
 }
 
@@ -5411,11 +5515,14 @@ fi";
 		if ($line =~ /^ssh-rsa /)
 		{
 			$rsa_key = $line;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] root RSA key: [$rsa_key]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], rsa_key: [$rsa_key]\n");
 		}
 		elsif ($line =~ /Your public key has been saved in/i)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] root RSA key was generated.\n");
+			# Generated successfully.
+			$an->Log->entry({log_level => 2, message_key => "log_0109", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -5461,10 +5568,9 @@ sub start_cman
 	}
 	if ((not $node1_cman_state) && (not $node2_cman_state))
 	{
-		# Start on both (this uses a fork to start them at the same
-		# time)
+		# Start on both (this uses a fork to start them at the same time)
 		start_cman_on_both_nodes($conf);
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking is cman started on both nodes.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});
 		
 		my ($node1_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "cman");
 		my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
@@ -5476,31 +5582,37 @@ sub start_cman
 		
 		if (($node1_cman_state) && ($node2_cman_state))
 		{
-			# \o/
+			# \o/ - Successfully started cman on both nodes.
 			$node1_rc = 2;
 			$node2_rc = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully started cman on both nodes.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0111", file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($node1_cman_state)
 		{
 			# Only node 1 started... node 2 was probably fenced.
 			$node1_rc = 2;
 			$node2_rc = 4;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Only started cman on node 1: [$conf->{cgi}{anvil_node1_current_ip}], failed on node 2: [$conf->{cgi}{anvil_node1_current_password}].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0112", message_variables => {
+				node1 => $conf->{cgi}{anvil_node1_current_ip}, 
+				node2 => $conf->{cgi}{anvil_node2_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($node2_cman_state)
 		{
 			# Only node 2 started... node 1 was probably fenced.
 			$node1_rc = 4;
 			$node2_rc = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Only started cman on node 2: [$conf->{cgi}{anvil_node2_current_ip}], failed on node 1: [$conf->{cgi}{anvil_node2_current_password}].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0113", message_variables => {
+				node1 => $conf->{cgi}{anvil_node1_current_ip}, 
+				node2 => $conf->{cgi}{anvil_node2_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Well crap...
 			$node1_rc = 4;
 			$node2_rc = 4;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start cman both nodes!\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0111", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif (not $node1_cman_state)
@@ -5516,13 +5628,19 @@ sub start_cman
 		{
 			# Started!
 			$node2_rc = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully startes cman on node 1: [$conf->{cgi}{anvil_node1_current_ip}].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
+				node_number  => "1", 
+				node_address => $conf->{cgi}{anvil_node1_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Failed to start.
 			$node1_rc = 4;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start cman on node 1: [$conf->{cgi}{anvil_node1_current_ip}].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0116", message_variables => {
+				node_number  => "1", 
+				node_address => $conf->{cgi}{anvil_node1_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif (not $node2_cman_state)
@@ -5538,13 +5656,19 @@ sub start_cman
 		{
 			# Started!
 			$node2_rc = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully startes cman on node 2: [$conf->{cgi}{anvil_node2_current_ip}].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
+				node_number  => "2", 
+				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Failed to start.
 			$node2_rc = 4;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start cman on node 2: [$conf->{cgi}{anvil_node2_current_ip}].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0116", message_variables => {
+				node_number  => "2", 
+				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
@@ -5552,7 +5676,7 @@ sub start_cman
 		# Both are already running
 		$node1_rc = 3;
 		$node2_rc = 3;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cman was already running on both nodes.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0117", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Check fencing if cman is running
@@ -5687,12 +5811,14 @@ sub check_fencing_on_node
 			my $rc = $1;
 			if ($rc eq "0")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Fence check passed!\n");
+				# Passed
+				$an->Log->entry({log_level => 2, message_key => "log_0118", file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Fence check appears to have reported failures! Return code", value1 => $rc,
+				# Failed
+				$an->Log->entry({log_level => 1, message_key => "log_0119", message_variables => {
+					return_code => $rc, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
@@ -5751,12 +5877,13 @@ sub start_cman_on_both_nodes
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_both_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	### NOTE: This is heavily based on AN::Striker::dual_join, but stripped
-	###       down.
-	# I need to fork here because the calls won't return until cman
-	# either talks to it's peer or fences it.
+	### NOTE: This is heavily based on AN::Striker::dual_join, but stripped down.
+	# I need to fork here because the calls won't return until cman either talks to it's peer or fences 
+	# it.
 	my $parent_pid = $$;
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process has PID: [$parent_pid]. Spawning a child process for each node.\n");
+	$an->Log->entry({log_level => 2, message_key => "log_0120", message_variables => {
+		parent_pid => $parent_pid, 
+	}, file => $THIS_FILE, line => __LINE__});
 	my %pids;
 	my $node_count = 2;
 	foreach my $node (sort {$a cmp $b} ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip}))
@@ -5766,7 +5893,10 @@ sub start_cman_on_both_nodes
 		{
 			# Parent thread.
 			$pids{$pid} = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], Spawned child with PID: [$pid].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0121", message_variables => {
+				node => $node, 
+				pid  => $pid, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -5803,17 +5933,15 @@ sub start_cman_on_both_nodes
 		}
 	}
 	
-	# Now loop until both child processes are dead.
-	# This helps to catch hung children.
+	# Now loop until both child processes are dead. This helps to catch hung children.
 	my $saw_reaped = 0;
 	
-	# If I am here, then I am the parent process and all the child process have
-	# been spawned. I will not enter a while() loop that will exist for however
-	# long the %pids hash has data.
+	# If I am here, then I am the parent process and all the child process have been spawned. I will not
+	# enter a while() loop that will exist for however long the %pids hash has data.
 	while (%pids)
 	{
-		# This is a bit of an odd loop that put's the while()
-		# at the end. It will cycle once per child-exit event.
+		# This is a bit of an odd loop that put's the while() at the end. It will cycle once per 
+		# child-exit event.
 		my $pid;
 		do
 		{
@@ -5823,34 +5951,41 @@ sub start_cman_on_both_nodes
 			$pid = wait;
 			if ($pid < 1)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process thinks all children are gone now as wait returned: [$pid]. Exiting loop.\n");
+				# Children are gone.
+				$an->Log->entry({log_level => 2, message_key => "log_0122", message_variables => {
+					pid => $pid, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process told that child with PID: [$pid] has exited.\n");
+				# A child exited.
+				$an->Log->entry({log_level => 2, message_key => "log_0123", message_variables => {
+					pid => $pid, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# This deletes the just-exited child process' PID from the
-			# %pids hash.
+			# This deletes the just-exited child process' PID from the %pids hash.
 			delete $pids{$pid};
 			
-			# This counter is a safety mechanism. If I see more PIDs exit
-			# than I spawned, something went oddly and I need to bail.
+			# This counter is a safety mechanism. If I see more PIDs exit than I spawned, 
+			# something went oddly and I need to bail.
 			$saw_reaped++;
 			if ($saw_reaped > ($node_count + 1))
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Parent process reaped: [$saw_reaped] children when only two were spawned.\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0124", message_variables => {
+					reaped => $saw_reaped, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		while $pid > 0;	# This re-enters the do() loop for as
-				# long as the PID returned by wait()
+		while $pid > 0;	# This re-enters the do() loop for as long as the PID returned by wait() 
 				# was >0.
 	}
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; All child processes reaped, exiting threaded execution.\n");
+	# All child processes reaped, exiting threaded execution.
+	$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
 	
-	# Wipe out the file SSH handles as the fork clobbers them anyway so the
-	# next call will have to reconnect fresh.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Resetting SSH session handles.\n");
+	# Wipe out the file SSH handles as the fork clobbers them anyway so the next call will have to 
+	# reconnect fresh.
+	$an->Log->entry({log_level => 2, message_key => "log_0126", file => $THIS_FILE, line => __LINE__});
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
 	$conf->{node}{$node1}{ssh_fh} = "";
@@ -5905,7 +6040,11 @@ sub ping_node_from_other
 		if ($line =~ /ping:(\d+)/)
 		{
 			$ping_rc = $1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc] (0 == pingable)\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
+				node_number  => "2", 
+				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc]\n");
 			$success = 1 if not $ping_rc;
 		}
 	}
@@ -6614,7 +6753,7 @@ sub configure_ipmi_on_node
 			if ($channel > 10)
 			{
 				# Give up...
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to find the IPMI LAN channel!\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0127", file => $THIS_FILE, line => __LINE__});
 				$channel = "";
 				last;
 			}
@@ -6650,12 +6789,14 @@ sub configure_ipmi_on_node
 				{
 					# Found it!
 					$lan_found = 1;
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Found the lan channel: [$channel]!\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0128", message_variables => {
+						channel => $channel, 
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 			$channel++ if not $lan_found;
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; LAN channel: [$channel]!\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; channel: [$channel]\n");
 		
 		# Now find the admin user ID number
 		my $user_id   = "";
@@ -6670,7 +6811,7 @@ sub configure_ipmi_on_node
 				if ($user_id > 10)
 				{
 					# Give up...
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to find the IPMI admin user ID!\n");
+					$an->Log->entry({log_level => 1, message_key => "log_0129", file => $THIS_FILE, line => __LINE__});
 					$user_id = "";
 					last;
 				}
@@ -6709,7 +6850,7 @@ sub configure_ipmi_on_node
 				$user_id++ if not $uid_found;
 			}
 			
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User: [$ipmi_user] has ID: [$user_id]\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ipmi_user: [$ipmi_user], user_id: [$user_id]\n");
 			if ($uid_found)
 			{
 				# Set the password.
@@ -6759,18 +6900,23 @@ sub configure_ipmi_on_node
 					if ($line =~ /Success/i)
 					{
 						# Woo!
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], IPMI password set successfully as a 16-byte string!\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0130", message_variables => {
+							channel => $channel, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($line =~ /wrong password size/i)
 					{
+						# Try size 20.
 						$try_20 = 1;
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password is not a 16-byte string, will try 20-byte.\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0131", file => $THIS_FILE, line => __LINE__});
 					}
 					elsif ($line =~ /password incorrect/i)
 					{
 						# Password didn't take. :(
 						$return_code = 1;
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password failed to be set properly.\n");
+						$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => {
+							channel => $channel, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				if ($try_20)
@@ -6797,13 +6943,17 @@ sub configure_ipmi_on_node
 						if ($line =~ /Success/i)
 						{
 							# Woo!
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], IPMI password set successfully as a 20-byte string!\n");
+							$an->Log->entry({log_level => 2, message_key => "log_0133", message_variables => {
+								channel => $channel, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 						elsif ($line =~ /password incorrect/i)
 						{
 							# Password didn't take. :(
 							$return_code = 1;
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI password failed to be set properly.\n");
+							$an->Log->entry({log_level => 1, message_key => "log_0132", message_variables => {
+								channel => $channel, 
+							}, file => $THIS_FILE, line => __LINE__});
 						}
 					}
 				}
@@ -6937,11 +7087,17 @@ sub configure_ipmi_on_node
 				{
 					if ($line =~ /Static/i)
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI IP is static now.\n");
+						# Now set to static
+						$an->Log->entry({log_level => 2, message_key => "log_0134", message_variables => {
+							node => $node, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI IP is NOT static!\n");
+						# Failed to set to static.
+						$an->Log->entry({log_level => 1, message_key => "log_0135", message_variables => {
+							node => $node, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 5;
 						last;
 					}
@@ -6952,12 +7108,17 @@ sub configure_ipmi_on_node
 					if ($ip eq $ipmi_ip)
 					{
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "IPMI IP is now", value1 => $ipmi_ip,
+							name1 => "ipmi_ip", value1 => $ipmi_ip,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI reported IP: [$ip] doesn't match desired IP: [$ipmi_ip]!\n");
+						# Reported IP doesn't match desired IP.
+						$an->Log->entry({log_level => 1, message_key => "log_0136", message_variables => {
+							current_ip => $ip, 
+							desired_ip => $ipmi_ip, 
+							node       => $node, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 6;
 						last;
 					}
@@ -6968,12 +7129,17 @@ sub configure_ipmi_on_node
 					if ($ip eq $ipmi_netmask)
 					{
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "IPMI subnet is now", value1 => $ipmi_netmask,
+							name1 => "ipmi_netmask", value1 => $ipmi_netmask,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					else
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; IPMI reported subnet: [$ip] doesn't match desired subnet: [$ipmi_netmask]!\n");
+						# Subnet mismatch
+						$an->Log->entry({log_level => 1, message_key => "log_0137", message_variables => {
+							current_subnet => $ip, 
+							desired_subnet => $ipmi_netmask, 
+							node           => $node, 
+						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 7;
 						last;
 					}
@@ -7095,8 +7261,8 @@ sub configure_daemons_on_node
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{enable}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",            value1 => $node,
-			name2 => "enabling daemon", value2 => $daemon,
+			name1 => "node",   value1 => $node,
+			name2 => "daemon", value2 => $daemon,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
@@ -7104,7 +7270,10 @@ sub configure_daemons_on_node
 		if (($init3 eq "1") && ($init5 eq "1"))
 		{
 			# Already enabled.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], already enabled on boot.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0138", message_variables => {
+				node   => $node, 
+				daemon => $daemon,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -7115,12 +7284,18 @@ sub configure_daemons_on_node
 			if (($init3 eq "1") && ($init5 eq "1"))
 			{
 				# Success
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], now enabled on boot.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0139", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# failed. :(
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to enable daemon: [$daemon] on node: [$node]!\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0140", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 				$return .= "failed to enable:$daemon,";
 				$ok = 0;
 			}
@@ -7136,7 +7311,10 @@ sub configure_daemons_on_node
 			if ($state eq "1")
 			{
 				# Already running.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already running.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0141", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($state eq "0")
 			{
@@ -7147,12 +7325,18 @@ sub configure_daemons_on_node
 				if ($state eq "1")
 				{
 					# Now running.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] was started.\n");
+					$an->Log->entry({log_level => 2, message_key => "log_0142", message_variables => {
+						node   => $node, 
+						daemon => $daemon,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($state eq "0")
 				{
 					# Failed to start
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to start daemon: [$daemon] on node: [$node]!\n");
+					$an->Log->entry({log_level => 1, message_key => "log_0143", message_variables => {
+						node   => $node, 
+						daemon => $daemon,
+					}, file => $THIS_FILE, line => __LINE__});
 					$return .= "failed to start:$daemon,";
 				}
 			}
@@ -7163,16 +7347,19 @@ sub configure_daemons_on_node
 	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{disable}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",             value1 => $node,
-			name2 => "disabling daemon", value2 => $daemon,
+			name1 => "node",   value1 => $node,
+			name2 => "daemon", value2 => $daemon,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; init3: [$init3], init5: [$init5].\n");
 		if (($init3 eq "0") && ($init5 eq "0"))
 		{
-			# Already enabled.
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], already disabled on boot.\n");
+			# Already disabled.
+			$an->Log->entry({log_level => 3, message_key => "log_0144", message_variables => {
+				node   => $node, 
+				daemon => $daemon,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -7183,12 +7370,18 @@ sub configure_daemons_on_node
 			if (($init3 eq "0") && ($init5 eq "0"))
 			{
 				# Success
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], now disabled on boot.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0145", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# failed. :(
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to disable daemon: [$daemon] on node: [$node]!\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0146", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 				$return .= "failed to disable:$daemon,";
 				$ok = 0;
 			}
@@ -7203,7 +7396,10 @@ sub configure_daemons_on_node
 			if ($state eq "0")
 			{
 				# Already stopped.
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] is already stopped.\n");
+				$an->Log->entry({log_level => 3, message_key => "log_0147", message_variables => {
+					node   => $node, 
+					daemon => $daemon,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($state eq "0")
 			{
@@ -7213,13 +7409,19 @@ sub configure_daemons_on_node
 				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon], state: [$state].\n");
 				if ($state eq "0")
 				{
-					# Now running.
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], daemon: [$daemon] was stopped.\n");
+					# Now stopped.
+					$an->Log->entry({log_level => 2, message_key => "log_0148", message_variables => {
+						node   => $node, 
+						daemon => $daemon,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($state eq "1")
 				{
-					# Failed to start
-					AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to stop daemon: [$daemon] on node: [$node]!\n");
+					# Failed to stop
+					$an->Log->entry({log_level => 1, message_key => "log_0149", message_variables => {
+						node   => $node, 
+						daemon => $daemon,
+					}, file => $THIS_FILE, line => __LINE__});
 					$return .= "failed to stop:$daemon,";
 				}
 			}
@@ -7310,7 +7512,11 @@ sub get_daemon_state
 	# This will store the state.
 	my $state = "";
 	
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], checking if daemon: [$daemon] is running\n");
+	# Check if the daemon is running currently.
+	$an->Log->entry({log_level => 3, message_key => "log_0150", message_variables => {
+		node   => $node, 
+		daemon => $daemon,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $shell_call = "/etc/init.d/$daemon status; echo rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -7332,14 +7538,18 @@ sub get_daemon_state
 		
 		if ($line =~ /No such file or directory/i)
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; daemon not installed, pretending it is off.\n");
+			# Not installed, pretend it is off.
+			$an->Log->entry({log_level => 2, message_key => "log_0151", message_variables => {
+				node   => $node, 
+				daemon => $daemon,
+			}, file => $THIS_FILE, line => __LINE__});
 			$state = 0;
 			last;
 		}
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc] (stopped: [$stopped_rc], running: [$running_rc])\n");
+			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc], stopped: [$stopped_rc], running: [$running_rc]\n");
 			if ($rc eq $running_rc)
 			{
 				$state = 1;
@@ -7534,19 +7744,17 @@ sub configure_clvmd
 	return($ok);
 }
 
-# This reads in node 1's lvm.conf, makes sure it's configured for clvmd and
-# stores in.
+# This reads in node 1's lvm.conf, makes sure it's configured for clvmd and stores in.
 sub generate_lvm_conf
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_lvm_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom
-	# filter line. The rest of the config will be loaded into memory and,
-	# if one node is found to have a custom filter, it will be used to on
-	# the other node. If neither have a custom filter, then node 1's base
-	# config will be modified and loaded on both nodes.
+	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom filter line. The rest of the 
+	# config will be loaded into memory and, if one node is found to have a custom filter, it will be 
+	# used to on the other node. If neither have a custom filter, then node 1's base config will be 
+	# modified and loaded on both nodes.
 	my $return_code = 0;
 	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
@@ -7554,9 +7762,9 @@ sub generate_lvm_conf
 	# Now decide what lvm.conf to use.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
 	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Default filter:         [$conf->{sys}{lvm_filter}]\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1] filter: [$conf->{node}{$node1}{lvm_filter}]\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2] filter: [$conf->{node}{$node2}{lvm_filter}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; sys::filter: [$conf->{sys}{lvm_filter}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], filter: [$conf->{node}{$node1}{lvm_filter}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], filter: [$conf->{node}{$node2}{lvm_filter}]\n");
 	if (($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter}) && ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter}))
 	{
 		# Both are custom, do they match?
@@ -7564,48 +7772,61 @@ sub generate_lvm_conf
 		{
 			# We're good. We'll use node 1
 			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Matching custom filters.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0152", file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Both are custom and they don't match, time to bail out.
 			$return_code = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Different custom filters!\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0153", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif ($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter})
 	{
+		# Node 1 has a custom filter, we'll use it
 		$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Custom filter; Using node 1's lvm.conf\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0154", message_variables => {
+			node => $node1, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter})
 	{
+		# Node 2 has a custom filter, we'll use it
 		$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Custom filter; Using node 2's lvm.conf\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0154", message_variables => {
+			node => $node2, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
+		# Neither are custom, so pick one that looks sane.
 		if (length($conf->{node}{$node1}{lvm_conf}) > 256)
 		{
 			# Node 1's copy seems sane, use it.
 			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Stock filter; Using node 1's lvm.conf\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0155", message_variables => {
+				node => $node1,  
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (length($conf->{node}{$node1}{lvm_conf}) > 256)
 		{
 			# Node 2's copy seems sane, use it.
 			$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Stock filter; Using node 2's lvm.conf\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0155", message_variables => {
+				node => $node2, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# Neither are sane?!
 			$return_code = 2;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Neither of the read lvm.conf files appear to be sane!\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0156", message_variables => {
+				node => $node2, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "size of lvm.conf to write is", value1 => ".length($conf->{sys}{lvm_conf}).",
+		name1 => "length(sys::lvm_conf)", value1 => length($conf->{sys}{lvm_conf}),
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Return codes:
@@ -7917,18 +8138,24 @@ sub do_node_reboot
 	if (not $conf->{node}{$node}{reboot_needed})
 	{
 		$return_code = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] reboot NOT needed.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0157", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($conf->{node}{$node}{in_cluster})
 	{
 		# Reboot needed, but the user has to do it.
 		$return_code = 5;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] reboot MUST be performed manually!\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0158", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# Reboot... Close the SSH FH as well.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] reboot needed.\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0159", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "reboot";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -7953,7 +8180,7 @@ sub do_node_reboot
 		my $has_shutdown = 0;
 		my $timeout      = time + 120;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "time",    value1 => ".time.",
+			name1 => "time",    value1 => time,
 			name2 => "timeout", value2 => $timeout,
 		}, file => $THIS_FILE, line => __LINE__});
 		while (not $has_shutdown)
@@ -7987,13 +8214,15 @@ sub do_node_reboot
 			my $wait         = 1;
 			my $rc           = 255;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => ">> time",      value1 => ".time.",
+				name1 => ">> time",      value1 => time,
 				name2 => "give_up_time", value2 => $give_up_time,
 			}, file => $THIS_FILE, line => __LINE__});
 			while ($wait)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; << time: [".time."], give_up_time: [$give_up_time], will wait: [".($give_up_time - time)."] more second(s).\n");
-				if (time > $give_up_time)
+				my $time      = time;
+				my $will_wait = ($give_up_time - $time);
+				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; time: [$time], give_up_time: [$give_up_time], will wait: [$will_wait]\n");
+				if ($time > $give_up_time)
 				{
 					last;
 				}
@@ -8012,10 +8241,12 @@ sub do_node_reboot
 					$wait = 0;
 					if ($node ne $new_bcn_ip)
 					{
-						# Copy the hash reference to
-						# the new IP.
+						# Copy the hash reference to the new IP.
 						$conf->{node}{$new_bcn_ip} = $conf->{node}{$node};
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; copying hash from: [$node] to: [$new_bcn_ip]\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0160", message_variables => {
+							node   => $node, 
+							bcn_ip => $new_bcn_ip, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				sleep 1;
@@ -8026,9 +8257,9 @@ sub do_node_reboot
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($rc == 0)
 			{
-				# Success!
+				# Success! Rescan storage.
 				$return_code = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Node rebooted, rescanning storage.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0161", file => $THIS_FILE, line => __LINE__});
 				
 				# Rescan it's (new) partition data.
 				my ($node_disk) = get_partition_data($conf, $new_bcn_ip, $password);
@@ -8092,13 +8323,13 @@ sub ping_ip
 		if ($line =~ /ping:(\d+)/)
 		{
 			$ping_rc = $1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc] (0 == pingable)\n");
+			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; ping_rc: [$ping_rc]\n");
 			$success = 1 if not $ping_rc;
 		}
 	}
 	close $file_handle;
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; success: [$success] (1 == pingable)\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; success: [$success]\n");
 	return($success);
 }
 
@@ -8119,17 +8350,24 @@ sub connect_to_node
 	if (ping_ip($conf, $node))
 	{
 		# Pingable! Can we log in?
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] pingable\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$rc = 1;
 		if (check_node_access($conf, $node, $password))
 		{
 			# We're in!
 			$rc = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The node: [$node] is accessible!\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0163", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; I can ping: [$node], but I can not log into the node yet.\n");
+			# Pingable, but not accessible yet.
+			$an->Log->entry({log_level => 1, message_key => "log_0164", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -8497,7 +8735,10 @@ sub create_partition_on_node
 			}
 			if ($line =~ /reboot/)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], reboot needed.\n");
+				# Reboot needed.
+				$an->Log->entry({log_level => 2, message_key => "log_0159", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{reboot_needed} = 1;
 			}
 		}
@@ -8555,8 +8796,12 @@ sub check_device_for_drbd_metadata
 			# 255 == device exists but has no metadata
 			if ($rc eq "0")
 			{
+				# Metadata found.
 				$is_drbd = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], device: [$device] has DRBD metadata.\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0165", message_variables => {
+					node   => $node, 
+					device => $device, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -8633,25 +8878,34 @@ sub check_for_drbd_metadata
 	{
 		# Already has meta-data, nothing else to do.
 		$return_code = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data already found on node: [$node], device: [$device].\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0165", message_variables => {
+			node   => $node, 
+			device => $device, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($type)
 	{
-		# WHAT?
+		# WHAT? Not safe to proceed...
 		$return_code = 4;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; A non-DRBD signature was found on node: [$node], device: [$device] or type: [$type]. Aborting!\n");
+		$an->Log->entry({log_level => 1, message_key => "log_0166", message_variables => {
+			node   => $node, 
+			device => $device, 
+			type   => $type, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# Make sure there is a device at all
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking to ensure that node: [$node]'s device: [$device] exists.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0167", message_variables => {
+			node   => $node, 
+			device => $device
+		}, file => $THIS_FILE, line => __LINE__});
 		my ($disk, $partition) = ($device =~ /\/dev\/(\D+)(\d)/);
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; disk: [$disk], partition: [$partition], node::${node}::disk::${disk}::partition::${partition}::size: [$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}]\n");
 		if ($conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
 		{
-			# It exists, so we can assume it has no DRBD metadata or
-			# anything else.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; it exists, safe to create meta-data.\n");
+			# It exists, so we can assume it has no DRBD metadata or anything else.
+			$an->Log->entry({log_level => 2, message_key => "log_0168", file => $THIS_FILE, line => __LINE__});
 			my $resource = "";
 			if ($device eq $conf->{node}{$node}{pool1}{device})
 			{
@@ -8668,7 +8922,11 @@ sub check_for_drbd_metadata
 			}
 			if ($resource)
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]'s device: [$device] belongs to DRBD resource: [$resource].\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0171", message_variables => {
+					node     => $node, 
+					device   => $device, 
+					resource => $resource, 
+				}, file => $THIS_FILE, line => __LINE__});
 				my $rc         = 255;
 				my $shell_call = "$conf->{path}{nodes}{drbdadm} -- --force create-md $resource; echo rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8703,13 +8961,17 @@ sub check_for_drbd_metadata
 						}
 						elsif ($rc eq "3")
 						{
-							AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The requested DRBD resource: [$resource] on node: [$node] isn't configured! Creation of meta-data failed.\n");
+							# Metadata creation failed.
+							$an->Log->entry({log_level => 1, message_key => "log_0169", message_variables => {
+								node     => $node, 
+								resource => $resource
+							}, file => $THIS_FILE, line => __LINE__});
 							$return_code = 6;
 						}
 					}
 					if ($line =~ /drbd meta data block successfully created/)
 					{
-						AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; DRBD meta-data created successfully!\n");
+						$an->Log->entry({log_level => 2, message_key => "log_0170", file => $THIS_FILE, line => __LINE__});
 						$return_code = 0;
 					}
 				}
@@ -8791,7 +9053,8 @@ sub get_partition_data_from_node
 			# disk. Ignore those.
 			if ((not $size) or ($size =~ /^0\./))
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Tiny free space, ignoring.\n");
+				# Small amount of space, ignore it.
+				$an->Log->entry({log_level => 2, message_key => "log_0172", file => $THIS_FILE, line => __LINE__});
 			}
 			
 			### NOTE: This will miss multiple sizable free chunks.
@@ -8885,11 +9148,15 @@ sub configure_storage_stage1
 		if (($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type}) && ($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type} eq "extended"))
 		{
 			# Already exists.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], disk: [$node1_pool1_disk], extended partition already exists.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0173", message_variables => {
+				node => $node1, 
+				disk => $node1_pool1_disk, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (($conf->{node}{$node1}{partition}{4}{type}) && ($conf->{node}{$node1}{partition}{4}{type} eq "extended"))
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Extended partition already exists.\n");
+			# Extended partition already exists
+			$an->Log->entry({log_level => 2, message_key => "log_0174", file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -8897,12 +9164,20 @@ sub configure_storage_stage1
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 			if ($rc eq "0")
 			{
+				# Failed
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to an extended partition on node: [$node1], disk: [$node1_pool1_disk].\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0175", message_variables => {
+					node => $node1, 
+					disk => $node1_pool1_disk, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created an extended partition on node: [$node1], disk: [$node1_pool1_disk].\n");
+				# Success. 
+				$an->Log->entry({log_level => 2, message_key => "log_0176", message_variables => {
+					node => $node1, 
+					disk => $node1_pool1_disk, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -8914,11 +9189,15 @@ sub configure_storage_stage1
 		if (($conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type}) && ($conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type} eq "extended"))
 		{
 			# Already exists.
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node2], disk: [$node2_pool1_disk], extended partition already exists.\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0173", message_variables => {
+				node => $node2, 
+				disk => $node2_pool1_disk, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (($conf->{node}{$node2}{partition}{4}{type}) && ($conf->{node}{$node2}{partition}{4}{type} eq "extended"))
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Extended partition already exists.\n");
+			# Extended partition already exists
+			$an->Log->entry({log_level => 2, message_key => "log_0174", file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -8926,12 +9205,20 @@ sub configure_storage_stage1
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 			if ($rc eq "0")
 			{
+				# Failed
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to create an extended partition on node: [$node2], disk: [$node2_pool1_disk].\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0175", message_variables => {
+					node => $node2, 
+					disk => $node2_pool1_disk, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Created an extended partition on node: [$node2], disk: [$node2_pool1_disk].\n");
+				# Success
+				$an->Log->entry({log_level => 2, message_key => "log_0176", message_variables => {
+					node => $node1, 
+					disk => $node1_pool1_disk, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -8955,17 +9242,32 @@ sub configure_storage_stage1
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 		if ($rc eq "0")
 		{
+			# Failed
 			$ok = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to a: [$node1_partition_type] partition for pool 1on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0177", message_variables => {
+				type    => $node1_partition_type, 
+				pool    => "1", 
+				node    => $node1, 
+				disk    => $node1_pool1_disk, 
+				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
 		{
+			# Succcess
 			$node1_pool1_created = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created a: [$node1_partition_type] partition for pool 1 on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0178", message_variables => {
+				type    => $node1_partition_type, 
+				pool    => "1", 
+				node    => $node1, 
+				disk    => $node1_pool1_disk, 
+				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Node 1, Pool 2.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")].\n");
 	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
 	{
 		if ($conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size})
@@ -8975,21 +9277,35 @@ sub configure_storage_stage1
 		}
 		else
 		{
-			### TODO: Determine if it's better to always make the size of
-			###       pool 2 "all".
-			# Create node 1, pool 1.
+			### TODO: Determine if it's better to always make the size of pool 2 "all".
+			# Create node 1, pool 2.
 			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_pool2_disk, $node1_partition_type, $conf->{cgi}{anvil_storage_pool2_byte_size});
-			#my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_pool2_disk, $node1_partition_type, "all");
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 			if ($rc eq "0")
 			{
+				# Failed
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to a: [$node1_partition_type] partition for pool 2 on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0177", message_variables => {
+					type    => $node1_partition_type, 
+					pool    => "2", 
+					node    => $node1, 
+					disk    => $node1_pool2_disk, 
+					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
 			{
+				# Succcess
 				$node1_pool2_created = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created a: [$node1_partition_type] partition for pool 2 on node: [$node2], disk: [$node2_pool2_disk], size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")].\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0178", message_variables => {
+					type    => $node1_partition_type, 
+					pool    => "2", 
+					node    => $node1, 
+					disk    => $node1_pool2_disk, 
+					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -9005,22 +9321,37 @@ sub configure_storage_stage1
 	}
 	else
 	{
-		# Create node 1, pool 1.
+		# Create node 2, pool 1.
 		my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool1_disk, $node2_partition_type, $conf->{cgi}{anvil_storage_pool1_byte_size});
 		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 		if ($rc eq "0")
 		{
+			# Failed
 			$ok = 0;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to a: [$node2_partition_type] partition for pool 1on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+			$an->Log->entry({log_level => 1, message_key => "log_0177", message_variables => {
+				type    => $node2_partition_type, 
+				pool    => "1", 
+				node    => $node2, 
+				disk    => $node2_pool1_disk, 
+				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
 		{
+			# Succcess
 			$node2_pool1_created = 1;
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created a: [$node2_partition_type] partition for pool 1 on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0178", message_variables => {
+				type    => $node2_partition_type, 
+				pool    => "1", 
+				node    => $node2, 
+				disk    => $node2_pool1_disk, 
+				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Node 2, Pool 2.
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")].\n");
 	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
 	{
 		if ($conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size})
@@ -9030,21 +9361,35 @@ sub configure_storage_stage1
 		}
 		else
 		{
-			### TODO: Determine if it's better to always make the size of
-			###       pool 2 "all".
-			# Create node 1, pool 1.
+			### TODO: Determine if it's better to always make the size of pool 2 "all".
+			# Create node 2, pool 2.
 			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool2_disk, $node2_partition_type, $conf->{cgi}{anvil_storage_pool2_byte_size});
-			#my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool2_disk, $node2_partition_type, "all");
 			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rc: [$rc].\n");
 			if ($rc eq "0")
 			{
+				# Failed
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to a: [$node2_partition_type] partition for pool 2 on node: [$node2], disk: [$node2_pool1_disk], size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")].\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0177", message_variables => {
+					type    => $node2_partition_type, 
+					pool    => "2", 
+					node    => $node2, 
+					disk    => $node2_pool2_disk, 
+					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
 			{
+				# Succcess
 				$node2_pool2_created = 1;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Successfully created a: [$node2_partition_type] partition for pool 2 on node: [$node2], disk: [$node2_pool2_disk], size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")].\n");
+				$an->Log->entry({log_level => 2, message_key => "log_0178", message_variables => {
+					type    => $node2_partition_type, 
+					pool    => "2", 
+					node    => $node2, 
+					disk    => $node2_pool2_disk, 
+					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -9726,7 +10071,6 @@ sub setup_drbd_on_node
 	}
 	
 	# r1.res
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")].\n");
 	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
 	{
 		if (not $conf->{node}{$node}{drbd_file}{r1})
@@ -9792,7 +10136,8 @@ sub register_with_rhn
 	
 	if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; User has skipped RHN checks.\n");
+		# User has skipped RHN check
+		$an->Log->entry({log_level => 2, message_key => "log_0179", file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
 	
@@ -10103,18 +10448,17 @@ sub summarize_build_plan
 	}
 	
 	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], node2: [$node2].\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1]: bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}]\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2]: bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}]\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}).")], cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}).")]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node1: [$node1], bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}]\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node2: [$node2], bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}]\n");
+	my $anvil_storage_partition_1_hr_size = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size});
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size}], anvil_storage_partition_1_hr_size: [$anvil_storage_partition_1_hr_size]\n");
 	if (not $conf->{cgi}{anvil_storage_partition_1_byte_size})
 	{
 		$conf->{cgi}{anvil_storage_partition_1_byte_size} = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_1_byte_size: [$conf->{cgi}{anvil_storage_partition_1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}).")] == cgi::anvil_media_library_byte_size: [$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")] + cgi::anvil_storage_pool1_byte_size: [$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")]\n");
 	}
 	if (not $conf->{cgi}{anvil_storage_partition_2_byte_size})
 	{
 		$conf->{cgi}{anvil_storage_partition_2_byte_size} = $conf->{cgi}{anvil_storage_pool2_byte_size};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_storage_partition_2_byte_size: [$conf->{cgi}{anvil_storage_partition_2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}).")] == cgi::anvil_storage_pool2_byte_size: [$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")]\n");
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-summary-and-confirm", {
 		form_file			=>	"/cgi-bin/striker",
@@ -10333,7 +10677,7 @@ sub configure_network_on_node
 	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn_link1\"\n\n";
 	   $udev_net_rules .= "# Internet-Facing Network, Link 2\n";
 	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn_link2\"\n";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_net_rules: \n====\n$udev_net_rules\n====\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_net_rules: [$udev_net_rules]\n");
 	
 	### Back-Channel Network
 	#$conf->{path}{nodes}{bcn_link1_config};
@@ -10484,7 +10828,7 @@ sub configure_network_on_node
 	   $udev_vnet_rules .= "# This calls '$conf->{path}{nodes}{'anvil-adjust-vnet'}' when a network devices are created.\n";
 	   $udev_vnet_rules .= "\n";
 	   $udev_vnet_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", RUN+=\"$conf->{path}{nodes}{'anvil-adjust-vnet'}\"\n";
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_vnet_rules: \n====\n$udev_vnet_rules\n====\n");
+	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; udev_vnet_rules: [$udev_vnet_rules]\n");
 	
 	### NOTE: If this changes, be sure to update the expected number of lines needed to determine if a 
 	###       reboot is needed! (search for '$lines < 13', about 500 lines down from here)
@@ -11013,14 +11357,20 @@ COMMIT";
 			if ($lines < 13)
 			{
 				# Reboot needed
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; iptables file has: [$lines]; node: [$node] Reboot needed.\n"); 
+				$an->Log->entry({log_level => 1, message_key => "log_0180", message_variables => {
+					node  => $node, 
+					lines => $lines, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{reboot_needed} = 1;
 				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node::${node}::reboot_needed: [$conf->{node}{$node}{reboot_needed}]\n"); 
 			}
 			else
 			{
 				# Reboot probably not needed.
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; iptables file has: [$lines]; node: [$node] Reboot NOT needed.\n"); 
+				$an->Log->entry({log_level => 1, message_key => "log_0181", message_variables => {
+					node  => $node, 
+					lines => $lines, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -11077,8 +11427,11 @@ COMMIT";
 	}
 	if (not $bridge_found)
 	{
+		# Reboot needed.
 		$conf->{node}{$node}{reboot_needed} = 1;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node] needs a reboot.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0182", message_variables => {
+			node => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -11311,7 +11664,7 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node1: [$node1]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], nic: [$nic], mac: [$mac].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link1_mac: [$conf->{cgi}{anvil_node1_bcn_link1_mac}].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_bcn_link2_mac: [$conf->{cgi}{anvil_node1_bcn_link2_mac}].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node1_sn_link1_mac:  [$conf->{cgi}{anvil_node1_sn_link1_mac}].\n");
@@ -11350,14 +11703,19 @@ sub map_network
 		}
 		else
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node1: [$node1]: nic: [$nic], mac: [$mac].\n");
+			# Unknown NIC.
+			$an->Log->entry({log_level => 1, message_key => "log_0183", message_variables => {
+				node => $node1, 
+				nic  => $nic, 
+				mac  => $mac, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{conf}{node}{$node1}{unknown_nic}{$nic} = $mac;
 		}
 	}
 	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Checking node2: [$node2]'s: nic: [$nic], mac: [$mac].\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node2], nic: [$nic], mac: [$mac].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link1_mac: [$conf->{cgi}{anvil_node2_bcn_link1_mac}].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_bcn_link2_mac: [$conf->{cgi}{anvil_node2_bcn_link2_mac}].\n");
 		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::anvil_node2_sn_link1_mac:  [$conf->{cgi}{anvil_node2_sn_link1_mac}].\n");
@@ -11396,7 +11754,12 @@ sub map_network
 		}
 		else
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Unrecognized interface; node2: [$node2]: nic: [$nic], mac: [$mac].\n");
+			# Unknown NIC
+			$an->Log->entry({log_level => 1, message_key => "log_0183", message_variables => {
+				node => $node2, 
+				nic  => $nic, 
+				mac  => $mac, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{conf}{node}{$node2}{unknown_nic}{$nic} = $mac;
 		}
 	}
@@ -11411,13 +11774,15 @@ sub map_network
 	if ((exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The ifn_bridge1 device exists on both nodes already, remap not needed.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Recording 'unknown' NICs for node: [$node].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
 			{
 				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
@@ -11428,7 +11793,7 @@ sub map_network
 	}
 	else
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node1: [$node1]'s interfaces to; bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node1], bcn_link1: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node1}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node1}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node1}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node1}{set_nic}{ifn_link2}].\n");
 		if ((not $conf->{conf}{node}{$node1}{set_nic}{bcn_link1}) || 
 		    (not $conf->{conf}{node}{$node1}{set_nic}{bcn_link2}) ||
 		    (not $conf->{conf}{node}{$node1}{set_nic}{sn_link1})  ||
@@ -11443,13 +11808,15 @@ sub map_network
 	if ((exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The ifn_bridge1 device exists on both nodes already, remap not needed.\n");
+		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Recording 'unknown' NICs for node: [$node].\n");
+			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
 			{
 				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
@@ -11460,7 +11827,7 @@ sub map_network
 	}
 	else
 	{
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Set node2: [$node2]'s interfaces to; bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node2], bcn_link1: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node2}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node2}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node2}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node2}{set_nic}{ifn_link2}].\n");
 		if ((not $conf->{conf}{node}{$node2}{set_nic}{bcn_link1}) || 
 		    (not $conf->{conf}{node}{$node2}{set_nic}{bcn_link2}) ||
 		    (not $conf->{conf}{node}{$node2}{set_nic}{sn_link1})  ||
@@ -11634,7 +12001,10 @@ fi";
 	elsif ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
 	{
 		# Invalid or broken SSH handle.
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; SSH File handle: [$conf->{node}{$node}{ssh_fh}] for node: [$node] doesn't exist, but it should. \n");
+		$an->Log->entry({log_level => 1, message_key => "log_0186", message_variables => {
+			node   => $node, 
+			ssh_fh => $conf->{node}{$node}{ssh_fh}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$return_code = 8;
 	}
 	else
@@ -11761,7 +12131,7 @@ fi";
 		$conf->{conf}{node}{$node}{set_nic}{sn_link2}  = $conf->{conf}{node}{$node}{current_nic}{sn_link2};
 		$conf->{conf}{node}{$node}{set_nic}{ifn_link1} = $conf->{conf}{node}{$node}{current_nic}{ifn_link1};
 		$conf->{conf}{node}{$node}{set_nic}{ifn_link2} = $conf->{conf}{node}{$node}{current_nic}{ifn_link2};
-		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]: bcn_link1: [$conf->{conf}{node}{$node}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node}{set_nic}{ifn_link2}]\n");
+		#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], bcn_link1: [$conf->{conf}{node}{$node}{set_nic}{bcn_link1}], bcn_link2: [$conf->{conf}{node}{$node}{set_nic}{bcn_link2}], sn_link1: [$conf->{conf}{node}{$node}{set_nic}{sn_link1}], sn_link2: [$conf->{conf}{node}{$node}{set_nic}{sn_link2}], ifn_link1: [$conf->{conf}{node}{$node}{set_nic}{ifn_link1}], ifn_link2: [$conf->{conf}{node}{$node}{set_nic}{ifn_link2}]\n");
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -11880,12 +12250,21 @@ sub install_missing_packages
 		# Watch for autovivication...
 		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
 		{
+			# Already installed
 			$conf->{packages}{to_install}{$package} = 1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] already installed.\n");
+			$an->Log->entry({log_level => 3, message_key => "log_0187", message_variables => {
+				node      => $node, 
+				'package' => $package, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] needed.\n");
+			# Needed
+			$conf->{packages}{to_install}{$package} = 1;
+			$an->Log->entry({log_level => 2, message_key => "log_0188", message_variables => {
+				node      => $node, 
+				'package' => $package, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$to_install .= "$package ";
 		}
 	}
@@ -11929,12 +12308,20 @@ sub install_missing_packages
 		# Watch for autovivication...
 		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
 		{
+			# Already installed
 			$conf->{packages}{to_install}{$package} = 1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] installed.\n");
+			$an->Log->entry({log_level => 3, message_key => "log_0187", message_variables => {
+				node      => $node, 
+				'package' => $package, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], package: [$package] missing.\n");
+			# Needed
+			$an->Log->entry({log_level => 2, message_key => "log_0188", message_variables => {
+				node      => $node, 
+				'package' => $package, 
+			}, file => $THIS_FILE, line => __LINE__});
 			$missing .= "$package ";
 		}
 	}
@@ -11991,12 +12378,18 @@ fi";
 			
 			if ($line eq "failed")
 			{
+				# Failed to delete the bridge.
 				$ok = 0;
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Failed to delete the 'virbr0' bridge.\n");
+				$an->Log->entry({log_level => 1, message_key => "log_0189", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line eq "bridge gone")
 			{
-				AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; The bridge 'virbr0' is gone.\n");
+				# Success
+				$an->Log->entry({log_level => 2, message_key => "log_0190", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
@@ -13788,7 +14181,7 @@ sub get_storage_pool_partitions
 		# If the disk to use is 'Xda', skip the first three partitions
 		# as they will be for the OS.
 		my $disk = $conf->{node}{$node}{biggest_disk};
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node]: disk: [$disk]\n");
+		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], disk: [$disk]\n");
 		
 		# Default to logical partitions.
 		my $create_extended_partition = 0;

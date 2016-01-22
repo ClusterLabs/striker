@@ -15,6 +15,10 @@
 #    is the fence master and use this node only to try and recover failed
 #    services.
 # 
+# TODO: 
+#  - Have it check 'virsh list' if any VM is listed as off in clustat and if the server is found, start it on
+#    the proper node. Editing <vm ... /> causes the server to be listed as off.
+# 
 
 # Use my modules.
 use strict;

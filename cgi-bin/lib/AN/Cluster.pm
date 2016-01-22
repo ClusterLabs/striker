@@ -10409,12 +10409,13 @@ sub comma
 	return ($return);
 }
 
-# This takes a raw number of bytes and returns a base-2 human-readible value.
-# Takes a raw number of bytes (whole integer).
+# This takes a raw number of bytes and returns a base-2 human-readible value. Takes a raw number of bytes 
+# (whole integer).
 sub bytes_to_hr
 {
 	my ($conf, $size) = @_;
-	my $an = $conf->{handle}{an};
+	my $an   = $conf->{handle}{an};
+	   $size = 0 if not defined $size;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "bytes_to_hr" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "size", value1 => $size, 
 	}, file => $THIS_FILE, line => __LINE__});
