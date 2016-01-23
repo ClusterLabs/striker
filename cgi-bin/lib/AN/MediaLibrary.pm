@@ -149,14 +149,23 @@ sub download_url
 			my $rate     = $3;
 			my $rate_suf = $4;
 			my $time     = $5;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent].\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "percent",      value1 => $percent,
+				name2 => "next percent", value2 => $next_percent,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($percent eq "100")
 			{
 				print AN::Common::template($conf, "media-library.html", "download-website-complete");
 			}
 			elsif ($percent >= $next_percent)
 			{
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; percent: [$percent], next percent: [$next_percent], received: [$received], rate: [$rate], time: [$time].\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+					name1 => "percent",      value1 => $percent,
+					name2 => "next percent", value2 => $next_percent,
+					name3 => "received",     value3 => $received,
+					name4 => "rate",         value4 => $rate,
+					name5 => "time",         value5 => $time,
+				}, file => $THIS_FILE, line => __LINE__});
 				# This prevents multiple prints when the file
 				# is partially downloaded.
 				while ($percent >= $next_percent)
@@ -165,7 +174,10 @@ sub download_url
 				}
 				$received        *= 1024;
 				my $say_received =  AN::Cluster::bytes_to_hr($conf, $received);
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; received: [$received] -> [$say_received]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "received",     value1 => $received,
+					name2 => "say_received", value2 => $say_received,
+				}, file => $THIS_FILE, line => __LINE__});
 				if (uc($rate_suf) eq "M")
 				{
 					$rate            =  int(($rate * (1024 * 1024)));
@@ -175,7 +187,10 @@ sub download_url
 					$rate            =  int(($rate * 1024));
 				}
 				my $say_rate     =  AN::Cluster::bytes_to_hr($conf, $rate);
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; rate: [$rate] -> [$say_rate]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "rate",     value1 => $rate,
+					name2 => "say_rate", value2 => $say_rate,
+				}, file => $THIS_FILE, line => __LINE__});
 				my $hours   = 0;
 				my $minutes = 0;
 				my $seconds = 0;
@@ -191,7 +206,12 @@ sub download_url
 				{
 					$seconds = $1;
 				}
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> h[$hours], m[$minutes], s[$seconds]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "time",    value1 => $time,
+					name2 => "hours",   value2 => $hours,
+					name3 => "minutes", value3 => $minutes,
+					name4 => "seconds", value4 => $seconds,
+				}, file => $THIS_FILE, line => __LINE__});
 				my $say_hour   = $hours   == 1 ? "#!string!suffix_0010!#" : "#!string!suffix_0011!#";
 				my $say_minute = $minutes == 1 ? "#!string!suffix_0012!#" : "#!string!suffix_0013!#";
 				my $say_second = $seconds == 1 ? "#!string!suffix_0014!#" : "#!string!suffix_0015!#";
@@ -229,7 +249,10 @@ sub download_url
 						say_second	=>	$say_minute,
 					}});
 				}
-				#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; time: [$time] -> [$say_time_remaining]\n");
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "time",               value1 => $time,
+					name2 => "say_time_remaining", value2 => $say_time_remaining,
+				}, file => $THIS_FILE, line => __LINE__});
 				my $say_progress = AN::Common::get_string($conf, {key => "message_0291", variables => {
 					percent		=>	$percent,
 					received	=>	$say_received,
@@ -307,8 +330,15 @@ sub save_file_to_disk
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
 	print AN::Common::template($conf, "media-library.html", "save-to-disk-header");
 	
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi_fh::file: [$conf->{cgi_fh}{file}], path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::media: [$conf->{path}{media}], cgi::file: [$conf->{cgi}{file}].\n");
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "cgi_fh::file", value1 => $conf->{cgi_fh}{file},
+		name2 => "path::media",  value2 => $conf->{path}{media},
+		name3 => "cgi::file",    value3 => $conf->{cgi}{file},
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "path::media", value1 => $conf->{path}{media},
+		name2 => "cgi::file",   value2 => $conf->{cgi}{file},
+	}, file => $THIS_FILE, line => __LINE__});
 	my $in_fh = $conf->{cgi_fh}{file};
 	
 	if (not $in_fh)
@@ -318,11 +348,13 @@ sub save_file_to_disk
 	}
 	else
 	{
-		# TODO: Make sure characters like spaces and whatnot don't need
-		#       to be escaped.
+		# TODO: Make sure characters like spaces and whatnot don't need to be escaped.
 		my $out_file =  "$conf->{path}{media}/$conf->{cgi}{file}";
 		$out_file    =~ s/\/\//\//g;
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Writing out_file: [$out_file] with cgi fh: [$in_fh].\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "out_file", value1 => $out_file,
+			name2 => "in_fh",    value2 => $in_fh,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		open (my $file_handle, ">", $out_file) or die "$THIS_FILE ".__LINE__."; Failed to open for writing: [$out_file], error was: $!\n";
 		binmode $file_handle;
@@ -373,7 +405,10 @@ sub image_and_upload
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($node) = AN::Cluster::read_files_on_shared($conf);
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; node: [$node], files::shared::${name}: [$conf->{files}{shared}{$name}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",                   value1 => $node,
+		name2 => "files::shared::${name}", value2 => $conf->{files}{shared}{$name},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $name)
 	{
 		# Tell the user that no name was given.
@@ -400,7 +435,11 @@ sub image_and_upload
 		# Now make sure the disc is still in the drive.
 		check_local_dvd($conf);
 		
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; drive::${dev}: [$conf->{drive}{$dev}], drive::${dev}::reload: [$conf->{drive}{$dev}{reload}], drive::${dev}::no_disc: [$conf->{drive}{$dev}{no_disc}]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "drive::${dev}",          value1 => $conf->{drive}{$dev},
+			name2 => "drive::${dev}::reload",  value2 => $conf->{drive}{$dev}{reload},
+			name3 => "drive::${dev}::no_disc", value3 => $conf->{drive}{$dev}{no_disc},
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not exists $conf->{drive}{$dev})
 		{
 			# The drive vanished.
@@ -571,24 +610,32 @@ sub upload_to_shared
 	else
 	{
 		my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "user",       value2 => $<,
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: This is a dumb way to check, try a test upload and
-		###       see if it fails.
+		### TODO: This is a dumb way to check, try a test upload and see if it fails.
 		if (-e $conf->{path}{expect})
 		{
-			#print "Creating 'expect' rsync wrapper.<br />";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Creating rsync wrapper.\n");
+			# Creating 'expect' rsync wrapper.
+			$an->Log->entry({log_level => 2, message_key => "log_0214", file => $THIS_FILE, line => __LINE__});
 			AN::Common::create_rsync_wrapper($conf, $node);
 			
 			$shell_call = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-			AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "user",       value2 => $<,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			print AN::Common::template($conf, "media-library.html", "image-and-upload-expect-not-found");
 		}
-		AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; Calling: [$shell_call] as user: [$<]\n");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "user",       value2 => $<,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $header_printed = 0;
 		my $no_key         = 0;
@@ -819,35 +866,47 @@ sub check_local_dvd
 		if ($line =~ /CD location\s+:\s+(.*)/i)
 		{
 			$dev = $1;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:device:$dev\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "dev", value1 => $dev,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /Volume\s+:\s+(.*)/i)
 		{
 			my $volume = $1;
 			$conf->{drive}{$dev}{volume} = $volume;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume:$volume\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive::${dev}::volume", value1 => $conf->{drive}{$dev}{volume},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /Volume Set\s+:\s+(.*)/i)
 		{
 			my $volume_set = $1;
 			$conf->{drive}{$dev}{volume_set} = $volume_set;
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:volume set:$volume_set\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive::${dev}::volume_set", value1 => $conf->{drive}{$dev}{volume_set},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /No medium found/i)
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:no-disc:true\n");
 			$conf->{drive}{$dev}{no_disc} = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive::${dev}::no_disc", value1 => $conf->{drive}{$dev}{no_disc},
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		elsif ($line =~ /unknown filesystem/i)
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:reload needed:true\n");
 			$conf->{drive}{$dev}{reload} = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "drive::${dev}::reload", value1 => $conf->{drive}{$dev}{reload},
+			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		else
 		{
-			#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cd-info:$line\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	$file_handle->close;
@@ -862,7 +921,9 @@ sub check_status
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; path::status: [$conf->{path}{status}]\n");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::status", value1 => $conf->{path}{status},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not -e $conf->{path}{status})
 	{
 		# Directory doesn't exist...
@@ -889,15 +950,14 @@ sub check_status
 	return (0);
 }
 
-# This tries to log into each node in the Anvil!. The first one it connects to
-# which has /shared/files mounted is the one it will use to up upload the ISO
-# and generate the list of available media. It also compiles a list of which 
-# VMs are on each node.
+# This tries to log into each node in the Anvil!. The first one it connects to which has /shared/files 
+# mounted is the one it will use to up upload the ISO and generate the list of available media. It also 
+# compiles a list of which  VMs are on each node.
 sub read_shared
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; In read_shared().\n");
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	check_status($conf);
 	
