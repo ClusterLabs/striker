@@ -102,13 +102,19 @@ AN::Cluster::get_cgi_vars($conf, [
 AN::Cluster::header($conf, "mediaLibrary");
 
 # Do I have a cluster name?
-#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cgi::cluster: [$conf->{cgi}{cluster}]\n");
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	name1 => "cgi::cluster", value1 => $conf->{cgi}{cluster},
+}, file => $THIS_FILE, line => __LINE__});
 if ($conf->{cgi}{cluster})
 {
 	my $cluster                 = $conf->{cgi}{cluster};
 	$conf->{sys}{root_password} = $conf->{clusters}{$cluster}{root_pw};
 	$conf->{nodes}              = $conf->{clusters}{$cluster}{nodes};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; nodes: [$conf->{nodes}], task: [$conf->{cgi}{task}], sys::root_password: [$conf->{sys}{root_password}]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "nodes",              value1 => $conf->{nodes},
+		name2 => "task",               value2 => $conf->{cgi}{task},
+		name3 => "sys::root_password", value3 => $conf->{sys}{root_password},
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{task})
 	{
 		$conf->{sys}{show_refresh} = 0;
