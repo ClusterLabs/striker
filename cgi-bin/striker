@@ -400,7 +400,12 @@ elsif ($conf->{cgi}{cluster})
 	my $cluster = $conf->{cgi}{cluster};
 	$conf->{sys}{root_password}           = $conf->{clusters}{$cluster}{root_pw};
 	$conf->{clusters}{$cluster}{ricci_pw} = $conf->{clusters}{$cluster}{root_pw} if not $conf->{clusters}{$cluster}{ricci_pw};
-	#AN::Cluster::record($conf, "$THIS_FILE ".__LINE__."; cluster: [$cluster], clusters::${cluster}::root_pw: [$conf->{clusters}{$cluster}{root_pw}], clusters::${cluster}::ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}], sys::root_password: [$conf->{sys}{root_password}]\n");
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0004", message_variables => {
+		name1 => "cluster",                        value1 => $cluster,
+		name2 => "clusters::${cluster}::root_pw",  value2 => $conf->{clusters}{$cluster}{root_pw},
+		name3 => "clusters::${cluster}::ricci_pw", value3 => $conf->{clusters}{$cluster}{ricci_pw},
+		name4 => "sys::root_password",             value4 => $conf->{sys}{root_password},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the requested cluster isn't found in the config file, error out.
 	if (not $conf->{clusters}{$cluster}{nodes})
@@ -425,7 +430,10 @@ elsif ($conf->{cgi}{cluster})
 		else
 		{
 			# Set the node list.
-			#AN::Cluster::record($conf, "cluster: [$cluster], ricci_pw: [$conf->{clusters}{$cluster}{ricci_pw}]\n");
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "cluster", value1 => $cluster,
+				name2 => "ricci_pw", value2 => $conf->{clusters}{$cluster}{ricci_pw},
+			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
 			AN::Cluster::scan_cluster($conf);
 			AN::Striker::display_details($conf);
