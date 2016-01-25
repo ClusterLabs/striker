@@ -10032,54 +10032,6 @@ sub read_files_on_shared
 	return ($connected);
 }
 
-# Record a message to the log file.
-sub record
-{
-	my ($conf, $message)=@_;
-	
-	my $file_handle = $conf->{handles}{'log'} ? $conf->{handles}{'log'} : "";
-	#print "[ Debug ] $THIS_FILE ".__LINE__."; - file_handle: [$file_handle]\n";
-	if (not $file_handle)
-	{
-		# Touch the file if it doesn't exist yet.
-		#print "<pre>[ Debug ] $THIS_FILE ".__LINE__."; - Checking if: [$conf->{path}{log_file}] is writable...</pre>\n";
-		if (not -w $conf->{path}{log_file})
-		{
-			# NOTE: The setuid '$conf->{path}{'touch_striker.log'}' is hard-coded to use 
-			#       '/var/log/striker.log'.
-			my $shell_call = $conf->{path}{'touch_striker.log'};
-			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-			binmode $file_handle, ":utf8:";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-			}
-			close $file_handle;
-			
-			if (not -w $conf->{path}{log_file})
-			{
-				exit(1);
-			}
-		}
-		
-		my $shell_call = $conf->{path}{log_file};
-		# I need to call 'IO::handle' here.
-		$file_handle = IO::Handle->new();
-		$file_handle->autoflush(1);
-		open ($file_handle, ">>", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-		binmode $file_handle, ":utf8:";
-		print $file_handle "======\nOpening Striker log at ".get_date($conf, time)."\n";
-		
-		# Store the handle.
-		$conf->{handles}{'log'} = $file_handle;
-	}
-	my $time = get_date($conf, time, 1);
-	print $file_handle "$time $message";
-	
-	return (0);
-}
-
 # This gathers details on the cluster.
 sub scan_cluster
 {

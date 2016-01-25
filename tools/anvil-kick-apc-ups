@@ -33,9 +33,8 @@
 use strict;
 use warnings;
 
-# IO::Handle is used for logging and communicating with the Raritan device
-# via the snmp command line tools. Net::SNMP is not used to do availability
-# issues with EL6.
+# IO::Handle is used for logging and communicating with the Raritan device via the snmp command line tools. 
+# Net::SNMP is not used to do availability issues with EL6.
 use IO::Handle;
 
 # Catch signals for clean exits.
@@ -43,12 +42,15 @@ $SIG{INT}  = \&_catch_sig;
 $SIG{TERM} = \&_catch_sig;
 
 # Some variables.
-my $THIS_FILE =  $0;
-   $THIS_FILE =~ s/^.*\///;
+my $THIS_FILE         = ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory = ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
 
-# These are the default values and will be over-written by the config file's
-# variables which in turn can, in some cases, be over-written by command line
-# arguments.
+# These are the default values and will be over-written by the config file's variables which in turn can, in
+# some cases, be over-written by command line arguments.
 my $conf = {
 	hosts		=>	{
 		by_name		=>	{},
@@ -405,9 +407,8 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			
 			if ($conf->{switches}{reboot})
 			{
-				### If the user has asked for a hard reboot, 
-				### set the power off delay and sleep time and
-				### then exit.
+				### If the user has asked for a hard reboot, set the power off delay and 
+				### sleep time and then exit.
 				
 				# Set the sleep time for the outlet groups.
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ]   - Setting the sleep timer to: [$conf->{sys}{apc}{reboot}{sleep_time}] seconds.");
@@ -1327,8 +1328,7 @@ sub logger
 {
 	my ($conf, $file, $line_number, $message) = @_;
 	
-	# We split on new-lines so that multi-line message render better in
-	# syslog.
+	# We split on new-lines so that multi-line message render better in syslog.
 	if (($message =~ /\[ Debug \]/i) && (not $conf->{sys}{debug}))
 	{
 		# User is suppressing debug messages.
