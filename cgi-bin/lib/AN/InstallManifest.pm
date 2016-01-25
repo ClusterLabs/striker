@@ -144,7 +144,7 @@ sub run_new_install_manifest
 		{
 			# Write the updated manifest and switch to using it.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> cgi::run", value1 => $conf->{cgi}{run},
+				name1 => "cgi::run", value1 => $conf->{cgi}{run},
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($target_url, $xml_file) = AN::Cluster::generate_install_manifest($conf);
 			print AN::Common::template($conf, "install-manifest.html", "manifest-created", {
@@ -158,7 +158,7 @@ sub run_new_install_manifest
 			});
 			$conf->{cgi}{run} = $xml_file;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "<< cgi::run", value1 => $conf->{cgi}{run},
+				name1 => "cgi::run", value1 => $conf->{cgi}{run},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -1386,7 +1386,7 @@ fi
 				if ($generated_ok)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Created Striker config", value1 => $conf->{path}{striker_config},
+						name1 => "path::striker_config", value1 => $conf->{path}{striker_config},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
@@ -1775,11 +1775,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_bcn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1789,11 +1789,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_bcn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1803,11 +1803,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_sn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1817,11 +1817,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_sn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1831,11 +1831,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_ifn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1845,11 +1845,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node1_ifn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node1; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1875,11 +1875,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_bcn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1889,11 +1889,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_bcn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1903,11 +1903,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_sn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1917,11 +1917,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_sn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1931,11 +1931,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_ifn_link1"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1945,11 +1945,11 @@ sub update_install_manifest
 					{
 						$save =  1;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => ">> node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						$line =~ s/mac=".*?"/mac="$node2_ifn_link2"/;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "<< node2; line", value1 => $line,
+							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -6356,13 +6356,13 @@ sub set_root_password
 	# Set the passwords on the nodes.
 	my $ok = 1;
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => ">> cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
+		name1 => "cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
 		name2 => "cgi::anvil_node2_current_password",    value2 => $conf->{cgi}{anvil_node2_current_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	($conf->{cgi}{anvil_node1_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "root", $conf->{cgi}{anvil_password});
 	($conf->{cgi}{anvil_node2_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "root", $conf->{cgi}{anvil_password});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "<< cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
+		name1 => "cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
 		name2 => "cgi::anvil_node2_current_password",    value2 => $conf->{cgi}{anvil_node2_current_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -8120,7 +8120,7 @@ fi";
 	foreach my $line (@{$return})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		last if $line =~ /not found/;
 		
@@ -8165,7 +8165,7 @@ fi";
 		}
 		# And record.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{lvm_conf} .= "$line\n";
 		if ($line eq "}")
@@ -8397,7 +8397,7 @@ sub do_node_reboot
 			my $wait         = 1;
 			my $rc           = 255;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => ">> time",      value1 => time,
+				name1 => "time",      value1 => time,
 				name2 => "give_up_time", value2 => $give_up_time,
 			}, file => $THIS_FILE, line => __LINE__});
 			while ($wait)
@@ -8876,11 +8876,11 @@ sub create_partition_on_node
 			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "snode", value1 => $node,
-			name2 => "disk",  value2 => $disk,
-			name3 => "type",  value3 => $type,
-			name4 => "start", value4 => "$start GiB",
-			name5 => "end",   value5 => "$end GiB",
+			name1 => "snode",       value1 => $node,
+			name2 => "disk",        value2 => $disk,
+			name3 => "type",        value3 => $type,
+			name4 => "start (GiB)", value4 => $start,
+			name5 => "end (GiB)",   value5 => $end,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = "parted -a opt /dev/$disk mkpart $type ${start}GiB ${use_end}GiB";
@@ -11851,13 +11851,13 @@ sub configure_network
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
+		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
 	}, file => $THIS_FILE, line => __LINE__});
 	$conf->{cgi}{anvil_bcn_ethtool_opts} =~ s/\$/\\\$/g;
 	$conf->{cgi}{anvil_sn_ethtool_opts}  =~ s/\$/\\\$/g;
 	$conf->{cgi}{anvil_ifn_ethtool_opts} =~ s/\$/\\\$/g;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
+		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
@@ -13951,7 +13951,7 @@ sub calculate_storage_pool_sizes
 			my $pool2_byte_size  = 0;
 			my $total_free_space = $smallest_free_size;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "total_free_space", value1 => "$total_free_space (".AN::Cluster::bytes_to_hr($conf, $total_free_space).")",
+				name1 => "total_free_space", value1 => $total_free_space,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Now to start calculating the requested sizes.
@@ -13968,7 +13968,7 @@ sub calculate_storage_pool_sizes
 				$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
 				$conf->{cgi}{anvil_storage_pool2_byte_size} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "All to pool 1; pool1_size", value1 => "$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")",
+					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -13978,11 +13978,11 @@ sub calculate_storage_pool_sizes
 				my $storage_pool2_byte_size = 0;
 				if ($storage_pool1_unit eq "%")
 				{
-					# Percentage, make sure there is at least 16 GiB free (8 GiB
-					# for each pool)
+					# Percentage, make sure there is at least 16 GiB free (8 GiB for each
+					# pool)
 					$minimum_space_needed += ($minimum_pool_size * 2);
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "minimum_space_needed", value1 => "$minimum_space_needed (".AN::Cluster::bytes_to_hr($conf, $minimum_space_needed).")",
+						name1 => "minimum_space_needed", value1 => $minimum_space_needed,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# If the new minimum is too big, dump pool 2.
@@ -13991,7 +13991,7 @@ sub calculate_storage_pool_sizes
 						$pool1_size = $smallest_free_size;
 						$pool2_size = 0;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "pool1_size", value1 => "$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")",
+							name1 => "pool1_size", value1 => $pool1_size,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -14000,8 +14000,8 @@ sub calculate_storage_pool_sizes
 					$storage_pool1_byte_size =  AN::Cluster::hr_to_bytes($conf, $storage_pool1_size, $storage_pool1_unit, 1);
 					$minimum_space_needed    += $storage_pool1_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "storage_pool1_byte_size", value1 => "$storage_pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $storage_pool1_byte_size).")",
-						name2 => "minimum_space_needed",    value2 => "$minimum_space_needed (".AN::Cluster::bytes_to_hr($conf, $minimum_space_needed).")",
+						name1 => "storage_pool1_byte_size", value1 => $storage_pool1_byte_size,
+						name2 => "minimum_space_needed",    value2 => $minimum_space_needed,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 
@@ -14009,11 +14009,11 @@ sub calculate_storage_pool_sizes
 				# for display in the summary/confirmation later.
 				# Make sure the storage pool is an even MiB.
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "media_library_byte_size", value1 => "$media_library_byte_size (".AN::Cluster::bytes_to_hr($conf, $media_library_byte_size).")",
+					name1 => "media_library_byte_size", value1 => $media_library_byte_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $media_library_difference = $media_library_byte_size % 1048576;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "media_library_difference", value1 => "$media_library_difference (".AN::Cluster::bytes_to_hr($conf, $media_library_difference).")",
+					name1 => "media_library_difference", value1 => $media_library_difference,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($media_library_difference)
 				{
@@ -14021,18 +14021,18 @@ sub calculate_storage_pool_sizes
 					my $media_library_balance   =  1048576 - $media_library_difference;
 					   $media_library_byte_size += $media_library_balance;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "media_library_byte_size", value1 => "$media_library_byte_size (".AN::Cluster::bytes_to_hr($conf, $media_library_byte_size).")",
-						name2 => "media_library_balance",   value2 => "$media_library_balance (".AN::Cluster::bytes_to_hr($conf, $media_library_balance).")",
+						name1 => "media_library_byte_size", value1 => $media_library_byte_size,
+						name2 => "media_library_balance",   value2 => $media_library_balance,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				$conf->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::anvil_media_library_byte_size", value1 => "$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")",
+					name1 => "cgi::anvil_media_library_byte_size", value1 => $conf->{cgi}{anvil_media_library_byte_size},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $free_space_left = $total_free_space - $media_library_byte_size;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "free_space_left", value1 => "$free_space_left (".AN::Cluster::bytes_to_hr($conf, $free_space_left).")",
+					name1 => "free_space_left", value1 => $free_space_left,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# If the user has asked for a percentage, divide the free space by the 
@@ -14040,34 +14040,36 @@ sub calculate_storage_pool_sizes
 				if ($storage_pool1_unit eq "%")
 				{
 					my $percent = $storage_pool1_size / 100;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "percent", value1 => "$percent ($storage_pool1_size $storage_pool1_unit)",
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "percent",            value1 => $percent, 
+						name2 => "storage_pool1_size", value2 => $storage_pool1_size, 
+						name3 => "storage_pool1_unit", value3 => $storage_pool1_unit, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Round up to the closest even MiB
 					$pool1_byte_size = $percent * $free_space_left;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => ">> pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					my $pool1_difference = $pool1_byte_size % 1048576;
 					if ($pool1_difference)
 					{
 						# Round up
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "pool1_difference", value1 => "$pool1_difference (".AN::Cluster::bytes_to_hr($conf, $pool1_difference).")",
+							name1 => "pool1_difference", value1 => $pool1_difference,
 						}, file => $THIS_FILE, line => __LINE__});
 						my $pool1_balance   =  1048576 - $pool1_difference;
 						   $pool1_byte_size += $pool1_balance;
 					}
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "<< pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Round down to the closest even MiB (left over space
 					# will be unallocated on disk)
 					my $pool2_byte_size = $free_space_left - $pool1_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => ">> pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($pool2_byte_size < 0)
 					{
@@ -14078,7 +14080,7 @@ sub calculate_storage_pool_sizes
 					{
 						my $pool2_difference = $pool2_byte_size % 1048576;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "pool2_difference", value1 => "$pool1_difference (".AN::Cluster::bytes_to_hr($conf, $pool1_difference).")",
+							name1 => "pool2_difference", value1 => $pool1_difference,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($pool2_difference)
 						{
@@ -14087,21 +14089,21 @@ sub calculate_storage_pool_sizes
 						}
 					}
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "<< pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Final sanity check; Add up the three calculated sizes and make sure
 					# I'm not trying to ask for more space than is available.
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "media_library_byte_size", value1 => "$media_library_byte_size (".AN::Cluster::bytes_to_hr($conf, $media_library_byte_size).")",
-						name2 => "pool1_byte_size",         value2 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
-						name3 => "pool2_byte_size",         value3 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "media_library_byte_size", value1 => $media_library_byte_size,
+						name2 => "pool1_byte_size",         value2 => $pool1_byte_size,
+						name3 => "pool2_byte_size",         value3 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					my $total_allocated = ($media_library_byte_size + $pool1_byte_size + $pool2_byte_size);
 					
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "total_allocated",  value1 => "$total_allocated (".AN::Cluster::bytes_to_hr($conf, $total_allocated).")",
-						name2 => "total_free_space", value2 => "$total_free_space (".AN::Cluster::bytes_to_hr($conf, $total_free_space).")",
+						name1 => "total_allocated",  value1 => $total_allocated,
+						name2 => "total_free_space", value2 => $total_free_space,
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($total_allocated > $total_free_space)
 					{
@@ -14116,7 +14118,7 @@ sub calculate_storage_pool_sizes
 							# Reduce!
 							$pool2_byte_size -= $too_much;
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => ">> pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+								name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 							}, file => $THIS_FILE, line => __LINE__});
 							my $pool2_difference =  $pool2_byte_size % 1048576;
 							if ($pool2_difference)
@@ -14129,7 +14131,7 @@ sub calculate_storage_pool_sizes
 								}
 							}
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "<< pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+								name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 						else
@@ -14137,7 +14139,7 @@ sub calculate_storage_pool_sizes
 							# Take the pound of flesh from pool 1
 							$pool1_byte_size -= $too_much;
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => ">> pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+								name1 => "pool1_byte_size", value1 => $pool1_byte_size,
 							}, file => $THIS_FILE, line => __LINE__});
 							my $pool1_difference =  $pool1_byte_size % 1048576;
 							if ($pool1_difference)
@@ -14150,20 +14152,20 @@ sub calculate_storage_pool_sizes
 								}
 							}
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "<< pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+								name1 => "pool1_byte_size", value1 => $pool1_byte_size,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 						
 						# Check again.
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-							name1 => "media_library_byte_size", value1 => "$media_library_byte_size (".AN::Cluster::bytes_to_hr($conf, $media_library_byte_size).")",
-							name2 => "pool1_byte_size",         value2 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
-							name3 => "pool2_byte_size",         value3 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+							name1 => "media_library_byte_size", value1 => $media_library_byte_size,
+							name2 => "pool1_byte_size",         value2 => $pool1_byte_size,
+							name3 => "pool2_byte_size",         value3 => $pool2_byte_size,
 						}, file => $THIS_FILE, line => __LINE__});
 						$total_allocated = ($media_library_byte_size + $pool1_byte_size + $pool2_byte_size);
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "total_allocated",  value1 => "$total_allocated (".AN::Cluster::bytes_to_hr($conf, $total_allocated).")",
-							name2 => "total_free_space", value2 => "$total_free_space (".AN::Cluster::bytes_to_hr($conf, $total_free_space).")",
+							name1 => "total_allocated",  value1 => $total_allocated,
+							name2 => "total_free_space", value2 => $total_free_space,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($total_allocated > $total_free_space)
 						{
@@ -14176,19 +14178,19 @@ sub calculate_storage_pool_sizes
 					$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
 					$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => "$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")",
-						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => "$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")",
+						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
+						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $conf->{cgi}{anvil_storage_pool2_byte_size},
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
-						name2 => "pool2_byte_size", value2 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,
+						name2 => "pool2_byte_size", value2 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					$pool1_size = $pool1_byte_size + $media_library_byte_size;
 					$pool2_size = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "pool1_size", value1 => "$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")",
-						name2 => "pool2_size", value2 => "$pool2_size (".AN::Cluster::bytes_to_hr($conf, $pool2_size).")",
+						name1 => "pool1_size", value1 => $pool1_size,
+						name2 => "pool2_size", value2 => $pool2_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
@@ -14196,19 +14198,19 @@ sub calculate_storage_pool_sizes
 					# Pool 1 is static, so simply round to an even MiB.
 					$pool1_byte_size = $storage_pool1_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => ">> pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					# If pool1's requested size is larger
-					# than is available, shrink it.
+					# If pool1's requested size is larger than is available, shrink it.
 					if ($pool1_byte_size > $free_space_left)
 					{
-						# Round down a meg, as the next
-						# stage will round up a bit if
+						# Round down a meg, as the next stage will round up a bit if 
 						# needed.
 						$pool1_byte_size = ($free_space_left - 1048576);
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "Requested pool 1 size was too big! Shrinking to; pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+						$an->Log->entry({log_level => 2, message_key => "log_0262", message_variables => {
+							pool         => "1", 
+							pool_size    => $pool1_byte_size, 
+							hr_pool_size => AN::Cluster::bytes_to_hr($conf, $pool1_byte_size), 
 						}, file => $THIS_FILE, line => __LINE__});
 						$conf->{sys}{pool1_shrunk} = 1;
 					}
@@ -14218,18 +14220,18 @@ sub calculate_storage_pool_sizes
 					{
 						# Round up
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "pool1_difference", value1 => "$pool1_difference (".AN::Cluster::bytes_to_hr($conf, $pool1_difference).")",
+							name1 => "pool1_difference", value1 => $pool1_difference,
 						}, file => $THIS_FILE, line => __LINE__});
 						my $pool1_balance   =  1048576 - $pool1_difference;
 						   $pool1_byte_size += $pool1_balance;
 					}
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "<< pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$pool2_byte_size = $free_space_left - $pool1_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => ">> pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($pool2_byte_size < 0)
 					{
@@ -14240,7 +14242,7 @@ sub calculate_storage_pool_sizes
 					{
 						my $pool2_difference = $pool2_byte_size % 1048576;
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "pool2_difference", value1 => "$pool1_difference (".AN::Cluster::bytes_to_hr($conf, $pool1_difference).")",
+							name1 => "pool2_difference", value1 => $pool1_difference,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($pool2_difference)
 						{
@@ -14249,29 +14251,29 @@ sub calculate_storage_pool_sizes
 						}
 					}
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "<< pool2_byte_size", value1 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
 					$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => "$conf->{cgi}{anvil_storage_pool1_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}).")",
-						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => "$conf->{cgi}{anvil_storage_pool2_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}).")",
+						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
+						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $conf->{cgi}{anvil_storage_pool2_byte_size},
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "pool1_byte_size", value1 => "$pool1_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool1_byte_size).")",
-						name2 => "pool2_byte_size", value2 => "$pool2_byte_size (".AN::Cluster::bytes_to_hr($conf, $pool2_byte_size).")",
+						name1 => "pool1_byte_size", value1 => $pool1_byte_size,
+						name2 => "pool2_byte_size", value2 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					$pool1_size = $pool1_byte_size + $media_library_byte_size;
 					$pool2_size = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "pool1_size", value1 => "$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")",
-						name2 => "pool2_size", value2 => "$pool2_size (".AN::Cluster::bytes_to_hr($conf, $pool2_size).")",
+						name1 => "pool1_size", value1 => $pool1_size,
+						name2 => "pool2_size", value2 => $pool2_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::anvil_media_library_byte_size", value1 => "$conf->{cgi}{anvil_media_library_byte_size} (".AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}).")",
+					name1 => "cgi::anvil_media_library_byte_size", value1 => $conf->{cgi}{anvil_media_library_byte_size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -14281,7 +14283,7 @@ sub calculate_storage_pool_sizes
 			# (or the lower of the two if they don't match.
 			$pool1_size = $smallest_free_size;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "pool1_size", value1 => "$pool1_size (".AN::Cluster::bytes_to_hr($conf, $pool1_size).")",
+				name1 => "pool1_size", value1 => $pool1_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($pool2_size eq "calculate")
@@ -14290,7 +14292,7 @@ sub calculate_storage_pool_sizes
 			# (or the lower of the two if they don't match.
 			$pool2_size = $smallest_free_size;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "pool2_size", value1 => "$pool2_size (".AN::Cluster::bytes_to_hr($conf, $pool2_size).")",
+				name1 => "pool2_size", value1 => $pool2_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -14829,11 +14831,11 @@ fi";
 				$conf->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-					name1 => "node",              value1 => $node,
-					name2 => "disk",              value2 => $disk,
-					name3 => "free space; start", value3 => $conf->{node}{$node}{disk}{$disk}{free_space}{start} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{free_space}{start})."),
-					name4 => "end",               value4 => $conf->{node}{$node}{disk}{$disk}{free_space}{end} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{free_space}{end})."),
-					name5 => "size",              value5 => $conf->{node}{$node}{disk}{$disk}{free_space}{size} (".AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{disk}{$disk}{free_space}{size})."),
+					name1 => "node",                                            value1 => $node,
+					name2 => "disk",                                            value2 => $disk,
+					name3 => "node::${node}::disk::${disk}::free_space::start", value3 => $conf->{node}{$node}{disk}{$disk}{free_space}{start},
+					name4 => "node::${node}::disk::${disk}::free_space::end",   value4 => $conf->{node}{$node}{disk}{$disk}{free_space}{end},
+					name5 => "node::${node}::disk::${disk}::free_space::size",  value5 => $conf->{node}{$node}{disk}{$disk}{free_space}{size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}

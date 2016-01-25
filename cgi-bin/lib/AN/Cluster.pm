@@ -946,8 +946,9 @@ sub write_new_striker_conf
 		{
 			my $domain = ($conf->{smtp}{username} =~ /.*@(.*)$/)[0];
 			$conf->{mail_data}{sending_domain} = $domain if $domain;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "mail_data::sending_domain", value1 => "$conf->{mail_data}{sending_domain}]: domain: [$domain",
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "mail_data::sending_domain", value1 => $conf->{mail_data}{sending_domain},
+				name2 => "domain",                    value2 => $domain,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -1073,8 +1074,9 @@ sub read_hosts
 					$conf->{hosts}{by_ip}{$this_ip} = [];
 				}
 				push @{$conf->{hosts}{by_ip}{$this_ip}}, $this_host;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "Added this_host", value1 => "$this_host] to array: [$conf->{hosts}{by_ip}{$this_ip}",
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "this_host",              value1 => $this_host, 
+					name2 => "hosts::by_ip::$this_ip", value2 => $conf->{hosts}{by_ip}{$this_ip},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1253,11 +1255,9 @@ sub write_new_ssh_config
 		next if not $conf->{hosts}{$this_host}{port};
 		print $file_handle "Host $this_host\n";
 		print $file_handle "\tPort $conf->{hosts}{$this_host}{port}\n\n";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< ssh_config line", value1 => Host $this_host,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< ssh_config line", value1 => \tPort $conf->{hosts}{$this_host}{port},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_hostline",             value1 => $this_host,
+			name2 => "hosts::${this_host}::port", value2 => $conf->{hosts}{$this_host}{port},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
@@ -1394,15 +1394,17 @@ sub save_dashboard_configure
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Write out the new config file.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Backing up", value1 => "$conf->{path}{config_file}] to: [$conf->{path}{home}/archive/striker.conf.$date",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "path::config_file",                        value1 => $conf->{path}{config_file},
+			name2 => "path::home::/archive/striker.conf.\$date", value2 => "$conf->{path}{home}/archive/striker.conf.$date",
 		}, file => $THIS_FILE, line => __LINE__});
 		copy_file($conf, $conf->{path}{config_file}, "$conf->{path}{home}/archive/striker.conf.$date");
 		write_new_striker_conf($conf, $say_date);
 		
 		# Write out the 'hosts' file.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Backing up", value1 => "$conf->{path}{hosts}] to: [$conf->{path}{home}/archive/hosts.$date",
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "path::hosts",                     value1 => $conf->{path}{hosts},
+			name2 => "path::home/archive/hosts.\$date", value2 => "$conf->{path}{home}/archive/hosts.$date",
 		}, file => $THIS_FILE, line => __LINE__});
 		copy_file($conf, $conf->{path}{hosts}, "$conf->{path}{home}/archive/hosts.$date");
 		write_new_hosts($conf, $say_date);
@@ -4567,8 +4569,10 @@ sub load_install_manifest
 				else
 				{
 					# What's this?
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Extra element in node", value1 => "$node]'s install manifest file: [$file]; a: [$a",
+					$an->Log->entry({log_level => 2, message_key => "log_0261", message_variables => {
+						node    => $node, 
+						file    => $file, 
+						element => $b, 
 					}, file => $THIS_FILE, line => __LINE__});
 					foreach my $b (@{$data->{node}{$node}{$a}})
 					{
@@ -4745,8 +4749,9 @@ sub load_install_manifest
 								my $name = $d->{name};
 								my $on   = $d->{on};
 								$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on} = $on ? $on : "";
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-									name1 => "Bridge; name", value1 => "$name] on: [$conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on}",
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+									name1 => "name",                                                            value1 => $name, 
+									name2 => "install_manifest::${file}::common::network::bridge::${name}::on", value2 => $conf->{install_manifest}{$file}{common}{network}{bridge}{$name}{on},
 								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
@@ -4941,7 +4946,7 @@ sub load_install_manifest
 					my $keysize = $a->{$b}->[0]->{keysize};
 					$conf->{install_manifest}{$file}{common}{ssh}{keysize} = $keysize ? $keysize : "";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "SSH keysize", value1 => "$conf->{install_manifest}{$file}{common}{ssh}{keysize} bytes",
+						name1 => "install_manifest::${file}::common::ssh::keysize", value1 => $conf->{install_manifest}{$file}{common}{ssh}{keysize},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($b eq "storage_pool_1")
@@ -5465,9 +5470,9 @@ sub load_install_manifest
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-							name1 => "node",         value1 => $node,
-							name2 => "fence method", value2 => "$method ($i)",
-							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+							name1 => "node",                                                                       value1 => $node,
+							name2 => "fence method",                                                               value2 => $method, 
+							name3 => "fence::node::${node}::order::${i}::method::${method}::device::${j}::string", value3 => $conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string},
 						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
@@ -5509,9 +5514,9 @@ sub load_install_manifest
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-							name1 => "node",         value1 => $node,
-							name2 => "fence method", value2 => "$method ($i)",
-							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+							name1 => "node",                                                                       value1 => $node,
+							name2 => "fence method",                                                               value2 => $method,
+							name3 => "fence::node::${node}::order::${i}::method::${method}::device::${j}::string", value3 => $conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string},
 						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
@@ -5552,9 +5557,9 @@ sub load_install_manifest
 						$string =~ s/\s+/ /g;
 						$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} = $string;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-							name1 => "node",         value1 => $node,
-							name2 => "fence method", value2 => "$method ($i)",
-							name3 => "string",       value3 => "$conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string} ($j)",
+							name1 => "node",                                                                       value1 => $node,
+							name2 => "fence method",                                                               value2 => $method,
+							name3 => "fence::node::${node}::order::${i}::method::${method}::device::${j}::string", value3 => $conf->{fence}{node}{$node}{order}{$i}{method}{$method}{device}{$j}{string},
 						}, file => $THIS_FILE, line => __LINE__});
 						$j++;
 					}
@@ -11171,324 +11176,6 @@ sub get_hostname
 	return($hostname);
 }
 
-# This calls the target machine and runs a command.
-sub remote_call
-{
-	my ($conf, $parameters) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remote_call" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "parameters->{password}", value1 => $parameters->{password},
-		name2 => "sys::root_password",     value2 => $conf->{sys}{root_password},
-	}, file => $THIS_FILE, line => __LINE__});
-	my $cluster    = $conf->{cgi}{cluster};
-	my $node       = $parameters->{node};
-	my $port       = $parameters->{port}             ? $parameters->{port}     : 22;
-	my $user       = $parameters->{user}             ? $parameters->{user}     : "root";
-	my $password   = $parameters->{password}         ? $parameters->{password} : $conf->{sys}{root_password};
-	my $ssh_fh     = $parameters->{ssh_fh}           ? $parameters->{ssh_fh}   : "";
-	my $close      = defined $parameters->{'close'}  ? $parameters->{'close'}  : 1;
-	my $shell_call = $parameters->{shell_call};
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0008", message_variables => {
-		name1 => "cluster",    value1 => $cluster,
-		name2 => "node",       value2 => $node,
-		name3 => "port",       value3 => $port,
-		name4 => "user",       value4 => $user,
-		name5 => "password",   value5 => $password,
-		name6 => "ssh_fh",     value6 => $ssh_fh,
-		name7 => "close",      value7 => $close,
-		name8 => "shell_call", value8 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "node",       value1 => $node,
-		name2 => "ssh_fh",     value2 => $ssh_fh,
-		name3 => "close",      value3 => $close,
-		name4 => "shell_call", value4 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO: Make this a better looking error.
-	if (not $node)
-	{
-		# No node...
-		my $say_error = AN::Common::get_string($conf, {key => "message_0274", variables => {
-				shell_call	=>	$shell_call,
-			}});
-		error($conf, "$say_error\n");
-	}
-	
-	# Break out the port, if needed.
-	my $state;
-	my $error;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($node =~ /^(.*):(\d+)$/)
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => ">> node", value1 => $node,
-			name2 => "port",    value2 => $port,
-		}, file => $THIS_FILE, line => __LINE__});
-		$node = $1;
-		$port = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "<< node", value1 => $node,
-			name2 => "port",    value2 => $port,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($port < 0) || ($port > 65536))
-		{
-			# Variables for 'message_0373'.
-			$error = AN::Common::get_string($conf, {key => "message_0373", variables => {
-				node	=>	"$node",
-				port	=>	"$port",
-			}});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "error", value1 => $error,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	else
-	{
-		# In case the user is using ports in /etc/ssh/ssh_config, we'll want to check for an entry.
-		$an->Log->entry({log_level => 3, message_key => "log_0020", message_variables => {
-			file => $conf->{path}{ssh_config}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		read_ssh_config($conf);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "hosts::${node}::port", value1 => $conf->{hosts}{$node}{port},
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{hosts}{$node}{port})
-		{
-			$port = $conf->{hosts}{$node}{port};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "port", value1 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# These will be merged into a single 'output' array before returning.
-	my $stdout_output = [];
-	my $stderr_output = [];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ssh_fh", value1 => $ssh_fh,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($ssh_fh !~ /^Net::SSH2/)
-	{
-		$an->Log->entry({log_level => 3, message_key => "log_0032", message_variables => {
-			user => $user, 
-			node => $node, 
-			port => $port, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$ssh_fh = Net::SSH2->new();
-		if (not $ssh_fh->connect($node, $port, Timeout => 10))
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "error", value1 => $@,
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($@ =~ /Bad hostname/)
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0038", variables => {
-					node	=>	$node,
-				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($@ =~ /Connection refused/)
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0039", variables => {
-					node	=>	$node,
-					port	=>	$port,
-					user	=>	$user,
-				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($@ =~ /No route to host/)
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0040", variables => {
-					node	=>	$node,
-				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($@ =~ /timeout/)
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0041", variables => {
-					node	=>	$node,
-				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0042", variables => {
-					node	=>	$node,
-					error	=>	$@,
-				}});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "error",  value1 => $error,
-			name2 => "ssh_fh", value2 => $ssh_fh,
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $error)
-		{
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-				name1 => "user",     value1 => $user,
-				name2 => "password", value2 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $ssh_fh->auth_password($user, $password)) 
-			{
-				$error = AN::Common::get_string($conf, {key => "message_0043"});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "error", value1 => $error,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "SSH session opened to", value1 => $node,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	### Special thanks to Rafael Kitover (rkitover@gmail.com), maintainer
-	### of Net::SSH2, for helping me sort out the polling and data
-	### collection in this section.
-	#
-	# Open a channel and make the call.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "error",  value1 => $error,
-		name2 => "ssh_fh", value2 => $ssh_fh,
-	}, file => $THIS_FILE, line => __LINE__});
-	if (($ssh_fh =~ /^Net::SSH2/) && (not $error))
-	{
-		# We need to open a channel every time for 'exec' calls. We
-		# want to keep blocking off, but we need to enable it for the
-		# channel() call.
-		$ssh_fh->blocking(1);
-		my $channel = $ssh_fh->channel();
-		$ssh_fh->blocking(0);
-		
-		# Make the shell call
-		if (not $channel)
-		{
-			$error  = "Failed to establish channel to node: [$node] for shell call: [$shell_call]\n";
-			$ssh_fh = "";
-		}
-		else
-		{
-			### NOTE: This will duplicate most shell calls log entries
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-			}, file => $THIS_FILE, line => __LINE__});
-			$channel->exec("$shell_call");
-			
-			# This keeps the connection open when the remote side is slow
-			# to return data, like in '/etc/init.d/rgmanager stop'.
-			my @poll = {
-				handle => $channel,
-				events => [qw/in err/],
-			};
-			
-			# We'll store the STDOUT and STDERR data here.
-			my $stdout = "";
-			my $stderr = "";
-			
-			# Not collect the data.
-			while(1)
-			{
-				$ssh_fh->poll(250, \@poll);
-				
-				# Read in anything from STDOUT
-				while($channel->read(my $chunk, 80))
-				{
-					$stdout .= $chunk;
-				}
-				while ($stdout =~ s/^(.*)\n//)
-				{
-					my $line = $1;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "STDOUT", value1 => $line,
-					}, file => $THIS_FILE, line => __LINE__});
-					push @{$stdout_output}, $line;
-				}
-				
-				# Read in anything from STDERR
-				while($channel->read(my $chunk, 80, 1))
-				{
-					$stderr .= $chunk;
-				}
-				while ($stderr =~ s/^(.*)\n//)
-				{
-					my $line = $1;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "STDERR", value1 => $line,
-					}, file => $THIS_FILE, line => __LINE__});
-					push @{$stderr_output}, $line;
-				}
-				
-				# Exit when we get the end-of-file.
-				last if $channel->eof;
-			}
-			if ($stdout)
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "stdout", value1 => $stdout,
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$stdout_output}, $stdout;
-			}
-			if ($stderr)
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "stderr", value1 => $stderr,
-				}, file => $THIS_FILE, line => __LINE__});
-				push @{$stderr_output}, $stderr;
-			}
-		}
-	}
-	
-	# Merge the STDOUT and STDERR
-	my $output = [];
-	
-	foreach my $line (@{$stderr_output}, @{$stdout_output})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "Merge; line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$output}, $line;
-	}
-	
-	# Close the connection if requested.
-	if ($close)
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "Disconnecting from", value1 => $node,
-		}, file => $THIS_FILE, line => __LINE__});
-		$ssh_fh->disconnect() if $ssh_fh;
-		
-		# For good measure, blank both variables.
-		$conf->{node}{$node}{ssh_fh} = "";
-		$ssh_fh                      = "";
-	}
-	
-	$error = "" if not defined $error;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "error",  value1 => $error,
-		name2 => "ssh_fh", value2 => $ssh_fh,
-		name3 => "output", value3 => "$output (".@{$output}." lines)",
-	}, file => $THIS_FILE, line => __LINE__});
-	return($error, $ssh_fh, $output);
-}
-
 # This parses the node's /etc/hosts file so that it can pull out the IPs for anything matching the node's 
 # short name and record it in the local cache.
 sub parse_hosts
@@ -12109,10 +11796,12 @@ sub parse_proc_drbd
 			$conf->{node}{$node}{drbd}{builder}    = $2;
 			$conf->{node}{$node}{drbd}{build_date} = $3;
 			$conf->{node}{$node}{drbd}{build_time} = $4;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "Node",          value1 => $node,
-				name2 => "DRBD git hash", value2 => $conf->{node}{$node}{drbd}{git_hash},
-				name3 => "build by",      value3 => "$conf->{node}{$node}{drbd}{builder}] on: [$conf->{node}{$node}{drbd}{build_date}] at: [$conf->{node}{$node}{drbd}{build_time}",
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "node",                            value1 => $node,
+				name2 => "node::${node}::drbd::git_hash",   value2 => $conf->{node}{$node}{drbd}{git_hash},
+				name3 => "node::${node}::drbd::builder",    value3 => $conf->{node}{$node}{drbd}{builder},
+				name4 => "node::${node}::drbd::build_date", value4 => $conf->{node}{$node}{drbd}{build_date},
+				name5 => "node::${node}::drbd::build_time", value5 => $conf->{node}{$node}{drbd}{build_time},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -12133,10 +11822,10 @@ sub parse_proc_drbd
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-					name1 => "== node",          value1 => $node,
-					name2 => "resource",         value2 => $resource,
-					name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
-					name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+					name1 => "node",                                                         value1 => $node,
+					name2 => "resource",                                                     value2 => $resource,
+					name3 => "node::${node}::drbd::resource::${resource}::minor_number",     value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+					name4 => "node::${node}::drbd::resource::${resource}::connection_state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
 				}, file => $THIS_FILE, line => __LINE__});
 				   
 				$conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     = $minor_number;
@@ -12154,16 +11843,16 @@ sub parse_proc_drbd
 					name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-					name1  => "node",     value1  => $node,
-					name2  => "resource", value2  => $resource,
-					name3  => "minor",    value3  => $minor_number,
-					name4  => "cs",       value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
-					name5  => "my ro",    value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_role},
-					name6  => "peer ro",  value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_role},
-					name7  => "my ds",    value7  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state},
-					name8  => "peer ds",  value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state},
-					name9  => "protocol", value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol},
-					name10 => "io flags", value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{io_flags},
+					name1  => "node",                                                         value1  => $node,
+					name2  => "resource",                                                     value2  => $resource,
+					name3  => "minor_number",                                                 value3  => $minor_number,
+					name4  => "node::${node}::drbd::resource::${resource}::connection_state", value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+					name5  => "node::${node}::drbd::resource::${resource}::my_role",          value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_role},
+					name6  => "node::${node}::drbd::resource::${resource}::peer_role",        value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_role},
+					name7  => "node::${node}::drbd::resource::${resource}::my_disk_state",    value7  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_disk_state},
+					name8  => "node::${node}::drbd::resource::${resource}::peer_disk_state",  value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state},
+					name9  => "node::${node}::drbd::resource::${resource}::drbd_protocol",    value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol},
+					name10 => "node::${node}::drbd::resource::${resource}::io_flags",         value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{io_flags},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
@@ -12201,21 +11890,11 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{write_order}             = $write_order;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{out_of_sync}             = hr_to_bytes($conf, $out_of_sync, "KiB", 1);
 				
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
-					name1  => "node",         value1  => $node,
-					name2  => "resource",     value2  => $resource,
-					name3  => "minor",        value3  => $minor_number,
-					name4  => "network sent", value4  => "$conf->{node}{$node}{drbd}{resource}{$resource}{network_sent} bytes",
-					name5  => "",             value5  => ,
-					name6  => "",             value6  => ,
-					name7  => "",             value7  => ,
-					name8  => "",             value8  => ,
-					name9  => "",             value9  => ,
-					name10 => "",             value10 => ,
-					name11 => "",             value11 => ,
-					name12 => "",             value12 => ,
-					name13 => "",             value13 => ,
-					name14 => "",             value14 => ,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "node",                                                     value1 => $node,
+					name2 => "resource",                                                 value2 => $resource,
+					name3 => "minor_number",                                             value3 => $minor_number,
+					name4 => "node::${node}::drbd::resource::${resource}::network_sent", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{network_sent},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -12230,10 +11909,10 @@ sub parse_proc_drbd
 					$conf->{node}{$node}{drbd}{resource}{$resource}{syncing}        = 1;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced} = $percent_synced;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-						name1 => "node",           value1 => $node,
-						name2 => "resource",       value2 => $resource,
-						name3 => "minor",          value3 => $minor_number,
-						name4 => "percent synced", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced},
+						name1 => "node",                                                       value1 => $node,
+						name2 => "resource",                                                   value2 => $resource,
+						name3 => "minor_number",                                               value3 => $minor_number,
+						name4 => "node::${node}::drbd::resource::${resource}::percent_synced", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /\((\d+)\/(\d+)\)M/)
@@ -12245,11 +11924,11 @@ sub parse_proc_drbd
 					$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync}  = hr_to_bytes($conf, $left_to_sync, "MiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} = hr_to_bytes($conf, $total_to_sync, "MiB", 1);
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-						name1 => "node",          value1 => $node,
-						name2 => "resource",      value2 => $resource,
-						name3 => "minor",         value3 => $minor_number,
-						name4 => "left to sync",  value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync} bytes",
-						name5 => "total to sync", value5 => "$conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync} bytes",
+						name1 => "node",                                                      value1 => $node,
+						name2 => "resource",                                                  value2 => $resource,
+						name3 => "minor_number",                                              value3 => $minor_number,
+						name4 => "node::${node}::drbd::resource::${resource}::left_to_sync",  value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{left_to_sync},
+						name5 => "node::${node}::drbd::resource::${resource}::total_to_sync", value5 => $conf->{node}{$node}{drbd}{resource}{$resource}{total_to_sync},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /finish: (\d+):(\d+):(\d+)/)
@@ -12260,10 +11939,13 @@ sub parse_proc_drbd
 					$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
 					
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-						name1 => "node",        value1 => $node,
-						name2 => "resource",    value2 => $resource,
-						name3 => "minor",       value3 => $minor_number,
-						name4 => "eta to sync", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync} seconds ($hours:$minutes:$seconds)",
+						name1 => "node",                                                    value1 => $node,
+						name2 => "resource",                                                value2 => $resource,
+						name3 => "minor_number",                                            value3 => $minor_number,
+						name4 => "node::${node}::drbd::resource::${resource}::eta_to_sync", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{eta_to_sync}, 
+						name5 => "hours",                                                   value5 => $hours, 
+						name6 => "minutes",                                                 value6 => $minutes, 
+						name7 => "seconds",                                                 value7 => $seconds,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /speed: (.*?) \((.*?)\)/)
@@ -12275,11 +11957,11 @@ sub parse_proc_drbd
 					$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} = hr_to_bytes($conf, $current_speed, "KiB", 1);
 					$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} = hr_to_bytes($conf, $average_speed, "KiB", 1);
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-						name1 => "node",          value1 => $node,
-						name2 => "resource",      value2 => $resource,
-						name3 => "minor",         value3 => $minor_number,
-						name4 => "current_speed", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{current_speed} bytes/sec",
-						name5 => "average_speed", value5 => "$conf->{node}{$node}{drbd}{resource}{$resource}{average_speed} bytes/sec",
+						name1 => "node",                                                      value1 => $node,
+						name2 => "resource",                                                  value2 => $resource,
+						name3 => "minor_number",                                              value3 => $minor_number,
+						name4 => "node::${node}::drbd::resource::${resource}::current_speed", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{current_speed},
+						name5 => "node::${node}::drbd::resource::${resource}::average_speed", value5 => $conf->{node}{$node}{drbd}{resource}{$resource}{average_speed},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($line =~ /want: (.*?) K/)
@@ -12289,10 +11971,10 @@ sub parse_proc_drbd
 					   $want_speed =~ s/,//g;
 					$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} = hr_to_bytes($conf, $want_speed, "KiB", 1);
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-						name1 => "node",       value1 => $node,
-						name2 => "resource",   value2 => $resource,
-						name3 => "minor",      value3 => $minor_number,
-						name4 => "want_speed", value4 => "$conf->{node}{$node}{drbd}{resource}{$resource}{want_speed} bytes",
+						name1 => "node",                                                   value1 => $node,
+						name2 => "resource",                                               value2 => $resource,
+						name3 => "minor_number",                                           value3 => $minor_number,
+						name4 => "node::${node}::drbd::resource::${resource}::want_speed", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{want_speed},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -12303,10 +11985,10 @@ sub parse_proc_drbd
 	{
 		next if not $resource;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "-- node",          value1 => $node,
-			name2 => "resource",         value2 => $resource,
-			name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
-			name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+			name1 => "node",                                                         value1 => $node,
+			name2 => "resource",                                                     value2 => $resource,
+			name3 => "node::${node}::drbd::resource::${resource}::minor_number",     value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+			name4 => "node::${node}::drbd::resource::${resource}::connection_state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$conf->{drbd}{$resource}{node}{$node}{minor}            = $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     ? $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number}     : "--";
@@ -12316,14 +11998,14 @@ sub parse_proc_drbd
 		$conf->{drbd}{$resource}{node}{$node}{device}           = $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      ? $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device}      : "--";
 		$conf->{drbd}{$resource}{node}{$node}{resync_percent}   = $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   ? $conf->{node}{$node}{drbd}{resource}{$resource}{percent_synced}   : "--";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-			name1 => "node",             value1 => $node,
-			name2 => "resource",         value2 => $resource,
-			name3 => "minor",            value3 => $conf->{drbd}{$resource}{node}{$node}{minor},
-			name4 => "connection state", value4 => $conf->{drbd}{$resource}{node}{$node}{connection_state},
-			name5 => "role",             value5 => $conf->{drbd}{$resource}{node}{$node}{role},
-			name6 => "disk_state",       value6 => $conf->{drbd}{$resource}{node}{$node}{device},
-			name7 => "device",           value7 => $conf->{drbd}{$resource}{node}{$node}{device},
-			name8 => "resync percent",   value8 => $conf->{drbd}{$resource}{node}{$node}{resync_percent},
+			name1 => "node",                                               value1 => $node,
+			name2 => "resource",                                           value2 => $resource,
+			name3 => "drbd::${resource}::node::${node}::minor",            value3 => $conf->{drbd}{$resource}{node}{$node}{minor},
+			name4 => "drbd::${resource}::node::${node}::connection_state", value4 => $conf->{drbd}{$resource}{node}{$node}{connection_state},
+			name5 => "drbd::${resource}::node::${node}::role",             value5 => $conf->{drbd}{$resource}{node}{$node}{role},
+			name6 => "drbd::${resource}::node::${node}::disk_state",       value6 => $conf->{drbd}{$resource}{node}{$node}{disk_state},
+			name7 => "drbd::${resource}::node::${node}::device",           value7 => $conf->{drbd}{$resource}{node}{$node}{device},
+			name8 => "drbd::${resource}::node::${node}::resync_percent",   value8 => $conf->{drbd}{$resource}{node}{$node}{resync_percent},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -12754,38 +12436,37 @@ sub parse_clustat
 				$host = "none" if not $host;
 				$conf->{vm}{$vm}{host}    = $host;
 				$conf->{vm}{$vm}{'state'} = $state;
-				# TODO: If the state is "failed", call 
-				# 'virsh list --all' against both nodes. If the
-				# VM is found, try to recover the service.
+				# TODO: If the state is "failed", call 'virsh list --all' against both nodes.
+				#       If the VM is found, try to recover the service.
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-					name1 => "node",  value1 => $node,
-					name2 => "vm",    value2 => $vm,
-					name3 => "host",  value3 => $conf->{vm}{$vm}{host},
-					name4 => "state", value4 => $conf->{vm}{$vm}{'state'},
+					name1 => "node",             value1 => $node,
+					name2 => "vm",               value2 => $vm,
+					name3 => "vm::${vm}::host",  value3 => $conf->{vm}{$vm}{host},
+					name4 => "vm::${vm}::state", value4 => $conf->{vm}{$vm}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Pick out who the peer node is.
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "node", value1 => $node,
-					name2 => "host", value2 => $host,
-					name3 => "me",   value3 => $conf->{node}{$node}{me}{name},
+					name1 => "node",                    value1 => $node,
+					name2 => "host",                    value2 => $host,
+					name3 => "node::${node}::me::name", value3 => $conf->{node}{$node}{me}{name},
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($host eq $conf->{node}{$node}{me}{name})
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{peer}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "node", value1 => $node,
-						name2 => "vm",   value2 => $vm,
-						name3 => "peer", value3 => $conf->{vm}{$vm}{peer},
+						name1 => "node",            value1 => $node,
+						name2 => "vm",              value2 => $vm,
+						name3 => "vm::${vm}::peer", value3 => $conf->{vm}{$vm}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
 					$conf->{vm}{$vm}{peer} = $conf->{node}{$node}{me}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "node", value1 => $node,
-						name2 => "vm",   value2 => $vm,
-						name3 => "peer", value3 => $conf->{vm}{$vm}{peer},
+						name1 => "node",            value1 => $node,
+						name2 => "vm",              value2 => $vm,
+						name3 => "vm::${vm}::peer", value3 => $conf->{vm}{$vm}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -12794,10 +12475,9 @@ sub parse_clustat
 				my $name  = $1;
 				my $host  = $2;
 				my $state = $3;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "node", value1 => "$node] - service name: [$name",
-					name2 => "",     value2 => ,
-					name3 => "",     value3 => ,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "name", value2 => $name,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($state eq "failed")
@@ -12852,17 +12532,15 @@ sub parse_clustat
 					}
 				}
 				
-				# If the service is disabled, it will 
-				# have '()' which I need to remove.
+				# If the service is disabled, it will have '()' which I need to remove.
 				$host =~ s/\(//g;
 				$host =~ s/\)//g;
 				
 				$conf->{service}{$name}{host}    = $host;
 				$conf->{service}{$name}{'state'} = $state;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "node", value1 => "$node] - service name: [$name",
-					name2 => "",     value2 => ,
-					name3 => "",     value3 => ,
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node, 
+					name2 => "name", value2 => $name, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -13066,17 +12744,19 @@ sub parse_cluster_conf
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login}           = $login;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password}        = $password;
 			$conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password_script} = $password_script;
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0010", message_variables => {
-				name1  => "node",            value1  => $this_node,
-				name2  => "method",          value2  => $in_method,
-				name3  => "method count",    value3  => $device_count,
-				name4  => "name",            value4  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
-				name5  => "port",            value5  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
-				name6  => "action",          value6  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
-				name7  => "address",         value7  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address},
-				name8  => "login",           value8  => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login},
-				name9  => "password",        value9  => length($conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password})." characters long",
-				name10 => "password_script", value10 => $password_script,
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+				name1 => "node",                                                                              value1 => $this_node,
+				name2 => "method",                                                                            value2 => $in_method,
+				name3 => "method count",                                                                      value3 => $device_count,
+				name4 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::name",    value4 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
+				name5 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::port",    value5 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
+				name6 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::action",  value6 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
+				name7 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::address", value7 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{address},
+				name8 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::login",   value8 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{login},
+				name9 => "password_script",                                                                   value9 => $password_script,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::password", value1 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password},
 			}, file => $THIS_FILE, line => __LINE__});
 			$device_count++;
 		}
@@ -13181,12 +12861,12 @@ sub parse_cluster_conf
 			{
 				#$fence_command .= " [$device_count]";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-					name1 => "this node",    value1 => $this_node,
-					name2 => "method",       value2 => $in_method,
-					name3 => "method count", value3 => $device_count,
-					name4 => "name",         value4 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
-					name5 => "port",         value5 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
-					name6 => "action",       value6 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
+					name1 => "this node",                                                                        value1 => $this_node,
+					name2 => "method",                                                                           value2 => $in_method,
+					name3 => "method count",                                                                     value3 => $device_count,
+					name4 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::name",   value4 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{name},
+					name5 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::port",   value5 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{port},
+					name6 => "node::${this_node}::fence::method::${in_method}::device::${device_count}::action", value6 => $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{action},
 				}, file => $THIS_FILE, line => __LINE__});
 				#Find the matching fence device entry.
 				foreach my $name (sort {$a cmp $b} keys %{$conf->{fence}})
@@ -13219,10 +12899,9 @@ sub parse_cluster_conf
 							$password_script = $conf->{node}{$this_node}{fence}{method}{$in_method}{device}{$device_count}{password_script};
 						}
 						
-						# If we have a password script but no password, we
-						# need to call the script and record the output 
-						# because we probably don't have the script on the
-						# dashboard.
+						# If we have a password script but no password, we need to 
+						# call the script and record the output because we probably 
+						# don't have the script on the dashboard.
 						if (($password_script) && (not $password))
 						{
 							# Convert the script to a password.
@@ -13260,14 +12939,15 @@ sub parse_cluster_conf
 						   $command =~ s/ $//;
 						$conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command} = $command;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "node",          value1 => $this_node,
-							name2 => "fence command", value2 => $conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command},
+							name1 => "node",                                                                             value1 => $this_node,
+							name2 => "node::${this_node}::fence_method::${in_method}::device::${device_count}::command", value2 => $conf->{node}{$this_node}{fence_method}{$in_method}{device}{$device_count}{command},
 						}, file => $THIS_FILE, line => __LINE__});
 						if (($agent eq "fence_ipmilan") || ($agent eq "fence_virsh"))
 						{
 							$conf->{node}{$this_node}{info}{power_check_command} = $command;
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => "node", value1 => "$this_node]: power check command: [$conf->{node}{$this_node}{info}{power_check_command}",
+								name1 => "this_node",                                     value1 => $this_node, 
+								name2 => "node::${this_node}::info::power_check_command", value2 => $conf->{node}{$this_node}{info}{power_check_command},
 							}, file => $THIS_FILE, line => __LINE__});
 						}
 						$fence_command .= "$command -o #!action!#; ";
