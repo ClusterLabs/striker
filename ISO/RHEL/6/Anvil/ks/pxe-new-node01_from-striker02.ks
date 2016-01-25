@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2016-01-24 19:50:59
+# Built:   2016-01-24 21:12:08
 # Target:  Network Install (PXE)
 # OS:      RHEL
 # Machine: Anvil! Node #01
@@ -119,7 +119,7 @@ chmod 755 /sbin/striker/anvil-map-network
 
 ### TEMPORARY (Remove once https://bugzilla.redhat.com/show_bug.cgi?id=1285921 has a new resource-agents RPM).
 echo "Downloading 'vm.sh'."
-curl http://10.20.4.2/rhel6/x86_64/img/Dashboard/dashboard-master/vm.sh > /root/vm.sh
+curl http://10.20.4.2/rhel6/x86_64/img/Tools/vm.sh > /root/vm.sh
 chown root:root /root/vm.sh
 chmod 755 /root/vm.sh
 
