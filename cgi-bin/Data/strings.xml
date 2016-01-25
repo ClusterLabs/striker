@@ -1951,8 +1951,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0177">Failed to a: [#!variable!type!#] partition for pool #!variable!pool!# on node: [#!variable!node!#], disk: [#!variable!disk!#], size: [#!variable!size!# (#!variable!hr_size!#)].</key>
 		<key name="log_0178">Successfully created a: [#!variable!type!#] partition for pool #!variable!pool!# on node: [#!variable!node!#], disk: [#!variable!disk!#], size: [#!variable!size!# (#!variable!hr_size!#)].</key>
 		<key name="log_0179">The user has skipped RHN checks.</key>
-		<key name="log_0180">The iptables file has: [#!variables!lines!#] on node: [#!variable!node!#]. Reboot needed.</key>
-		<key name="log_0181">The iptables file has: [#!variables!lines!#] on node: [#!variable!node!#]. Reboot NOT needed.</key>
+		<key name="log_0180">The iptables file has: [#!variable!lines!#] on node: [#!variable!node!#]. Reboot needed.</key>
+		<key name="log_0181">The iptables file has: [#!variable!lines!#] on node: [#!variable!node!#]. Reboot NOT needed.</key>
 		<key name="log_0182">The node: [#!variable!node!#] needs to reboot.</key>
 		<key name="log_0183">Unrecognized interface on node: [#!variable!node!#]: nic: [#!variable!nic!#], mac: [#!variable!mac!#].</key>
 		<key name="log_0184">The ifn_bridge1 device exists on both nodes already, remap not needed.</key>
@@ -2397,8 +2397,8 @@ Deadline Scheduler Configuration (sda):
 		<!-- errors -->
 		<key name="aft_error_0001"><![CDATA[Must be called with '--location </path/to/test/output>'.]]></key>
 		<key name="aft_error_0002"><![CDATA[The '--loops X' switch must be set to an integer.]]></key>
-		<key name="aft_error_0003"><![CDATA[The 'storcli64' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
-		<key name="aft_error_0004"><![CDATA[The 'fio' program appears to not be installed. Expected it to be at: [#!variables!path!#].]]></key>
+		<key name="aft_error_0003"><![CDATA[The 'storcli64' program appears to not be installed. Expected it to be at: [#!variable!path!#].]]></key>
+		<key name="aft_error_0004"><![CDATA[The 'fio' program appears to not be installed. Expected it to be at: [#!variable!path!#].]]></key>
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 		
