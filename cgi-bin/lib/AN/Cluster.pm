@@ -1123,14 +1123,14 @@ sub read_ssh_config
 		# top of the file when I rewrite this.
 		next if $line =~ /^### Last updated: /;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$conf->{raw}{ssh_config}}, $line;
 		$line =~ s/#.*$//;
 		$line =~ s/\s+$//;
 		next if not $line;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^host (.*)/i)
@@ -1218,7 +1218,7 @@ sub write_new_ssh_config
 		next if $line =~ /$say_date_header/;
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> ssh_config line", value1 => $line,
+			name1 => "ssh_config line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		last if ($line =~ /^Host\s+(.*)$/);
 		last if ($line =~ /^###############/);
@@ -2261,8 +2261,7 @@ ls $backup_file";
 	return(0);
 }
 
-# This offers an option for the user to either download the current config or
-# upload a past backup.
+# This offers an option for the user to either download the current config or upload a past backup.
 sub show_archive_options
 {
 	my ($conf) = @_;
@@ -2279,8 +2278,8 @@ sub show_archive_options
 	return(0);
 }
 
-# This gathers up the config files into a single bzip2 file and returns a URL
-# where the user can click to download.
+# This gathers up the config files into a single bzip2 file and returns a URL where the user can click to 
+# download.
 sub create_backup_file
 {
 	my ($conf) = @_;
@@ -2302,7 +2301,9 @@ sub create_backup_file
 	opendir(DIRECTORY, $manifest_directory);
 	while(my $file = readdir(DIRECTORY))
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		next if $file eq ".";
+		next if $file eq "..";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "file", value1 => $file,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($file =~ /^install-manifest_(.*?).xml$/)
@@ -2333,7 +2334,7 @@ sub create_backup_file
 		$config_data .= "<!-- end $file -->\n\n";
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "config_data", value1 => \n$config_data,
+		name1 => "config_data", value1 => $config_data,
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Modify the backup file and URL file names to insert this dashboard's hostname.
@@ -2358,8 +2359,8 @@ sub create_backup_file
 	return(0);
 }
 
-# This checks the user's uploaded file and, if it is a valid backup file, uses
-# it's data to overwrite the existing config files.
+# This checks the user's uploaded file and, if it is a valid backup file, uses it's data to overwrite the 
+# existing config files.
 sub load_backup_configuration
 {
 	my ($conf) = @_;
@@ -2468,13 +2469,13 @@ sub load_backup_configuration
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "striker.conf contents", value1 => \n$striker_conf,
+		name1 => "striker.conf contents", value1 => $striker_conf,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "hosts contents", value1 => \n$hosts,
+		name1 => "hosts contents", value1 => $hosts,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ssh_config contents", value1 => \n$ssh_config,
+		name1 => "ssh_config contents", value1 => $ssh_config,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($striker_conf) && ($hosts) && ($ssh_config))
 	{
@@ -4524,14 +4525,14 @@ sub load_install_manifest
 						# it so that nodes with IPMI
 						# v1.5 don't spazz out.
 						$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-							name1 => ">> password", value1 => $password,
+							name1 => "password", value1 => $password,
 							name2 => "length",      value2 => length($password),
 						}, file => $THIS_FILE, line => __LINE__});
 						if (length($password) > 16)
 						{
 							$password = substr($password, 0, 16);
 							$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-								name1 => "<< password", value1 => $password,
+								name1 => "password", value1 => $password,
 								name2 => "length",      value2 => length($password),
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -4916,14 +4917,14 @@ sub load_install_manifest
 						# If the password is more than 16 characters long, truncate
 						# it so that nodes with IPMI v1.5 don't spazz out.
 						$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-							name1 => ">> install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
+							name1 => "install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
 							name2 => "length",                                                             value2 => ".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}).",
 						}, file => $THIS_FILE, line => __LINE__});
 						if (length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}) > 16)
 						{
 							$conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password} = substr($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}, 0, 16);
 							$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-								name1 => "<< install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
+								name1 => "install_manifest::${file}::common::ipmi::${reference}::password", value1 => $conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password},
 								name2 => "length",                                                             value2 => ".length($conf->{install_manifest}{$file}{common}{ipmi}{$reference}{password}).",
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -5962,25 +5963,25 @@ sub generate_install_manifest
 	
 	### Setup the DRBD lines.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+		name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+		name1 => "cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+		name1 => "cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+		name1 => "cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
+		name1 => "cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+		name1 => "cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		name1 => "cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 	}, file => $THIS_FILE, line => __LINE__});
 	# Standardize
 	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($conf->{cgi}{'anvil_drbd_disk_disk-barrier'});
@@ -6001,25 +6002,25 @@ sub generate_install_manifest
 	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
 	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
+		name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
+		name1 => "cgi::anvil_drbd_disk_disk-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
+		name1 => "cgi::anvil_drbd_disk_md-flushes", value1 => $conf->{cgi}{'anvil_drbd_disk_md-flushes'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
+		name1 => "cgi::anvil_drbd_options_cpu-mask", value1 => $conf->{cgi}{'anvil_drbd_options_cpu-mask'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
+		name1 => "cgi::anvil_drbd_net_max-buffers", value1 => $conf->{cgi}{'anvil_drbd_net_max-buffers'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
+		name1 => "cgi::anvil_drbd_net_sndbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		name1 => "cgi::anvil_drbd_net_rcvbuf-size", value1 => $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Get the node and dashboard UUIDs if not yet set.
@@ -8083,15 +8084,16 @@ sub configure_dashboard
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::save", value1 => $conf->{cgi}{save},
 		name2 => "cgi::task", value2 => $conf->{cgi}{task},
 	}, file => $THIS_FILE, line => __LINE__});
+	my $show_global = 1;
 	if ($conf->{cgi}{save})
 	{
 		save_dashboard_configure($conf);
@@ -8103,6 +8105,7 @@ sub configure_dashboard
 	elsif ($conf->{cgi}{task} eq "archive")
 	{
 		show_archive_options($conf);
+		$show_global = 0;
 	}
 	elsif ($conf->{cgi}{task} eq "load_config")
 	{
@@ -8123,7 +8126,7 @@ sub configure_dashboard
 	});
 	
 	# If showing an Anvil!, display it's details first.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::anvil", value1 => $conf->{cgi}{anvil},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{anvil})
@@ -8134,11 +8137,11 @@ sub configure_dashboard
 	else
 	{
 		# Show the global header only. We'll show the settings in a minute.
-		show_global_config_header($conf);
+		show_global_config_header($conf) if $show_global;
 	}
 	
 	# Show the common options (whether global or anvil-specific will have been sorted out above.
-	show_common_config_section($conf);
+	show_common_config_section($conf) if $show_global;
 	
 	my $say_section = "global";
 	if ($conf->{cgi}{anvil})
@@ -8168,7 +8171,7 @@ sub convert_text_to_html
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => ">> string", value1 => $string,
+		name1 => "string", value1 => $string,
 	}, file => $THIS_FILE, line => __LINE__});
 	$string =~ s/;/&#59;/g;		# Semi-colon - Must be first!  \
 	$string =~ s/&/&amp;/g;		# Ampersand - Must be second!  |- These three are used in other escape codes
@@ -8315,7 +8318,7 @@ sub convert_text_to_html
 	$string =~ s/#!br!#/<br \/>/g;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< string", value1 => $string,
+		name1 => "string", value1 => $string,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($string);
 }
@@ -9664,7 +9667,7 @@ sub get_cgi_vars
 {
 	my ($conf, $vars) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_cgi_vars" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cgi_vars" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "vars", value1 => $vars, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -10145,41 +10148,41 @@ sub post_scan_calculations
 		# the max cores and max ram is 0 or greater than that on this
 		# node.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => ">> node",               value1 => $node,
-			name2 => "res. total RAM",        value2 => $conf->{resources}{total_ram},
-			name3 => "hardware total memory", value3 => $conf->{node}{$node}{hardware}{total_memory},
+			name1 => "node",                                  value1 => $node,
+			name2 => "resources::total_ram",                  value2 => $conf->{resources}{total_ram},
+			name3 => "node::${node}::hardware::total_memory", value3 => $conf->{node}{$node}{hardware}{total_memory},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_ram}) || ($conf->{node}{$node}{hardware}{total_memory} < $conf->{resources}{total_ram}))
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{total_memory};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "node",           value1 => $node,
-				name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+				name1 => "node",                 value1 => $node,
+				name2 => "resources::total_ram", value2 => $conf->{resources}{total_ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "<< node",        value1 => $node,
-			name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+			name1 => "node",                 value1 => $node,
+			name2 => "resources::total_ram", value2 => $conf->{resources}{total_ram},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Set by meminfo, if less (needed to catch mirrored RAM)
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",                 value1 => $node,
-			name2 => "meminfo total memory", value2 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
+			name1 => "node",                                       value1 => $node,
+			name2 => "node::${node}::hardware::meminfo::memtotal", value2 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{node}{$node}{hardware}{meminfo}{memtotal} < $conf->{resources}{total_ram})
 		{
 			$conf->{resources}{total_ram} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "node",           value1 => $node,
-				name2 => "res. total RAM", value2 => $conf->{resources}{total_ram},
+				name1 => "node",                 value1 => $node,
+				name2 => "resources::total_ram", value2 => $conf->{resources}{total_ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node",                      value1 => $node,
-			name2 => "res. total cores",          value2 => $conf->{resources}{total_cores},
-			name3 => "hardware total node cores", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
+			name1 => "node",                                      value1 => $node,
+			name2 => "resources::total_cores",                    value2 => $conf->{resources}{total_cores},
+			name3 => "node::${node}::hardware::total_node_cores", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_cores}) || ($conf->{node}{$node}{hardware}{total_node_cores} < $conf->{resources}{total_cores}))
 		{
@@ -10192,7 +10195,7 @@ sub post_scan_calculations
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",                        value1 => $node,
 			name2 => "res. total threads",          value2 => $conf->{resources}{total_threads},
-			name3 => "hardware total node threads", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
+			name3 => "node::${node}::hardware::total_node_cores", value3 => $conf->{node}{$node}{hardware}{total_node_cores},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{resources}{total_threads}) || ($conf->{node}{$node}{hardware}{total_node_threads} < $conf->{resources}{total_threads}))
 		{
@@ -10286,17 +10289,17 @@ sub post_node_calculations
 	
 	# If I have no $conf->{node}{$node}{hardware}{total_memory} value, use the 'meminfo' size.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "node",                  value1 => $node,
-		name2 => "hardware total memory", value2 => $conf->{node}{$node}{hardware}{total_memory},
-		name3 => "meminfo total memory",  value3 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
+		name1 => "node",                                       value1 => $node,
+		name2 => "node::${node}::hardware::total_memory",      value2 => $conf->{node}{$node}{hardware}{total_memory},
+		name3 => "node::${node}::hardware::meminfo::memtotal", value3 => $conf->{node}{$node}{hardware}{meminfo}{memtotal},
 	}, file => $THIS_FILE, line => __LINE__});
 	#if ((not $conf->{node}{$node}{hardware}{total_memory}) || ($conf->{node}{$node}{hardware}{total_memory} > $conf->{node}{$node}{hardware}{meminfo}{memtotal}))
 	if (not $conf->{node}{$node}{hardware}{total_memory})
 	{
 		$conf->{node}{$node}{hardware}{total_memory} = $conf->{node}{$node}{hardware}{meminfo}{memtotal};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node",         value1 => $node,
-			name2 => "total memory", value2 => $conf->{node}{$node}{hardware}{total_memory},
+			name1 => "node",                                  value1 => $node,
+			name2 => "node::${node}::hardware::total_memory", value2 => $conf->{node}{$node}{hardware}{total_memory},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -10334,13 +10337,13 @@ sub comma
 	# Split on the left-most period.
 	my ($whole, $decimal) = split/\./, $number, 2;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => ">> whole", value1 => $whole,
+		name1 => "whole", value1 => $whole,
 		name2 => "decimal",  value2 => $decimal,
 	}, file => $THIS_FILE, line => __LINE__});
 	$whole   = "" if not defined $whole;
 	$decimal = "" if not defined $decimal;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "<< whole", value1 => $whole,
+		name1 => "whole", value1 => $whole,
 		name2 => "decimal",  value2 => $decimal,
 	}, file => $THIS_FILE, line => __LINE__});
 
@@ -10361,7 +10364,7 @@ sub comma
 	my $return = $decimal ? "$whole.$decimal" : $whole;
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "<< comma(); number", value1 => $number,
+		name1 => "comma(); number", value1 => $number,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($return);
 }
@@ -10468,12 +10471,12 @@ sub bytes_to_hr
 		### TODO: I don't know why, but $hr_size is being set to "" 
 		###       when comma() returns 0. Fix this.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> bytes_to_hr; hr_size", value1 => $hr_size,
+			name1 => "bytes_to_hr; hr_size", value1 => $hr_size,
 		}, file => $THIS_FILE, line => __LINE__});
 		$hr_size = comma($conf, $hr_size);
 		$hr_size = 0 if $hr_size eq "";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< bytes_to_hr; hr_size", value1 => $hr_size,
+			name1 => "bytes_to_hr; hr_size", value1 => $hr_size,
 		}, file => $THIS_FILE, line => __LINE__});
 		$suffix  = AN::Common::get_string($conf, {key => "suffix_0009"});
 	}
@@ -10602,7 +10605,7 @@ sub hr_to_bytes
 	if ($use_base2)
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "<< type", value1 => "$type], size:  [$size",
+			name1 => "type", value1 => "$type], size:  [$size",
 		}, file => $THIS_FILE, line => __LINE__});
 		if ( $type eq "y" ) { $bytes=Math::BigInt->new('2')->bpow('80')->bmul($size); }		# Yobibyte
 		elsif ( $type eq "z" ) { $bytes=Math::BigInt->new('2')->bpow('70')->bmul($size); }	# Zibibyte
@@ -10613,7 +10616,7 @@ sub hr_to_bytes
 		elsif ( $type eq "m" ) { $bytes=($size*(2**20)) }					# Mebibyte
 		elsif ( $type eq "k" ) { $bytes=($size*(2**10)) }					# Kibibyte
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => ">> type", value1 => $type,
+			name1 => "type", value1 => $type,
 			name2 => "bytes",   value2 => $bytes,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -11439,10 +11442,10 @@ sub parse_dmidecode
 	$conf->{node}{$node}{hardware}{total_node_threads} = 0;
 	$conf->{node}{$node}{hardware}{total_memory}       = 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "node",          value1 => $node,
-		name2 => "total cores",   value2 => $conf->{node}{$node}{hardware}{total_node_cores},
-		name3 => "total threads", value3 => $conf->{node}{$node}{hardware}{total_node_threads},
-		name4 => "total memory",  value4 => $conf->{node}{$node}{hardware}{total_memory},
+		name1 => "node",                                        value1 => $node,
+		name2 => "node::${node}::hardware::total_node_cores",   value2 => $conf->{node}{$node}{hardware}{total_node_cores},
+		name3 => "node::${node}::hardware::total_node_threads", value3 => $conf->{node}{$node}{hardware}{total_node_threads},
+		name4 => "node::${node}::hardware::total_memory",       value4 => $conf->{node}{$node}{hardware}{total_memory},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# These will be set to the lowest available RAM, and CPU core
@@ -11776,7 +11779,7 @@ sub parse_proc_drbd
 			last;
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> line", value1 => $line,
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -11808,7 +11811,7 @@ sub parse_proc_drbd
 		{
 			# This is just for hash key consistency
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => ">> line", value1 => $line,
+				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
 			{
@@ -13764,11 +13767,11 @@ sub on_same_network
 				# Convert the power check command's address to
 				# use the raw IP.
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "> node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+					name1 => "node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
 				}, file => $THIS_FILE, line => __LINE__});
 				$conf->{node}{$node}{info}{power_check_command} =~ s/-a (.*?) /-a $target_ip /;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "< node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+					name1 => "node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else

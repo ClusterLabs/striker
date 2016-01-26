@@ -1772,7 +1772,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="lsi_0045">Clear foreign configurations</key>
 		
 		<!-- Log messages -->
-		<key name="log_0001">Log opened on #!variable!date!# at #!variable!time!#.</key>
+		<key name="log_0001">===] Log opened on #!variable!date!# at #!variable!time!#. [===</key>
 		<key name="log_0002">Deleted or empty #!string!brand_0004!#.</key>
 		<key name="log_0003">The #!string!brand_0004!# was deleted, no more sanity checks needed.</key>
 		<key name="log_0004">ID used already.</key>
