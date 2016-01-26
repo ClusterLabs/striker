@@ -554,6 +554,7 @@ sub remote_call
 				while ($stdout =~ s/^(.*)\n//)
 				{
 					my $line = $1;
+					   $line =~ s/\r//g;	# Remove \r from things like output of daemon start/stops.
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "STDOUT line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});

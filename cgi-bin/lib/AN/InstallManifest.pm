@@ -111,7 +111,7 @@ sub run_new_install_manifest
 		'perl-Net-SSH2'			=>	0,
 		'perl-XML-Simple'		=>	0,
 		'policycoreutils-python'	=>	0,
-		postgresql94			=>	0,
+		postgresql95			=>	0,
 		postfix				=>	0,
 		'python-virtinst'		=>	0,
 		rgmanager			=>	0,
@@ -868,13 +868,13 @@ then
     echo \"copying fixed vm.sh to /usr/share/cluster/\"
     if [ -e '/usr/share/cluster/vm.sh' ];
     then
-        if [ -e '/usr/share/cluster/vm.sh.anvil' ];
+        if [ -e '/root/vm.sh.anvil' ];
         then
-            echo \"Backup of vm.sh already exists at /usr/share/cluster/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
+            echo \"Backup of vm.sh already exists at /root/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
             rm -f /usr/share/cluster/vm.sh
         else
-            echo \"Backing up /usr/share/cluster/vm.sh to /usr/share/cluster/vm.sh.anvil\"
-            mv /usr/share/cluster/vm.sh /usr/share/cluster/vm.sh.anvil
+            echo \"Backing up /usr/share/cluster/vm.sh to /root/vm.sh.anvil\"
+            mv /usr/share/cluster/vm.sh /root/vm.sh.anvil
         fi
     fi
     cp /root/vm.sh /usr/share/cluster/vm.sh 
@@ -4781,7 +4781,7 @@ sub do_drbd_connect_on_node
 				my $connection_state = ($line =~ /cs:(.*?)\//)[0];
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node",             value1 => $node,
-					name2 => "resource",         value2 => r$resource,
+					name2 => "resource",         value2 => "r$resource",
 					name3 => "connection state", value3 => $connection_state,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($connection_state =~ /StandAlone/i)
@@ -4809,7 +4809,7 @@ sub do_drbd_connect_on_node
 		# Now connect if needed.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",      value1 => $node,
-			name2 => "resource",  value2 => r$resource,
+			name2 => "resource",  value2 => "r$resource",
 			name3 => "connected", value3 => $connected,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $connected)
@@ -5130,7 +5130,7 @@ fi;
 					my $disk_state = ($line =~ /ds:(.*?)\//)[0];
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "node",       value1 => $node,
-						name2 => "resource",   value2 => r$resource,
+						name2 => "resource",   value2 => "r$resource",
 						name3 => "disk state", value3 => $disk_state,
 					}, file => $THIS_FILE, line => __LINE__});
 					if ($disk_state =~ /Diskless/i)
@@ -5158,7 +5158,7 @@ fi;
 			# Now attach if needed.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",     value1 => $node,
-				name2 => "resource", value2 => r$resource,
+				name2 => "resource", value2 => "r$resource",
 				name3 => "attached", value3 => $attached,
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $attached)
@@ -5989,7 +5989,6 @@ sub start_cman_on_node
 	
 	return(0)
 }
-	
 
 # This forks to start cman on both nodes at the same time.
 sub start_cman_on_both_nodes
@@ -6010,6 +6009,8 @@ sub start_cman_on_both_nodes
 	my $node_count = 2;
 	foreach my $node (sort {$a cmp $b} ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip}))
 	{
+		my $password = $conf->{cgi}{anvil_node1_current_password};
+		my $port     = $conf->{node}{$node}{port};
 		defined(my $pid = fork) or die "$THIS_FILE ".__LINE__."; Can't fork(), error was: $!\n";
 		if ($pid)
 		{
@@ -6024,21 +6025,36 @@ sub start_cman_on_both_nodes
 		{
 			### NOTE: The password on both nodes should be the same now so I just use node 1's 
 			###       root password for both child processes.
-			# This is the child thread, so do the call. Note that, without the 'die', we could
+			# This is the child thread, so do the call. Note that, without the 'die', we could 
 			# end up here if the fork() failed.
-			my $password   = $conf->{cgi}{anvil_node1_current_password};
+			
+			# Reset
+			my ($conf) = AN::Common::initialize($THIS_FILE, 0);
+
+			# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
+			my $an = AN::Tools->new({data => $conf});
+			$an->default_log_file    ($conf->{path}{log_file});
+			$an->default_log_language($conf->{sys}{log_language});
+			$an->Log->level          ($conf->{sys}{log_level});
+			$conf->{handle}{an} = $an;
+
+			# Set some defaults
+			$an->default_language    ($an->data->{scancore}{language});
+			$an->default_log_language($an->data->{scancore}{log_language});
+			$an->default_log_file    ($an->data->{path}{log_file});
+
+			# Read my stuff
+			$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+			$an->String->read_words({file => $an->data->{path}{scancore_strings}});
+			$an->String->read_words({file => $an->data->{path}{striker_strings}});
 			my $shell_call = "/etc/init.d/cman start";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "node",       value2 => $node,
-				name3 => "PID",        value3 => $$,
-			}, file => $THIS_FILE, line => __LINE__});
+			print "$THIS_FILE ".__LINE__."; PID: [$$], node: [$node], port: [$conf->{node}{$node}{port}], shell_call: [$shell_call]\n";
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$port, 
 				password	=>	$password,
 				ssh_fh		=>	"",
-				'close'		=>	0,
+				'close'		=>	1,
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -6048,6 +6064,14 @@ sub start_cman_on_both_nodes
 					name1 => "PID",  value1 => $$,
 					name2 => "line", value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
+				if (($line =~ /failed/i) or ($line =~ /error/i))
+				{
+					# What happened?
+					$an->Log->entry({log_level => 1, message_key => "log_0263", message_variables => {
+						line => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					die;
+				}
 			}
 			
 			# Kill the child process.
@@ -6067,9 +6091,8 @@ sub start_cman_on_both_nodes
 		my $pid;
 		do
 		{
-			# 'wait' returns the PID of each child as they
-			# exit. Once all children are gone it returns 
-			# '-1'.
+			# 'wait' returns the PID of each child as they exit. Once all children are gone it 
+			# returns '-1'.
 			$pid = wait;
 			if ($pid < 1)
 			{
@@ -6086,24 +6109,51 @@ sub start_cman_on_both_nodes
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# This deletes the just-exited child process' PID from the %pids hash.
+			# This deletes the just-exited child process' PID from the
+			# %pids hash.
 			delete $pids{$pid};
 			
-			# This counter is a safety mechanism. If I see more PIDs exit than I spawned, 
-			# something went oddly and I need to bail.
+			# This counter is a safety mechanism. If I see more PIDs exit
+			# than I spawned, something went oddly and I need to bail.
 			$saw_reaped++;
 			if ($saw_reaped > ($node_count + 1))
 			{
+				# Parent process reaped too many children...
 				$an->Log->entry({log_level => 1, message_key => "log_0124", message_variables => {
 					reaped => $saw_reaped, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		while $pid > 0;	# This re-enters the do() loop for as long as the PID returned by wait() 
-				# was >0.
+		# This re-enters the do() loop for as long as the PID returned by wait() was > 0.
+		while $pid > 0;
 	}
 	# All child processes reaped, exiting threaded execution.
 	$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
+	
+	# Reset
+	undef $conf;
+	undef $an;
+	($conf) = AN::Common::initialize($THIS_FILE, 0);
+
+	# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
+	$an = AN::Tools->new({data => $conf});
+	$an->default_log_file    ($conf->{path}{log_file});
+	$an->default_log_language($conf->{sys}{log_language});
+	$an->Log->level          ($conf->{sys}{log_level});
+	$conf->{handle}{an} = $an;
+
+	# Set some defaults
+	$an->default_language    ($an->data->{scancore}{language});
+	$an->default_log_language($an->data->{scancore}{log_language});
+	$an->default_log_file    ($an->data->{path}{log_file});
+
+	# Read my stuff
+	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
+	$an->String->read_words({file => $an->data->{path}{striker_strings}});
+	
+	# Re-read the CGI variables.
+	AN::Common::read_in_cgi_variables($conf);
 	
 	# Wipe out the file SSH handles as the fork clobbers them anyway so the next call will have to 
 	# reconnect fresh.
@@ -8999,7 +9049,7 @@ sub check_device_for_drbd_metadata
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -9010,6 +9060,9 @@ sub check_device_for_drbd_metadata
 			# 10  == too small for DRBD
 			# 20  == device not found
 			# 255 == device exists but has no metadata
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rc", value1 => $rc, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($rc eq "0")
 			{
 				# Metadata found.

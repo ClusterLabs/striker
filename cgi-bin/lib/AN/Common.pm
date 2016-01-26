@@ -21,6 +21,199 @@ use AN::Cluster;
 my $THIS_FILE = 'AN::Common.pm';
 
 
+# This function simply holds all the potential CGI variable names.
+sub read_in_cgi_variables
+{
+	my ($conf) = @_;
+	
+	AN::Cluster::get_cgi_vars($conf, [
+		"adapter",
+		"anvil",
+		"anvil_bcn_ethtool_opts",
+		"anvil_bcn_network",
+		"anvil_bcn_subnet",
+		"anvil_dns1",
+		"anvil_dns2",
+		"anvil_domain",
+		"anvil_drbd_disk_disk-barrier", 
+		"anvil_drbd_disk_disk-flushes", 
+		"anvil_drbd_disk_md-flushes", 
+		"anvil_drbd_options_cpu-mask", 
+		"anvil_drbd_net_max-buffers", 
+		"anvil_drbd_net_sndbuf-size", 
+		"anvil_drbd_net_rcvbuf-size", 
+		"anvil_fence_order",
+		"anvil_id",
+		"anvil_ifn_ethtool_opts",
+		"anvil_ifn_gateway",
+		"anvil_ifn_network",
+		"anvil_ifn_subnet",
+		"anvil_media_library_size",
+		"anvil_media_library_unit",
+		"anvil_mtu_size",
+		"anvil_name",
+		"anvil_node1_bcn_ip",
+		"anvil_node1_bcn_link1_mac",
+		"anvil_node1_bcn_link2_mac",
+		"anvil_node1_current_ip",
+		"anvil_node1_current_password",
+		"anvil_node1_ifn_ip",
+		"anvil_node1_ifn_link1_mac",
+		"anvil_node1_ifn_link2_mac",
+		"anvil_node1_ipmi_ip",
+		"anvil_node1_ipmi_gateway",
+		"anvil_node1_ipmi_netmask",
+		"anvil_node1_ipmi_password",
+		"anvil_node1_ipmi_user",
+		"anvil_node1_name",
+		"anvil_node1_pdu1_outlet",
+		"anvil_node1_pdu2_outlet",
+		"anvil_node1_pdu3_outlet",
+		"anvil_node1_pdu4_outlet",
+		"anvil_node1_sn_ip",
+		"anvil_node1_sn_link1_mac",
+		"anvil_node1_sn_link2_mac",
+		"anvil_node1_uuid",
+		"anvil_node2_bcn_ip",
+		"anvil_node2_bcn_link1_mac",
+		"anvil_node2_bcn_link2_mac",
+		"anvil_node2_current_ip",
+		"anvil_node2_current_password",
+		"anvil_node2_ifn_ip",
+		"anvil_node2_ifn_link1_mac",
+		"anvil_node2_ifn_link2_mac",
+		"anvil_node2_ipmi_ip",
+		"anvil_node1_ipmi_gateway",
+		"anvil_node2_ipmi_netmask",
+		"anvil_node2_ipmi_password",
+		"anvil_node2_ipmi_user",
+		"anvil_node2_name",
+		"anvil_node2_pdu1_outlet",
+		"anvil_node2_pdu2_outlet",
+		"anvil_node2_pdu3_outlet",
+		"anvil_node2_pdu4_outlet",
+		"anvil_node2_sn_ip",
+		"anvil_node2_sn_link1_mac",
+		"anvil_node2_sn_link2_mac",
+		"anvil_node2_uuid",
+		"anvil_ntp1", 
+		"anvil_ntp2", 
+		"anvil_open_vnc_ports",
+		"anvil_password",
+		"anvil_pdu1_ip",
+		"anvil_pdu1_name",
+		"anvil_pdu1_agent",
+		"anvil_pdu2_ip",
+		"anvil_pdu2_name",
+		"anvil_pdu2_agent",
+		"anvil_pdu3_ip",
+		"anvil_pdu3_name",
+		"anvil_pdu3_agent",
+		"anvil_pdu4_ip",
+		"anvil_pdu4_name",
+		"anvil_pdu4_agent",
+		"anvil_prefix",
+		"anvil_repositories",
+		"anvil_ricci_password",
+		"anvil_root_password",
+		"anvil_sequence",
+		"anvil_ssh_keysize",
+		"anvil_sn_ethtool_opts",
+		"anvil_sn_network",
+		"anvil_sn_subnet",
+		"anvil_storage_partition_1_byte_size",
+		"anvil_storage_partition_2_byte_size",
+		"anvil_storage_pool1_size",
+		"anvil_storage_pool1_unit",
+		"anvil_striker1_bcn_ip",
+		"anvil_striker1_database",
+		"anvil_striker1_ifn_ip",
+		"anvil_striker1_name",
+		"anvil_striker1_user",
+		"anvil_striker1_uuid",
+		"anvil_striker1_password",
+		"anvil_striker2_bcn_ip",
+		"anvil_striker2_database",
+		"anvil_striker2_ifn_ip",
+		"anvil_striker2_name",
+		"anvil_striker2_user",
+		"anvil_striker2_uuid",
+		"anvil_striker2_password",
+		"anvil_switch1_ip",
+		"anvil_switch1_name",
+		"anvil_switch2_ip",
+		"anvil_switch2_name",
+		"anvil_ups1_ip",
+		"anvil_ups1_name",
+		"anvil_ups2_ip",
+		"anvil_ups2_name",
+		"boot_device",
+		"change",
+		"cluster",
+		"config",	# This is used by various things
+		"configure",	# This controls the WebUI based Striker Configurator
+		"confirm",
+		"cpu_cores",
+		"delete",
+		"device",
+		"device_keys",
+		"disk_address",
+		"do",
+		"driver_iso",
+		"expire",
+		"file",
+		"generate",
+		"host",
+		"insert",
+		"install_iso",
+		"install_target",
+		"load",
+		"logical_disk",
+		"logo",
+		"mail_data__to",
+		"mail_data__sending_domain",
+		"make_disk_good",
+		"max_cores",
+		"max_ram",
+		"max_storage",
+		"name",
+		"node",
+		"node_cluster_name",
+		"os_variant",
+		"perform_install", 
+		"ram",
+		"ram_suffix",
+		"remap_network",
+		"rhn_user",
+		"rhn_password",
+		"row",
+		"run",
+		"save",
+		"section",
+		"smtp__server",
+		"smtp__port",
+		"smtp__username",
+		"smtp__password",
+		"smtp__helo_domain",
+		"smtp__encrypt_pass",
+		"smtp__security",
+		"save",
+		"storage",
+		"striker_database",
+		"striker_user",
+		"system",
+		"target",
+		"task",
+		"subtask",
+		"update_manifest",
+		"vg_list",
+		"vm",
+		"vm_ram",
+	]);
+	
+	return(0);
+}
+
 # This creates an 'expect' script for an rsync call.
 sub create_rsync_wrapper
 {
@@ -72,7 +265,7 @@ sub test_ssh_fingerprint
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -128,7 +321,7 @@ sub test_ssh_fingerprint
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, "$shell_call 2>&1") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
 					chomp;
@@ -277,11 +470,13 @@ sub hard_die
 # This initializes a call; reads variables, etc. In this function, '$an' is not yet defined.
 sub initialize
 {
+	my ($caller, $initialize_http) = @_;
+	
 	# Set default configuration variable values
 	my ($conf) = initialize_conf();
 	
 	# First thing first, initialize the web session.
-	initialize_http($conf);
+	initialize_http($conf) if $initialize_http;
 
 	# First up, read in the default strings file.
 	read_strings($conf, $conf->{path}{common_strings});

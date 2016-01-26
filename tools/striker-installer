@@ -233,11 +233,11 @@ my $conf = {
 			'perl-YAML-Tiny'		=>	0, 
 			'policycoreutils-python'	=>	0, 
 			postfix				=>	0,
-			postgresql94			=>	0,
-			'postgresql94-contrib'		=>	0,
-			'postgresql94-libs'		=>	0,
-			'postgresql94-plperl'		=>	0,
-			'postgresql94-server'		=>	0,
+			postgresql95			=>	0,
+			'postgresql95-contrib'		=>	0,
+			'postgresql95-libs'		=>	0,
+			'postgresql95-plperl'		=>	0,
+			'postgresql95-server'		=>	0,
 			rsync				=>	0,
 			screen				=>	0,
 			sharutils			=>	0,
@@ -371,10 +371,10 @@ my $conf = {
 		ntp_conf		=>	"/etc/ntp.conf",
 		os_release		=>	"/etc/redhat-release",
 		passwd			=>	"/etc/passwd",
-		pg_hba_conf		=>	"/var/lib/pgsql/9.4/data/pg_hba.conf",
-		pgsql_log		=>	"/var/lib/pgsql/9.4/data/pg_log/postgresql-<weekday>.log",
-		postgresql_conf		=>	"/var/lib/pgsql/9.4/data/postgresql.conf",
-		postgres_pgpass		=>	"/var/lib/pgsql/9.4/.pgpass",
+		pg_hba_conf		=>	"/var/lib/pgsql/9.5/data/pg_hba.conf",
+		pgsql_log		=>	"/var/lib/pgsql/9.5/data/pg_log/postgresql-<weekday>.log",
+		postgresql_conf		=>	"/var/lib/pgsql/9.5/data/postgresql.conf",
+		postgres_pgpass		=>	"/var/lib/pgsql/9.5/.pgpass",
 		power_sh		=>	"/etc/acpi/actions/power.sh",
 		pxe_background_source	=>	"/var/www/html/skins/alteeve/images/pxe_splash_1024_768.png",
 		pxe_default_config	=>	"/var/lib/tftpboot/pxelinux.cfg/default",
@@ -945,7 +945,7 @@ sub configure_scancore
 	if (not -e $conf->{path}{pg_hba_conf})
 	{
 		# Initialization required.
-		my $shell_call = "/etc/init.d/postgresql-9.4 initdb && chkconfig postgresql-9.4 on && chkconfig --list postgresql-9.4";
+		my $shell_call = "/etc/init.d/postgresql-9.5 initdb && chkconfig postgresql-9.5 on && chkconfig --list postgresql-9.5";
 		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -974,7 +974,7 @@ sub configure_scancore
 	}
 	
 	# Make sure the server is set to start on boot.
-	my $shell_call = "chkconfig postgresql-9.4 on && chkconfig --list postgresql-9.4";
+	my $shell_call = "chkconfig postgresql-9.5 on && chkconfig --list postgresql-9.5";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 	while(<$file_handle>)
@@ -1111,12 +1111,12 @@ sub configure_scancore
 	
 	# Now start the DB, if needed.
 	$shell_call = "
-/etc/init.d/postgresql-9.4 status;
+/etc/init.d/postgresql-9.5 status;
 if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
 else
-	/etc/init.d/postgresql-9.4 start; 
+	/etc/init.d/postgresql-9.5 start; 
 	if [ \"\$?\" -eq '0' ]; 
 	then 
 		echo 'Started';
@@ -1355,8 +1355,8 @@ su - postgres -c \"psql template1 -c 'SELECT datname FROM pg_catalog.pg_database
 	# Restart postgresql.
 	logger($conf, $THIS_FILE, __LINE__, "- Restarting database server.", 1);
 	$shell_call = "
-/etc/init.d/postgresql-9.4 restart
-/etc/init.d/postgresql-9.4 status;
+/etc/init.d/postgresql-9.5 restart
+/etc/init.d/postgresql-9.5 status;
 if [ \"\$?\" -eq '0' ]; 
 then 
 	echo 'Running';
