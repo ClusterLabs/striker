@@ -6114,7 +6114,7 @@ Striker Version: $conf->{sys}{version}
 		<ssh keysize=\"8191\" />
 		<cluster name=\"$conf->{cgi}{anvil_name}\">
 			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
-			<fence order=\"ipmi,pdu\" post_join_delay=\"30\" delay=\"15\" delay_node=\"$conf->{cgi}{anvil_node1_name}\" />
+			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"$conf->{cgi}{anvil_node1_name}\" />
 		</cluster>
 		<drbd>
 			<disk disk-barrier=\"$conf->{cgi}{'anvil_drbd_disk_disk-barrier'}\" disk-flushes=\"$conf->{cgi}{'anvil_drbd_disk_disk-flushes'}\" md-flushes=\"$conf->{cgi}{'anvil_drbd_disk_md-flushes'}\" />

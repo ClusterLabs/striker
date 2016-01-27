@@ -582,6 +582,7 @@ sub initialize_conf
 			striker_cache		=>	"/var/www/home/cache",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_files		=>	"/var/www/home",
+			'striker-delayed-run'	=>	"/sbin/striker/striker-delayed-run",
 			'striker-push-ssh'	=>	"/sbin/striker/striker-push-ssh",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			sync			=>	"/bin/sync",
@@ -668,11 +669,9 @@ sub initialize_conf
 			log_language		=>	"en_CA",
 		},
 		sys			=>	{
-			# Some actions, like powering off servers and nodes,
-			# have a timeout set so that later, reloading the page
-			# doesn't reload a previous confirmation URL and 
-			# reinitiate the power off when it wasn't desired. This
-			# defines that timeout in seconds.
+			# Some actions, like powering off servers and nodes, have a timeout set so that 
+			# later, reloading the page doesn't reload a previous confirmation URL and reinitiate
+			# the power off when it wasn't desired. This defines that timeout in seconds.
 			actime_timeout		=>	180,
 			### NOTE: If you change these, also change in anvil-kick-apc-ups!
 			apc			=>	{
@@ -721,21 +720,20 @@ sub initialize_conf
 			date_seperator		=>	"-",			# Should put these in the strings.xml file
 			dd_block_size		=>	"1M",
 			debug			=>	1,
-			# When set to '1', (almost) all external links will be
-			# disabled. Useful for sites without an Internet
-			# connection.
+			# When set to '1', (almost) all external links will be disabled. Useful for sites 
+			# without an Internet connection.
 			disable_links		=>	0,
+			# This sets the timeout when waiting for a 'striker-delayed-run' event to occur.
+			delayed_run_timeout	=>	120,
 			error_limit		=>	10000,
-			# This will significantly cut down on the text shown
-			# on the screen to make information more digestable for
-			# experts.
+			# This will significantly cut down on the text shown on the screen to make 
+			# information more digestable for experts.
 			expert_ui		=>	0,
 			footer_printed		=>	0,
 			html_lang		=>	"en",
 			ignore_missing_vm	=>	0,
-			# These options control some of the Install Manifest
-			# options. They can be overwritten by adding matching 
-			# entries is striker.conf.
+			# These options control some of the Install Manifest options. They can be overwritten
+			# by adding matching  entries is striker.conf.
 			install_manifest	=>	{
 				'default'		=>	{
 					bcn_ethtool_opts		=>	"",
@@ -829,17 +827,14 @@ sub initialize_conf
 					use_safe_anvil_start		=>	1,
 					use_scancore			=>	0,
 				},
-				# If the user wants to build install manifests for
-				# environments with 4 PDUs, this will be set to '4'.
+				# If the user wants to build install manifests for environments with 4 PDUs,
+				# this will be set to '4'.
 				pdu_count		=>	2,
-				# This sets the default fence agent to use for
-				# the PDUs.
+				# This sets the default fence agent to use for the PDUs.
 				pdu_fence_agent		=>	"fence_apc_snmp",
-				# These variables control whether certain
-				# fields are displayed or not when generating
-				# Install Manifests. If you set any of these to
-				# '0', please be sure to have an appropriate
-				# default set above.
+				# These variables control whether certain fields are displayed or not when 
+				# generating Install Manifests. If you set any of these to '0', please be 
+				# sure to have an appropriate default set above.
 				show			=>	{
 					### Primary
 					prefix_field		=>	1,
@@ -872,9 +867,8 @@ sub initialize_conf
 					nodes_ifn_field		=>	1,
 					nodes_pdu_fields	=>	1,
 					
-					# Control tests/output shown when the
-					# install runs. Mainly useful when a
-					# site will never have Internet access.
+					# Control tests/output shown when the install runs. Mainly useful 
+					# when a site will never have Internet access.
 					internet_check		=>	1,
 					rhn_checks		=>	1,
 				},
@@ -892,8 +886,8 @@ sub initialize_conf
 			lvm_filter		=>	"filter = [ \"a|/dev/drbd*|\", \"r/.*/\" ]",
 			# This allows for custom MTU sizes in an Install Manifest
 			mtu_size		=>	1500,
-			# This tells the install manifest generator how many
-			# ports to open on the IFN for incoming VNC connections
+			# This tells the install manifest generator how many ports to open on the IFN for 
+			# incoming VNC connections
 			node_names		=>	[],
 			online_nodes		=>	0,
 			os_variant		=>	[
@@ -984,13 +978,12 @@ sub initialize_conf
 			power_off_delay		=>	300,
 			reboot_timeout		=>	600,
 			root_password		=>	"",
-			# Set this to an integer to have the main Striker page
-			# and the hardware status pages automatically reload.
+			# Set this to an integer to have the main Striker page and the hardware status pages 
+			# automatically reload.
 			reload_page_timer	=>	0,
-			# These options allow customization of newly provisioned
-			# servers.
-			### If you change these, change the matching values in 
-			### striker-installer so that it stays in sync.
+			# These options allow customization of newly provisioned servers.
+			### If you change these, change the matching values in striker-installer so that it 
+			### stays in sync.
 			scancore_database	=>	"scancore",
 			striker_user		=>	"admin",
 			server			=>	{
@@ -1008,16 +1001,16 @@ sub initialize_conf
 			striker_uid		=>	$<,
 			system_timezone		=>	"America/Toronto",
 			time_seperator		=>	":",
-			# ~3 GiB, but in practice more because it will round down the
-			# available RAM before subtracting this to leave the user with
-			# an even number of GiB of RAM to allocate to servers.
+			# ~3 GiB, but in practice more because it will round down the available RAM before 
+			# subtracting this to leave the user with an even number of GiB of RAM to allocate to
+			# servers.
 			unusable_ram		=>	(3 * (1024 ** 3)),
 			up_nodes		=>	0,
 			update_os		=>	1,
 			use_24h			=>	1,			# Set to 0 for am/pm time, 1 for 24h time
 			username		=>	getpwuid( $< ),
-			# If a user wants to use spice + qxl for video in VMs,
-			# set this to '1'. NOTE: This disables web-based VNC!
+			# If a user wants to use spice + qxl for video in VMs, set this to '1'. NOTE: This 
+			# disables web-based VNC!
 # 			use_spice_graphics	=>	1,
 			version			=>	"2.0.0a",
 			# Adds: [--disablerepo='*' --enablerepo='striker*'] if
@@ -1154,7 +1147,7 @@ sub read_configuration_file
 		   $return_code              = 0;
 		my $shell_call               = "$conf->{path}{config_file}";
 		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-		binmode $file_handle, ":utf8:";
+		#binmode $file_handle, ":utf8:";
 		while (<$file_handle>)
 		{
 			chomp;
@@ -1389,6 +1382,26 @@ sub process_string_conf_escape_variables
 			($value) = defined $conf->{$key} ? $conf->{$key} : "!!Undefined config variable: [$key]!!";
 		}
 		$string =~ s/#!conf!$key!#/$value/;
+	}
+	
+	# AN::Tools uses '#!data!x!#' instead of '#!conf!x!#', support both.
+	while ($string =~ /#!data!(.+?)!#/)
+	{
+		my $key   = $1;
+		my $value = "";
+		
+		# If the key has double-colons, I need to break it up and make
+		# each one a key in the multi-dimensional hash.
+		if ($key =~ /::/)
+		{
+			($value) = _get_hash_value_from_string($conf, $key);
+		}
+		else
+		{
+			# First dimension
+			($value) = defined $conf->{$key} ? $conf->{$key} : "!!Undefined config variable: [$key]!!";
+		}
+		$string =~ s/#!data!$key!#/$value/;
 	}
 
 	return($string);

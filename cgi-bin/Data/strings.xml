@@ -2035,23 +2035,13 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0261">Extra element in node: [#!variable!node!#]'s install manifest file: [#!variable!file!#] element: [#!variable!element!#].</key>
 		<key name="log_0262">Requested pool: [#!variable!pool!#] size was too big! Shrinking to: [#!variable!pool_size!#] (#!variable!hr_pool_size!#).</key>
 		<key name="log_0263">There was an error trying to start cluster communications. The error was: [#!variable!line!#].</key>
-		<key name="log_0264"></key>
-		<key name="log_0265"></key>
-		<key name="log_0266"></key>
+		<key name="log_0264">Delayed run of the cluster communication layer startup set. Now waiting for the start up to occur. We will wait up to: [#!data!sys::delayed_run_timeout!#] seconds.</key>
+		<key name="log_0265">Timed out waiting for a 'striker-delay-run' task to execute.</key>
+		<key name="log_0266">The 'striker-delay-run' program wasn't found at: [#!data!path::striker-delayed-run!#]!</key>
 		<key name="log_0267"></key>
 		<key name="log_0268"></key>
 		<key name="log_0269"></key>
 		<key name="log_0270"></key>
-		<key name="log_0271"></key>
-		<key name="log_0272"></key>
-		<key name="log_0273"></key>
-		<key name="log_0274"></key>
-		<key name="log_0275"></key>
-		<key name="log_0276"></key>
-		<key name="log_0277"></key>
-		<key name="log_0278"></key>
-		<key name="log_0279"></key>
-		<key name="log_0280"></key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->
 		<key name="legal_0001"><![CDATA[&copy; <a href="https://alteeve.ca" target="_new">Alteeve's Niche! Inc.</a> 1997 - 2016]]></key>
@@ -2490,6 +2480,88 @@ SUPPORT
 		<!-- errors -->
 		<key name="sda_error_0001"><![CDATA[Must be called with '--anvil <name>'.]]></key>
 		<key name="sda_error_0002">The #!string!brand_0004!# called: [#!variable!anvil!#] was not found in: [#!data!path::striker_config!#]</key>
+		
+		
+		<!-- Striker Delayed Run -->
+		<!-- messages -->
+		<key name="sdr_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This takes a command and runs it sometime in the future, redirecting output 
+from the call to a temporary file. This is done using a random token given to
+the initial caller and then adding itself to crontab. When called again with
+that token via crontab, it deletes itself from cron and then executes the
+requested command, writing out any output to: '/tmp/token.<token>.txt'.
+
+
+NOTE
+
+When called without a token, the generated token out command output file will
+be printed;
+
+token:  [<string>]
+output: [</path/to/file>]
+
+Note that the output should match above, but the parser should handle an 
+arbitrary number of spaces between ':' and '['.
+
+The 'output' file will terminate with a single line containing 'sdr-rc:X' where
+'X' is the called program's return code.
+
+
+SWITCHES
+
+ --call '/path/to/call [args]'
+ 
+	This is the command to call. If your command uses single-quotes in the
+	argument list, escape them.
+
+ --delay <seconds>
+
+	This is the number of second to delay. Note that it gets rounded up to
+	the next even minute, which is crontab's resolution. For example, if 
+	this is set to '30' and the time in 10:22:45, the delay will set to 
+	10:23:15, then rounded up to 10:24:00.
+	
+	The primary goal is to ensure that if a command needs to be coordinated
+	between machines, assuming the machines are in time sync, they will all
+	run at the same time. So the delay acts as a buffer of sorts in case
+	the caller is requesting a delay very close to the start of the next 
+	minute (ie: it sets the delay at 10:22:59 on one machine and 10:23:01
+	on another, they would trigger one minute apart with no delay). 
+	
+	If you don't care about coordinating actions, you can ignore this and
+	the call will happen within one minute.
+
+ --token <string>
+
+	This is the token used for the run. Normally the caller will never set
+	this as it is generated automatically and used in the crontab file.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="sdr_message_0002"></key>
+		
+		<!-- logs -->
+		<key name="sdr_log_0001">Crontab line: [#!variable!line!#] has our token: [#!variable!token!#], removing it.</key>
+		<key name="sdr_log_0002">Rewrote the crontab file to remove our entry.</key>
+		<key name="sdr_log_0003">Added the entry: [#!variable!crontab_string!#] to crontab.</key>
+		
+		<!-- errors -->
+		<key name="sdr_error_0001"><![CDATA[Must be called with '--call "</path/to/call [args]>"'.]]></key>
+	
 	</lang>
 
 	<!-- Japanese -->

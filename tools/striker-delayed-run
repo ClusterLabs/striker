@@ -1,0 +1,307 @@
+#!/usr/bin/perl
+# 
+# This takes a command and runs it sometime in the future, redirecting output from the call to a temporary
+# file. This is done using a random token given to the initial caller and then adding itself to crontab. When
+# called again with that token via crontab, it deletes itself from cron and then executes the requested 
+# command, writing out any output to /tmp/<token>.txt.
+# 
+# Return codes:
+# 0  = Normal exit.
+# 
+# 
+# TODO: Merge sshd_config and cache files.
+# 
+
+use strict; 
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called
+# via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		path		=>	{
+			crontab		=>	"/var/spool/cron/root", 
+			hosts		=>	"/etc/hosts",
+			log_file	=>	"/var/log/striker.log",
+			ssh_config	=>	"/etc/ssh/ssh_config",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+			running_directory =>	$running_directory,
+			install_manifests =>	"/var/www/html/manifests",
+		},
+		switches	=>	{},
+		sys		=>	{
+			crontab_string	=>	"",
+			date_and_time	=>	"",
+			date_string	=>	"",
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+			timestamp	=>	"",
+			token		=>	"",
+			token_file	=>	"",
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+# Log our startup
+$an->Log->entry({log_level => 2, message_key => "sps_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Print the usage, if requested.
+if (($an->data->{switches}{h})   || 
+    ($an->data->{switches}{'?'}) ||
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+}
+
+# If we backup any files, we'll need a timestamp.
+my $unix_time                   =  time;
+my ($date, $time)               =  $an->Get->date_and_time({use_time => $unix_time});
+$time                           =~ s/:/-/g;
+$an->data->{sys}{timestamp}     =  "${date}_$time";
+$an->data->{sys}{date_and_time} =  "$date $time";
+$an->data->{sys}{unix_time}     =  $unix_time; 
+
+# If we have a token, we're being called by crontab and will perform the actual run. Otherwise, generate a 
+# token and add ourselves to crontab and return the token to the caller.
+if ($an->data->{switches}{token})
+{
+	### Do the actual call!
+	# Delete our entry from crontab
+	$an->data->{sys}{token} = $an->data->{switches}{token};
+	delete_crontab_entry($an);
+	
+	# Do the call. This will exit the program.
+	run_call($an);
+}
+else
+{
+	# Die if we don't have a command to run.
+	if (not $an->data->{switches}{call})
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sdr_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	### Add to crontab
+	# Generate a token
+	generate_token($an);
+	
+	add_entry_to_crontab($an);
+	
+	# Report the token. Note that this is NOT translated as it is meant to be parsed by a caller script.
+	print "token:  [".$an->data->{sys}{token}."]\n";
+	print "output: [".$an->data->{sys}{token_file}."]\n";
+}
+
+exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This runs the shell call.
+sub run_call
+{
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_crontab_entry" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 0;
+	my $shell_call  = $an->data->{switches}{call}."; echo rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		
+		if ($line =~ /^rc:(\d+)$/)
+		{
+			$return_code = $1;
+		}
+		else
+		{
+			# Don't molest this line, it's being logged.
+			print "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Record the exit code;
+	print "sdr-rc:$return_code\n";
+	
+	exit($return_code);
+}
+
+# This reads in the crontab file and deletes the entry with the matching token.
+sub delete_crontab_entry
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_crontab_entry" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in the crontab file
+	my $crontab_file = "";
+	my $updated      = 0;
+	my $token        = $an->data->{sys}{token};
+	my $shell_call   = $an->data->{path}{crontab};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /$token/)
+		{
+			$updated = 1;
+			$an->Log->entry({log_level => 2, message_key => "sdr_log_0001", message_variables => {
+				line  => $line, 
+				token => $token, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$crontab_file .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Write out the new file if it was updated.
+	if ($updated)
+	{
+		my $shell_call = $an->data->{path}{crontab};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $crontab_file;
+		close $file_handle;
+		
+		# Tell that we've removed the entry from crontab
+		$an->Log->entry({log_level => 2, message_key => "sdr_log_0002", file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This adds an entry to crontab
+sub add_entry_to_crontab
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_entry_to_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the current time
+	my $now_time = time;
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		name1 => "now_time",        value1 => $now_time, 
+		name2 => "switches::delay", value2 => $an->data->{switches}{delay}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Add the user's delay.
+	if ($an->data->{switches}{delay})
+	{
+		$now_time += $an->data->{switches}{delay};
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "now_time", value1 => $now_time, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Get the time
+	my $time = {};
+	($time->{sec}, $time->{min}, $time->{hour}, $time->{mday}, $time->{mon}, $time->{year}, $time->{wday}, $time->{yday}, $time->{isdst}) = localtime($now_time);
+	$time->{mon}  += 1;	# Jan == 0, adjust
+	$time->{year} += 1900;	# Get the full year
+
+	# Round up the minute.
+	$time->{sec} = 0;
+	$time->{min}++;
+	my $say_call =  $an->data->{switches}{call};
+	   $say_call =~ s/'/\\'/g;
+
+	# See 'man 5 crontab'.
+	$an->data->{sys}{token_file}     = "/tmp/token.".$an->data->{sys}{token}.".txt";
+	$an->data->{sys}{crontab_string} = "$time->{min} $time->{hour} $time->{mday} $time->{mon} * ".$an->data->{path}{running_directory}."/$THIS_FILE --token ".$an->data->{sys}{token}." --call '$say_call' > ".$an->data->{sys}{token_file}."\n";;
+	
+	my $shell_call = $an->data->{path}{crontab};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, ">>$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	print $file_handle $an->data->{sys}{crontab_string};
+	close $file_handle;
+	
+	# Tell that we've removed the entry from crontab
+	$an->Log->entry({log_level => 2, message_key => "sdr_log_0003", message_variables => {
+		crontab_string => $an->data->{sys}{crontab_string}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($an->data->{sys}{crontab_string});
+}
+
+# This generates a token which is simply a UUID. Arguably doesn't even need to be a function but we may want
+# to shorten it later.
+sub generate_token
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_token" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if (not $an->data->{sys}{token})
+	{
+		$an->data->{sys}{token} = $an->Get->uuid();
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::token", value1 => $an->data->{sys}{token}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($an->data->{sys}{token});
+}
+
+# This prints the usage instructions and then exits
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "sdr_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+	
+	exit(0);
+}

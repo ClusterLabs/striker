@@ -7108,8 +7108,7 @@ sub dual_join
 	# This, more than 
 	AN::Cluster::scan_cluster($conf);
 	
-	# Proceed only if all of the storage components, cman and rgmanager are
-	# off.
+	# Proceed only if all of the storage components, cman and rgmanager are off.
 	my @abort_reason;
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
@@ -10711,6 +10710,9 @@ sub check_vms
 	my $node1 = $conf->{sys}{cluster}{node1_name};
 	my $node2 = $conf->{sys}{cluster}{node2_name};
 	
+	$conf->{node}{$node1}{info}{short_host_name} = $conf->{node}{$node1}{info}{host_name} if not $conf->{node}{$node1}{info}{short_host_name};
+	$conf->{node}{$node2}{info}{short_host_name} = $conf->{node}{$node2}{info}{host_name} if not $conf->{node}{$node2}{info}{short_host_name};
+	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "node1",                                 value1 => $node1,
 		name2 => "node::${node1}::info::short_host_name", value2 => $conf->{node}{$node1}{info}{short_host_name},
@@ -11445,8 +11447,8 @@ sub display_gfs2_details
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "gfs2_hash",  value1 => $gfs2_hash,
-		name2 => "node1 hash", value2 => ".(ref($conf->{node}{$node1}{gfs})).",
-		name3 => "node2 hash", value3 => ".(ref($conf->{node}{$node2}{gfs})).",
+		name2 => "node1 hash", value2 => ref($conf->{node}{$node1}{gfs}),
+		name3 => "node2 hash", value3 => ref($conf->{node}{$node2}{gfs}),
 	}, file => $THIS_FILE, line => __LINE__});
 	if (ref($gfs2_hash) eq "HASH")
 	{

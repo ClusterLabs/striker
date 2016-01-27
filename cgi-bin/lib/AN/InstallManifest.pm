@@ -5690,10 +5690,11 @@ sub start_cman
 	}
 	if ((not $node1_cman_state) && (not $node2_cman_state))
 	{
-		# Start on both (this uses a fork to start them at the same time)
+		# Start on both (this uses striker-delayed-run to start them at the same time).
 		start_cman_on_both_nodes($conf);
-		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});
 		
+		# Now see if that succeeded.
+		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});
 		my ($node1_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "cman");
 		my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -5958,7 +5959,7 @@ sub check_fencing_on_node
 	return($ok, $message);
 }
 
-# This is like start_cman_on_both_nodes(), except it doesn't fork.
+# Start cluster communications on a single node.
 sub start_cman_on_node
 {
 	my ($conf, $node, $password) = @_;
@@ -5990,180 +5991,212 @@ sub start_cman_on_node
 	return(0)
 }
 
-# This forks to start cman on both nodes at the same time.
+# This uses 'striker-delayed-run' with a 30 second timer to start cman on both nodes at the same time.
 sub start_cman_on_both_nodes
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_both_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $ok = 1;
-	### NOTE: This is heavily based on AN::Striker::dual_join, but stripped down.
-	# I need to fork here because the calls won't return until cman either talks to it's peer or fences 
-	# it.
-	my $parent_pid = $$;
-	$an->Log->entry({log_level => 2, message_key => "log_0120", message_variables => {
-		parent_pid => $parent_pid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my %pids;
-	my $node_count = 2;
-	foreach my $node (sort {$a cmp $b} ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip}))
+	### NOTE: This now uses 'striker-delay-run' in order to start cman on both nodes at the same time
+	###       without the need to fork(). This is done because it's not reliable enough. It's too easy
+	###       for a non-thread-safe bit of code to sneak in and clobber file handles.
+	my $ok      = 1;
+	my $node1   = $conf->{cgi}{anvil_node1_current_ip};
+	my $node2   = $conf->{cgi}{anvil_node2_current_ip};
+	my $waiting = 1;
+	
+	# Call 'striker-delayed-run' on both nodes to queue up the cman call and then wait in a loop for both
+	# to have started (or time out).
+	foreach my $node (sort {$a cmp $b} ($node1, $node2))
 	{
-		my $password = $conf->{cgi}{anvil_node1_current_password};
-		my $port     = $conf->{node}{$node}{port};
-		defined(my $pid = fork) or die "$THIS_FILE ".__LINE__."; Can't fork(), error was: $!\n";
-		if ($pid)
+		my $password   = $conf->{cgi}{anvil_node1_current_password};
+		my $port       = $conf->{node}{$node}{port};
+		# We use a delay of 30 seconds to ensure that we don't have one node trigger a minute before
+		# the other in cases where this is invoked near the end of a minute.
+		my $shell_call = $an->data->{path}{'striker-delayed-run'}." --delay 30 --call '/etc/init.d/cman start'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",       value1 => $node,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
 		{
-			# Parent thread.
-			$pids{$pid} = 1;
-			$an->Log->entry({log_level => 2, message_key => "log_0121", message_variables => {
-				node => $node, 
-				pid  => $pid, 
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			### NOTE: The password on both nodes should be the same now so I just use node 1's 
-			###       root password for both child processes.
-			# This is the child thread, so do the call. Note that, without the 'die', we could 
-			# end up here if the fork() failed.
 			
-			# Reset
-			my ($conf) = AN::Common::initialize($THIS_FILE, 0);
-
-			# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
-			my $an = AN::Tools->new({data => $conf});
-			$an->default_log_file    ($conf->{path}{log_file});
-			$an->default_log_language($conf->{sys}{log_language});
-			$an->Log->level          ($conf->{sys}{log_level});
-			$conf->{handle}{an} = $an;
-
-			# Set some defaults
-			$an->default_language    ($an->data->{scancore}{language});
-			$an->default_log_language($an->data->{scancore}{log_language});
-			$an->default_log_file    ($an->data->{path}{log_file});
-
-			# Read my stuff
-			$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-			$an->String->read_words({file => $an->data->{path}{scancore_strings}});
-			$an->String->read_words({file => $an->data->{path}{striker_strings}});
-			my $shell_call = "/etc/init.d/cman start";
-			print "$THIS_FILE ".__LINE__."; PID: [$$], node: [$node], port: [$conf->{node}{$node}{port}], shell_call: [$shell_call]\n";
+			# Dig out the token and output file
+			if ($line =~ /No such file/i)
+			{
+				# The 'striker-delayed-run' program isn't on the node. No sense 
+				# waiting, either...
+				$an->Log->entry({log_level => 1, message_key => "log_0266", file => $THIS_FILE, line => __LINE__});
+				$conf->{node}{$node}{output} = "";
+				$conf->{node}{$node}{token}  = "";
+			}
+			if ($line =~ /token:\s+\[(.*?)\]/i)
+			{
+				$conf->{node}{$node}{token} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node}::token", value1 => $conf->{node}{$node}{token},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ /output:\s+\[(.*?)\]/i)
+			{
+				$conf->{node}{$node}{output} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node}::output", value1 => $conf->{node}{$node}{output},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Make sure we didn't hit an error
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1}::output", value1 => $conf->{node}{$node1}{output},
+		name2 => "node::${node2}::output", value2 => $conf->{node}{$node2}{output},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $conf->{node}{$node1}{output}) && (not $conf->{node}{$node2}{output}))
+	{
+		$waiting = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "waiting", value1 => $waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Now sit back and wait for the call to run.
+		$an->Log->entry({log_level => 1, message_key => "log_0264", file => $THIS_FILE, line => __LINE__});
+	}
+	
+	my $current_time = time;
+	my $timeout      = $current_time + $conf->{sys}{delayed_run_timeout};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "current_time", value1 => $current_time,
+		name2 => "timeout",      value2 => $timeout,
+		name3 => "waiting",      value3 => $waiting,
+	}, file => $THIS_FILE, line => __LINE__});
+	while ($waiting)
+	{
+		# This will get set back to '1' if we're still waiting on either node's output.
+		foreach my $node (sort {$a cmp $b} ($node1, $node2))
+		{
+			#next if not $conf->{node}{$node}{token};
+			next if not $conf->{node}{$node}{output};
+			
+			my $password   = $conf->{cgi}{anvil_node1_current_password};
+			my $port       = $conf->{node}{$node}{port};
+			my $shell_call = "
+if [ -e \"$conf->{node}{$node}{output}\" ];
+then
+    cat $conf->{node}{$node}{output}
+else
+    echo \"No output yet\"
+fi
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",       value1 => $node,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
 				port		=>	$port, 
 				password	=>	$password,
 				ssh_fh		=>	"",
-				'close'		=>	1,
+				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
 			{
 				next if not $line;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "PID",  value1 => $$,
+					name1 => "node", value1 => $node,
 					name2 => "line", value2 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (($line =~ /failed/i) or ($line =~ /error/i))
+				
+				if ($line =~ /No output yet/)
 				{
-					# What happened?
-					$an->Log->entry({log_level => 1, message_key => "log_0263", message_variables => {
-						line => $line, 
+					# We have to wait more.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node",    value1 => $node,
+						name2 => "waiting", value2 => $waiting,
 					}, file => $THIS_FILE, line => __LINE__});
-					die;
+				}
+				elsif ($line =~ /sdr-rc:(\d+)/)
+				{
+					# We're done!
+					my $return_code = $1;
+					my $shell_call = "/bin/rm -f $conf->{node}{$node}{output}";
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node",       value1 => $node,
+						name2 => "shell_call", value2 => $shell_call,
+					}, file => $THIS_FILE, line => __LINE__});
+					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+						target		=>	$node,
+						port		=>	$port, 
+						password	=>	$password,
+						ssh_fh		=>	"",
+						'close'		=>	0,
+						shell_call	=>	$shell_call,
+					});
+					# I don't bother examining the output. If it fails, the file will be
+					# wiped in the next reboot anyway.
+					$conf->{node}{$node}{output} = "";
+					$conf->{node}{$node}{token}  = "";
+				}
+				else
+				{
+					# This is output from the call.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node", value1 => $node,
+						name2 => "line", value2 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
-			
-			# Kill the child process.
-			exit;
 		}
-	}
-	
-	# Now loop until both child processes are dead. This helps to catch hung children.
-	my $saw_reaped = 0;
-	
-	# If I am here, then I am the parent process and all the child process have been spawned. I will not
-	# enter a while() loop that will exist for however long the %pids hash has data.
-	while (%pids)
-	{
-		# This is a bit of an odd loop that put's the while() at the end. It will cycle once per 
-		# child-exit event.
-		my $pid;
-		do
+		
+		# See if I still have an output file. If not, we're done.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node::${node1}::output", value1 => $conf->{node}{$node1}{output},
+			name2 => "node::${node2}::output", value2 => $conf->{node}{$node2}{output},
+			name3 => "waiting",                value3 => $waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $conf->{node}{$node1}{output}) && (not $conf->{node}{$node2}{output}))
 		{
-			# 'wait' returns the PID of each child as they exit. Once all children are gone it 
-			# returns '-1'.
-			$pid = wait;
-			if ($pid < 1)
-			{
-				# Children are gone.
-				$an->Log->entry({log_level => 2, message_key => "log_0122", message_variables => {
-					pid => $pid, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				# A child exited.
-				$an->Log->entry({log_level => 2, message_key => "log_0123", message_variables => {
-					pid => $pid, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			# This deletes the just-exited child process' PID from the
-			# %pids hash.
-			delete $pids{$pid};
-			
-			# This counter is a safety mechanism. If I see more PIDs exit
-			# than I spawned, something went oddly and I need to bail.
-			$saw_reaped++;
-			if ($saw_reaped > ($node_count + 1))
-			{
-				# Parent process reaped too many children...
-				$an->Log->entry({log_level => 1, message_key => "log_0124", message_variables => {
-					reaped => $saw_reaped, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			$waiting = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "waiting", value1 => $waiting,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
-		# This re-enters the do() loop for as long as the PID returned by wait() was > 0.
-		while $pid > 0;
+		
+		# Abort if we've waited too long, otherwise sleep.
+		if (($waiting) && (time > $timeout))
+		{
+			# Timeout, exit.
+			$waiting = 0;
+			$ok      = 0;
+			$an->Log->entry({log_level => 1, message_key => "log_0265", file => $THIS_FILE, line => __LINE__});
+		}
+		if ($waiting)
+		{
+			sleep 10;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "time",    value1 => time,
+				name2 => "timeout", value2 => $timeout,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
-	# All child processes reaped, exiting threaded execution.
-	$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
 	
-	# Reset
-	undef $conf;
-	undef $an;
-	($conf) = AN::Common::initialize($THIS_FILE, 0);
-
-	# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
-	$an = AN::Tools->new({data => $conf});
-	$an->default_log_file    ($conf->{path}{log_file});
-	$an->default_log_language($conf->{sys}{log_language});
-	$an->Log->level          ($conf->{sys}{log_level});
-	$conf->{handle}{an} = $an;
-
-	# Set some defaults
-	$an->default_language    ($an->data->{scancore}{language});
-	$an->default_log_language($an->data->{scancore}{log_language});
-	$an->default_log_file    ($an->data->{path}{log_file});
-
-	# Read my stuff
-	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
-	$an->String->read_words({file => $an->data->{path}{striker_strings}});
-	
-	# Re-read the CGI variables.
-	AN::Common::read_in_cgi_variables($conf);
-	
-	# Wipe out the file SSH handles as the fork clobbers them anyway so the next call will have to 
-	# reconnect fresh.
-	$an->Log->entry({log_level => 2, message_key => "log_0126", file => $THIS_FILE, line => __LINE__});
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	$conf->{node}{$node1}{ssh_fh} = "";
-	$conf->{node}{$node2}{ssh_fh} = "";
-	
-	return(0);
+	return($ok);
 }
 
 # This doesn a simple ping test from one node to the other.
