@@ -7135,124 +7135,43 @@ sub dual_join
 			title	=>	$say_title,
 		});
 
-		# I need to fork here because the calls won't return until cman either talks to it's peer or
-		# fences it.
-		my $parent_pid = $$;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "parent_pid", value1 => $parent_pid,
-		}, file => $THIS_FILE, line => __LINE__});
-		my %pids;
-		my $node_count = @{$conf->{clusters}{$cluster}{nodes}};
+		# Not call the command against both nodes using 'striker-delayed-run'.
+		my $command  = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
+		my ($output) = AN::Common::run_command_on_both_nodes($conf, $command, @{$conf->{clusters}{$cluster}{nodes}}, $conf->{sys}{root_password});
+		
 		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 		{
-			defined(my $pid = fork) or die "$THIS_FILE ".__LINE__."; Can't fork(), error was: $!\n";
-			if ($pid)
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",             value1 => $node,
+				name2 => "output->{\$node}", value2 => $output->{$node},
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $line (split/\n/, $output->{$node})
 			{
-				# Parent thread.
-				$pids{$pid} = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $node,
-					name2 => "pid",  value2 => $pid,
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				# This is the child thread, so do the call. Note that, without the 'die', we 
-				# could end up here if the fork() failed.
-				my $shell_call = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
-				my $password   = $conf->{sys}{root_password};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "shell_call", value1 => $shell_call,
-					name2 => "node",       value2 => $node,
-				}, file => $THIS_FILE, line => __LINE__});
-				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
-					password	=>	$password,
-					ssh_fh		=>	"",
-					'close'		=>	0,
-					shell_call	=>	$shell_call,
+				
+				$line = parse_text_line($conf, $line);
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print AN::Common::template($conf, "server.html", "dual-join-anvil-output", {
+					node	=>	$node,
+					message	=>	$message,
+					status	=>	$status,
 				});
-				foreach my $line (@{$return})
-				{
-					$line =~ s/^\s+//;
-					$line =~ s/\s+$//;
-					$line =~ s/\s+/ /g;
-					next if not $line;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					$line = parse_text_line($conf, $line);
-					my $message = ($line =~ /^(.*)\[/)[0];
-					my $status  = ($line =~ /(\[.*)$/)[0];
-					if (not $message)
-					{
-						$message = $line;
-						$status  = "";
-					}
-					print AN::Common::template($conf, "server.html", "dual-join-anvil-output", {
-						node	=>	$node,
-						message	=>	$message,
-						status	=>	$status,
-					});
-				}
-				
-				# Kill the child process.
-				exit;
 			}
 		}
 		
-		# Now loop until both child processes are dead. This helps to catch hung children.
-		my $saw_reaped = 0;
-		
-		# If I am here, then I am the parent process and all the child process have been spawned. I 
-		# will not enter a while() loop that will exist for however long the %pids hash has data.
-		while (%pids)
-		{
-			# This is a bit of an odd loop that put's the while() at the end. It will cycle once 
-			# per child-exit event.
-			my $pid;
-			do
-			{
-				# 'wait' returns the PID of each child as they exit. Once all children are 
-				# gone it returns '-1'.
-				$pid = wait;
-				if ($pid < 1)
-				{
-					# Children are gone.
-					$an->Log->entry({log_level => 2, message_key => "log_0122", message_variables => {
-						pid => $pid, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				else
-				{
-					# A child exited.
-					$an->Log->entry({log_level => 2, message_key => "log_0123", message_variables => {
-						pid => $pid, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				
-				# This deletes the just-exited child process' PID from the %pids hash.
-				delete $pids{$pid};
-				
-				# This counter is a safety mechanism. If I see more PIDs exit than I spawned,
-				# something went oddly and I need to bail.
-				$saw_reaped++;
-				if ($saw_reaped > ($node_count + 1))
-				{
-					$an->Log->entry({log_level => 1, message_key => "log_0124", message_variables => {
-						reaped => $saw_reaped, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					my $say_error = AN::Common::get_string($conf, {key => "message_0192"});
-					AN::Cluster::error($conf, "$say_error\n");
-				}
-			}
-			while $pid > 0;	# This re-enters the do() loop for as long as the PID returned by 
-					# wait() was >0.
-		}
-		# All child processes reaped, exiting threaded execution.
+		# We're done.
 		$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
 		print AN::Common::template($conf, "server.html", "dual-join-anvil-footer");
 	}

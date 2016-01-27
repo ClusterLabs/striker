@@ -1458,7 +1458,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0188">This can take a while, please be patient!</key>
 		<key name="message_0189"><![CDATA[This process will complete before the storage services start.<br />Please give a minute or two for storage to come online.]]></key>
 		<key name="message_0190"><![CDATA[It appears that <span class="fixed_width">#!variable!node!#</span> has already joined the #!string!brand_0003!#.]]></key>
-		<key name="message_0191">Output from both nodes will be mixed together and may cause unusual formatting. This is not a problem.</key>
+		<key name="message_0191"><![CDATA[This command can take up to <span class="highlight_detail">two minutes</span> to generate output.]]></key>
 		<key name="message_0192">All children should be gone now but it seems the program went into an infinit loop.</key>
 		<key name="message_0193">If the server powered off properly, the #!string!brand_0003!# should boot it back up in a moment.</key>
 		<key name="message_0194">#!string!brand_0002!# appears to have failed to read the server's information properly.</key>
