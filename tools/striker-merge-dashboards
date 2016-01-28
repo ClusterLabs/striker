@@ -80,6 +80,7 @@ my $an = AN::Tools->new({data => {
 			hosts		=>	"/etc/hosts",
 			log_file	=>	"/var/log/striker.log",
 			ssh_config	=>	"/etc/ssh/ssh_config",
+			striker_cache	=>	"/var/www/home/cache",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 			install_manifests =>	"/var/www/html/manifests",
@@ -156,17 +157,102 @@ diff_local_and_peer_hosts($an);
 
 # Now the manifests... Simple rsync the 'prefer' to the other first, then in the other direction.
 merge_install_manifests($an);
+
+# Ditto for the cache
+merge_striker_cache($an);
 print $an->String->get({key => "smd_message_0023"})."\n";
 
 ### ToDo:
 # merge_ssh_config($an);    <- Complicated, analyze files
-# merge_striker_cache($an); <- Easy, rsync from 'prefer' to other then back.
 
 exit(0);
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This simply rsync's /var/www/home/cache from the preferred host to the other, then back again.
+sub merge_striker_cache
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "merge_striker_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my ($caches_parent_directory, $cache_directory_name) = ($an->data->{path}{striker_cache} =~ /^(.*)\/(.*)$/);
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		name1 => "caches_parent_directory", value1 => $caches_parent_directory, 
+		name2 => "cache_directory_name",    value2 => $cache_directory_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{run}{prefer} eq "local")
+	{
+		# Rsync to the peer first, then back to us.
+		my $source      = $an->data->{path}{striker_cache};
+		my $destination = "root\@".$an->data->{run}{peer_hostname}.":$caches_parent_directory/";
+		print $an->String->get({key => "smd_message_0023"})."\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+		
+		# Now rsync the peer back to us.
+		$destination = "$caches_parent_directory/";
+		$source      = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{striker_cache};
+		print $an->String->get({key => "smd_message_0024"})."\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+	}
+	else
+	{
+		# Rsync from the peer first, then from us over to them.
+		my $destination = "$caches_parent_directory/";
+		my $source      = "root\@".$an->data->{run}{peer_hostname}.":".$an->data->{path}{striker_cache};
+		print $an->String->get({key => "smd_message_0024"})."\n";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+		
+		# Now over to the peer.
+		$source      = $an->data->{path}{striker_cache};
+		$destination = "root\@".$an->data->{run}{peer_hostname}.":$caches_parent_directory/";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+			name1 => "source",      value1 => $source, 
+			name2 => "destination", value2 => $destination, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Storage->rsync({
+			source		=>	$source,
+			target		=>	$an->data->{run}{peer_hostname},
+			password	=>	$an->data->{run}{peer_password},
+			destination	=>	$destination,
+			switches	=>	'-av',
+		});
+	}
+	
+	return(0);
+}
 
 # This works by first rsync'ing all the manifests on the preferred node to the peer first, then in the other
 # direction. Where conflicts might exist, the first rsync will overwrite the other.

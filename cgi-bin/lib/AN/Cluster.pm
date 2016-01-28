@@ -55,7 +55,7 @@ sub configure_local_system
 	});
 	
 	# Get the current hostname
-	my $hostname = get_hostname($conf);
+	my $hostname = $an->hostname();
 	
 	# Read the network configurations.
 	read_network_settings($conf);
@@ -1494,7 +1494,7 @@ sub sync_with_peer
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "sync_with_peer" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Return if this is disabled.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "tools::striker::auto-sync", value1 => $conf->{tools}{striker}{'auto-sync'},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $conf->{tools}{striker}{'auto-sync'})
@@ -1507,9 +1507,8 @@ sub sync_with_peer
 	my $local_id      =  "";
 	my $peer_name     =  "";
 	my $peer_password =  "";
-	my $i_am_long     =  get_hostname($conf);
-	my $i_am_short    =  $i_am_long;
-	   $i_am_short    =~ s/\..*$//;
+	my $i_am_long     =  $an->hostname();
+	my $i_am_short    =  $an->short_hostname();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "i_am_long",  value1 => $i_am_long,
 		name2 => "i_am_short", value2 => $i_am_short,
@@ -1539,19 +1538,19 @@ sub sync_with_peer
 	if ($db_count ne "2")
 	{
 		# Wrong number of DBs
-		$an->Log->entry({log_level => 2, message_key => "log_0006", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "log_0006", message_variables => {
 			db_count => $db_count,
 		}, file => $THIS_FILE, line => __LINE__});
 		return("");
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "local_id", value1 => $local_id,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $local_id)
 	{
 		# Configured scancore hosts don't match local hostname
-		$an->Log->entry({log_level => 2, message_key => "log_0007", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "log_0007", message_variables => {
 			i_am_long  => $i_am_long, 
 			i_am_short => $i_am_short, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1578,13 +1577,13 @@ sub sync_with_peer
 	}
 	
 	# Final check...
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "peer_name", value1 => $peer_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $peer_name)
 	{
 		# Unable to determine local host name.
-		$an->Log->entry({log_level => 2, message_key => "log_0008", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 1, message_key => "log_0008", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Configure the local virtual machine manager, if it is installed.
@@ -1650,7 +1649,7 @@ $conf->{path}{'striker-configure-vmm'}
 	if (not $merge_striker_ok)
 	{
 		$peer_name = "#!error!#";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "peer_name", value1 => $peer_name,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2294,7 +2293,7 @@ sub create_backup_file
 	my @manifests;
 	my $manifest_directory =  $conf->{path}{apache_manifests_dir};
 	   $manifest_directory =~ s/\/$//g;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "manifest_directory", value1 => $manifest_directory,
 	}, file => $THIS_FILE, line => __LINE__});
 	local(*DIRECTORY);
@@ -2341,7 +2340,7 @@ sub create_backup_file
 	my $date                    =  get_date($conf);
 	   $date                    =~ s/ /_/;
 	my $backup_file             =  "$conf->{path}{backup_config}";
-	my $hostname                =  get_hostname($conf);
+	my $hostname                =  $an->hostname();
 	   $backup_file             =~ s/#!hostname!#/$hostname/;
 	   $backup_file             =~ s/#!date!#/$date/;
 	   $conf->{sys}{backup_url} =~ s/#!hostname!#/$hostname/;
@@ -2469,13 +2468,13 @@ sub load_backup_configuration
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "striker.conf contents", value1 => $striker_conf,
+		name1 => "striker_conf", value1 => $striker_conf,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "hosts contents", value1 => $hosts,
+		name1 => "hosts", value1 => $hosts,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ssh_config contents", value1 => $ssh_config,
+		name1 => "ssh_config", value1 => $ssh_config,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($striker_conf) && ($hosts) && ($ssh_config))
 	{
@@ -2521,7 +2520,7 @@ sub load_backup_configuration
 		}
 		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
-				file		=>	$conf->{cgi}{file},
+				file	=>	$conf->{cgi}{file},
 			});
 		footer($conf);
 		exit;
@@ -2790,27 +2789,27 @@ sub create_install_manifest
 						try_again_button	=>	$button,
 					},
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
 					name2 => "cgi::anvil_node1_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
 					name2 => "cgi::anvil_node1_sn_link2_mac", value2 => $conf->{cgi}{anvil_node1_sn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
 					name2 => "cgi::anvil_node1_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
 					name2 => "cgi::anvil_node2_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
 					name2 => "cgi::anvil_node2_sn_link2_mac", value2 => $conf->{cgi}{anvil_node2_sn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
 					name2 => "cgi::anvil_node2_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2843,7 +2842,7 @@ sub create_install_manifest
 					rhn_user			=>	$conf->{cgi}{rhn_user},
 					rhn_password			=>	$conf->{cgi}{rhn_password},
 				});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "restart_html", value1 => $restart_html,
 				}, file => $THIS_FILE, line => __LINE__});
 				print $restart_html;
@@ -2857,14 +2856,14 @@ sub create_install_manifest
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_form", value1 => $show_form,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($show_form)
 	{
 		# Show the existing install manifest files.
 		show_existing_install_manifests($conf);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -3061,7 +3060,7 @@ sub create_install_manifest
 			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
 				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
 			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
 			}, file => $THIS_FILE, line => __LINE__});
 			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
@@ -4338,7 +4337,7 @@ sub get_striker_prefix_and_domain
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_striker_prefix_and_domain" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($hostname) = get_hostname($conf);
+	my ($hostname) = $an->hostname();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "hostname", value1 => $hostname,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8084,12 +8083,12 @@ sub configure_dashboard
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::save", value1 => $conf->{cgi}{save},
 		name2 => "cgi::task", value2 => $conf->{cgi}{task},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8118,15 +8117,15 @@ sub configure_dashboard
 	}
 	
 	### Header section
-	### If showing the main page, it's global settings and then the list of Anvil!s.
-	### If showing an Anvil!, it's the Anvil!'s details and then the overrides.
+	# If showing the main page, it's global settings and then the list of Anvil!s. If showing an Anvil!,
+	# it's the Anvil!'s details and then the overrides.
 
 	print AN::Common::template($conf, "config.html", "open-form-table", {
 		form_file	=>	"/cgi-bin/striker",
 	});
 	
 	# If showing an Anvil!, display it's details first.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::anvil", value1 => $conf->{cgi}{anvil},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{anvil})
@@ -10669,7 +10668,7 @@ sub gather_node_details
 		name1 => "password", value1 => $conf->{sys}{root_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	my $shell_call = "dmidecode -t 4,16,17";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -11147,38 +11146,6 @@ fi;";
 	return (0);
 }
 
-# This gets this machine's hostname.
-sub get_hostname
-{
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_hostname" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-
-	my $hostname;
-	my $shell_call = "$conf->{path}{hostname}";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "Calling", value1 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		next if $line =~ /NETWORKING=/;
-		$hostname =  $line;
-		$hostname =~ s/HOSTNAME=//;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "hostname", value1 => $hostname,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	close $file_handle;
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "hostname", value1 => $hostname,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($hostname);
-}
-
 # This parses the node's /etc/hosts file so that it can pull out the IPs for anything matching the node's 
 # short name and record it in the local cache.
 sub parse_hosts
@@ -11292,9 +11259,6 @@ sub parse_vm_defs_in_mem
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "in parse_vm_defs_in_mem() for node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
 	my $this_vm    = "";
 	my $in_domain  = 0;
 	my $this_array = [];
@@ -12231,7 +12195,7 @@ sub parse_drbdadm_dumpxml
 					foreach my $c (@{$b->{section}})
 					{
 						my $name = $c->{name};
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "c",    value1 => $c,
 							name2 => "name", value2 => $name,
 						}, file => $THIS_FILE, line => __LINE__});

@@ -13,6 +13,9 @@
 # 
 # TODO:
 # - Decide if we should parse 'ipmitool sel list'
+# - Detect a hung BMC by trying to talk to ourselves and, if that fails, send 'ipmitool bmc reset cold'. 
+#   Possibly try pinging the IPMI from the peer as it's not always possible to ping our own interface when
+#   the IPMI and eth device share the same physical connector.
 # 
 =pod
 Change/set thresholds:

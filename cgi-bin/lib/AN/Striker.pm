@@ -9121,9 +9121,6 @@ sub withdraw_node
 			{
 				$rgmanager_stop = 0;
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
 			$line = parse_text_line($conf, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -9169,9 +9166,6 @@ sub withdraw_node
 				{
 					$cman_stop = 0;
 				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line,
-				}, file => $THIS_FILE, line => __LINE__});
 				$line = parse_text_line($conf, $line);
 				my $message = ($line =~ /^(.*)\[/)[0];
 				my $status  = ($line =~ /(\[.*)$/)[0];
@@ -11537,6 +11531,10 @@ sub display_node_controls
 		name3 => "dual_join",     value3 => $dual_join,
 		name4 => "cold_stop",     value4 => $cold_stop,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Loop through '$conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state}' and see if 
+	###       either node is NOT 'UpToDate'. If not, then prevent the peer from withdrawing because it
+	###       will cause the Inconsistent node to flip out.
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
@@ -11626,8 +11624,9 @@ sub display_node_controls
 		my $say_fence_node_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
 			button_text	=>	"#!string!button_0037!#",
 		}, "", 1);
-	my $expire_time = time + $conf->{sys}{actime_timeout};
-	# &expire=$expire_time
+		
+		my $expire_time = time + $conf->{sys}{actime_timeout};
+		# &expire=$expire_time
 		my $say_fence_node_enabled_button = AN::Common::template($conf, "common.html", "enabled-button", {
 			button_class	=>	"highlight_dangerous",
 			button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=fence_node&node=$node&node_cluster_name=$node_long_name",
@@ -11639,7 +11638,7 @@ sub display_node_controls
 		# Dual-boot/Cold-Stop button.
 		if ($i == 0)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "i", value1 => $i,
 			}, file => $THIS_FILE, line => __LINE__});
 			my $say_boot_or_stop_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
@@ -11710,7 +11709,7 @@ sub display_node_controls
 		
 		# Make the node names click-able to show the hardware states.
 		$say_node_name[$i] = "$conf->{node}{$node}{info}{host_name}";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "i",                              value1 => $i,
 			name2 => "node::${node}::info::host_name", value2 => $conf->{node}{$node}{info}{host_name},
 			name3 => "say_node_name",                  value3 => $say_node_name[$i],

@@ -364,7 +364,6 @@ fi";
 	return($ok);
 }
 
-
 # This reads in the GDM PreSession script and inserts or removes this program, when needed.
 sub manage_gdm_presession
 {
@@ -384,7 +383,7 @@ sub manage_gdm_presession
 	{
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "line", value1 => $line, 
 			name2 => "0",    value2 => $0,   
 		}, file => $THIS_FILE, line => __LINE__});

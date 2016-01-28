@@ -163,15 +163,14 @@ sub run_new_install_manifest
 		}
 	}
 	
-	# If the node(s) are not online, we'll set up a repo pointing at this
-	# maching *if* we're configured to be a repo.
+	# If the node(s) are not online, we'll set up a repo pointing at this maching *if* we're configured
+	# to be a repo.
 	check_local_repo($conf);
 	
 	# Make sure we can log into both nodes.
 	check_connection($conf) or return(1);
 	
-	# Make sure both nodes can get online. We'll try to install even
-	# without Internet access.
+	# Make sure both nodes can get online. We'll try to install even without Internet access.
 	verify_internet_access($conf);
 	
 	# Make sure both nodes are EL6 nodes.
@@ -181,16 +180,14 @@ sub run_new_install_manifest
 	# Beyond here, perl is needed.
 	verify_perl_is_installed($conf);
 	
-	# This checks the disks out and selects the largest disk on each node.
-	# It doesn't sanity check much yet.
+	# This checks the disks out and selects the largest disk on each node. It doesn't sanity check much
+	# yet.
 	check_storage($conf);
 	
-	# See if the node is in a cluster already. If so, we'll set a flag to
-	# block reboots if needed.
+	# See if the node is in a cluster already. If so, we'll set a flag to block reboots if needed.
 	check_if_in_cluster($conf);
 	
-	# Get a map of the physical network interfaces for later remapping to
-	# device names.
+	# Get a map of the physical network interfaces for later remapping to device names.
 	my ($node1_remap_required, $node2_remap_required) = map_network($conf);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_remap_required", value1 => $node1_remap_required,
@@ -364,11 +361,8 @@ sub run_new_install_manifest
 		my ($anvil_configured) = check_config_for_anvil($conf);
 		
 		# Do we need to show the link for adding the Anvil! to the config?
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "anvil_configured", value1 => $anvil_configured,
-		}, file => $THIS_FILE, line => __LINE__});
 		my $message = AN::Common::get_string($conf, {key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "message", value1 => $message,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $anvil_configured)
@@ -1058,7 +1052,7 @@ fi
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1093,7 +1087,7 @@ fi
 	}
 	
 	# Setup striker.conf if we've not hit a problem and if it doesn't exist already.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "return_code",     value1 => $return_code,
 		name2 => "generate_config", value2 => $generate_config,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1127,7 +1121,7 @@ fi
 			});
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1161,7 +1155,7 @@ fi
 			my $striker_1_bcn_ip = $conf->{cgi}{anvil_striker1_bcn_ip};
 			my $striker_1_db_id  = 0;
 			my $add_striker_1    = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "used_db_host::$striker_1_bcn_ip", value1 => $conf->{used_db_host}{$striker_1_bcn_ip},
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $conf->{used_db_host}{$striker_1_bcn_ip})
@@ -1180,7 +1174,7 @@ fi
 						$add_striker_1                           = 1;
 						$conf->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
 						$conf->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id; 
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "used_db_id::$striker_1_db_id",    value1 => $conf->{used_db_id}{$striker_1_db_id},
 							name2 => "used_db_host::$striker_1_bcn_ip", value2 => $conf->{used_db_host}{$striker_1_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
@@ -1212,13 +1206,13 @@ fi
 						$add_striker_2                           = 1;
 						$conf->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
 						$conf->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "used_db_id::$striker_2_db_id",    value1 => $conf->{used_db_id}{$striker_2_db_id},
 							name2 => "used_db_host::$striker_2_bcn_ip", value2 => $conf->{used_db_host}{$striker_2_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "striker_2_db_id", value1 => $striker_2_db_id,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1230,8 +1224,7 @@ fi
 			}, file => $THIS_FILE, line => __LINE__});
 			if (($add_striker_1) or ($add_striker_2))
 			{
-				# Loop through the striker config and inject 
-				# one or both of the striker DBs.
+				# Loop through the striker config and inject one or both of the striker DBs.
 				my $new_striker_config = "";
 				foreach my $line (split/\n/, $striker_config)
 				{
@@ -1239,7 +1232,7 @@ fi
 					if ($line =~ /#scancore::db::2::password\s+=\s+Initial1/)
 					{
 						# Inject
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "add_striker_1", value1 => $add_striker_1,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($add_striker_1)
@@ -1256,7 +1249,7 @@ fi
 							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
 							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
 						}
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "add_striker_2", value1 => $add_striker_2,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($add_striker_2)
@@ -1497,7 +1490,7 @@ sub configure_scancore
 	
 	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_rc",         value1 => $node1_rc,
 		name2 => "node2_rc",         value2 => $node2_rc,
 		name3 => "node1_rc_message", value3 => $node1_rc_message,
@@ -6407,7 +6400,7 @@ fi";
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -7321,7 +7314,7 @@ sub configure_daemons_on_node
 		}
 		
 		# Now check/start the daemon if needed
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ok", value1 => $ok,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($ok)
@@ -7388,7 +7381,7 @@ sub configure_daemons_on_node
 		if (($init3 eq "0") && ($init5 eq "0"))
 		{
 			# Already disabled.
-			$an->Log->entry({log_level => 3, message_key => "log_0144", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "log_0144", message_variables => {
 				node   => $node, 
 				daemon => $daemon,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -7437,7 +7430,7 @@ sub configure_daemons_on_node
 			if ($state eq "0")
 			{
 				# Already stopped.
-				$an->Log->entry({log_level => 3, message_key => "log_0147", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "log_0147", message_variables => {
 					node   => $node, 
 					daemon => $daemon,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -7447,7 +7440,7 @@ sub configure_daemons_on_node
 				# Enable it.
 				set_daemon_state($conf, $node, $password, $daemon, "stop");
 				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node",   value1 => $node,
 					name2 => "daemon", value2 => $daemon,
 					name3 => "state",  value3 => $state,
@@ -7558,7 +7551,7 @@ sub get_daemon_state
 	my $state = "";
 	
 	# Check if the daemon is running currently.
-	$an->Log->entry({log_level => 3, message_key => "log_0150", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "log_0150", message_variables => {
 		node   => $node, 
 		daemon => $daemon,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -7577,7 +7570,7 @@ sub get_daemon_state
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -7594,7 +7587,7 @@ sub get_daemon_state
 		if ($line =~ /^rc:(\d+)/)
 		{
 			my $rc = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "rc",      value1 => $rc,
 				name2 => "stopped", value2 => $stopped_rc,
 				name3 => "running", value3 => $running_rc,
@@ -7611,7 +7604,7 @@ sub get_daemon_state
 			{
 				$state = "undefined:$rc";
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "rc",    value1 => $rc,
 				name2 => "state", value2 => $state,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -7686,7 +7679,7 @@ sub get_chkconfig_data
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -7969,7 +7962,7 @@ fi";
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -7979,17 +7972,15 @@ fi";
 			$conf->{node}{$node}{lvm_filter} =~ s/^\s+//;
 			$conf->{node}{$node}{lvm_filter} =~ s/\s+$//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "Custom filter found", value1 => $conf->{node}{$node}{lvm_filter},
+				name1 => "node::${node}::lvm_filter", value1 => $conf->{node}{$node}{lvm_filter},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	### TODO: Make this smart enough to *NOT* change the lvm.conf file
-	###       unless something actually needs to be changed and, if so, use
-	###       sed to maintain the file's comments.
-	# There is no default filter entry, but it is referenced as comments
-	# many times. So we'll inject it when we see the first comment and then
-	# skip any 
+	### TODO: Make this smart enough to *NOT* change the lvm.conf file unless something actually needs to
+	###       be changed and, if so, use sed to maintain the file's comments.
+	# There is no default filter entry, but it is referenced as comments many times. So we'll inject it 
+	# when we see the first comment and then skip any 
 	my $filter_injected = 0;
 	$conf->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
 	$conf->{node}{$node}{lvm_conf} .= "# Sorry for the lack of comments... Ran into a buffer issue with Net::SSH2 that\n";
@@ -8020,8 +8011,7 @@ fi";
 		# Test skip comments
 		elsif ((not $line) || (($line =~ /^#/) || ($line =~ /^\s+#/)) || ($line =~ /^\s+$/))
 		{
-			### TODO: Fix Net::SSH2 so that we can write out larger
-			###       files.
+			### TODO: Fix Net::SSH2 so that we can write out larger files.
 			# Skip comments
 			next;
 		}
@@ -8246,7 +8236,9 @@ sub do_node_reboot
 		}, file => $THIS_FILE, line => __LINE__});
 		while (not $has_shutdown)
 		{
-			if (not ping_ip($conf, $node))
+			# 0 == pinged, 1 == failed.
+			my $ping_rc = $an->Check->ping({target => $node, count => 3});
+			if ($ping_rc eq "1")
 			{
 				$has_shutdown = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -8350,58 +8342,6 @@ sub do_node_reboot
 	return($return_code);
 }
 
-# This pings the target and returns 1 if reached, 0 if not.
-sub ping_ip
-{
-	my ($conf, $ip) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_ip" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "ip", value1 => $ip, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $success    = 0;
-	my $ping_rc    = 255;
-	my $shell_call = "$conf->{path}{ping} -n $ip -c 1; echo ping:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sc", value1 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
-		{
-			# This isn't really needed, but might help folks
-			# watching the logs.
-			my $pings_sent     = $1;
-			my $pings_received = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "ip",             value1 => $ip,
-				name2 => "pings_sent",     value2 => $pings_sent,
-				name3 => "pings_received", value3 => $pings_received,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		if ($line =~ /ping:(\d+)/)
-		{
-			$ping_rc = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "ping_rc", value1 => $ping_rc,
-			}, file => $THIS_FILE, line => __LINE__});
-			$success = 1 if not $ping_rc;
-		}
-	}
-	close $file_handle;
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "success", value1 => $success,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($success);
-}
-
 # This function first tries to ping a node. If the ping is successful, it will try to log into the node..
 sub connect_to_node
 {
@@ -8414,9 +8354,11 @@ sub connect_to_node
 	# 0 = Successfully logged in
 	# 1 = Could ping, but couldn't log in
 	# 2 = Couldn't ping.
-	
 	my $rc = 2;
-	if (ping_ip($conf, $node))
+	
+	# 0 == pinged, 1 == failed.
+	my $ping_rc = $an->Check->ping({target => $node, count => 3});
+	if ($ping_rc eq "0")
 	{
 		# Pingable! Can we log in?
 		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => {
@@ -8780,7 +8722,7 @@ sub create_partition_on_node
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -8845,7 +8787,7 @@ sub create_partition_on_node
 		$ok = 2;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
@@ -9140,14 +9082,10 @@ sub get_partition_data_from_node
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node",   value1 => $node,
-			name2 => "disk",   value2 => $disk,
-			name3 => "return", value3 => $line,
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node", value1 => $node,
+			name2 => "disk", value2 => $disk,
+			name3 => "line", value3 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB Free/i)
 		{
@@ -10102,7 +10040,7 @@ fi;";
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -10147,8 +10085,8 @@ fi;";
 	return(0);
 }
 
-# This does the work of creating a metadata on each DRBD backing device. It
-# checks first to see if there already is a metadata and, if so, does nothing.
+# This does the work of creating a metadata on each DRBD backing device. It checks first to see if there 
+# already is a metadata and, if so, does nothing.
 sub setup_drbd_on_node
 {
 	my ($conf, $node, $password) = @_;
@@ -11654,7 +11592,7 @@ COMMIT";
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
@@ -11717,7 +11655,7 @@ sub configure_ntp
 		});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
@@ -12622,9 +12560,20 @@ sub install_missing_packages
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
+			if (($line =~ /-->/) or (not $line))
+			{
+				# This is a lot of less than useful output
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# More likely to be of interest.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
@@ -12890,7 +12839,7 @@ sub get_installed_package_list
 		next if $line =~ /^Loading mirror/;
 		next if $line =~ /^Installed Packages/;
 		next if $line =~ /^\s/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -13449,47 +13398,20 @@ sub ping_website
 		}
 	}
 	
-	### TODO: GAH!!!
+	# Default to no connection
 	$conf->{node}{$node}{internet} = 0;
 	
 	### TODO: If a node has two interfaces up on the same subnet, determine which matches the one we're 
 	###       coming in on and down the  other(s).
+	my $ok = 0;
+	
 	# Ya, I know 8.8.8.8 isn't a website...
-	my $ok         = 0;
-	   $shell_call = "ping 8.8.8.8 -c 3 -q";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
+	# 0 == pingable, 1 == failed.
+	my $ping_rc = $an->Check->ping({target => "8.8.8.8", count => 3});
+	if ($ping_rc eq "0")
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /(\d+) packets transmitted, (\d+) received/)
-		{
-			my $pings_sent     = $1;
-			my $pings_received = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "node",           value1 => $node,
-				name2 => "pings_sent",     value2 => $pings_sent,
-				name3 => "pings_received", value3 => $pings_received,
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($pings_received > 0)
-			{
-				$ok = 1;
-				$conf->{node}{$node}{internet} = 1;
-			}
-		}
+		$ok = 1;
+		$conf->{node}{$node}{internet} = 1;
 	}
 	
 	# If there is no internet connection, add a yum repo for the cdrom
@@ -14571,7 +14493,7 @@ sub get_partition_data
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -14641,7 +14563,7 @@ fi";
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -14783,9 +14705,40 @@ sub generate_cluster_conf
 		foreach my $method (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}})
 		{
 			$conf->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
+			
+			# Count how many devices we have.
+			my $device_count = 0;
 			foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
 			{
-				$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+				$device_count++;
+			}
+			
+			# If there are multiple methods, we need to say 'off', then additional entries for 
+			# 'on'. Otherwise, 'reboot' is fine.
+			if ($device_count == 1)
+			{
+				# Reboot.
+				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+				}
+			}
+			else
+			{
+				# Off
+				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					my $say_string =  $conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					   $say_string =~ s/reboot/off/;
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+				}
+				# On
+				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					my $say_string =  $conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					   $say_string =~ s/reboot/on/;
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+				}
 			}
 			$conf->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
@@ -15357,7 +15310,7 @@ sub check_connection
 	
 	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -15397,7 +15350,7 @@ sub check_connection
 		#copy_tools_to_docroot($conf);
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "access", value1 => $access,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($access);
@@ -15414,7 +15367,7 @@ sub check_node_access
 	
 	my $access     = 0;
 	my $shell_call = "echo 1";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -15428,7 +15381,7 @@ sub check_node_access
 	});
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}

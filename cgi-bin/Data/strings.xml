@@ -630,7 +630,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0210">DNS1</key>
 		<key name="row_0211">DNS2</key>
 		<key name="row_0212">Outlet</key>
-		<key name="row_0213">Replicated Storage</key>
+		<key name="row_0213">...free...</key>
 		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key> <!-- Not used now -->
 		<key name="row_0215">...free...</key>
 		<key name="row_0216">Ready?</key>
@@ -1169,7 +1169,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0102">#!string!brand_0003!# Nodes - Status</key>
 		<key name="title_0103">#!string!brand_0003!# Membership</key> <!-- was 'cman' -->
 		<key name="title_0104">Resource Manager</key> <!-- was 'rgmanager' -->
-		<key name="title_0105">Replicated Storage</key> <!-- was 'drbd' -->
+		<key name="title_0105">...free...</key> <!-- was 'drbd' -->
 		<key name="title_0106">Storage Manager</key> <!-- was 'clvmd' -->
 		<key name="title_0107">Shared Filesystems</key> <!-- was 'gfs2' -->
 		<key name="title_0108">Hypervisor</key> <!-- was 'libvirtd' -->
@@ -1719,7 +1719,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0445"><![CDATA[The request to force-off the [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
 		<key name="message_0446"><![CDATA[The request to power-off the [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
 		<key name="message_0447"><![CDATA[The request to fence the: [<span class="highlight_detail">#!variable!node!#</span>] node has timed out.]]></key>
-		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
+		<key name="message_0448"><![CDATA[The host's SSH fingerprint has changed!<br />It would be a security risk to proceed.<br />If you rebuilt the node, on this dashboard,<br />edit: [<span class="highlight_detail">#!variable!bad_file!#</span>]<br />and delete line: [#<span class="highlight_detail">#!variable!bad_line!#</span>].]]></key>
 		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
 		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>

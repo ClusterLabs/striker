@@ -1285,7 +1285,7 @@ sub check_global_settings
 	
 	# TODO: Make this smarter... For now, just check the SMTP username to
 	# see if it is default.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "smtp__username", value1 => $smtp__username,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $smtp__username) or ($smtp__username =~ /example\.com/))
@@ -1294,7 +1294,7 @@ sub check_global_settings
 		$global_set = 0;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "global_set", value1 => $global_set,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($global_set);

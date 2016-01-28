@@ -1342,10 +1342,6 @@ sub logger
 	foreach my $line (split/\n/, $message)
 	{
 		next if not $line;
-		if (($is_debug) && ($line !~ /\[ Debug \]/))
-		{
-			$line = "[ Debug ]   $line";
-		}
 		$line =~ s/\t/    /g;
 		open my $filehandle, '-|', "$conf->{path}{logger}", "-t", $file, "$line_number: $line" or die "Failed to call: [logger -t $file $line_number: $message]. Error: $!\n";
 		while (<$filehandle>)
