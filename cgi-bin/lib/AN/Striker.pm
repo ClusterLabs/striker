@@ -11535,6 +11535,25 @@ sub display_node_controls
 	### TODO: Loop through '$conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state}' and see if 
 	###       either node is NOT 'UpToDate'. If not, then prevent the peer from withdrawing because it
 	###       will cause the Inconsistent node to flip out.
+	foreach my $resource (sort {$a cmp $b} keys %{$conf->{drbd}})
+	{
+		foreach my $node (sort {$a cmp $b} keys %{$conf->{drbd}{$resource}{node}})
+		{
+			my $disk_state = $conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "resource",   value1 => $resource,
+				name2 => "node",       value2 => $node,
+				name3 => "disk_state", value3 => $disk_state,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
