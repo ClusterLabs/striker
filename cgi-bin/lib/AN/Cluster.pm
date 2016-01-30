@@ -2518,6 +2518,12 @@ sub load_backup_configuration
 				message	=>	$message,
 			});
 		}
+		else
+		{
+			# Configure SSH and Virtual Machine Manager (if configured).
+			configure_ssh_local($conf, $anvil_name);
+			configure_vmm_local($conf);
+		}
 		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file	=>	$conf->{cgi}{file},
