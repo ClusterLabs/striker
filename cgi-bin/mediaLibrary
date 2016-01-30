@@ -23,7 +23,7 @@ my $THIS_FILE = "mediaLibrary";
 # for the SSH call(s) to complete.
 $| = 1;
 
-my ($conf) = AN::Common::initialize($THIS_FILE);
+my ($conf) = AN::Common::initialize($THIS_FILE, 1);
 
 # Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
 my $an = AN::Tools->new({data => $conf});

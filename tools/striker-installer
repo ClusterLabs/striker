@@ -7346,10 +7346,8 @@ sub sanity_check_switches
 		}
 		elsif ($conf->{switches}{d} eq "git")
 		{
-			logger($conf, $THIS_FILE, __LINE__, "- Will install the latest version from git.", 1);
-			logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
-			logger($conf, $THIS_FILE, __LINE__, " # [ Warning ] - Please do NOT use a git version in production!               #", 1);
-			logger($conf, $THIS_FILE, __LINE__, " ##############################################################################", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Will install the latest version from git.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] - Please be cautious about using the git version in production.", 1);
 			#sleep 5;
 		}
 		else
