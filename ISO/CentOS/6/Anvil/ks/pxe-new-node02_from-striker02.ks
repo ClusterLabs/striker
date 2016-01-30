@@ -1,6 +1,6 @@
 ### Alteeve's Niche! Inc. - Anvil! High Availability Platform
 # License: GPLv2
-# Built:   2016-01-25 21:41:09
+# Built:   2016-01-30 12:02:10
 # Target:  Network Install (PXE)
 # OS:      CentOS
 # Machine: Anvil! Node #02
@@ -203,6 +203,13 @@ then
 	echo "Please be patient! Zero'ing out the first 100 GiB of /dev/${DRIVE}..."
 	dd if=/dev/zero of=/dev/${DRIVE} bs=4M count=25000
 fi
+
+### Make sure we always create a GPT disk (https://access.redhat.com/solutions/55652)
+echo "Creating a GPT disk label"
+/usr/bin/dd bs=512 count=10 if=/dev/zero of=/dev/${DRIVE}
+/usr/sbin/parted --script /dev/${DRIVE} mklabel gpt
+/usr/sbin/parted -l /dev/${DRIVE}
+/usr/bin/sleep  30
 
 # Now write the partition script
 echo "Done! Now creating and formatting partitions."

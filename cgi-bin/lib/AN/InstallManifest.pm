@@ -8571,7 +8571,7 @@ sub create_partition_on_node
 {
 	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "an_variables_0004", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "node",           value1 => $node, 
 		name2 => "disk",           value2 => $disk, 
 		name3 => "type",           value3 => $type, 
@@ -8583,8 +8583,7 @@ sub create_partition_on_node
 	my $start   = 0;
 	my $end     = 0;
 	my $size    = 0;
-	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition
-	###       type when called with --machine
+	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
 	#my $shell_call = "parted --machine /dev/$disk unit GiB print free";
 	my $shell_call = "parted /dev/$disk unit GiB print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -9058,7 +9057,7 @@ sub get_partition_data_from_node
 {
 	my ($conf, $node, $disk, $password) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "disk", value2 => $disk, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -9082,7 +9081,7 @@ sub get_partition_data_from_node
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node", value1 => $node,
 			name2 => "disk", value2 => $disk,
 			name3 => "line", value3 => $line,
@@ -14563,7 +14562,7 @@ fi";
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -14612,15 +14611,22 @@ fi";
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
 				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
 				$conf->{node}{$node}{disk}{$disk}{partition_count}++;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-					name1 => "node",                                          value1 => $node,
-					name2 => "disk",                                          value2 => $disk,
-					name3 => "partition",                                     value3 => $partition,
-					name4 => "start",                                         value4 => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start},
-					name5 => "end",                                           value5 => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end},
-					name6 => "size",                                          value6 => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
-					name7 => "type",                                          value7 => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type},
-					name8 => "node::${node}::disk::${disk}::partition_count", value8 => $conf->{node}{$node}{disk}{$disk}{partition_count},
+				# For our logs...
+				my $say_partition_start = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start}});
+				my $say_partition_end   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}});
+				my $say_partition_size  = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+					name1  => "node",                                          value1  => $node,
+					name2  => "disk",                                          value2  => $disk,
+					name3  => "partition",                                     value3  => $partition,
+					name4  => "start",                                         value4  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start},
+					name5  => "end",                                           value5  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end},
+					name6  => "size",                                          value6  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
+					name7  => "type",                                          value7  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type},
+					name8  => "node::${node}::disk::${disk}::partition_count", value8  => $conf->{node}{$node}{disk}{$disk}{partition_count},
+					name9  => "say_partition_start",                           value9  => $say_partition_start,
+					name10 => "say_partition_end",                             value10 => $say_partition_end,
+					name11 => "say_partition_size",                            value11 => $say_partition_size,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /^(\d+)B (\d+)B (\d+)B Free Space/)
@@ -14633,12 +14639,19 @@ fi";
 				$conf->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
 				$conf->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				# For our logs...
+				my $say_free_space_start = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{start}});
+				my $say_free_space_end   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{end}});
+				my $say_free_space_size  = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{size}});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 					name1 => "node",                                            value1 => $node,
 					name2 => "disk",                                            value2 => $disk,
 					name3 => "node::${node}::disk::${disk}::free_space::start", value3 => $conf->{node}{$node}{disk}{$disk}{free_space}{start},
 					name4 => "node::${node}::disk::${disk}::free_space::end",   value4 => $conf->{node}{$node}{disk}{$disk}{free_space}{end},
 					name5 => "node::${node}::disk::${disk}::free_space::size",  value5 => $conf->{node}{$node}{disk}{$disk}{free_space}{size},
+					name6 => "say_free_space_start",                            value6 => $say_free_space_start,
+					name7 => "say_free_space_end",                              value7 => $say_free_space_end,
+					name8 => "say_free_space_size",                             value8 => $say_free_space_size,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -14652,9 +14665,16 @@ fi";
 		my $size = $conf->{node}{$node}{disk}{$disk}{size};
 		if ($size > $biggest_size)
 		{
-			$biggest_disk = $disk;
-			$biggest_size = $size;
-			$conf->{node}{$node}{biggest_disk} = $biggest_disk;
+			   $biggest_disk                      = $disk;
+			   $biggest_size                      = $size;
+			my $say_biggest_size                  = $an->Readable->bytes_to_hr({'bytes' => $biggest_size});
+			   $conf->{node}{$node}{biggest_disk} = $biggest_disk;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "node",                        value1 => $node,
+				name2 => "biggest_disk",                value2 => $biggest_disk,
+				name3 => "biggest_size",                value3 => $biggest_size,
+				name4 => "node::${node}::biggest_disk", value4 => $conf->{node}{$node}{biggest_disk},
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
