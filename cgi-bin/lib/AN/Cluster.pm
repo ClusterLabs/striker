@@ -2518,12 +2518,19 @@ sub load_backup_configuration
 				message	=>	$message,
 			});
 		}
-		else
+		
+		# Configure SSH for each configured Anvil! and setup Virtual Machine Manager.
+		$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 		{
-			# Configure SSH and Virtual Machine Manager (if configured).
+			my $anvil_name = $an->data->{cluster}{$id}{name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "id",         value1 => $id,
+				name2 => "anvil_name", value2 => $anvil_name,
+			}, file => $THIS_FILE, line => __LINE__});
 			configure_ssh_local($conf, $anvil_name);
-			configure_vmm_local($conf);
 		}
+		configure_vmm_local($conf);
 		
 		print AN::Common::template($conf, "config.html", "backup-file-loaded", {}, {
 				file	=>	$conf->{cgi}{file},
