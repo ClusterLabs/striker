@@ -4948,7 +4948,6 @@ sub add_vm_to_cluster
 	   $shell_call .= "max_restarts=\"2\" ";
 	   $shell_call .= "restart_expire_time=\"600\" ";
 	   $shell_call .= "migrate_options=\"--unsafe\" ";	# This is required when using 4kn based disks and it is OK if the cache policy is "writethrough".
-	   #$shell_call .= "no_kill=\"1\"; echo ccs:\$?";
 	   $shell_call .= "; echo ccs:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -10279,7 +10278,7 @@ sub read_vm_definition
 	}, file => $THIS_FILE, line => __LINE__});
 	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
 	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",              value1 => $vm,
 		name2 => "say_vm",          value2 => $say_vm,
 		name3 => "definition_file", value3 => $conf->{vm}{$vm}{definition_file},

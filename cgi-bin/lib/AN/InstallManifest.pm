@@ -852,51 +852,6 @@ fi
 		}
 	}
 	
-	### TEMPORARY (Remove once https://bugzilla.redhat.com/show_bug.cgi?id=1285921 has a new resource-agents RPM).
-	# Not checking is done for this given it is temporary.
-	# Copy the /root/vm.sh to /usr/share/cluster/vm.sh, if it exists.
-	$shell_call .= "
-if [ -e '/root/vm.sh' ];
-then 
-    echo \"# Fix for rhbz#1285921\"
-    echo \"copying fixed vm.sh to /usr/share/cluster/\"
-    if [ -e '/usr/share/cluster/vm.sh' ];
-    then
-        if [ -e '/root/vm.sh.anvil' ];
-        then
-            echo \"Backup of vm.sh already exists at /root/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
-            rm -f /usr/share/cluster/vm.sh
-        else
-            echo \"Backing up /usr/share/cluster/vm.sh to /root/vm.sh.anvil\"
-            mv /usr/share/cluster/vm.sh /root/vm.sh.anvil
-        fi
-    fi
-    cp /root/vm.sh /usr/share/cluster/vm.sh 
-    chown root:root /usr/share/cluster/vm.sh
-    chmod 755 /usr/share/cluster/vm.sh
-else
-    echo \"/root/vm.sh doesn't exist.\"
-fi
-";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
 	# 0 == No changes made
 	# 1 == Enabled successfully
 	# 2 == Disabled successfully
@@ -12616,9 +12571,6 @@ sub install_missing_packages
 	}
 	else
 	{
-		### TODO: W.T.F.
-		$conf->{node}{$node}{internet} = 0;
-		
 		# Make sure the libvirtd bridge is gone.
 		my $shell_call = "
 if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
@@ -12670,11 +12622,7 @@ fi";
 			}
 		}
 		
-		# TODO: Seriously now...
-		$conf->{node}{$node}{internet} = 0;
-		
-		# If the MegaCli64 binary exists, make sure there is a symlink
-		# to it.
+		# If the MegaCli64 binary exists, make sure there is a symlink to it.
 		$shell_call = "
 if [ -e '$conf->{path}{nodes}{MegaCli64}' ]; 
 then 
@@ -12799,6 +12747,53 @@ fi";
 					program => "storcli64", 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+		}
+		
+		### TEMPORARY (Remove once https://bugzilla.redhat.com/show_bug.cgi?id=1285921 has a new resource-agents RPM).
+		# Not checking is done for this given it is temporary.
+		# Copy the /root/vm.sh to /usr/share/cluster/vm.sh, if it exists.
+		$shell_call .= "
+if [ -e '/root/vm.sh' ];
+then 
+    echo \"# Fix for rhbz#1285921\"
+    echo \"copying fixed vm.sh to /usr/share/cluster/\"
+    if [ -e '/usr/share/cluster/vm.sh' ];
+    then
+        if [ -e '/root/vm.sh.anvil' ];
+        then
+            echo \"Backup of vm.sh already exists at /root/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
+            rm -f /usr/share/cluster/vm.sh
+        else
+            echo \"Backing up /usr/share/cluster/vm.sh to /root/vm.sh.anvil\"
+            mv /usr/share/cluster/vm.sh /root/vm.sh.anvil
+        fi
+    fi
+    cp /root/vm.sh /usr/share/cluster/vm.sh 
+    chown root:root /usr/share/cluster/vm.sh
+    chmod 755 /usr/share/cluster/vm.sh
+    sleep 5
+    /etc/init.d/ricci restart
+else
+    echo \"/root/vm.sh doesn't exist.\"
+fi
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
