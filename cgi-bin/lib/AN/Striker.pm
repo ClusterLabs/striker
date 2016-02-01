@@ -9079,8 +9079,8 @@ sub withdraw_node
 	AN::Cluster::scan_cluster($conf);
 	my $proceed = $conf->{node}{$node}{enable_withdraw};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "in withdraw_node(), node", value1 => $node,
-		name2 => "proceed",                  value2 => $proceed,
+		name1 => "node",    value1 => $node,
+		name2 => "proceed", value2 => $proceed,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
@@ -10174,9 +10174,8 @@ sub check_node_readiness
 	# Make sure the storage is ready.
 	if ($ready)
 	{
-		# Still alive, find out what storage backs this VM and ensure
-		# that the LV is 'active' and that the DRBD resource(s) they
-		# sit on are Primary and UpToDate.
+		# Still alive, find out what storage backs this VM and ensure that the LV is 'active' and 
+		# that the DRBD resource(s) they sit on are Primary and UpToDate.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node", value1 => $node,
 			name2 => "vm",   value2 => $vm,
@@ -10186,42 +10185,32 @@ sub check_node_readiness
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
 			# Make sure the LV is active.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => " - vm", value1 => $vm,
-				name2 => "node",  value2 => $node,
-				name3 => "lv",    value3 => $lv,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "   - active", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "vm::${vm}::node::${node}::lv::${lv}::active", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
 			{
 				# It's active, so now check the backing storage.
-				foreach my $res (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}})
+				foreach my $resource (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}})
 				{
 					# For easier reading...
-					my $cs = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{connection_state};
-					my $ro = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{role};
-					my $ds = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$res}{disk_state};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "   - res", value1 => $res,
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "   - connection state", value1 => $cs,
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "   - role", value1 => $ro,
-					}, file => $THIS_FILE, line => __LINE__});
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "   - disk state", value1 => $ds,
+					my $connection_state = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{connection_state};
+					my $role             = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{role};
+					my $disk_state       = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{disk_state};
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						name1 => "resource",         value1 => $resource,
+						name2 => "connection_state", value2 => $connection_state,
+						name3 => "role",             value3 => $role,
+						name4 => "disk_state",       value4 => $disk_state,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# I consider a node "ready" if it is UpToDate and Primary.
-					if (($ro ne "Primary") || ($ds ne "UpToDate"))
+					if (($role ne "Primary") or ($disk_state ne "UpToDate"))
 					{
 						$ready = 0;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "2. ready", value1 => $ready,
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "ready", value1 => $ready,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -10231,8 +10220,8 @@ sub check_node_readiness
 				# The LV is inactive.
 				# TODO: Try to change the LV to active.
 				$ready = 0;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "3. vm", value1 => $vm,
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "vm",    value1 => $vm,
 					name2 => "node",  value2 => $node,
 					name3 => "ready", value3 => $ready,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -10240,7 +10229,7 @@ sub check_node_readiness
 		}
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "4. vm", value1 => $vm,
+		name1 => "vm",   value1 => $vm,
 		name2 => "node",  value2 => $node,
 		name3 => "ready", value3 => $ready,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10588,23 +10577,10 @@ sub check_lv
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $conf->{drbd}{$on_res}{node}{$node}{connection_state};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $conf->{drbd}{$on_res}{node}{$node}{role};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $conf->{drbd}{$on_res}{node}{$node}{disk_state};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",   value1 => $vm,
-			name2 => "node", value2 => $node,
-			name3 => "lv",   value3 => $lv,
-			name4 => "cs",   value4 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",   value1 => $vm,
-			name2 => "node", value2 => $node,
-			name3 => "lv",   value3 => $lv,
-			name4 => "ro",   value4 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",   value1 => $vm,
-			name2 => "node", value2 => $node,
-			name3 => "lv",   value3 => $lv,
-			name4 => "ds",   value4 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
+			name2 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::role",             value2 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
+			name3 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -11531,37 +11507,15 @@ sub display_node_controls
 		name4 => "cold_stop",     value4 => $cold_stop,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Loop through '$conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state}' and see if 
-	###       either node is NOT 'UpToDate'. If not, then prevent the peer from withdrawing because it
-	###       will cause the Inconsistent node to flip out.
-	foreach my $resource (sort {$a cmp $b} keys %{$conf->{drbd}})
-	{
-		foreach my $node (sort {$a cmp $b} keys %{$conf->{drbd}{$resource}{node}})
-		{
-			my $disk_state = $conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "resource",   value1 => $resource,
-				name2 => "node",       value2 => $node,
-				name3 => "disk_state", value3 => $disk_state,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node", value1 => $node,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
 		my $say_short_name =  $node;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "say_short_name", value1 => $say_short_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		$say_short_name    =~ s/\..*//;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "say_short_name",                  value1 => $say_short_name,
 			name2 => "node::${node1}::info::host_name", value2 => $conf->{node}{$node1}{info}{host_name},
 			name3 => "node::${node2}::info::host_name", value3 => $conf->{node}{$node2}{info}{host_name},
@@ -11683,7 +11637,7 @@ sub display_node_controls
 					id		=>	"dual_boot",
 				}, "", 1);
 				$say_boot_or_stop =~ s/\n$//;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "say_boot_or_stop", value1 => $say_boot_or_stop,
 				}, file => $THIS_FILE, line => __LINE__});
 			}

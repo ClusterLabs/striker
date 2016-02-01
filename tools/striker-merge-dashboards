@@ -5,8 +5,7 @@
 # Return codes:
 # 0  = Normal exit.
 # 
-# 
-# TODO: Merge sshd_config and cache files.
+# TODO: Merge sshd_config.
 # 
 
 use strict; 
@@ -17,8 +16,7 @@ use AN::Tools;
 # Turn off buffering.
 $| = 1;
 
-# Strip the 'PATH' variable down so that it doesn't cause problems when called
-# via a setuid wrapper.
+# Strip the 'PATH' variable down so that it doesn't cause problems when called via a setuid wrapper.
 $ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
 
 # Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.

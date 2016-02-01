@@ -1481,7 +1481,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0211"><![CDATA[The file: [<span class="fixed_width">#!variable!file!#</span>] has been archived as:<br />[<span class="fixed_width">#!variable!destination!#</span>].]]></key>
 		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
 		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_anvil_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
-		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off or it is now in use by a server.]]></key>
+		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
 		<key name="message_0215"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but the command to do so was not found in the cache. Manual power up is required.]]></key>
 		<key name="message_0216"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but it appears to already be running. Start up aborted.]]></key>
 		<key name="message_0217"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not able to log into the taget node's out of band management interface <span class="fixed_width">#!variable!target_host!#</span>.<br />Please check to see if the address, user or password has changed. Unable to continue.]]></key>
@@ -1516,7 +1516,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0246">#!string!brand_0003!#'s communication layer started successfully!</key>
 		<key name="message_0247">Unable to start the #!string!brand_0003!#'s communication layer!</key>
 		<key name="message_0248">#!string!brand_0003!#'s resource manager failed to stop!</key>
-		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is now in use by a server.]]></key>
+		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
 		<key name="message_0250">#!string!brand_0003!#'s resource manager recovered successfully!</key>
 		<key name="message_0251"><![CDATA[Checking the <span class="fixed_width">#!variable!storage_service!#</span> storage service now.]]></key>
 		<key name="message_0252"><![CDATA[This requires a rescan of the #!string!brand_0003!#, please be patient.]]></key>
@@ -2038,7 +2038,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0264">Delayed run of the cluster communication layer startup set. Now waiting for the start up to occur. We will wait up to: [#!data!sys::delayed_run_timeout!#] seconds.</key>
 		<key name="log_0265">Timed out waiting for a 'striker-delay-run' task to execute.</key>
 		<key name="log_0266">The 'striker-delay-run' program wasn't found at: [#!data!path::striker-delayed-run!#]!</key>
-		<key name="log_0267"></key>
+		<key name="log_0267">DRBD does not appear to be running on node: [#!variable!node!#].</key>
 		<key name="log_0268"></key>
 		<key name="log_0269"></key>
 		<key name="log_0270"></key>

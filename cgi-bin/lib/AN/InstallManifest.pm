@@ -10619,9 +10619,6 @@ sub configure_ntp_on_node
 	push @ntp_servers, $conf->{cgi}{anvil_ntp2} if $conf->{cgi}{anvil_ntp2};
 	foreach my $ntp_server (@ntp_servers)
 	{
-		### TODO: Figure out why I put this here... >_>
-		$conf->{node}{$node}{internet} = 0;
-		
 		# Look for/add NTP server
 		my $shell_call = "
 if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
@@ -12496,9 +12493,6 @@ sub install_missing_packages
 	
 	if ($to_install)
 	{
-		### TODO: Why am I doing this?
-		$conf->{node}{$node}{internet} = 0;
-		
 		my $shell_call = "yum $conf->{sys}{yum_switches} install $to_install";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -12684,9 +12678,6 @@ fi";
 			}
 		}
 		
-		### TODO: Was I drunk?
-		$conf->{node}{$node}{internet} = 0;
-		
 		# Now make sure we have the storcli symlink.
 		$shell_call = "
 if [ -e '$conf->{path}{nodes}{storcli64}' ]; 
@@ -12809,9 +12800,6 @@ sub get_installed_package_list
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_installed_package_list" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO:...
-	$conf->{node}{$node}{internet} = 0;
 	
 	my $ok         = 0;
 	my $shell_call = "yum list installed";
@@ -12968,9 +12956,6 @@ sub remove_priority_from_node
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Just stop it... >_<
-	$conf->{node}{$node}{internet} = 0;
-	
 	# Remove the 'priority=' line from our repos so that the update hits the web.
 	my $shell_call = "
 for repo in \$(ls /etc/yum.repos.d/);
@@ -13011,9 +12996,6 @@ sub update_node
 	
 	# Skip if the user has decided not to run OS updates.
 	return(1) if not $conf->{sys}{update_os};
-	
-	### TODO: I don't even...
-	$conf->{node}{$node}{internet} = 0;
 	
 	my $shell_call = "yum $conf->{sys}{yum_switches} update";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -13329,9 +13311,6 @@ sub ping_website
 		my ($network, $netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
 		{
-			# TODO: I really need to sort out why I am doing this...
-			$conf->{node}{$node}{internet} = 0;
-			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "Conflicting route! interface", value1 => $interface,
 				name2 => "network",                      value2 => $network/$netmask,

@@ -10254,8 +10254,8 @@ sub post_scan_calculations
 		}
 	}
 	
-	# If both nodes have a given daemon down, then some data may be
-	# unavailable. This saves logic when such checks are needed.
+	# If both nodes have a given daemon down, then some data may be unavailable. This saves logic when 
+	# such checks are needed.
 	my $this_cluster = $conf->{cgi}{cluster};
 	my $node1 = $conf->{sys}{cluster}{node1_name};
 	my $node2 = $conf->{sys}{cluster}{node2_name};
@@ -10285,6 +10285,27 @@ sub post_scan_calculations
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} ne "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} ne "0"))
 	{
 		$conf->{sys}{cman_down} = 1;
+	}
+	
+	# Loop through the DRBD resources on each node and see if any resources are 'SyncSource', disable
+	# withdrawing that node. 
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	{
+		foreach my $resource (sort {$a cmp $b} keys %{$conf->{node}{$node}{drbd}{resource}})
+		{
+			my $connection_state = $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "connection_state", value1 => $conf->{node}{$node}{drbd}{resource}{$resource}{io_flags},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($connection_state =~ /SyncSource/)
+			{
+				$conf->{node}{$node}{enable_withdraw} = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node}::enable_withdraw", value1 => $conf->{node}{$node}{enable_withdraw},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 
 	return (0);
@@ -11750,8 +11771,8 @@ sub parse_proc_drbd
 	{
 		if ($line =~ /drbd offline/)
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "DRBD does not appear to be running on node", value1 => $node,
+			$an->Log->entry({log_level => 2, message_key => "log_0267", message_variables => {
+				node => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
@@ -11764,9 +11785,8 @@ sub parse_proc_drbd
 		if ($line =~ /version: (.*?) \(/)
 		{
 			$conf->{node}{$node}{drbd}{version} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "Node",         value1 => $node,
-				name2 => "DRBD version", value2 => $conf->{node}{$node}{drbd}{version},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::drbd::version", value1 => $conf->{node}{$node}{drbd}{version},
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -11801,7 +11821,7 @@ sub parse_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "node",                                                         value1 => $node,
 					name2 => "resource",                                                     value2 => $resource,
 					name3 => "node::${node}::drbd::resource::${resource}::minor_number",     value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
@@ -11816,16 +11836,14 @@ sub parse_proc_drbd
 				$conf->{node}{$node}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
 				$conf->{node}{$node}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-					name1 => "== node",          value1 => $node,
-					name2 => "resource",         value2 => $resource,
-					name3 => "minor",            value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
-					name4 => "connection state", value4 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "node::${node}::drbd::resource::${resource}::minor_number",     value1 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
+					name2 => "node::${node}::drbd::resource::${resource}::connection_state", value2 => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 					name1  => "node",                                                         value1  => $node,
 					name2  => "resource",                                                     value2  => $resource,
-					name3  => "minor_number",                                                 value3  => $minor_number,
+					name3  => "node::${node}::drbd::resource::${resource}::minor_number",     value3  => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
 					name4  => "node::${node}::drbd::resource::${resource}::connection_state", value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state},
 					name5  => "node::${node}::drbd::resource::${resource}::my_role",          value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{my_role},
 					name6  => "node::${node}::drbd::resource::${resource}::peer_role",        value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{peer_role},
@@ -12193,16 +12211,16 @@ sub parse_drbdadm_dumpxml
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{role}             = "--";
 						$conf->{drbd}{$resource}{node}{$node}{res_file}{disk_state}       = "--";
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-							name1  => "node",           value1  => $node,
-							name2  => "resource",       value2  => $resource,
-							name3  => "minor number",   value3  => $minor_number,
-							name4  => "metadisk",       value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{metadisk},
-							name5  => "DRBD device",    value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device},
-							name6  => "backing device", value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{backing_device},
-							name7  => "hostname",       value7  => $hostname,
-							name8  => "IP",             value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address},
-							name9  => "tcp_port",       value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port},
-							name10 => "ip_type",        value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type},
+							name1  => "node",                                                                          value1  => $node,
+							name2  => "resource",                                                                      value2  => $resource,
+							name3  => "minor_number",                                                                  value3  => $minor_number,
+							name4  => "node::${node}::drbd::resource::${resource}::metadisk",                          value4  => $conf->{node}{$node}{drbd}{resource}{$resource}{metadisk},
+							name5  => "node::${node}::drbd::resource::${resource}::drbd_device",                       value5  => $conf->{node}{$node}{drbd}{resource}{$resource}{drbd_device},
+							name6  => "node::${node}::drbd::resource::${resource}::backing_device",                    value6  => $conf->{node}{$node}{drbd}{resource}{$resource}{backing_device},
+							name7  => "hostname",                                                                      value7  => $hostname,
+							name8  => "node::${node}::drbd::resource::${resource}::hostname::${hostname}::ip_address", value8  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address},
+							name9  => "node::${node}::drbd::resource::${resource}::hostname::${hostname}::tcp_port",   value9  => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{tcp_port},
+							name10 => "node::${node}::drbd::resource::${resource}::hostname::${hostname}::ip_type",    value10 => $conf->{node}{$node}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_type},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 					foreach my $c (@{$b->{section}})

@@ -2,13 +2,15 @@
 # 
 # This takes a stock RHEL or CentOS 6.x ISO as the source for generating a Anvil! install ISO. 
 # 
-# This doesn't rely on AN::Tools perl modules to keep running this simple.
+# This DOES NOT rely on AN::Tools perl modules as most users will not have them installed when they run this.
+# For the same reason, translations are not (yet) supported.
+# 
 # 
 # It was created to avoid legal concerns regarding redistributing modified CentOS or RHEL ISOs. Please use it
 # with this spirit in mind and do not make available the resulting ISOs for general download unless you get
 # written permission from Alteeve's Niche! and either Red Hat or CentOS, depending on the generated ISO.
 # 
-# (c) Alteeve's Niche! Inc, 2015 - https://alteeve.ca
+# (c) Alteeve's Niche! Inc, 2016 - https://alteeve.ca
 # 
 # This program is released under the GPL v2+
 # 
@@ -16,8 +18,13 @@
 use strict;
 use warnings;
 use IO::Handle;
-my $THIS_FILE =  $0;
-   $THIS_FILE =~ s/^.*\///;
+
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
 
 my $conf = {
 	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
@@ -172,7 +179,8 @@ sub validate_source
 				{
 					# Match!
 					$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
-					print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
+					print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n";
+					#print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
 				}
 			}
 		}
@@ -182,6 +190,8 @@ sub validate_source
 			print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n\n";
 			exit(1);
 		}
+		exit;
+		
 		
 		# Did I find an OS?
 		if ($conf->{sys}{os} eq "rhel")
@@ -1173,20 +1183,20 @@ sub get_package_list
 	
 	# Alteeve-source packages
 	$conf->{sys}{packages}{alteeve} = [
-		"bash-completion.noarch", 				# bash-completion-1.3-7.el6.anvil.noarch.rpm
-		"drbd84-utils.x86_64", 					# drbd84-utils-8.9.2-1.el6.anvil.x86_64.rpm
-		"kmod-drbd84.x86_64", 					# kmod-drbd84-8.4.6-1.el6.anvil.x86_64.rpm
-		"ntfs-3g.x86_64", 					# ntfs-3g-2015.3.14-2.el6.anvil.x86_64.rpm
-		"ntfsprogs.x86_64", 					# ntfsprogs-2015.3.14-2.el6.anvil.x86_64.rpm
-		"perl-Net-SSH2.x86_64", 				# perl-Net-SSH2-0.53-4.el6.anvil.x86_64.rpm
-		"perl-XML-Simple.noarch", 				# perl-XML-Simple-2.20-1.el6.anvil.noarch.rpm
-		"postgresql94.x86_64", 					# postgresql94-9.4.1-1PGDG.el6.anvil.x86_64.rpm
-		"postgresql94-contrib.x86_64", 				# postgresql94-contrib-9.4.1-1PGDG.el6.anvil.x86_64.rpm
-		"postgresql94-libs.x86_64", 				# postgresql94-libs-9.4.1-1PGDG.el6.anvil.x86_64.rpm
-		"postgresql94-plperl.x86_64", 				# postgresql94-plperl-9.4.1-1PGDG.el6.anvil.x86_64.rpm
-		"postgresql94-server.x86_64", 				# postgresql94-server-9.4.1-1PGDG.el6.anvil.x86_64.rpm
-		"shorewall.noarch", 					# shorewall-4.6.11.1-1.el6.anvil.noarch.rpm
-		"shorewall-core.noarch", 				# shorewall-core-4.6.11.1-1.el6.anvil.noarch.rpm
+		"bash-completion.noarch",
+		"drbd84-utils.x86_64",
+		"kmod-drbd84.x86_64",
+		"ntfs-3g.x86_64",
+		"ntfsprogs.x86_64",
+		"perl-Net-SSH2.x86_64",
+		"perl-XML-Simple.noarch",
+		"postgresql95.x86_64",
+		"postgresql95-contrib.x86_64",
+		"postgresql95-libs.x86_64",
+		"postgresql95-plperl.x86_64",
+		"postgresql95-server.x86_64",
+		"shorewall.noarch",
+		"shorewall-core.noarch",
 	];
 	
 	# Binary packages from third parties
