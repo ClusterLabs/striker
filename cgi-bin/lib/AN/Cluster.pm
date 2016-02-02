@@ -16,7 +16,7 @@ package AN::Cluster;
 # - https://alteeve.ca/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/striker
+# - https://github.com/ClusterLabs/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca

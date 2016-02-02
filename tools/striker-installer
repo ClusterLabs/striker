@@ -695,8 +695,8 @@ my $conf = {
 		yum_switches		=>	"-y",		# Adds: [--disablerepo='*' --enablerepo='striker*'] if no internet connection found.
 	},
 	url		=>	{
-		git_master	=>	"https://github.com/digimer/striker/archive/master.zip",
-		striker		=>	"https://github.com/digimer/striker/archive/#!striker_version!#.zip",
+		git_master	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
+		striker		=>	"https://github.com/ClusterLabs/striker/archive/#!striker_version!#.zip",
 	},
 	# This will be changed to have two of each link if four NICs are found.
 	nics		=>	["bcn_link1", "ifn_link1"],

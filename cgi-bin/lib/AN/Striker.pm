@@ -15,7 +15,7 @@ package AN::Striker;
 # - https://alteeve.com/w/2-Node_Red_Hat_KVM_Cluster_Tutorial
 #
 # This program's source code and updates are available on Github:
-# - https://github.com/digimer/striker
+# - https://github.com/ClusterLabs/striker
 #
 # Author;
 # Alteeve's Niche!  -  https://alteeve.ca
@@ -11660,7 +11660,7 @@ sub display_node_controls
 						id		=>	"dual_boot",
 					}, "", 1);
 					$say_boot_or_stop =~ s/\n$//;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "say_boot_or_stop", value1 => $say_boot_or_stop,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -11712,7 +11712,7 @@ sub display_node_controls
 	
 	my $boot_or_stop = "";
 	my $hard_reset   = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "say_boot_or_stop", value1 => $say_boot_or_stop,
 		name2 => "say_hard_reset",   value2 => $say_hard_reset,
 	}, file => $THIS_FILE, line => __LINE__});

@@ -34,17 +34,27 @@ my $time = time;
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
+			cluster_conf	=>	"/etc/cluster/cluster.conf", 
 			'less'		=>	"/usr/bin/less",
+			log_file	=>	"/var/log/striker.log",
 			striker_config	=>	"/etc/striker/striker.conf",
 			striker_strings	=>	"/sbin/striker/Data/strings.xml",
 		},
 		switches	=>	{
 		},
+		peer		=>	{
+			short_name	=>	"",
+			bcn_name	=>	"",
+			sn_name		=>	"",
+			ifn_name	=>	"",
+		},
 		sys		=>	{
+			i_am_node2	=>	0,
 			language	=>	"en_CA",
-			local_users	=>	[],
+			local_node	=>	"",
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			peer_node	=>	"",
 		},
 	},
 });
@@ -59,8 +69,8 @@ $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Readable->base2(1);
 
-if (($an->data->{switches}{h})   || 
-    ($an->data->{switches}{'?'}) ||
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
@@ -72,18 +82,93 @@ $an->Log->entry({log_level => 2, message_key => "asst_log_0001", message_variabl
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
-exit(0);
-
 ### Process
 # 
 # 1. Who am I and who is my peer?
 # 2. Can I ping my peer on all three networks? Loop until true.
 # 3. 
-# 
+
+# Who am I and what Anvil! do I belong to?
+find_myself($an);
+
+# Wait until I can ping the peer on all three networks.
+
+
+$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
+	name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
+	name3 => "sys::i_am_node2", value3 => $an->data->{sys}{i_am_node2}, 
+}, file => $THIS_FILE, line => __LINE__});
+
+
+exit(0);
+
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This figures out who I am, what Anvil! I am in and who my peer is.
+sub find_myself
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hostname_full  = $an->hostname();
+	my $hostname_short = $an->short_hostname();
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "hostname_full",  value1 => $hostname_full, 
+		name2 => "hostname_short", value2 => $hostname_short, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Read in cluster.conf.
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($an->data->{path}{cluster_conf}, KeyAttr => {node => 'name'}, ForceArray => 1);
+	foreach my $a (@{$data->{clusternodes}->[0]->{clusternode}})
+	{
+		my $node_name = $a->{name};
+		my $alt_name  = $a->{altname}->[0]->{name} ? $a->{altname}->[0]->{name} : "";
+		if (($hostname_full  eq $node_name) or 
+		    ($hostname_full  eq $alt_name)  or 
+		    ($hostname_short eq $node_name) or 
+		    ($hostname_short eq $alt_name))
+		{
+			$an->data->{sys}{local_node} = $node_name;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$an->data->{sys}{peer_node} = $node_name;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::peer_node", value1 => $an->data->{sys}{peer_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
+		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I am node 2, make note so that we can delay and let node 1 run first.
+	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))
+	{
+		$an->data->{sys}{i_am_node2} = 1;
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::i_am_node2", value1 => $an->data->{sys}{i_am_node2}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Figure out what my peer's BCN, SN and IFN names are
+	$an->data->{peer}{short_name} =  $an->data->{sys}{peer_node};
+	$an->data->{peer}{short_name} =~ s/\..*$//;
+	$an->data->{peer}{bcn_name}   = $an->data->{peer}{short_name}.".bcn";
+	$an->data->{peer}{sn_name}    = $an->data->{peer}{short_name}.".sn";
+	$an->data->{peer}{ifn_name}   = $an->data->{peer}{short_name}.".ifn";
+	
+	return(0);
+}
 
 # Print the usage information.
 sub print_usage

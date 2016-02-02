@@ -1,0 +1,2538 @@
+#!/usr/bin/perl
+# 
+# This software was created by Alteeve's Niche! Inc. and has been released under the terms of the GNU GPL 
+# version 2.
+#
+# https://alteeve.ca
+# 
+# Exit Codes:
+# 0  - Success
+# 1  - Passed in host name was not found in the database.
+# 
+# NOTE:
+#  - 
+# 
+# TODO: 
+#  - 
+# 
+
+# Use my modules.
+use strict;
+use warnings;
+use AN::Tools;
+use Data::Dumper;
+
+# Disable buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $scancore_directory = ($running_directory =~ /^(.*?)\/agents\/$THIS_FILE$/)[0];
+
+# Get the handle to the AN::Tools and preset some variables I will use.
+my $an = AN::Tools->new({data => 
+	{
+		path		=>	{
+			# This stores this node's UUID. It is used to track all our sensor data in the 
+			# database. If you change this here, change it ScanCore, too.
+			host_uuid		=>	"/etc/striker/host.uuid",
+			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			libvirtd_socket		=>	"/var/run/libvirt/libvirt-sock", 
+			strings			=>	"$running_directory/$THIS_FILE.xml",
+			sql			=>	"$running_directory/$THIS_FILE.sql",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+			virsh			=>	"/usr/bin/virsh",
+		},
+		# This is used so that the user can set the language in on striker.conf variable.
+		'scan-virsh'		=>	{
+			language		=>	"en_CA",
+			log_file		=>	"/var/log/ScanCore.log",
+			log_level		=>	2,
+			log_language		=>	"en_CA",
+		},
+		sys		=>	{
+			# This will get set by AN::Tools::DB->connect_to_databases()
+			sql			=>	[],
+		},
+	}
+});
+
+# Read the config file
+$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
+
+# Set some defaults
+$an->default_language    ($an->data->{'scan-server'}{language});
+$an->default_log_language($an->data->{'scan-server'}{log_language});
+$an->default_log_file    ($an->data->{'scan-server'}{log_file});
+
+# Set the log level.
+$an->Log->level($an->data->{'scan-server'}{log_level});
+
+# Read in the language strings.
+$an->String->read_words({file => $an->data->{path}{strings}});
+$an->String->read_words({file => $an->data->{path}{core_strings}});
+$an->String->read_words({file => $an->data->{path}{striker_strings}});
+
+# Get the switches before printing anything in case the user is asking for help.
+$an->Get->switches();
+print $an->String->get({key => "scan_server_message_0001"})."\n";
+
+# If 'libvirtd' isn't running, exit.
+if (not -e $an->data->{path}{libvirtd_socket})
+{
+	# libvirtd not found, exit.
+	nice_exit($an, 1);
+}
+
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
+	connections	=>	$connections,
+}, file => $THIS_FILE, line => __LINE__});
+
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
+prep_databases($an);
+
+# Look to see if any databases need to be updated.
+update_db($an);
+
+# Look for changes.
+find_changes($an);
+
+# Update the database
+$an->DB->update_time({file => $THIS_FILE});
+
+# Clean up and go away.
+nice_exit($an, 0);
+
+###############################################################################
+# Functions                                                                   #
+###############################################################################
+
+# This looks at each DB's 'updated' table to see if any are behind. If any are,
+# it will update the tables based on the time the last entry was made for a
+# given host.
+sub update_db
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{scancore}{db_resync_needed})
+	{
+		update_db_clustat($an);
+		update_db_clustat_node($an);
+		update_db_clustat_service($an);
+	}
+	
+	return(0);
+}
+
+# Update the clustat_service table
+sub update_db_clustat_service
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_service", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'clustat_service' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    a.clustat_service_name, 
+    a.clustat_service_clustat_uuid, 
+    a.clustat_service_host, 
+    a.clustat_service_status, 
+    a.clustat_service_notes, 
+    a.clustat_service_is_vm, 
+    a.modified_date 
+FROM 
+    history.clustat_service a, 
+    public.clustat b
+WHERE 
+    a.clustat_service_clustat_uuid = b.clustat_uuid 
+AND
+    b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $clustat_service_name         = $row->[0];
+			my $clustat_service_clustat_uuid = $row->[1];
+			my $clustat_service_host         = $row->[2];
+			my $clustat_service_status       = $row->[3];
+			my $clustat_service_notes        = $row->[4];
+			my $clustat_service_is_vm        = $row->[5] ? "TRUE" : "FALSE";
+			my $modified_date                = $row->[6];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "clustat_service_name",         value1 => $clustat_service_name, 
+				name2 => "clustat_service_clustat_uuid", value2 => $clustat_service_clustat_uuid, 
+				name3 => "clustat_service_host",         value3 => $clustat_service_host, 
+				name4 => "clustat_service_status",       value4 => $clustat_service_status, 
+				name5 => "clustat_service_notes",        value5 => $clustat_service_notes, 
+				name6 => "clustat_service_is_vm",        value6 => $clustat_service_is_vm, 
+				name7 => "modified_date",                value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name} = {
+				clustat_service_clustat_uuid	=>	$clustat_service_clustat_uuid, 
+				clustat_service_host		=>	$clustat_service_host, 
+				clustat_service_status		=>	$clustat_service_status, 
+				clustat_service_notes		=>	$clustat_service_notes, 
+				clustat_service_is_vm		=>	$clustat_service_is_vm, 
+			};
+			$an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{'exists'} = 1;
+			$an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{seen}     = 0;
+			$an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name} = {
+				clustat_service_clustat_uuid	=>	$clustat_service_clustat_uuid, 
+				clustat_service_host		=>	$clustat_service_host, 
+				clustat_service_status		=>	$clustat_service_status, 
+				clustat_service_notes		=>	$clustat_service_notes, 
+				clustat_service_is_vm		=>	$clustat_service_is_vm, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $clustat_service_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}})
+		{
+			my $clustat_service_clustat_uuid = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_clustat_uuid};
+			my $clustat_service_host         = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_host};
+			my $clustat_service_status       = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_status};
+			my $clustat_service_notes        = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_notes};
+			my $clustat_service_is_vm        = $an->data->{db_data}{unified}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}{clustat_service_is_vm};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "clustat_service_name",         value1 => $clustat_service_name, 
+				name2 => "clustat_service_clustat_uuid", value2 => $clustat_service_clustat_uuid, 
+				name3 => "clustat_service_host",         value3 => $clustat_service_host, 
+				name4 => "clustat_service_status",       value4 => $clustat_service_status, 
+				name5 => "clustat_service_notes",        value5 => $clustat_service_notes, 
+				name6 => "clustat_service_is_vm",        value6 => $clustat_service_is_vm, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'clustat_service_name' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat_service::clustat_service_name::${clustat_service_name}::seen", value1 => $an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_service::clustat_service_name::${clustat_service_name}::exists", value1 => $an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{clustat_service}{clustat_service_name}{$clustat_service_name}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::clustat_service::modified_date::${modified_date}::clustat_service_name::${clustat_service_name}", value1 => $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.clustat_service
+SET
+    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    clustat_service_is_vm  = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name)." 
+AND 
+    clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.clustat_service
+(
+    clustat_service_clustat_uuid, 
+    clustat_service_host, 
+    clustat_service_status, 
+    clustat_service_notes, 
+    clustat_service_is_vm, 
+    clustat_service_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'clustat_service_name' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{clustat_service}{modified_date}{$modified_date}{clustat_service_name}{$clustat_service_name})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.clustat_service
+(
+    clustat_service_id, 
+    clustat_service_clustat_uuid, 
+    clustat_service_host, 
+    clustat_service_status, 
+    clustat_service_notes, 
+    clustat_service_is_vm, 
+    clustat_service_name, 
+    modified_date 
+) VALUES (
+    (
+        SELECT 
+            clustat_service_id 
+        FROM 
+            public.clustat_service 
+        WHERE 
+            clustat_service_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid)." 
+        AND 
+            clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name)."
+    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_notes).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_is_vm).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_service_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen clustat_service_name?
+			} # foreach my $id 
+		} # foreach my $clustat_service_name ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the clustat_node table
+sub update_db_clustat_node
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat_node", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'clustat_node' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    a.clustat_node_clustat_uuid, 
+    a.clustat_node_cluster_id, 
+    a.clustat_node_name, 
+    a.clustat_node_status, 
+    a.modified_date 
+FROM 
+    history.clustat_node a, 
+    public.clustat b 
+WHERE 
+    a.clustat_node_clustat_uuid = b.clustat_uuid 
+AND
+    b.clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $clustat_node_clustat_uuid = $row->[0];
+			my $clustat_node_cluster_id   = $row->[1];
+			my $clustat_node_name         = $row->[2];
+			my $clustat_node_status       = $row->[3];
+			my $modified_date             = $row->[4];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "clustat_node_clustat_uuid", value1 => $clustat_node_clustat_uuid, 
+				name2 => "clustat_node_cluster_id",   value2 => $clustat_node_cluster_id, 
+				name3 => "clustat_node_name",         value3 => $clustat_node_name, 
+				name4 => "clustat_node_status",       value4 => $clustat_node_status, 
+				name5 => "modified_date",             value5 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name} = {
+				clustat_node_clustat_uuid	=>	$clustat_node_clustat_uuid, 
+				clustat_node_cluster_id		=>	$clustat_node_cluster_id, 
+				clustat_node_name		=>	$clustat_node_name, 
+				clustat_node_status		=>	$clustat_node_status, 
+			};
+			$an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{'exists'} = 1;
+			$an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{seen}     = 0;
+			$an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name} = {
+				clustat_node_clustat_uuid	=>	$clustat_node_clustat_uuid, 
+				clustat_node_cluster_id		=>	$clustat_node_cluster_id, 
+				clustat_node_name		=>	$clustat_node_name, 
+				clustat_node_status		=>	$clustat_node_status, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat_node}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $clustat_node_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}})
+		{
+			my $clustat_node_clustat_uuid = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_clustat_uuid};
+			my $clustat_node_cluster_id   = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_cluster_id};
+			my $clustat_node_status       = $an->data->{db_data}{unified}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}{clustat_node_status};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "clustat_node_name",         value1 => $clustat_node_name, 
+				name2 => "clustat_node_clustat_uuid", value2 => $clustat_node_clustat_uuid, 
+				name3 => "clustat_node_cluster_id",   value3 => $clustat_node_cluster_id, 
+				name4 => "clustat_node_status",       value4 => $clustat_node_status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'clustat_node_name' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat_node::clustat_node_name::${clustat_node_name}::seen", value1 => $an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat_node::clustat_node_name::${clustat_node_name}::exists", value1 => $an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{clustat_node}{clustat_node_name}{$clustat_node_name}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::clustat_node::modified_date::${modified_date}::clustat_node_name::${clustat_node_name}", value1 => $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.clustat_node
+SET
+    clustat_node_cluster_id = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
+    clustat_node_status     = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
+    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    clustat_node_name       = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name)." 
+AND 
+    clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.clustat_node
+(
+    clustat_node_name, 
+    clustat_node_clustat_uuid, 
+    clustat_node_cluster_id, 
+    clustat_node_status, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'clustat_node_name' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{clustat_node}{modified_date}{$modified_date}{clustat_node_name}{$clustat_node_name})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.clustat_node
+(
+    clustat_node_id, 
+    clustat_node_clustat_uuid, 
+    clustat_node_cluster_id, 
+    clustat_node_name, 
+    clustat_node_status, 
+    modified_date 
+) VALUES (
+    (
+        SELECT 
+            clustat_node_id 
+        FROM 
+            public.clustat_node 
+        WHERE 
+            clustat_node_clustat_uuid = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid)." 
+        AND 
+            clustat_node_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name)."
+    ), 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_cluster_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_node_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen clustat_node_name?
+			} # foreach my $id 
+		} # foreach my $clustat_node_name ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the 'clustat' table.
+sub update_db_clustat
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'clustat' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    clustat_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date 
+FROM 
+    history.clustat
+WHERE
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $clustat_uuid         = $row->[0];
+			my $clustat_quorate      = $row->[1] ? "TRUE" : "FALSE";
+			my $clustat_cluster_name = $row->[2];
+			my $modified_date        = $row->[3];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "clustat_uuid",         value1 => $clustat_uuid, 
+				name2 => "clustat_quorate",      value2 => $clustat_quorate, 
+				name3 => "clustat_cluster_name", value3 => $clustat_cluster_name, 
+				name4 => "modified_date",        value4 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### There can only be one entry per host, so we don't have a subhash.
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date} = {
+				clustat_uuid		=>	$clustat_uuid, 
+				clustat_quorate		=>	$clustat_quorate,
+				clustat_cluster_name	=>	$clustat_cluster_name,
+			};
+			$an->data->{db_data}{$id}{clustat}{'exists'} = 1;
+			$an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date} = {
+				clustat_uuid		=>	$clustat_uuid, 
+				clustat_quorate		=>	$clustat_quorate,
+				clustat_cluster_name	=>	$clustat_cluster_name,
+			};
+		}
+	}
+	
+	### TODO: Convert this away from using 'first_record' so that it's closer in style to the rest of 
+	###       ScanCore.
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	my $first_record = 1;
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{clustat}{modified_date}})
+	{
+		my $clustat_uuid         = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_uuid};
+		my $clustat_quorate      = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_quorate};
+		my $clustat_cluster_name = $an->data->{db_data}{unified}{clustat}{modified_date}{$modified_date}{clustat_cluster_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "modified_date",        value1 => $modified_date, 
+			name2 => "clustat_uuid",         value2 => $clustat_uuid, 
+			name3 => "clustat_quorate",      value3 => $clustat_quorate, 
+			name4 => "clustat_cluster_name", value4 => $clustat_cluster_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+		{
+			# If this is the first record, then a little consideration is needed... One of three
+			# things can happen;
+			# 1. The record doesn't exist at all, INSERT
+			# 2. The record exists, but is old. UPDATE
+			# 3. The record exists and is up to date, ignore it.
+			# Case 1 & 2 go to the public schema.
+			# 
+			# All other records are written directly to the history schema as needed.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "id", value1 => $id,
+			}, file => $THIS_FILE, line => __LINE__});
+			my $query = "";
+			if ($first_record)
+			{
+				# Do we have a clustat record?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat::exists", value1 => $an->data->{db_data}{$id}{clustat}{'exists'},
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{db_data}{$id}{clustat}{'exists'})
+				{
+					# Yup. Is the most recent instance in this database though?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::clustat::modified_date::${modified_date}", value1 => $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date})
+					{
+						# No it doesn't, so we need to UPDATE the public 
+						# schema to get it up to date (the trigger will copy
+						# it into the history schema).
+						$query = "
+UPDATE 
+    public.clustat
+SET
+    clustat_quorate      = ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    clustat_host_uuid    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND
+    clustat_uuid         = ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid)." 
+;";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# There is no 'clustat' in the databases at all, so add it.
+					$query = "
+INSERT INTO 
+    public.clustat
+(
+    clustat_uuid, 
+    clustat_host_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "id",    value1 => $id, 
+						name2 => "query", value2 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+				}
+			}
+			
+			# Proceed if the query isn't set yet.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $query)
+			{
+				# No query yet. Do we need to add this record to this databases?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::clustat::modified_date::${modified_date}", value1 => $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date},
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{clustat}{modified_date}{$modified_date})
+				{
+					# Insert it.
+					$query = "
+INSERT INTO 
+    history.clustat
+(
+    clustat_uuid, 
+    clustat_host_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($clustat_cluster_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+					# Now record the query in the array
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "id",    value1 => $id, 
+						name2 => "query", value2 => $query
+					}, file => $THIS_FILE, line => __LINE__});
+					push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+				}
+			}
+		} # foreach my $id 
+		$first_record = 0;
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# This checks to see if this agent's databases tables exist and, if not, load the schema. If the schema gets
+# loaded, we'll check other databases for older information and load it.
+sub prep_databases
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='server' AND schemaname='public';";
+		#                     The actual query -----------------.        .------- Row 0
+		#                        Query this DB --.              |        |    .-- Columns 0
+		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count < 1)
+		{
+			# Need to load the database schema.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
+			
+			# Send an alert telling the user that we've initialized this database.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"notice_message_0002",
+				alert_message_variables	=>	{
+					name			=>	$an->data->{scancore}{db}{$id}{name},
+					host			=>	$an->data->{scancore}{db}{$id}{host},
+					agent			=>	$THIS_FILE,
+				},
+			});
+		}
+		else
+		{
+			# Table exists, schema load is not needed.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This reads in the last scan data from one of the databases and compares it
+# against the just-read data. If anything changed, register an alert.
+sub find_changes
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Read in last scan data (if any).
+	my $id               = $an->data->{sys}{read_db_id};
+	my $host_name        = $an->hostname;
+	my $say_cluster_name = $an->data->{clustat}{cluster_name};
+	my $say_quorate      = $an->data->{clustat}{quorate};
+	if (read_last_scan($an))
+	{
+		# No record found, INSERT everything.
+		   $an->data->{sql}{clustat}{clustat_uuid} = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+		my $query = "
+INSERT INTO 
+    clustat 
+(
+    clustat_uuid, 
+    clustat_host_uuid, 
+    clustat_quorate, 
+    clustat_cluster_name, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
+    ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$an->data->{sys}{sql}}, $query;
+		
+		# Now add the nodes.
+		foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{node}})
+		{
+			insert_into_clustat_node($an, $node);
+		}
+		
+		# And now the services.
+		foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{service}})
+		{
+			insert_into_clustat_service($an, $service);
+		}
+	}
+	else
+	{
+		### A record was found, so look for changes.
+		# Look for changes in 'clustat'
+		my $old_cluster_name  = $an->data->{clustat}{sql}{clustat}{clustat_cluster_name};
+		my $new_cluster_name  = $an->data->{clustat}{cluster_name};
+		my $old_quorum_status = $an->data->{clustat}{sql}{clustat}{clustat_quorate};
+		my $new_quorum_status = $an->data->{clustat}{quorate};
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "old_cluster_name", value1 => $old_cluster_name, 
+			name2 => "new_cluster_name", value2 => $new_cluster_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "old_quorum_status", value1 => $old_quorum_status, 
+			name2 => "new_quorum_status", value2 => $new_quorum_status, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($new_cluster_name  ne $old_cluster_name) || 
+		    ($new_quorum_status ne $old_quorum_status))
+		{
+			# Update the 'clustat' entry.
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0022", message_variables => {
+				table => "clustat"
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "old_cluster_name", value1 => $old_cluster_name, 
+				name2 => "new_cluster_name", value2 => $new_cluster_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "old_quorum_status", value1 => $old_quorum_status, 
+				name2 => "new_quorum_status", value2 => $new_quorum_status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Update the clustat record.
+			my $query = "
+UPDATE 
+    clustat 
+SET 
+    clustat_quorate      = ".$an->data->{sys}{use_db_fh}->quote($say_quorate).", 
+    clustat_cluster_name = ".$an->data->{sys}{use_db_fh}->quote($say_cluster_name).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    clustat_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Send the alert.
+			my $say_alert_level   = "notice";
+			my $say_alert_title   = "an_alert_title_0003"; 
+			my $say_alert_message = ""; 
+			my $variables         = {};
+			
+			# Cluster came online
+			if ($new_cluster_name eq "OFFLINE")
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0023"; 
+				$variables         = {
+					cluster		=>	$old_cluster_name,
+				};
+			}
+			
+			# Gone offline
+			elsif ($old_cluster_name eq "OFFLINE")
+			{
+				$say_alert_message = "scan_clustat_note_0006"; 
+				$variables         = {
+					cluster		=>	$new_cluster_name,
+				};
+			}
+			
+			# Gained quorum
+			elsif ($new_quorum_status eq "TRUE")
+			{
+				$say_alert_message = "scan_clustat_note_0017"; 
+			}
+			
+			# Lost quorum
+			elsif ($new_quorum_status eq "FALSE")
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0024"; 
+			}
+			
+			# what?
+			else
+			{
+				$say_alert_level   = "warning";
+				$say_alert_title   = "an_alert_title_0004"; 
+				$say_alert_message = "scan_clustat_warning_0009"; 
+				$variables         = {
+					old_cluster_name	=>	$an->data->{clustat}{sql}{clustat}{clustat_cluster_name},
+					new_cluster_name	=>	$an->data->{clustat}{cluster_name},
+					old_quorum_status	=>	$an->data->{clustat}{sql}{clustat}{clustat_quorate},
+					new_quorum_status	=>	$an->data->{clustat}{quorate},
+				};
+			}
+			
+			# Send the alert.
+			if ($say_alert_message)
+			{
+				$an->Alert->register_alert({
+					alert_level		=>	$say_alert_level, 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	$say_alert_title,
+					alert_message_key	=>	$say_alert_message,
+					alert_message_variables	=>	$variables,
+				});
+			}
+		}
+		else
+		{
+			# No change.
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0023", message_variables => {
+				table => "clustat"
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# If the node is OFFLINE, we're done.
+		if ($an->data->{clustat}{cluster_name} eq "OFFLINE")
+		{
+			$an->Log->entry({log_level => 3, message_key => "scan_clustat_log_0001", file => $THIS_FILE, line => __LINE__});
+			commit_sql($an);
+			return(0);
+		}
+		
+		# Now look for changes in 'clustat_node'
+		foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{node}})
+		{
+			# First, did this exist in the database before at all?
+			$an->Log->entry({log_level => 2, message_key => "scancore_log_0027", message_variables => {
+				table => "clustat_node",
+				entry => "$node",
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{clustat}{sql}{clustat_node}{$node})
+			{
+				# Nope, insert it.
+				$an->Log->entry({log_level => 2, message_key => "scancore_log_0024", message_variables => {
+					table => "clustat_node",
+					entry => "$node",
+				}, file => $THIS_FILE, line => __LINE__});
+				insert_into_clustat_node($an, $node);
+				
+				# New node message.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_clustat_note_0004",
+					alert_message_variables	=>	{
+						node			=>	$node,
+					},
+				});
+			}
+			else
+			{
+				# This record existed before, look for changes.
+				my $old_cluster_id = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_cluster_id};
+				my $new_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
+				my $old_status     = $an->data->{clustat}{sql}{clustat_node}{$node}{clustat_node_status};
+				my $new_status     = $an->data->{clustat}{node}{$node}{status};
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "node", value1 => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_cluster_id", value1 => $old_cluster_id, 
+					name2 => "new_cluster_id", value2 => $new_cluster_id, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_status", value1 => $old_status, 
+					name2 => "new_status", value2 => $new_status, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (($new_cluster_id ne $old_cluster_id) ||
+				    ($new_status     ne $old_status))
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "old_cluster_id", value1 => $old_cluster_id, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_cluster_id", value1 => $new_cluster_id, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "old_status",     value1 => $old_status, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "new_status",     value1 => $new_status, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					### TODO: Have Striker set a flag that
+					###       suppresses alerts when doing
+					###       a controlled shutdown.
+					# Something changed.
+					$an->Log->entry({log_level => 2, message_key => "scancore_log_0025", message_variables => {
+						table => "clustat_node",
+						entry => "$node",
+					}, file => $THIS_FILE, line => __LINE__});
+					update_clustat_node($an, $node);
+					
+					# There are a few possible states;
+					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
+					# 'Online, rgmanager' -> 'Offline'	= *** Node is offline, either by an admin or it crashed.
+					# 'Online' -> 'Offline'			= cman was stopped
+					# 'Offline' -> 'Online'			= cman was started
+					# 'Online' -> 'Online, rgmanager'	= rgmanager started
+					# 'Offline' -> 'Online, rgmanager'	= Cluster started
+					
+					# 'Online, rgmanager' -> 'Online'	= rgmanager was stopped, probably an admin doing work.
+					my $say_alert_level   = "notice";
+					my $say_alert_title   = "an_alert_title_0003"; 
+					my $say_alert_message = ""; 
+					my $variables         = {};
+					if (($old_status =~ /Online, rgmanager/i) &&
+					    ($new_status =~ /Online/i))
+					{
+						$say_alert_message = "scan_clustat_note_0005";
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Online, rgmanager' -> 'Offline'	= *** Node is offline, either by an admin or it crashed.
+					elsif (($old_status =~ /Online, rgmanager/i) &&
+					       ($new_status =~ /Offline/i))
+					{
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
+						$say_alert_message = "scan_clustat_warning_0018"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Online' -> 'Online, rgmanager'	= rgmanager started
+					elsif (($old_status =~ /Online/i) &&
+					       ($new_status =~ /Online, rgmanager/i))
+					{
+						$say_alert_message = "scan_clustat_note_0009"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Offline' -> 'Online, rgmanager'	= Cluster started
+					elsif (($old_status =~ /Offline/i) &&
+					       ($new_status =~ /Online, rgmanager/i))
+					{
+						$say_alert_message = "scan_clustat_note_0010"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Online' -> 'Offline'			= cman was stopped
+					elsif (($old_status =~ /Online/i) &&
+					       ($new_status =~ /Offline/i))
+					{
+						$say_alert_message = "scan_clustat_note_0007"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# 'Offline' -> 'Online'			= cman was started
+					elsif (($old_status =~ /Offline/i) &&
+					       ($new_status =~ /Online/i))
+					{
+						$say_alert_message = "scan_clustat_note_0008"; 
+						$variables         = {
+							node		=>	$node,
+						};
+					}
+					
+					# We need a catch-all now.
+					elsif ($old_status ne $new_status)
+					{
+						# I set this to a warning because I don't 
+						# know what it is and better to be safe.
+						$say_alert_level   = "warning";
+						$say_alert_title   = "an_alert_title_0004"; 
+						$say_alert_message = "scan_clustat_warning_0011"; 
+						$variables         = {
+							node		=>	$node,
+							old_state	=>	$old_status,
+							new_state	=>	$new_status,
+						};
+					}
+					
+					# Send the alert, if it wasn't cancelled by the
+					# catch-all.
+					if ($say_alert_message)
+					{
+						$an->Alert->register_alert({
+							alert_level		=>	"$say_alert_level", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"$say_alert_title",
+							alert_message_key	=>	$say_alert_message,
+							alert_message_variables	=>	$variables,
+						});
+					}
+					
+					# Now, in the off chance that the ID changed, it will
+					# be because an admin did it, almost certainly.
+					if ($new_cluster_id ne $old_cluster_id)
+					{
+						$an->Alert->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_clustat_note_0012",
+							alert_message_variables	=>	{
+								node			=>	$node,
+								old_id			=>	$old_cluster_id,
+								new_id			=>	$new_cluster_id,
+							},
+						});
+					}
+				}
+				else
+				{
+					# Nothing changed, no update needed.
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0026", message_variables => {
+						table => "clustat_node",
+						entry => "$node",
+					}, file => $THIS_FILE, line => __LINE__});
+					delete $an->data->{clustat}{sql}{clustat_node}{$node};
+				}
+			}
+		}
+		
+		# Lastly, look for changes in 'clustat_service'
+		foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{service}})
+		{
+			# First, did this exist in the database before at all?
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0027", message_variables => {
+				table => "clustat_service",
+				entry => "$service",
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{clustat}{sql}{clustat_service}{$service})
+			{
+				# Nope, insert it.
+				$an->Log->entry({log_level => 3, message_key => "scancore_log_0024", message_variables => {
+					table => "clustat_service",
+					entry => "$service",
+				}, file => $THIS_FILE, line => __LINE__});
+				insert_into_clustat_service($an, $service);
+				
+				# Send the alert.
+				my $say_message = "scan_clustat_note_0013";
+				if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
+				{
+					# It's a new server.
+					$say_message = "scan_clustat_note_0014";
+				}
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"$say_message",
+					alert_message_variables	=>	{
+						service			=>	$service,
+					},
+				});
+			}
+			else
+			{
+				### NOTE: I don't check the name as a name
+				###       change will look like a service
+				###       disappeared and a new one appeared.
+				# This record existed before, look for changes.
+				my $old_host   = $an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_host};
+				my $new_host   = $an->data->{clustat}{service}{$service}{host};
+				my $old_status = $an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_status};
+				my $new_status = $an->data->{clustat}{service}{$service}{status};
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
+					name1 => "old_host",   value1 => $old_host, 
+					name2 => "new_host",   value2 => $new_host 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_status", value1 => $old_status, 
+					name2 => "new_status", value2 => $new_status, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (($new_host   ne $old_host) ||
+				    ($new_status ne $old_status))
+				{
+					### TODO: Catch 'is_server' changing, I guess.
+					# Something changed.
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0025", message_variables => {
+						table => "clustat_service",
+						entry => "$service",
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => { 
+						name1 => "old_host",   value1 => $old_host, 
+						name2 => "new_host",   value2 => $new_host 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_status", value1 => $old_status, 
+						name2 => "new_status", value2 => $new_status, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					update_clustat_service($an, $service);
+					
+					### Alerts here depend on two things; Is is a VM 
+					### and how did the state change?
+					my $recover_server    = 0;
+					my $say_alert_level   = "notice";
+					my $say_alert_title   = "an_alert_title_0003"; 
+					my $say_alert_message = "";
+					my $variables         = {},
+					
+					# This handles server related changes
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "clustat::service::${service}::is_server", value1 => $an->data->{clustat}{service}{$service}{is_server}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{clustat}{service}{$service}{is_server} eq "TRUE")
+					{
+						### It's a server.
+						# Possible state changes:
+						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
+						# 
+						# disabled -> starting		= Booting
+						# stopped -> starting		= Booting
+						# disabled -> ... -> started	= Booted
+						# stopped -> ... -> started	= Booted
+						# ... -> starting -> started	= Booted
+						# ... -> starting -> failed	= Failed to boot
+						# disabled -> ... -> failed	= Failed to boot
+						# disabled -> ... -> recover*	= Failed to boot
+						# recover* -> disabled		= Recovery attempted
+						# recover* -> started		= Recovery successful
+						# 
+						# started -> stopping		= Shutting down
+						# ... -> stopping -> disabled	= Shut down
+						# ... -> stopping -> stopped	= Shut down
+						# started -> ... -> disabled	= Shut down
+						# started -> failed		= *** Was running, now failed!
+						# started -> recover*		= *** Was running, now failed!
+						# started -> starting		= powered off/recovering
+						# 
+						# We need to catch host changes, too.
+						###
+						
+						# disabled -> starting		= Booting
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "old_status", value1 => $old_status, 
+							name2 => "new_status", value2 => $new_status,
+						}, file => $THIS_FILE, line => __LINE__});
+						if (($old_status =~ /disabled/i) &&
+						    ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> starting	= Booted
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# disabled -> ... -> started	= Booted
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> started	= Booted
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> starting -> started	= Booted
+						elsif (($old_status =~ /starting/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0016"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> starting -> failed	= Failed to boot
+						elsif (($old_status =~ /starting/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# disabled -> ... -> failed	= Failed to boot
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# disabled -> ... -> recover*	= Failed to boot
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /recover/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0013"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# recover* -> disabled		= Recovery attempted
+						elsif (($old_status =~ /recover/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0019"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# recover* -> start*		= Recovery successful
+						elsif (($old_status =~ /recover/i) &&
+						       ($new_status =~ /start/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0020"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# started -> stopping		= Shutting down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopping/i))
+						{
+							$say_alert_message = "scan_clustat_note_0019"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> stopping -> stopped	= Shut down
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# ... -> stopping -> stopped	= Shut down
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> disabled	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> stopped	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0020"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> failed		= *** Was running, now failed!
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0014"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> recover*		= *** Was running, now failed!
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /recover/i))
+						{
+							$recover_server    = 1;
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0014"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> starting		= powered off/recovering
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0021"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# wat?
+						elsif ($old_status ne $new_status)
+						{
+							# I set this to a warning because I don't 
+							# know what it is and better to be safe.
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+								name1 => "old_status", value1 => $old_status, 
+								name2 => "new_status", value2 => $new_status, 
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0010"; 
+							$variables         = {
+								service			=>	$service,
+								old_state		=>	$old_status,
+								new_state		=>	$new_status,
+							};
+						}
+					}
+					else
+					{
+						### Non-server HA services
+						# Possible state changes:
+						# - https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/High_Availability_Add-On_Overview/s2-rgmanager-opstates-states.html
+						# 
+						# disabled -> starting		= Starting
+						# stopped -> ... -> starting	= Started
+						# disabled -> ... -> started	= started
+						# stopped -> ... -> started	= started
+						# ... -> starting -> started	= started
+						# ... -> starting -> failed	= Failed to start
+						# disabled -> ... -> failed	= Failed to start
+						# disabled -> ... -> recover*	= Failed to boot
+						# recover* -> disabled		= Recovery attempted
+						# recover* -> start*		= Recovery successful
+						# 
+						# started -> stopping		= Shutting down
+						# ... -> stopping -> disabled	= Shut down
+						# ... -> stopping -> stopped	= Shut down
+						# started -> ... -> disabled	= Shut down
+						# started -> ... -> stopped	= Shut down
+						# started -> failed		= *** Was running, now failed!
+						# started -> recover*		= *** Was running, now failed!
+						# started -> starting		= powered off/recovering
+						# The host should never change for these.
+						### 
+						
+						# disabled -> starting		= Starting
+						if (($old_status =~ /disabled/i) &&
+						    ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0011"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> starting	= Started
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							$say_alert_message = "scan_clustat_note_0011"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# disabled -> ... -> started	= Started
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# stopped -> ... -> started	= Started
+						elsif (($old_status =~ /stopped/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> starting -> started	= Started
+						elsif (($old_status =~ /starting/i) &&
+						       ($new_status =~ /started/i))
+						{
+							$say_alert_message = "scan_clustat_note_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> starting -> failed	= Failed to start
+						elsif (($old_status =~ /starting/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# disabled -> ... -> failed	= Failed to start
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# disabled -> ... -> recover*	= Failed to start
+						elsif (($old_status =~ /disabled/i) &&
+						       ($new_status =~ /recover/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0015"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# recover* -> disabled		= Recovery attempted
+						elsif (($old_status =~ /recover/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0021"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# recover* -> started		= Recovery successful
+						elsif (($old_status =~ /recover/i) &&
+						       ($new_status =~ /start/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0022"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# started -> stopping		= Stopping
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopping/i))
+						{
+							$say_alert_message = "scan_clustat_note_0025"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# ... -> stopping -> stopped	= Stopped
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# ... -> stopping -> stopped	= Shut down
+						elsif (($old_status =~ /stopping/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> disabled	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /disabled/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> ... -> stopped	= Shut down
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /stopped/i))
+						{
+							$say_alert_message = "scan_clustat_note_0026"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> failed		= *** Was running, now failed!
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /failed/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0016"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> recover*		= *** Was running, now failed!
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /recover/i))
+						{
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0016"; 
+							$variables         = {
+								service		=>	$service,
+							};
+						}
+						
+						# started -> starting		= recovering
+						elsif (($old_status =~ /started/i) &&
+						       ($new_status =~ /starting/i))
+						{
+							# I set this to an alert, unlike servers, 
+							# services should never restart!
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0017"; 
+							$variables         = {
+								service		=>	$service,
+								host		=>	$new_host
+							};
+						}
+						
+						# wat?
+						elsif ($old_status ne $new_status)
+						{
+							# I set this to a warning because I don't 
+							# know what it is and better to be safe.
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+								name1 => "old_status", value1 => $old_status, 
+								name2 => "new_status", value2 => $new_status, 
+							}, file => $THIS_FILE, line => __LINE__});
+							
+							$say_alert_level   = "warning";
+							$say_alert_title   = "an_alert_title_0004"; 
+							$say_alert_message = "scan_clustat_warning_0012"; 
+							$variables         = {
+								service			=>	$service,
+								old_state		=>	$old_status,
+								new_state		=>	$new_status,
+							};
+						}
+					}
+					
+					# Send the alert.
+					if ($say_alert_message)
+					{
+						$an->Alert->register_alert({
+							alert_level		=>	"$say_alert_level", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"$say_alert_title",
+							alert_message_key	=>	$say_alert_message,
+							alert_message_variables	=>	$variables,
+						});
+					}
+					
+					# Check for host changes. This will trigger a
+					# second alert, if necessary.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_host", value1 => $old_host, 
+						name2 => "new_host", value2 => $new_host, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($old_host ne "none") && ($old_host !~ /^\(.*?\)/) && 
+					    ($new_host ne "none") && ($new_host !~ /^\(.*?\)/) && 
+					    ($new_host ne $old_host))
+					{
+						### Server migrated.
+						# This should only ever be possible for servers, so
+						# we don't check for it. If it were a non-server service,
+						# the name of the service will indicate that.
+						$an->Alert->register_alert({
+							alert_level		=>	"notice", 
+							alert_agent_name	=>	"$THIS_FILE",
+							alert_title_key		=>	"an_alert_title_0003",
+							alert_message_key	=>	"scan_clustat_note_0028",
+							alert_message_variables	=>	{
+								service			=>	$service,
+								source			=>	$old_host,
+								target			=>	$new_host,
+							},
+						});
+					}
+					
+					# If the server is in a 'failed' or 
+					# 'recovering' state, try to fix it.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "recover_server", value1 => $recover_server, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($recover_server)
+					{
+						recover_server($an, $service);
+					}
+				}
+				else
+				{
+					# Nothing changed, no update needed.
+					$an->Log->entry({log_level => 3, message_key => "scancore_log_0026", message_variables => {
+						table => "clustat_service",
+						entry => "$service",
+					}, file => $THIS_FILE, line => __LINE__});
+					delete $an->data->{clustat}{sql}{clustat_service}{$service};
+				}
+			}
+		}
+	}
+	
+	# Anything left from the DB?
+	foreach my $node (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_node}})
+	{
+		next if not $node;
+		# I only want to consider a service deleted *IF* the node's
+		# 'rgmanager' is running.
+		next if ($an->data->{clustat}{node}{$node}{status} !~ /rgmanager/i);
+
+		# Node disappeared. Update the last entry to have the status
+		# 'DELETED'. Then record a 'notice' level warning.
+		$an->data->{clustat}{node}{$node}{status} = "DELETED";
+		update_clustat_node($an, $node);
+		
+		# Enter ther alert.
+		$an->Alert->register_alert({
+			alert_level		=>	"notice", 
+			alert_agent_name	=>	"$THIS_FILE",
+			alert_title_key		=>	"an_alert_title_0003",
+			alert_message_key	=>	"scan_clustat_note_0001",
+			alert_message_variables	=>	{
+				node			=>	$node,
+			},
+		});
+		
+		# I process the services here so that I don't try and process
+		# them if the node isn't running rgmanager.
+		foreach my $service (sort {$a cmp $b} keys %{$an->data->{clustat}{sql}{clustat_service}})
+		{
+			next if not $service;
+			
+			# Which message I use depends on whether this was a server or not.
+			my $message_key = "scan_clustat_note_0002";
+			if ($an->data->{clustat}{sql}{clustat_service}{$service}{clustat_service_is_vm} eq "TRUE")
+			{
+				$message_key = "scan_clustat_note_0003";
+			}
+			
+			# Enter ther alert.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"$message_key",	# Node deleted
+				alert_message_variables	=>	{
+					service			=>	$service,
+				},
+			});
+			
+			# Delete it so that I don't process it again on the
+			# second node's pass.
+			delete $an->data->{clustat}{sql}{clustat_service}{$service};
+		}
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
+	
+	return(0);
+}
+
+# This commits the SQL queries in '$an->data->{sys}{sql}', if any.
+sub commit_sql
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "commit_sql", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $count = @{$an->data->{sys}{sql}};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::sql #", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (@{$an->data->{sys}{sql}} > 0)
+	{
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
+		$an->data->{sys}{sql} = [];
+	}
+	
+	return($count);
+}
+
+# This tries to recover a server that is in a 'failed' or 'recovering' state.
+sub recover_server
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recover_server", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# I can only recover it if the tool exists. :)
+	if (-e $an->data->{path}{'anvil-recover-server'})
+	{
+		# It exists. For now, we'll tell it to boot the servers and use
+		# debug logging.
+		my $shell_call = $an->data->{path}{'anvil-recover-server'}." -d -b 2>&1 |";
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => "$line"
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	
+	return(0);
+}
+
+# Inserts a new service into the 'clustat_service' table.
+sub insert_into_clustat_service
+{
+	my ($an, $service) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_service", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "service", value1 => "$service" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $host_name     = $an->hostname;
+	my $say_host      = $an->data->{clustat}{service}{$service}{host};
+	my $say_status    = $an->data->{clustat}{service}{$service}{status};
+	my $say_notes     = $an->data->{clustat}{service}{$service}{notes};
+	my $say_is_server = $an->data->{clustat}{service}{$service}{is_server};
+	
+	my $query = "
+INSERT INTO 
+    clustat_service 
+(
+    clustat_service_clustat_uuid, 
+    clustat_service_name, 
+    clustat_service_host, 
+    clustat_service_status, 
+    clustat_service_notes, 
+    clustat_service_is_vm, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($service).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_notes).", 
+    $say_is_server, 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	# Now delete the entry from what I read from SQL.
+	delete $an->data->{clustat}{sql}{clustat_service}{$service};
+	
+	return(0);
+}
+
+# Updates a record in the 'clustat_service' table for the given service.
+sub update_clustat_service
+{
+	my ($an, $service) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_service", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "service", value1 => "$service" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $host_name     = $an->hostname;
+	my $say_host      = $an->data->{clustat}{service}{$service}{host};
+	my $say_status    = $an->data->{clustat}{service}{$service}{status};
+	my $say_notes     = $an->data->{clustat}{service}{$service}{notes};
+	my $say_is_server = $an->data->{clustat}{service}{$service}{is_server};
+	
+	my $query = "
+UPDATE 
+    clustat_service 
+SET 
+    clustat_service_host   = ".$an->data->{sys}{use_db_fh}->quote($say_host).", 
+    clustat_service_status = ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
+    clustat_service_notes  = ".$an->data->{sys}{use_db_fh}->quote($say_notes).", 
+    clustat_service_is_vm  = $say_is_server, 
+    modified_date          = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    clustat_service_id = (
+        ".$an->data->{sys}{clustat_service_id_query}."
+    AND
+        clustat_service_name = ".$an->data->{sys}{use_db_fh}->quote($service)."
+    );
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	# Now delete the entry from what I read
+	# from SQL.
+	delete $an->data->{clustat}{sql}{clustat_service}{$service};
+	
+	return(0);
+}
+
+# Adds a new entry to the 'clustat_node' table.
+sub insert_into_clustat_node
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "insert_into_clustat_node", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "node", value1 => "$node" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $host_name      = $an->hostname;
+	my $say_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
+	my $say_status     = $an->data->{clustat}{node}{$node}{status};
+
+	my $query = "
+INSERT INTO 
+    clustat_node 
+(
+    clustat_node_clustat_uuid, 
+    clustat_node_name, 
+    clustat_node_cluster_id, 
+    clustat_node_status, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sql}{clustat}{clustat_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_cluster_id).", 
+    ".$an->data->{sys}{use_db_fh}->quote($say_status).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	# Now delete the entry from what I read from SQL.
+	delete $an->data->{clustat}{sql}{clustat_node}{$node};
+	
+	return(0);
+}
+
+# Updates a record in the 'clustat_node' table for the given node.
+sub update_clustat_node
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_clustat_node", }, message_key => "tools_log_0003", message_variables => { 
+		name1 => "node", value1 => "$node" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $host_name      = $an->hostname;
+	my $say_status     = $an->data->{clustat}{node}{$node}{status};
+	my $say_cluster_id = $an->data->{clustat}{node}{$node}{cluster_id};
+
+	my $query = "
+UPDATE 
+    clustat_node 
+SET 
+    clustat_node_status = ".$an->data->{sys}{use_db_fh}->quote($say_status).",
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    clustat_node_id = (
+        ".$an->data->{sys}{clustat_node_id_query}."
+    AND
+        clustat_node_cluster_id = ".$an->data->{sys}{use_db_fh}->quote($say_cluster_id)."
+    );
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	push @{$an->data->{sys}{sql}}, $query;
+	
+	# Now delete the entry from what I read from SQL.
+	delete $an->data->{clustat}{sql}{clustat_node}{$node};
+	
+	return(0);
+}
+
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Couple of variables to make the code cleaner
+	my $id        = $an->data->{sys}{read_db_id};
+	my $host_name = $an->hostname;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",        value1 => $id, 
+		name2 => "host_name", value2 => $host_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This calls up the entry for this host. If no entry is found, 'new'
+	# gets set to '1' and the main function won't bother looking for
+	# changes and directly INSERT the scanned data.
+	my $new   = 0;
+	my $query = "
+SELECT 
+    a.clustat_uuid, 
+    a.clustat_quorate, 
+    a.clustat_cluster_name 
+FROM 
+    clustat a, 
+    hosts b 
+WHERE 
+    a.clustat_host_uuid = b.host_uuid 
+AND 
+    b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
+";
+	# TODO: This query should only ever return one row, but this fact
+	#       should be explicitely checked for.
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "query",        value1 => $query, 
+		name2 => "results->[0]", value2 => $results->[0], 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($results->[0])
+	{
+		# We've got an entry in the 'clustat' table, so now we'll look
+		# for data in the node and services tables.
+		my ($clustat_uuid, $clustat_quorate, $clustat_cluster_name) = @{$results->[0]};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "clustat_uuid",         value1 => $clustat_uuid,
+			name2 => "clustat_quorate",      value2 => $clustat_quorate, 
+			name3 => "clustat_cluster_name", value3 => $clustat_cluster_name
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{sql}{clustat}{clustat_uuid}                  = $clustat_uuid;
+		$an->data->{clustat}{sql}{clustat}{clustat_quorate}      = $clustat_quorate ? "TRUE" : "FALSE";
+		$an->data->{clustat}{sql}{clustat}{clustat_cluster_name} = $clustat_cluster_name;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "sql::clustat::clustat_uuid",                  value1 => $an->data->{sql}{clustat}{clustat_uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat::sql::clustat::clustat_quorate",      value1 => $an->data->{clustat}{sql}{clustat}{clustat_quorate}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "clustat::sql::clustat::clustat_cluster_name", value1 => $an->data->{clustat}{sql}{clustat}{clustat_cluster_name}
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $query = "
+SELECT 
+    a.clustat_node_name, 
+    a.clustat_node_cluster_id, 
+    a.clustat_node_status 
+FROM 
+    clustat_node a, 
+    clustat b, 
+    hosts c 
+WHERE 
+    a.clustat_node_clustat_uuid = b.clustat_uuid 
+AND 
+    b.clustat_host_uuid = c.host_uuid 
+AND 
+    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
+";
+		
+		my $results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",   value1 => $query, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $array_reference (@{$results})
+		{
+			my ($clustat_node_name, $clustat_node_cluster_id, $clustat_node_status) = @{$array_reference};
+			
+			# Record the values directly as we received them.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "clustat_node_name",       value1 => $clustat_node_name, 
+				name2 => "clustat_node_cluster_id", value2 => $clustat_node_cluster_id, 
+				name3 => "clustat_node_status",     value3 => $clustat_node_status
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Push them into the hash
+			$an->data->{clustat}{sql}{clustat_node}{$clustat_node_name} = {
+				clustat_node_cluster_id	=>	$clustat_node_cluster_id,
+				clustat_node_status	=>	$clustat_node_status,
+			};
+			
+			# Record the now-in-the-hash data.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_cluster_id", value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_cluster_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "clustat::sql::clustat_node::${clustat_node_name}::clustat_node_status",     value1 => $an->data->{clustat}{sql}{clustat_node}{$clustat_node_name}{clustat_node_status}
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Now pull our the services
+		$query = "
+SELECT 
+    a.clustat_service_name, 
+    a.clustat_service_host, 
+    a.clustat_service_status, 
+    a.clustat_service_notes, 
+    a.clustat_service_is_vm 
+FROM 
+    clustat_service a, 
+    clustat b, 
+    hosts c 
+WHERE 
+    a.clustat_service_clustat_uuid = b.clustat_uuid 
+AND 
+    b.clustat_host_uuid = c.host_uuid 
+AND 
+    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
+";
+		$results = $an->DB->do_db_query({query => $query});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "query",   value1 => $query, 
+			name2 => "results", value2 => $results, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $array_reference (@{$results})
+		{
+			my ($clustat_service_name, $clustat_service_host, $clustat_service_status, $clustat_service_notes, $clustat_service_is_vm) = @{$array_reference};
+			
+			# Record the values directly as we received them.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "clustat_service_name",   value1 => $clustat_service_name, 
+				name2 => "clustat_service_host",   value2 => $clustat_service_host, 
+				name3 => "clustat_service_status", value3 => $clustat_service_status, 
+				name4 => "clustat_service_notes",  value4 => $clustat_service_notes, 
+				name5 => "clustat_service_is_vm",  value5 => $clustat_service_is_vm
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Push them into the hash
+			$clustat_service_is_vm = $clustat_service_is_vm ? "TRUE" : "FALSE";
+			$an->data->{clustat}{sql}{clustat_service}{$clustat_service_name} = {
+				clustat_service_host	=>	$clustat_service_host, 
+				clustat_service_status	=>	$clustat_service_status, 
+				clustat_service_notes	=>	$clustat_service_notes, 
+				clustat_service_is_vm	=>	$clustat_service_is_vm
+			};
+			
+			# Record the now-in-the-hash data.
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_host",   value1 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_host}, 
+				name2 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_status", value2 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_status}, 
+				name3 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_notes",  value3 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_notes}, 
+				name4 => "clustat::sql::clustat_service::${clustat_service_name}::clustat_service_is_vm",  value4 => $an->data->{clustat}{sql}{clustat_service}{$clustat_service_name}{clustat_service_is_vm}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	else
+	{
+		# Looks like this is the first run ever.
+		$new = 1;
+	}
+	
+	return($new);
+}
+
+# This looks rgmanager's 'clustat' and, if it is found, parse it.
+sub parse_clustat
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_clustat", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code  = 0;
+	if (-e $an->data->{path}{clustat})
+	{
+		# Found it!
+		my $shell_call  = $an->data->{path}{clustat}." 2>&1 |";
+		$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => "$line"
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /Could not connect to CMAN/)
+			{
+				# The cluster isn't running.
+				$an->data->{clustat}{cluster_name} = "OFFLINE";
+				$an->data->{clustat}{quorate}      = "FALSE";
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "clustat::cluster_name", value1 => $an->data->{clustat}{cluster_name}, 
+					name2 => "clustat::quorate",      value2 => $an->data->{clustat}{quorate}
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				### TODO: Should I check this node's entry in
+				###       'clustat_node' (if it exists) and set
+				###       it to 'Offline' if need be?
+			}
+			elsif ($line =~ /Cluster Status for (.*?) /)
+			{
+				$an->data->{clustat}{cluster_name} = $1;
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "clustat::cluster_name", value1 => $an->data->{clustat}{cluster_name}
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($line =~ /Member Status: (.*)/)
+			{
+				my $quorum                       = $1;
+				my $is_quorate                   = $quorum eq "Quorate" ? "TRUE" : "FALSE";
+				   $an->data->{clustat}{quorate} = $is_quorate;
+				
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "clustat::quorate", value1 => $an->data->{clustat}{quorate}
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			# Pick out service lines
+			elsif ($line =~ /^(.*?):(.*?) (.*?) (.*)/)
+			{
+				my $type      = $1;
+				my $service   = $2;
+				my $host      = $3;
+				my $status    = $4;
+				my $is_server = $type eq "vm" ? "TRUE" : "FALSE";
+				
+				# Record the node info.
+				$an->data->{clustat}{service}{$service}{host}      = $host      ? $host   : "--";
+				$an->data->{clustat}{service}{$service}{status}    = $status    ? $status : "--";
+				$an->data->{clustat}{service}{$service}{is_server} = $is_server;
+				
+				$an->Log->entry({log_level => 3, message_key => "scancore_log_0019", message_variables => { 
+					name1 => "clustat::service::${service}::host",      value1 => $an->data->{clustat}{service}{$service}{host},
+					name2 => "clustat::service::${service}::status",    value2 => $an->data->{clustat}{service}{$service}{status},
+					name3 => "clustat::service::${service}::is_server", value3 => $an->data->{clustat}{service}{$service}{is_server},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			# Parse nodes. Note the '\d' to differentiate node
+			# lines from service lines.
+			elsif ($line =~ /^(.*?) (\d+) (.*)/)
+			{
+				my $node    = $1;
+				my $node_id = $2;
+				my $status  = $3;
+				
+				# I don't care about 'Local' in the status
+				# string.
+				$status =~ s/Local, //;
+				
+				# Now record the node info.
+				$an->data->{clustat}{node}{$node}{cluster_id} = $node_id ? $node_id : "--";
+				$an->data->{clustat}{node}{$node}{status}     = $status  ? $status  : "--";
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => { 
+					name1 => "clustat::node::${node}::cluster_id", value1 => $an->data->{clustat}{node}{$node}{cluster_id},
+					name2 => "clustat::node::${node}::status",     value2 => $an->data->{clustat}{node}{$node}{status},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Not installed.
+		$an->Log->entry({log_level => 3, title_key => "scancore_title_0005", message_key => "scan_clustat_message_0003", file => $THIS_FILE, line => __LINE__});
+		$return_code = 1;
+	}
+	
+	return($return_code);
+}
+
+### TODO: Make this a method
+# Nicely exits the program.
+sub nice_exit
+{
+	my ($an, $exit_code) = @_;
+	$exit_code = 99 if not defined $exit_code;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
+	
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
+	}
+	
+	exit($exit_code);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	print $an->String->get({key => "${THIS_FILE}_message_0002"})."\n";
+
+	return(0);
+}
