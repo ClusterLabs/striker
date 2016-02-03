@@ -3792,7 +3792,6 @@ WHERE
 				name18 => "modified_date",                 value18 => $modified_date
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			### There can only be one entry per host, so we don't have a subhash.
 			# Record this in the unified and local hashes.
 			$an->data->{db_data}{unified}{apc_ups}{modified_date}{$modified_date}{apc_ups_uuid}{$apc_ups_uuid} = {
 				apc_ups_name			=>	$apc_ups_name, 
