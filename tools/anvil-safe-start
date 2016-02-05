@@ -121,34 +121,19 @@ sub find_myself
 		name2 => "hostname_short", value2 => $hostname_short, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Read in cluster.conf.
-	my $xml  = XML::Simple->new();
-	my $data = $xml->XMLin($an->data->{path}{cluster_conf}, KeyAttr => {node => 'name'}, ForceArray => 1);
-	foreach my $a (@{$data->{clusternodes}->[0]->{clusternode}})
-	{
-		my $node_name = $a->{name};
-		my $alt_name  = $a->{altname}->[0]->{name} ? $a->{altname}->[0]->{name} : "";
-		if (($hostname_full  eq $node_name) or 
-		    ($hostname_full  eq $alt_name)  or 
-		    ($hostname_short eq $node_name) or 
-		    ($hostname_short eq $alt_name))
-		{
-			$an->data->{sys}{local_node} = $node_name;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			$an->data->{sys}{peer_node} = $node_name;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::peer_node", value1 => $an->data->{sys}{peer_node}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	# Collect information about this Anvil!
+	my $return = $an->Get->anvil_details({
+		hostname_full	=>	$an->hostname,
+		hostname_short	=>	$an->short_hostname,
+		config_file	=>	$an->data->{path}{cluster_conf},
+	});
+	$an->data->{sys}{local_node} = $return->{local_node};
+	$an->data->{sys}{peer_node}  = $return->{peer_node};
+	$an->data->{sys}{anvil_name} = $return->{anvil_name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
 		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
+		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I am node 2, make note so that we can delay and let node 1 run first.

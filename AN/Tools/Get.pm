@@ -858,6 +858,69 @@ sub ip
 	return ($ip);
 }
 
+# This returns the peer node and anvil! name depending on the passed-in host name.
+sub anvil_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If now host name is passed in, use this machine's host name.
+	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
+	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
+	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cluster_conf};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "hostname_full",  value1 => $hostname_full, 
+		name2 => "hostname_short", value2 => $hostname_short, 
+		name3 => "config_file",    value3 => $config_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Read in cluster.conf.
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($config_file, KeyAttr => {node => 'name'}, ForceArray => 1);
+	
+	### TODO: Detect whether this is reading in cluster.conf or cibadmin
+	my $return = {
+		local_node	=>	"",
+		peer_node	=>	"",
+		anvil_name	=>	$data->{name},
+	};
+	foreach my $a (@{$data->{clusternodes}->[0]->{clusternode}})
+	{
+		my $node_name = $a->{name};
+		my $alt_name  = $a->{altname}->[0]->{name} ? $a->{altname}->[0]->{name} : "";
+		if (($hostname_full  eq $node_name) or 
+		    ($hostname_full  eq $alt_name)  or 
+		    ($hostname_short eq $node_name) or 
+		    ($hostname_short eq $alt_name))
+		{
+			$return->{local_node} = $node_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_node", value1 => $return->{local_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$return->{peer_node} = $node_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_node", value1 => $return->{peer_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "local_node", value1 => $return->{local_node}, 
+		name2 => "peer_node",  value2 => $return->{peer_node}, 
+		name3 => "anvil_name", value3 => $return->{anvil_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return ($return);
+}
+
 # This returns an array of hash references, each hash reference storing a peer node name and the scancore 
 # password.
 sub striker_peers

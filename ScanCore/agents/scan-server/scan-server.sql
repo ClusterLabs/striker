@@ -66,6 +66,8 @@ CREATE TRIGGER trigger_server
 	FOR EACH ROW EXECUTE PROCEDURE history_server();
 
 
+-- NOTE: This is an exceptional table in that the data here does NOT link back to a given host. If any node
+--       changes the data here, all nodes need to see it.
 -- This stores extended, rarely changing data about the server
 CREATE TABLE server_data (
 	server_data_uuid	uuid				not null	primary key,	-- This comes from the server's XML definition file.

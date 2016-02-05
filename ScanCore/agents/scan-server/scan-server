@@ -13,7 +13,8 @@
 #  - 
 # 
 # TODO: 
-#  - 
+#  - Figure out how to handle a definition change seen by one node but not the other (ie: because it was 
+#    offline).
 # 
 
 # Use my modules.
@@ -84,7 +85,12 @@ $an->Get->switches();
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 
 # If 'libvirtd' isn't running, exit.
-if (not -e $an->data->{path}{libvirtd_socket})
+if (-e $an->data->{path}{libvirtd_socket})
+{
+	# Read in information on the servers.
+	scan_servers($an);
+}
+else
 {
 	# libvirtd not found, exit.
 	nice_exit($an, 1);
@@ -114,6 +120,18 @@ nice_exit($an, 0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This looks for servers locally and on the peer and reads in their data.
+sub scan_servers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, check for local
+	
+	
+	return(0);
+}
 
 # This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
 # based on the time the last entry was made for a given host.
@@ -187,24 +205,20 @@ AND
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
-=pod
-			$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name} = {
-				server_data_server_uuid	=>	$server_data_server_uuid, 
-				server_data_cluster_id		=>	$server_data_cluster_id, 
-				server_data_name		=>	$server_data_name, 
-				server_data_status		=>	$server_data_status, 
+			$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid} = {
+				server_data_note	=>	$server_data_note, 
+				server_data_xml		=>	$server_data_xml, 
 			};
-			$an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{'exists'} = 1;
-			$an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{seen}     = 0;
-			$an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name} = {
-				server_data_server_uuid	=>	$server_data_server_uuid, 
-				server_data_cluster_id		=>	$server_data_cluster_id, 
-				server_data_name		=>	$server_data_name, 
-				server_data_status		=>	$server_data_status, 
+			$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid} = {
+				server_data_note	=>	$server_data_note, 
+				server_data_xml		=>	$server_data_xml, 
 			};
 		}
 	}
 	
+=cut
 	### NOTE: Sort '$b cmp $a' on the modified date.
 	# Now, loop through each record from the unified table and see if it 
 	# needs to be added to any DBs.
@@ -213,20 +227,19 @@ AND
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $server_data_name (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_name}})
+		foreach my $server_data_server_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}})
 		{
-			my $server_data_server_uuid = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name}{server_data_server_uuid};
-			my $server_data_cluster_id   = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name}{server_data_cluster_id};
-			my $server_data_status       = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name}{server_data_status};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "server_data_name",         value1 => $server_data_name, 
-				name2 => "server_data_server_uuid", value2 => $server_data_server_uuid, 
-				name3 => "server_data_cluster_id",   value3 => $server_data_cluster_id, 
-				name4 => "server_data_status",       value4 => $server_data_status, 
+			my $server_data_server_uuid = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_server_uuid};
+			my $server_data_cluster_id  = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_cluster_id};
+			my $server_data_status      = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_status};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "server_data_server_uuid", value1 => $server_data_server_uuid, 
+				name2 => "server_data_note",        value2 => $server_data_note, 
+				name3 => "server_data_xml",         value3 => $server_data_xml, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
-				# For each 'server_data_name' we see;
+				# For each 'server_data_server_uuid' we see;
 				# - Check if we've *seen* it before
 				#   |- If not; See if it *exists* in the public schema yet.
 				#   |  |- If so, check to see if the entry in the public schema is up to date.
@@ -236,24 +249,24 @@ AND
 				#      \- If not, _INSERT_ it into history schema.
 				#
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::server_data::server_data_name::${server_data_name}::seen", value1 => $an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{seen}, 
+					name1 => "db_data::${id}::server_data::server_data_server_uuid::${server_data_server_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{seen})
+				if (not $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen})
 				{
 					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{seen} = 1;
+					$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen} = 1;
 					
 					# Never seen it. Check if it exists.
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::server_data::server_data_name::${server_data_name}::exists", value1 => $an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{'exists'}, 
+						name1 => "db_data::${id}::server_data::server_data_server_uuid::${server_data_server_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{server_data}{server_data_name}{$server_data_name}{'exists'})
+					if ($an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'})
 					{
 						# It exists, but does it exist at this time stamp?
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::server_data::modified_date::${modified_date}::server_data_name::${server_data_name}", value1 => $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name}, 
+							name1  => "db_data::${id}::server_data::modified_date::${modified_date}::server_data_server_uuid::${server_data_server_uuid}", value1 => $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}, 
 						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name})
+						if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid})
 						{
 							# No, so UPDATE it.
 							my $query = "
@@ -264,9 +277,9 @@ SET
     server_data_status     = ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
     modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 WHERE 
-    server_data_name       = ".$an->data->{sys}{use_db_fh}->quote($server_data_name)." 
+    server_data_server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
 AND 
-    server_data_server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
+    server_data_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
 ;";
 							# Now record the query in the array
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -283,13 +296,13 @@ AND
 INSERT INTO 
     public.server_data
 (
-    server_data_name, 
+    server_data_server_uuid, 
     server_data_server_uuid, 
     server_data_cluster_id, 
     server_data_status, 
     modified_date 
 ) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_cluster_id).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
@@ -305,10 +318,10 @@ INSERT INTO
 				}
 				else
 				{
-					# We've seen this 'server_data_name' before, so it's just a question
+					# We've seen this 'server_data_server_uuid' before, so it's just a question
 					# of whether the entry for the current timestamp exists in the 
 					# history schema.
-					if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_name}{$server_data_name})
+					if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid})
 					{
 						# It doesn't, INSERT it.
 						my $query = "
@@ -318,7 +331,7 @@ INSERT INTO
     server_data_id, 
     server_data_server_uuid, 
     server_data_cluster_id, 
-    server_data_name, 
+    server_data_server_uuid, 
     server_data_status, 
     modified_date 
 ) VALUES (
@@ -330,11 +343,11 @@ INSERT INTO
         WHERE 
             server_data_server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
         AND 
-            server_data_name = ".$an->data->{sys}{use_db_fh}->quote($server_data_name)."
+            server_data_server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)."
     ), 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_cluster_id).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
     ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
 );";
@@ -345,9 +358,9 @@ INSERT INTO
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
 					} # Exist in history at timestamp?
-				} # Seen server_data_name?
+				} # Seen server_data_server_uuid?
 			} # foreach my $id 
-		} # foreach my $server_data_name ...
+		} # foreach my $server_data_server_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
@@ -655,18 +668,16 @@ sub prep_databases
 	return(0);
 }
 
-# This reads in the last scan data from one of the databases and compares it
-# against the just-read data. If anything changed, register an alert.
+# This reads in the last scan data from one of the databases and compares it against the just-read data. If 
+# anything changed, register an alert.
 sub find_changes
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read in last scan data (if any).
-	my $id               = $an->data->{sys}{read_db_id};
-	my $host_name        = $an->hostname;
-	my $say_cluster_name = $an->data->{server}{cluster_name};
-	my $say_quorate      = $an->data->{server}{quorate};
+	my $id        = $an->data->{sys}{read_db_id};
+	my $host_name = $an->hostname;
 	if (read_last_scan($an))
 	{
 		# No record found, INSERT everything.
@@ -1924,7 +1935,7 @@ INSERT INTO
     server_data 
 (
     server_data_server_uuid, 
-    server_data_name, 
+    server_data_server_uuid, 
     server_data_cluster_id, 
     server_data_status, 
     modified_date
@@ -1997,156 +2008,60 @@ sub read_last_scan
 		name2 => "host_name", value2 => $host_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# This calls up the entry for this host. If no entry is found, 'new'
-	# gets set to '1' and the main function won't bother looking for
-	# changes and directly INSERT the scanned data.
+	### NOTE: We don't read in the note, only the user changes that.
+	# This calls up the entry for this host. If no entry is found, 'new' gets set to '1' and the main 
+	# function won't bother looking for changes and directly INSERT the scanned data.
 	my $new   = 0;
 	my $query = "
 SELECT 
     a.server_uuid, 
-    a.server_quorate, 
-    a.server_cluster_name 
+    a.server_name, 
+    a.server_stop_reason, 
+    a.server_start_group, 
+    a.server_start_delay, 
+    b.server_data_xml, 
 FROM 
     server a, 
-    hosts b 
+    server_data b 
 WHERE 
-    a.server_host_uuid = b.host_uuid 
+    a.server_uuid = b.server_data_server_uuid 
 AND 
-    b.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
-	# TODO: This query should only ever return one row, but this fact
-	#       should be explicitely checked for.
-	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "query",        value1 => $query, 
-		name2 => "results->[0]", value2 => $results->[0], 
+    a.server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($results->[0])
+	my $results = $an->DB->do_db_query({query => $query});
+	foreach my $row (@{$results})
 	{
-		# We've got an entry in the 'server' table, so now we'll look
-		# for data in the node and services tables.
-		my ($server_uuid, $server_quorate, $server_cluster_name) = @{$results->[0]};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "server_uuid",         value1 => $server_uuid,
-			name2 => "server_quorate",      value2 => $server_quorate, 
-			name3 => "server_cluster_name", value3 => $server_cluster_name
+		my $server_uuid        = $row->[0];
+		my $server_name        = $row->[1];
+		my $server_stop_reason = $row->[2];
+		my $server_start_group = $row->[3];
+		my $server_start_delay = $row->[4];
+		my $server_data_xml    = $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "server_uuid",        value1 => $server_uuid, 
+			name2 => "server_name",        value2 => $server_name, 
+			name3 => "server_stop_reason", value3 => $server_stop_reason, 
+			name4 => "server_start_group", value4 => $server_start_group, 
+			name5 => "server_start_delay", value5 => $server_start_delay, 
+			name6 => "server_data_xml",    value6 => $server_data_xml, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{sql}{server}{server_uuid}                  = $server_uuid;
-		$an->data->{server}{sql}{server}{server_quorate}      = $server_quorate ? "TRUE" : "FALSE";
-		$an->data->{server}{sql}{server}{server_cluster_name} = $server_cluster_name;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "sql::server::server_uuid",                  value1 => $an->data->{sql}{server}{server_uuid}, 
+		# Push the data into the hash for later comparison
+		$an->data->{sql}{$server_uuid}{server_name}        = $server_name;
+		$an->data->{sql}{$server_uuid}{server_stop_reason} = $server_stop_reason;
+		$an->data->{sql}{$server_uuid}{server_start_group} = $server_start_group;
+		$an->data->{sql}{$server_uuid}{server_start_delay} = $server_start_delay;
+		$an->data->{sql}{$server_uuid}{server_data_xml}    = $server_data_xml;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
+			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
+			name3 => "sql::${server_uuid}::server_start_group", value3 => $an->data->{sql}{$server_uuid}{server_start_group}, 
+			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
+			name5 => "sql::${server_uuid}::server_data_xml",    value5 => $an->data->{sql}{$server_uuid}{server_data_xml}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "server::sql::server::server_quorate",      value1 => $an->data->{server}{sql}{server}{server_quorate}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "server::sql::server::server_cluster_name", value1 => $an->data->{server}{sql}{server}{server_cluster_name}
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $query = "
-SELECT 
-    a.server_data_name, 
-    a.server_data_cluster_id, 
-    a.server_data_status 
-FROM 
-    server_data a, 
-    server b, 
-    hosts c 
-WHERE 
-    a.server_data_server_uuid = b.server_uuid 
-AND 
-    b.server_host_uuid = c.host_uuid 
-AND 
-    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
-		
-		my $results = $an->DB->do_db_query({query => $query});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "query",   value1 => $query, 
-			name2 => "results", value2 => $results, 
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $array_reference (@{$results})
-		{
-			my ($server_data_name, $server_data_cluster_id, $server_data_status) = @{$array_reference};
-			
-			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "server_data_name",       value1 => $server_data_name, 
-				name2 => "server_data_cluster_id", value2 => $server_data_cluster_id, 
-				name3 => "server_data_status",     value3 => $server_data_status
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Push them into the hash
-			$an->data->{server}{sql}{server_data}{$server_data_name} = {
-				server_data_cluster_id	=>	$server_data_cluster_id,
-				server_data_status	=>	$server_data_status,
-			};
-			
-			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "server::sql::server_data::${server_data_name}::server_data_cluster_id", value1 => $an->data->{server}{sql}{server_data}{$server_data_name}{server_data_cluster_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "server::sql::server_data::${server_data_name}::server_data_status",     value1 => $an->data->{server}{sql}{server_data}{$server_data_name}{server_data_status}
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		# Now pull our the services
-		$query = "
-SELECT 
-    a.server_service_name, 
-    a.server_service_host, 
-    a.server_service_status, 
-    a.server_service_notes, 
-    a.server_service_is_vm 
-FROM 
-    server_service a, 
-    server b, 
-    hosts c 
-WHERE 
-    a.server_service_server_uuid = b.server_uuid 
-AND 
-    b.server_host_uuid = c.host_uuid 
-AND 
-    c.host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
-		$results = $an->DB->do_db_query({query => $query});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "query",   value1 => $query, 
-			name2 => "results", value2 => $results, 
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $array_reference (@{$results})
-		{
-			my ($server_service_name, $server_service_host, $server_service_status, $server_service_notes, $server_service_is_vm) = @{$array_reference};
-			
-			# Record the values directly as we received them.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-				name1 => "server_service_name",   value1 => $server_service_name, 
-				name2 => "server_service_host",   value2 => $server_service_host, 
-				name3 => "server_service_status", value3 => $server_service_status, 
-				name4 => "server_service_notes",  value4 => $server_service_notes, 
-				name5 => "server_service_is_vm",  value5 => $server_service_is_vm
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Push them into the hash
-			$server_service_is_vm = $server_service_is_vm ? "TRUE" : "FALSE";
-			$an->data->{server}{sql}{server_service}{$server_service_name} = {
-				server_service_host	=>	$server_service_host, 
-				server_service_status	=>	$server_service_status, 
-				server_service_notes	=>	$server_service_notes, 
-				server_service_is_vm	=>	$server_service_is_vm
-			};
-			
-			# Record the now-in-the-hash data.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "server::sql::server_service::${server_service_name}::server_service_host",   value1 => $an->data->{server}{sql}{server_service}{$server_service_name}{server_service_host}, 
-				name2 => "server::sql::server_service::${server_service_name}::server_service_status", value2 => $an->data->{server}{sql}{server_service}{$server_service_name}{server_service_status}, 
-				name3 => "server::sql::server_service::${server_service_name}::server_service_notes",  value3 => $an->data->{server}{sql}{server_service}{$server_service_name}{server_service_notes}, 
-				name4 => "server::sql::server_service::${server_service_name}::server_service_is_vm",  value4 => $an->data->{server}{sql}{server_service}{$server_service_name}{server_service_is_vm}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
 	}
 	else
 	{

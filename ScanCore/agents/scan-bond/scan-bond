@@ -95,8 +95,7 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 print $an->String->get({key => "scan_bond_message_0001"})."\n";
 $an->Get->switches();
 
-# Read in bond. If it returns '1', then bond wasn't found and we will
-# exit.
+# Read in bond. If it returns '1', then bond wasn't found and we will exit.
 if (parse_bonds($an))
 {
 	# No bonds found, exit.
