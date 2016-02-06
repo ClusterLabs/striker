@@ -43,15 +43,15 @@ sub do_db_write
 	my $an        = $self->parent;
 	
 	# Setup my variables.
-	my ($id, $query);
-
-	$id    = $parameter->{id}    ? $parameter->{id}    : "";
-	$query = $parameter->{query} ? $parameter->{query} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "id", value1 => $id, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query, 
+	my $id     = $parameter->{id}     ? $parameter->{id}     : "";
+	my $source = $parameter->{source} ? $parameter->{source} : "";
+	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
+	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "id",     value1 => $id, 
+		name2 => "source", value1 => $source, 
+		name3 => "line",   value1 => $line, 
+		name4 => "query",  value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have a query, die.
@@ -111,9 +111,11 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "id",    value1 => $id,
-				name2 => "query", value2 => $query
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "id",     value1 => $id,
+				name2 => "source", value2 => $source, 
+				name3 => "line",   value3 => $line, 
+				name4 => "query",  value4 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
@@ -586,8 +588,8 @@ sub connect_to_databases
 		$connections = 0;
 	}
 	
-	# For now, we just find which DBs are behind and let each agent deal
-	# with bringing their tables up to date.
+	# For now, we just find which DBs are behind and let each agent deal with bringing their tables up to
+	# date.
 	$an->DB->find_behind_databases({file => $file});
 	
 	# Now look to see if our hostname has changed.
@@ -706,7 +708,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-			$an->DB->do_db_write({id => $id, query => $query});
+			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -721,7 +723,7 @@ WHERE
 AND
     updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
-			$an->DB->do_db_write({id => $id, query => $query});
+			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -1261,7 +1263,7 @@ sub load_schema
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, write!
-	$an->DB->do_db_write({id => $id, query => $sql});
+	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }
@@ -1333,7 +1335,7 @@ sub initialize_db
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now that I am ready, disable autocommit, write and commit.
-	$an->DB->do_db_write({id => $id, query => $sql});
+	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
 	$an->data->{sys}{db_initialized}{$id} = 1;
 	
 	return($success);

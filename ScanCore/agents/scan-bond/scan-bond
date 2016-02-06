@@ -428,7 +428,7 @@ INSERT INTO
 		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
 		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
 		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
 			delete $an->data->{db_resync}{$id}{sql};
 		}
 	}
@@ -726,7 +726,7 @@ INSERT INTO
 		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
 		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
 		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
 			delete $an->data->{db_resync}{$id}{sql};
 		}
 	}
@@ -2129,7 +2129,7 @@ sub commit_sql
 	}, file => $THIS_FILE, line => __LINE__});
 	if (@{$an->data->{sys}{sql}} > 0)
 	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 		$an->data->{sys}{sql} = [];
 	}
 	

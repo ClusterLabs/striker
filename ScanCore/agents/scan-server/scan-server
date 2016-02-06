@@ -84,13 +84,8 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 
-# If 'libvirtd' isn't running, exit.
-if (-e $an->data->{path}{libvirtd_socket})
-{
-	# Read in information on the servers.
-	scan_servers($an);
-}
-else
+# If 'libvirtd' isn't running (locally or on the peer, if we can connect to it), exit.
+if (not scan_servers($an))
 {
 	# libvirtd not found, exit.
 	nice_exit($an, 1);
@@ -98,7 +93,7 @@ else
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
+$an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -127,10 +122,108 @@ sub scan_servers
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# First, check for local
+	# This will get set to '1' if we find any server info locally or on the peer (if we can find our 
+	# peer).
+	my $proceed = 0;
 	
+	# Find out who I am and who my peer is
+	my $return = $an->Get->anvil_details({
+		hostname_full	=>	$an->hostname,
+		hostname_short	=>	$an->short_hostname,
+		config_file	=>	$an->data->{path}{cluster_conf},
+	});
+	$an->data->{sys}{local_node}     = $return->{local_node};
+	$an->data->{sys}{peer_node}      = $return->{peer_node};
+	$an->data->{sys}{anvil_name}     = $return->{anvil_name};
+	$an->data->{sys}{anvil_password} = $return->{anvil_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
+		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
+		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	return(0);
+	### WARNING: Set this back to '4'.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Only proceed if I am in an Anvil!
+	if ($an->data->{sys}{anvil_name})
+	{
+		# First, check for local servers.
+		my $local_access = 1;
+		my $shell_call   = $an->data->{path}{virsh}." list --all";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /^error:/)
+			{
+				# Not running
+				$local_access = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_access", value1 => $local_access, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		close $file_handle;
+		
+		# Now check the peer.
+		my $peer_access = 1;
+		my $password    = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$an->data->{sys}{peer_node},
+			port		=>	"", 
+			password	=>	$an->data->{sys}{anvil_password},
+			ssh_fh		=>	"",
+			'close'		=>	1,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /^error:/)
+			{
+				# Not running
+				$peer_access = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_access", value1 => $peer_access, 
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local_access", value1 => $local_access, 
+			name2 => "peer_access",  value2 => $peer_access, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($local_access) or ($peer_access))
+		{
+			$proceed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "proceed", value1 => $proceed, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($proceed);
 }
 
 # This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
@@ -146,238 +239,7 @@ sub update_db
 	if ($an->data->{scancore}{db_resync_needed})
 	{
 		update_db_server($an);
-		update_db_server_data($an);
 	}
-	
-	return(0);
-}
-
-# Update the server_data table
-sub update_db_server_data
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db_server_data", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Now read in all the 'server_data' table records that came from us.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-	{
-		# These will store the INSERTs for this DB, if needed.
-		$an->data->{db_resync}{$id}{sql}          = [];
-		$an->data->{db_resync}{$id}{public}{sql}  = [];
-		$an->data->{db_resync}{$id}{history}{sql} = [];
-		
-		# Read in the history schema
-		my $query = "
-SELECT 
-    a.server_data_server_uuid, 
-    a.server_data_note, 
-    a.server_data_xml, 
-    a.modified_date 
-FROM 
-    history.server_data a, 
-    public.server b 
-WHERE 
-    a.server_data_server_uuid = b.server_uuid 
-AND
-    b.server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "id",    value1 => $id, 
-			name2 => "query", value2 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "results", value1 => $results
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			my $server_data_server_uuid = $row->[0];
-			my $server_data_note        = $row->[1];
-			my $server_data_xml         = $row->[2];
-			my $modified_date           = $row->[3];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "server_data_server_uuid", value1 => $server_data_server_uuid, 
-				name2 => "server_data_note",        value2 => $server_data_note, 
-				name3 => "server_data_xml",         value3 => $server_data_xml, 
-				name4 => "modified_date",           value4 => $modified_date
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Record this in the unified and local hashes.
-			$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid} = {
-				server_data_note	=>	$server_data_note, 
-				server_data_xml		=>	$server_data_xml, 
-			};
-			$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'} = 1;
-			$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen}     = 0;
-			$an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid} = {
-				server_data_note	=>	$server_data_note, 
-				server_data_xml		=>	$server_data_xml, 
-			};
-		}
-	}
-	
-=cut
-	### NOTE: Sort '$b cmp $a' on the modified date.
-	# Now, loop through each record from the unified table and see if it 
-	# needs to be added to any DBs.
-	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server_data}{modified_date}})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "modified_date", value1 => $modified_date,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $server_data_server_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}})
-		{
-			my $server_data_server_uuid = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_server_uuid};
-			my $server_data_cluster_id  = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_cluster_id};
-			my $server_data_status      = $an->data->{db_data}{unified}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}{server_data_status};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "server_data_server_uuid", value1 => $server_data_server_uuid, 
-				name2 => "server_data_note",        value2 => $server_data_note, 
-				name3 => "server_data_xml",         value3 => $server_data_xml, 
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-			{
-				# For each 'server_data_server_uuid' we see;
-				# - Check if we've *seen* it before
-				#   |- If not; See if it *exists* in the public schema yet.
-				#   |  |- If so, check to see if the entry in the public schema is up to date.
-				#   |  |  \- If not, _UPDATE_ public schema.
-				#   |  \- If not, do an _INSERT_ into public schema.
-				#   \- If we have, see if it exists at the current timestamp.
-				#      \- If not, _INSERT_ it into history schema.
-				#
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "db_data::${id}::server_data::server_data_server_uuid::${server_data_server_uuid}::seen", value1 => $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if (not $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen})
-				{
-					# Mark this record as now having been seen.
-					$an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{seen} = 1;
-					
-					# Never seen it. Check if it exists.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "db_data::${id}::server_data::server_data_server_uuid::${server_data_server_uuid}::exists", value1 => $an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{db_data}{$id}{server_data}{server_data_server_uuid}{$server_data_server_uuid}{'exists'})
-					{
-						# It exists, but does it exist at this time stamp?
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1  => "db_data::${id}::server_data::modified_date::${modified_date}::server_data_server_uuid::${server_data_server_uuid}", value1 => $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid}, 
-						}, file => $THIS_FILE, line => __LINE__});
-						if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid})
-						{
-							# No, so UPDATE it.
-							my $query = "
-UPDATE 
-    public.server_data
-SET
-    server_data_cluster_id = ".$an->data->{sys}{use_db_fh}->quote($server_data_cluster_id).", 
-    server_data_status     = ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
-    modified_date           = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-WHERE 
-    server_data_server_uuid       = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
-AND 
-    server_data_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
-;";
-							# Now record the query in the array
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "id",    value1 => $id, 
-								name2 => "query", value2 => $query
-							}, file => $THIS_FILE, line => __LINE__});
-							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-						}
-					}
-					else
-					{
-						# It doesn't exist, so INSERT it.
-						my $query = "
-INSERT INTO 
-    public.server_data
-(
-    server_data_server_uuid, 
-    server_data_server_uuid, 
-    server_data_cluster_id, 
-    server_data_status, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_cluster_id).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
-					}
-				}
-				else
-				{
-					# We've seen this 'server_data_server_uuid' before, so it's just a question
-					# of whether the entry for the current timestamp exists in the 
-					# history schema.
-					if (not $an->data->{db_data}{$id}{server_data}{modified_date}{$modified_date}{server_data_server_uuid}{$server_data_server_uuid})
-					{
-						# It doesn't, INSERT it.
-						my $query = "
-INSERT INTO 
-    history.server_data
-(
-    server_data_id, 
-    server_data_server_uuid, 
-    server_data_cluster_id, 
-    server_data_server_uuid, 
-    server_data_status, 
-    modified_date 
-) VALUES (
-    (
-        SELECT 
-            server_data_id 
-        FROM 
-            public.server_data 
-        WHERE 
-            server_data_server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)." 
-        AND 
-            server_data_server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid)."
-    ), 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_cluster_id).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_server_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_data_status).", 
-    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
-);";
-						# Now record the query in the array
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "id",    value1 => $id, 
-							name2 => "query", value2 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
-					} # Exist in history at timestamp?
-				} # Seen server_data_server_uuid?
-			} # foreach my $id 
-		} # foreach my $server_data_server_uuid ...
-	} # foreach $modified_date ...
-	
-	# Free up memory by deleting the DB data from the main hash.
-	delete $an->data->{db_data};
-	
-	# Do the INSERTs now and then release the memory.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-	{
-		# Merge the queries with public schema queries being first.
-		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
-		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
-		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
-			delete $an->data->{db_resync}{$id}{sql};
-		}
-	}
-=cut
 	
 	return(0);
 }
@@ -614,7 +476,7 @@ INSERT INTO
 		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
 		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
 		{
-			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}});
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
 			delete $an->data->{db_resync}{$id}{sql};
 		}
 	}
@@ -1795,7 +1657,7 @@ sub commit_sql
 	}, file => $THIS_FILE, line => __LINE__});
 	if (@{$an->data->{sys}{sql}} > 0)
 	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 		$an->data->{sys}{sql} = [];
 	}
 	

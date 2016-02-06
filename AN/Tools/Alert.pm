@@ -167,7 +167,7 @@ INSERT INTO
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	elsif (($type eq "clear") && ($count))
 	{
@@ -189,7 +189,7 @@ AND
 			name1 => "query", value1 => $query, 
 			name2 => "set",   value2 => $set, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -417,7 +417,7 @@ INSERT INTO
 		name1 => "query", value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->DB->do_db_write({query => $query});
+	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	
 	return(0);
 }

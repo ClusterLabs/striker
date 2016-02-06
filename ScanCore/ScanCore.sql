@@ -316,11 +316,68 @@ CREATE TRIGGER trigger_agents
 	FOR EACH ROW EXECUTE PROCEDURE history_agents();
 
 
--- ------------------------------------------------------------------------- --
--- NOTE: Because this will be updated on every run, we will use its          --
---       modified_data comlumn to determine if the tables in this schema     --
---       need to be updated.                                                 --
--- ------------------------------------------------------------------------- --
+-- ------------------------------------------------------------------------------------------------------- --
+-- NOTE: This table is unique in that it does NOT link to a specific host_uuid!                            --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- This stores information that belongs to shared objects, like a server's XML data or the user's notes. 
+-- Anything here can be updated by any ScanCore system.
+CREATE TABLE public.shared (
+	shared_uuid		uuid				primary key,
+	shared_source_name	text				not null,	-- This is the name of the agent that created this shared object
+	shared_record_locator	uuid				not null,	-- This is the UUID of the object this record belongs to. Usually it will be '<table>_uuid'
+	shared_name		text				not null,	-- This is the name of the object (like 'definition', 'note', etc.
+	shared_data		text,						-- This is the stored value, which can be empty.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE public.shared OWNER TO #!variable!user!#;
+
+CREATE TABLE history.shared (
+	history_id		bigserial,
+	shared_uuid		uuid,
+	shared_source_name	text,
+	shared_record_locator	uuid,
+	shared_name		text,
+	shared_data		text,
+	modified_date		timestamp with time zone
+);
+ALTER TABLE history.shared OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_shared() RETURNS trigger
+AS $$
+DECLARE
+	history_shared RECORD;
+BEGIN
+	SELECT INTO history_shared * FROM shared WHERE shared_id = new.shared_id;
+	INSERT INTO history.shared
+		(shared_uuid, 
+		 shared_source_name, 
+		 shared_record_locator, 
+		 shared_name, 
+		 shared_data,
+		 modified_date)
+	VALUES
+		(history_shared.shared_uuid, 
+		 history_shared.shared_source_name, 
+		 history_shared.shared_record_locator, 
+		 history_shared.shared_name, 
+		 history_shared.shared_data,
+		 history_shared.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_shared() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_shared
+	AFTER INSERT OR UPDATE ON shared
+	FOR EACH ROW EXECUTE PROCEDURE history_shared();
+
+
+-- ------------------------------------------------------------------------------------------------------- --
+-- NOTE: Because this will be updated on every run, we will use its modified_data comlumn to determine if  --
+--       the tables in this schema need to be updated.                                                     --
+-- ------------------------------------------------------------------------------------------------------- --
 
 -- This stores information about the RAM used by ScanCore and it's agents.
 CREATE TABLE ram_used (
@@ -387,12 +444,10 @@ CREATE TABLE updated (
 ALTER TABLE updated OWNER TO #!variable!user!#;
 
 
--- To avoid "waffling" when a sensor is close to an alert (or cleared)
--- threshold, a gap between the alarm value and the clear value is used. If the
--- sensor climbs above (or below) the "clear" value, but didn't previously pass
--- the "alert" threshold, we DON'T want to send an "all clear" message. So do
--- solve that, this table is used by agents to record when a warning message
--- was sent. 
+-- To avoid "waffling" when a sensor is close to an alert (or cleared) threshold, a gap between the alarm 
+-- value and the clear value is used. If the sensor climbs above (or below) the "clear" value, but didn't 
+-- previously pass the "alert" threshold, we DON'T want to send an "all clear" message. So do solve that, 
+-- this table is used by agents to record when a warning message was sent. 
 CREATE TABLE alert_sent (
 	alert_sent_host_uuid	uuid				not null,			-- The node associated with this alert
 	alert_sent_id		bigserial			not null,

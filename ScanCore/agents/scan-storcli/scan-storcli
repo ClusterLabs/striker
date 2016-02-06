@@ -715,7 +715,7 @@ sub commit_sql
 	}, file => $THIS_FILE, line => __LINE__});
 	if (@{$an->data->{sys}{sql}} > 0)
 	{
-		$an->DB->do_db_write({query => $an->data->{sys}{sql}});
+		$an->DB->do_db_write({query => $an->data->{sys}{sql}, source => $THIS_FILE, line => __LINE__});
 		$an->data->{sys}{sql} = [];
 	}
 	

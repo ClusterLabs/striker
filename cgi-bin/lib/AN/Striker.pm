@@ -122,7 +122,7 @@ WHERE ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		
 		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
 		###       node...
@@ -180,7 +180,7 @@ WHERE
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		
 		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
 		###       node...

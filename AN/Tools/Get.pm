@@ -889,6 +889,7 @@ sub anvil_details
 		local_node	=>	"",
 		peer_node	=>	"",
 		anvil_name	=>	$data->{name},
+		anvil_password	=>	"",
 	};
 	foreach my $a (@{$data->{clusternodes}->[0]->{clusternode}})
 	{
@@ -912,10 +913,53 @@ sub anvil_details
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	
+	# Now see if this Anvil! was read in from striker.conf.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $return->{anvil_name}, 
+		name2 => "cluster",    value2 => ref($an->data->{cluster}), 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($return->{anvil_name}) && (ref($an->data->{cluster}) eq "HASH"))
+	{
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "id",                   value1 => $id, 
+				name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
+				name3 => "anvil_name",           value3 => $return->{anvil_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
+			{
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+					name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
+					name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{cluster}{$id}{root_pw})
+				{
+					$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+						name1 => "anvil_password", value1 => $return->{anvil_password}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($an->data->{cluster}{$id}{ricci_pw})
+				{
+					$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+						name1 => "anvil_password", value1 => $return->{anvil_password}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				last;
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "local_node", value1 => $return->{local_node}, 
 		name2 => "peer_node",  value2 => $return->{peer_node}, 
 		name3 => "anvil_name", value3 => $return->{anvil_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_password", value1 => $return->{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($return);
