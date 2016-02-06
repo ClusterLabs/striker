@@ -240,7 +240,6 @@ load_agent_strings($an);
 
 # Update the database before we do anything else.
 update_db($an);
-#die "$THIS_FILE ".__LINE__."; testing.\n"; 
 
 # Make sure this node is in the database and the host name is up to date.
 add_hostname_to_databases($an);
@@ -1468,9 +1467,8 @@ WHERE
 		process_alerts($an, 0);
 		if ($do_shutdown)
 		{
-			# And now die via 'safe_anvil_shutdown'. We should be dead 
-			# before this exits. So ya, so long and thanks for all the
-			# fish.
+			# And now die via 'safe_anvil_shutdown'. We should be dead  before this exits. So ya,
+			# so long and thanks for all the fish.
 			my $shell_call = $an->data->{path}{safe_anvil_shutdown}." 2>&1 |";
 			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 			while(<$file_handle>)
@@ -1659,16 +1657,16 @@ sub update_health_file
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# We don't die if we fail to write. If the system needs to 
-		# poweroff, this is not the time to be exiting on small errors.
+		# We don't die if we fail to write. If the system needs to poweroff, this is not the time to
+		# be exiting on small errors.
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 0, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		print $file_handle $say_health;
 		close $file_handle;
 	}
 	else
 	{
-		# Can't write, cluster may be down (in which case, we aren't a
-		# migration target anyway so it hardly matters).
+		# Can't write, cluster may be down (in which case, we aren't a migration target anyway so it 
+		# hardly matters).
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0054", message_variables => {
 			health_file => $health_file, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1677,10 +1675,9 @@ sub update_health_file
 	return(0);
 }
 
-# This pulls the data on the various temperature sensors. If all are within
-# acceptible ranges, '1' will be returned. If any are in warning or critical
-# state, '2' will be returned. If enough are critical to trigger power-down,
-# '3' will be returned.
+# This pulls the data on the various temperature sensors. If all are within acceptible ranges, '1' will be 
+# returned. If any are in warning or critical state, '2' will be returned. If enough are critical to trigger 
+# power-down, '3' will be returned.
 sub check_node_temperature
 {
 	my ($an) = @_;
@@ -3235,7 +3232,6 @@ sub update_db
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
-		#die "$THIS_FILE ".__LINE__."; testing.\n"; 
 		
 		# Now update the rest of the ScanCore tables.
 		update_db_agents($an);
@@ -3730,6 +3726,7 @@ INSERT INTO
 
 # Update the special 'shared' table.
 sub update_db_shared
+{
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
@@ -3809,16 +3806,15 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $shared_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}})
 		{
-			my $shared_uuid              = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_uuid};
-			my $shared_record_locator    = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_record_locator};
-				shared_source_name	=>	$shared_source_name, 
-				shared_name		=>	$shared_name, 
-				shared_data		=>	$shared_data, 
-			my $ = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_ups_name};
+			my $shared_uuid           = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_uuid};
+			my $shared_record_locator = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_record_locator};
+			my $shared_source_name    = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_source_name};
+			my $shared_name           = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_name};
+			my $shared_data           = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_data};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "shared_uuid",           value1 => $shared_uuid, 
-				name2 => "shared_source_name",    value2 => $shared_source_name, 
-				name3 => "shared_record_locator", value3 => $shared_record_locator, 
+				name2 => "shared_record_locator", value2 => $shared_record_locator, 
+				name3 => "shared_source_name",    value3 => $shared_source_name, 
 				name4 => "shared_name",           value4 => $shared_name, 
 				name5 => "shared_data",           value5 => $shared_data, 
 			}, file => $THIS_FILE, line => __LINE__});

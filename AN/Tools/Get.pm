@@ -880,6 +880,7 @@ sub anvil_details
 		name3 => "config_file",    value3 => $config_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: Error if no config file is passed in.
 	# Read in cluster.conf.
 	my $xml  = XML::Simple->new();
 	my $data = $xml->XMLin($config_file, KeyAttr => {node => 'name'}, ForceArray => 1);

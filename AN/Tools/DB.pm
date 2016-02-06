@@ -49,9 +49,9 @@ sub do_db_write
 	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "id",     value1 => $id, 
-		name2 => "source", value1 => $source, 
-		name3 => "line",   value1 => $line, 
-		name4 => "query",  value1 => $query, 
+		name2 => "source", value2 => $source, 
+		name3 => "line",   value3 => $line, 
+		name4 => "query",  value4 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I don't have a query, die.
@@ -112,15 +112,14 @@ sub do_db_write
 		{
 			# Record the query
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "id",     value1 => $id,
-				name2 => "source", value2 => $source, 
-				name3 => "line",   value3 => $line, 
-				name4 => "query",  value4 => $query
+				name1 => "query",  value1 => $query, 
+				name2 => "id",     value2 => $id,
+				name3 => "source", value3 => $source, 
+				name4 => "line",   value4 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Just one query.
 			#print "id: [$id], query:\n============\n$query\n============\n";
-			#$an->data->{dbh}{$id}->do($query) or die "$THIS_FILE ".__LINE__."; query: [$query] failed with error: [$DBI::errstr]\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
 								query    => $query, 
 								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
@@ -208,8 +207,8 @@ sub disconnect_from_databases
 	return(0);
 }
 
-# This will connect to the databases and record their database handles. It will
-# also initialize the databases, if needed.
+# This will connect to the databases and record their database handles. It will also initialize the databases,
+# if needed.
 sub connect_to_databases
 {
 	my $self      = shift;
@@ -249,16 +248,16 @@ sub connect_to_databases
 		
 		# Log what we're doing.
 		$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_log_0002", message_variables => {
-				id			=>	$id,
-				driver			=>	$driver,
-				host			=>	$host,
-				port			=>	$port,
-				postgres_password	=>	$postgres_password,
-				name			=>	$name,
-				user			=>	$user,
-				password		=>	$password,
-				initialize		=>	$initialize,
-			}, file => $THIS_FILE, line => __LINE__});
+			id                => $id,
+			driver            => $driver,
+			host              => $host,
+			port              => $port,
+			postgres_password => $postgres_password,
+			name              => $name,
+			user              => $user,
+			password          => $password,
+			initialize        => $initialize,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
@@ -268,9 +267,8 @@ sub connect_to_databases
 		
 		# Connect!
 		my $dbh = "";
-		### NOTE: The AN::Tools::DB->do_db_write() method, when passed
-		###       an array, will automatically disable autocommit, do
-		###       the bulk write, then commit when done.
+		### NOTE: The AN::Tools::DB->do_db_write() method, when passed an array, will automatically 
+		###       disable autocommit, do the bulk write, then commit when done.
 		# We connect with fatal errors, autocommit and UTF8 enabled.
 		eval { $dbh = DBI->connect($db_connect_string, $user, $password, {
 			RaiseError     => 1,
@@ -281,10 +279,10 @@ sub connect_to_databases
 		{
 			# Something went wrong...
 			$an->Alert->warning({message_key => "scancore_warning_0006", message_variables => {
-				id	=>	$id,
-				host	=>	$host,
-				name	=>	$name,
-				quiet	=>	$quiet,
+				id    => $id,
+				host  => $host,
+				name  => $name,
+				quiet => $quiet,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db}{$id}{connection_error} = [];
 			push @{$failed_connections}, $id;
@@ -396,6 +394,7 @@ sub connect_to_databases
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
+			
 			my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "count", value1 => $count
@@ -608,7 +607,7 @@ sub get_host_uuid
 	
 	# What's the query?
 	my $id       = $parameter->{id}       ? $parameter->{id}       : $an->data->{sys}{read_db_id};
-	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : die "$THIS_FILE ".__LINE__."; AN::Tools::DB->get_host_uuid() called without specifying a 'hostname'.\n";
+	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : $an->hostname;
 	
 	my $query = "SELECT host_uuid, round(extract(epoch from modified_date)) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1282,13 +1281,10 @@ sub initialize_db
 	if (not $id)
 	{
 		# what DB?
-		print $an->String->get({
-			key		=>	"scancore_message_0002",
-			variables	=>	{
-				title		=>	$an->String->get({key => "scancore_title_0003"}),
-				message		=>	$an->String->get({key => "scancore_error_0005"}),
-			},
-		})."\n";
+		print $an->String->get({key => "scancore_message_0002", variables => {
+			title		=>	$an->String->get({key => "scancore_title_0003"}),
+			message		=>	$an->String->get({key => "scancore_error_0005"}),
+		}})."\n";
 		exit(1);
 	}
 	
@@ -1302,8 +1298,7 @@ sub initialize_db
 	
 	my $success = 1;
 	
-	# Read in the SQL file and replace #!variable!name!# with the database
-	# owner name.
+	# Read in the SQL file and replace #!variable!name!# with the database owner name.
 	my $user = $an->data->{scancore}{db}{$id}{user};
 	my $sql  = "";
 	

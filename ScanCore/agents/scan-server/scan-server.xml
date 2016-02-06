@@ -5,140 +5,42 @@ not to use names used by the main Striker strings file. Do this by prefixing all
 -->
 <strings>
 	<!-- Canadian English -->
-	<name>scan-clustat.xml</name>
+	<name>scan-server.xml</name>
 	<version>0.0.001</version>
 	<langs>en_CA</langs>
 	<!-- Canadian English -->
 	<lang name="en_CA" long_name="English (Canadian)">
-		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the rgmanager 'clustat' Scan Agent.</key>
+		<key name="comment">Maintained by Madison Kelly (mkelly@alteeve.ca) for the rgmanager 'server' Scan Agent.</key>
 		
 		<!-- Strings that can change by rebranding -->
-		<key name="scan_clustat_brand_0001">'clustat' Scan Agent</key>
+		<key name="scan_server_brand_0001">'server' Scan Agent</key>
 		
 		<!-- Log messages -->
-		<key name="scan_clustat_log_0001">This node is offline. No checks of 'clustat' nodes or services will be made.</key>
+		<key name="scan_server_log_0001"></key>
 		
 		<!-- Notices -->
-		<key name="scan_clustat_note_0001">It appears that the 'clustat' node: [#!variable!node!#] was deleted.</key>
-		<key name="scan_clustat_note_0002">It appears that the 'clustat' service: [#!variable!service!#] was deleted.</key>
-		<key name="scan_clustat_note_0003">It appears that the server: [#!variable!service!#] was deleted.</key>
-		<key name="scan_clustat_note_0004">The new node: [#!variable!node!#] has appeared.</key>
-		<key name="scan_clustat_note_0005">It looks like 'rgmanager' (the cluster's resource manager) was stopped on the node: [#!variable!node!#]. It is still an #!string!scancore_brand_0002!# member, but it can no longer recover lost servers.</key>
-		<key name="scan_clustat_note_0006">The node has joined the cluster: [#!variable!cluster!#].</key>
-		<key name="scan_clustat_note_0007">The cluster manager was stopped on the node: [#!variable!node!#]. The node is no longer participating in the #!string!scancore_brand_0002!#.</key>
-		<key name="scan_clustat_note_0008">The node: [#!variable!node!#] has rejoined the #!string!scancore_brand_0002!#, but it is not yet able to take over lost servers. It should be ready in the next minute or so.</key>
-		<key name="scan_clustat_note_0009">The node: [#!variable!node!#] is now a full member of #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
-		<key name="scan_clustat_note_0010">The node: [#!variable!node!#] has fully rejoined the #!string!scancore_brand_0002!#. As soon as its storage is 'UpToDate', it will be ready to take over servers.</key>
-		<key name="scan_clustat_note_0011">The service: [#!variable!service!#] is starting on the host: [#!variable!host!#]...</key>
-		<key name="scan_clustat_note_0012">The node: [#!variable!node!#]'s internal ID number has changed from: [#!variable!old_id!#] to:  [#!variable!new_id!#]. This should never unless an admin changed this intentionally.</key>
-		<key name="scan_clustat_note_0013">The new service: [#!variable!service!#] has appeared.</key>
-		<key name="scan_clustat_note_0014">Congratulations! Your new server: [#!variable!service!#] has been created.</key>
-		<key name="scan_clustat_note_0015">The server: [#!variable!service!#] is booting on the host: [#!variable!host!#]...</key>
-		<key name="scan_clustat_note_0016">The server: [#!variable!service!#] has booted on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_note_0017">The node has gained quorum. This means that the node can now participate in the #!string!scancore_brand_0002!# again.</key>
-		<key name="scan_clustat_note_0018"></key>
-		<key name="scan_clustat_note_0019">The server: [#!variable!service!#] is being stopped on the host: [#!variable!host!#]. Please make sure the OS initiated power off!</key>
-		<key name="scan_clustat_note_0020">The server: [#!variable!service!#] has been stopped.</key>
-		<key name="scan_clustat_note_0021">The server: [#!variable!service!#] has been restarted on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_note_0022">The service: [#!variable!service!#] has started on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_note_0023"></key>
-		<key name="scan_clustat_note_0024"></key>
-		<key name="scan_clustat_note_0025">The service: [#!variable!service!#] is being stopped on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_note_0026">The service: [#!variable!service!#] has been stopped.</key>
-		<key name="scan_clustat_note_0027"></key>
-		<key name="scan_clustat_note_0028">The server: [#!variable!service!#] has been migrated from: [#!variable!source!#] to: [#!variable!target!#].</key>
+		<key name="scan_server_note_0001"></key>
 		
 		<!-- Warnings. -->
-		<key name="scan_clustat_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
-		<key name="scan_clustat_warning_0002">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
-		<key name="scan_clustat_warning_0003"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_clustat_warning_0004"><![CDATA[The password set for the user: [#!variable!user!#] is incorrect. Please update: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
-		<key name="scan_clustat_warning_0005">
-The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_clustat_warning_0006">This database can not be used, skipping it.</key>
-		<key name="scan_clustat_warning_0007">Error during DB 'do'. The error was:
-----------
-#!variable!dbi_error!#
-----------
-		</key>
-		<key name="scan_clustat_warning_0008">There were errors writing data to the database. Rolling back!</key>
-		<key name="scan_clustat_warning_0009">
-The cluster's state has changed in an unexpected way.
-- Cluster name:  [#!variable!old_cluster_name!#] -> [#!variable!new_cluster_name!#]
-- Quorum status: [#!variable!old_quorum_status!#] -> [#!variable!new_quorum_status!#]
-
-Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
-		</key>
-		<key name="scan_clustat_warning_0010">
-The server: [#!variable!service!#]'s status has changed in an unexpected way.
-- The old state was: [#!variable!old_state!#]
-- The new state is:  [#!variable!new_state!#]
-
-Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
-		</key>
-		<key name="scan_clustat_warning_0011">
-The node: [#!variable!node!#]'s status has changed in an unexpected way.
-- The old state was: [#!variable!old_state!#]
-- The new state is:  [#!variable!new_state!#]
-
-Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
-		</key>
-		<key name="scan_clustat_warning_0012">
-The service: [#!variable!service!#]'s status has changed in an unexpected way.
-- The old state was: [#!variable!old_state!#]
-- The new state is:  [#!variable!new_state!#]
-
-Please send this alert to: #!string!scancore_brand_0003!# (#!string!scancore_brand_0004!#) so that we can add this condition to the list of known alert types.
-		</key>
-		<key name="scan_clustat_warning_0013">The server: [#!variable!service!#] failed to boot. Recovery will be attempted now...</key>
-		<key name="scan_clustat_warning_0014">The server: [#!variable!service!#] has failed!</key>
-		<key name="scan_clustat_warning_0015">The service: [#!variable!service!#] failed to start!</key>
-		<key name="scan_clustat_warning_0016">The service: [#!variable!service!#] has failed!</key>
-		<key name="scan_clustat_warning_0017">The service: [#!variable!service!#] has been restarted on the host: [#!variable!host!#]. This is generally not normal, unless someone is doing work on a node.</key>
-		<key name="scan_clustat_warning_0018">The node: [#!variable!node!#] has gone offline. If someone is doing work on your #!string!scancore_brand_0002!#, then this is usually OK. If this was not expected, the node may have crashed and been fenced.</key>
-		<key name="scan_clustat_warning_0019">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
-		<key name="scan_clustat_warning_0020">The server: [#!variable!service!#] was recovered successfully on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_warning_0021">The server: [#!variable!service!#] was disabled after being marked as failed.</key>
-		<key name="scan_clustat_warning_0022">The server: [#!variable!service!#] was recovered successfully on the host: [#!variable!host!#].</key>
-		<key name="scan_clustat_warning_0023">The node has left the cluster: [#!variable!cluster!#].</key>
-		<key name="scan_clustat_warning_0024">
-The node has lost quorum. 
-This means that the node can no longer participate in the #!string!scancore_brand_0002!#. 
-This should never happen. 
-#!string!scancore_brand_0005!#
-		</key>
+		<key name="scan_server_warning_0001">Failed to connect to database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#].</key>
 		
 		<!-- Errors -->
-		<key name="scan_clustat_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_clustat_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
-		<key name="scan_clustat_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="scan_server_error_0001">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="scan_server_error_0002">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="scan_server_error_0003">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		
-		<!-- clustat Agent-specific messages -->
-		<key name="scan_clustat_message_0001">Starting #!string!scan_clustat_brand_0001!#:</key>
-		<key name="scan_clustat_message_0002"><![CDATA[
- -=] ScanCore - Agent - scan-clustat
+		<!-- server Agent-specific messages -->
+		<key name="scan_server_message_0001">Starting #!string!scan_server_brand_0001!#:</key>
+		<key name="scan_server_message_0002"><![CDATA[
+ -=] ScanCore - Agent - scan-server
 
 DESCRIPTION
 
-This agent reads and parses the output from rgmanager's 'clustat' (Cluster
-Status) program. It will detect changes in VMs, storage, libvirtd services and
-nodes joining, leaving and recovering.
+This agent reads and parses the 'libvirtd' data to collect information on 
+servers via the 'virsh' tool.
 
 
 SWITCHES
-
- -c <host>, --caller <host>
-	
-	This is to be set by the ScanCore server and 'host' must match the
-	FQDN of the caller. When data is recorded to the target databases, this
-	value is used to link the data to this host. Failing to match this name
-	to an entry in the 'hosts' table will cause the agent to exit with the
-	return code of '1'.
-
 
  -h, -?, --help
 
@@ -149,6 +51,6 @@ SUPPORT
 
 https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
-		<key name="scan_clustat_message_0003">It looks like 'rgmanager' is not in installed, exiting.</key>
+		<key name="scan_server_message_0003">It looks like 'rgmanager' is not in installed, exiting.</key>
 	</lang>
 </strings>
