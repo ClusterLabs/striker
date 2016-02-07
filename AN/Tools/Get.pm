@@ -874,7 +874,7 @@ sub anvil_details
 	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
 	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
 	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cluster_conf};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "hostname_full",  value1 => $hostname_full, 
 		name2 => "hostname_short", value2 => $hostname_short, 
 		name3 => "config_file",    value3 => $config_file, 
@@ -902,21 +902,21 @@ sub anvil_details
 		    ($hostname_short eq $alt_name))
 		{
 			$return->{local_node} = $node_name;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "local_node", value1 => $return->{local_node}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			$return->{peer_node} = $node_name;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "peer_node", value1 => $return->{peer_node}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Now see if this Anvil! was read in from striker.conf.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_name", value1 => $return->{anvil_name}, 
 		name2 => "cluster",    value2 => ref($an->data->{cluster}), 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -924,7 +924,7 @@ sub anvil_details
 	{
 		foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "id",                   value1 => $id, 
 				name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
 				name3 => "anvil_name",           value3 => $return->{anvil_name}, 
@@ -954,7 +954,7 @@ sub anvil_details
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "local_node", value1 => $return->{local_node}, 
 		name2 => "peer_node",  value2 => $return->{peer_node}, 
 		name3 => "anvil_name", value3 => $return->{anvil_name}, 

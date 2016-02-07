@@ -15,6 +15,7 @@
 # TODO: 
 #  - Figure out how to handle a definition change seen by one node but not the other (ie: because it was 
 #    offline).
+#  - Add a check to see if libvirtd is set to start on boot and disable it, if so.
 # 
 
 # Use my modules.
@@ -58,6 +59,7 @@ my $an = AN::Tools->new({data =>
 			log_level		=>	2,
 			log_language		=>	"en_CA",
 		},
+		server		=>	{},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			sql			=>	[],
@@ -100,6 +102,8 @@ if (not scan_servers($an))
 # Still alive?
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 
+exit(0);
+
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
@@ -129,7 +133,7 @@ nice_exit($an, 0);
 sub scan_servers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will get set to '1' if we find any server info locally or on the peer (if we can find our 
 	# peer).
@@ -145,14 +149,12 @@ sub scan_servers
 	$an->data->{sys}{peer_node}      = $return->{peer_node};
 	$an->data->{sys}{anvil_name}     = $return->{anvil_name};
 	$an->data->{sys}{anvil_password} = $return->{anvil_password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
 		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
 		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	### WARNING: Set this back to '4'.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -162,14 +164,17 @@ sub scan_servers
 		# First, check for local servers.
 		my $local_access = 1;
 		my $shell_call   = $an->data->{path}{virsh}." list --all";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
-			my $line = $_;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -181,6 +186,20 @@ sub scan_servers
 					name1 => "local_access", value1 => $local_access, 
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
+			}
+			if ($line =~ /^\d+ (.*?) (.*)$/)
+			{
+				my $server_name  = $1;
+				my $server_state = $2;
+				$an->data->{server}{$server_name} = {
+					host	=>	$an->data->{sys}{local_node},
+					'state'	=>	$server_state,
+				};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "server_name",                   value1 => $server_name, 
+					name2 => "server::${server_name}::host",  value2 => $an->data->{server}{$server_name}{host}, 
+					name3 => "server::${server_name}::state", value3 => $an->data->{server}{$server_name}{'state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;
@@ -196,12 +215,15 @@ sub scan_servers
 			port		=>	"", 
 			password	=>	$an->data->{sys}{anvil_password},
 			ssh_fh		=>	"",
-			'close'		=>	1,
+			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^error:/)
@@ -213,6 +235,20 @@ sub scan_servers
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
+			if ($line =~ /^\d+ (.*?) (.*)$/)
+			{
+				my $server_name  = $1;
+				my $server_state = $2;
+				$an->data->{server}{$server_name} = {
+					host	=>	$an->data->{sys}{local_node},
+					'state'	=>	$server_state,
+				};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "server_name",                   value1 => $server_name, 
+					name2 => "server::${server_name}::host",  value2 => $an->data->{server}{$server_name}{host}, 
+					name3 => "server::${server_name}::state", value3 => $an->data->{server}{$server_name}{'state'}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -222,9 +258,81 @@ sub scan_servers
 		if (($local_access) or ($peer_access))
 		{
 			$proceed = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "proceed", value1 => $proceed, 
 			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	if ($proceed)
+	{
+		# Now gather the details on the servers.
+		foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server}})
+		{
+			my $server_host  = $an->data->{server}{$server_name}{host};
+			my $server_state = $an->data->{server}{$server_name}{'state'};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "server_name",  value1 => $server_name, 
+				name2 => "server_host",  value2 => $server_host, 
+				name3 => "server_state", value3 => $server_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $server_xml = "";
+			my $shell_call = "virsh dumpxml $server_name";
+			if ($server_host eq $an->data->{sys}{local_node})
+			{
+				# Locally hosted, call virsh directly
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$server_xml .= "$line\n";
+				}
+				close $file_handle;
+			}
+			else
+			{
+				# Remote, call over SSH.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "target",     value2 => $an->data->{sys}{peer_node},
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$server_host,
+					port		=>	"", 
+					password	=>	$an->data->{sys}{anvil_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$server_xml .= "$line\n";
+				}
+			}
+			$an->data->{server}{$server_name}{definition} = $server_xml;
+			
+			# Dig out details now.
+			foreach my $line (split/\n/, $server_xml)
+			{
+				if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
+				{
+					$an->data->{server}{$server_name}{server_uuid} = $1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "server::${server_name}::server_uuid", value1 => $an->data->{server}{$server_name}{server_uuid}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
 		}
 	}
 	

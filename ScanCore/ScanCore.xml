@@ -63,17 +63,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		
 		<!-- Log messages -->
 		<key name="scancore_log_0001">Entering: [#!variable!function!#()]</key>
-		<key name="scancore_log_0002">
-Connecting to Database with configuration ID: [#!variable!id!#]
-- driver:            [#!variable!driver!#]
-- host:              [#!variable!host!#]
-- port:              [#!variable!port!#]
-- postgres_password: [#!variable!postgres_password!#]
-- name:              [#!variable!name!#]
-- user:              [#!variable!user!#]
-- password:          [#!variable!password!#]
-- initialize:        [#!variable!initialize!#]
-		</key>
+		<key name="scancore_log_0002">...free...</key>
 		<key name="scancore_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="scancore_log_0004">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#]. The file handle is: [#!variable!data_dbh!# (#!variable!dbh!#)].</key>
 		<key name="scancore_log_0005">Connected to: [#!variable!connections!#] database(s).</key>

@@ -111,7 +111,7 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "query",  value1 => $query, 
 				name2 => "id",     value2 => $id,
 				name3 => "source", value3 => $source, 
@@ -247,16 +247,18 @@ sub connect_to_databases
 		my $initialize        = $an->data->{scancore}{db}{$id}{initialize}        ? $an->data->{scancore}{db}{$id}{initialize}        : 0;
 		
 		# Log what we're doing.
-		$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_log_0002", message_variables => {
+		$an->Log->entry({log_level => 3, title_key => "an_alert_title_0001", message_key => "tools_log_0007", message_variables => {
 			id                => $id,
 			driver            => $driver,
 			host              => $host,
 			port              => $port,
-			postgres_password => $postgres_password,
 			name              => $name,
 			user              => $user,
 			password          => $password,
 			initialize        => $initialize,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "postgres_password", value1 => $postgres_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Assemble my connection string

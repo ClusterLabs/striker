@@ -81,6 +81,17 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>
 		<key name="tools_log_0005">There are: [#!variable!count!#] values in the: [#!variable!array!#] array.</key>
 		<key name="tools_log_0006">There is: [#!variable!count!#] value in the: [#!variable!array!#] array.</key>
+		<key name="tools_log_0007">
+Connecting to Database with configuration ID: [#!variable!id!#]
+- driver:            [#!variable!driver!#]
+- host:              [#!variable!host!#]
+- port:              [#!variable!port!#]
+- postgres_password: [#!variable!postgres_password!#]
+- name:              [#!variable!name!#]
+- user:              [#!variable!user!#]
+- password:          [---]
+- initialize:        [#!variable!initialize!#]
+		</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
