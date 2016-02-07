@@ -102,8 +102,6 @@ if (not scan_servers($an))
 # Still alive?
 print $an->String->get({key => "scan_server_message_0001"})."\n";
 
-exit(0);
-
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
@@ -191,14 +189,16 @@ sub scan_servers
 			{
 				my $server_name  = $1;
 				my $server_state = $2;
-				$an->data->{server}{$server_name} = {
+				$an->data->{server_name}{$server_name} = {
 					host	=>	$an->data->{sys}{local_node},
 					'state'	=>	$server_state,
+					definition	=>	"",
+					uuid		=>	"",
 				};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "server_name",                   value1 => $server_name, 
-					name2 => "server::${server_name}::host",  value2 => $an->data->{server}{$server_name}{host}, 
-					name3 => "server::${server_name}::state", value3 => $an->data->{server}{$server_name}{'state'}, 
+					name2 => "server_name::${server_name}::host",  value2 => $an->data->{server_name}{$server_name}{host}, 
+					name3 => "server_name::${server_name}::state", value3 => $an->data->{server_name}{$server_name}{'state'}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -239,14 +239,16 @@ sub scan_servers
 			{
 				my $server_name  = $1;
 				my $server_state = $2;
-				$an->data->{server}{$server_name} = {
-					host	=>	$an->data->{sys}{local_node},
-					'state'	=>	$server_state,
+				$an->data->{server_name}{$server_name} = {
+					host		=>	$an->data->{sys}{local_node},
+					'state'		=>	$server_state,
+					definition	=>	"",
+					uuid		=>	"",
 				};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "server_name",                   value1 => $server_name, 
-					name2 => "server::${server_name}::host",  value2 => $an->data->{server}{$server_name}{host}, 
-					name3 => "server::${server_name}::state", value3 => $an->data->{server}{$server_name}{'state'}, 
+					name2 => "server_name::${server_name}::host",  value2 => $an->data->{server_name}{$server_name}{host}, 
+					name3 => "server_name::${server_name}::state", value3 => $an->data->{server_name}{$server_name}{'state'}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -267,10 +269,10 @@ sub scan_servers
 	if ($proceed)
 	{
 		# Now gather the details on the servers.
-		foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server}})
+		foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server_name}})
 		{
-			my $server_host  = $an->data->{server}{$server_name}{host};
-			my $server_state = $an->data->{server}{$server_name}{'state'};
+			my $server_host  = $an->data->{server_name}{$server_name}{host};
+			my $server_state = $an->data->{server_name}{$server_name}{'state'};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server_name",  value1 => $server_name, 
 				name2 => "server_host",  value2 => $server_host, 
@@ -320,19 +322,28 @@ sub scan_servers
 					$server_xml .= "$line\n";
 				}
 			}
-			$an->data->{server}{$server_name}{definition} = $server_xml;
+			$an->data->{server_name}{$server_name}{definition} = $server_xml;
 			
 			# Dig out details now.
 			foreach my $line (split/\n/, $server_xml)
 			{
 				if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 				{
-					$an->data->{server}{$server_name}{server_uuid} = $1;
+					$an->data->{server_name}{$server_name}{uuid} = $1;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "server::${server_name}::server_uuid", value1 => $an->data->{server}{$server_name}{server_uuid}, 
+						name1 => "server_name::${server_name}::uuid", value1 => $an->data->{server_name}{$server_name}{uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
+			
+			# Now that I have the UUID, record the details using the UUID as the key
+			my $server_uuid = $an->data->{server_name}{$server_name}{uuid};
+			$an->data->{server_uuid}{$server_uuid} = {
+				name		=>	$server_name,
+				host		=>	$an->data->{server_name}{$server_name}{host},
+				'state'		=>	$an->data->{server_name}{$server_name}{'state'},
+				definition	=>	$an->data->{server_name}{$server_name}{definition},
+			};
 		}
 	}
 	
@@ -653,8 +664,166 @@ sub find_changes
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Loop through each server
+	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_uuid", value1 => $server_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (read_last_scan($an, $server_uuid))
+		{
+			### Existing server, UPDATE or INSERT as needed.
+		}
+		else
+		{
+			# New server, INSERT everything.
+			my $server_name        = $an->data->{server_uuid}{$server_uuid}{name};
+			my $server_stop_reason = "";
+			my $server_start_group = 1;
+			my $server_start_delay = 0;
+			# These go into 'shared'
+			my $server_host        = $an->data->{server_uuid}{$server_uuid}{host};
+			my $server_state       = $an->data->{server_uuid}{$server_uuid}{'state'};
+			my $server_definition  = $an->data->{server_uuid}{$server_uuid}{definition};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "server_uuid",        value1 => $server_uuid, 
+				name2 => "server_name",        value2 => $server_name, 
+				name3 => "server_stop_reason", value3 => $server_stop_reason, 
+				name4 => "server_start_group", value4 => $server_start_group, 
+				name5 => "server_start_delay", value5 => $server_start_delay, 
+				name6 => "server_host",        value6 => $server_host, 
+				name7 => "server_definition",  value7 => $server_definition, 
+				name8 => "server_state",       value8 => $server_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $query = "
+INSERT INTO 
+    server 
+(
+    server_uuid, 
+    server_host_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_name).",  
+    ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).",  
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).",  
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).",  
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Check to see if this server is known in 'shared'.
+			#check_shared($an);
+		}
+	}
+	
+	# Now commit the changes.
+	commit_sql($an);
 	
 	return(0);
+}
+
+# This reads in the last scan's data.
+sub read_last_scan
+{
+	my ($an, $server_uuid) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "server_uuid", value1 => "$server_uuid" 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Couple of variables to make the code cleaner
+	my $id        = $an->data->{sys}{read_db_id};
+	my $host_name = $an->hostname;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "id",        value1 => $id, 
+		name2 => "host_name", value2 => $host_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+
+	# This calls up the entry for this host. If no entry is found, 'new' gets set to '1' and the main 
+	# function won't bother looking for changes and directly INSERT the scanned data.
+	my $query = "
+SELECT 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay 
+FROM 
+    server 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+AND 
+    server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	my $results = $an->DB->do_db_query({query => $query});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $server_name        = $row->[0];
+		my $server_stop_reason = $row->[1];
+		my $server_start_group = $row->[2];
+		my $server_start_delay = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "server_uuid",        value1 => $server_uuid, 
+			name2 => "server_name",        value2 => $server_name, 
+			name3 => "server_stop_reason", value3 => $server_stop_reason, 
+			name4 => "server_start_group", value4 => $server_start_group, 
+			name5 => "server_start_delay", value5 => $server_start_delay, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Push the data into the hash for later comparison
+		$an->data->{sql}{$server_uuid}{server_name}        = $server_name;
+		$an->data->{sql}{$server_uuid}{server_stop_reason} = $server_stop_reason;
+		$an->data->{sql}{$server_uuid}{server_start_group} = $server_start_group;
+		$an->data->{sql}{$server_uuid}{server_start_delay} = $server_start_delay;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
+			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
+			name3 => "sql::${server_uuid}::server_start_group", value3 => $an->data->{sql}{$server_uuid}{server_start_group}, 
+			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Load in the XML data and current host from the 'shared' table.
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($count);
+}
+
+### TODO: Make this a method
+# Nicely exits the program.
+sub nice_exit
+{
+	my ($an, $exit_code) = @_;
+	$exit_code = 99 if not defined $exit_code;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
+	
+	# Close database connections
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
+	}
+	
+	exit($exit_code);
 }
 
 # This commits the SQL queries in '$an->data->{sys}{sql}', if any.
@@ -674,103 +843,6 @@ sub commit_sql
 	}
 	
 	return($count);
-}
-
-# This reads in the last scan's data.
-sub read_last_scan
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_last_scan", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Couple of variables to make the code cleaner
-	my $id        = $an->data->{sys}{read_db_id};
-	my $host_name = $an->hostname;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "id",        value1 => $id, 
-		name2 => "host_name", value2 => $host_name, 
-	}, file => $THIS_FILE, line => __LINE__});
-
-	### NOTE: We don't read in the note, only the user changes that.
-	# This calls up the entry for this host. If no entry is found, 'new' gets set to '1' and the main 
-	# function won't bother looking for changes and directly INSERT the scanned data.
-	my $new   = 0;
-	my $query = "
-SELECT 
-    a.server_uuid, 
-    a.server_name, 
-    a.server_stop_reason, 
-    a.server_start_group, 
-    a.server_start_delay, 
-    b.server_data_xml, 
-FROM 
-    server a, 
-    server_data b 
-WHERE 
-    a.server_uuid = b.server_data_server_uuid 
-AND 
-    a.server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-=pod
-	my $results = $an->DB->do_db_query({query => $query});
-	foreach my $row (@{$results})
-	{
-		my $server_uuid        = $row->[0];
-		my $server_name        = $row->[1];
-		my $server_stop_reason = $row->[2];
-		my $server_start_group = $row->[3];
-		my $server_start_delay = $row->[4];
-		my $server_data_xml    = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-			name1 => "server_uuid",        value1 => $server_uuid, 
-			name2 => "server_name",        value2 => $server_name, 
-			name3 => "server_stop_reason", value3 => $server_stop_reason, 
-			name4 => "server_start_group", value4 => $server_start_group, 
-			name5 => "server_start_delay", value5 => $server_start_delay, 
-			name6 => "server_data_xml",    value6 => $server_data_xml, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Push the data into the hash for later comparison
-		$an->data->{sql}{$server_uuid}{server_name}        = $server_name;
-		$an->data->{sql}{$server_uuid}{server_stop_reason} = $server_stop_reason;
-		$an->data->{sql}{$server_uuid}{server_start_group} = $server_start_group;
-		$an->data->{sql}{$server_uuid}{server_start_delay} = $server_start_delay;
-		$an->data->{sql}{$server_uuid}{server_data_xml}    = $server_data_xml;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
-			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
-			name3 => "sql::${server_uuid}::server_start_group", value3 => $an->data->{sql}{$server_uuid}{server_start_group}, 
-			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
-			name5 => "sql::${server_uuid}::server_data_xml",    value5 => $an->data->{sql}{$server_uuid}{server_data_xml}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Looks like this is the first run ever.
-		$new = 1;
-	}
-=cut
-	
-	return($new);
-}
-
-### TODO: Make this a method
-# Nicely exits the program.
-sub nice_exit
-{
-	my ($an, $exit_code) = @_;
-	$exit_code = 99 if not defined $exit_code;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_directory", }, message_key => "tools_log_0003", message_variables => { name1 => "exit_code", value1 => "$exit_code" }, file => $THIS_FILE, line => __LINE__});
-	
-	# Close database connections
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id};
-	}
-	
-	exit($exit_code);
 }
 
 # Print the usage information.
