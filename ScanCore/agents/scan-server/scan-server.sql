@@ -15,7 +15,7 @@ CREATE TABLE server (
 	server_host_uuid	uuid				not null,
 	server_name		text				not null,
 	server_stop_reason	text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
-	server_start_group	integer				not null	default 1,
+	server_start_group	integer				not null	default 1,	-- Setting this to '9999' will prevent it from booting at all.
 	server_start_delay	integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
 	modified_date		timestamp with time zone	not null
 );

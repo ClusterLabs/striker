@@ -348,7 +348,7 @@ AS $$
 DECLARE
 	history_shared RECORD;
 BEGIN
-	SELECT INTO history_shared * FROM shared WHERE shared_id = new.shared_id;
+	SELECT INTO history_shared * FROM shared WHERE shared_uuid = new.shared_uuid;
 	INSERT INTO history.shared
 		(shared_uuid, 
 		 shared_source_name, 

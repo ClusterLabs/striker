@@ -51,6 +51,35 @@ SUPPORT
 
 https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		]]></key>
-		<key name="scan_server_message_0003">It looks like 'rgmanager' is not in installed, exiting.</key>
+		<key name="scan_server_message_0003">A new server named: [#!variable!name!#] has been found.</key>
+		<key name="scan_server_message_0004">
+
+Details:
+* UUID:          [#!variable!uuid!#]
+* Current Host:  [#!variable!host!#]
+* Current State: [#!variable!state!#]
+* Start Group:   [#!variable!start_group!#]
+* Start Delay:   [#!variable!start_delay!#]
+		</key>
+		<key name="scan_server_message_0005">Will not be started</key>
+		<key name="scan_server_message_0006">The server: [#!variable!server!#]'s definition file has changed:
+
+Definition:
+====
+#!variable!new!#
+====
+		</key>
+		<key name="scan_server_message_0007">The server: [#!variable!server!#]'s definition file has changed:
+
+New:
+====
+#!variable!new!#
+====
+
+Difference:
+====
+#!variable!diff!#
+====
+		</key>
 	</lang>
 </strings>

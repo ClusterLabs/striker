@@ -22,7 +22,7 @@
 use strict;
 use warnings;
 use AN::Tools;
-use Data::Dumper;
+use Text::Diff;
 
 # Disable buffering.
 $| = 1;
@@ -42,6 +42,7 @@ my $an = AN::Tools->new({data =>
 		path		=>	{
 			cluster_conf		=>	"/etc/cluster/cluster.conf",
 			core_strings		=>	"$scancore_directory/ScanCore.xml",
+			definitions		=>	"/shared/definitions",
 			# This stores this node's UUID. It is used to track all our sensor data in the 
 			# database. If you change this here, change it ScanCore, too.
 			host_uuid		=>	"/etc/striker/host.uuid",
@@ -63,6 +64,13 @@ my $an = AN::Tools->new({data =>
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
 			sql			=>	[],
+			# This is the source name of anything added to 'shared' by this agent.
+			shared_source_name	=>	'scan-server', 
+			# This is the shared record used in 'shared' to store the XML definition data, 
+			# current host and current state.
+			shared_definition_name	=>	'definition',
+			shared_host_name	=>	'host',
+			shared_state_name	=>	'state',
 		},
 	}
 });
@@ -157,11 +165,11 @@ sub scan_servers
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Only proceed if I am in an Anvil!
+	my $local_access = 1;
 	if ($an->data->{sys}{anvil_name})
 	{
 		# First, check for local servers.
-		my $local_access = 1;
-		my $shell_call   = $an->data->{path}{virsh}." list --all";
+		my $shell_call = $an->data->{path}{virsh}." list --all";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -268,6 +276,93 @@ sub scan_servers
 	
 	if ($proceed)
 	{
+		# If I have local access, see if I can read the XML definition files of any servers NOT found
+		# running locally or on the peer.
+		if (($local_access) && ($an->data->{path}{definitions}) && (-d $an->data->{path}{definitions}))
+		{
+			# The directory is there, so look for files.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "path::definitions", value1 => $an->data->{path}{definitions},
+			}, file => $THIS_FILE, line => __LINE__});
+			local(*DIRECTORY);
+			opendir(DIRECTORY, $an->data->{path}{definitions});
+			while(my $file = readdir(DIRECTORY))
+			{
+				if ($file =~ /(.*)\.xml$/)
+				{
+					my $this_server = $1;
+					my $full_path   = $an->data->{path}{definitions}."/".$file;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "file",        value1 => $file,
+						name2 => "this_server", value2 => $this_server,
+						name3 => "full_path",   value3 => $full_path,
+					}, file => $THIS_FILE, line => __LINE__});
+					my $already_found = 0;
+					foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server_name}})
+					{
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server_name", value1 => $server_name,
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($server_name eq $this_server)
+						{
+							$already_found = 1;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "already_found", value1 => $already_found,
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "already_found", value1 => $already_found,
+					}, file => $THIS_FILE, line => __LINE__});
+					if (not $already_found)
+					{
+						# Read in the definition file and record it's data.
+						my $definition  = "";
+						my $server_uuid = "";
+						my $shell_call  = $full_path;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "shell_call", value1 => $shell_call,
+						}, file => $THIS_FILE, line => __LINE__});
+						open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line = $_;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "line", value1 => $line,
+							}, file => $THIS_FILE, line => __LINE__});
+							$definition .= $line."\n";
+							
+							if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
+							{
+								$server_uuid = $1;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "server_uuid", value1 => $server_uuid, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
+						# Record it if we found the UUID.
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server_uuid", value1 => $server_uuid, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($server_uuid)
+						{
+							# We're not setting the host or state because we 
+							# don't know if it's running on another Anvil!.
+							$an->data->{server_uuid}{$server_uuid} = {
+								name		=>	$this_server,
+								host		=>	"",
+								'state'		=>	"",
+								definition	=>	$definition,
+							};
+						}
+					}
+				}
+			}
+			close DIRECTORY;
+		}
+		
 		# Now gather the details on the servers.
 		foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server_name}})
 		{
@@ -723,9 +818,119 @@ INSERT INTO
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
-			# Check to see if this server is known in 'shared'.
-			#check_shared($an);
+			# A 'start_group' of '9999' means that the server will not be booted. As such, a 
+			# string is returned instead of the value if appropriate.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"scan_server_message_0003",
+				alert_title_variables	=>	{
+					name			=>	$server_name,
+				},
+				alert_message_key	=>	"scan_server_message_0004",
+				alert_message_variables	=>	{
+					uuid			=>	$server_uuid, 
+					start_group		=>	$server_start_group eq "9999" ? "#!string!scan_server_message_0005!#" : $server_start_group, 
+					start_delay		=>	$server_start_delay, 
+					host			=>	$server_host, 
+					'state'			=>	$server_state, 
+				},
+			});
 		}
+		
+		
+		
+		### NOTE: Despite the server possibly being new, there could be records in 'shared' for this 
+		###       server from another source. So we need to check and see if the shared data exists
+		###       in all cases.
+		my $shared_name = $an->data->{sys}{shared_definition_name};
+		
+		# Only proceed if we have a definition file and it appears to contain the complete definition
+		# file.
+		if ((exists $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}) && ($an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data} =~ /<\/domain>/g))
+		{
+			# We know about this definition, so see if we need to UPDATE it.
+			my $shared_uuid           = $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid};
+			my $old_server_definition = $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data};
+			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
+			if ($old_server_definition ne $server_definition)
+			{
+				# The definition has changed (no surprise, being a new host) so UPDATE. Note
+				# that we've got the UUID so we don't need to specify the shared name or 
+				# whatnot.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_server_definition", value1 => $old_server_definition, 
+					name2 => "server_definition",     value2 => $server_definition, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "
+UPDATE 
+    shared 
+SET 
+    shared_data = ".$an->data->{sys}{use_db_fh}->quote($server_definition)." 
+WHERE 
+    shared_uuid = ".$an->data->{sys}{use_db_fh}->quote($shared_uuid)."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			# This is an info level alert as it changes frequently
+			$an->Alert->register_alert({
+				alert_level		=>	"info", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0002",
+				alert_message_key	=>	"scan_server_message_0007",
+				alert_message_variables	=>	{
+					new			=>	$server_definition,
+					diff			=>	diff \$old_server_definition, \$server_definition, { STYLE => 'Unified' },
+				},
+			});
+		}
+		else
+		{
+			# Nope, this is new, too, so INSERT it.
+			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $server_definition  = $an->data->{server_uuid}{$server_uuid}{definition};
+			my $shared_source_name = $an->data->{sys}{shared_source_name};
+			my $query              = "
+INSERT INTO 
+    shared 
+(
+    shared_uuid, 
+    shared_source_name, 
+    shared_record_locator, 
+    shared_name, 
+    shared_data, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_source_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_definition).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Send an alert (it will almost certainly be with a new server alert as well).
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_server_message_0006",
+				alert_message_variables	=>	{
+					new			=>	$server_definition,
+				},
+			});
+		}
+		# shared_host_name
+		# shared_state_name
 	}
 	
 	# Now commit the changes.
@@ -799,8 +1004,49 @@ AND
 			name3 => "sql::${server_uuid}::server_start_group", value3 => $an->data->{sql}{$server_uuid}{server_start_group}, 
 			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
 		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	### NOTE: If 'count' is 0, we'll need to INSERT but that doesn't mean there isn't data in 'shared' 
+	###       for this server. So we check explicitely for data in shared regardless.
+	$results = "";
+	$query   = "
+SELECT 
+    shared_uuid, 
+    shared_name, 
+    shared_data 
+FROM 
+    shared 
+WHERE 
+    shared_source_name = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{shared_source_name})."
+AND 
+    shared_record_locator = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $shared_uuid           = $row->[0];
+		my $shared_name           = $row->[2];
+		my $shared_data           = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "shared_uuid", value1 => $shared_uuid, 
+			name3 => "shared_name", value3 => $shared_name, 
+			name4 => "shared_data", value4 => $shared_data, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: Load in the XML data and current host from the 'shared' table.
+		# Push the data into the hash for later comparison
+		$an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid} = $shared_uuid;
+		$an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data} = $shared_data;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "sql::${server_uuid}::shared_name::${shared_name}::shared_uuid", value1 => $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid}, 
+			name2 => "sql::${server_uuid}::shared_name::${shared_name}::shared_data", value2 => $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
