@@ -739,10 +739,10 @@ sub find_behind_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_behind_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "file", value1 => $file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -774,14 +774,14 @@ AND
 			$query .= ";";
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "last_updated",                       value1 => $last_updated, 
 			name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 		}, file => $THIS_FILE, line => __LINE__});
@@ -789,7 +789,7 @@ AND
 		{
 			$an->data->{scancore}{sql}{source_updated_time} = $last_updated;
 			$an->data->{scancore}{sql}{source_db_id}        = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "scancore::sql::source_db_id",        value1 => $an->data->{scancore}{sql}{source_db_id}, 
 				name2 => "scancore::sql::source_updated_time", value2 => $an->data->{scancore}{sql}{source_updated_time}
 			}, file => $THIS_FILE, line => __LINE__});
@@ -798,7 +798,7 @@ AND
 		### TODO: Determine if I should be checking per-table... Is it possible for one agent's table
 		###       to fall behind? Maybe, if the agent is deleted/recovered...
 		$an->data->{scancore}{db}{$id}{last_updated} = $last_updated;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "scancore::sql::source_updated_time",   value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::sql::source_db_id",    value2 => $an->data->{scancore}{sql}{source_db_id}, 
 			name3 => "scancore::db::${id}::last_updated", value3 => $an->data->{scancore}{db}{$id}{last_updated}
@@ -810,14 +810,14 @@ AND
 	$an->data->{scancore}{db_resync_needed} = 0;
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "scancore::sql::source_updated_time", value1 => $an->data->{scancore}{sql}{source_updated_time}, 
 			name2 => "scancore::db::${id}::last_updated",  value2 => $an->data->{scancore}{db}{$id}{last_updated}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0031", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0031", message_variables => {
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
@@ -1153,10 +1153,10 @@ sub verify_host_uuid
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Get->uuid({get => "host_uuid"});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::host_uuid",  value1 => $an->data->{sys}{host_uuid}, 
 		name2 => "path::host_uuid", value2 => $an->data->{path}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1170,26 +1170,26 @@ FROM
 WHERE
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query against the source DB and loop through the results.
 	my $results = $an->DB->do_db_query({query => $query});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
 		my $server_name = $row->[0];
 		   $ok          = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name", value1 => $server_name, 
 			name2 => "ok",          value2 => $ok, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);

@@ -182,7 +182,7 @@ sub scan_servers
 	{
 		# First, check for local servers.
 		my $shell_call = $an->data->{path}{virsh}." list --all";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -193,7 +193,7 @@ sub scan_servers
 			   $line =~ s/^\s+//;
 			   $line =~ s/\s+$//;
 			   $line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^error:/)
@@ -243,7 +243,7 @@ sub scan_servers
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^error:/)
@@ -260,7 +260,7 @@ sub scan_servers
 				my $server_name  = $1;
 				my $server_state = $2;
 				$an->data->{server_name}{$server_name} = {
-					host		=>	$an->data->{sys}{local_node},
+					host		=>	$an->data->{sys}{peer_node},
 					'state'		=>	$server_state,
 					definition	=>	"",
 					uuid		=>	"",
@@ -293,7 +293,7 @@ sub scan_servers
 		if (($local_access) && ($an->data->{path}{definitions}) && (-d $an->data->{path}{definitions}))
 		{
 			# The directory is there, so look for files.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "path::definitions", value1 => $an->data->{path}{definitions},
 			}, file => $THIS_FILE, line => __LINE__});
 			local(*DIRECTORY);
@@ -318,7 +318,7 @@ sub scan_servers
 						if ($server_name eq $this_server)
 						{
 							$already_found = 1;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "already_found", value1 => $already_found,
 							}, file => $THIS_FILE, line => __LINE__});
 						}
@@ -341,7 +341,7 @@ sub scan_servers
 						{
 							chomp;
 							my $line = $_;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "line", value1 => $line,
 							}, file => $THIS_FILE, line => __LINE__});
 							$definition .= $line."\n";
@@ -349,7 +349,7 @@ sub scan_servers
 							if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 							{
 								$server_uuid = $1;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "server_uuid", value1 => $server_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -380,10 +380,12 @@ sub scan_servers
 		{
 			my $server_host  = $an->data->{server_name}{$server_name}{host};
 			my $server_state = $an->data->{server_name}{$server_name}{'state'};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "server_name",  value1 => $server_name, 
-				name2 => "server_host",  value2 => $server_host, 
-				name3 => "server_state", value3 => $server_state, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "server_name",     value1 => $server_name, 
+				name2 => "server_host",     value2 => $server_host, 
+				name3 => "server_state",    value3 => $server_state, 
+				name4 => "sys::local_node", value4 => $an->data->{sys}{local_node}, 
+				name5 => "sys::peer_node",  value5 => $an->data->{sys}{peer_node}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $server_xml = "";
@@ -391,7 +393,7 @@ sub scan_servers
 			if ($server_host eq $an->data->{sys}{local_node})
 			{
 				# Locally hosted, call virsh directly
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -406,7 +408,7 @@ sub scan_servers
 				}
 				close $file_handle;
 			}
-			else
+			elsif ($server_host eq $an->data->{sys}{peer_node})
 			{
 				# Remote, call over SSH.
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -423,7 +425,7 @@ sub scan_servers
 				});
 				foreach my $line (@{$return})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$server_xml .= "$line\n";
@@ -445,12 +447,22 @@ sub scan_servers
 			
 			# Now that I have the UUID, record the details using the UUID as the key
 			my $server_uuid = $an->data->{server_name}{$server_name}{uuid};
-			$an->data->{server_uuid}{$server_uuid} = {
-				name		=>	$server_name,
-				host		=>	$an->data->{server_name}{$server_name}{host},
-				'state'		=>	$an->data->{server_name}{$server_name}{'state'},
-				definition	=>	$an->data->{server_name}{$server_name}{definition},
-			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($server_uuid)
+			{
+				$an->data->{server_uuid}{$server_uuid} = {
+					name		=>	$server_name,
+					host		=>	$an->data->{server_name}{$server_name}{host},
+					'state'		=>	$an->data->{server_name}{$server_name}{'state'},
+					definition	=>	$an->data->{server_name}{$server_name}{definition},
+				};
+			}
+			else
+			{
+				die "$THIS_FILE ".__LINE__."; There should be a server UUID here...\n";
+			}
 		}
 	}
 	
@@ -465,9 +477,9 @@ sub scan_servers
 sub update_db
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_db", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "scancore::db_resync_needed", value1 => $an->data->{scancore}{db_resync_needed}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{scancore}{db_resync_needed})
@@ -723,22 +735,22 @@ INSERT INTO
 sub prep_databases
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "prep_databases", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "scancore_log_0016", message_variables => { agent => "$THIS_FILE" }, file => $THIS_FILE, line => __LINE__});
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='server' AND schemaname='public';";
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
 		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($count < 1)
 		{
 			# Need to load the database schema.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0017", file => $THIS_FILE, line => __LINE__});
 			$an->DB->load_schema({id => $id, file => $an->data->{path}{sql}});
 			
 			# Send an alert telling the user that we've initialized this database.
@@ -757,7 +769,7 @@ sub prep_databases
 		else
 		{
 			# Table exists, schema load is not needed.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "scancore_log_0018", file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -769,7 +781,7 @@ sub prep_databases
 sub find_changes
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_changes", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Loop through each server
 	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
@@ -777,6 +789,7 @@ sub find_changes
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
+		die "$THIS_FILE ".__LINE__."; Missing server UUID\n" if not $server_uuid;
 		
 		if (read_last_scan($an, $server_uuid))
 		{
@@ -787,11 +800,12 @@ sub find_changes
 			
 			# Old values
 			my $old_server_name = $an->data->{sql}{$server_uuid}{server_name};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			
+			# Diff?
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "old_server_name", value1 => $old_server_name, 
 				name2 => "new_server_name", value2 => $new_server_name, 
 			}, file => $THIS_FILE, line => __LINE__});
-			
 			if (($new_server_name) && ($new_server_name ne $old_server_name))
 			{
 				# New server name. Neat!
@@ -913,7 +927,7 @@ INSERT INTO
 			my $shared_uuid           = $an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}{shared_uuid};
 			my $old_server_definition = $an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}{shared_data};
 			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "shared_uuid",           value1 => $shared_uuid, 
 				name2 => "old_server_definition", value2 => $old_server_definition, 
 				name3 => "server_definition",     value3 => $server_definition, 
@@ -939,22 +953,22 @@ WHERE
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
+				
+				# This is an info level alert as it changes frequently
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_server_message_0007",
+					alert_message_variables	=>	{
+						server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
+						new			=>	$server_definition,
+						diff			=>	diff \$old_server_definition, \$server_definition, { STYLE => 'Unified' },
+					},
+				});
 			}
-			
-			# This is an info level alert as it changes frequently
-			$an->Alert->register_alert({
-				alert_level		=>	"info", 
-				alert_agent_name	=>	"$THIS_FILE",
-				alert_title_key		=>	"an_alert_title_0002",
-				alert_message_key	=>	"scan_server_message_0007",
-				alert_message_variables	=>	{
-					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
-					new			=>	$server_definition,
-					diff			=>	diff \$old_server_definition, \$server_definition, { STYLE => 'Unified' },
-				},
-			});
 		}
-		else
+		elsif ($an->data->{server_uuid}{$server_uuid}{definition})
 		{
 			# Nope, this is new, too, so INSERT it.
 			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
@@ -1044,7 +1058,7 @@ WHERE
 				},
 			});
 		}
-		else
+		elsif ($an->data->{server_uuid}{$server_uuid}{host})
 		{
 			# Nope, this is new, too, so INSERT it.
 			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
@@ -1134,7 +1148,7 @@ WHERE
 				},
 			});
 		}
-		else
+		elsif ($an->data->{server_uuid}{$server_uuid}{host})
 		{
 			# Nope, this is new, too, so INSERT it.
 			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
@@ -1215,12 +1229,12 @@ WHERE
 AND 
     server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1277,24 +1291,26 @@ AND
 	foreach my $row (@{$results})
 	{
 		my $shared_uuid           = $row->[0];
-		my $shared_name           = $row->[2];
-		my $shared_data           = $row->[3];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		my $shared_name           = $row->[1];
+		my $shared_data           = $row->[2];
+		### NOTE: The log entries here are set to '3' because the XML definition is big and grows the
+		###       log too quickly.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "shared_uuid", value1 => $shared_uuid, 
-			name3 => "shared_name", value3 => $shared_name, 
-			name4 => "shared_data", value4 => $shared_data, 
+			name2 => "shared_name", value2 => $shared_name, 
+			name3 => "shared_data", value3 => $shared_data, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Push the data into the hash for later comparison
 		$an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid} = $shared_uuid;
 		$an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data} = $shared_data;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sql::${server_uuid}::shared_name::${shared_name}::shared_uuid", value1 => $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid}, 
 			name2 => "sql::${server_uuid}::shared_name::${shared_name}::shared_data", value2 => $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($count);

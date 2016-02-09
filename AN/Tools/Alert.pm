@@ -318,18 +318,16 @@ sub register_alert
 		}
 	}
 	
-	# In most cases, no one is listening to 'debug' or 'info' level alerts.
-	# If that is the case here, don't record the alert because it can cause
-	# the history.alerts table to grow needlessly. So find the lowest level
-	# log level actually being listened to and simply skip anything lower
-	# than that.
+	# In most cases, no one is listening to 'debug' or 'info' level alerts. If that is the case here, 
+	# don't record the alert because it can cause the history.alerts table to grow needlessly. So find
+	# the lowest level log level actually being listened to and simply skip anything lower than that.
 	# 5 == debug
 	# 1 == critical
 	my $lowest_log_level = 5;
 	foreach my $integer (sort {$a cmp $b} keys %{$an->data->{alerts}{recipient}})
 	{
-		# We want to know the alert level, regardless of whether the 
-		# recipient is an email of file target.
+		# We want to know the alert level, regardless of whether the recipient is an email of file 
+		# target.
 		my $this_level;
 		if ($an->data->{alerts}{recipient}{$integer}{email})
 		{
