@@ -10,8 +10,10 @@
 # https://alteeve.ca
 # 
 # Exit Codes:
-# 0  - Success
-# 1  - Passed in host name was not found in the database.
+# 0   - Success
+# 1   - Passed in host name was not found in the database.
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # NOTE:
 #  - Call: [fence_tool ls | grep master | awk '{print $3}'] to see which node
@@ -56,8 +58,7 @@ my $an = AN::Tools->new({data =>
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			strings			=>	"$running_directory/$THIS_FILE.xml",
 		},
-		# This is used so that the user can set the language in on
-		# striker.conf variable.
+		# This is used so that the user can set the language in on striker.conf variable.
 		'scan-bond'		=>	{
 			language		=>	"en_CA",
 			log_file		=>	"/var/log/ScanCore.log",
@@ -102,19 +103,23 @@ if (parse_bonds($an))
 	nice_exit($an, 1);
 }
 
-# I'll need to loop through the DBs and ensure our schema is loaded for each
-# one.
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 
-# Setup some repeatedly used subqueries for easier use later.
-$an->data->{sys}{bond_uuid_query}         = "SELECT bond_uuid FROM bond WHERE bond_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."";
-$an->data->{sys}{bond_interface_id_query} = "SELECT b.bond_interface_id FROM bond a, bond_interface b WHERE a.bond_uuid = b.bond_interface_id AND b.bond_interface_bond_uuid = (".$an->data->{sys}{bond_uuid_query}.") AND ";
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+		uuid => $an->data->{sys}{host_uuid},
+	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+}
 
-# Do the loading of the schemas and copying data from more up to date DBs if
-# the DB was loaded.
+# Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
 prep_databases($an);
 
 # Look to see if any databases need to be updated.
@@ -129,13 +134,12 @@ $an->DB->update_time({file => $THIS_FILE});
 # Clean up and go away.
 nice_exit($an, 0);
 
-###############################################################################
-# Functions                                                                   #
-###############################################################################
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
 
-# This looks at each DB's 'updated' table to see if any are behind. If any are,
-# it will update the tables based on the time the last entry was made for a
-# given host.
+# This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
+# based on the time the last entry was made for a given host.
 sub update_db
 {
 	my ($an) = @_;

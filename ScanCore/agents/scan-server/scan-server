@@ -6,8 +6,10 @@
 # https://alteeve.ca
 # 
 # Exit Codes:
-# 0  - Success
-# 1  - Passed in host name was not found in the database.
+# 0   - Success
+# 1   - Passed in host name was not found in the database.
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # NOTE:
 #  - 
@@ -115,6 +117,16 @@ my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({ log_level => 2, message_key => "scancore_log_0005", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+		uuid => $an->data->{sys}{host_uuid},
+	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+}
 
 # Do the loading of the schemas and copying data from more up to date DBs if the DB was loaded.
 prep_databases($an);
@@ -254,7 +266,7 @@ sub scan_servers
 					uuid		=>	"",
 				};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "server_name",                   value1 => $server_name, 
+					name1 => "server_name",                        value1 => $server_name, 
 					name2 => "server_name::${server_name}::host",  value2 => $an->data->{server_name}{$server_name}{host}, 
 					name3 => "server_name::${server_name}::state", value3 => $an->data->{server_name}{$server_name}{'state'}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -769,6 +781,48 @@ sub find_changes
 		if (read_last_scan($an, $server_uuid))
 		{
 			### Existing server, UPDATE or INSERT as needed.
+			# NOTE: For now, we only catch name changes here.
+			# New values
+			my $new_server_name = $an->data->{server_uuid}{$server_uuid}{name};
+			
+			# Old values
+			my $old_server_name = $an->data->{sql}{$server_uuid}{server_name};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "old_server_name", value1 => $old_server_name, 
+				name2 => "new_server_name", value2 => $new_server_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (($new_server_name) && ($new_server_name ne $old_server_name))
+			{
+				# New server name. Neat!
+				my $query = "
+UPDATE 
+    server 
+SET 
+    server_name = ".$an->data->{sys}{use_db_fh}->quote($new_server_name)." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+AND 
+    server_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+;";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+				
+				# This should be a rare event, so it in a notice-level alert.
+				$an->Alert->register_alert({
+					alert_level		=>	"notice", 
+					alert_agent_name	=>	"$THIS_FILE",
+					alert_title_key		=>	"an_alert_title_0003",
+					alert_message_key	=>	"scan_server_message_0006",
+					alert_message_variables	=>	{
+						old			=>	$old_server_name, 
+						new			=>	$new_server_name,
+					},
+				});
+			}
 		}
 		else
 		{
@@ -838,21 +892,32 @@ INSERT INTO
 			});
 		}
 		
-		
-		
 		### NOTE: Despite the server possibly being new, there could be records in 'shared' for this 
 		###       server from another source. So we need to check and see if the shared data exists
 		###       in all cases.
-		my $shared_name = $an->data->{sys}{shared_definition_name};
+		my $shared_definition_name = $an->data->{sys}{shared_definition_name};
+		my $shared_host_name       = $an->data->{sys}{shared_host_name};
+		my $shared_state_name      = $an->data->{sys}{shared_state_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "shared_definition_name", value1 => $shared_definition_name, 
+			name2 => "shared_host_name",       value2 => $shared_host_name, 
+			name3 => "shared_state_name",      value3 => $shared_state_name, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
+		### Definition File
 		# Only proceed if we have a definition file and it appears to contain the complete definition
 		# file.
-		if ((exists $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}) && ($an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data} =~ /<\/domain>/g))
+		if ((exists $an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}) && ($an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}{shared_data} =~ /<\/domain>/g))
 		{
 			# We know about this definition, so see if we need to UPDATE it.
-			my $shared_uuid           = $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_uuid};
-			my $old_server_definition = $an->data->{sql}{$server_uuid}{shared_name}{$shared_name}{shared_data};
+			my $shared_uuid           = $an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}{shared_uuid};
+			my $old_server_definition = $an->data->{sql}{$server_uuid}{shared_name}{$shared_definition_name}{shared_data};
 			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "shared_uuid",           value1 => $shared_uuid, 
+				name2 => "old_server_definition", value2 => $old_server_definition, 
+				name3 => "server_definition",     value3 => $server_definition, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($old_server_definition ne $server_definition)
 			{
 				# The definition has changed (no surprise, being a new host) so UPDATE. Note
@@ -883,6 +948,7 @@ WHERE
 				alert_title_key		=>	"an_alert_title_0002",
 				alert_message_key	=>	"scan_server_message_0007",
 				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
 					new			=>	$server_definition,
 					diff			=>	diff \$old_server_definition, \$server_definition, { STYLE => 'Unified' },
 				},
@@ -908,7 +974,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).",
     ".$an->data->{sys}{use_db_fh}->quote($shared_source_name).",
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
-    ".$an->data->{sys}{use_db_fh}->quote($shared_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_definition_name).",
     ".$an->data->{sys}{use_db_fh}->quote($server_definition).",
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
@@ -925,12 +991,191 @@ INSERT INTO
 				alert_title_key		=>	"an_alert_title_0003",
 				alert_message_key	=>	"scan_server_message_0006",
 				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
 					new			=>	$server_definition,
 				},
 			});
 		}
-		# shared_host_name
-		# shared_state_name
+		
+		### Current Host 
+		# Now the host, but only proceed if we have a defined host.
+		if ((exists $an->data->{sql}{$server_uuid}{shared_name}{$shared_host_name}) && ($an->data->{sql}{$server_uuid}{shared_name}{$shared_host_name}{shared_data}))
+		{
+			# We know about this host, so see if we need to UPDATE it.
+			my $shared_uuid     = $an->data->{sql}{$server_uuid}{shared_name}{$shared_host_name}{shared_uuid};
+			my $old_server_host = $an->data->{sql}{$server_uuid}{shared_name}{$shared_host_name}{shared_data};
+			my $server_host     = $an->data->{server_uuid}{$server_uuid}{host};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "shared_uuid",     value1 => $shared_uuid, 
+				name2 => "old_server_host", value2 => $old_server_host, 
+				name3 => "server_host",     value3 => $server_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($old_server_host ne $server_host)
+			{
+				# The host has changed, so UPDATE.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_server_host", value1 => $old_server_host, 
+					name2 => "server_host",     value2 => $server_host, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "
+UPDATE 
+    shared 
+SET 
+    shared_data = ".$an->data->{sys}{use_db_fh}->quote($server_host)." 
+WHERE 
+    shared_uuid = ".$an->data->{sys}{use_db_fh}->quote($shared_uuid)."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			# This is an info level alert as it changes frequently
+			$an->Alert->register_alert({
+				alert_level		=>	"info", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0002",
+				alert_message_key	=>	"scan_server_message_0008",
+				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
+					new			=>	$server_host,
+					old			=>	$old_server_host,
+				},
+			});
+		}
+		else
+		{
+			# Nope, this is new, too, so INSERT it.
+			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $server_host  = $an->data->{server_uuid}{$server_uuid}{host};
+			my $shared_source_name = $an->data->{sys}{shared_source_name};
+			my $query              = "
+INSERT INTO 
+    shared 
+(
+    shared_uuid, 
+    shared_source_name, 
+    shared_record_locator, 
+    shared_name, 
+    shared_data, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_source_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_host_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_host).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Send an alert (it will almost certainly be with a new server alert as well).
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_server_message_0009",
+				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
+					new			=>	$server_host,
+				},
+			});
+		}
+		
+		### Current State
+		# Now the host, but only proceed if we have a defined host.
+		if ((exists $an->data->{sql}{$server_uuid}{shared_name}{$shared_state_name}) && ($an->data->{sql}{$server_uuid}{shared_name}{$shared_state_name}{shared_data}))
+		{
+			# We know about this state, so see if we need to UPDATE it.
+			my $shared_uuid      = $an->data->{sql}{$server_uuid}{shared_name}{$shared_state_name}{shared_uuid};
+			my $old_server_state = $an->data->{sql}{$server_uuid}{shared_name}{$shared_state_name}{shared_data};
+			my $server_state     = $an->data->{server_uuid}{$server_uuid}{host};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "shared_uuid",     value1 => $shared_uuid, 
+				name2 => "old_server_state", value2 => $old_server_state, 
+				name3 => "server_state",     value3 => $server_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($old_server_state ne $server_state)
+			{
+				# The host has changed, so UPDATE.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "old_server_state", value1 => $old_server_state, 
+					name2 => "server_state",     value2 => $server_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $query = "
+UPDATE 
+    shared 
+SET 
+    shared_data = ".$an->data->{sys}{use_db_fh}->quote($server_state)." 
+WHERE 
+    shared_uuid = ".$an->data->{sys}{use_db_fh}->quote($shared_uuid)."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$an->data->{sys}{sql}}, $query;
+			}
+			
+			# This is an info level alert as it changes frequently
+			$an->Alert->register_alert({
+				alert_level		=>	"info", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0002",
+				alert_message_key	=>	"scan_server_message_0010",
+				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
+					new			=>	$server_state,
+					old			=>	$old_server_state,
+				},
+			});
+		}
+		else
+		{
+			# Nope, this is new, too, so INSERT it.
+			my $shared_uuid        = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+			my $server_state       = $an->data->{server_uuid}{$server_uuid}{'state'};
+			my $shared_source_name = $an->data->{sys}{shared_source_name};
+			my $query              = "
+INSERT INTO 
+    shared 
+(
+    shared_uuid, 
+    shared_source_name, 
+    shared_record_locator, 
+    shared_name, 
+    shared_data, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_source_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
+    ".$an->data->{sys}{use_db_fh}->quote($shared_state_name).",
+    ".$an->data->{sys}{use_db_fh}->quote($server_state).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$an->data->{sys}{sql}}, $query;
+			
+			# Send an alert (it will almost certainly be with a new server alert as well).
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scan_server_message_0011",
+				alert_message_variables	=>	{
+					server			=>	$an->data->{server_uuid}{$server_uuid}{name}, 
+					new			=>	$server_state,
+				},
+			});
+		}
 	}
 	
 	# Now commit the changes.

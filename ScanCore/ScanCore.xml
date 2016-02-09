@@ -234,7 +234,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 - Timestamp:      [#!variable!modified_date!#]
 		</key>
 		<key name="scancore_error_0019">I was asked to query the database: [#!variable!server!#], but the connection is down. This should never happen and is probably a bug.</key>
-		<key name="scancore_error_0020"></key>
+		<key name="scancore_error_0020">It appears that #!string!scancore_brand_0001!# has not yet run on this host. The host's UUID is: [#!variable!uuid!#] which is not in the 'hosts' table.</key>
 		
 		<!-- ScanCore-specific messages -->
 		<key name="scancore_message_0001">Starting #!string!scancore_brand_0001!#:</key>

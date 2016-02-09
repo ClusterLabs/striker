@@ -241,6 +241,8 @@ load_agent_strings($an);
 # Update the database before we do anything else.
 update_db($an);
 
+#die "$THIS_FILE ".__LINE__."; testing...\n";
+
 # Make sure this node is in the database and the host name is up to date.
 add_hostname_to_databases($an);
 check_hostname_for_changes($an);
@@ -2764,9 +2766,8 @@ sub check_email_configuration
 	return(0);
 }
 
-# This converts the string keys and variables stored in the alerts table 
-# (flanked with '!!') to strings. It also handles the special 'sensor' data and
-# will convert metric to imperial values as needed.
+# This converts the string keys and variables stored in the alerts table (flanked with '!!') to strings. It
+# also handles the special 'sensor' data and will convert metric to imperial values as needed.
 sub get_string_from_double_bang
 {
 	my ($an, $language, $key, $variables, $units) = @_;
@@ -2793,16 +2794,24 @@ sub get_string_from_double_bang
 				name3 => "variables", value3 => $variables, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if not $pair;
-			my ($variable, $value) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
+			my $variable = "";
+			my $value    = "";
+			if ($pair =~ /^!!(.*?)!!!$/s)
+			{
+				# No value, this is OK.
+				($variable) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
+			}
+			elsif ($pair =~ /^!!(.*?)!(.*?)!!$/s)
+			{
+				($variable, $value) = ($pair =~ /^!!(.*?)!(.*?)!!$/s);
+			}
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $value, 
 			}, file => $THIS_FILE, line => __LINE__});
 			die "$THIS_FILE ".__LINE__."; No variable parsed from: [$pair]\n" if not defined $variable;
-			die "$THIS_FILE ".__LINE__."; No value parsed from: [$pair]\n"    if not defined $value;
 			
-			# If the value is one of the special sensor name or 
-			# value strings, translate it.
+			# If the value is one of the special sensor name or value strings, translate it.
 			if ($variable eq "sensor_name") 
 			{
 				my ($sensor_name, $sensor_units) = ($value =~ /name=(.*?):units=(.*)$/);
@@ -2816,8 +2825,7 @@ sub get_string_from_double_bang
 					name1 => "value", value1 => $value, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			# Catch 'sensor_value', 'new_sensor_value' and 
-			# 'old_sensor_value'.
+			# Catch 'sensor_value', 'new_sensor_value' and 'old_sensor_value'.
 			elsif ($variable =~ /sensor_value/)
 			{
 				my ($sensor_value, $sensor_units) = ($value =~ /value=(.*?):units=(.*)$/);
@@ -3232,6 +3240,7 @@ sub update_db
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
+#die "$THIS_FILE ".__LINE__."; testing...\n";
 		
 		# Now update the rest of the ScanCore tables.
 		update_db_agents($an);
@@ -4623,9 +4632,8 @@ sub update_db_hosts
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: Everything depends on 'hosts' -> 'host_uuid', so we need to 
-	###       update *AND* commit the changes before we leave this 
-	###       function.
+	### NOTE: Everything depends on 'hosts' -> 'host_uuid', so we need to update *AND* commit the changes
+	###       before we leave this function.
 	
 	# Now read in all the 'hosts' table records that came from us.
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})

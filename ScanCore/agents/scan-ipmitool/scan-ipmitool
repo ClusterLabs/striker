@@ -8,8 +8,10 @@
 # https://alteeve.ca
 # 
 # Exit Codes:
-# 0  - Success
-# 1  - Passed in host name was not found in the database.
+# 0   - Success
+# 1   - Passed in host name was not found in the database.
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # TODO:
 # - Decide if we should parse 'ipmitool sel list'
@@ -150,12 +152,21 @@ if (not find_ipmi_targets($an))
 	nice_exit($an, 1);
 }
 
-# I'll need to loop through the DBs and ensure our schema is loaded for each
-# one.
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
 $an->Log->entry({log_level => 3, message_key => "scancore_log_0005", message_variables => {
 	connections => $connections,
 }, file => $THIS_FILE, line => __LINE__});
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+		uuid => $an->data->{sys}{host_uuid},
+	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+}
 
 # Query IPMI targets. Unreachable targets will simply be ignored.
 query_ipmi_targets($an);

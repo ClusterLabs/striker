@@ -8,12 +8,14 @@
 # https://alteeve.ca
 # 
 # Exit Codes:
-# 0  - Success
-# 1  - storcli64 not installed
-# 2  - storcli64 is installed but it is not executable.
-# 3  - No LSI-based controllers found.
-# 4  - Got data from the wrong controller.
-# 5  - Unexpecte status when querying adapter
+# 0   - Success
+# 1   - storcli64 not installed
+# 2   - storcli64 is installed but it is not executable.
+# 3   - No LSI-based controllers found.
+# 4   - Got data from the wrong controller.
+# 5   - Unexpecte status when querying adapter
+# 
+# 255 - The host's UUID isn't in the hosts table yet, ScanCore itself hasn't been run.
 # 
 # ToDo:
 # - Check the cache policy and reset it to 'writeback' if the BBU/FBU is healthy and the cache changes to 
@@ -122,8 +124,7 @@ $an->String->read_words({file => $an->data->{path}{strings}});
 $an->String->read_words({file => $an->data->{path}{core_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
-# Get the switches before printing anything in case the user is asking for
-# help.
+# Get the switches before printing anything in case the user is asking for help.
 print $an->String->get({key => "scan_storcli_message_0001"})."\n";
 $an->Get->switches();
 
@@ -133,6 +134,18 @@ find_avago_controllers($an);
 
 # If we're still alive, start gathering data.
 gather_data($an);
+
+exit(0);
+
+# Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
+# running ScanCore, it won't be.
+if (not $an->DB->verify_host_uuid())
+{
+	# ScanCore hasn't run, this host isn't in the 'hosts' table.
+	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "scancore_error_0020", message_variables => { 
+		uuid => $an->data->{sys}{host_uuid},
+	}, code => 255, file => "$THIS_FILE", line => __LINE__});
+}
 
 
 # Clean up and go away.

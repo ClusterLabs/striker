@@ -81,5 +81,22 @@ Difference:
 #!variable!diff!#
 ====
 		</key>
+		<key name="scan_server_message_0008">The server: [#!variable!server!#]'s host has changed:
+
+New: [#!variable!new!#]
+Old: [#!variable!diff!#]
+		</key>
+		<key name="scan_server_message_0009">The server: [#!variable!server!#]'s host has been recorded as: [#!variable!new!#].</key>
+		<key name="scan_server_message_0010">The server: [#!variable!server!#]'s state has changed:
+
+New: [#!variable!new!#]
+Old: [#!variable!diff!#]
+		</key>
+		<key name="scan_server_message_0011">The server: [#!variable!server!#]'s state has been recorded as: [#!variable!new!#].</key>
+		<key name="scan_server_message_0012">The server with UUID: [#!variable!uuid!#]'s name has changed:
+
+New: [#!variable!new!#]
+Old: [#!variable!diff!#]
+		</key>
 	</lang>
 </strings>
