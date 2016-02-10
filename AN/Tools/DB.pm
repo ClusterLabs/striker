@@ -141,8 +141,8 @@ sub do_db_write
 	return(0);
 }
 
-# This does a database query and returns the resulting array. It must be passed
-# the ID of the database to connect to.
+# This does a database query and returns the resulting array. It must be passed the ID of the database to 
+# connect to.
 sub do_db_query
 {
 	my $self      = shift;

@@ -90,7 +90,7 @@ $an->Log->entry({log_level => 1, message_key => "log_0001", message_variables =>
 $an->Storage->prep_local_uuid($an);
 
 # Connect to the databases.
-my $connections = $an->DB->connect_to_databases({
+$an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
 	file	=>	$THIS_FILE,
 	quiet	=>	1
 });

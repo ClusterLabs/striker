@@ -179,6 +179,7 @@ sub read_in_cgi_variables
 		"name",
 		"node",
 		"node_cluster_name",
+		"note", 
 		"os_variant",
 		"perform_install", 
 		"ram",

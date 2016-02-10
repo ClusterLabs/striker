@@ -3836,7 +3836,8 @@ sub manage_vm
 		read_vm_definition($conf, $node, $vm);
 	}
 	
-	# Find the list of bootable devices and present them in a selection box.
+	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
+	# UUID.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot select", value1 => $boot_select,
@@ -3846,6 +3847,7 @@ sub manage_vm
 	my $say_current_boot_device              = "";
 	my $in_os                                = 0;
 	my $saw_cdrom                            = 0;
+	my $server_uuid                          = "";
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -3855,6 +3857,13 @@ sub manage_vm
 		}, file => $THIS_FILE, line => __LINE__});
 		last if $line =~ /<\/domain>/;
 		
+		if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
+		{
+			$server_uuid = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		if ($line =~ /<os>/)
 		{
 			$in_os = 1;
@@ -3926,6 +3935,55 @@ sub manage_vm
 	$boot_select .= "</select>";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot select", value1 => $boot_select,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### NOTE: Servers are allowed to move around, so we don't check for a note on a given host.
+	# See if I have access to ScanCore and, if so, check for a note. Whether it has a note or not, if 
+	# there is an entry in server, show the note entry.
+	my $show_note = 0;
+	my $note_body = "";
+	my $note_date = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server_uuid",         value1 => $server_uuid, 
+		name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($server_uuid) && ($an->data->{sys}{db_connections}))
+	{
+		   $show_note = 1;
+		my $query     = "
+SELECT 
+    shared_data, 
+    modified_date 
+FROM 
+    shared 
+WHERE 
+    shared_source_name = 'scan-server' 
+AND 
+    shared_name = 'note' 
+AND 
+    shared_record_locator = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		my $results = $an->DB->do_db_query({query => $query});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$note_body = $row->[0];
+			$note_date = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "note_body", value1 => $note_body, 
+				name2 => "note_date", value2 => $note_date, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "show_note", value1 => $show_note
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so now.
@@ -4010,10 +4068,10 @@ sub manage_vm
 			$conf->{partition}{shared}{free_space}   = $3;
 			$conf->{partition}{shared}{used_percent} = $4;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "total_space",  value1 => $conf->{partition}{shared}{total_space},
-				name2 => "used_space",   value2 => $conf->{partition}{shared}{used_space},
-				name3 => "used_percent". value3 => $conf->{partition}{shared}{used_percent},
-				name4 => "free_space",   value4 => $conf->{partition}{shared}{free_space},
+				name1 => "partition::shared::total_space",  value1 => $conf->{partition}{shared}{total_space},
+				name2 => "partition::shared::used_space",   value2 => $conf->{partition}{shared}{used_space},
+				name3 => "partition::shared::used_percent". value3 => $conf->{partition}{shared}{used_percent},
+				name4 => "partition::shared::free_space",   value4 => $conf->{partition}{shared}{free_space},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
@@ -4043,16 +4101,16 @@ sub manage_vm
 			$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
 			$conf->{files}{shared}{$file}{target} = $target;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-				name1  => "file",     value1  => $file,
-				name2  => "type",     value2  => $conf->{files}{shared}{$file}{type},
-				name3  => "mode",     value3  => $conf->{files}{shared}{$file}{mode},
-				name4  => "owner",    value4  => $conf->{files}{shared}{$file}{user},
-				name5  => "group",    value5  => $conf->{files}{shared}{$file}{group},
-				name6  => "size",     value6  => $conf->{files}{shared}{$file}{size},
-				name7  => "modified", value7  => $conf->{files}{shared}{$file}{month},
-				name8  => "day",      value8  => $conf->{files}{shared}{$file}{day},
-				name9  => "time",     value9  => $conf->{files}{shared}{$file}{'time'},
-				name10 => "target",   value10 => $conf->{files}{shared}{$file}{target},
+				name1  => "file",                             value1  => $file,
+				name2  => "files::shared::${file}::type",     value2  => $conf->{files}{shared}{$file}{type},
+				name3  => "files::shared::${file}::mode",     value3  => $conf->{files}{shared}{$file}{mode},
+				name4  => "files::shared::${file}::owner",    value4  => $conf->{files}{shared}{$file}{user},
+				name5  => "files::shared::${file}::group",    value5  => $conf->{files}{shared}{$file}{group},
+				name6  => "files::shared::${file}::size",     value6  => $conf->{files}{shared}{$file}{size},
+				name7  => "files::shared::${file}::modified", value7  => $conf->{files}{shared}{$file}{month},
+				name8  => "files::shared::${file}::day",      value8  => $conf->{files}{shared}{$file}{day},
+				name9  => "files::shared::${file}::time",     value9  => $conf->{files}{shared}{$file}{'time'},
+				name10 => "files::shared::${file}::target",   value10 => $conf->{files}{shared}{$file}{target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -4065,25 +4123,21 @@ sub manage_vm
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",       value1 => $vm,
-			name2 => "xml line", value2 => $line,
+			name1 => "vm",   value1 => $vm,
+			name2 => "line", value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		last if $line =~ /<\/domain>/;
 		if ($line =~ /device='cdrom'/)
 		{
 			$in_cdrom = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm",                                   value1 => $vm,
-				name2 => "going into a CD-ROM child element on", value2 => $line,
+				name1 => "vm",       value1 => $vm,
+				name2 => "in_cdrom", value2 => $in_cdrom,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (($line =~ /<\/disk>/) && ($in_cdrom))
 		{
 			# Record what I found/
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm",                                value1 => $vm,
-				name2 => "exiting a CD-ROM child element on", value2 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{vm}{$vm}{cdrom}{$this_device}{media} = $this_media ? $this_media : "";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "vm::${vm}::cdrom::${this_device}::media", value1 => $conf->{vm}{$vm}{cdrom}{$this_device}{media},
@@ -4265,6 +4319,22 @@ sub manage_vm
 		$i++;
 	}
 	
+	# If we can show the note, do so
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "show_note", value1 => $show_note,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $note_form = "";
+	if ($show_note)
+	{
+		$note_form = AN::Common::template($conf, "server.html", "start-server-show-note", {
+			server_note	=>	$note_body,
+			modified_date	=>	$note_date,
+		});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "note_form", value1 => $note_form,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	my $current_boot_device = AN::Common::get_string($conf, {key => "message_0081", variables => {
 			boot_device	=>	$say_current_boot_device,
 		}});
@@ -4290,11 +4360,13 @@ sub manage_vm
 		select_cpu_cores	=>	$select_cpu_cores,
 		remote_icon		=>	$remote_icon,
 		message			=>	$message,
+		server_note		=>	$note_form, 
 		restart_tomcat		=>	$restart_tomcat,
 		anvil			=>	$conf->{cgi}{cluster},
 		server			=>	$conf->{cgi}{vm},
 		task			=>	$conf->{cgi}{task},
 		device_keys		=>	$conf->{vm}{$vm}{cdrom}{device_keys},
+		rowspan			=>	$show_note ? 7 : 5,
 	});
 	
 	return (0);

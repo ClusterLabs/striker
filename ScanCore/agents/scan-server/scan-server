@@ -216,7 +216,7 @@ sub scan_servers
 					uuid		=>	"",
 				};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "server_name",                   value1 => $server_name, 
+					name1 => "server_name",                        value1 => $server_name, 
 					name2 => "server_name::${server_name}::host",  value2 => $an->data->{server_name}{$server_name}{host}, 
 					name3 => "server_name::${server_name}::state", value3 => $an->data->{server_name}{$server_name}{'state'}, 
 				}, file => $THIS_FILE, line => __LINE__});
