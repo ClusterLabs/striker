@@ -122,7 +122,7 @@ sub find_myself
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Collect information about this Anvil!
-	my $return = $an->Get->anvil_details({
+	my $return = $an->Get->local_anvil_details({
 		hostname_full	=>	$an->hostname,
 		hostname_short	=>	$an->short_hostname,
 		config_file	=>	$an->data->{path}{cluster_conf},

@@ -432,6 +432,18 @@ The 'AN::Tools::Get->ip()' method was called without the 'host' parameter.
 
 The 'AN::Tools::DB->initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself on the machine.
 
+=head2 C<49>
+
+The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.
+
+=head2 C<50>
+
+The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.
+
+=head2 C<51>
+
+The 'AN::Tools::Get->server_note()' method was called but the 'server' value wasn't set.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

@@ -59,6 +59,25 @@
 			<br />
 <!-- end server-poweroff-required-message -->
 
+<!-- start server-updated-note -->
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0083!#
+		</td>
+		<td>
+			<br />
+			#!string!message_0121!#<br />
+			<br />
+<!-- end server-updated-note -->
+
+<!-- start server-updated-note-no-hardware-changed -->
+			<br />
+			#!string!message_0126!#<br />
+			<br />
+<!-- end server-updated-note-no-hardware-changed -->
+
 <!-- start update-server-config-footer -->
 		</td>
 	</tr>
@@ -1384,8 +1403,8 @@
 		</td>
 		<td style="text-align: center;">
 			<span class="subtle_text_wrap">#!string!message_0086!#</span><br />
-			<textarea id="server_note" name="server_note" rows="8" cols="60">#!variable!server_note!#</textarea><br />
-			<span class="subtle_text_fixed_width">#!variable!modified_date!#<br />
+			<textarea id="server_note" name="server_note" rows="8" cols="60">#!replace!server_note!#</textarea><br />
+			<span class="subtle_text_fixed_width">#!replace!modified_date!#<br />
 			<br />
 		</td>
 	</tr>

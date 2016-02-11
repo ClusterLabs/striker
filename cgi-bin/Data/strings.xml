@@ -1087,7 +1087,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0020">Unconfigured Physical Disks</key>
 		<key name="title_0021"><![CDATA[Logical Disk <span class="fixed_width">##!variable!logical_disk!#</span>]]></key>
 		<key name="title_0022"><![CDATA[Physical Disk <span class="fixed_width">#!variable!enclosure_device_id!#:#!variable!slot_number!#</span>]]></key>
-		<key name="title_0023"><![CDATA[Updating the <span class="fixed_width">#!variable!server!#</span> server's CPU, RAM and boot devices...]]></key>
+		<key name="title_0023"><![CDATA[Updating the <span class="fixed_width">#!variable!server!#</span> server...]]></key>
 		<key name="title_0024">Changing</key>
 		<key name="title_0025">Requested RAM was higher than available.</key>
 		<key name="title_0026">Requested CPU count was higher than available.</key>
@@ -1340,7 +1340,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0083"><![CDATA[Currently <span class="fixed_width">#!variable!current_cpus!#</span>]]></key>
 		<key name="message_0084"><![CDATA[Please Note: If the server is migrated to the other node,<br />you will have to refresh this page and then reconnect.]]></key>
 		<key name="message_0085"><![CDATA[If you're having trouble connecting to the server's desktop,<br />first make sure no one else is connected to the server already<br />(via #!string!brand_0002!# or another program like "Virtual Machine Manager").<br />If no one is, <a href="#!variable!reset_tomcat_url!#" target="_new">#!string!button_0020!#</a>.<br />This will restart the remote desktop server on this dashboard.]]></key>
-		<key name="message_0086">Any notes entered here will be visible under the server's entry on the front page.</key>
+		<key name="message_0086">Notes here are not private, so be careful about recording sensitive data!</key>
 		<key name="message_0087"><![CDATA[Unable to add the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!# without a <span class="fixed_width">ricci</span> password!]]></key>
 		<key name="message_0088"><![CDATA[Please update the <a href="#!variable!manage_url!#" target="_new">#!string!row_0025!#</a> for this #!string!brand_0003!# and then go back. The new server will be found as unmanaged and a button to add it will be presented to you.]]></key>
 		<key name="message_0089"><![CDATA[I was unable to determine which failover domain to use for this new machine.<br />
@@ -1388,12 +1388,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0118"><![CDATA[Writing provision script to <span class="fixed_width">#!variable!script!#</span>]]></key>
 		<key name="message_0119"><![CDATA[Written.<br />Starting the installation of <span class="fixed_width">#!variable!server!#</span> now.]]></key>
 		<key name="message_0120">Done.</key>
-		<key name="message_0121">...free...</key>
+		<key name="message_0121">The updated note was saved.</key>
 		<key name="message_0122">If there were no errors, the installation should now have started.</key>
 		<key name="message_0123">Directly connect to your new server's desktop.</key>
 		<key name="message_0124">Once the installation is complete, please return here and click the link below.</key>
 		<key name="message_0125"><![CDATA[Please complete the install using the <span class="fixed_width">#!string!device_0004!#</span> on the dashboard's desktop.]]></key>
-		<key name="message_0126">...free...</key>
+		<key name="message_0126">No change to the hardware configuration.</key>
 		<key name="message_0127"><![CDATA[The server name can't have spaces or any of the following characters in the name: [<span class="highlight_detail">; &amp; | $ ^ &lt; &gt; [ ] ( ) { } !</span>].]]></key>
 		<key name="message_0128"><![CDATA[The server name <span class="fixed_width">#!variable!server!#</span> is already in use.]]></key>
 		<key name="message_0129"><![CDATA[All servers need to have a name. This is usally something like <span class="fixed_width">vmXX-purpose</span>.]]></key>

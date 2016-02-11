@@ -91,6 +91,474 @@ sub local_users
 	return($users);
 }
 
+# This gets the note associated with a given server name,
+sub server_note
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return = {
+		note	=>	"",
+		uuid	=>	"",
+	};
+	my $server = $parameter->{server};
+	my $anvil  = $parameter->{anvil}  ? $parameter->{anvil} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "anvil",  value2 => $anvil, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $server)
+	{
+		# No server? pur quois?!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0051", code => 51, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Get the server's UUID.
+	my $server_uuid = $an->Get->server_uuid({
+		server => $server, 
+		anvil  => $anvil, 
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_uuid", value1 => $server_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Check the shared table now.
+	if ($server_uuid)
+	{
+		my $query = "
+SELECT 
+    shared_uuid, 
+    shared_data 
+FROM 
+    shared 
+WHERE 
+    shared_source_name = 'striker' 
+AND 
+    shared_name = 'server note' 
+AND 
+    shared_record_locator = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $shared_uuid = $row->[0];
+			my $shared_data = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shared_uuid", value1 => $shared_uuid, 
+				name2 => "shared_data", value2 => $shared_data, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$return->{uuid} = $shared_uuid;
+			$return->{note} = $shared_data;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "uuid", value1 => $return->{uuid}, 
+				name2 => "note", value2 => $return->{note}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return($return);
+}
+
+# This looks for a server by name on both nodes. If it is not found on either, it looks for the server in
+# /shared/definitions/<server>.xml. Once found (if found), the UUID is pulled out and returned to the caller.
+sub server_uuid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $uuid = "";
+	my $server = $parameter->{server};
+	my $anvil  = $parameter->{anvil};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "anvil",  value2 => $anvil, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $server)
+	{
+		# No server? pur quois?!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0049", code => 49, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	### TODO: Finish this, but remember that this is likely being called from Striker so we can't assume
+	###       this hostname is part of an Anvil!. 
+	# Now check to see if the server is running on one of the nodes.
+	my $node1           = "";
+	my $node2           = "";
+	my $node1_is_remote = 0;
+	my $anvil_password  = "";
+	if ($anvil)
+	{
+		# Assume this machine is a striker dashboard.
+		my $return          = $an->Get->remote_anvil_details({anvil => $anvil});
+		   $node1           = $return->{node1};
+		   $node2           = $return->{node2};
+		   $node1_is_remote = 1;
+		   $anvil_password  = $return->{anvil_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node1",           value1 => $node1, 
+			name2 => "node2",           value2 => $node2, 
+			name3 => "node1_is_remote", value3 => $node1_is_remote, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Assume this machine is in an Anvil! and find the peer.
+		my $return = $an->Get->local_anvil_details({
+			hostname_full	=>	$an->hostname,
+			hostname_short	=>	$an->short_hostname,
+			config_file	=>	$an->data->{path}{cluster_conf},
+		});
+		   $node1           = $return->{local_node};
+		   $node2           = $return->{peer_node};
+		   $node1_is_remote = 0;
+		   $anvil           = $return->{anvil_name};
+		   $anvil_password  = $return->{anvil_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node1",           value1 => $node1, 
+			name2 => "node2",           value2 => $node2, 
+			name3 => "node1_is_remote", value3 => $node1_is_remote, 
+			name4 => "anvil",           value4 => $anvil, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now look on each machine for the server.
+	
+	# How I make the call to node1 depends on whether it is local or not. Node 2 will always be a remote call.
+	my $server_found = 0;
+	
+	# Try node 1. This will check for a running server first and, if it's not found, check 
+	# /shared/definitions/${server}.xml.
+	my $xml = $an->Get->server_xml({
+		remote   => $node1_is_remote, 
+		server   => $server, 
+		node     => $node1, 
+		password => $anvil_password, 
+	});
+	
+	# If I don't have XML yet, try node 2.
+	if (not $xml)
+	{
+		$xml = $an->Get->server_xml({
+			remote   => 1, 
+			server   => $server, 
+			node     => $node2, 
+			password => $anvil_password, 
+		});
+	}
+	
+	# If I still don't have XML, try to see if we have it in the database.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "length(xml)",         value1 => length($xml), 
+		name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $xml) && ($an->data->{sys}{db_connections}))
+	{
+		my $query = "
+SELECT 
+    shared_data 
+FROM 
+    shared 
+WHERE 
+    shared_source_name = 'scan-server' 
+AND 
+    shared_name = 'definition' 
+AND 
+    shared_record_locator = (
+        SELECT 
+            server_uuid 
+        FROM 
+            server 
+        WHERE 
+            server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
+        LIMIT 1
+    );
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$xml = $an->DB->do_db_query({query => $query})->[0]->[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "length(xml)", value1 => length($xml), 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I still don't have XML, then I am out of ideas...
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "length(xml)", value1 => length($xml), 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml)
+	{
+		# Dig out the UUID.
+		foreach my $line (split/\n/, $xml)
+		{
+			if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
+			{
+				$uuid = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "uuid", value1 => $uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "uuid", value1 => $uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($uuid);
+}
+
+# This looks for a running server on the node (or locally if 'remote => 0' and returns the XML and a single 
+# string.
+sub server_xml
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $remote   = $parameter->{remote};
+	my $node     = $parameter->{node};
+	my $server   = $parameter->{server};
+	my $password = $parameter->{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "remote", value1 => $remote, 
+		name2 => "node",   value2 => $node, 
+		name3 => "server", value3 => $server, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $server_found = 0;
+	my $xml          = "";
+	my $shell_call   = $an->data->{path}{virsh}." list --all";
+	if ($remote)
+	{
+		# It is remote. Note that the node might not be accessible.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^error:/)
+			{
+				# Not running
+				last;
+			}
+			if ($line =~ /^\d+ (.*?) /)
+			{
+				my $this_server_name = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "server",           value1 => $server, 
+					name2 => "this_server_name", value2 => $this_server_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($server eq $this_server_name)
+				{
+					$server_found = 1;
+				}
+			}
+		}
+		
+		# Is the server running here?
+		if ($server_found)
+		{
+			# Found it here, read in it's XML.
+			my $shell_call = "virsh dumpxml $server";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$an->data->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /error: /)
+				{
+					# No good, bail out.
+					$xml = "";
+					last;
+				}
+				
+				$xml .= "$line\n";
+			}
+		}
+		
+		# If I still don't have XML data, try to find the server's XML file in /shared/definitions.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "length(xml)", value1 => length($xml), 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $xml)
+		{
+			my $definitions_file = $an->data->{path}{definitions}."/${server}.xml";
+			my $shell_call = "
+if [ -e $definitions_file ];
+then
+    ".$an->data->{path}{cat}." $definitions_file;
+fi
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$an->data->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$xml .= "$line\n";
+			}
+		}
+	}
+	else
+	{
+		# It is local.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /^error:/)
+			{
+				# Not running
+				last;
+			}
+			if ($line =~ /^\d+ (.*?) /)
+			{
+				my $this_server_name = $1;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "server",           value1 => $server, 
+					name2 => "this_server_name", value2 => $this_server_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($server eq $this_server_name)
+				{
+					$server_found = 1;
+				}
+			}
+		}
+		close $file_handle;
+		
+		# Is the server running here?
+		if ($server_found)
+		{
+			# Found it here, read in it's XML.
+			my $shell_call = "virsh dumpxml $server";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /error: /)
+				{
+					# No good, bail out.
+					$xml = "";
+					last;
+				}
+				
+				$xml .= "$line\n";
+			}
+			close $file_handle;
+		}
+		
+		# If I still don't have XML data, try to find the server's XML file in /shared/definitions.
+		my $definitions_file = $an->data->{path}{definitions}."/${server}.xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "length(xml)",      value1 => length($xml), 
+			name2 => "definitions_file", value2 => $definitions_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $xml) && (-e $definitions_file))
+		{
+			my $shell_call = $definitions_file;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$xml .= "$line\n";
+			}
+			close $file_handle;
+		}
+	}
+	
+	return($xml);
+}
+
 # This reads /etc/password to figure out the requested user's home directory.
 sub users_home
 {
@@ -111,8 +579,8 @@ sub users_home
 		return("");
 	}
 	
-	my $shell_call = "/etc/passwd";
 	my $users_home = "";
+	my $shell_call = $an->data->{path}{etc_passwd};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -858,8 +1326,56 @@ sub ip
 	return ($ip);
 }
 
-# This returns the peer node and anvil! name depending on the passed-in host name.
-sub anvil_details
+# This returns the nodes and anvil password for a (remote) Anvil! as defined in the local striker.conf file.
+sub remote_anvil_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+
+	my $anvil = $parameter->{anvil};
+	if (not $anvil)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0050", code => 50, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Look for the nodes that belong to this Anvil! and query them.
+	my $return = {
+		node1		=>	"",
+		node2		=>	"",
+		anvil_password	=>	"",
+	};
+	my $id = "";
+	foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	{
+		if ($an->data->{cluster}{$this_id}{name} eq $anvil)
+		{
+			# Got it.
+			($return->{node1}, $return->{node2}) = (split/,/, $an->data->{cluster}{$this_id}{nodes});
+			$return->{anvil_password}            = $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1", value1 => $return->{node1}, 
+		name2 => "node2", value2 => $return->{node2}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_password", value1 => $return->{anvil_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return ($return);
+}
+
+# This returns the peer node and anvil! name depending on the passed-in host name. This is called by nodes 
+# in an Anvil!.
+sub local_anvil_details
 {
 	my $self      = shift;
 	my $parameter = shift;

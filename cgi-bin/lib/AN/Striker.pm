@@ -2994,7 +2994,7 @@ sub change_vm
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "change_vm" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "change_vm" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3004,14 +3004,15 @@ sub change_vm
 	my $node1               = $conf->{clusters}{$cluster}{nodes}[0];
 	my $node2               = $conf->{clusters}{$cluster}{nodes}[1];
 	my $device              = $conf->{cgi}{device};
+	my $new_server_note     = $conf->{cgi}{server_note};
 	my $definition_file     = "/shared/definitions/$say_vm.xml";
 	my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
 	
-	# Read the values the user passed, see if they differ from what
-	# was read in the config and, if they do differ, make sure the
-	# requested resources are available. If all this passes, 
-	# rewrite the definition file and tell the user to stop/start
-	# their server for the changes to take effect.
+	# Read the values the user passed, see if they differ from what was read in the config and scancore 
+	# DB. If hardware resources differ, make sure the requested resources are available. If a DB entry 
+	# changes, update the DB. If all this passes, rewrite the definition file and/or update the DB.
+	my $hardware_changed      = 0;
+	my $database_changed      = 0;
 	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
 	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	   $current_ram           /= 1024;
@@ -3022,20 +3023,24 @@ sub change_vm
 	my $requested_cpus        =  $conf->{cgi}{cpu_cores};
 	my $current_boot_device   =  $conf->{vm}{$vm}{current_boot_device};
 	my $requested_boot_device =  $conf->{cgi}{boot_device};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "vm", value1 => $vm,
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "vm",             value1 => $vm,
+		name2 => "requested_ram",  value2 => $requested_ram,
+		name3 => "current_ram",    value3 => $current_ram,
+		name4 => "requested_cpus", value4 => $requested_cpus,
+		name5 => "current_cpus",   value5 => $current_cpus,
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "- requested RAM", value1 => $requested_ram,
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "- current RAM", value1 => $current_ram,
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "- requested CPUs", value1 => $requested_cpus,
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "- current CPUs", value1 => $current_cpus,
+	
+	# Read in the existing note (if any) from the database.
+	my $return = $an->Get->server_note({
+		server => $say_vm, 
+		anvil  => $cluster, 
+	});
+	my $old_server_note  = $return->{note};
+	my $server_note_uuid = $return->{uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "old_server_note",  value1 => $old_server_note,
+		name2 => "server_note_uuid", value2 => $server_note_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the table.
@@ -3045,25 +3050,93 @@ sub change_vm
 	print AN::Common::template($conf, "server.html", "update-server-config-header", {
 		title	=>	$title,
 	});
-
-	# Make sure something changed.
+	
+	# Did the note change (and do I have a connection to a database)?
+	if (($old_server_note ne $new_server_note) && ($an->data->{sys}{db_connections}))
+	{
+		# Something changed. If there was a UUID, we'll update. Otherwise we'll insert.
+		$database_changed = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "database_changed", value1 => $database_changed,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($server_note_uuid)
+		{
+			# Update.
+			my $query = "
+UPDATE 
+    shared 
+SET 
+    shared_data   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    shared_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_note_uuid)."
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Insert.
+			my $server_uuid = $an->Get->server_uuid({
+				server => $say_vm, 
+				anvil  => $cluster, 
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $server_uuid)
+			{
+				### TODO: Die properly here, no UUID for this server...
+				die "$THIS_FILE ".__LINE__."; No server UUID but note was passed in, can't save it.\n";
+			}
+			else
+			{
+				my $shared_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
+				my $query       = "
+INSERT INTO 
+    shared 
+(
+    shared_uuid, 
+    shared_source_name, 
+    shared_record_locator, 
+    shared_name, 
+    shared_data, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).", 
+    'striker',
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
+    'server note',
+    ".$an->data->{sys}{use_db_fh}->quote($new_server_note).",
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Did something in the hardware change?
 	if (($current_ram         ne $requested_ram) or 
 	    ($current_cpus        ne $requested_cpus) or
 	    ($current_boot_device ne $requested_boot_device))
 	{
 		# Something has changed. Make sure the request is sane,
-		my $max_cpus      = $conf->{resources}{total_threads};
+		$hardware_changed = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "requested ram", value1 => $requested_ram,
+			name1 => "hardware_changed", value1 => $hardware_changed,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "      max ram", value1 => $max_ram,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "requested cpus", value1 => $requested_cpus,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "      max cpus", value1 => $max_cpus,
+		my $max_cpus         = $conf->{resources}{total_threads};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "requested_ram",  value1 => $requested_ram,
+			name2 => "max_ram",        value2 => $max_ram,
+			name3 => "requested_cpus", value3 => $requested_cpus,
+			name4 => "max_cpus",       value4 => $max_cpus,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($requested_ram > $max_ram)
 		{
@@ -3306,22 +3379,41 @@ sub change_vm
 			
 			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
 			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
-			
-			# If the server is running, tell the user they need to power it off.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "host", value1 => $conf->{vm}{$vm}{current_host},
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{vm}{$vm}{current_host})
-			{
-				print AN::Common::template($conf, "server.html", "server-poweroff-required-message");
-			}
-			print AN::Common::template($conf, "server.html", "update-server-config-footer", {
-				url	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
-			});
-
-			AN::Cluster::footer($conf);
-			exit(0);
 		}
+	}
+	
+	# If the server is running, tell the user they need to power it off.
+	if ($hardware_changed)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host", value1 => $conf->{vm}{$vm}{current_host},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($conf->{vm}{$vm}{current_host})
+		{
+			print AN::Common::template($conf, "server.html", "server-poweroff-required-message");
+		}
+	}
+	if ($database_changed)
+	{
+		if (not $hardware_changed)
+		{
+			# Tell the user that there were no hardware changes made so that we don't have an 
+			# empty box.
+			print AN::Common::template($conf, "server.html", "server-updated-note-no-hardware-changed");
+		}
+		print AN::Common::template($conf, "server.html", "server-updated-note");
+	}
+	
+	# Did something change?
+	if (($hardware_changed) or ($database_changed))
+	{
+		# Yup, we're good.
+		print AN::Common::template($conf, "server.html", "update-server-config-footer", {
+			url	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
+		});
+		
+		AN::Cluster::footer($conf);
+		exit(0);
 	}
 	else
 	{
@@ -3950,37 +4042,15 @@ sub manage_vm
 	if (($server_uuid) && ($an->data->{sys}{db_connections}))
 	{
 		   $show_note = 1;
-		my $query     = "
-SELECT 
-    shared_data, 
-    modified_date 
-FROM 
-    shared 
-WHERE 
-    shared_source_name = 'scan-server' 
-AND 
-    shared_name = 'note' 
-AND 
-    shared_record_locator = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		my $results = $an->DB->do_db_query({query => $query});
-		my $count   = @{$results};
+		my $results   = $an->Get->server_note({
+			server => $say_vm, 
+			anvil  => $cluster, 
+		});
+		$note_body = $results->{note};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
+			name1 => "show_note", value1 => $show_note, 
+			name2 => "note_body", value2 => $note_body, 
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			$note_body = $row->[0];
-			$note_date = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "note_body", value1 => $note_body, 
-				name2 => "note_date", value2 => $note_date, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_note", value1 => $show_note

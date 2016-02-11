@@ -471,6 +471,9 @@ Variables:
 		<key name="error_message_0046"><![CDATA[The 'AN::Tools::Cman->peer_hostname()' method failed to find the local hostname in the cman configuration file: [#!variable!file!#]. Unable to determine which node is the peer.]]></key>
 		<key name="error_message_0047"><![CDATA[The 'AN::Tools::Get->ip()' method was called without the 'host' parameter.]]></key>
 		<key name="error_message_0048"><![CDATA[The 'AN::Tools::DB->initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself. Please be sure to run ScanCore (at least once) on all configured dashboards.]]></key>
+		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
+		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
+		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_note()' method was called but the 'server' value wasn't set.]]></key>
 	</lang>
 	
 	<!-- 日本語 -->

@@ -469,7 +469,12 @@ sub _set_paths
 	# Text files
 	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
 	$an->data->{path}{etc_hosts}     = "/etc/hosts";
+	$an->data->{path}{etc_passwd}    = "/etc/passwd";
 	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
+	
+	# Directories
+	$an->data->{path}{shared}        = "/shared";
+	$an->data->{path}{definitions}   = "/shared/definitions";
 	
 	return(0);
 }

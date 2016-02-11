@@ -158,7 +158,7 @@ sub scan_servers
 	my $proceed = 0;
 	
 	# Find out who I am and who my peer is
-	my $return = $an->Get->anvil_details({
+	my $return = $an->Get->local_anvil_details({
 		hostname_full	=>	$an->hostname,
 		hostname_short	=>	$an->short_hostname,
 		config_file	=>	$an->data->{path}{cluster_conf},
