@@ -9483,11 +9483,23 @@ sub header
 		}, "", 1);
 		if ($conf->{cgi}{task} eq "manage_vm")
 		{
-			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
-				button_text	=>	"$refresh_image",
-				id		=>	"refresh",
-			}, "", 1);
+			if ($conf->{cgi}{change})
+			{
+				$say_refresh = "";
+				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}, "", 1);
+			}
+			else
+			{
+				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}, "", 1);
+			}
 		}
 		elsif ($conf->{cgi}{task} eq "display_health")
 		{

@@ -3007,6 +3007,16 @@ sub change_vm
 	my $new_server_note     = $conf->{cgi}{server_note};
 	my $definition_file     = "/shared/definitions/$say_vm.xml";
 	my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+		name1 => "cluster",             value1 => $cluster,
+		name2 => "vm",                  value2 => $vm,
+		name3 => "say_vm",              value3 => $say_vm,
+		name4 => "node1",               value4 => $node1,
+		name5 => "node2",               value5 => $node2,
+		name6 => "device",              value6 => $device,
+		name7 => "new_server_note",     value7 => $new_server_note,
+		name8 => "other_allocated_ram", value8 => $other_allocated_ram,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read the values the user passed, see if they differ from what was read in the config and scancore 
 	# DB. If hardware resources differ, make sure the requested resources are available. If a DB entry 
@@ -3063,7 +3073,7 @@ sub change_vm
 UPDATE 
     server 
 SET 
-    server_node   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
+    server_note   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
     modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
     server_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
@@ -10887,7 +10897,7 @@ sub check_vms
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				

@@ -523,6 +523,7 @@ SET
     server_host       = ".$an->data->{sys}{use_db_fh}->quote($new_server_host).", 
     server_state      = ".$an->data->{sys}{use_db_fh}->quote($new_server_state).", 
     server_definition = ".$an->data->{sys}{use_db_fh}->quote($new_server_definition).", 
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";

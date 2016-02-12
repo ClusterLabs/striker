@@ -149,7 +149,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $server_uuid = $row->[0];
-			my $server_data = $row->[1];
+			my $server_data = $row->[1] ? $row->[1] : "";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 				name2 => "server_data", value2 => $server_data, 
@@ -397,7 +397,7 @@ sub server_xml
 			});
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /error: /)
