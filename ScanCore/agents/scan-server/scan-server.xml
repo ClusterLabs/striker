@@ -60,6 +60,10 @@ Details:
 * Current State: [#!variable!state!#]
 * Start Group:   [#!variable!start_group!#]
 * Start Delay:   [#!variable!start_delay!#]
+* Definition:
+====
+#!variable!definition!#
+====
 		</key>
 		<key name="scan_server_message_0005">Will not be started</key>
 		<key name="scan_server_message_0006">The server: [#!variable!server!#]'s definition file has changed:

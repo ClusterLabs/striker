@@ -3036,11 +3036,11 @@ sub change_vm
 		server => $say_vm, 
 		anvil  => $cluster, 
 	});
-	my $old_server_note  = $return->{note};
-	my $server_note_uuid = $return->{uuid};
+	my $old_server_note = $return->{note};
+	my $server_uuid     = $return->{uuid};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "old_server_note",  value1 => $old_server_note,
-		name2 => "server_note_uuid", value2 => $server_note_uuid,
+		name1 => "old_server_note", value1 => $old_server_note,
+		name2 => "server_uuid",     value2 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the table.
@@ -3059,66 +3059,19 @@ sub change_vm
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "database_changed", value1 => $database_changed,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($server_note_uuid)
-		{
-			# Update.
-			my $query = "
+		my $query = "
 UPDATE 
-    shared 
+    server 
 SET 
-    shared_data   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
+    server_node   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
     modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    shared_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_note_uuid)."
+    server_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "query", value1 => $query
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			# Insert.
-			my $server_uuid = $an->Get->server_uuid({
-				server => $say_vm, 
-				anvil  => $cluster, 
-			});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "server_uuid", value1 => $server_uuid,
-			}, file => $THIS_FILE, line => __LINE__});
-			if (not $server_uuid)
-			{
-				### TODO: Die properly here, no UUID for this server...
-				die "$THIS_FILE ".__LINE__."; No server UUID but note was passed in, can't save it.\n";
-			}
-			else
-			{
-				my $shared_uuid = $an->Get->uuid() or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0024", code => 2, file => "$THIS_FILE", line => __LINE__});;
-				my $query       = "
-INSERT INTO 
-    shared 
-(
-    shared_uuid, 
-    shared_source_name, 
-    shared_record_locator, 
-    shared_name, 
-    shared_data, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($shared_uuid).", 
-    'striker',
-    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).",
-    'server note',
-    ".$an->data->{sys}{use_db_fh}->quote($new_server_note).",
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);
-";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "query", value1 => $query
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			}
-		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Did something in the hardware change?

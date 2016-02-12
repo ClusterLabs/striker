@@ -124,21 +124,17 @@ sub server_note
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Check the shared table now.
+	# Check the server table now.
 	if ($server_uuid)
 	{
 		my $query = "
 SELECT 
-    shared_uuid, 
-    shared_data 
+    server_uuid, 
+    server_note 
 FROM 
-    shared 
+    server 
 WHERE 
-    shared_source_name = 'striker' 
-AND 
-    shared_name = 'server note' 
-AND 
-    shared_record_locator = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+    server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
@@ -152,15 +148,15 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $shared_uuid = $row->[0];
-			my $shared_data = $row->[1];
+			my $server_uuid = $row->[0];
+			my $server_data = $row->[1];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shared_uuid", value1 => $shared_uuid, 
-				name2 => "shared_data", value2 => $shared_data, 
+				name1 => "server_uuid", value1 => $server_uuid, 
+				name2 => "server_data", value2 => $server_data, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$return->{uuid} = $shared_uuid;
-			$return->{note} = $shared_data;
+			$return->{uuid} = $server_uuid;
+			$return->{note} = $server_data;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "uuid", value1 => $return->{uuid}, 
 				name2 => "note", value2 => $return->{note}, 
@@ -172,7 +168,7 @@ AND
 }
 
 # This looks for a server by name on both nodes. If it is not found on either, it looks for the server in
-# /shared/definitions/<server>.xml. Once found (if found), the UUID is pulled out and returned to the caller.
+# /server/definitions/<server>.xml. Once found (if found), the UUID is pulled out and returned to the caller.
 sub server_uuid
 {
 	my $self      = shift;
@@ -247,7 +243,7 @@ sub server_uuid
 	my $server_found = 0;
 	
 	# Try node 1. This will check for a running server first and, if it's not found, check 
-	# /shared/definitions/${server}.xml.
+	# /server/definitions/${server}.xml.
 	my $xml = $an->Get->server_xml({
 		remote   => $node1_is_remote, 
 		server   => $server, 
@@ -275,23 +271,11 @@ sub server_uuid
 	{
 		my $query = "
 SELECT 
-    shared_data 
+    server_definition 
 FROM 
-    shared 
+    server 
 WHERE 
-    shared_source_name = 'scan-server' 
-AND 
-    shared_name = 'definition' 
-AND 
-    shared_record_locator = (
-        SELECT 
-            server_uuid 
-        FROM 
-            server 
-        WHERE 
-            server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
-        LIMIT 1
-    );
+    server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 

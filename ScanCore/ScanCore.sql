@@ -375,6 +375,79 @@ CREATE TRIGGER trigger_shared
 
 
 -- ------------------------------------------------------------------------------------------------------- --
+-- NOTE: This table does NOT link to a specific host_uuid!                                                 --
+-- ------------------------------------------------------------------------------------------------------- --
+
+-- This stores information about the server.
+CREATE TABLE server (
+	server_uuid		uuid				not null	primary key,	-- This comes from the server's XML definition file.
+	server_name		text				not null,
+	server_stop_reason	text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
+	server_start_group	integer				not null	default 1,	-- Setting this to '9999' will prevent it from booting at all.
+	server_start_delay	integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
+	server_note		text,								-- User's place to keep notes about their server.
+	server_definition	text				not null,			-- The XML definition file for the server.
+	server_host		text,								-- This is the current host for this server, which may be empty if it's off.
+	server_state		text,								-- This is the current state of this server.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE server OWNER TO #!variable!user!#;
+
+CREATE TABLE history.server (
+	history_id		bigserial,
+	server_uuid		uuid,
+	server_name		text,
+	server_stop_reason	text,
+	server_start_group	integer,
+	server_start_delay	integer,
+	server_note		text,
+	server_definition	text,
+	server_host		text,
+	server_state		text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.server OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_server() RETURNS trigger
+AS $$
+DECLARE
+	history_server RECORD;
+BEGIN
+	SELECT INTO history_server * FROM server WHERE server_uuid = new.server_uuid;
+	INSERT INTO history.server
+		(server_uuid,
+		 server_name, 
+		 server_stop_reason, 
+		 server_start_group, 
+		 server_start_delay, 
+		 server_note, 
+		 server_definition, 
+		 server_host, 
+		 server_state, 
+		 modified_date)
+	VALUES
+		(history_server.server_uuid, 
+		 history_server.server_name, 
+		 history_server.server_stop_reason, 
+		 history_server.server_start_group, 
+		 history_server.server_start_delay, 
+		 history_server.server_note, 
+		 history_server.server_definition, 
+		 history_server.server_host, 
+		 history_server.server_state, 
+		 history_server.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_server() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_server
+	AFTER INSERT OR UPDATE ON server
+	FOR EACH ROW EXECUTE PROCEDURE history_server();
+
+
+-- ------------------------------------------------------------------------------------------------------- --
 -- NOTE: Because this will be updated on every run, we will use its modified_data comlumn to determine if  --
 --       the tables in this schema need to be updated.                                                     --
 -- ------------------------------------------------------------------------------------------------------- --

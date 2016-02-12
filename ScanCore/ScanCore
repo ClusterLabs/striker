@@ -241,8 +241,6 @@ load_agent_strings($an);
 # Update the database before we do anything else.
 update_db($an);
 
-#die "$THIS_FILE ".__LINE__."; testing...\n";
-
 # Make sure this node is in the database and the host name is up to date.
 add_hostname_to_databases($an);
 check_hostname_for_changes($an);
@@ -3240,7 +3238,6 @@ sub update_db
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
-#die "$THIS_FILE ".__LINE__."; testing...\n";
 		
 		# Now update the rest of the ScanCore tables.
 		update_db_agents($an);
@@ -3249,6 +3246,7 @@ sub update_db
 		update_db_temperature($an);
 		update_db_power($an);
 		update_db_shared($an);
+		update_db_server($an);
 		
 		# Record the time
 		$an->DB->update_time({file => $THIS_FILE});
@@ -3713,6 +3711,297 @@ INSERT INTO
 				} # Seen temperature_agent_name?
 			} # foreach my $id 
 		} # foreach my $temperature_agent_name ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
+	}
+	
+	return(0);
+}
+
+# Update the special 'server' table.
+sub update_db_server
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'power' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		### NOTE: This table is special in that it does NOT link back to a specific host.
+		# Read in the history schema
+		my $query = "
+SELECT 
+    server_uuid,
+    server_host_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    modified_date 
+FROM 
+    history.server 
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $server_uuid        = $row->[0];
+			my $server_host_uuid   = $row->[1];
+			my $server_name        = $row->[2];
+			my $server_stop_reason = $row->[3];
+			my $server_start_group = $row->[4];
+			my $server_start_delay = $row->[5];
+			my $server_note        = $row->[6];
+			my $server_definition  = $row->[7];
+			my $server_host        = $row->[8];
+			my $server_state       = $row->[9];
+			my $modified_date      = $row->[10];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+				name1  => "server_uuid",        value1  => $server_uuid, 
+				name2  => "server_host_uuid",   value2  => $server_host_uuid, 
+				name3  => "server_name",        value3  => $server_name, 
+				name4  => "server_stop_reason", value4  => $server_stop_reason, 
+				name5  => "server_start_group", value5  => $server_start_group, 
+				name6  => "server_start_delay", value6  => $server_start_delay, 
+				name7  => "server_note",        value7  => $server_note, 
+				name8  => "server_definition",  value8  => $server_definition, 
+				name9  => "server_host",        value9  => $server_host, 
+				name10 => "server_state",       value10 => $server_state, 
+				name11 => "modified_date",      value11 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
+				server_host_uuid	=>	$server_host_uuid, 
+				server_name		=>	$server_name, 
+				server_stop_reason	=>	$server_stop_reason, 
+				server_start_group	=>	$server_start_group, 
+				server_start_delay	=>	$server_start_delay, 
+				server_note		=>	$server_note, 
+				server_definition	=>	$server_definition, 
+				server_host		=>	$server_host, 
+				server_state		=>	$server_state, 
+			};
+			
+			$an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
+				server_host_uuid	=>	$server_host_uuid, 
+				server_name		=>	$server_name, 
+				server_stop_reason	=>	$server_stop_reason, 
+				server_start_group	=>	$server_start_group, 
+				server_start_delay	=>	$server_start_delay, 
+				server_note		=>	$server_note, 
+				server_definition	=>	$server_definition, 
+				server_host		=>	$server_host, 
+				server_state		=>	$server_state, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it needs to be added to any DBs
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{server}{modified_date}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}})
+		{
+			my $server_uuid        = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_uuid};
+			my $server_host_uuid   = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host_uuid};
+			my $server_name        = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}; 
+			my $server_stop_reason = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason};
+			my $server_start_group = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_group};
+			my $server_start_delay = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_delay};
+			my $server_note	       = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_note};
+			my $server_definition  = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition};
+			my $server_host        = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host};
+			my $server_state       = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_state};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1  => "server_uuid",        value1  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_uuid}, 
+				name2  => "server_host_uuid",   value2  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host_uuid}, 
+				name3  => "server_name",        value3  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}, 
+				name4  => "server_stop_reason", value4  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason}, 
+				name5  => "server_start_group", value5  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_group}, 
+				name6  => "server_start_delay", value6  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_delay}, 
+				name7  => "server_note",        value7  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_note}, 
+				name8  => "server_definition",  value8  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition}, 
+				name9  => "server_host",        value9  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host}, 
+				name10 => "server_state",       value10 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_state}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'server_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::server::server_uuid::${server_uuid}::seen", value1 => $an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::server::server_uuid::${server_uuid}::exists", value1 => $an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{server}{server_uuid}{$server_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::server::modified_date::${modified_date}::server_uuid::${server_uuid}", value1 => $an->data->{db_data}{$id}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.server
+SET
+    server_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_host_uuid).", 
+    server_name        = ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
+    server_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
+    server_start_group = ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    server_start_delay = ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
+    server_note        = ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
+    server_definition  = ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    server_host        = ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
+    server_state       = ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.server
+(
+    server_uuid, 
+    server_host_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'server_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.server
+(
+    server_uuid, 
+    server_host_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen server_uuid?
+			} # foreach my $id 
+		} # foreach my $server_uuid ...
 	} # foreach $modified_date ...
 	
 	# Free up memory by deleting the DB data from the main hash.
