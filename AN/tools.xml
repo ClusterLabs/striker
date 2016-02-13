@@ -474,6 +474,8 @@ Variables:
 		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
 		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_note()' method was called but the 'server' value wasn't set.]]></key>
+		<key name="error_message_0052">Failed to create a symlink from: [#!variable!target!#] to: [#!variable!link!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_message_0053">Failed to delete the file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
 	</lang>
 	
 	<!-- 日本語 -->

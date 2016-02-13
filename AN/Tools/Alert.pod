@@ -444,6 +444,14 @@ The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' v
 
 The 'AN::Tools::Get->server_note()' method was called but 'server' and 'uuid' values were not set. One of them must be passed.
 
+=head2 C<52>
+
+Failed to create a symbolic link.
+
+=head2 C<53>
+
+Failed to delete a file.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

@@ -34,27 +34,29 @@ my $time = time;
 
 my $an = AN::Tools->new({data => {
 		path		=>	{
-			cluster_conf	=>	"/etc/cluster/cluster.conf", 
-			'less'		=>	"/usr/bin/less",
-			log_file	=>	"/var/log/striker.log",
-			striker_config	=>	"/etc/striker/striker.conf",
-			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+			cluster_conf		=>	"/etc/cluster/cluster.conf", 
+			'less'			=>	"/usr/bin/less",
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+			'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
+			'anvil-safe-start_link'	=>	"/etc/rc3.d/S99_anvil-safe-start",
 		},
 		switches	=>	{
 		},
 		peer		=>	{
-			short_name	=>	"",
-			bcn_name	=>	"",
-			sn_name		=>	"",
-			ifn_name	=>	"",
+			short_name		=>	"",
+			bcn_name		=>	"",
+			sn_name			=>	"",
+			ifn_name		=>	"",
 		},
 		sys		=>	{
-			i_am_node2	=>	0,
-			language	=>	"en_CA",
-			local_node	=>	"",
-			log_language	=>	"en_CA",
-			log_level	=>	2,
-			peer_node	=>	"",
+			i_am_node2		=>	0,
+			language		=>	"en_CA",
+			local_node		=>	"",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+			peer_node		=>	"",
 		},
 	},
 });
@@ -69,6 +71,14 @@ $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Readable->base2(1);
 
+### Invocations:
+# * Called with 'start'; Use 'anvil-delay-run' to fire anvil-safe-start momentarily.
+# * --abort   -> kill any running copy of anvil-safe-start and then exit.
+# * --enable  -> create an rc3.d link to call 'start' on boot
+# * --disable -> delete the rc3.d link.
+# * --state   -> Print whether a copy is running and whether it is enabled on boot or not.
+# * --force   -> Run even if disabled in striker.conf
+
 if (($an->data->{switches}{h})   or 
     ($an->data->{switches}{'?'}) or 
     ($an->data->{switches}{help}))
@@ -76,17 +86,47 @@ if (($an->data->{switches}{h})   or
 	print_usage($an);
 	exit(0);
 }
+if ($an->data->{switches}{enable})
+{
+	# Create the /etc/rc3.d link.
+	create_rc3d_symlink($an);
+	exit(0);
+}
+if ($an->data->{switches}{disable})
+{
+	# Create the /etc/rc3.d link.
+	remove_rc3d_symlink($an);
+	exit(0);
+}
+
 
 # Log our startup
 $an->Log->entry({log_level => 2, message_key => "asst_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
+
 ### Process
+# 1. Check if I am enabled in striker.conf and that no other copies are running.
+# 2. Who am I and who is my peer?
+#    - Node 2 pauses for 30 seconds
+# 3. Can I ping my peer on all three networks? Loop until true.
+#    - Wait here indefinately
+# 4. Check to see if cman/rgmanager was running.
+#    - Start 'cman' on both nodes
+#    - Start drbd on both nodes
+#      - Verify all resources 'Connect'
+#    - Start rgmanager on both nodes.
+#      - Watch clvmd; make sure all LVs go ACTIVE (and activate them if not)
+#    - Verify that /shared/ mounts and test;
+#      - 'touch /shared/status/${node}.test && rm -f /shared/status/${node}.test'
+#    - Verify that all resources are Primary on both nodes and promote any that aren't.
+#    - Verify that libvirtd is running.
+# 5. Watch DRBD; If resync'ing, wait up to ~1 minute for storage to sync. Boost resync speed to 40% of SN 
+#    speed. If it looks like resync will take > 5 minutes 10 seconds after boosting, abort the wait.
+#    - Reset DRBD config before proceeding.
+# 6. Using Start Groups/Delays (and ignoring 'clean' off VMs), boot servers.
 # 
-# 1. Who am I and who is my peer?
-# 2. Can I ping my peer on all three networks? Loop until true.
-# 3. 
 
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
@@ -107,6 +147,72 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This creates the /etc/rc3.d/ symlink that runs this program on boot.
+sub create_rc3d_symlink
+{
+	($an);
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, does the symlink exist already?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::anvil-safe-start_link", value1 => $an->data->{path}{'anvil-safe-start_link'}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{'anvil-safe-start_link'})
+	{
+		# Already exists, nothing to do.
+		$an->Log->entry({log_level => 2, message_key => "asst_log_0003", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "asst_message_0002"})."\n";
+	}
+	else
+	{
+		# Create it.
+		my $target = $an-data->{path}{'anvil-safe-start'};
+		my $link   = $an-data->{path}{'anvil-safe-start_link'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target, 
+			name2 => "link",   value2 => $link, 
+		}, file => $THIS_FILE, line => __LINE__});
+		symlink $target, $link or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0052", message_variables => { target => $target, 'link' => $link, error => $! }, code => 52, file => "$THIS_FILE", line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "asst_log_0002", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "asst_message_0001"})."\n";
+	}
+	
+	return(0);
+}
+
+# This removes the /etc/rc3.d/ symlink that runs this program on boot.
+sub remove_rc3d_symlink
+{
+	($an);
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, does the symlink exist already?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::anvil-safe-start_link", value1 => $an->data->{path}{'anvil-safe-start_link'}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{'anvil-safe-start_link'})
+	{
+		# Already gone, nothing to do.
+		$an->Log->entry({log_level => 2, message_key => "asst_log_0005", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "asst_message_0004"})."\n";
+	}
+	else
+	{
+		# Remove it
+		my $file = $an-data->{path}{'anvil-safe-start_file'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "file", value1 => $file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		unlink $link or or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0053", message_variables => { file => $link, error => $! }, code => 53, file => "$THIS_FILE", line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "asst_log_0004", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "asst_message_0003"})."\n";
+	}
+	
+	return(0);
+}
 
 # This figures out who I am, what Anvil! I am in and who my peer is.
 sub find_myself

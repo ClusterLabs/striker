@@ -477,10 +477,10 @@ sub find_changes
 	# Loop through each server
 	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
 	{
+		die "$THIS_FILE ".__LINE__."; Missing server UUID\n" if not $server_uuid;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
-		die "$THIS_FILE ".__LINE__."; Missing server UUID\n" if not $server_uuid;
 		
 		if (read_last_scan($an, $server_uuid))
 		{
@@ -580,6 +580,25 @@ WHERE
 							old			=>	$old_server_state,
 						},
 					});
+					# If this server's new state is 'started', make sure we clear the
+					# 'server' -> 'server_stop_reason'
+					if ($new_server_state eq /started/i)
+					{
+						my $query = "
+UPDATE 
+    server 
+SET 
+    server_stop_reason = '', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+;";
+						$query =~ s/'NULL'/NULL/g;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "query", value1 => $query, 
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{sys}{sql}}, $query;
+					}
 				}
 				# The definition file?
 				if ($new_server_definition ne $old_server_definition)

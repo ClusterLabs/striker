@@ -450,6 +450,7 @@ sub _set_paths
 	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
 	$an->data->{path}{hostname}      = "/bin/hostname";
 	$an->data->{path}{'less'}        = "/usr/bin/less";
+	$an->data->{path}{ln}            = "/bin/ln";
 	$an->data->{path}{ls}            = "/bin/ls";
 	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
 	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";

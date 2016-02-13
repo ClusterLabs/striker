@@ -2394,9 +2394,16 @@ Deadline Scheduler Configuration (sda):
 		
 		<!-- anvil-safe-start; Configure Virtual Machine Manager -->
 		<key name="asst_log_0001">#!variable!this_file!# has started.</key>
+		<key name="asst_log_0002">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was created.</key>
+		<key name="asst_log_0003">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already exists.</key>
+		<key name="asst_log_0004">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was removed.</key>
+		<key name="asst_log_0005">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already removed.</key>
 		
 		<!-- normal messages -->
-		<key name="asst_message_0001">...free...</key>
+		<key name="asst_message_0001">#!variable!this_file!# has been enabled.</key>
+		<key name="asst_message_0002">#!variable!this_file!# was already enabled.</key>
+		<key name="asst_message_0003">#!variable!this_file!# has been disabled.</key>
+		<key name="asst_message_0004">#!variable!this_file!# was already disabled.</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->

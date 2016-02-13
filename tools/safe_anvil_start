@@ -1238,7 +1238,6 @@ sub check_node_health
 		}
 		
 		### TODO: Check that DRBD resources are all 'Primary'.
-		
 		foreach my $clusterfs (sort {$a cmp $b} keys %{$conf->{cluster}{gfs2}})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "clusterfs: [$clusterfs]", 2);
