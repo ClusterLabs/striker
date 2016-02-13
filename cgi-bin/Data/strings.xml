@@ -305,11 +305,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0098"><![CDATA[This can be used to specify a backup NTP server, if available.]]></key>
 		<key name="explain_0099"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address or domain name.<br />Please enter the value as a <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a> or <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0100"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
-		<key name="explain_0101">...free...</key>
+		<key name="explain_0101"><![CDATA[When the #!string!brand_0003!# starts, it will boot the servers in groups.<br /> All servers in a given start group must boot before any servers in the next<br/group will boot. Servers that are gracefully shut down by a user will be left off.]]></key>
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
-		<key name="explain_0105">...free...</key>
+		<key name="explain_0105"><![CDATA[Boot-up of this server will be delayed by the set number of seconds.<br />For example, if this server is set to group <span class="fixed_width">2</span>,<br />all servers in group <span class="fixed_width">1</span> will be booted first.<br />Then this delay will start before this server is booted.<br />No servers in group <span class="fixed_width">3</span> will boot until this timer expires.]]></key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
@@ -699,8 +699,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0279">NTP 2</key>
 		<key name="row_0280">Booting Server</key>
 		<key name="row_0281">Adding</key>
-		<key name="row_0282">...free...</key>
-		<key name="row_0283">...free...</key>
+		<key name="row_0282">Start Group</key>
+		<key name="row_0283">Start Delay</key>
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
@@ -1093,7 +1093,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0026">Requested CPU count was higher than available.</key>
 		<key name="title_0027">You need to power off the server for the changes to take effect.</key>
 		<key name="title_0028">There are two ways to do this:</key>
-		<key name="title_0029">It looks like neither the amount of RAM or the number of CPUs has changed.</key>
+		<key name="title_0029">It looks like nothing was changed.</key>
 		<key name="title_0030"><![CDATA[Inserting <span class="fixed_width">#!variable!media!#</span> into <span class="fixed_width">#!variable!drive!#</span>...]]></key>
 		<key name="title_0031"><![CDATA[Ejecting <span class="fixed_width">#!variable!device!#</span>...]]></key>
 		<key name="title_0032"><![CDATA[Manage <span class="fixed_width">#!variable!server!#</span>.]]></key>
@@ -1167,12 +1167,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0100">Mount Point</key>
 		<key name="title_0101">No shared file systems were found.</key>
 		<key name="title_0102">#!string!brand_0003!# Nodes - Status</key>
-		<key name="title_0103">#!string!brand_0003!# Membership</key> <!-- was 'cman' -->
-		<key name="title_0104">Resource Manager</key> <!-- was 'rgmanager' -->
-		<key name="title_0105">...free...</key> <!-- was 'drbd' -->
-		<key name="title_0106">Storage Manager</key> <!-- was 'clvmd' -->
-		<key name="title_0107">Shared Filesystems</key> <!-- was 'gfs2' -->
-		<key name="title_0108">Hypervisor</key> <!-- was 'libvirtd' -->
+		<key name="title_0103">#!string!brand_0003!# Membership</key>
+		<key name="title_0104">Resource Manager</key>
+		<key name="title_0105">...free...</key>
+		<key name="title_0106">Storage Manager</key>
+		<key name="title_0107">Shared Filesystems</key>
+		<key name="title_0108">Hypervisor</key>
 		<key name="title_0109">#!string!brand_0003!# Nodes - Controls</key>
 		<key name="title_0110">Power</key>
 		<key name="title_0111">Membership</key>
@@ -1217,7 +1217,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0150">Primary Configuration Values</key>
 		<key name="title_0151">Secondary Configuration Values</key>
 		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span> Variables]]></key>
-		<key name="title_0153">...free...</key>
+		<key name="title_0153">...free..</key>
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155">Problem with the specified form values.</key>
 		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span>]]></key>
@@ -1239,7 +1239,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0172">Running some sanity checks...</key>
 		<key name="title_0173">Configuration Beginning</key>
 		<key name="title_0174"><![CDATA[Beginning interactive network mapping on: [<span class="highlight_good">#!variable!node!#</span>]...]]></key>
-		<key name="title_0175">...free...</key>
+		<key name="title_0175">Form</key>
 		<key name="title_0176">Done gathering information.</key>
 		<key name="title_0177">Almost ready to install!</key>
 		<key name="title_0178">#!string!button_0056!# control</key>
@@ -1470,7 +1470,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0200"><![CDATA[The call to destroy the server should have exited with exit code '<span class="fixed_width">0</span>', but '<span class="fixed_width">#!variable!virsh_exit_code!#</span>' was received instead.<br />Is it possible that the server shut down on it's own?<br />Proceeding with the delete process.]]></key>
 		<key name="message_0201"><![CDATA[Deleting <span class="fixed_width">#!variable!lv!#</span>...]]></key>
 		<key name="message_0202">Removed successfully</key>
-		<key name="message_0203">...free...</key>
+		<key name="message_0203"><![CDATA[The '<span class="highlight_detail">#!string!row_0282!#</span>' must be a digit (was passed: [<span class="fixed_width">#!variable!value!#</span>].) By default, this is '<span class="fixed_width">1</span>'.]]></key>
 		<key name="message_0204"><![CDATA[The call to remove the server's storage should have exited with exit code <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!lvremove_exit_code!#</span> was received.]]></key>
 		<key name="message_0205"><![CDATA[The server <span class="fixed_width">#!variable!server!#</span> has been removed.]]></key>
 		<key name="message_0206">It would appear that something went very wrong!</key>
@@ -1506,7 +1506,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0236"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Fence operation a complete success!]]></key>
 		<key name="message_0237"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed.<br />\nThe core fence action was a success, but something went wrong and manual intervention may be required before the node can be returned to service.<br />\nIf another fence method remains, it will now be tried in hopes of assisting recovery.]]></key>
 		<key name="message_0238">Stopping the #!string!brand_0003!# resource manager now..</key>
-		<key name="message_0239">...free...</key>
+		<key name="message_0239"><![CDATA[The '<span class="highlight_detail">#!string!row_0283!#</span>' must be a digit, representing a number of seconds (was passed: [<span class="fixed_width">#!variable!value!#</span>]). By default, this is '<span class="fixed_width">0</span>'.]]></key>
 		<key name="message_0240">The #!string!brand_0003!# resource manager stopped successfully.</key>
 		<key name="message_0241">Stopping the #!string!brand_0003!#'s communication layer now...</key>
 		<key name="message_0242">The #!string!brand_0003!#'s communication layer failed to stop!</key>

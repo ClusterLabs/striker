@@ -32,6 +32,12 @@
 <br />
 <!-- end update-server-error-message -->
 
+<!-- start update-server-db-error -->
+			<br />
+			#!replace!error!#
+			<br />
+<!-- end update-server-db-error -->
+
 <!-- start server-poweroff-required-message -->
 		</td>
 	</tr>
@@ -314,8 +320,8 @@
 			#!string!row_0152!#:
 		</td>
 		<td style="text-align: left;">
-			<span class="subtle_text">#!replace!current_boot_device!#</span><br />
-			#!replace!boot_select!#
+			#!replace!boot_select!#<br />
+			<span class="subtle_text">#!replace!current_boot_device!#</span>
 		</td>
 		<td>
 			&nbsp;
@@ -324,27 +330,25 @@
 			<input type="submit" name="change" value="#!string!button_0026!#" class="bold_button">
 		</td>
 	</tr>
-	<tr><td style="height:10px; padding:0px" colspan="3"></td></tr>
 	<tr>
 		<td class="highlight_good_bold">
 			#!string!row_0086!#:
 		</td>
 		<td style="text-align: left;">
-			<span class="subtle_text">#!replace!ram_details!#</span><br />
-			<input type="input" name="ram" value="#!replace!ram!#" style="width: 100px;"> #!replace!select_ram_suffix!#
+			<input type="input" name="ram" value="#!replace!ram!#" style="width: 100px;"> #!replace!select_ram_suffix!#<br />
+			<span class="subtle_text">#!replace!ram_details!#</span>
 		</td>
 		<td>
 			&nbsp;
 		</td>
 	</tr>
-	<tr><td style="height:10px; padding:0px" colspan="3"></td></tr>
 	<tr>
 		<td class="highlight_good_bold">
 			#!string!row_0087!#:
 		</td>
 		<td style="text-align: left;">
-			<span class="subtle_text">#!replace!cpu_details!#</span><br />
-			#!replace!select_cpu_cores!#
+			#!replace!select_cpu_cores!#<br />
+			<span class="subtle_text">#!replace!cpu_details!#</span>
 		</td>
 		<td>
 			&nbsp;
@@ -1396,20 +1400,43 @@
 	</tr>
 <!-- end start-server-show-guacamole-link -->
 
-<!-- start start-server-show-note -->
+<!-- start start-server-show-db-options -->
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0282!#
+		</td>
+		<td style="text-align: left;">
+			<input type="input" id="server_start_group" name="server_start_group" value="#!replace!server_start_group!#" style="width: 100px;"><br />
+			<span class="subtle_text">#!string!explain_0101!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0283!#
+		</td>
+		<td style="text-align: left;">
+			<input type="input" id="server_start_delay" name="server_start_delay" value="#!replace!server_start_delay!#" style="width: 100px;"> #!string!suffix_0015!#<br />
+			<span class="subtle_text">#!string!explain_0105!#</span>
+		</td>
+	</tr>
 	<tr>
 		<td class="highlight_good_bold">
 			#!string!row_0002!#
 		</td>
-		<td style="text-align: center;">
-			<span class="subtle_text_wrap">#!string!message_0086!#</span><br />
+		<td style="text-align: left;">
 			<textarea id="server_note" name="server_note" rows="8" cols="60">#!replace!server_note!#</textarea><br />
-			<span class="subtle_text_fixed_width">#!replace!modified_date!#<br />
-			<br />
+			<span class="subtle_text_wrap">#!string!message_0086!#</span><br />
 		</td>
 	</tr>
-	<tr><td style="height:10px; padding:0px" colspan="3"></td></tr>
-<!-- end start-server-show-note -->
+	<tr>
+		<td class="highlight_good_bold">
+			&nbsp;
+		</td>
+		<td style="text-align: right;">
+			<span class="subtle_text_fixed_width">#!replace!modified_date!#<br />
+		</td>
+	</tr>
+<!-- end start-server-show-db-options -->
 
 <!-- start start-server-footer -->
 	<tr>

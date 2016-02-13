@@ -2998,24 +2998,32 @@ sub change_vm
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster             = $conf->{cgi}{cluster};
-	my $vm                  = $conf->{cgi}{vm};
-	my $say_vm              = ($vm =~ /vm:(.*)/)[0];
-	my $node1               = $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2               = $conf->{clusters}{$cluster}{nodes}[1];
-	my $device              = $conf->{cgi}{device};
-	my $new_server_note     = $conf->{cgi}{server_note};
-	my $definition_file     = "/shared/definitions/$say_vm.xml";
-	my $other_allocated_ram = $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-		name1 => "cluster",             value1 => $cluster,
-		name2 => "vm",                  value2 => $vm,
-		name3 => "say_vm",              value3 => $say_vm,
-		name4 => "node1",               value4 => $node1,
-		name5 => "node2",               value5 => $node2,
-		name6 => "device",              value6 => $device,
-		name7 => "new_server_note",     value7 => $new_server_note,
-		name8 => "other_allocated_ram", value8 => $other_allocated_ram,
+	my $cluster                =  $conf->{cgi}{cluster};
+	my $vm                     =  $conf->{cgi}{vm};
+	my $say_vm                 =  ($vm =~ /vm:(.*)/)[0];
+	my $node1                  =  $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2                  =  $conf->{clusters}{$cluster}{nodes}[1];
+	my $device                 =  $conf->{cgi}{device};
+	my $new_server_note        =  $conf->{cgi}{server_note};
+	my $new_server_start_group =  $conf->{cgi}{server_start_group};
+	   $new_server_start_group =~ s/^\s+//;
+	   $new_server_start_group =~ s/\s+$//;
+	my $new_server_start_delay = $conf->{cgi}{server_start_delay};
+	   $new_server_start_delay =~ s/^\s+//;
+	   $new_server_start_delay =~ s/\s+$//;
+	my $definition_file        =  "/shared/definitions/$say_vm.xml";
+	my $other_allocated_ram    =  $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		name1  => "cluster",                value1  => $cluster,
+		name2  => "vm",                     value2  => $vm,
+		name3  => "say_vm",                 value3  => $say_vm,
+		name4  => "node1",                  value4  => $node1,
+		name5  => "node2",                  value5  => $node2,
+		name6  => "device",                 value6  => $device,
+		name7  => "new_server_note",        value7  => $new_server_note,
+		name8  => "new_server_start_group", value8  => $new_server_start_group,
+		name9  => "new_server_start_delay", value9  => $new_server_start_delay,
+		name10 => "other_allocated_ram",    value10 => $other_allocated_ram,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read the values the user passed, see if they differ from what was read in the config and scancore 
@@ -3042,15 +3050,19 @@ sub change_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read in the existing note (if any) from the database.
-	my $return = $an->Get->server_note({
+	my $return = $an->Get->server_data({
 		server => $say_vm, 
 		anvil  => $cluster, 
 	});
-	my $old_server_note = $return->{note};
-	my $server_uuid     = $return->{uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "old_server_note", value1 => $old_server_note,
-		name2 => "server_uuid",     value2 => $server_uuid,
+	my $server_uuid            = $return->{uuid};
+	my $old_server_note        = $return->{note};
+	my $old_server_start_group = $return->{start_group};
+	my $old_server_start_delay = $return->{start_delay};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "server_uuid",            value1 => $server_uuid,
+		name2 => "old_server_note",        value2 => $old_server_note,
+		name3 => "old_server_start_group", value3 => $old_server_start_group,
+		name4 => "old_server_start_delay", value4 => $old_server_start_delay,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the table.
@@ -3062,26 +3074,69 @@ sub change_vm
 	});
 	
 	# Did the note change (and do I have a connection to a database)?
-	if (($old_server_note ne $new_server_note) && ($an->data->{sys}{db_connections}))
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::db_connections", value1 => $an->data->{sys}{db_connections},
+	}, file => $THIS_FILE, line => __LINE__});
+	my $db_error = "";
+	if (($an->data->{sys}{db_connections}) && 
+	    (($old_server_note        ne $new_server_note)        or 
+	     ($old_server_start_group ne $new_server_start_group) or 
+	     ($old_server_start_delay ne $new_server_start_delay)))
 	{
 		# Something changed. If there was a UUID, we'll update. Otherwise we'll insert.
 		$database_changed = 1;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "database_changed", value1 => $database_changed,
 		}, file => $THIS_FILE, line => __LINE__});
-		my $query = "
+		
+		# Make sure the values passed in for the start delay and group are digits.
+		if ($new_server_start_group !~ /^\d+$/)
+		{
+			# Bad group, must be a digit.
+			$db_error .= AN::Common::get_string($conf, {key => "message_0203", variables => {
+				value	=>	$new_server_start_group,
+			}})."<br />";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "db_error", value1 => $db_error,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($new_server_start_delay !~ /^\d+$/)
+		{
+			# Bad group, must be a digit.
+			$db_error .= AN::Common::get_string($conf, {key => "message_0239", variables => {
+				value	=>	$new_server_start_delay,
+			}})."<br />";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "db_error", value1 => $db_error,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# If there was no error, proceed.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "db_error", value1 => $db_error,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($db_error)
+		{
+			$database_changed = 0;
+		}
+		else
+		{
+			my $query = "
 UPDATE 
     server 
 SET 
-    server_note   = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+    server_note        = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
+    server_start_group = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_group).", 
+    server_start_delay = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_delay).", 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
-    server_uuid   = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# Did something in the hardware change?
@@ -3343,6 +3398,14 @@ WHERE
 			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
 			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
 		}
+	}
+	
+	# Was there an error?
+	if ($db_error)
+	{
+		print AN::Common::template($conf, "server.html", "update-server-db-error", {
+			error	=>	$db_error,
+		});
 	}
 	
 	# If the server is running, tell the user they need to power it off.
@@ -3992,31 +4055,41 @@ sub manage_vm
 		name1 => "boot select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: Servers are allowed to move around, so we don't check for a note on a given host.
-	# See if I have access to ScanCore and, if so, check for a note. Whether it has a note or not, if 
-	# there is an entry in server, show the note entry.
-	my $show_note = 0;
-	my $note_body = "";
-	my $note_date = "";
+	# See if I have access to ScanCore and, if so, check for a note, the start group and start delay. If 
+	# we have a database connection, show these options.
+	my $show_db_options    = 0;
+	my $server_note        = "";
+	my $modified_date      = "";
+	my $server_start_group = "";
+	my $server_start_delay = "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_uuid",         value1 => $server_uuid, 
 		name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($server_uuid) && ($an->data->{sys}{db_connections}))
 	{
-		   $show_note = 1;
-		my $results   = $an->Get->server_note({
-			server => $say_vm, 
-			anvil  => $cluster, 
+		# Connection! Show the DB options.
+		$show_db_options = 1;
+		
+		# Get the current DB data.
+		my $results = $an->Get->server_data({
+			uuid  => $server_uuid, 
+			anvil => $cluster, 
 		});
-		$note_body = $results->{note};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "show_note", value1 => $show_note, 
-			name2 => "note_body", value2 => $note_body, 
+		$server_note        = $results->{note};
+		$server_start_group = $results->{start_group};
+		$server_start_delay = $results->{start_delay};
+		$modified_date      = $results->{modified_date};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "show_db_options",    value1 => $show_db_options, 
+			name2 => "server_note",        value2 => $server_note, 
+			name3 => "server_start_group", value3 => $server_start_group, 
+			name4 => "server_start_delay", value4 => $server_start_delay, 
+			name5 => "modified_date",      value5 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "show_note", value1 => $show_note
+		name1 => "show_db_options", value1 => $show_db_options
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so now.
@@ -4354,14 +4427,17 @@ sub manage_vm
 	
 	# If we can show the note, do so
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "show_note", value1 => $show_note,
+		name1 => "show_db_options", value1 => $show_db_options,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $note_form = "";
-	if ($show_note)
+	if ($show_db_options)
 	{
-		$note_form = AN::Common::template($conf, "server.html", "start-server-show-note", {
-			server_note	=>	$note_body,
-			modified_date	=>	$note_date,
+		$modified_date =~ s/\..*//;
+		$note_form = AN::Common::template($conf, "server.html", "start-server-show-db-options", {
+			server_note		=>	$server_note,
+			server_start_group	=>	$server_start_group,
+			server_start_delay	=>	$server_start_delay,
+			modified_date		=>	$modified_date,
 		});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "note_form", value1 => $note_form,
@@ -4399,7 +4475,7 @@ sub manage_vm
 		server			=>	$conf->{cgi}{vm},
 		task			=>	$conf->{cgi}{task},
 		device_keys		=>	$conf->{vm}{$vm}{cdrom}{device_keys},
-		rowspan			=>	$show_note ? 7 : 5,
+		rowspan			=>	$show_db_options ? 10 : 5,
 	});
 	
 	return (0);

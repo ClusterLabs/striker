@@ -46,7 +46,7 @@
 # 30 - Failed to find custom striker configuration file.
 # 31 - Failed to start the databased server.
 # 32 - Failed to set postgres to start on boot
-# 33 - Failed to create the Striker databse user.
+# 33 - Failed to create the Striker database user.
 # 34 - Failed to create the Striker database.
 # 35 - Failed to load initial database tables.
 # 36 - Failed to restart database server.

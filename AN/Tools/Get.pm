@@ -91,8 +91,9 @@ sub local_users
 	return($users);
 }
 
-# This gets the note associated with a given server name,
-sub server_note
+# This gets the details (except the XML, use '$an->Get->server_xml()' for that) associated with a given 
+# server name,
+sub server_data
 {
 	my $self      = shift;
 	my $parameter = shift;
@@ -102,13 +103,15 @@ sub server_note
 		note	=>	"",
 		uuid	=>	"",
 	};
-	my $server = $parameter->{server};
-	my $anvil  = $parameter->{anvil}  ? $parameter->{anvil} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "server", value1 => $server, 
-		name2 => "anvil",  value2 => $anvil, 
+	my $server_name = $parameter->{server};
+	my $server_uuid = $parameter->{uuid};
+	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "server_name", value1 => $server_name, 
+		name2 => "server_uuid", value2 => $server_uuid, 
+		name3 => "anvil",       value3 => $anvil, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $server)
+	if ((not $server_name) && (not $server_uuid))
 	{
 		# No server? pur quois?!
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0051", code => 51, file => "$THIS_FILE", line => __LINE__});
@@ -116,10 +119,13 @@ sub server_note
 	}
 	
 	# Get the server's UUID.
-	my $server_uuid = $an->Get->server_uuid({
-		server => $server, 
-		anvil  => $anvil, 
-	});
+	if (not $server_uuid)
+	{
+		$server_uuid = $an->Get->server_uuid({
+			server => $server_name, 
+			anvil  => $anvil, 
+		});
+	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -129,12 +135,18 @@ sub server_note
 	{
 		my $query = "
 SELECT 
-    server_uuid, 
-    server_note 
+    server_name, 
+    server_stop_reason, 
+    server_start_group, 
+    server_start_delay, 
+    server_note, 
+    server_host, 
+    server_state, 
+    modified_date
 FROM 
     server 
 WHERE 
-    server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
@@ -148,18 +160,45 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
-			my $server_uuid = $row->[0];
-			my $server_data = $row->[1] ? $row->[1] : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "server_uuid", value1 => $server_uuid, 
-				name2 => "server_data", value2 => $server_data, 
+			my $server_name        = $row->[0];
+			my $server_stop_reason = $row->[1] ? $row->[1] : "";
+			my $server_start_group = $row->[2];
+			my $server_start_delay = $row->[3];
+			my $server_note        = $row->[4] ? $row->[4] : "";
+			my $server_host        = $row->[5] ? $row->[5] : "";
+			my $server_state       = $row->[6] ? $row->[6] : "";
+			my $modified_date      = $row->[7];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "server_name",        value1 => $server_name, 
+				name2 => "server_stop_reason", value2 => $server_stop_reason, 
+				name3 => "server_start_group", value3 => $server_start_group, 
+				name4 => "server_start_delay", value4 => $server_start_delay, 
+				name5 => "server_note",        value5 => $server_note, 
+				name6 => "server_host",        value6 => $server_host, 
+				name7 => "server_state",       value7 => $server_state, 
+				name8 => "modified_date",      value8 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$return->{uuid} = $server_uuid;
-			$return->{note} = $server_data;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "uuid", value1 => $return->{uuid}, 
-				name2 => "note", value2 => $return->{note}, 
+			# Push the values into the 'return' hash reference.
+			$return->{uuid}          = $server_uuid;
+			$return->{name}          = $server_name;
+			$return->{stop_reason}   = $server_stop_reason;
+			$return->{start_group}   = $server_start_group;
+			$return->{start_delay}   = $server_start_delay;
+			$return->{note}          = $server_note;
+			$return->{host}          = $server_host;
+			$return->{'state'}       = $server_state;
+			$return->{modified_date} = $modified_date;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "uuid",          value1 => $return->{uuid}, 
+				name2 => "name",          value2 => $return->{name}, 
+				name3 => "stop_reason",   value3 => $return->{stop_reason}, 
+				name4 => "start_group",   value4 => $return->{start_group}, 
+				name5 => "start_delay",   value5 => $return->{start_delay}, 
+				name6 => "note",          value6 => $return->{note}, 
+				name7 => "host",          value7 => $return->{host}, 
+				name8 => "state",         value8 => $return->{'state'}, 
+				name9 => "modified_date", value9 => $return->{modified_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}

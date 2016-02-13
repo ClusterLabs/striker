@@ -382,8 +382,8 @@ Variables:
 		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
 		
 		<!-- notice messages -->
-		<key name="notice_message_0001">The databse: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
-		<key name="notice_message_0002">The scan agent: [#!variable!agent!#] has initialized it's SQL schema in the databse: [#!variable!name!#] on the host: [#!variable!host!#]. If data from the agent exists on other databases, it should now be loaded on this database.</key>
+		<key name="notice_message_0001">The database: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
+		<key name="notice_message_0002">The scan agent: [#!variable!agent!#] has initialized it's SQL schema in the database: [#!variable!name!#] on the host: [#!variable!host!#]. If data from the agent exists on other databases, it should now be loaded on this database.</key>
 		<key name="notice_message_0003">Reading: [#!variable!file!#].</key>
 		<key name="notice_message_0004">SSH session opened to: [#!variable!target!#].</key>
 		<key name="notice_message_0005">SSH session closed to: [#!variable!target!#].</key>
