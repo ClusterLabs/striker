@@ -6775,6 +6775,7 @@ sub start_vm
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node              = $conf->{cgi}{node};
+	my $cluster           = $conf->{cgi}{cluster};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
 	my $vm                = $conf->{cgi}{vm};
 	my $say_vm            = $vm =~ /^vm:/ ? ($vm =~ /vm:(.*)/)[0] : $vm;
@@ -6804,7 +6805,8 @@ sub start_vm
 		print AN::Common::template($conf, "server.html", "start-server-header", {
 			title		=>	$say_title,
 		});
-
+		
+		my $server_started           = 0;
 		my $show_remote_desktop_link = 0;
 		my $shell_call = "clusvcadm -e vm:$vm -m $node_cluster_name";
 		my $password   = $conf->{sys}{root_password};
@@ -6842,6 +6844,7 @@ sub start_vm
 					name3 => "node",                        value3 => $node,
 					name4 => "vm::${vm_key}::current_host", value4 => $conf->{vm}{$vm_key}{current_host},
 				}, file => $THIS_FILE, line => __LINE__});
+				$server_started = 1;
 			}
 			elsif ($line =~ /Service is already running/i)
 			{
@@ -6917,6 +6920,11 @@ sub start_vm
 						# The VM failed to start. Call a stop against it.
 						print AN::Common::template($conf, "server.html", "start-server-failed-again");
 					}
+					elsif ($line =~ /Success/i)
+					{
+						# Worked.
+						$server_started = 1;
+					}
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
 					if (not $message)
@@ -6944,9 +6952,32 @@ sub start_vm
 			});
 		}
 		
-		if ($show_remote_desktop_link)
+		# Clear the 'clean' off state if we have a DB connection.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "server_started",      value1 => $server_started,
+			name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections},
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($server_started) && ($an->data->{sys}{db_connections}))
 		{
-			### Disabled
+			my $return = $an->Get->server_data({
+				server => $say_vm, 
+				anvil  => $cluster, 
+			});
+			my $server_uuid = $return->{uuid};
+			
+			my $query = "
+UPDATE 
+    server 
+SET 
+    server_stop_reason = '', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		}
 		
 		print AN::Common::template($conf, "server.html", "start-server-output-footer");
@@ -7105,8 +7136,9 @@ sub stop_vm
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node = $conf->{cgi}{node};
-	my $vm   = $conf->{cgi}{vm};
+	my $node    = $conf->{cgi}{node};
+	my $vm      = $conf->{cgi}{vm};
+	my $cluster = $conf->{cgi}{cluster};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "vm",   value1 => $vm,
 		name2 => "node", value2 => $node,
@@ -7177,6 +7209,33 @@ sub stop_vm
 		});
 	}
 	print AN::Common::template($conf, "server.html", "stop-server-footer");
+		
+	# Set the 'clean' off state if we have a DB connection.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::db_connections", value1 => $an->data->{sys}{db_connections},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{db_connections})
+	{
+		my $return = $an->Get->server_data({
+			server => $vm, 
+			anvil  => $cluster, 
+		});
+		my $server_uuid = $return->{uuid};
+		
+		my $query = "
+UPDATE 
+    server 
+SET 
+    server_stop_reason = 'clean', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
 	
 	return(0);
 }
