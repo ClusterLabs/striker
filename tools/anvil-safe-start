@@ -77,6 +77,7 @@ $an->Readable->base2(1);
 # * --enable  -> create an rc3.d link to call 'start' on boot
 # * --disable -> delete the rc3.d link.
 # * --state   -> Print whether a copy is running and whether it is enabled on boot or not.
+# * --status  -> Same as '--state'
 # * --force   -> Run even if disabled in striker.conf
 
 if (($an->data->{switches}{h})   or 
@@ -104,6 +105,17 @@ if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
 	# not.
 	report_state($an);
 	exit(0);
+}
+if ($an->data->{switches}{abort})
+{
+	# Create the /etc/rc3.d link.
+	abort_other_instances($an);
+	exit(0);
+}
+if (not $an->data->{switches}{force})
+{
+	# Exit if another instance is running already.
+	avoid_duplicate_run($an);
 }
 
 
@@ -154,6 +166,63 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This exits if any other instance of this program is running already.
+sub avoid_duplicate_run
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_other_instances" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $count = @{$pids};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count)
+	{
+		exit(1);
+	}
+	
+	return(0);
+}
+
+# This looks for other running instances and kills them.
+sub abort_other_instances
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_other_instances" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $count = @{$pids};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $pid (sort {$a cmp $b} @{$pids})
+	{
+		my $killed = kill 15, $pid;
+		if ($killed)
+		{
+			# He's dead, Jim.
+			print $an->String->get({key => "asst_message_0010", variables => { pid => $pid }})."\n";
+		}
+		else
+		{
+			# SIGTERM was not terminal enough...
+			my $die_already = kill 9, $pid;
+			if ($die_already)
+			{
+				print $an->String->get({key => "asst_message_0011", variables => { pid => $pid }})."\n";
+			}
+			else
+			{
+				# Fine, be stubborn, see if I care...
+				print $an->String->get({key => "asst_message_0012", variables => { pid => $pid }})."\n";
+			}
+		}
+	}
+	
+	return(0);
+}
 
 # This checks to see if an instance of the program is running. It also checks to see if the program is 
 # configured to run on boot.

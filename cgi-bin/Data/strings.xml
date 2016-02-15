@@ -2409,6 +2409,9 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0007">#!variable!this_file!# is running:</key>
 		<key name="asst_message_0008">- Process ID: [#!variable!pid!#]</key>
 		<key name="asst_message_0009">Not other instance of #!variable!this_file!# is running.</key>
+		<key name="asst_message_0010">Killed the process with ID: [#!variable!pid!#]</key>
+		<key name="asst_message_0011">[ Note ] - Killed the process with ID: [#!variable!pid!#], but SIGKILL was needed.</key>
+		<key name="asst_message_0012">[ Warning ] - Failed to kill (with SIGTERM) the process with ID: [#!variable!pid!#]!</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
