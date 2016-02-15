@@ -1143,6 +1143,90 @@ sub date_and_time
 	return ($date, $time);
 }
 
+# This returns the PIDs found in 'ps' for a given program name.
+sub pids
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What program?
+	if (not $parameter->{program_name})
+	{
+		return(-1);
+	}
+	
+	my $my_pid       = $$;
+	my $program_name = $parameter->{program_name};
+	my $pids         = [];
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "program_name", value1 => $program_name, 
+		name2 => "my_pid",       value2 => $my_pid,
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	
+	my $shell_call = $an->data->{path}{ps}." aux";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		if ($line =~ /^\S+ \d+ /)
+		{
+			my ($user, $pid, $cpu, $memory, $virtual_memory_size, $resident_set_size, $control_terminal, $state_codes, $start_time, $time, $command) = ($line =~ /^(\S+) (\d+) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*)$/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+				name1  => "user",                value1  => $user,
+				name2  => "pid",                 value2  => $pid,
+				name3  => "cpu",                 value3  => $cpu,
+				name4  => "memory",              value4  => $memory,
+				name5  => "virtual_memory_size", value5  => $virtual_memory_size,
+				name6  => "resident_set_size",   value6  => $resident_set_size,
+				name7  => "control_terminal",    value7  => $control_terminal,
+				name8  => "state_codes",         value8  => $state_codes,
+				name9  => "start_time",          value9  => $start_time,
+				name10 => "time",                value10 => $time,
+				name11 => "command",             value11 => $command,
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "command",      value1 => $command,
+				name2 => "program_name", value2 => $program_name, 
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			if ($command =~ /$program_name/)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "pid",    value1 => $pid,
+					name2 => "my_pid", value2 => $my_pid, 
+				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				if ($pid eq $my_pid)
+				{
+					# This is us! :D
+				}
+				else
+				{
+					push @{$pids}, $pid;
+				}
+			}
+		}
+	}
+	close $file_handle;
+	
+	return($pids);
+}
+
 # This uses 'anvil-report-memory' to get the amount of RAM used by a given program name.
 sub ram_used_by_program
 {

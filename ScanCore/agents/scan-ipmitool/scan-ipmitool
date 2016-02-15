@@ -20,6 +20,28 @@
 #   the IPMI and eth device share the same physical connector.
 # 
 =pod
+
+A Hung/crashed BMC will fail to reset with this:
+====
+[root@nr-c03n01 ~]# time ipmitool bmc reset cold
+Get Device ID command failed: 0xff Unspecified error
+Sent cold reset command to MC
+
+real	3m52.860s
+user	0m0.000s
+sys	0m0.002s
+====
+
+Seeing this, we need to ask the peer to power-cycle us (/shared/status/.node.helpme -> 'task = power_cycle')
+and set the health to 'warning'. We will call anvil-safe-stop.
+
+The peer, on seeing (/shared/status/.node.helpme -> 'task = power_cycle'), will start pinging the peer on the
+BCN and SN. Once there is no response, we will start a 60 second counter, then cut power to the PDUs for 60
+seconds, then restore power. We will then start pinging the IPMI interface. Once it responds, we will wait 60
+seconds and then try to power it back on.
+
+---------
+
 Change/set thresholds:
 
 From: https://forums.freenas.org/index.php?threads/how-to-change-sensor-thresholds-with-ipmi-using-ipmitool.23571/

@@ -98,6 +98,13 @@ if ($an->data->{switches}{disable})
 	remove_rc3d_symlink($an);
 	exit(0);
 }
+if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
+{
+	# Reports whether a instance is running at the moment or not and whether it is enabled on boot or 
+	# not.
+	report_state($an);
+	exit(0);
+}
 
 
 # Log our startup
@@ -148,10 +155,51 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This checks to see if an instance of the program is running. It also checks to see if the program is 
+# configured to run on boot.
+sub report_state
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is it enabled on boot?
+	if (-e $an->data->{path}{'anvil-safe-start_link'})
+	{
+		# Yup.
+		print $an->String->get({key => "asst_message_0005", variables => { this_file => $THIS_FILE }})."\n";
+	}
+	else
+	{
+		# Nope.
+		print $an->String->get({key => "asst_message_0006", variables => { this_file => $THIS_FILE }})."\n";
+	}
+	
+	# Is it running now?
+	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $count = @{$pids};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count)
+	{
+		# Yup.
+		print $an->String->get({key => "asst_message_0007", variables => { this_file => $THIS_FILE }})."\n";
+		foreach my $pid (sort {$a cmp $b} @{$pids})
+		{
+			print $an->String->get({key => "asst_message_0008", variables => { pid => $pid }})."\n";
+		}
+	}
+	else
+	{
+		print $an->String->get({key => "asst_message_0009", variables => { this_file => $THIS_FILE }})."\n";
+	}
+	
+	return(0);
+}
+
 # This creates the /etc/rc3.d/ symlink that runs this program on boot.
 sub create_rc3d_symlink
 {
-	($an);
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
@@ -163,20 +211,20 @@ sub create_rc3d_symlink
 	{
 		# Already exists, nothing to do.
 		$an->Log->entry({log_level => 2, message_key => "asst_log_0003", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0002"})."\n";
+		print $an->String->get({key => "asst_message_0002", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	else
 	{
 		# Create it.
-		my $target = $an-data->{path}{'anvil-safe-start'};
-		my $link   = $an-data->{path}{'anvil-safe-start_link'};
+		my $target = $an->data->{path}{'anvil-safe-start'};
+		my $link   = $an->data->{path}{'anvil-safe-start_link'};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target", value1 => $target, 
 			name2 => "link",   value2 => $link, 
 		}, file => $THIS_FILE, line => __LINE__});
 		symlink $target, $link or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0052", message_variables => { target => $target, 'link' => $link, error => $! }, code => 52, file => "$THIS_FILE", line => __LINE__});
 		$an->Log->entry({log_level => 2, message_key => "asst_log_0002", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0001"})."\n";
+		print $an->String->get({key => "asst_message_0001", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	
 	return(0);
@@ -185,7 +233,6 @@ sub create_rc3d_symlink
 # This removes the /etc/rc3.d/ symlink that runs this program on boot.
 sub remove_rc3d_symlink
 {
-	($an);
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
@@ -197,18 +244,19 @@ sub remove_rc3d_symlink
 	{
 		# Already gone, nothing to do.
 		$an->Log->entry({log_level => 2, message_key => "asst_log_0005", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0004"})."\n";
+		print $an->String->get({key => "asst_message_0004", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	else
 	{
 		# Remove it
-		my $file = $an-data->{path}{'anvil-safe-start_file'};
+		my $file = $an->data->{path}{'anvil-safe-start_file'};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "file", value1 => $file, 
 		}, file => $THIS_FILE, line => __LINE__});
-		unlink $link or or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0053", message_variables => { file => $link, error => $! }, code => 53, file => "$THIS_FILE", line => __LINE__});
+		
+		unlink $file or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0053", message_variables => { file => $file, error => $! }, code => 53, file => "$THIS_FILE", line => __LINE__});
 		$an->Log->entry({log_level => 2, message_key => "asst_log_0004", file => $THIS_FILE, line => __LINE__});
-		print $an->String->get({key => "asst_message_0003"})."\n";
+		print $an->String->get({key => "asst_message_0003", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	
 	return(0);

@@ -2404,6 +2404,11 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0002">#!variable!this_file!# was already enabled.</key>
 		<key name="asst_message_0003">#!variable!this_file!# has been disabled.</key>
 		<key name="asst_message_0004">#!variable!this_file!# was already disabled.</key>
+		<key name="asst_message_0005">#!variable!this_file!# will run when the system boots.</key>
+		<key name="asst_message_0006">#!variable!this_file!# will NOT run when the system boots.</key>
+		<key name="asst_message_0007">#!variable!this_file!# is running:</key>
+		<key name="asst_message_0008">- Process ID: [#!variable!pid!#]</key>
+		<key name="asst_message_0009">Not other instance of #!variable!this_file!# is running.</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
