@@ -119,6 +119,116 @@ sub ping
 	return($return_code);
 }
 
+# This reports whether a given daemon is running (locally or remotely). It return '0' if the daemon is NOT
+# running, '1' if it is and '2' if it is not found. If the return code wasn't expected, the returned state 
+# will be set to the return code. The caller will have to decide what to do.
+sub daemon
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	
+	my $state = 2;
+	if (not $parameter->{daemon})
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0054", code => 54, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $daemon   = $parameter->{daemon};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "daemon", value1 => $daemon, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### Return codes:
+	# 0   == Started
+	# 1   == Bad call
+	# 3   == Stopped
+	# 127 == File not found
+	
+	# If I have a host, we're checking the daemon state on a remote system.
+	my $shell_call  = $an->data->{path}{init.d}."/$daemon status 2>&1 > /dev/null; echo rc:\$?"
+	my $return_code = 9999;
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /rc:(\d+)/)
+			{
+				$return_code = $1;
+			}
+		}
+	}
+	else
+	{
+		# Local call
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /rc:(\d+)/)
+			{
+				$return_code = $1;
+			}
+		}
+		close $file_handle;
+	}
+	if ($return_code eq "0")
+	{
+		# It is running.
+		$state = 0;
+	}
+	elsif ($return_code eq "3")
+	{
+		# It is stopped.
+		$state = 1;
+	}
+	elsif ($return_code eq "127")
+	{
+		# It wasn't found.
+		$state = 1;
+	}
+	else
+	{
+		# No idea...
+		$state = $return_code;
+	}
+	
+	return($state);
+}
+
 # This private method is called my AN::Tools' constructor at startup and checks
 # the underlying OS and sets any internal variables as needed. It takes no
 # arguments and simply returns '1' when complete.

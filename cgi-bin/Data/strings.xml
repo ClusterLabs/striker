@@ -2398,6 +2398,12 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0003">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already exists.</key>
 		<key name="asst_log_0004">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was removed.</key>
 		<key name="asst_log_0005">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already removed.</key>
+		<key name="asst_log_0006">#!variable!this_file!# has finished.</key>
+		<key name="asst_log_0007">One or more of the network connections to my peer is down. Will check again in a moment.</key>
+		<key name="asst_log_0008">I appear to be node 2. I will sleep for a few minute to let node 1 try to start everything.</key>
+		<key name="asst_log_0009">There are not database connections available yet. Will wait a moment and then check again.</key>
+		<key name="asst_log_0010">There was a problem connecting to my peer: [#!variable!peer!#]. The error was: [#!variable!error!#]. I will pause for a bit and then try again.</key>
+		<key name="asst_log_0011">There was a problem connecting to my peer: [#!variable!peer!#]. I will pause for a bit and then try again.</key>
 		
 		<!-- normal messages -->
 		<key name="asst_message_0001">#!variable!this_file!# has been enabled.</key>

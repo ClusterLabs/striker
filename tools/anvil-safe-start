@@ -5,6 +5,7 @@
 # 
 # Exit Codes;
 # 0  = OK
+# 1  = Another instance was running
 #
 
 use strict;
@@ -50,6 +51,7 @@ my $an = AN::Tools->new({data => {
 			sn_name			=>	"",
 			ifn_name		=>	"",
 		},
+		daemon		=>	["cman", "rgmanager"],
 		sys		=>	{
 			i_am_node2		=>	0,
 			language		=>	"en_CA",
@@ -70,15 +72,6 @@ $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Readable->base2(1);
-
-### Invocations:
-# * Called with 'start'; Use 'anvil-delay-run' to fire anvil-safe-start momentarily.
-# * --abort   -> kill any running copy of anvil-safe-start and then exit.
-# * --enable  -> create an rc3.d link to call 'start' on boot
-# * --disable -> delete the rc3.d link.
-# * --state   -> Print whether a copy is running and whether it is enabled on boot or not.
-# * --status  -> Same as '--state'
-# * --force   -> Run even if disabled in striker.conf
 
 if (($an->data->{switches}{h})   or 
     ($an->data->{switches}{'?'}) or 
@@ -118,7 +111,6 @@ if (not $an->data->{switches}{force})
 	avoid_duplicate_run($an);
 }
 
-
 # Log our startup
 $an->Log->entry({log_level => 2, message_key => "asst_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
@@ -128,7 +120,7 @@ $an->Log->entry({log_level => 2, message_key => "asst_log_0001", message_variabl
 ### Process
 # 1. Check if I am enabled in striker.conf and that no other copies are running.
 # 2. Who am I and who is my peer?
-#    - Node 2 pauses for 30 seconds
+#    - Node 2 pauses for five minutes (this allows time for 'anvil-delay-run' to fire)
 # 3. Can I ping my peer on all three networks? Loop until true.
 #    - Wait here indefinately
 # 4. Check to see if cman/rgmanager was running.
@@ -150,22 +142,210 @@ $an->Log->entry({log_level => 2, message_key => "asst_log_0001", message_variabl
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
 
-# Wait until I can ping the peer on all three networks.
+# Wait until I can ping the peer on all three networks. This will not return until access is available on all
+# networks. There is no timeout.
+wait_for_access($an);
+
+# If I am node 2, sleep for five minutes.
+if ($an->data->{sys}{i_am_node2})
+{
+	$an->Log->entry({log_level => 2, message_key => "asst_log_0008", file => $THIS_FILE, line => __LINE__});
+	sleep 300;
+}
+
+# Make sure I can connect to at least one striker DB.
+my $connections = 0;
+until ($connections)
+{
+	$connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+	$an->Log->entry({log_level => 2, message_key => "scancore_log_0005", message_variables => {
+		connections	=>	$connections,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $connections)
+	{
+		$an->Log->entry({log_level => 2, message_key => "asst_log_0009", file => $THIS_FILE, line => __LINE__});
+		sleep 5;
+	}
+}
+
+# Make sure I can ssh into my peer.
+wait_for_peer_access($an);
+
+# Check the daemons.
 
 
-$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-	name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
-	name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
-	name3 => "sys::i_am_node2", value3 => $an->data->{sys}{i_am_node2}, 
+# We're done.
+$an->Log->entry({log_level => 2, message_key => "asst_log_0006", message_variables => {
+	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
-
-
 exit(0);
 
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Wait until I can ping the peer on all three networks. This will not return until access is available on all
+# networks. There is no timeout.
+sub wait_for_access
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $can_ping = 0;
+	until ($can_ping)
+	{
+		my $peer_bcn = $an->data->{peer}{bcn_name};
+		my $peer_sn  = $an->data->{peer}{sn_name};
+		my $peer_ifn = $an->data->{peer}{ifn_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "peer_bcn", value1 => $peer_bcn, 
+			name2 => "peer_sn",  value2 => $peer_sn, 
+			name3 => "peer_ifn", value3 => $peer_ifn, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $bcn_access = 0;
+		my $sn_access  = 0;
+		my $ifn_access = 0;
+		
+		# Test access now. RC == 0; pinged. 1 == no response.
+		my $bcn_return_code = $an->Check->ping({target => $peer_bcn});
+		my $sn_return_code  = $an->Check->ping({target => $peer_sn});
+		my $ifn_return_code = $an->Check->ping({target => $peer_ifn});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "bcn_return_code", value1 => $bcn_return_code, 
+			name2 => "sn_return_code",  value2 => $sn_return_code, 
+			name3 => "ifn_return_code", value3 => $ifn_return_code, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ((not $bcn_return_code) && (not $sn_return_code) && (not $ifn_return_code))
+		{
+			# We're good!
+			$can_ping = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "can_ping", value1 => $can_ping, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Something isn't responding, so sleep.
+			$an->Log->entry({log_level => 2, message_key => "asst_log_0007", file => $THIS_FILE, line => __LINE__});
+			sleep 5;
+		}
+	}
+	
+	my $access = 0;
+	until ($access)
+	{
+		my $target     = $an->data->{sys}{peer_node};
+		my $password   = $an->data->{sys}{anvil_password};
+		my $shell_call = $an->data->{path}{echo}." 1";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line eq "1")
+			{
+				$access = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "access", value1 => $access, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		if (not $access)
+		{
+			# Tell the user.
+			if ($error)
+			{
+				$an->Log->entry({log_level => 2, message_key => "asst_log_0010", message_variables => {
+					peer	=>	$target,
+					error	=>	$error, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$an->Log->entry({log_level => 2, message_key => "asst_log_0011", message_variables => {
+					peer	=>	$target,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			# Sleep a bit.
+			sleep 5;
+		}
+	}
+	
+	return(0);
+}
+
+# This figures out who I am, what Anvil! I am in and who my peer is.
+sub find_myself
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $hostname_full  = $an->hostname();
+	my $hostname_short = $an->short_hostname();
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "hostname_full",  value1 => $hostname_full, 
+		name2 => "hostname_short", value2 => $hostname_short, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Collect information about this Anvil!
+	my $return = $an->Get->local_anvil_details({
+		hostname_full	=>	$an->hostname,
+		hostname_short	=>	$an->short_hostname,
+		config_file	=>	$an->data->{path}{cluster_conf},
+	});
+	$an->data->{sys}{local_node}     = $return->{local_node};
+	$an->data->{sys}{peer_node}      = $return->{peer_node};
+	$an->data->{sys}{anvil_name}     = $return->{anvil_name};
+	$an->data->{sys}{anvil_password} = $return->{anvil_password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
+		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
+		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I am node 2, make note so that we can delay and let node 1 run first.
+	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))
+	{
+		$an->data->{sys}{i_am_node2} = 1;
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::i_am_node2", value1 => $an->data->{sys}{i_am_node2}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Figure out what my peer's BCN, SN and IFN names are
+	$an->data->{peer}{short_name} =  $an->data->{sys}{peer_node};
+	$an->data->{peer}{short_name} =~ s/\..*$//;
+	$an->data->{peer}{bcn_name}   = $an->data->{peer}{short_name}.".bcn";
+	$an->data->{peer}{sn_name}    = $an->data->{peer}{short_name}.".sn";
+	$an->data->{peer}{ifn_name}   = $an->data->{peer}{short_name}.".ifn";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "peer::short_name", value1 => $an->data->{peer}{short_name}, 
+		name2 => "peer::bcn_name",   value2 => $an->data->{peer}{bcn_name}, 
+		name3 => "peer::sn_name",    value3 => $an->data->{peer}{sn_name}, 
+		name4 => "peer::ifn_name",   value4 => $an->data->{peer}{ifn_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
 
 # This exits if any other instance of this program is running already.
 sub avoid_duplicate_run
@@ -327,53 +507,6 @@ sub remove_rc3d_symlink
 		$an->Log->entry({log_level => 2, message_key => "asst_log_0004", file => $THIS_FILE, line => __LINE__});
 		print $an->String->get({key => "asst_message_0003", variables => { this_file => $THIS_FILE }})."\n";
 	}
-	
-	return(0);
-}
-
-# This figures out who I am, what Anvil! I am in and who my peer is.
-sub find_myself
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $hostname_full  = $an->hostname();
-	my $hostname_short = $an->short_hostname();
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "hostname_full",  value1 => $hostname_full, 
-		name2 => "hostname_short", value2 => $hostname_short, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Collect information about this Anvil!
-	my $return = $an->Get->local_anvil_details({
-		hostname_full	=>	$an->hostname,
-		hostname_short	=>	$an->short_hostname,
-		config_file	=>	$an->data->{path}{cluster_conf},
-	});
-	$an->data->{sys}{local_node} = $return->{local_node};
-	$an->data->{sys}{peer_node}  = $return->{peer_node};
-	$an->data->{sys}{anvil_name} = $return->{anvil_name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
-		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
-		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If I am node 2, make note so that we can delay and let node 1 run first.
-	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))
-	{
-		$an->data->{sys}{i_am_node2} = 1;
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::i_am_node2", value1 => $an->data->{sys}{i_am_node2}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Figure out what my peer's BCN, SN and IFN names are
-	$an->data->{peer}{short_name} =  $an->data->{sys}{peer_node};
-	$an->data->{peer}{short_name} =~ s/\..*$//;
-	$an->data->{peer}{bcn_name}   = $an->data->{peer}{short_name}.".bcn";
-	$an->data->{peer}{sn_name}    = $an->data->{peer}{short_name}.".sn";
-	$an->data->{peer}{ifn_name}   = $an->data->{peer}{short_name}.".ifn";
 	
 	return(0);
 }

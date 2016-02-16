@@ -474,8 +474,9 @@ sub _set_paths
 	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
 	
 	# Directories
-	$an->data->{path}{shared}        = "/shared";
 	$an->data->{path}{definitions}   = "/shared/definitions";
+	$an->data->{path}{initd}         = "/etc/init.d";
+	$an->data->{path}{shared}        = "/shared";
 	
 	return(0);
 }

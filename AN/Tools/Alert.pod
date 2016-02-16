@@ -452,6 +452,10 @@ Failed to create a symbolic link.
 
 Failed to delete a file.
 
+=head2 C<54>
+
+The 'AN::Tools::Check->daemon()' method was called but the 'daemon' value wasn't set.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:
