@@ -394,6 +394,7 @@ Variables:
 		<key name="notice_message_0010">Adding the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts...</key>
 		<key name="notice_message_0011">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
 		<key name="notice_message_0012">Backed up: [#!variable!source!#] to: [#!variable!destination!#] on: [#!variable!host!#].</key>
+		<key name="notice_message_0013">Connected to: [#!variable!connections!#] database(s).</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>

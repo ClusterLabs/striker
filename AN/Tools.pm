@@ -471,8 +471,9 @@ sub _set_paths
 	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
 	$an->data->{path}{etc_hosts}     = "/etc/hosts";
 	$an->data->{path}{etc_passwd}    = "/etc/passwd";
+	$an->data->{path}{host_uuid}     = "/etc/striker/host.uuid";
 	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
-	
+
 	# Directories
 	$an->data->{path}{definitions}   = "/shared/definitions";
 	$an->data->{path}{initd}         = "/etc/init.d";

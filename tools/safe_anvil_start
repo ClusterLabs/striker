@@ -77,6 +77,7 @@ my $conf =  {
 		drbdadm			=>	"/sbin/drbdadm",
 		echo			=>	"/bin/echo",
 		fence_path		=>	"/usr/sbin",
+		host_uuid		=>	"/etc/striker/host.uuid",
 		hostname		=>	"/bin/hostname",
 		'kill'			=>	"/bin/kill",
 		ln			=>	"/bin/ln",

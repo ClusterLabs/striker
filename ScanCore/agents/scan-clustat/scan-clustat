@@ -117,7 +117,7 @@ if (parse_clustat($an))
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "scancore_log_0005", message_variables => {
+$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 

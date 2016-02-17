@@ -66,7 +66,7 @@ If you need any assistance, please feel free to contact #!string!scancore_brand_
 		<key name="scancore_log_0002">...free...</key>
 		<key name="scancore_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="scancore_log_0004">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#]. The file handle is: [#!variable!data_dbh!# (#!variable!dbh!#)].</key>
-		<key name="scancore_log_0005">Connected to: [#!variable!connections!#] database(s).</key>
+		<key name="scancore_log_0005">...free...</key>
 		<key name="scancore_log_0006">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
 		<key name="scancore_log_0007">Shell call: [#!variable!shell_call!#].</key>
 		<key name="scancore_log_0008">Committing changes to the database.</key>

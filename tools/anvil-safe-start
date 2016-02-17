@@ -51,7 +51,16 @@ my $an = AN::Tools->new({data => {
 			sn_name			=>	"",
 			ifn_name		=>	"",
 		},
-		daemon		=>	["cman", "rgmanager"],
+		daemon		=>	{
+			cman			=>	{
+				'local'			=>	0,
+				peer			=>	0,
+			},
+			rgmanager			=>	{
+				'local'			=>	0,
+				peer			=>	0,
+			},
+		},
 		sys		=>	{
 			i_am_node2		=>	0,
 			language		=>	"en_CA",
@@ -158,7 +167,7 @@ my $connections = 0;
 until ($connections)
 {
 	$connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-	$an->Log->entry({log_level => 2, message_key => "scancore_log_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
 		connections	=>	$connections,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $connections)
@@ -168,10 +177,8 @@ until ($connections)
 	}
 }
 
-# Make sure I can ssh into my peer.
-wait_for_peer_access($an);
-
-# Check the daemons.
+# Start the cluster
+start_the_cluster($an);
 
 
 # We're done.
@@ -185,12 +192,72 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This starts cman on both nodes, the starts DRBD, makes sure all is well (fixing it if not), the starts
+# clvmd and makes sure all LVs are ACTIVE and then mounts /shared. If that all goes well, rgmanager is 
+# started.
+sub start_the_cluster
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_the_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, check and start cman.
+	start_daemon_synchronously($an, "cman");
+	
+	
+	return(0);
+}
+
+# This starts a daemon on both nodes at the same time, if needed. If the daemon is running on the peer, it
+# just starts the daemon locally directly.
+sub start_daemon_synchronously
+{
+	my ($an, $daemon) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemon_synchronously" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "daemon", value1 => $daemon, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Check to see if the daemon is running locally and remotely. States are:
+	# 0 = Stopped
+	# 1 = Running
+	# 2 = Daemin not found
+	my $local_state  = $an->Check->daemon({daemon => $daemon});
+	my $remote_state = $an->Check->daemon({
+		daemon		=>	$daemon,
+		target		=>	$an->data->{sys}{peer_node}, 
+		password	=>	$an->data->{sys}{anvil_password},
+		port		=>	22,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "local_state",  value1 => $local_state, 
+		name2 => "remote_state", value2 => $remote_state, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ((not $local_state) && (not $remote_state))
+	{
+		# We need to synchronize the start on both nodes.
+	}
+	elsif ((not $local_state) && ($remote_state eq "1"))
+	{
+		# Start it locally, no need to sync.
+	}
+	elsif (($local_state eq "1") && (not $remote_state))
+	{
+		# Start it remotely, no need to sync.
+	}
+	else
+	{
+		# WTF?
+	}
+	
+	return(0);
+}
+
 # Wait until I can ping the peer on all three networks. This will not return until access is available on all
 # networks. There is no timeout.
 sub wait_for_access
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_for_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $can_ping = 0;
 	until ($can_ping)
@@ -239,10 +306,11 @@ sub wait_for_access
 	{
 		my $target     = $an->data->{sys}{peer_node};
 		my $password   = $an->data->{sys}{anvil_password};
+		my $port       = "";
 		my $shell_call = $an->data->{path}{echo}." 1";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $node,
+			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -294,7 +362,7 @@ sub wait_for_access
 sub find_myself
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_myself" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hostname_full  = $an->hostname();
 	my $hostname_short = $an->short_hostname();
@@ -351,7 +419,7 @@ sub find_myself
 sub avoid_duplicate_run
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_other_instances" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
 	my $count = @{$pids};
@@ -409,7 +477,7 @@ sub abort_other_instances
 sub report_state
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_rc3d_symlink" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "report_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Is it enabled on boot?
 	if (-e $an->data->{path}{'anvil-safe-start_link'})

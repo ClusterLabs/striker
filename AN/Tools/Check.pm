@@ -157,14 +157,14 @@ sub daemon
 	# 127 == File not found
 	
 	# If I have a host, we're checking the daemon state on a remote system.
-	my $shell_call  = $an->data->{path}{init.d}."/$daemon status 2>&1 > /dev/null; echo rc:\$?"
+	my $shell_call  = $an->data->{path}{initd}."/$daemon status 2>&1 > /dev/null; echo rc:\$?";
 	my $return_code = 9999;
 	if ($target)
 	{
 		# Remote call.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $node,
+			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -183,6 +183,9 @@ sub daemon
 			if ($line =~ /rc:(\d+)/)
 			{
 				$return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -201,31 +204,52 @@ sub daemon
 			if ($line =~ /rc:(\d+)/)
 			{
 				$return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;
 	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($return_code eq "0")
 	{
 		# It is running.
-		$state = 0;
+		$state = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($return_code eq "3")
 	{
 		# It is stopped.
-		$state = 1;
+		$state = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($return_code eq "127")
 	{
 		# It wasn't found.
-		$state = 1;
+		$state = 2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# No idea...
 		$state = $return_code;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "state", value1 => $state, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
 }
 
