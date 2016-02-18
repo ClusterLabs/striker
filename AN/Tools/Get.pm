@@ -7,6 +7,29 @@ use IO::Handle;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Get.pm";
 
+### Methods;
+# local_users
+# server_data
+# server_uuid
+# server_xml
+# users_home
+# rsa_public_key
+# uuid
+# say_am
+# say_pm
+# date_seperator
+# time_seperator
+# use_24h
+# date_and_time
+# pids
+# ram_used_by_program
+# get_ram_used_by_pid
+# switches
+# ip
+# remote_anvil_details
+# local_anvil_details
+# striker_peers
+
 
 sub new
 {
@@ -1163,25 +1186,64 @@ sub pids
 	
 	my $my_pid       = $$;
 	my $program_name = $parameter->{program_name};
-	my $pids         = [];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "program_name", value1 => $program_name, 
-		name2 => "my_pid",       value2 => $my_pid,
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	my $target       = $parameter->{target}       ? $parameter->{target}   : "";
+	my $port         = $parameter->{port}         ? $parameter->{port}     : "";
+	my $password     = $parameter->{password}     ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "my_pid",       value1 => $my_pid,
+		name2 => "program_name", value2 => $program_name, 
+		name3 => "target",       value3 => $target, 
+		name4 => "port",         value4 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	# If there is a target passed, we're checking a remote machine.
+	my $pids       = [];
+	my $return     = [];
 	my $shell_call = $an->data->{path}{ps}." aux";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-	while(<$file_handle>)
+	if ($target)
 	{
-		chomp;
-		my $line =  $_;
-		   $line =~ s/^\s+//;
-		   $line =~ s/\s+$//;
-		   $line =~ s/\s+/ /g;
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		if ($line =~ /^\S+ \d+ /)
@@ -1207,22 +1269,26 @@ sub pids
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 			if ($command =~ /$program_name/)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				# If we're calling locally and we see our own PID, skip it.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "pid",    value1 => $pid,
 					name2 => "my_pid", value2 => $my_pid, 
+					name3 => "target", value3 => $target, 
 				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-				if ($pid eq $my_pid)
+				if (($pid eq $my_pid) && (not $target))
 				{
 					# This is us! :D
 				}
 				else
 				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "pid", value1 => $pid,
+					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 					push @{$pids}, $pid;
 				}
 			}
 		}
 	}
-	close $file_handle;
 	
 	return($pids);
 }

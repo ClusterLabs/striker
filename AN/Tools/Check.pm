@@ -6,6 +6,14 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Check.pm";
 
+### Methods:
+# ping
+# kernel_module
+# daemon
+# drbd_resource
+# _os
+# _environment
+
 
 # The constructor
 sub new
@@ -352,7 +360,18 @@ sub drbd_resource
 		return("");
 	}
 	
-	my $state    = {};
+	my $state    = {
+		minor_number     => "",
+		connection_state => "",
+		this_role        => "",
+		peer_role        => "",
+		this_disk_state  => "",
+		peer_disk_state  => "",
+		resource_is_up   => 0,
+		percent_synced   => "",
+		synced_eta       => "",
+	};
+	my $drbd     = {};
 	my $resource = $parameter->{resource};
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
@@ -403,6 +422,7 @@ sub drbd_resource
 		}
 		close $file_handle;
 	}
+
 	$state->{resource_is_up} = 0;
 	foreach my $line (@{$return})
 	{
@@ -413,22 +433,143 @@ sub drbd_resource
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /\d+:$resource\/\d+ (.*?) (.*?)\/(.*?) (.*?)\/(.*)$/)
+		if ($line =~ /(\d+):$resource\/\d+ (.*?) (.*?)\/(.*?) (.*?)\/(.*)$/)
 		{
-			$state->{connection_state} = $1;
-			$state->{this_role}        = $2;
-			$state->{peer_role}        = $3;
-			$state->{this_disk_state}  = $4;
-			$state->{peer_disk_state}  = $5;
+			$state->{minor_number}     = $1;
+			$state->{connection_state} = $2;
+			$state->{this_role}        = $3;
+			$state->{peer_role}        = $4;
+			$state->{this_disk_state}  = $5;
+			$state->{peer_disk_state}  = $6;
 			$state->{resource_is_up}   = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "resource",         value1 => $resource, 
-				name2 => "connection_state", value2 => $state->{connection_state}, 
-				name3 => "this_role",        value3 => $state->{this_role}, 
-				name4 => "peer_role",        value4 => $state->{peer_role}, 
-				name5 => "this_disk_state",  value5 => $state->{this_disk_state}, 
-				name6 => "peer_disk_state",  value6 => $state->{peer_disk_state}, 
-				name7 => "resource_is_up",   value7 => $state->{resource_is_up}, 
+				name2 => "minor_number",     value2 => $state->{minor_number}, 
+				name3 => "connection_state", value3 => $state->{connection_state}, 
+				name4 => "this_role",        value4 => $state->{this_role}, 
+				name5 => "peer_role",        value5 => $state->{peer_role}, 
+				name6 => "this_disk_state",  value6 => $state->{this_disk_state}, 
+				name7 => "peer_disk_state",  value7 => $state->{peer_disk_state}, 
+				name8 => "resource_is_up",   value8 => $state->{resource_is_up}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Record the detail for when we parse /proc/drbd
+			$an->data->{drbd}{$resource}{minor_number}     = $state->{minor_number};
+		}
+	}
+	
+	# Read in /proc/drbd
+	$return = [];
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
+	if ($target)
+	{
+		# Working on the peer.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Working locally
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	my $in_resource = "";
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+): cs/)
+		{
+			my $minor_number = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "minor_number", value1 => $minor_number, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Find the resource name.
+			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}})
+			{
+				my $this_minor_number = $an->data->{drbd}{$resource}{minor_number};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "resource",          value1 => $resource, 
+					name2 => "this_minor_number", value2 => $this_minor_number, 
+					name3 => "minor_number",      value3 => $minor_number, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($this_minor_number eq $minor_number)
+				{
+					# Got it.
+					$in_resource = $resource;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "in_resource", value1 => $in_resource, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+		}
+		elsif ($line =~ /cs:/)
+		{
+			# This just checks to clear the resource if we missed a regex check and we've hit a 
+			# new resource.
+			$in_resource = "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_resource", value1 => $in_resource, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Only care if this is the resource the user asked for.
+		next if not $in_resource;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "resource",    value1 => $resource, 
+			name2 => "in_resource", value2 => $in_resource, 
+		}, file => $THIS_FILE, line => __LINE__});
+		next if $in_resource ne $resource;
+		
+		if ($line =~ /sync'ed: (.*?)%/)
+		{
+			$state->{percent_synced} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state->{percent_synced}", value1 => $state->{percent_synced}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /finish: (\d+):(\d+):(\d+) /)
+		{
+			my $hours          = $1;
+			my $minutes        = $2;
+			my $seconds        = $3;
+			my $total_seconds  = (($hours * 3600) + ($minutes * 60) + $seconds);
+			$state->{sync_eta} = $total_seconds;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "hours",             value1 => $hours, 
+				name2 => "minutes",           value2 => $minutes, 
+				name3 => "seconds",           value3 => $seconds, 
+				name4 => "state->{sync_eta}", value4 => $state->{sync_eta}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -472,10 +613,9 @@ sub _os
 	return (1);
 }
 
-# This private method is called my AN::Tools' constructor at startup and checks
-# the calling environment. It will set 'cli' or 'html' depending on what
-# environment variables are set. This in turn is used when displaying output to
-# the user.
+# This private method is called my AN::Tools' constructor at startup and checks the calling environment. It 
+# will set 'cli' or 'html' depending on what environment variables are set. This in turn is used when 
+# displaying output to the user.
 sub _environment
 {
 	my $self = shift;

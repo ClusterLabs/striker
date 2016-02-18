@@ -166,26 +166,10 @@ find_myself($an);
 wait_for_access($an);
 
 # If I am node 2, sleep for five minutes.
-if ($an->data->{sys}{i_am_node2})
-{
-	$an->Log->entry({log_level => 2, message_key => "asst_log_0008", file => $THIS_FILE, line => __LINE__});
-	sleep 300;
-}
+wait_if_node2($an);
 
-# Make sure I can connect to at least one striker DB.
-my $connections = 0;
-until ($connections)
-{
-	$connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-	$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
-		connections	=>	$connections,
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $connections)
-	{
-		$an->Log->entry({log_level => 2, message_key => "asst_log_0009", file => $THIS_FILE, line => __LINE__});
-		sleep 5;
-	}
-}
+# Now wait for access to a ScanCore database.
+wait_for_scancore_database($an);
 
 # Start the cluster
 start_the_cluster($an);
@@ -618,8 +602,123 @@ sub start_drbd
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
+	}
+	
+	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}{resource}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "resource", value1 => $resource, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If I am here, DRBD should be fully up.
+		# First, is the resource up yet?
+		my $local_resource = $an->Check->drbd_resource({resource => $resource});
+		my $peer_resource  = $an->Check->drbd_resource({
+			resource	=>	$resource,
+			target		=>	$an->data->{sys}{peer_node},
+			password	=>	$an->data->{sys}{anvil_password},
+		});
+		
+		# If I am here, DRBD should be fully up. See if we need to wait for DRBD to be UpToDate.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local_resource->{this_disk_state}", value1 => $local_resource->{this_disk_state}, 
+			name2 => "peer_resource->{this_disk_state}",  value2 => $peer_resource->{this_disk_state}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($local_resource->{this_disk_state} !~ /UpToDate/) or ($peer_resource->{this_disk_state} !~ /UpToDate/))
+		{
+			# Something isn't UpToDate, so lets see what we can do.
+			my $sync_eta = $local_resource->{sync_eta};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sync_eta", value1 => $sync_eta, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This will loop until we get access to at least one ScanCore database.
+sub wait_for_scancore_database
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_for_scancore_database" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I can connect to at least one striker DB.
+	my $connections = 0;
+	until ($connections)
+	{
+		$connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+		$an->Log->entry({log_level => 2, message_key => "notice_message_0013", message_variables => {
+			connections	=>	$connections,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $connections)
+		{
+			$an->Log->entry({log_level => 2, message_key => "asst_log_0009", file => $THIS_FILE, line => __LINE__});
+			sleep 5;
+		}
+	}
+	
+	return(0);
+}
+
+# This will wait for a bit, then check to see if node 1 is running anvil-safe-start. If it is, it will keep 
+# waiting until it exits. If it isn't, it will run without further delay.
+sub wait_if_node2
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_if_node2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{sys}{i_am_node2})
+	{
+		### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
+		###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
+		sleep 30;
+		my $pids = $an->Get->pids({
+			program_name	=>	$THIS_FILE, 
+			target		=>	$an->data->{sys}{peer_node}, 
+			password	=>	$an->data->{sys}{anvil_password},
+			port		=>	"",
+		});
+		my $count = @{$pids};
+		if (not $count)
+		{
+			# It still isn't running, so we probably booted while the peer didn't.
+			$an->Log->entry({log_level => 2, message_key => "asst_log_0013", message_variables => {
+				program	=>	$THIS_FILE, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Wait for it to finish.
+			my $wait = 1;
+			while ($wait)
+			{
+				my $pids = $an->Get->pids({
+					program_name	=>	$THIS_FILE, 
+					target		=>	$an->data->{sys}{peer_node}, 
+					password	=>	$an->data->{sys}{anvil_password},
+					port		=>	"",
+				});
+				my $count = @{$pids};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "count", value1 => $count, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($count)
+				{
+					sleep 10;
+					$an->Log->entry({log_level => 2, message_key => "asst_log_0008", message_variables => {
+						program	=>	$THIS_FILE, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# We're done waiting.
+					$wait = 0;
+					$an->Log->entry({log_level => 2, message_key => "asst_log_0012", message_variables => {
+						program	=>	$THIS_FILE, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
 	}
 	
 	return(0);

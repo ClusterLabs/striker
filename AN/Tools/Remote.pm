@@ -8,6 +8,17 @@ our $VERSION    = "0.1.001";
 my $THIS_FILE   = "Remote.pm";
 my $THIS_MODULE = "AN::Tools::Remote";
 
+### Methods:
+# add_rsa_key_to_target
+# generate_rsa_public_key
+# add_target_to_known_hosts
+# dual_command_run
+# synchronous_command_run
+# remote_call
+# _check_known_hosts_for_target
+# _call_ssh_keyscan
+
+
 sub new
 {
 	my $class = shift;

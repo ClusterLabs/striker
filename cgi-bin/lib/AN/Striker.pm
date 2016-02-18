@@ -7376,7 +7376,8 @@ sub dual_join
 
 		# Not call the command against both nodes using 'striker-delayed-run'.
 		my $command         = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
-		my ($node1, $node2) = @{$conf->{clusters}{$cluster}{nodes}}, $conf->{sys}{root_password})
+		my ($node1, $node2) = @{$conf->{clusters}{$cluster}{nodes}};
+		my $password        = $conf->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command", value1 => $command,
 			name2 => "node1",   value2 => $node1,
