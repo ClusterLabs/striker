@@ -119,6 +119,95 @@ sub ping
 	return($return_code);
 }
 
+# This reports back whether a kernel module is loaded or not.
+sub kernel_module
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	
+	my $state = 0;
+	if (not $parameter->{module})
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0055", code => 55, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $module   = $parameter->{module};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "module", value1 => $module, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### Return codes:
+	# 0 == not loaded or found
+	# 1 == module is loaded
+	
+	# If I have a host, we're checking the daemon state on a remote system.
+	my $shell_call = $an->data->{path}{lsmod};
+	my $return     = [];
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^$module\s/)
+		{
+			$state = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "state", value1 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "state", value1 => $state, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($state);
+}
+
 # This reports whether a given daemon is running (locally or remotely). It return '0' if the daemon is NOT
 # running, '1' if it is and '2' if it is not found. If the return code wasn't expected, the returned state 
 # will be set to the return code. The caller will have to decide what to do.
@@ -157,6 +246,7 @@ sub daemon
 	# 127 == File not found
 	
 	# If I have a host, we're checking the daemon state on a remote system.
+	my $return      = [];
 	my $shell_call  = $an->data->{path}{initd}."/$daemon status 2>&1 > /dev/null; echo rc:\$?";
 	my $return_code = 9999;
 	if ($target)
@@ -166,7 +256,7 @@ sub daemon
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
@@ -174,20 +264,6 @@ sub daemon
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($line =~ /rc:(\d+)/)
-			{
-				$return_code = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "return_code", value1 => $return_code, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
 	}
 	else
 	{
@@ -201,15 +277,23 @@ sub daemon
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($line =~ /rc:(\d+)/)
-			{
-				$return_code = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "return_code", value1 => $return_code, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
+			push @{$return}, $line;
 		}
 		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /rc:(\d+)/)
+		{
+			$return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
@@ -250,6 +334,105 @@ sub daemon
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
+	return($state);
+}
+
+# This simply checks a DRBD resource's state.
+sub drbd_resource
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	
+	if (not $parameter->{resource})
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0056", code => 56, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $state    = {};
+	my $resource = $parameter->{resource};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "resource", value1 => $resource, 
+		name2 => "target",   value2 => $target, 
+		name3 => "port",     value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return = [];
+	my $shell_call = $an->data->{path}{'drbd-overview'};
+	if ($target)
+	{
+		# Working on the peer.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Working locally
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	$state->{resource_is_up} = 0;
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /\d+:$resource\/\d+ (.*?) (.*?)\/(.*?) (.*?)\/(.*)$/)
+		{
+			$state->{connection_state} = $1;
+			$state->{this_role}        = $2;
+			$state->{peer_role}        = $3;
+			$state->{this_disk_state}  = $4;
+			$state->{peer_disk_state}  = $5;
+			$state->{resource_is_up}   = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "resource",         value1 => $resource, 
+				name2 => "connection_state", value2 => $state->{connection_state}, 
+				name3 => "this_role",        value3 => $state->{this_role}, 
+				name4 => "peer_role",        value4 => $state->{peer_role}, 
+				name5 => "this_disk_state",  value5 => $state->{this_disk_state}, 
+				name6 => "peer_disk_state",  value6 => $state->{peer_disk_state}, 
+				name7 => "resource_is_up",   value7 => $state->{resource_is_up}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
 	return($state);
 }
 

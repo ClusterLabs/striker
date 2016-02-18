@@ -5644,7 +5644,18 @@ sub start_cman
 		# on both at this point.
 		my $command  = "/etc/init.d/cman start";
 		my $password = $conf->{cgi}{anvil_node1_current_password};
-		AN::Common::run_command_on_both_nodes($conf, $command, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip}, $password);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "command",                     value1 => $command,
+			name2 => "cgi::anvil_node1_current_ip", value2 => $conf->{cgi}{anvil_node1_current_ip},
+			name3 => "cgi::anvil_node2_current_ip", value2 => $conf->{cgi}{anvil_node2_current_ip},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Remote->synchronous_command_run({
+			command		=>	$command, 
+			node1		=>	$conf->{cgi}{anvil_node1_current_ip}, 
+			node2		=>	$conf->{cgi}{anvil_node2_current_ip}, 
+			delay		=>	30,
+			password	=>	$password, 
+		});
 		
 		# Now see if that succeeded.
 		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});

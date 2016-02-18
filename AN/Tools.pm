@@ -440,44 +440,52 @@ sub _set_paths
 	my $an = $self;
 	
 	# Executables
-	$an->data->{path}{cat}           = "/bin/cat";
-	$an->data->{path}{'chmod'}       = "/bin/chmod";
-	$an->data->{path}{'chown'}       = "/bin/chown";
-	$an->data->{path}{cp}            = "/bin/cp";
-	$an->data->{path}{echo}          = "/bin/echo";
-	$an->data->{path}{expect}        = "/usr/bin/expect";
-	$an->data->{path}{'grep'}        = "/bin/grep";
-	$an->data->{path}{gethostip}     = "/usr/bin/gethostip";
-	$an->data->{path}{hostname}      = "/bin/hostname";
-	$an->data->{path}{'less'}        = "/usr/bin/less";
-	$an->data->{path}{ln}            = "/bin/ln";
-	$an->data->{path}{ls}            = "/bin/ls";
-	$an->data->{path}{'mkdir'}       = "/bin/mkdir";
-	$an->data->{path}{pg_dump}       = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}        = "/bin/ping",
-	$an->data->{path}{pgrep}         = "/usr/bin/pgrep";
-	$an->data->{path}{psql}          = "/usr/bin/psql";
-	$an->data->{path}{pmap}          = "/usr/bin/pmap";
-	$an->data->{path}{ps}            = "/bin/ps";
-	$an->data->{path}{rsync}         = "/usr/bin/rsync",
-	$an->data->{path}{sed}           = "/bin/sed",
-	$an->data->{path}{ssh}           = "/usr/bin/ssh";
-	$an->data->{path}{'ssh-keygen'}  = "/usr/bin/ssh-keygen";
-	$an->data->{path}{'ssh-keyscan'} = "/usr/bin/ssh-keyscan";
-	$an->data->{path}{'ssh-copy-id'} = "/usr/bin/ssh-copy-id",
-	$an->data->{path}{touch}         = "/bin/touch";
+	$an->data->{path}{cat}             = "/bin/cat";
+	$an->data->{path}{'chmod'}         = "/bin/chmod";
+	$an->data->{path}{'chown'}         = "/bin/chown";
+	$an->data->{path}{cp}              = "/bin/cp";
+	$an->data->{path}{drbdadm}         = "/sbin/drbdadm",
+	$an->data->{path}{'drbd-overview'} = "/usr/sbin/drbd-overview",
+	$an->data->{path}{echo}            = "/bin/echo";
+	$an->data->{path}{expect}          = "/usr/bin/expect";
+	$an->data->{path}{'grep'}          = "/bin/grep";
+	$an->data->{path}{gethostip}       = "/usr/bin/gethostip";
+	$an->data->{path}{hostname}        = "/bin/hostname";
+	$an->data->{path}{'less'}          = "/usr/bin/less";
+	$an->data->{path}{ln}              = "/bin/ln";
+	$an->data->{path}{ls}              = "/bin/ls";
+	$an->data->{path}{lsmod}           = "/sbin/lsmod";
+	$an->data->{path}{modprobe}        = "/sbin/modprobe";
+	$an->data->{path}{'mkdir'}         = "/bin/mkdir";
+	$an->data->{path}{pg_dump}         = "/usr/bin/pg_dump";
+	$an->data->{path}{'ping'}          = "/bin/ping",
+	$an->data->{path}{pgrep}           = "/usr/bin/pgrep";
+	$an->data->{path}{proc_drbd}       = "/proc/drbd";
+	$an->data->{path}{psql}            = "/usr/bin/psql";
+	$an->data->{path}{pmap}            = "/usr/bin/pmap";
+	$an->data->{path}{ps}              = "/bin/ps";
+	$an->data->{path}{rsync}           = "/usr/bin/rsync",
+	$an->data->{path}{sed}             = "/bin/sed",
+	$an->data->{path}{ssh}             = "/usr/bin/ssh";
+	$an->data->{path}{'ssh-keygen'}    = "/usr/bin/ssh-keygen";
+	$an->data->{path}{'ssh-keyscan'}   = "/usr/bin/ssh-keyscan";
+	$an->data->{path}{'ssh-copy-id'}   = "/usr/bin/ssh-copy-id",
+	$an->data->{path}{touch}           = "/bin/touch";
 	
 	# Text files
-	$an->data->{path}{cman_config}   = "/etc/cluster/cluster.conf";
-	$an->data->{path}{etc_hosts}     = "/etc/hosts";
-	$an->data->{path}{etc_passwd}    = "/etc/passwd";
-	$an->data->{path}{host_uuid}     = "/etc/striker/host.uuid";
-	$an->data->{path}{ssh_config}    = "/etc/ssh/ssh_config";
+	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
+	$an->data->{path}{etc_hosts}       = "/etc/hosts";
+	$an->data->{path}{etc_passwd}      = "/etc/passwd";
+	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
+	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
 
 	# Directories
-	$an->data->{path}{definitions}   = "/shared/definitions";
-	$an->data->{path}{initd}         = "/etc/init.d";
-	$an->data->{path}{shared}        = "/shared";
+	$an->data->{path}{definitions}     = "/shared/definitions";
+	$an->data->{path}{initd}           = "/etc/init.d";
+	$an->data->{path}{shared}          = "/shared";
+	
+	# Tools
+	$an->data->{path}{'striker-delayed-run'} = "/sbin/striker/striker-delayed-run";
 	
 	return(0);
 }

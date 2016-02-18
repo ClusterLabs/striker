@@ -6,6 +6,14 @@
 # Exit Codes;
 # 0  = OK
 # 1  = Another instance was running
+# 2  = Failed to load drbd kernel module
+# 3  = Unexpected module state
+# 4  = Unexpected daemon state
+# 5  = Daemon not installed on the local node.
+# 6  = Daemon not installed on the peer node.
+# 7  = A daemon failed to start on one of the nodes.
+# 8  = A DRBD resource on the peer failed to connect.
+# 9  = A DRBD resource on the local machine failed to connect.
 #
 
 use strict;
@@ -36,7 +44,6 @@ my $time = time;
 my $an = AN::Tools->new({data => {
 		path		=>	{
 			cluster_conf		=>	"/etc/cluster/cluster.conf", 
-			'less'			=>	"/usr/bin/less",
 			log_file		=>	"/var/log/striker.log",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
@@ -60,6 +67,9 @@ my $an = AN::Tools->new({data => {
 				'local'			=>	0,
 				peer			=>	0,
 			},
+		},
+		drbd		=>	{
+			resource		=>	{},
 		},
 		sys		=>	{
 			i_am_node2		=>	0,
@@ -201,19 +211,428 @@ sub start_the_cluster
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_the_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, check and start cman.
-	start_daemon_synchronously($an, "cman");
+	start_daemons($an, "cman", 1);
 	
+	# Now start drbd manually.
+	start_drbd($an);
+	
+	
+	return(0);
+}
+
+# This starts drbd on both nodes and makes sure it starts cleanly.
+sub start_drbd
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_the_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Check to see if the daemon is running locally and remotely. States are:
+	# 0 = Not loaded or not found
+	# 1 = Loaded
+	my $module       = "drbd";
+	my $local_state  = $an->Check->kernel_module({module => $module});
+	my $remote_state = $an->Check->kernel_module({
+		module		=>	$module,
+		target		=>	$an->data->{sys}{peer_node}, 
+		password	=>	$an->data->{sys}{anvil_password},
+		port		=>	"",
+	});
+	my $shell_call = $an->data->{path}{modprobe}." $module";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "local_state",  value1 => $local_state, 
+		name2 => "remote_state", value2 => $remote_state, 
+		name3 => "shell_call",   value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ((not $local_state) && (not $remote_state))
+	{
+		# We need to load DRBD on both nodes
+		my $command = $shell_call;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "command",        value1 => $command,
+			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($output) = $an->Remote->dual_command_run({
+			command		=>	$command, 
+			node1		=>	"local", 
+			node2		=>	$an->data->{sys}{peer_node}, 
+			delay		=>	10,
+			password	=>	$an->data->{sys}{anvil_password}, 
+		});
+		foreach my $node ("local", $an->data->{sys}{peer_node})
+		{
+			foreach my $line (split/\n/, $output->{$node})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	elsif ((not $local_state) && ($remote_state))
+	{
+		# Start it locally, no need to sync.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	elsif (($local_state) && (not $remote_state))
+	{
+		# Start it remotely, no need to sync.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call",     value1 => $shell_call,
+			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$an->data->{sys}{peer_node},
+			port		=>	"", 
+			password	=>	$an->data->{sys}{anvil_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif (($local_state) && ($remote_state))
+	{
+		# Already loaded on both nodes.
+		$an->Log->entry({log_level => 2, message_key => "asst_message_0014", message_variables => {
+			module => $module, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Unexpected state
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0002", message_variables => {
+			local_state	=>	$local_state,
+			remote_state	=>	$remote_state,
+		}, code => 3, file => "$THIS_FILE", line => __LINE__});
+		exit(3);
+	}
+	
+	# Make sure the modules are loaded now.
+	$local_state  = $an->Check->kernel_module({module => $module});
+	$remote_state = $an->Check->kernel_module({
+		module		=>	$module,
+		target		=>	$an->data->{sys}{peer_node}, 
+		password	=>	$an->data->{sys}{anvil_password},
+		port		=>	"",
+	});
+	if ((not $local_state) or (not $remote_state))
+	{
+		# What?!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0001", message_variables => {
+			local_state	=>	$local_state,
+			remote_state	=>	$remote_state,
+		}, code => 2, file => "$THIS_FILE", line => __LINE__});
+		exit(2);
+	}
+	
+	# Still alive? Good. Now see if I need to brind up DRBD's resource. Start by seeing which resources exist.
+	$shell_call = $an->data->{path}{drbdadm}." dump";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /resource (.*) {/)
+		{
+			my $resource = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "resource", value1 => $resource, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{drbd}{resource}{$resource}{exits} = 1;
+		}
+	}
+	close $file_handle;
+	
+	# Now loop through each resource and see if it is up on the nodes, and bring it up if not. Start with
+	# the remote node.
+	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}{resource}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "resource", value1 => $resource, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# First, is the resource up yet?
+		my $local_resource = $an->Check->drbd_resource({resource => $resource});
+		my $peer_resource  = $an->Check->drbd_resource({
+			resource	=>	$resource,
+			target		=>	$an->data->{sys}{peer_node},
+			password	=>	$an->data->{sys}{anvil_password},
+		});
+		
+		# I will call this if the resource needs to come up.
+		my $shell_call = $an->data->{path}{drbdadm}." up $resource";
+		
+		# Start the resource on the peer, then locally, if needed.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_resource->{resource_is_up}", value1 => $peer_resource->{resource_is_up}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $peer_resource->{resource_is_up})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call",     value1 => $shell_call,
+				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$an->data->{sys}{peer_node},
+				port		=>	"", 
+				password	=>	$an->data->{sys}{anvil_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Now wait for it to come up.
+			until ($peer_resource->{resource_is_up})
+			{
+				sleep 5;
+				$peer_resource = $an->Check->drbd_resource({
+					resource	=>	$resource,
+					target		=>	$an->data->{sys}{peer_node},
+					password	=>	$an->data->{sys}{anvil_password},
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_resource->{resource_is_up}", value1 => $peer_resource->{resource_is_up}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Make sure the resource is not 'StandAlone' and fix it if it is.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_resource->{connection_state}", value1 => $peer_resource->{connection_state}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($peer_resource->{connection_state} =~ /StandAlone/) 
+			{
+				# Tell it to connect
+				my $shell_call = $an->data->{path}{drbdadm}." connect $resource";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call",     value1 => $shell_call,
+					name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$an->data->{sys}{peer_node},
+					port		=>	"", 
+					password	=>	$an->data->{sys}{anvil_password},
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				
+				# Check now.
+				sleep 5;
+				$peer_resource = $an->Check->drbd_resource({
+					resource	=>	$resource,
+					target		=>	$an->data->{sys}{peer_node},
+					password	=>	$an->data->{sys}{anvil_password},
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_resource->{connection_state}", value1 => $peer_resource->{connection_state}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($peer_resource->{connection_state} =~ /StandAlone/) 
+				{
+					# Failed to Connect...
+					$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0007", message_variables => {
+						resource	=>	$resource, 
+					}, code => 8, file => "$THIS_FILE", line => __LINE__});
+					exit(8);
+				}
+			}
+		}
+		
+		# Now locally.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "local_resource->{resource_is_up}", value1 => $local_resource->{resource_is_up}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $local_resource->{resource_is_up})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			until ($local_resource->{resource_is_up})
+			{
+				sleep 5;
+				$local_resource = $an->Check->drbd_resource({resource => $resource});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_resource->{resource_is_up}", value1 => $local_resource->{resource_is_up}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Make sure the resource is not 'StandAlone' and fix it if it is.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_resource->{connection_state}", value1 => $local_resource->{connection_state}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($local_resource->{connection_state} =~ /StandAlone/) 
+			{
+				# Tell it to connect
+				my $shell_call = $an->data->{path}{drbdadm}." connect $resource";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+				
+				# Check now.
+				sleep 5;
+				$local_resource = $an->Check->drbd_resource({resource => $resource});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_resource->{connection_state}", value1 => $local_resource->{connection_state}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($local_resource->{connection_state} =~ /StandAlone/) 
+				{
+					# Failed to Connect...
+					$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0007", message_variables => {
+						resource	=>	$resource, 
+					}, code => 8, file => "$THIS_FILE", line => __LINE__});
+					exit(8);
+				}
+			}
+		}
+		
+		### If I am still alive here, the resource should be connected. So make sure both are Primary
+		### now.
+		# First the peer.
+		$shell_call = $an->data->{path}{drbdadm}." primary $resource";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_resource->{this_role}", value1 => $peer_resource->{this_role}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($peer_resource->{this_role} !~ /Primary/)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call",     value1 => $shell_call,
+				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$an->data->{sys}{peer_node},
+				port		=>	"", 
+				password	=>	$an->data->{sys}{anvil_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			until ($peer_resource->{this_role} =~ /Primary/i)
+			{
+				sleep 5;
+				$peer_resource = $an->Check->drbd_resource({
+					resource	=>	$resource,
+					target		=>	$an->data->{sys}{peer_node},
+					password	=>	$an->data->{sys}{anvil_password},
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_resource->{this_role}", value1 => $peer_resource->{this_role}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Now locally.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "local_resource->{this_role}", value1 => $local_resource->{this_role}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($local_resource->{this_role} !~ /Primary/)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+			
+			until ($local_resource->{this_role} =~ /Primary/i)
+			{
+				sleep 5;
+				$local_resource = $an->Check->drbd_resource({
+					resource	=>	$resource,
+					target		=>	$an->data->{sys}{local_node},
+					password	=>	$an->data->{sys}{anvil_password},
+				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_resource->{this_role}", value1 => $local_resource->{this_role}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# If I am here, DRBD should be fully up.
+	}
 	
 	return(0);
 }
 
 # This starts a daemon on both nodes at the same time, if needed. If the daemon is running on the peer, it
 # just starts the daemon locally directly.
-sub start_daemon_synchronously
+sub start_daemons
 {
-	my ($an, $daemon) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemon_synchronously" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "daemon", value1 => $daemon, 
+	my ($an, $daemon, $syncronous) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemons" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "daemon",     value1 => $daemon, 
+		name2 => "syncronous", value2 => $syncronous,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Check to see if the daemon is running locally and remotely. States are:
@@ -225,28 +644,177 @@ sub start_daemon_synchronously
 		daemon		=>	$daemon,
 		target		=>	$an->data->{sys}{peer_node}, 
 		password	=>	$an->data->{sys}{anvil_password},
-		port		=>	22,
+		port		=>	"",
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	my $shell_call = $an->data->{path}{initd}."/$daemon start";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "local_state",  value1 => $local_state, 
 		name2 => "remote_state", value2 => $remote_state, 
+		name3 => "shell_call",   value3 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if ((not $local_state) && (not $remote_state))
 	{
-		# We need to synchronize the start on both nodes.
+		if ($syncronous)
+		{
+			# We need to synchronize the start on both nodes.
+			my $command = $shell_call;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "command",        value1 => $command,
+				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($output) = $an->Remote->synchronous_command_run({
+				command		=>	$command, 
+				node1		=>	"local", 
+				node2		=>	$an->data->{sys}{peer_node}, 
+				delay		=>	10,
+				password	=>	$an->data->{sys}{anvil_password}, 
+			});
+			foreach my $node ("local", $an->data->{sys}{peer_node})
+			{
+				foreach my $line (split/\n/, $output->{$node})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		else
+		{
+			### Start them sequentially.
+			# First on the peer, then locally.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call",     value1 => $shell_call,
+				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$an->data->{sys}{peer_node},
+				port		=>	"", 
+				password	=>	$an->data->{sys}{anvil_password},
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# Now locally
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
 	}
 	elsif ((not $local_state) && ($remote_state eq "1"))
 	{
 		# Start it locally, no need to sync.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
 	}
 	elsif (($local_state eq "1") && (not $remote_state))
 	{
 		# Start it remotely, no need to sync.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call",     value1 => $shell_call,
+			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$an->data->{sys}{peer_node},
+			port		=>	"", 
+			password	=>	$an->data->{sys}{anvil_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif (($local_state eq "1") && ($remote_state eq "1"))
+	{
+		# Both are already running.
+		$an->Log->entry({log_level => 2, message_key => "asst_message_0013", message_variables => {
+			daemon => $daemon, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($local_state eq "2")
+	{
+		# Not installed locally
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0004", message_variables => {
+			daemon	=>	$daemon,
+		}, code => 5, file => "$THIS_FILE", line => __LINE__});
+		exit(5);
+	}
+	elsif ($remote_state eq "2")
+	{
+		# Not installed on the peer.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0005", message_variables => {
+			daemon	=>	$daemon,
+		}, code => 6, file => "$THIS_FILE", line => __LINE__});
+		exit(6);
 	}
 	else
 	{
-		# WTF?
+		# Unexpected state
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0003", message_variables => {
+			daemon		=>	$daemon,
+			local_state	=>	$local_state,
+			remote_state	=>	$remote_state,
+		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+		exit(4);
+	}
+	
+	# Check again to make sure the daemon is runnin on both nodes now.
+	$local_state  = $an->Check->daemon({daemon => $daemon});
+	$remote_state = $an->Check->daemon({
+		daemon		=>	$daemon,
+		target		=>	$an->data->{sys}{peer_node}, 
+		password	=>	$an->data->{sys}{anvil_password},
+		port		=>	"",
+	});
+	$shell_call = $an->data->{path}{initd}."/$daemon start";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "local_state",  value1 => $local_state, 
+		name2 => "remote_state", value2 => $remote_state, 
+		name3 => "shell_call",   value3 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($local_state ne "1") or ($remote_state ne "1"))
+	{
+		# Something went wrong.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0006", message_variables => {
+			daemon		=>	$daemon, 
+			local_state	=>	$local_state, 
+			remote_state	=>	$remote_state, 
+		}, code => 7, file => "$THIS_FILE", line => __LINE__});
+		exit(7);
 	}
 	
 	return(0);

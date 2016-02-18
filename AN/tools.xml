@@ -477,6 +477,9 @@ Variables:
 		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_note()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0052">Failed to create a symlink from: [#!variable!target!#] to: [#!variable!link!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0053">Failed to delete the file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_message_0054"><![CDATA[The 'AN::Tools::Check->daemon()' method was called but the 'daemon' value wasn't set.]]></key>
+		<key name="error_message_0055"><![CDATA[The 'AN::Tools::Check->kernel_module()' method was called but the 'module' value wasn't set.]]></key>
+		<key name="error_message_0056"><![CDATA[The 'AN::Tools::Check->drbd_resource()' method was called but the 'resource' value wasn't set.]]></key>
 	</lang>
 	
 	<!-- 日本語 -->

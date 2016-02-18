@@ -2035,7 +2035,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0261">Extra element in node: [#!variable!node!#]'s install manifest file: [#!variable!file!#] element: [#!variable!element!#].</key>
 		<key name="log_0262">Requested pool: [#!variable!pool!#] size was too big! Shrinking to: [#!variable!pool_size!#] (#!variable!hr_pool_size!#).</key>
 		<key name="log_0263">There was an error trying to start cluster communications. The error was: [#!variable!line!#].</key>
-		<key name="log_0264">Delayed run of the cluster communication layer startup set. Now waiting for the start up to occur. We will wait up to: [#!data!sys::delayed_run_timeout!#] seconds.</key>
+		<key name="log_0264">Delayed run of the cluster communication layer startup set. Waiting now for a few minutes for the start-up to occur.</key>
 		<key name="log_0265">Timed out waiting for a 'striker-delay-run' task to execute.</key>
 		<key name="log_0266">The 'striker-delay-run' program wasn't found at: [#!data!path::striker-delayed-run!#]!</key>
 		<key name="log_0267">DRBD does not appear to be running on node: [#!variable!node!#].</key>
@@ -2418,6 +2418,18 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0010">Killed the process with ID: [#!variable!pid!#]</key>
 		<key name="asst_message_0011">[ Note ] - Killed the process with ID: [#!variable!pid!#], but SIGKILL was needed.</key>
 		<key name="asst_message_0012">[ Warning ] - Failed to kill (with SIGTERM) the process with ID: [#!variable!pid!#]!</key>
+		<key name="asst_message_0013">The daemon: [#!variable!daemon!#] is already running on both nodes.</key>
+		<key name="asst_message_0014">The kernel module: [#!variable!module!#] is already loaded on both nodes.</key>
+		
+		<!-- error messages -->
+		<key name="asst_error_0001">Failed to start the DRBD kernel module on one of the nodes. Local: [#!variable!local_state!#], peer: [#!variable!peer_state!#] (1 == loaded).</key>
+		<key name="asst_error_0002">Unexpected DRBD kernel module state returned by AN::Tools::Check->kernel_module(). Expected '0' or '1' but got; Local: [#!variable!local_state!#], peer: [#!variable!remote_state!#].</key>
+		<key name="asst_error_0003">Unexpected daemon state returned by AN::Tools::Check->daemon() when checking the state of: [#!variable!daemon!#]. Expected '0', '1' or '2' but got; Local: [#!variable!local_state!#], peer: [#!variable!remote_state!#].</key>
+		<key name="asst_error_0004">The daemon: [#!variable!daemon!#] does not appear to installed on the local machine.</key>
+		<key name="asst_error_0005">The daemon: [#!variable!daemon!#] does not appear to installed on the peer machine.</key>
+		<key name="asst_error_0006">The daemon: [#!variable!daemon!#] appears to have not started on one of the nodes. Expected '1' but got: [#!variable!local_state!#], peer: [#!variable!remote_state!#].</key>
+		<key name="asst_error_0007">The DRBD resource: [#!variable!resource!#] on the peer node failed to connect.</key>
+		<key name="asst_error_0008">The local DRBD resource: [#!variable!resource!#] failed to connect.</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
