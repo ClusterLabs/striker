@@ -98,7 +98,7 @@ sub ping
 				# This isn't really needed, but might help folks watching the logs.
 				my $pings_sent     = $1;
 				my $pings_received = $2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "target",         value1 => $target, 
 					name2 => "pings_sent",     value2 => $pings_sent, 
 					name3 => "pings_received", value3 => $pings_received, 
@@ -147,7 +147,7 @@ sub kernel_module
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "module", value1 => $module, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -166,7 +166,7 @@ sub kernel_module
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -210,7 +210,7 @@ sub kernel_module
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
@@ -238,7 +238,7 @@ sub daemon
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -260,7 +260,7 @@ sub daemon
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -281,7 +281,7 @@ sub daemon
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -291,26 +291,26 @@ sub daemon
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /rc:(\d+)/)
 		{
 			$return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($return_code eq "0")
 	{
 		# It is running.
 		$state = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -318,7 +318,7 @@ sub daemon
 	{
 		# It is stopped.
 		$state = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -326,7 +326,7 @@ sub daemon
 	{
 		# It wasn't found.
 		$state = 2;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -334,12 +334,12 @@ sub daemon
 	{
 		# No idea...
 		$state = $return_code;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($state);
@@ -376,7 +376,7 @@ sub drbd_resource
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "resource", value1 => $resource, 
 		name2 => "target",   value2 => $target, 
 		name3 => "port",     value3 => $port, 
@@ -390,7 +390,7 @@ sub drbd_resource
 	if ($target)
 	{
 		# Working on the peer.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -406,7 +406,7 @@ sub drbd_resource
 	else
 	{
 		# Working locally
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -414,7 +414,7 @@ sub drbd_resource
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -429,7 +429,7 @@ sub drbd_resource
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -442,7 +442,7 @@ sub drbd_resource
 			$state->{this_disk_state}  = $5;
 			$state->{peer_disk_state}  = $6;
 			$state->{resource_is_up}   = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "resource",         value1 => $resource, 
 				name2 => "minor_number",     value2 => $state->{minor_number}, 
 				name3 => "connection_state", value3 => $state->{connection_state}, 
@@ -464,7 +464,7 @@ sub drbd_resource
 	if ($target)
 	{
 		# Working on the peer.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -480,7 +480,7 @@ sub drbd_resource
 	else
 	{
 		# Working locally
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -488,7 +488,7 @@ sub drbd_resource
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -502,14 +502,14 @@ sub drbd_resource
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^(\d+): cs/)
 		{
 			my $minor_number = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "minor_number", value1 => $minor_number, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -517,7 +517,7 @@ sub drbd_resource
 			foreach my $resource (sort {$a cmp $b} keys %{$an->data->{drbd}})
 			{
 				my $this_minor_number = $an->data->{drbd}{$resource}{minor_number};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "resource",          value1 => $resource, 
 					name2 => "this_minor_number", value2 => $this_minor_number, 
 					name3 => "minor_number",      value3 => $minor_number, 
@@ -526,7 +526,7 @@ sub drbd_resource
 				{
 					# Got it.
 					$in_resource = $resource;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "in_resource", value1 => $in_resource, 
 					}, file => $THIS_FILE, line => __LINE__});
 					last;
@@ -536,16 +536,16 @@ sub drbd_resource
 		elsif ($line =~ /cs:/)
 		{
 			# This just checks to clear the resource if we missed a regex check and we've hit a 
-			# new resource.
+			# new resource. It should never actually be hit.
 			$in_resource = "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_resource", value1 => $in_resource, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Only care if this is the resource the user asked for.
 		next if not $in_resource;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "resource",    value1 => $resource, 
 			name2 => "in_resource", value2 => $in_resource, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -554,7 +554,7 @@ sub drbd_resource
 		if ($line =~ /sync'ed: (.*?)%/)
 		{
 			$state->{percent_synced} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "state->{percent_synced}", value1 => $state->{percent_synced}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -565,7 +565,7 @@ sub drbd_resource
 			my $seconds        = $3;
 			my $total_seconds  = (($hours * 3600) + ($minutes * 60) + $seconds);
 			$state->{sync_eta} = $total_seconds;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "hours",             value1 => $hours, 
 				name2 => "minutes",           value2 => $minutes, 
 				name3 => "seconds",           value3 => $seconds, 

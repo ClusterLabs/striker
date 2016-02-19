@@ -339,7 +339,7 @@ sub dual_command_run
 		name5 => "hostname",       value5 => $an->hostname,
 		name6 => "short_hostname", value6 => $an->short_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -356,7 +356,7 @@ sub dual_command_run
 		if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 		{
 			# Local call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -376,7 +376,7 @@ sub dual_command_run
 		{
 			# Remote call
 			my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",       value1 => $node,
 				name2 => "port",       value2 => $port,
 				name3 => "shell_call", value3 => $shell_call,
@@ -392,12 +392,12 @@ sub dual_command_run
 		}
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->data->{node}{$node}{output} = $line;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$output->{$node} .= "$line\n";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output},
 			}, file => $THIS_FILE, line => __LINE__});
 		}

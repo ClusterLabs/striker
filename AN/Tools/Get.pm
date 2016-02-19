@@ -129,7 +129,7 @@ sub server_data
 	my $server_name = $parameter->{server};
 	my $server_uuid = $parameter->{uuid};
 	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -149,7 +149,7 @@ sub server_data
 			anvil  => $anvil, 
 		});
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -171,13 +171,13 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -191,7 +191,7 @@ WHERE
 			my $server_host        = $row->[5] ? $row->[5] : "";
 			my $server_state       = $row->[6] ? $row->[6] : "";
 			my $modified_date      = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "server_name",        value1 => $server_name, 
 				name2 => "server_stop_reason", value2 => $server_stop_reason, 
 				name3 => "server_start_group", value3 => $server_start_group, 
@@ -212,7 +212,7 @@ WHERE
 			$return->{host}          = $server_host;
 			$return->{'state'}       = $server_state;
 			$return->{modified_date} = $modified_date;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "uuid",          value1 => $return->{uuid}, 
 				name2 => "name",          value2 => $return->{name}, 
 				name3 => "stop_reason",   value3 => $return->{stop_reason}, 
@@ -240,7 +240,7 @@ sub server_uuid
 	my $uuid = "";
 	my $server = $parameter->{server};
 	my $anvil  = $parameter->{anvil};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "anvil",  value2 => $anvil, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -266,7 +266,7 @@ sub server_uuid
 		   $node2           = $return->{node2};
 		   $node1_is_remote = 1;
 		   $anvil_password  = $return->{anvil_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node1",           value1 => $node1, 
 			name2 => "node2",           value2 => $node2, 
 			name3 => "node1_is_remote", value3 => $node1_is_remote, 
@@ -288,7 +288,7 @@ sub server_uuid
 		   $node1_is_remote = 0;
 		   $anvil           = $return->{anvil_name};
 		   $anvil_password  = $return->{anvil_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "node1",           value1 => $node1, 
 			name2 => "node2",           value2 => $node2, 
 			name3 => "node1_is_remote", value3 => $node1_is_remote, 
@@ -325,7 +325,7 @@ sub server_uuid
 	}
 	
 	# If I still don't have XML, try to see if we have it in the database.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "length(xml)",         value1 => length($xml), 
 		name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -339,17 +339,17 @@ FROM
 WHERE 
     server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$xml = $an->DB->do_db_query({query => $query})->[0]->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "length(xml)", value1 => length($xml), 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I still don't have XML, then I am out of ideas...
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "length(xml)", value1 => length($xml), 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($xml)
@@ -385,7 +385,7 @@ sub server_xml
 	my $node     = $parameter->{node};
 	my $server   = $parameter->{server};
 	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "remote", value1 => $remote, 
 		name2 => "node",   value2 => $node, 
 		name3 => "server", value3 => $server, 
@@ -400,7 +400,7 @@ sub server_xml
 	if ($remote)
 	{
 		# It is remote. Note that the node might not be accessible.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -417,7 +417,7 @@ sub server_xml
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -445,7 +445,7 @@ sub server_xml
 		{
 			# Found it here, read in it's XML.
 			my $shell_call = "virsh dumpxml $server";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "target",     value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -474,7 +474,7 @@ sub server_xml
 		}
 		
 		# If I still don't have XML data, try to find the server's XML file in /shared/definitions.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "length(xml)", value1 => length($xml), 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $xml)
@@ -486,7 +486,7 @@ then
     ".$an->data->{path}{cat}." $definitions_file;
 fi
 ";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "target",     value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -510,7 +510,7 @@ fi
 	else
 	{
 		# It is local.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -549,7 +549,7 @@ fi
 		{
 			# Found it here, read in it's XML.
 			my $shell_call = "virsh dumpxml $server";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -560,7 +560,7 @@ fi
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
 				$line =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -578,7 +578,7 @@ fi
 		
 		# If I still don't have XML data, try to find the server's XML file in /shared/definitions.
 		my $definitions_file = $an->data->{path}{definitions}."/${server}.xml";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "length(xml)",      value1 => length($xml), 
 			name2 => "definitions_file", value2 => $definitions_file, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1189,7 +1189,7 @@ sub pids
 	my $target       = $parameter->{target}       ? $parameter->{target}   : "";
 	my $port         = $parameter->{port}         ? $parameter->{port}     : "";
 	my $password     = $parameter->{password}     ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "my_pid",       value1 => $my_pid,
 		name2 => "program_name", value2 => $program_name, 
 		name3 => "target",       value3 => $target, 
@@ -1206,7 +1206,7 @@ sub pids
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1230,7 +1230,7 @@ sub pids
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 			
@@ -1243,7 +1243,7 @@ sub pids
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 		if ($line =~ /^\S+ \d+ /)
@@ -1263,14 +1263,14 @@ sub pids
 				name11 => "command",             value11 => $command,
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "command",      value1 => $command,
 				name2 => "program_name", value2 => $program_name, 
 			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 			if ($command =~ /$program_name/)
 			{
 				# If we're calling locally and we see our own PID, skip it.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "pid",    value1 => $pid,
 					name2 => "my_pid", value2 => $my_pid, 
 					name3 => "target", value3 => $target, 
@@ -1281,7 +1281,7 @@ sub pids
 				}
 				else
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "pid", value1 => $pid,
 					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 					push @{$pids}, $pid;
@@ -1481,7 +1481,7 @@ sub ip
 	
 	my $ip         = "";
 	my $shell_call = $an->data->{path}{gethostip}." -d $host";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -1489,7 +1489,7 @@ sub ip
 	{
 		chomp;
 		$ip = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip", value1 => $ip, 
 		}, file => $THIS_FILE, line => __LINE__});
 		last;
@@ -1535,7 +1535,7 @@ sub remote_anvil_details
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1", value1 => $return->{node1}, 
 		name2 => "node2", value2 => $return->{node2}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1675,7 +1675,7 @@ sub striker_peers
 	my $i_am_short = $an->short_hostname();
 	my $local_id   = "";
 	my $db_count   = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "i_am_long",  value1 => $i_am_long, 
 		name2 => "i_am_short", value2 => $i_am_short, 
 		name3 => "local_id",   value3 => $local_id, 
@@ -1685,7 +1685,7 @@ sub striker_peers
 	{
 		   $db_count++;
 		my $this_host = $an->data->{scancore}{db}{$id}{host};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "this_host", value1 => $this_host, 
 			name2 => "db_count",  value2 => $db_count, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1693,7 +1693,7 @@ sub striker_peers
 		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
 		{
 			$local_id = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "local_id", value1 => $local_id, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1706,7 +1706,7 @@ sub striker_peers
 		{
 			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
 			my $peer_password = $an->data->{scancore}{db}{$id}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "peer_name",     value1 => $peer_name, 
 				name2 => "peer_password", value2 => $peer_password, 
 			}, file => $THIS_FILE, line => __LINE__});

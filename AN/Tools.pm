@@ -455,7 +455,10 @@ sub _set_paths
 	$an->data->{path}{ln}              = "/bin/ln";
 	$an->data->{path}{ls}              = "/bin/ls";
 	$an->data->{path}{lsmod}           = "/sbin/lsmod";
+	$an->data->{path}{lvchange}        = "/sbin/lvchange";
+	$an->data->{path}{lvscan}          = "/sbin/lvscan";
 	$an->data->{path}{modprobe}        = "/sbin/modprobe";
+	$an->data->{path}{mount}           = "/bin/mount";
 	$an->data->{path}{'mkdir'}         = "/bin/mkdir";
 	$an->data->{path}{pg_dump}         = "/usr/bin/pg_dump";
 	$an->data->{path}{'ping'}          = "/bin/ping",
@@ -464,6 +467,8 @@ sub _set_paths
 	$an->data->{path}{psql}            = "/usr/bin/psql";
 	$an->data->{path}{pmap}            = "/usr/bin/pmap";
 	$an->data->{path}{ps}              = "/bin/ps";
+	$an->data->{path}{pvchange}        = "/sbin/pvchange";
+	$an->data->{path}{pvscan}          = "/sbin/pvscan";
 	$an->data->{path}{rsync}           = "/usr/bin/rsync",
 	$an->data->{path}{sed}             = "/bin/sed",
 	$an->data->{path}{ssh}             = "/usr/bin/ssh";
@@ -471,6 +476,8 @@ sub _set_paths
 	$an->data->{path}{'ssh-keyscan'}   = "/usr/bin/ssh-keyscan";
 	$an->data->{path}{'ssh-copy-id'}   = "/usr/bin/ssh-copy-id",
 	$an->data->{path}{touch}           = "/bin/touch";
+	$an->data->{path}{vgchange}        = "/sbin/vgchange";
+	$an->data->{path}{vgscan}          = "/sbin/vgscan";
 	
 	# Text files
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";

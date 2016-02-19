@@ -2392,7 +2392,8 @@ Deadline Scheduler Configuration (sda):
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 		<key name="aft_error_0005"><![CDATA[The '--runtime X' switch must be set to an integer (number of seconds to run for per loop).]]></key>
 		
-		<!-- anvil-safe-start; Configure Virtual Machine Manager -->
+
+		<!-- anvil-safe-start -->
 		<key name="asst_log_0001">#!variable!this_file!# has started.</key>
 		<key name="asst_log_0002">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] was created.</key>
 		<key name="asst_log_0003">The rc3.d symlink: [#!data!path::anvil-safe-start_link!#] already exists.</key>
@@ -2406,6 +2407,16 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0011">There was a problem connecting to my peer: [#!variable!peer!#]. I will pause for a bit and then try again.</key>
 		<key name="asst_log_0012">The peer no longer appears to be running: [#!variable!program!#], proceeding with our run.</key>
 		<key name="asst_log_0013">I appear to be node 2, but the peer does not appear to be running: [#!variable!program!#], so I will proceed with our run.</key>
+		<key name="asst_log_0014">The estimated resync time for the DRBD resource: [#!variable!resource!#] is: [#!variable!sync_eta!#] seconds, which is over the maximum wait time of: [#!data!sys::resync_max_wait_time!#] second. Boosting the sync speed and will recheck the ETA in a few moments. Note that this maximum wait time can be configured via 'sys::resync_max_wait_time = X'.</key>
+		<key name="asst_log_0015">After boosting resync speed for the DRBD resource: [#!variable!resource!#], the estimated resync time is: [#!variable!sync_eta!#] seconds. This is too long, so the resource will be reset to config values and it will be left to resync after the servers have booted.</key>
+		<key name="asst_log_0016">After boosting resync speed for the DRBD resource: [#!variable!resource!#], the estimated resync time is: [#!variable!sync_eta!#] seconds. This is short enough that we will wait for it to finish sync'ing before proceeding.</key>
+		<key name="asst_log_0017">The DRBD resource: [#!variable!resource!#] is now synchronized, proceeding.</key>
+		<key name="asst_log_0018">The DRBD resource: [#!variable!resource!#] is estimated to complete synchronization in: [#!variable!sync_eta!#] seconds. Continuing to wait.</key>
+		<key name="asst_log_0019">The DRBD resource: [#!variable!resource!#] is already synchronized, proceeding.</key>
+		<key name="asst_log_0020">[ Error ] - The clustered logical volume: [#!variable!logical_volume!#] on: [#!variable!node!#] is still 'inactive'.</key>
+		<key name="asst_log_0021">The clustered logical volume: [#!variable!logical_volume!#] on: [#!variable!node!#] is 'inactive'. Will attempt to activate it now.</key>
+		<key name="asst_log_0022">All clustered logical volumes are now active.</key>
+		<key name="asst_log_0023">[ Error ] - Failed to mount the shared cluster file system on: [#!variable!node!#].</key>
 		
 		<!-- normal messages -->
 		<key name="asst_message_0001">#!variable!this_file!# has been enabled.</key>
@@ -2432,6 +2443,8 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_error_0006">The daemon: [#!variable!daemon!#] appears to have not started on one of the nodes. Expected '1' but got: [#!variable!local_state!#], peer: [#!variable!remote_state!#].</key>
 		<key name="asst_error_0007">The DRBD resource: [#!variable!resource!#] on the peer node failed to connect.</key>
 		<key name="asst_error_0008">The local DRBD resource: [#!variable!resource!#] failed to connect.</key>
+		<key name="asst_error_0009">One of more clustered logical volumes is 'inactive'. Unable to proceed.</key>
+		<key name="asst_error_0010">The 'shared' cluster file system failed to mount on one or both nodes. Unable to proceed.</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
