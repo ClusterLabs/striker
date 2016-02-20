@@ -109,6 +109,7 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
 			maximum_ram		=>	(128 * 1048576),
 			# When both/all UPSes powering a node switch to batteries, their remaining hold-up 
 			# time will be checked and the strongest will be compared against this value. If the
@@ -171,6 +172,7 @@ $an->default_log_file    ($an->data->{scancore}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{scancore}{log_level});
+$an->Log->db_transactions(1) if $an->data->{scancore}{log_db_transactions};
 
 # Read in strings now.
 $an->String->read_words({file => $an->data->{path}{scancore_strings}});
@@ -3752,7 +3754,7 @@ SELECT
     server_uuid,
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_note, 
     server_definition, 
@@ -3777,7 +3779,7 @@ FROM
 			my $server_uuid        = $row->[0];
 			my $server_name        = $row->[1];
 			my $server_stop_reason = $row->[2];
-			my $server_start_group = $row->[3];
+			my $server_start_after = $row->[3];
 			my $server_start_delay = $row->[4];
 			my $server_note        = $row->[5];
 			my $server_definition  = $row->[6];
@@ -3788,7 +3790,7 @@ FROM
 				name1  => "server_uuid",        value1  => $server_uuid, 
 				name2  => "server_name",        value2  => $server_name, 
 				name3  => "server_stop_reason", value3  => $server_stop_reason, 
-				name4  => "server_start_group", value4  => $server_start_group, 
+				name4  => "server_start_after", value4  => $server_start_after, 
 				name5  => "server_start_delay", value5  => $server_start_delay, 
 				name6  => "server_note",        value6  => $server_note, 
 				name7  => "server_definition",  value7  => $server_definition, 
@@ -3801,7 +3803,7 @@ FROM
 			$an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
 				server_name		=>	$server_name, 
 				server_stop_reason	=>	$server_stop_reason, 
-				server_start_group	=>	$server_start_group, 
+				server_start_after	=>	$server_start_after, 
 				server_start_delay	=>	$server_start_delay, 
 				server_note		=>	$server_note, 
 				server_definition	=>	$server_definition, 
@@ -3814,7 +3816,7 @@ FROM
 			$an->data->{db_data}{$id}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid} = {
 				server_name		=>	$server_name, 
 				server_stop_reason	=>	$server_stop_reason, 
-				server_start_group	=>	$server_start_group, 
+				server_start_after	=>	$server_start_after, 
 				server_start_delay	=>	$server_start_delay, 
 				server_note		=>	$server_note, 
 				server_definition	=>	$server_definition, 
@@ -3835,7 +3837,7 @@ FROM
 		{
 			my $server_name        = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}; 
 			my $server_stop_reason = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason};
-			my $server_start_group = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_group};
+			my $server_start_after = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_after};
 			my $server_start_delay = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_delay};
 			my $server_note	       = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_note};
 			my $server_definition  = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition};
@@ -3845,7 +3847,7 @@ FROM
 				name1 => "server_uuid",        value1 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_uuid}, 
 				name2 => "server_name",        value2 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}, 
 				name3 => "server_stop_reason", value3 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason}, 
-				name4 => "server_start_group", value4 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_group}, 
+				name4 => "server_start_after", value4 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_after}, 
 				name5 => "server_start_delay", value5 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_delay}, 
 				name6 => "server_note",        value6 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_note}, 
 				name7 => "server_definition",  value7 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition}, 
@@ -3890,7 +3892,7 @@ UPDATE
 SET
     server_name        = ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     server_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
-    server_start_group = ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    server_start_after = ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
     server_start_delay = ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
     server_note        = ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
     server_definition  = ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
@@ -3918,7 +3920,7 @@ INSERT INTO
     server_uuid, 
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_note, 
     server_definition, 
@@ -3929,7 +3931,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
@@ -3960,7 +3962,7 @@ INSERT INTO
     server_uuid, 
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_note, 
     server_definition, 
@@ -3971,7 +3973,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 

@@ -62,6 +62,7 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
 		},
 		server		=>	{},
 		sys		=>	{
@@ -88,6 +89,7 @@ $an->default_log_file    ($an->data->{'scan-server'}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{'scan-server'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-server'}{log_db_transactions};
 
 # Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});
@@ -624,7 +626,7 @@ WHERE
 			# New server, INSERT everything.
 			my $server_name        = $an->data->{server_uuid}{$server_uuid}{name};
 			my $server_stop_reason = "";
-			my $server_start_group = 1;
+			my $server_start_after = "NULL";
 			my $server_start_delay = 0;
 			my $server_host        = $an->data->{server_uuid}{$server_uuid}{host};
 			my $server_state       = $an->data->{server_uuid}{$server_uuid}{'state'};
@@ -633,7 +635,7 @@ WHERE
 				name1 => "server_uuid",        value1 => $server_uuid, 
 				name2 => "server_name",        value2 => $server_name, 
 				name3 => "server_stop_reason", value3 => $server_stop_reason, 
-				name4 => "server_start_group", value4 => $server_start_group, 
+				name4 => "server_start_after", value4 => $server_start_after, 
 				name5 => "server_start_delay", value5 => $server_start_delay, 
 				name6 => "server_host",        value6 => $server_host, 
 				name7 => "server_definition",  value7 => $server_definition, 
@@ -647,7 +649,7 @@ INSERT INTO
     server_uuid, 
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_host, 
     server_state, 
@@ -657,7 +659,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_name).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_stop_reason).", 
-    ".$an->data->{sys}{use_db_fh}->quote($server_start_group).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_start_after).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_start_delay).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
@@ -670,8 +672,26 @@ INSERT INTO
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
 			
-			# A 'start_group' of '9999' means that the server will not be booted. As such, a 
-			# string is returned instead of the value if appropriate.
+			# Translate the server's UUID to a name is 'server_start_after' is set. If the UUID
+			# is all '0', then the server won't boot via 'anvil-safe-start' at all.
+			my $say_start_after = "";
+			if ($server_start_after eq "00000000-0000-0000-0000-000000000000")
+			{
+				$say_start_after = "#!string!scan_server_message_0005!#"
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "say_start_after", value1 => $say_start_after, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				my $return = $an->Get->server_data({
+					uuid  => $server_start_after, 
+				});
+				$say_start_after = $return->{name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "say_start_after", value1 => $say_start_after, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			$an->Alert->register_alert({
 				alert_level		=>	"notice", 
 				alert_agent_name	=>	"$THIS_FILE",
@@ -682,7 +702,7 @@ INSERT INTO
 				alert_message_key	=>	"scan_server_message_0004",
 				alert_message_variables	=>	{
 					uuid			=>	$server_uuid, 
-					start_group		=>	$server_start_group eq "9999" ? "#!string!scan_server_message_0005!#" : $server_start_group, 
+					start_after		=>	$say_start_after, 
 					start_delay		=>	$server_start_delay, 
 					host			=>	$server_host, 
 					'state'			=>	$server_state, 
@@ -720,7 +740,7 @@ sub read_last_scan
 SELECT 
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_note, 
     server_definition, 
@@ -744,7 +764,7 @@ WHERE
 	{
 		my $server_name        = $row->[0];
 		my $server_stop_reason = $row->[1];
-		my $server_start_group = $row->[2];
+		my $server_start_after = $row->[2];
 		my $server_start_delay = $row->[3];
 		my $server_note        = $row->[4];
 		my $server_definition  = $row->[5];
@@ -754,7 +774,7 @@ WHERE
 			name1 => "server_uuid",        value1 => $server_uuid, 
 			name2 => "server_name",        value2 => $server_name, 
 			name3 => "server_stop_reason", value3 => $server_stop_reason, 
-			name4 => "server_start_group", value4 => $server_start_group, 
+			name4 => "server_start_after", value4 => $server_start_after, 
 			name5 => "server_start_delay", value5 => $server_start_delay, 
 			name6 => "server_note",        value6 => $server_note, 
 			name7 => "server_definition",  value7 => $server_definition, 
@@ -765,7 +785,7 @@ WHERE
 		# Push the data into the hash for later comparison
 		$an->data->{sql}{$server_uuid}{server_name}        = $server_name;
 		$an->data->{sql}{$server_uuid}{server_stop_reason} = $server_stop_reason;
-		$an->data->{sql}{$server_uuid}{server_start_group} = $server_start_group;
+		$an->data->{sql}{$server_uuid}{server_start_after} = $server_start_after;
 		$an->data->{sql}{$server_uuid}{server_start_delay} = $server_start_delay;
 		$an->data->{sql}{$server_uuid}{server_note}        = $server_note, 
 		$an->data->{sql}{$server_uuid}{server_definition}  = $server_definition, 
@@ -774,7 +794,7 @@ WHERE
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
 			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
-			name3 => "sql::${server_uuid}::server_start_group", value3 => $an->data->{sql}{$server_uuid}{server_start_group}, 
+			name3 => "sql::${server_uuid}::server_start_after", value3 => $an->data->{sql}{$server_uuid}{server_start_after}, 
 			name4 => "sql::${server_uuid}::server_start_delay", value4 => $an->data->{sql}{$server_uuid}{server_start_delay}, 
 			name6 => "sql::${server_uuid}::server_note",        value6 => $an->data->{sql}{$server_uuid}{server_note}, 
 			name7 => "sql::${server_uuid}::server_definition",  value7 => $an->data->{sql}{$server_uuid}{server_definition}, 

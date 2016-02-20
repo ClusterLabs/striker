@@ -61,6 +61,7 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
 			# CSV of UPSes to scan. If set, /etc/hosts will not be processed. If not set, hosts
 			# will be searched for any entry with 'ups' in it's name and added to this.
 			upses			=>	"",
@@ -191,6 +192,7 @@ $an->default_log_file    ($an->data->{'scan-apc-ups'}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{'scan-apc-ups'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-apc-ups'}{log_db_transactions};
 
 # Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});

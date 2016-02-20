@@ -58,7 +58,7 @@ Details:
 * UUID:          [#!variable!uuid!#]
 * Current Host:  [#!variable!host!#]
 * Current State: [#!variable!state!#]
-* Start Group:   [#!variable!start_group!#]
+* Start After:   [#!variable!start_after!#]
 * Start Delay:   [#!variable!start_delay!#]
 * Definition:
 ====

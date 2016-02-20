@@ -9780,6 +9780,9 @@ sub build_select
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $select = "<select name=\"$name\">\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "select", value1 => $select,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($width)
 	{
 		$select = "<select name=\"$name\" id=\"$name\" style=\"width: ${width}px;\">\n";
@@ -9792,16 +9795,26 @@ sub build_select
 	}
 	
 	# This needs to be smarter.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sort", value1 => $sort,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($sort)
 	{
 		foreach my $entry (sort {$a cmp $b} @{$options})
 		{
 			next if not $entry;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "entry", value1 => $entry,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
 			{
-				my $value = $1;
-				my $desc  = $2;
-				$select .= "<option value=\"$value\">$desc</option>\n";
+				my $value       =  $1;
+				my $description =  $2;
+				   $select      .= "<option value=\"$value\">$description</option>\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "value",       value1 => $value,
+					name2 => "description", value2 => $description,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -9814,11 +9827,18 @@ sub build_select
 		foreach my $entry (@{$options})
 		{
 			next if not $entry;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "entry", value1 => $entry,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
 			{
-				my $value = $1;
-				my $desc  = $2;
-				$select .= "<option value=\"$value\">$desc</option>\n";
+				my $value       =  $1;
+				my $description =  $2;
+				   $select      .= "<option value=\"$value\">$description</option>\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "value",       value1 => $value,
+					name2 => "description", value2 => $description,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
@@ -9827,12 +9847,18 @@ sub build_select
 		}
 	}
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "selected", value1 => $selected,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($selected)
 	{
 		$select =~ s/value=\"$selected\">/value=\"$selected\" selected>/m;
 	}
 	
 	$select .= "</select>\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "select", value1 => $select,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($select);
 }

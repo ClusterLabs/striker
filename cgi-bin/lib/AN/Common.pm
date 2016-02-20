@@ -192,7 +192,7 @@ sub read_in_cgi_variables
 		"section",
 		"server_note", 
 		"server_start_delay", 
-		"server_start_group", 
+		"server_start_after", 
 		"smtp__server", 
 		"smtp__port",
 		"smtp__username",

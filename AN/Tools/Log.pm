@@ -16,6 +16,7 @@ sub new
 		LOG_HANDLE			=>	"",
 		LOG_FILE			=>	"",
 		DEFAULT_LOG_FILE		=>	"/var/log/an_tools.log",
+		LOG_DB_TRANSACTIONS		=>	0,
 	};
 	
 	bless $self, $class;
@@ -47,17 +48,9 @@ sub level
 	
 	if ((defined $set) && ($set =~ /\D/))
 	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0009",
-			message_key		=>	"error_message_0012",
-			message_variables	=>	{
-				set			=>	$set,
-			},
-			code			=>	19,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
+			set	=>	$set,
+		}, code => 19, file => "$THIS_FILE", line => __LINE__});
 		# Return nothing in case the user is blocking fatal
 		# errors.
 		return (undef);
@@ -66,6 +59,28 @@ sub level
 	$self->{LOG_LEVEL} = $set if defined $set;
 	
 	return ($self->{LOG_LEVEL});
+}
+
+# This, when set, causes DB transactions to be logged.
+sub db_transactions
+{
+	my $self = shift;
+	my $set  = shift if defined $_[0];
+	my $an   = $self->parent;
+	$an->Alert->_set_error;
+	
+	if ((defined $set) && (($set ne "0") && ($set ne "1")))
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0057", message_variables => {
+			set	=>	$set,
+		}, code => 57, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
+	$self->{LOG_DB_TRANSACTIONS} = $set if defined $set;
+	
+	return ($self->{LOG_DB_TRANSACTIONS});
 }
 
 # This does all the work of recording an entry in the log file when

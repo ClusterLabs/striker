@@ -160,7 +160,7 @@ sub server_data
 SELECT 
     server_name, 
     server_stop_reason, 
-    server_start_group, 
+    server_start_after, 
     server_start_delay, 
     server_note, 
     server_host, 
@@ -185,7 +185,7 @@ WHERE
 		{
 			my $server_name        = $row->[0];
 			my $server_stop_reason = $row->[1] ? $row->[1] : "";
-			my $server_start_group = $row->[2];
+			my $server_start_after = $row->[2] ? $row->[2] : "";
 			my $server_start_delay = $row->[3];
 			my $server_note        = $row->[4] ? $row->[4] : "";
 			my $server_host        = $row->[5] ? $row->[5] : "";
@@ -194,7 +194,7 @@ WHERE
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "server_name",        value1 => $server_name, 
 				name2 => "server_stop_reason", value2 => $server_stop_reason, 
-				name3 => "server_start_group", value3 => $server_start_group, 
+				name3 => "server_start_after", value3 => $server_start_after, 
 				name4 => "server_start_delay", value4 => $server_start_delay, 
 				name5 => "server_note",        value5 => $server_note, 
 				name6 => "server_host",        value6 => $server_host, 
@@ -206,7 +206,7 @@ WHERE
 			$return->{uuid}          = $server_uuid;
 			$return->{name}          = $server_name;
 			$return->{stop_reason}   = $server_stop_reason;
-			$return->{start_group}   = $server_start_group;
+			$return->{start_after}   = $server_start_after;
 			$return->{start_delay}   = $server_start_delay;
 			$return->{note}          = $server_note;
 			$return->{host}          = $server_host;
@@ -216,7 +216,7 @@ WHERE
 				name1 => "uuid",          value1 => $return->{uuid}, 
 				name2 => "name",          value2 => $return->{name}, 
 				name3 => "stop_reason",   value3 => $return->{stop_reason}, 
-				name4 => "start_group",   value4 => $return->{start_group}, 
+				name4 => "start_after",   value4 => $return->{start_after}, 
 				name5 => "start_delay",   value5 => $return->{start_delay}, 
 				name6 => "note",          value6 => $return->{note}, 
 				name7 => "host",          value7 => $return->{host}, 

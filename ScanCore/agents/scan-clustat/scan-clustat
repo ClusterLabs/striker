@@ -77,6 +77,7 @@ my $an = AN::Tools->new({data =>
 			log_file		=>	"/var/log/ScanCore.log",
 			log_level		=>	1,
 			log_language		=>	"en_CA",
+			log_db_transactions	=>	0,
 		},
 		sys		=>	{
 			# This will get set by AN::Tools::DB->connect_to_databases()
@@ -96,6 +97,7 @@ $an->default_log_file    ($an->data->{'scan-clustat'}{log_file});
 
 # Set the log level.
 $an->Log->level($an->data->{'scan-clustat'}{log_level});
+$an->Log->db_transactions(1) if $an->data->{'scan-clustat'}{log_db_transactions};
 
 # Read in the language strings.
 $an->String->read_words({file => $an->data->{path}{strings}});

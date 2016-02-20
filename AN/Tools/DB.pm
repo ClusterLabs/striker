@@ -58,8 +58,8 @@ sub do_db_write
 	if (not $query)
 	{
 		print $an->String->get({ key => "scancore_message_0002", variables => {
-			title		=>	$an->String->get({key => "scancore_title_0003"}),
-			message		=>	$an->String->get({key => "scancore_error_0011"}),
+			title	=>	$an->String->get({key => "scancore_title_0003"}),
+			message	=>	$an->String->get({key => "scancore_error_0011"}),
 		}})."\n";
 		exit(1);
 	}
@@ -111,12 +111,15 @@ sub do_db_write
 		foreach my $query (@query)
 		{
 			# Record the query
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "query",  value1 => $query, 
-				name2 => "id",     value2 => $id,
-				name3 => "source", value3 => $source, 
-				name4 => "line",   value4 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->Log->db_transactions())
+			{
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
+					name1 => "query",  value1 => $query, 
+					name2 => "id",     value2 => $id,
+					name3 => "source", value3 => $source, 
+					name4 => "line",   value4 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			
 			# Just one query.
 			#print "id: [$id], query:\n============\n$query\n============\n";

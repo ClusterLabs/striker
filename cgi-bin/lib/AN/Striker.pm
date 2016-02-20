@@ -3005,9 +3005,9 @@ sub change_vm
 	my $node2                  =  $conf->{clusters}{$cluster}{nodes}[1];
 	my $device                 =  $conf->{cgi}{device};
 	my $new_server_note        =  $conf->{cgi}{server_note};
-	my $new_server_start_group =  $conf->{cgi}{server_start_group};
-	   $new_server_start_group =~ s/^\s+//;
-	   $new_server_start_group =~ s/\s+$//;
+	my $new_server_start_after =  $conf->{cgi}{server_start_after};
+	   $new_server_start_after =~ s/^\s+//;
+	   $new_server_start_after =~ s/\s+$//;
 	my $new_server_start_delay = $conf->{cgi}{server_start_delay};
 	   $new_server_start_delay =~ s/^\s+//;
 	   $new_server_start_delay =~ s/\s+$//;
@@ -3021,7 +3021,7 @@ sub change_vm
 		name5  => "node2",                  value5  => $node2,
 		name6  => "device",                 value6  => $device,
 		name7  => "new_server_note",        value7  => $new_server_note,
-		name8  => "new_server_start_group", value8  => $new_server_start_group,
+		name8  => "new_server_start_after", value8  => $new_server_start_after,
 		name9  => "new_server_start_delay", value9  => $new_server_start_delay,
 		name10 => "other_allocated_ram",    value10 => $other_allocated_ram,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3056,12 +3056,12 @@ sub change_vm
 	});
 	my $server_uuid            = $return->{uuid};
 	my $old_server_note        = $return->{note};
-	my $old_server_start_group = $return->{start_group};
+	my $old_server_start_after = $return->{start_after};
 	my $old_server_start_delay = $return->{start_delay};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "server_uuid",            value1 => $server_uuid,
 		name2 => "old_server_note",        value2 => $old_server_note,
-		name3 => "old_server_start_group", value3 => $old_server_start_group,
+		name3 => "old_server_start_after", value3 => $old_server_start_after,
 		name4 => "old_server_start_delay", value4 => $old_server_start_delay,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -3080,7 +3080,7 @@ sub change_vm
 	my $db_error = "";
 	if (($an->data->{sys}{db_connections}) && 
 	    (($old_server_note        ne $new_server_note)        or 
-	     ($old_server_start_group ne $new_server_start_group) or 
+	     ($old_server_start_after ne $new_server_start_after) or 
 	     ($old_server_start_delay ne $new_server_start_delay)))
 	{
 		# Something changed. If there was a UUID, we'll update. Otherwise we'll insert.
@@ -3089,15 +3089,24 @@ sub change_vm
 			name1 => "database_changed", value1 => $database_changed,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Make sure the values passed in for the start delay and group are digits.
-		if ($new_server_start_group !~ /^\d+$/)
+		# Make sure the values passed in for the start delay and start after are valid.
+		if (($new_server_start_after) && ($new_server_start_after !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/))
 		{
-			# Bad group, must be a digit.
+			# Bad entry, must be a UUID.
 			$db_error .= AN::Common::get_string($conf, {key => "message_0203", variables => {
-				value	=>	$new_server_start_group,
+				value	=>	$new_server_start_after,
 			}})."<br />";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "db_error", value1 => $db_error,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $new_server_start_after)
+		{
+			$new_server_start_after = "NULL";
+			$new_server_start_delay = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "new_server_start_after", value1 => $new_server_start_after,
+				name2 => "new_server_start_delay", value2 => $new_server_start_delay,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($new_server_start_delay !~ /^\d+$/)
@@ -3126,12 +3135,13 @@ UPDATE
     server 
 SET 
     server_note        = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
-    server_start_group = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_group).", 
+    server_start_after = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_after).", 
     server_start_delay = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_delay).", 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
+			$query =~ s/'NULL'/NULL/g;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4060,7 +4070,7 @@ sub manage_vm
 	my $show_db_options    = 0;
 	my $server_note        = "";
 	my $modified_date      = "";
-	my $server_start_group = "";
+	my $server_start_after = "";
 	my $server_start_delay = "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_uuid",         value1 => $server_uuid, 
@@ -4077,13 +4087,13 @@ sub manage_vm
 			anvil => $cluster, 
 		});
 		$server_note        = $results->{note};
-		$server_start_group = $results->{start_group};
+		$server_start_after = $results->{start_after};
 		$server_start_delay = $results->{start_delay};
 		$modified_date      = $results->{modified_date};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 			name1 => "show_db_options",    value1 => $show_db_options, 
 			name2 => "server_note",        value2 => $server_note, 
-			name3 => "server_start_group", value3 => $server_start_group, 
+			name3 => "server_start_after", value3 => $server_start_after, 
 			name4 => "server_start_delay", value4 => $server_start_delay, 
 			name5 => "modified_date",      value5 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4156,7 +4166,7 @@ sub manage_vm
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -4220,7 +4230,7 @@ sub manage_vm
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-
+	
 	# Find which ISOs are mounted currently.
 	my $this_device = "";
 	my $this_media  = "";
@@ -4432,10 +4442,82 @@ sub manage_vm
 	my $note_form = "";
 	if ($show_db_options)
 	{
+		my $return = $an->Get->server_data({
+			server => $say_vm, 
+			anvil  => $cluster, 
+		});
+		if (not $conf->{cgi}{server_start_after})
+		{
+			$conf->{cgi}{server_start_after} = $return->{start_after};
+		}
+		my $other_servers = [];
+		my $server_uuid   = $return->{uuid};
+		my $query         = "
+SELECT 
+    server_name, 
+    server_uuid 
+FROM 
+    server 
+WHERE 
+    server_uuid !=  ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+AND 
+    server_name != 'DELETED'
+ORDER BY 
+    server_name ASC;
+;";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results    = $an->DB->do_db_query({query => $query});
+		my $count      = @{$results};
+		my $say_select = "--";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($count)
+		{
+			# At least one other server exists.
+			foreach my $row (@{$results})
+			{
+				my $server_name = $row->[0];
+				my $server_uuid = $row->[1];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "server_name", value1 => $server_name, 
+					name2 => "server_uuid", value2 => $server_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Make sure this is a server on this Anvil!
+				foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+				{
+					next if $vm !~ /^vm/;
+					my $say_vm  =  ($vm =~ /^vm:(.*)/)[0];
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "server_name", value1 => $server_name, 
+						name2 => "say_vm",      value2 => $say_vm, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($server_name eq $say_vm)
+					{
+						push @{$other_servers}, "$server_uuid#!#$server_name";
+					}
+				}
+			}
+			
+			# Add the 'Don't Boot' option
+			my $say_dont_boot = AN::Common::get_string($conf, {key => "title_0105"});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "say_dont_boot", value1 => $say_dont_boot,
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$other_servers}, "00000000-0000-0000-0000-000000000000#!#<i>$say_dont_boot</i>";
+			
+			# Build the select
+			$say_select = AN::Cluster::build_select($conf, "server_start_after", 0, 1, 150, $conf->{cgi}{server_start_after}, $other_servers);
+		}
 		$modified_date =~ s/\..*//;
 		$note_form = AN::Common::template($conf, "server.html", "start-server-show-db-options", {
 			server_note		=>	$server_note,
-			server_start_group	=>	$server_start_group,
+			server_start_after	=>	$say_select,
 			server_start_delay	=>	$server_start_delay,
 			modified_date		=>	$modified_date,
 		});
@@ -7610,10 +7692,9 @@ sub delete_vm
 	if ($proceed)
 	{
 		print AN::Common::template($conf, "server.html", "delete-server-start");
-		### Note: I don't use 'path' for these calls as the location of
-		###       a program on the cluster may differ from the local
-		###       copy. Further, I will have $PATH on the far side of
-		###       the ssh call anyway.
+		### Note: I don't use 'path' for these calls as the location of a program on the cluster may
+		###       differ from the local copy. Further, I will have $PATH on the far side of the ssh
+		###       call anyway. 
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
@@ -7809,6 +7890,30 @@ sub delete_vm
 			my $file = $conf->{vm}{$vm}{definition_file};
 			archive_file($conf, $host, $file, 0, "hidden_table");
 			remove_vm_definition($conf, $host, $file);
+			
+			# Remove it from the database now if we have a database connection.
+			if ($an->data->{sys}{db_connections})
+			{
+				# Mark it as deleted.
+				my $return = $an->Get->server_data({
+					server => $say_vm, 
+					anvil  => $cluster, 
+				});
+				my $server_uuid = $return->{uuid};
+				my $query       = "
+UPDATE 
+    server
+SET 
+    server_name = 'DELETED' 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+			
 			# variables hash feeds 'message_0205'.
 			print AN::Common::template($conf, "server.html", "delete-server-success", {}, {
 				server	=>	$say_vm,

@@ -305,11 +305,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0098"><![CDATA[This can be used to specify a backup NTP server, if available.]]></key>
 		<key name="explain_0099"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address or domain name.<br />Please enter the value as a <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a> or <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0100"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
-		<key name="explain_0101"><![CDATA[When the #!string!brand_0003!# starts, it will boot the servers in groups.<br /> All servers in a given start group must boot before any servers in the next<br/group will boot. Servers that are gracefully shut down by a user will be left off.]]></key>
+		<key name="explain_0101"><![CDATA[When an #!string!brand_0003!# node starts, it will boot any servers that it finds powered off, <br />unless is was gracefully shut down by a user. If you want to control boot ordering,<br />choose the server you want this machine to start after.]]></key>
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
-		<key name="explain_0105"><![CDATA[Boot-up of this server will be delayed by the set number of seconds.<br />For example, if this server is set to group <span class="fixed_width">2</span>,<br />all servers in group <span class="fixed_width">1</span> will be booted first.<br />Then this delay will start before this server is booted.<br />No servers in group <span class="fixed_width">3</span> will boot until this timer expires.]]></key>
+		<key name="explain_0105"><![CDATA[This server will boot up this number of seconds after the selected '#!string!row_0282!#' server.<br />This is ignored if '#!variable!row_0282!#' is either not set or set to '#!string!title_0105!#'.<br />Note that the server will not booted if it was gracefully shut down by a user.]]></key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
@@ -699,7 +699,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0279">NTP 2</key>
 		<key name="row_0280">Booting Server</key>
 		<key name="row_0281">Adding</key>
-		<key name="row_0282">Start Group</key>
+		<key name="row_0282">Start After</key>
 		<key name="row_0283">Start Delay</key>
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
@@ -1064,7 +1064,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0124">Drive is empty</key>
 		<key name="state_0125">Disc in drive</key>
 		
-		<!-- Titles used in tables -->
+		<!-- Titles used in tables (and options in <select> fields) -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
 		<key name="title_0002">Saving Changes...</key>
 		<key name="title_0003">Add a new #!string!brand_0003!# System</key>
@@ -1169,7 +1169,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0102">#!string!brand_0003!# Nodes - Status</key>
 		<key name="title_0103">#!string!brand_0003!# Membership</key>
 		<key name="title_0104">Resource Manager</key>
-		<key name="title_0105">...free...</key>
+		<key name="title_0105">Do Not Boot</key>
 		<key name="title_0106">Storage Manager</key>
 		<key name="title_0107">Shared Filesystems</key>
 		<key name="title_0108">Hypervisor</key>

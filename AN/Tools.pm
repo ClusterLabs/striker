@@ -144,6 +144,7 @@ sub new
 		### AN::Tools::Log parameters
 		# Set the log file.
 		$an->Log->level			($parameter->{'Log'}{level}) 		if defined $parameter->{'Log'}{level};
+		$an->Log->db_transactions	($parameter->{'Log'}{db_transactions}) 	if defined $parameter->{'Log'}{db_transactions};
 		
 		### AN::Tools::String parameters
 		# Force UTF-8.
@@ -550,16 +551,16 @@ sub _uuidgen_path
 	return ($self->{DEFAULT}{UUIDGEN_PATH});
 }
 
-# This is used to set system-wide error count, used to catch possible run-away loops that span functions.
-sub _error_count
+# This sets or receives the path to the 'uuidgen' program
+sub _log_db_transactions
 {
-	my $self = shift;
+	my ($self) = shift;
 	
-	$self->{ERROR_COUNT} = shift if $_[0];
+	# Pick up the passed path, if any.
+	$self->{DEFAULT}{LOG_DB_TRANSACTIONS} = shift if $_[0];
 	
-	return ($self->{ERROR_COUNT});
+	return ($self->{DEFAULT}{LOG_DB_TRANSACTIONS});
 }
-
 
 # When a method may possibly loop indefinately, it checks an internal counter against the value returned here
 # and kills the program when reached.

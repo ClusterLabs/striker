@@ -383,7 +383,7 @@ CREATE TABLE server (
 	server_uuid		uuid				not null	primary key,	-- This comes from the server's XML definition file.
 	server_name		text				not null,
 	server_stop_reason	text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
-	server_start_group	integer				not null	default 1,	-- Setting this to '9999' will prevent it from booting at all.
+	server_start_after	uuid,								-- This can be the UUID of another server. If set, this server will boot 'server_start_delay' seconds after the referenced server boots. A value of '00000000-0000-0000-0000-000000000000' will tell 'anvil-safe-start' to not boot the server at all.
 	server_start_delay	integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
 	server_note		text,								-- User's place to keep notes about their server.
 	server_definition	text				not null,			-- The XML definition file for the server.
@@ -398,7 +398,7 @@ CREATE TABLE history.server (
 	server_uuid		uuid,
 	server_name		text,
 	server_stop_reason	text,
-	server_start_group	integer,
+	server_start_after	uuid,
 	server_start_delay	integer,
 	server_note		text,
 	server_definition	text,
@@ -418,7 +418,7 @@ BEGIN
 		(server_uuid,
 		 server_name, 
 		 server_stop_reason, 
-		 server_start_group, 
+		 server_start_after, 
 		 server_start_delay, 
 		 server_note, 
 		 server_definition, 
@@ -429,7 +429,7 @@ BEGIN
 		(history_server.server_uuid, 
 		 history_server.server_name, 
 		 history_server.server_stop_reason, 
-		 history_server.server_start_group, 
+		 history_server.server_start_after, 
 		 history_server.server_start_delay, 
 		 history_server.server_note, 
 		 history_server.server_definition, 
