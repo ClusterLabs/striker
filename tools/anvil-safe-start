@@ -200,8 +200,55 @@ sub start_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, call clustat to get a list of VMs.
+	my $servers = get_cluster_server_list($an);
+	
+	# If there are no servers, we're done.
+	my $count = @{$servers};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $servers)
+	{
+		# None found, we're out.
+		$an->Log->entry({log_level => 1, message_key => "asst_log_0024", file => $THIS_FILE, line => __LINE__});
+		return(0);
+	}
 	
 	# Now call up the servers from the server table. We'll read all and decide what to skip later.
+	my $query = "
+SELECT 
+    server_name, 
+    server_uuid, 
+    server_stop_reason, 
+    server_start_after, 
+    server_start_delay 
+FROM 
+    server;
+;"
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do the query against the source DB and loop through the results.
+	my $results = $an->DB->do_db_query({query => $query});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $server_name        = $row->[0];
+		my $server_uuid        = $row->[1];
+		my $server_stop_reason = $row->[2];
+		my $server_start_after = $row->[3];
+		my $server_start_delay = $row->[4];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "server_name",        value1 => $server_name, 
+			name2 => "server_uuid",        value2 => $server_uuid, 
+			name3 => "server_stop_reason", value3 => $server_stop_reason, 
+			name4 => "server_start_after", value4 => $server_start_after, 
+			name5 => "server_start_delay", value5 => $server_start_delay, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Log that we're not going to boot those with server_boot_after with all-0 UUIDs.
 	
@@ -216,6 +263,44 @@ sub start_servers
 	# the list of to-boot servers depletes.
 	
 	return(0);
+}
+
+# This returns an array reference of the servers found on this Anvil!
+sub get_cluster_server_list
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cluster_server_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $servers = [];
+	my $shell_call = $an->data->{path}{clustat};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /vm:(.*?) /)
+		{
+			my $server = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server", value1 => $server, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$servers}, $server;
+		}
+	}
+	close $file_handle;
+	
+	return($servers);
 }
 
 # This starts cman on both nodes, the starts DRBD, makes sure all is well (fixing it if not), the starts
