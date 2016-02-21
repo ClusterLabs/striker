@@ -177,6 +177,8 @@ wait_for_scancore_database($an);
 # Start the cluster
 start_the_cluster($an);
 
+# Start the servers!!
+start_servers($an);
 
 # We're done.
 $an->Log->entry({log_level => 1, message_key => "asst_log_0006", message_variables => {
@@ -188,6 +190,33 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This starts the servers in the user's requested order. Any servers that the user turned off gracefully in
+# Striker or that are set to never start will be left off. A check is made to ensure we're only booting 
+# servers defined locally and shown in clustat.
+sub start_servers
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, call clustat to get a list of VMs.
+	
+	# Now call up the servers from the server table. We'll read all and decide what to skip later.
+	
+	# Log that we're not going to boot those with server_boot_after with all-0 UUIDs.
+	
+	# Now find the servers without any boot-after settings and boot them. Note in a hash that they've 
+	# booted.
+	
+	# Note the current time and loop through the remaining servers until all have booted. Sort them by
+	# their delays, skipping any that are delayed on not-yet-booted servers. As we boot, we'll sleep the
+	# number of seconds if (boot delay - time passed since the loop started). Repeat the loop, resetting
+	# the noted time on each pass. Any server we hit that is set to clean-off or do-not-boot will get
+	# flagged as booted in the to-boot array, so that anything down-stream of them can boot and so that
+	# the list of to-boot servers depletes.
+	
+	return(0);
+}
 
 # This starts cman on both nodes, the starts DRBD, makes sure all is well (fixing it if not), the starts
 # clvmd and makes sure all LVs are ACTIVE and then mounts /shared. If that all goes well, rgmanager is 
