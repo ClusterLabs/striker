@@ -468,6 +468,10 @@ The 'AN::Tools::Check->drbd_resource()' method was called but the 'resource' val
 
 The 'AN::Tools::Log' module's 'db_transactions()' method was passed an invalid value. Only '0' (disable) and '1' (enable) are valid.
 
+=head2 C<58>
+
+The 'AN::Tools::Get' module's 'server_data()' failed to find the UUID for the named server.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

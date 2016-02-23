@@ -4469,7 +4469,7 @@ ORDER BY
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $results    = $an->DB->do_db_query({query => $query});
+		my $results    = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count      = @{$results};
 		my $say_select = "--";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {

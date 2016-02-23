@@ -240,7 +240,7 @@ sub scan_servers
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /^error:/)
@@ -281,6 +281,8 @@ sub scan_servers
 				name1 => "proceed", value1 => $proceed, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+		
+		
 	}
 	
 	if ($proceed)
@@ -346,7 +348,7 @@ sub scan_servers
 							if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 							{
 								$server_uuid = $1;
-								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 									name1 => "server_uuid", value1 => $server_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
@@ -398,7 +400,7 @@ sub scan_servers
 				{
 					chomp;
 					my $line =  $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$server_xml .= "$line\n";
@@ -479,7 +481,6 @@ sub find_changes
 	# Loop through each server
 	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
 	{
-		die "$THIS_FILE ".__LINE__."; Missing server UUID\n" if not $server_uuid;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -501,7 +502,7 @@ sub find_changes
 			my $old_server_definition = $an->data->{sql}{$server_uuid}{server_definition};
 			
 			# Diff?
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "old_server_name",       value1 => $old_server_name, 
 				name2 => "new_server_name",       value2 => $new_server_name, 
 				name3 => "old_server_name",       value3 => $old_server_name, 
@@ -596,7 +597,7 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 						$query =~ s/'NULL'/NULL/g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "query", value1 => $query, 
 						}, file => $THIS_FILE, line => __LINE__});
 						push @{$an->data->{sys}{sql}}, $query;
@@ -624,6 +625,9 @@ WHERE
 		else
 		{
 			# New server, INSERT everything.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
 			my $server_name        = $an->data->{server_uuid}{$server_uuid}{name};
 			my $server_stop_reason = "";
 			my $server_start_after = "NULL";
@@ -631,7 +635,7 @@ WHERE
 			my $server_host        = $an->data->{server_uuid}{$server_uuid}{host};
 			my $server_state       = $an->data->{server_uuid}{$server_uuid}{'state'};
 			my $server_definition  = $an->data->{server_uuid}{$server_uuid}{definition};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "server_uuid",        value1 => $server_uuid, 
 				name2 => "server_name",        value2 => $server_name, 
 				name3 => "server_stop_reason", value3 => $server_stop_reason, 
@@ -674,15 +678,19 @@ INSERT INTO
 			
 			# Translate the server's UUID to a name is 'server_start_after' is set. If the UUID
 			# is all '0', then the server won't boot via 'anvil-safe-start' at all.
-			my $say_start_after = "";
+			my $say_start_after    = "";
+			   $server_start_after = "" if $server_start_after eq "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_start_after", value1 => $server_start_after, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($server_start_after eq "00000000-0000-0000-0000-000000000000")
 			{
-				$say_start_after = "#!string!scan_server_message_0005!#"
+				$say_start_after = "#!string!scan_server_message_0005!#";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "say_start_after", value1 => $say_start_after, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			else
+			elsif ($server_start_after)
 			{
 				my $return = $an->Get->server_data({
 					uuid  => $server_start_after, 
@@ -751,12 +759,13 @@ FROM
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$query =~ s/'NULL'/NULL/g;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -770,7 +779,7 @@ WHERE
 		my $server_definition  = $row->[5];
 		my $server_host        = $row->[6];
 		my $server_state       = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "server_uuid",        value1 => $server_uuid, 
 			name2 => "server_name",        value2 => $server_name, 
 			name3 => "server_stop_reason", value3 => $server_stop_reason, 
@@ -791,7 +800,7 @@ WHERE
 		$an->data->{sql}{$server_uuid}{server_definition}  = $server_definition, 
 		$an->data->{sql}{$server_uuid}{server_host}        = $server_host, 
 		$an->data->{sql}{$server_uuid}{server_state}       = $server_state, 
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 			name1 => "sql::${server_uuid}::server_name",        value1 => $an->data->{sql}{$server_uuid}{server_name}, 
 			name2 => "sql::${server_uuid}::server_stop_reason", value2 => $an->data->{sql}{$server_uuid}{server_stop_reason}, 
 			name3 => "sql::${server_uuid}::server_start_after", value3 => $an->data->{sql}{$server_uuid}{server_start_after}, 
@@ -803,7 +812,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($count);

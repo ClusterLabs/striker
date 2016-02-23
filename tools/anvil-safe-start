@@ -200,7 +200,7 @@ sub start_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, call clustat to get a list of VMs.
-	my $servers = get_cluster_server_list($an);
+	my ($servers, $state) = get_cluster_server_list($an);
 	
 	# If there are no servers, we're done.
 	my $count = @{$servers};
@@ -224,13 +224,13 @@ SELECT
     server_start_delay 
 FROM 
     server;
-;"
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query against the source DB and loop through the results.
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
@@ -248,6 +248,33 @@ FROM
 			name4 => "server_start_after", value4 => $server_start_after, 
 			name5 => "server_start_delay", value5 => $server_start_delay, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		$an->data->{server_uuid}{$server_uuid} = {
+			booted		=>	0, 
+			name		=>	$server_name, 
+			stop_reason	=>	$server_stop_reason, 
+			start_after	=>	$server_start_after, 
+			start_delay	=>	$server_start_delay, 
+		};
+		$an->data->{server_name}{$server_name}{uuid} = $server_uuid;
+	}
+	
+	# Check to see if any servers are already running.
+	foreach my $server_name (sort {$a cmp $b} keys %{$state})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "server_name",           value1 => $server_name, 
+			name2 => "state->{$server_name}", value2 => $state->{$server_name}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($state->{$server_name} =~ /start/)
+		{
+			my $server_uuid                                   = $an->data->{server_name}{$server_name}{uuid};
+			   $an->data->{server_uuid}{$server_uuid}{booted} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server_uuid",                         value1 => $server_uuid, 
+				name2 => "server_uuid::${server_uuid}::booted", value2 => $an->data->{server_uuid}{$server_uuid}{booted}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# Log that we're not going to boot those with server_boot_after with all-0 UUIDs.
@@ -272,6 +299,7 @@ sub get_cluster_server_list
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cluster_server_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $servers = [];
+	my $state   = {};
 	my $shell_call = $an->data->{path}{clustat};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
@@ -288,19 +316,22 @@ sub get_cluster_server_list
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /vm:(.*?) /)
+		if ($line =~ /vm:(.*?) .*? (.*)$/)
 		{
 			my $server = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			my $status = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "server", value1 => $server, 
+				name2 => "status", value2 => $status, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			push @{$servers}, $server;
+			$state->{$server} = $status;
 		}
 	}
 	close $file_handle;
 	
-	return($servers);
+	return($servers, $state);
 }
 
 # This starts cman on both nodes, the starts DRBD, makes sure all is well (fixing it if not), the starts
@@ -327,20 +358,101 @@ sub start_the_cluster
 	# then start the storage services.
 	start_daemons($an, "rgmanager", 0);
 	
+	# It takes a bit for the storage to actually come up, so we'll watch clustat for the storage services
+	# to start, then verify that /shared is mounted on both nodes.
+	wait_for_storage($an);
+	
 	return(0);
 }
 
-# This starts drbd on both nodes and makes sure it starts cleanly.
-sub start_gfs2
+# This simply waits until /shared is mounted on both nodes before it returns.
+sub wait_for_storage
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# First, check and start cman.
-	start_daemons($an, "gfs2", 0);
+	# First, loop locally watching clustat for the storage services.
+	my $storage_up = 0;
+	until ($storage_up)
+	{
+		# Call clustat;
+		my $storge_count = 0;
+		my $shell_call   = $an->data->{path}{clustat};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /service:(storage_n\d+) .*? (.*)$/)
+			{
+				my $service = $1;
+				my $state   = $2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "service", value1 => $service, 
+					name2 => "state",   value2 => $state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($state eq "started")
+				{
+					$storge_count++;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "storge_count", value1 => $storge_count, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		close $file_handle;
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "storge_count", value1 => $storge_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($storge_count == 2)
+		{
+			# Now verify that '/shared/ is mounted on both nodes.
+			my $shared_up = check_shared($an);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shared_up", value1 => $shared_up, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($shared_up)
+			{
+				$storage_up = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "storage_up", value1 => $storage_up, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "storage_up", value1 => $storage_up, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $storage_up)
+		{
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0025", file => $THIS_FILE, line => __LINE__});
+			sleep 5;
+		}
+	}
 	
-	# Verify
-	my $proceed = 1;
+	return(0);
+}
+
+# This returns '1' if shared is mounted on both nods and '0' if it is not.
+sub check_shared
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Call 'mount' on both nodes and make sure '/shared' is found.
+	my $mounted = 1;
 	my $command = $an->data->{path}{mount};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "command",        value1 => $command,
@@ -377,12 +489,33 @@ sub start_gfs2
 		
 		if (not $shared_mounted)
 		{
-			$proceed = 0;
+			$mounted = 0;
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0023", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "mounted", value1 => $mounted,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($mounted);
+}
+
+# This starts drbd on both nodes and makes sure it starts cleanly.
+sub start_gfs2
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# First, check and start cman.
+	start_daemons($an, "gfs2", 0);
+	
+	# Verify
+	my $proceed = check_shared($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $proceed)
 	{
@@ -1241,7 +1374,7 @@ sub start_daemons
 		port		=>	"",
 	});
 	my $shell_call = $an->data->{path}{initd}."/$daemon start";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "daemon",       value1 => $daemon, 
 		name2 => "local_state",  value2 => $local_state, 
 		name3 => "remote_state", value3 => $remote_state, 
@@ -1250,7 +1383,7 @@ sub start_daemons
 	
 	if ((not $local_state) && (not $remote_state))
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "syncronous", value1 => $syncronous, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($syncronous)

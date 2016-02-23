@@ -2418,6 +2418,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0022">All clustered logical volumes are now active.</key>
 		<key name="asst_log_0023">[ Error ] - Failed to mount the shared cluster file system on: [#!variable!node!#].</key>
 		<key name="asst_log_0024">No servers were found on this #!string!brand_0004!#, nothing more to do.</key>
+		<key name="asst_log_0025">The cluster managed storage is not up yet. Waiting a short bit and then will check again.</key>
 		
 		<!-- normal messages -->
 		<key name="asst_message_0001">#!variable!this_file!# has been enabled.</key>

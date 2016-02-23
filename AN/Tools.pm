@@ -563,6 +563,17 @@ sub _log_db_transactions
 	return ($self->{DEFAULT}{LOG_DB_TRANSACTIONS});
 }
 
+# This stores the error count.
+sub _error_count
+{
+	my ($self) = shift;
+	
+	# Pick up the passed path, if any.
+	$self->{ERROR_COUNT} = shift if $_[0];
+	
+	return ($self->{ERROR_COUNT});
+}
+
 # When a method may possibly loop indefinately, it checks an internal counter against the value returned here
 # and kills the program when reached.
 sub _error_limit

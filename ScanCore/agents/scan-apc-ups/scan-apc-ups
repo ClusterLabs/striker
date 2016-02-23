@@ -2254,7 +2254,7 @@ AND
 ";
 	}
 	$query .= ";";
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "query",        value1 => $query, 
 		name2 => "results->[0]", value2 => $results->[0], 
@@ -2345,7 +2345,7 @@ AND
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2390,7 +2390,7 @@ AND
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		my $results = $an->DB->do_db_query({query => $query});
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		
 		my $array_count = @{$results};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -2609,7 +2609,7 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query...
-	my $apc_ups_uuid = $an->DB->do_db_query({query => $query})->[0]->[0];	# Row -> Column
+	my $apc_ups_uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# Row -> Column
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "apc_ups_uuid", value1 => $apc_ups_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2673,7 +2673,7 @@ AND
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my $results = $an->DB->do_db_query({query => $query});
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2892,7 +2892,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3204,7 +3204,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3485,7 +3485,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3761,7 +3761,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4108,7 +4108,7 @@ sub prep_databases
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='apc_ups' AND schemaname='public';";
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
-		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});

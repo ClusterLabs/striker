@@ -152,15 +152,14 @@ sub do_db_query
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Setup my variables.
-	my ($id, $query);
-	
 	# Where we given a specific ID to use?
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "parameter->{id}", value1 => $parameter->{id}, 
 	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
-	$id    = $parameter->{id}    ? $parameter->{id}    : $an->data->{sys}{read_db_id};
-	$query = $parameter->{query} ? $parameter->{query} : "";	# This should throw an error
+	my $id     = $parameter->{id}     ? $parameter->{id}     : $an->data->{sys}{read_db_id};
+	my $source = $parameter->{source} ? $parameter->{source} : "";
+	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
+	my $query  = $parameter->{query}  ? $parameter->{query}  : "";	# This should throw an error
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "id",       value1 => $id, 
 		name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}, 
@@ -174,6 +173,15 @@ sub do_db_query
 		$an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0019", message_variables => {
 			server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}
+	if ($an->Log->db_transactions())
+	{
+		$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
+			name1 => "query",  value1 => $query, 
+			name2 => "id",     value2 => $id,
+			name3 => "source", value3 => $source, 
+			name4 => "line",   value4 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
@@ -400,7 +408,7 @@ sub connect_to_databases
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+			my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "count", value1 => $count
 			}, file => $THIS_FILE, line => __LINE__});
@@ -438,7 +446,7 @@ sub connect_to_databases
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+				$an->data->{sys}{db_timestamp} = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "sys::db_timestamp",  value1 => $an->data->{sys}{db_timestamp},
@@ -534,7 +542,7 @@ sub connect_to_databases
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -619,7 +627,7 @@ sub get_host_uuid
 		name1  => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $results = $an->DB->do_db_query({id => $id, query => $query})->[0];
+	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results",       value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
@@ -692,7 +700,7 @@ AND
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__ });
-		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];	# (->[row]->[column])
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__ });
@@ -781,7 +789,7 @@ AND
 			name1 => "id",    value1 => $id, 
 			name2 => "query", value2 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my $last_updated = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		my $last_updated = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		   $last_updated = 0 if not defined $last_updated;
 		   
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -1178,7 +1186,7 @@ WHERE
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do the query against the source DB and loop through the results.
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});

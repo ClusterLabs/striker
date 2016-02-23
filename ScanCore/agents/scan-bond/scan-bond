@@ -200,7 +200,7 @@ AND
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -481,7 +481,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Do the query against the source DB and loop through the results.
-		my $results = $an->DB->do_db_query({id => $id, query => $query});
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "results", value1 => $results
 		}, file => $THIS_FILE, line => __LINE__});
@@ -754,7 +754,7 @@ sub prep_databases
 		my $query = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE tablename='bond' AND schemaname='public';";
 		#                     The actual query -----------------.        .------- Row 0
 		#                        Query this DB --.              |        |    .-- Columns 0
-		my $count = $an->DB->do_db_query({id => $id, query => $query})->[0]->[0];
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "count", value1 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1469,7 +1469,7 @@ LIMIT 1
 								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "query", value1 => $query, 
 								}, file => $THIS_FILE, line => __LINE__});
-								my $prior_fastest_link_speed = $an->DB->do_db_query({query => $query})->[0]->[0];
+								my $prior_fastest_link_speed = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "prior_fastest_link_speed", value1 => $prior_fastest_link_speed, 
 								}, file => $THIS_FILE, line => __LINE__});
@@ -2169,7 +2169,7 @@ WHERE
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
-	my $results = $an->DB->do_db_query({query => $query});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
 	{
 		my $bond_uuid                 = $row->[0];
@@ -2235,7 +2235,7 @@ WHERE
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
-		my $results = $an->DB->do_db_query({query => $query});
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		foreach my $row (@{$results})
 		{
 			my $bond_interface_name           = $row->[0]; 

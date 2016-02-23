@@ -95,7 +95,7 @@ AND
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
+	my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "type",  value1 => $type, 
 		name2 => "count", value2 => $count, 
@@ -122,7 +122,7 @@ WHERE
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
-			my $count = $an->DB->do_db_query({query => $query})->[0]->[0];
+			my $count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "count", value1 => $count, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -411,7 +411,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -545,14 +545,10 @@ sub error
 	}
 	
 	# Write a copy of the error to the log.
-	$an->Log->entry({
-		file		=>	$THIS_FILE,
-		level		=>	1,
-		raw		=>	$error,
-	});
+	$an->Log->entry({file => $THIS_FILE, level => 0, raw => $error});
 	
-	# Don't actually die, but do print the error, if fatal errors have been
-	# globally disabled (as is done in the tests).
+	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
+	# in the tests).
 	#if (($fatal) && (not $self->no_fatal_errors))
 	if ($fatal)
 	{
@@ -680,6 +676,9 @@ sub warning
 		print "\n" if not $quiet;
 	}
 	print "$warning\n" if not $quiet;
+	
+	# Reset the error counter.
+	$an->_error_count(0);
 	
 	return (1);
 }

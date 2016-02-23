@@ -129,7 +129,7 @@ sub server_data
 	my $server_name = $parameter->{server};
 	my $server_uuid = $parameter->{uuid};
 	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -142,14 +142,19 @@ sub server_data
 	}
 	
 	# Get the server's UUID.
-	if (not $server_uuid)
+	if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
 	{
 		$server_uuid = $an->Get->server_uuid({
 			server => $server_name, 
 			anvil  => $anvil, 
 		});
+		if ($server_uuid ne /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
+		{
+			# Bad or no UUID returned.
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
+		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -175,7 +180,7 @@ WHERE
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $results = $an->DB->do_db_query({query => $query});
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
@@ -342,7 +347,7 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$xml = $an->DB->do_db_query({query => $query})->[0]->[0];
+		$xml = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "length(xml)", value1 => length($xml), 
 		}, file => $THIS_FILE, line => __LINE__});
