@@ -122,14 +122,11 @@ sub server_data
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $return = {
-		note	=>	"",
-		uuid	=>	"",
-	};
-	my $server_name = $parameter->{server};
-	my $server_uuid = $parameter->{uuid};
-	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	my $return = {};
+	my $server_name = $parameter->{server} ? $parameter->{server} : "";
+	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -148,13 +145,13 @@ sub server_data
 			server => $server_name, 
 			anvil  => $anvil, 
 		});
-		if ($server_uuid ne /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
+		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
 		{
 			# Bad or no UUID returned.
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -170,6 +167,7 @@ SELECT
     server_note, 
     server_host, 
     server_state, 
+    server_definition, 
     modified_date
 FROM 
     server 
@@ -195,8 +193,9 @@ WHERE
 			my $server_note        = $row->[4] ? $row->[4] : "";
 			my $server_host        = $row->[5] ? $row->[5] : "";
 			my $server_state       = $row->[6] ? $row->[6] : "";
-			my $modified_date      = $row->[7];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			my $server_definition  = $row->[7] ? $row->[7] : "";
+			my $modified_date      = $row->[8];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "server_name",        value1 => $server_name, 
 				name2 => "server_stop_reason", value2 => $server_stop_reason, 
 				name3 => "server_start_after", value3 => $server_start_after, 
@@ -204,7 +203,8 @@ WHERE
 				name5 => "server_note",        value5 => $server_note, 
 				name6 => "server_host",        value6 => $server_host, 
 				name7 => "server_state",       value7 => $server_state, 
-				name8 => "modified_date",      value8 => $modified_date, 
+				name8 => "server_definition",  value8 => $server_definition, 
+				name9 => "modified_date",      value9 => $modified_date, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Push the values into the 'return' hash reference.
@@ -216,20 +216,169 @@ WHERE
 			$return->{note}          = $server_note;
 			$return->{host}          = $server_host;
 			$return->{'state'}       = $server_state;
+			$return->{definition}    = $server_definition;
 			$return->{modified_date} = $modified_date;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
-				name1 => "uuid",          value1 => $return->{uuid}, 
-				name2 => "name",          value2 => $return->{name}, 
-				name3 => "stop_reason",   value3 => $return->{stop_reason}, 
-				name4 => "start_after",   value4 => $return->{start_after}, 
-				name5 => "start_delay",   value5 => $return->{start_delay}, 
-				name6 => "note",          value6 => $return->{note}, 
-				name7 => "host",          value7 => $return->{host}, 
-				name8 => "state",         value8 => $return->{'state'}, 
-				name9 => "modified_date", value9 => $return->{modified_date}, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+				name1  => "uuid",          value1  => $return->{uuid}, 
+				name2  => "name",          value2  => $return->{name}, 
+				name3  => "stop_reason",   value3  => $return->{stop_reason}, 
+				name4  => "start_after",   value4  => $return->{start_after}, 
+				name5  => "start_delay",   value5  => $return->{start_delay}, 
+				name6  => "note",          value6  => $return->{note}, 
+				name7  => "host",          value7  => $return->{host}, 
+				name8  => "state",         value8  => $return->{'state'}, 
+				name9 => "definition",     value9  => $return->{definition}, 
+				name10 => "modified_date", value10 => $return->{modified_date}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	
+	# Now dig out the storage and network details.
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($return->{definition}, ForceArray => 1);
+	
+	# This array will store the boot devices in their boot priority.
+	$return->{boot_devices} = [];
+	foreach my $device (@{$data->{os}->[0]->{boot}})
+	{
+		push @{$return->{boot_devices}}, $device->{dev};
+	}
+	
+	# Pull out the RAM.
+	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
+	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
+	
+	use Data::Dumper;
+	print Dumper $data;
+	
+	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
+	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
+=cut - Example:
+ <vcpu>4</vcpu>
+ <cpu>
+     <topology sockets='1' cores='4' threads='1'/>
+ </cpu>
+=cut
+	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
+	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
+	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
+	
+	# Pull out the optical disks.
+	$return->{optical} = [];
+	$return->{disk}    = [];
+	for
+	print "Optical: [$data->{devices}->[0]->{disk}
+	
+	$return->{optical} = [];
+	$return->{network} = {};
+=pod
+<domain type='qemu' id='1'>
+  <vcpu placement='static'>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='rhel6.6.0'>hvm</type>
+  </os>
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+  <cpu mode='host-model'>
+    <model fallback='allow'/>
+  </cpu>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>destroy</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <emulator>/usr/libexec/qemu-kvm</emulator>
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='raw' cache='writeback' io='native'/>
+      <source dev='/dev/an-a03n01_vg0/vm01-c6-1_0'/>
+      <target dev='vda' bus='virtio'/>
+      <alias name='virtio-disk0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='/shared/files/rhel-server-6.7-x86_64-dvd.iso'/>
+      <target dev='hdc' bus='ide'/>
+      <readonly/>
+      <alias name='ide0-1-0'/>
+      <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+    </disk>
+    <controller type='usb' index='0' model='ich9-ehci1'>
+      <alias name='usb0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x7'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci1'>
+      <alias name='usb0'/>
+      <master startport='0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0' multifunction='on'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci2'>
+      <alias name='usb0'/>
+      <master startport='2'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x1'/>
+    </controller>
+    <controller type='usb' index='0' model='ich9-uhci3'>
+      <alias name='usb0'/>
+      <master startport='4'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x2'/>
+    </controller>
+    <controller type='ide' index='0'>
+      <alias name='ide0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
+    </controller>
+    <controller type='virtio-serial' index='0'>
+      <alias name='virtio-serial0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
+    </controller>
+    <interface type='bridge'>
+      <mac address='52:54:00:f3:94:fe'/>
+      <source bridge='ifn_bridge1'/>
+      <target dev='vnet0'/>
+      <model type='virtio'/>
+      <alias name='net0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+    <serial type='pty'>
+      <source path='/dev/pts/2'/>
+      <target port='0'/>
+      <alias name='serial0'/>
+    </serial>
+    <console type='pty' tty='/dev/pts/2'>
+      <source path='/dev/pts/2'/>
+      <target type='serial' port='0'/>
+      <alias name='serial0'/>
+    </console>
+    <channel type='spicevmc'>
+      <target type='virtio' name='com.redhat.spice.0'/>
+      <alias name='channel0'/>
+      <address type='virtio-serial' controller='0' bus='0' port='1'/>
+    </channel>
+    <input type='tablet' bus='usb'>
+      <alias name='input0'/>
+    </input>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='spice' port='5900' autoport='yes' listen='127.0.0.1'>
+      <listen type='address' address='127.0.0.1'/>
+    </graphics>
+    <video>
+      <model type='qxl' ram='65536' vram='65536' heads='1'/>
+      <alias name='video0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
+    </video>
+    <memballoon model='virtio'>
+      <alias name='balloon0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
+    </memballoon>
+  </devices>
+  <seclabel type='dynamic' model='selinux' relabel='yes'>
+    <label>unconfined_u:system_r:svirt_t:s0:c442,c752</label>
+    <imagelabel>unconfined_u:object_r:svirt_image_t:s0:c442,c752</imagelabel>
+  </seclabel>
+</domain>
+=cut
 	
 	return($return);
 }

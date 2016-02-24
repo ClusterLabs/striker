@@ -480,6 +480,7 @@ sub _set_paths
 	$an->data->{path}{touch}           = "/bin/touch";
 	$an->data->{path}{vgchange}        = "/sbin/vgchange";
 	$an->data->{path}{vgscan}          = "/sbin/vgscan";
+	$an->data->{path}{virsh}           = "/usr/bin/virsh";
 	
 	# Text files
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";

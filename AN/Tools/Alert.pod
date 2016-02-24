@@ -472,6 +472,10 @@ The 'AN::Tools::Log' module's 'db_transactions()' method was passed an invalid v
 
 The 'AN::Tools::Get' module's 'server_data()' failed to find the UUID for the named server.
 
+=head2 C<59>
+
+The 'AN::Tools::Cman' module's 'boot_server()' method was not passed a 'server' name to boot.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

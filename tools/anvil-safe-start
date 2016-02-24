@@ -174,6 +174,11 @@ wait_if_node2($an);
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
+my $return = $an->Get->server_data({
+	server => "vm01-c6-1", 
+});
+exit(0);
+
 # Start the cluster
 start_the_cluster($an);
 
@@ -200,7 +205,7 @@ sub start_servers
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, call clustat to get a list of VMs.
-	my ($servers, $state) = get_cluster_server_list($an);
+	my ($servers, $state) = $an->Cman->get_cluster_server_list();
 	
 	# If there are no servers, we're done.
 	my $count = @{$servers};
@@ -250,7 +255,7 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->data->{server_uuid}{$server_uuid} = {
-			booted		=>	0, 
+			processed	=>	0, 
 			name		=>	$server_name, 
 			stop_reason	=>	$server_stop_reason, 
 			start_after	=>	$server_start_after, 
@@ -259,7 +264,45 @@ FROM
 		$an->data->{server_name}{$server_name}{uuid} = $server_uuid;
 	}
 	
-	# Check to see if any servers are already running.
+	# Weed out servers from the DB that aren't on this Anvil!
+	foreach my $server_uuid (keys %{$an->data->{server_uuid}})
+	{
+		my $this_server_name = $an->data->{server_uuid}{$server_uuid}{name};
+		my $on_this_anvil    = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "server_uuid",      value1 => $server_uuid, 
+			name2 => "this_server_name", value2 => $this_server_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $server_name (sort {$a cmp $b} @{$servers})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "server_name",      value1 => $server_name, 
+				name2 => "this_server_name", value2 => $this_server_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_server_name eq $server_name)
+			{
+				$on_this_anvil = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "on_this_anvil", value1 => $on_this_anvil, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "on_this_anvil", value1 => $on_this_anvil, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (not $on_this_anvil)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_uuid", value1 => $server_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+				delete $an->data->{server_uuid}{$server_uuid};
+			}
+		}
+	}
+	
+	# Check to see if any servers are already running. If so, mark the current time as their "processed"
+	# time because we don't know when they booted so, from a delay perspective, we will assume the worst.
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -268,70 +311,70 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($state->{$server_name} =~ /start/)
 		{
-			my $server_uuid                                   = $an->data->{server_name}{$server_name}{uuid};
-			   $an->data->{server_uuid}{$server_uuid}{booted} = 1;
+			my $server_uuid                                      = $an->data->{server_name}{$server_name}{uuid};
+			   $an->data->{server_uuid}{$server_uuid}{processed} = time;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "server_uuid",                         value1 => $server_uuid, 
-				name2 => "server_uuid::${server_uuid}::booted", value2 => $an->data->{server_uuid}{$server_uuid}{booted}, 
+				name1 => "server_uuid",                            value1 => $server_uuid, 
+				name2 => "server_uuid::${server_uuid}::processed", value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
-	# Log that we're not going to boot those with server_boot_after with all-0 UUIDs.
-	
-	# Now find the servers without any boot-after settings and boot them. Note in a hash that they've 
-	# booted.
-	
-	# Note the current time and loop through the remaining servers until all have booted. Sort them by
-	# their delays, skipping any that are delayed on not-yet-booted servers. As we boot, we'll sleep the
-	# number of seconds if (boot delay - time passed since the loop started). Repeat the loop, resetting
-	# the noted time on each pass. Any server we hit that is set to clean-off or do-not-boot will get
-	# flagged as booted in the to-boot array, so that anything down-stream of them can boot and so that
-	# the list of to-boot servers depletes.
-	
-	return(0);
-}
-
-# This returns an array reference of the servers found on this Anvil!
-sub get_cluster_server_list
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_cluster_server_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $servers = [];
-	my $state   = {};
-	my $shell_call = $an->data->{path}{clustat};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	# Enter a loop where we look at what the boot condition is for each server. When it is time, deal 
+	# with the server and mark the time it was dealt with. If a given machine depends on another, check 
+	# that machine to see if it was dealt with yet. If so, check for a delay. If the current time minus
+	# the dependent machine's 'dealt with' time is >= the delay, deal with it. Loop until all machines
+	# have been dealt with.
+	my $done = 0;
+	until($done)
 	{
-		chomp;
-		my $line =  $_;
-		   $line =~ s/^\s+//;
-		   $line =~ s/\s+$//;
-		   $line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will get set to '0' if we hit any servers we're not dealing with in this loop.
+		my $all_dealth_with = 1;
 		
-		if ($line =~ /vm:(.*?) .*? (.*)$/)
+		foreach my $server_uuid (keys %{$an->data->{server_uuid}})
 		{
-			my $server = $1;
-			my $status = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "server", value1 => $server, 
-				name2 => "status", value2 => $status, 
+			# Gather our thoughts...
+			my $stop_reason = $an->data->{server_uuid}{$server_uuid}{stop_reason};
+			my $start_after = $an->data->{server_uuid}{$server_uuid}{server_start_after};
+			my $start_delay = $an->data->{server_uuid}{$server_uuid}{server_start_delay};
+			my $server_name = $an->data->{server_uuid}{$server_uuid}{name};
+			my $processed   = $an->data->{server_uuid}{$server_uuid}{processed};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+				name2 => "stop_reason", value2 => $stop_reason, 
+				name3 => "start_delay", value3 => $start_delay, 
+				name4 => "server_name", value4 => $server_name, 
+				name5 => "processed",   value5 => $processed, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			push @{$servers}, $server;
-			$state->{$server} = $status;
+			# Nothing to do if the server has already been processed.
+			next if $processed;
+			
+			# If it was 'clean' off, leave it off.
+			if ($stop_reason =~ /clean/)
+			{
+				# Leave it off. Set the 'processed' to '1' instead of the time so that we can
+				# tell that the server wasn't booted.
+				$an->data->{server_uuid}{$server_uuid}{processed} = 1;
+			}
+			
+			# If the dependent UUID is all '0', we're leaving it off.
+		}
+		
+		
+		if ($all_dealth_with)
+		{
+			# \o/
+			$done = 1;
+		}
+		else
+		{
+			sleep 1;
 		}
 	}
-	close $file_handle;
 	
-	return($servers, $state);
+	
+	return(0);
 }
 
 # This starts cman on both nodes, the starts DRBD, makes sure all is well (fixing it if not), the starts
