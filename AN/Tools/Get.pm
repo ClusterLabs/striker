@@ -233,6 +233,8 @@ WHERE
 		}
 	}
 	
+	# See if the server is running 
+	
 	# Now dig out the storage and network details.
 	my $xml  = XML::Simple->new();
 	my $data = $xml->XMLin($return->{definition}, ForceArray => 1);
@@ -248,137 +250,73 @@ WHERE
 	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
 	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
 	
-	use Data::Dumper;
-	print Dumper $data;
-	
 	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
 	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
-=cut - Example:
- <vcpu>4</vcpu>
- <cpu>
-     <topology sockets='1' cores='4' threads='1'/>
- </cpu>
-=cut
+# Example:
+#  <vcpu>4</vcpu>
+#  <cpu>
+#      <topology sockets='1' cores='4' threads='1'/>
+#  </cpu>
 	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
 	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
 	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
 	
 	# Pull out the optical disks.
-	$return->{optical} = [];
-	$return->{disk}    = [];
-	for
-	print "Optical: [$data->{devices}->[0]->{disk}
+	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+	{
+		# Disk or cdrom?
+		my $device_type = $hash_ref->{device};
+		
+		# The backing device (LV or path the the source file, usually) and cache policy, if set.
+		my $backing_device = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : $hash_ref->{source}->[0]->{file}; 
+		my $cache_policy   = $hash_ref->{driver}->{qemu}->{cache} ? $hash_ref->{driver}->{qemu}->{cache} : "";
+		
+		# This is the device presented to the guest OS (vda, hdc, etc) and the bus type (virtio, IDE, etc)
+		my $target_device = $hash_ref->{target}->[0]->{dev};
+		my $target_bus    = $hash_ref->{target}->[0]->{bus};
+		
+		# Store it all
+		$return->{storage}{$device_type}{target_device}{$target_device} = {
+			backing_device	=>	$backing_device, 
+			cache_policy	=>	$cache_policy, 
+			target_bus	=>	$target_bus, 
+		};
+	}
 	
-	$return->{optical} = [];
-	$return->{network} = {};
-=pod
-<domain type='qemu' id='1'>
-  <vcpu placement='static'>1</vcpu>
-  <os>
-    <type arch='x86_64' machine='rhel6.6.0'>hvm</type>
-  </os>
-  <features>
-    <acpi/>
-    <apic/>
-    <pae/>
-  </features>
-  <cpu mode='host-model'>
-    <model fallback='allow'/>
-  </cpu>
-  <clock offset='utc'/>
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>destroy</on_reboot>
-  <on_crash>destroy</on_crash>
-  <devices>
-    <emulator>/usr/libexec/qemu-kvm</emulator>
-    <disk type='block' device='disk'>
-      <driver name='qemu' type='raw' cache='writeback' io='native'/>
-      <source dev='/dev/an-a03n01_vg0/vm01-c6-1_0'/>
-      <target dev='vda' bus='virtio'/>
-      <alias name='virtio-disk0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
-    </disk>
-    <disk type='file' device='cdrom'>
-      <driver name='qemu' type='raw'/>
-      <source file='/shared/files/rhel-server-6.7-x86_64-dvd.iso'/>
-      <target dev='hdc' bus='ide'/>
-      <readonly/>
-      <alias name='ide0-1-0'/>
-      <address type='drive' controller='0' bus='1' target='0' unit='0'/>
-    </disk>
-    <controller type='usb' index='0' model='ich9-ehci1'>
-      <alias name='usb0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x7'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci1'>
-      <alias name='usb0'/>
-      <master startport='0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0' multifunction='on'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci2'>
-      <alias name='usb0'/>
-      <master startport='2'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x1'/>
-    </controller>
-    <controller type='usb' index='0' model='ich9-uhci3'>
-      <alias name='usb0'/>
-      <master startport='4'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x2'/>
-    </controller>
-    <controller type='ide' index='0'>
-      <alias name='ide0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
-    </controller>
-    <controller type='virtio-serial' index='0'>
-      <alias name='virtio-serial0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
-    </controller>
-    <interface type='bridge'>
-      <mac address='52:54:00:f3:94:fe'/>
-      <source bridge='ifn_bridge1'/>
-      <target dev='vnet0'/>
-      <model type='virtio'/>
-      <alias name='net0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
-    </interface>
-    <serial type='pty'>
-      <source path='/dev/pts/2'/>
-      <target port='0'/>
-      <alias name='serial0'/>
-    </serial>
-    <console type='pty' tty='/dev/pts/2'>
-      <source path='/dev/pts/2'/>
-      <target type='serial' port='0'/>
-      <alias name='serial0'/>
-    </console>
-    <channel type='spicevmc'>
-      <target type='virtio' name='com.redhat.spice.0'/>
-      <alias name='channel0'/>
-      <address type='virtio-serial' controller='0' bus='0' port='1'/>
-    </channel>
-    <input type='tablet' bus='usb'>
-      <alias name='input0'/>
-    </input>
-    <input type='mouse' bus='ps2'/>
-    <graphics type='spice' port='5900' autoport='yes' listen='127.0.0.1'>
-      <listen type='address' address='127.0.0.1'/>
-    </graphics>
-    <video>
-      <model type='qxl' ram='65536' vram='65536' heads='1'/>
-      <alias name='video0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
-    </video>
-    <memballoon model='virtio'>
-      <alias name='balloon0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
-    </memballoon>
-  </devices>
-  <seclabel type='dynamic' model='selinux' relabel='yes'>
-    <label>unconfined_u:system_r:svirt_t:s0:c442,c752</label>
-    <imagelabel>unconfined_u:object_r:svirt_image_t:s0:c442,c752</imagelabel>
-  </seclabel>
-</domain>
-=cut
+	# Dig out the graphical connection information (the address is complicated for some reason...)
+	$return->{graphics}{port}    = $data->{devices}->[0]->{graphics}->[0]->{port};
+	$return->{graphics}{type}    = $data->{devices}->[0]->{graphics}->[0]->{type};
+	$return->{graphics}{address} = "";
+	foreach my $item (@{$data->{devices}->[0]->{graphics}->[0]->{'listen'}})
+	{
+		if (ref($item) eq "HASH")
+		{
+			$return->{graphics}{address} = $item->{address};
+		}
+		elsif (not $return->{graphics}{address})
+		{
+			$return->{graphics}{address} = $item;
+		}
+	}
+	
+	# Record what happens in given shutdown events.
+	$return->{on_poweroff} = $data->{on_poweroff}->[0];
+	$return->{on_reboot}   = $data->{on_reboot}->[0];
+	$return->{on_crash}    = $data->{on_crash}->[0];
+	
+	# Dig out the network details.
+	foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
+	{
+		my $bridge      = $hash_ref->{source}->[0]->{bridge};
+		my $vnet        = $hash_ref->{target}->[0]->{dev};
+		my $model       = $hash_ref->{model}->[0]->{type};
+		my $mac_address = $hash_ref->{mac}->[0]->{address};
+		$return->{network}{mac_address}{$mac_address} = {
+			bridge	=>	$bridge,
+			model	=>	$model,
+			vnet	=>	$vnet,
+		};
+	}
 	
 	return($return);
 }

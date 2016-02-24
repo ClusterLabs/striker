@@ -174,11 +174,6 @@ wait_if_node2($an);
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
-my $return = $an->Get->server_data({
-	server => "vm01-c6-1", 
-});
-exit(0);
-
 # Start the cluster
 start_the_cluster($an);
 

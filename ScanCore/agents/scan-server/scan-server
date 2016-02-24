@@ -16,8 +16,10 @@
 #    own.
 # 
 # TODO: 
-#  - Figure out how to handle a definition change seen by one node but not the other (ie: because it was 
-#    offline).
+#  - Check each pass if the server is running and, if so, update /shared/definition. Do this before looking
+#    for changes!
+#  - Check to see if a server is running in virsh but not in clustat. If so, start it in clusvcadm 
+#    immediately! Watch for 'paused' state from live migrations.
 #  - Add a check to see if libvirtd is set to start on boot and disable it, if so.
 # 
 

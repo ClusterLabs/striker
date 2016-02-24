@@ -90,6 +90,8 @@ sub boot_server
 		return(2);
 	}
 	
+	### TODO: Check with 'virsh' on both nodes. If it's running on either, immediately start it on that
+	###       node.
 	# Is it already running?
 	if ($state =~ /start/)
 	{
