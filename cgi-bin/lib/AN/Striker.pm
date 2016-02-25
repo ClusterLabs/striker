@@ -10998,13 +10998,13 @@ sub check_vms
 		
 		# Find out who, if anyone, is running this VM and who *can* run
 		# it. 2 == Running, 1 == Can run, 0 == Can't run.
-		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
+		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node1_ready}      = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm::${vm}::say_node1",                    value1 => $conf->{vm}{$vm}{say_node1},
 			name2 => "node::${node1}::daemon::cman::exit_code", value2 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">Not Ready</span>" : "<span class=\"code\">--</span>";
+		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
 		$conf->{vm}{$vm}{node2_ready}      = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm::${vm}::say_node2",                    value1 => $conf->{vm}{$vm}{say_node2},

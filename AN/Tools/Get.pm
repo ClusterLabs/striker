@@ -9,6 +9,8 @@ my $THIS_FILE = "Get.pm";
 
 ### Methods;
 # local_users
+# drbd_data
+# lvm_data
 # server_data
 # server_uuid
 # server_xml
@@ -319,6 +321,926 @@ WHERE
 	}
 	
 	return($return);
+}
+
+# This gathers DRBD data
+sub drbd_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# This will store the LVM data returned to the caller.
+	my $return     = {};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "port",     value2 => $port, 
+		name3 => "password", value3 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# These will store the output from the 'drbdadm' call and /proc/drbd data.
+	my $drbdadm_return   = [];
+	my $proc_drbd_return = [];
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		# Is the module loaded?
+		# 0 = Not loaded or not found
+		# 1 = Loaded
+		$return->{module_loaded} = $an->Check->kernel_module({
+			module		=>	"drbd",
+			target		=>	$target, 
+			password	=>	$password,
+			port		=>	$port,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "module_loaded", value1 => $return->{module_loaded}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Read in drbdadm dump-xml regardless of whether the module is loaded.
+		my $shell_call = $an->data->{path}{drbdadm}." dump-xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $drbdadm_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Now, read in /proc/drbd if the module was loaded.
+		if ($return->{module_loaded})
+		{
+			my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $target,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $proc_drbd_return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+		}
+	}
+	else
+	{
+		### Local calls
+		$return->{module_loaded} = $an->Check->kernel_module({module => "drbd"});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "module_loaded", value1 => $return->{module_loaded}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Read in drbdadm dump-xml regardless of whether the module is loaded.
+		my $shell_call = $an->data->{path}{drbdadm}." dump-xml";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$drbdadm_return}, $line;
+		}
+		close $file_handle;
+		
+		# Now, read in /proc/drbd if the module was loaded.
+		if ($return->{module_loaded})
+		{
+			my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				push @{$proc_drbd_return}, $line;
+			}
+			close $file_handle;
+		}
+	}
+	
+	### Parsing the XML data is a little involved.
+	# Convert the XML array into a string.
+	my $xml_data = "";
+	foreach my $line (@{$drbdadm_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		$xml_data .= "$line\n";
+	}
+	
+	# Parse the data from XML::Simple
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml_data)
+	{
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "data", value1 => $data,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		foreach my $a (keys %{$data})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "a", value1 => $a,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($a eq "file")
+			{
+				# This is just "/dev/drbd.conf", not needed.
+			}
+			elsif ($a eq "common")
+			{
+				foreach my $b (@{$data->{common}->[0]->{section}})
+				{
+					my $name = $b->{name};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						name1 => "b",    value1 => $b,
+						name2 => "name", value2 => $name,
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($name eq "handlers")
+					{
+						$return->{fence}{handler}{name} = $b->{option}->[0]->{name};
+						$return->{fence}{handler}{path} = $b->{option}->[0]->{value};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "fence::handler::name", value1 => $return->{fence}{handler}{name},
+							name2 => "fence::handler::path", value2 => $return->{fence}{handler}{path},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($name eq "disk")
+					{
+						$return->{fence}{policy} = $b->{option}->[0]->{value};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "fence::policy", value1 => $return->{fence}{policy},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($name eq "syncer")
+					{
+						$return->{syncer}{rate} = $b->{option}->[0]->{value};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "syncer::rate", value1 => $return->{syncer}{rate},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($name eq "startup")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$return->{startup}{$name} = $value;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "startup::$name", value1 => $return->{startup}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					elsif ($name eq "net")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$return->{net}{$name} = $value;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "net::$name", value1 => $return->{net}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					elsif ($name eq "options")
+					{
+						foreach my $c (@{$b->{option}})
+						{
+							my $name  = $c->{name};
+							my $value = $c->{value} ? $c->{value} : "--";
+							$return->{options}{$name} = $value;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "options::$name", value1 => $return->{options}{$name},
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					else
+					{
+						# Unexpected element
+						$an->Log->entry({log_level => 2, message_key => "tools_log_0008", message_variables => {
+							element     => $b, 
+							source_data => $an->data->{path}{drbdadm}." dump-xml", 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+			elsif ($a eq "resource")
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "data->{resource}", value1 => $data->{resource},
+				}, file => $THIS_FILE, line => __LINE__});
+				foreach my $b (@{$data->{resource}})
+				{
+					my $resource = $b->{name};
+					foreach my $c (@{$b->{host}})
+					{
+						my $ip_type        = $c->{address}->[0]->{family};
+						my $ip_address     = $c->{address}->[0]->{content};
+						my $tcp_port       = $c->{address}->[0]->{port};
+						my $hostname       = $c->{name};
+						my $metadisk       = "--";
+						my $minor_number   = "--";
+						my $drbd_device    = "--";
+						my $backing_device = "--";
+						if (defined $c->{device}->[0]->{minor})
+						{
+							### DRBD 8.3 data
+							#print "DRBD 8.3\n";
+							$metadisk       = $c->{'meta-disk'}->[0];
+							$minor_number   = $c->{device}->[0]->{minor};
+							$drbd_device    = $c->{device}->[0]->{content};
+							$backing_device = $c->{device}->[0]->{content};
+						}
+						else
+						{
+							### DRBD 8.4 data
+							# TODO: This will have problems with multi-volume DRBD! Make it smarter.
+							#print "DRBD 8.4\n";
+							$metadisk       = $c->{volume}->[0]->{'meta-disk'}->[0];
+							$minor_number   = $c->{volume}->[0]->{device}->[0]->{minor};
+							$drbd_device    = $c->{volume}->[0]->{device}->[0]->{content};
+							$backing_device = $c->{volume}->[0]->{device}->[0]->{content};
+						}
+						
+						# This is used for locating a resource by it's minor number
+						$return->{minor_number}{$minor_number}{resource} = $resource;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "minor_number", value1 => $minor_number,
+							name2 => "resource",     value2 => $return->{minor_number}{$minor_number}{resource},
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# This is where the data itself is stored.
+						$return->{resource}{$resource}{metadisk}       = $metadisk;
+						$return->{resource}{$resource}{minor_number}   = $minor_number;
+						$return->{resource}{$resource}{drbd_device}    = $drbd_device;
+						$return->{resource}{$resource}{backing_device} = $backing_device;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+							name1 => "resource::${resource}::metadisk",       value1 => $return->{resource}{$resource}{metadisk},
+							name2 => "resource::${resource}::minor_number",   value2 => $return->{resource}{$resource}{minor_number},
+							name3 => "resource::${resource}::drbd_device",    value3 => $return->{resource}{$resource}{drbd_device},
+							name4 => "resource::${resource}::backing_device", value4 => $return->{resource}{$resource}{backing_device},
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# These entries are per-host.
+						$return->{resource}{$resource}{hostname}{$hostname}{ip_address} = $ip_address;
+						$return->{resource}{$resource}{hostname}{$hostname}{ip_type}    = $ip_type;
+						$return->{resource}{$resource}{hostname}{$hostname}{tcp_port}   = $tcp_port;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "resource::${resource}::hostname::${hostname}::ip_address", value1 => $return->{resource}{$resource}{hostname}{$hostname}{ip_address},
+							name2 => "resource::${resource}::hostname::${hostname}::ip_type",    value2 => $return->{resource}{$resource}{hostname}{$hostname}{ip_type},
+							name3 => "resource::${resource}::hostname::${hostname}::tcp_port",   value3 => $return->{resource}{$resource}{hostname}{$hostname}{tcp_port},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					foreach my $c (@{$b->{section}})
+					{
+						my $name = $c->{name};
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+							name1 => "c",    value1 => $c,
+							name2 => "name", value2 => $name,
+						}, file => $THIS_FILE, line => __LINE__});
+						if ($name eq "disk")
+						{
+							foreach my $d (@{$c->{options}})
+							{
+								my $name  = $d->{name};
+								my $value = $d->{value};
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									name1 => "d",     value1 => $d,
+									name2 => "name",  value2 => $name,
+									name3 => "value", value3 => $value,
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								$return->{resource_file}{$resource}{disk}{$name} = $value;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+									name1 => "resource_file::${resource}::disk::${name}", value1 => $return->{resource_file}{$resource}{disk}{$name},
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				$an->Log->entry({log_level => 2, message_key => "tools_log_0008", message_variables => {
+					element     => $a, 
+					source_data => $an->data->{path}{drbdadm}." dump-xml", 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now process /proc/drbd is the 'drbd' module was loaded.
+	if ($return->{module_loaded})
+	{
+		my $resource     = "";
+		my $minor_number = "";
+		foreach my $line (@{$proc_drbd_return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /version: (.*?) \(/)
+			{
+				$return->{version} = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "version", value1 => $return->{version},
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			elsif ($line =~ /GIT-hash: (.*?) build by (.*?), (\S+) (.*)$/)
+			{
+				$return->{git_hash}   = $1;
+				$return->{builder}    = $2;
+				$return->{build_date} = $3;
+				$return->{build_time} = $4;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "git_hash",   value1 => $return->{git_hash},
+					name2 => "builder",    value2 => $return->{builder},
+					name3 => "build_date", value3 => $return->{build_date},
+					name4 => "build_time", value4 => $return->{build_time},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# This is just for hash key consistency
+				if ($line =~ /^(\d+): cs:(.*?) ro:(.*?)\/(.*?) ds:(.*?)\/(.*?) (.*?) (.*)$/)
+				{
+					   $minor_number     = $1;
+					my $connection_state = $2;
+					my $my_role          = $3;
+					my $peer_role        = $4;
+					my $my_disk_state    = $5;
+					my $peer_disk_state  = $6;
+					my $drbd_protocol    = $7;
+					my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
+					   $resource         = $return->{minor_number}{$minor_number}{resource};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "resource::${resource}::minor_number",     value1 => $return->{resource}{$resource}{minor_number},
+						name2 => "resource::${resource}::connection_state", value2 => $return->{resource}{$resource}{connection_state},
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$return->{resource}{$resource}{minor_number}     = $minor_number;
+					$return->{resource}{$resource}{connection_state} = $connection_state;
+					$return->{resource}{$resource}{my_role}          = $my_role;
+					$return->{resource}{$resource}{peer_role}        = $peer_role;
+					$return->{resource}{$resource}{my_disk_state}    = $my_disk_state;
+					$return->{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
+					$return->{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
+					$return->{resource}{$resource}{io_flags}         = $io_flags;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+						name1 => "resource::${resource}::minor_number",     value1 => $return->{resource}{$resource}{minor_number},
+						name2 => "resource::${resource}::connection_state", value2 => $return->{resource}{$resource}{connection_state},
+						name3 => "resource::${resource}::my_role",          value3 => $return->{resource}{$resource}{my_role},
+						name4 => "resource::${resource}::peer_role",        value4 => $return->{resource}{$resource}{peer_role},
+						name5 => "resource::${resource}::my_disk_state",    value5 => $return->{resource}{$resource}{my_disk_state},
+						name6 => "resource::${resource}::peer_disk_state",  value6 => $return->{resource}{$resource}{peer_disk_state},
+						name7 => "resource::${resource}::drbd_protocol",    value7 => $return->{resource}{$resource}{drbd_protocol},
+						name8 => "resource::${resource}::io_flags",         value8 => $return->{resource}{$resource}{io_flags},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /ns:(.*?) nr:(.*?) dw:(.*?) dr:(.*?) al:(.*?) bm:(.*?) lo:(.*?) pe:(.*?) ua:(.*?) ap:(.*?) ep:(.*?) wo:(.*?) oos:(.*)$/)
+				{
+					# Details: http://www.drbd.org/users-guide/ch-admin.html#s-performance-indicators
+					my $network_sent            = $1;	# KiB send
+					my $network_received        = $2;	# KiB received
+					my $disk_write              = $3;	# KiB wrote
+					my $disk_read               = $4;	# KiB read
+					my $activity_log_updates    = $5;	# Number of updates of the activity log area of the meta data.
+					my $bitmap_updates          = $6;	# Number of updates of the bitmap area of the meta data.
+					my $local_count             = $7;	# Number of open requests to the local I/O sub-system issued by DRBD.
+					my $pending_requests        = $8;	# Number of requests sent to the partner, but that have not yet been answered by the latter.
+					my $unacknowledged_requests = $9;	# Number of requests received by the partner via the network connection, but that have not yet been answered.
+					my $app_pending_requests    = $10;	# Number of block I/O requests forwarded to DRBD, but not yet answered by DRBD.
+					my $epoch_objects           = $11;	# Number of epoch objects. Usually 1. Might increase under I/O load when using either the barrier or the none write ordering method.
+					my $write_order             = $12;	# Currently used write ordering method: b(barrier), f(flush), d(drain) or n(none).
+					my $out_of_sync             = $13;	# KiB that are out of sync
+					
+					# Make things easier 
+					if    ($write_order eq "b") { $write_order = "barrier"; }
+					elsif ($write_order eq "f") { $write_order = "flush";   }
+					elsif ($write_order eq "d") { $write_order = "drain";   }
+					elsif ($write_order eq "n") { $write_order = "none";    }
+					
+					$return->{resource}{$resource}{network_sent}            = $an->Readable->hr_to_bytes({size => $network_sent,     type => "KiB"});
+					$return->{resource}{$resource}{network_received}        = $an->Readable->hr_to_bytes({size => $network_received, type => "KiB"});
+					$return->{resource}{$resource}{disk_write}              = $an->Readable->hr_to_bytes({size => $disk_write,       type => "KiB"});
+					$return->{resource}{$resource}{disk_read}               = $an->Readable->hr_to_bytes({size => $disk_read,        type => "KiB"});
+					$return->{resource}{$resource}{activity_log_updates}    = $activity_log_updates;
+					$return->{resource}{$resource}{bitmap_updates}          = $bitmap_updates;
+					$return->{resource}{$resource}{local_count}             = $local_count;
+					$return->{resource}{$resource}{pending_requests}        = $pending_requests;
+					$return->{resource}{$resource}{unacknowledged_requests} = $unacknowledged_requests;
+					$return->{resource}{$resource}{app_pending_requests}    = $app_pending_requests;
+					$return->{resource}{$resource}{epoch_objects}           = $epoch_objects;
+					$return->{resource}{$resource}{write_order}             = $write_order;
+					$return->{resource}{$resource}{out_of_sync}             = $an->Readable->hr_to_bytes({size => $out_of_sync, type => "KiB"});
+					
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
+						name1  => "resource::${resource}::network_sent",            value1  => $return->{resource}{$resource}{network_sent},
+						name2  => "resource::${resource}::network_received",        value2  => $return->{resource}{$resource}{network_received},
+						name3  => "resource::${resource}::disk_write",              value3  => $return->{resource}{$resource}{disk_write},
+						name4  => "resource::${resource}::disk_read",               value4  => $return->{resource}{$resource}{disk_read},
+						name5  => "resource::${resource}::activity_log_updates",    value5  => $return->{resource}{$resource}{activity_log_updates},
+						name6  => "resource::${resource}::bitmap_updates",          value6  => $return->{resource}{$resource}{bitmap_updates},
+						name7  => "resource::${resource}::local_count",             value7  => $return->{resource}{$resource}{local_count},
+						name8  => "resource::${resource}::pending_requests",        value8  => $return->{resource}{$resource}{pending_requests},
+						name9  => "resource::${resource}::unacknowledged_requests", value9  => $return->{resource}{$resource}{unacknowledged_requests},
+						name10 => "resource::${resource}::app_pending_requests",    value10 => $return->{resource}{$resource}{app_pending_requests},
+						name11 => "resource::${resource}::epoch_objects",           value11 => $return->{resource}{$resource}{epoch_objects},
+						name12 => "resource::${resource}::write_order",             value12 => $return->{resource}{$resource}{write_order},
+						name13 => "resource::${resource}::out_of_sync",             value13 => $return->{resource}{$resource}{out_of_sync},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# The resync lines aren't consistent, so I pull out data one piece at a time.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line,
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($line =~ /sync'ed: (.*?)%/)
+					{
+						my $percent_synced = $1;
+						$return->{resource}{$resource}{syncing}        = 1;
+						$return->{resource}{$resource}{percent_synced} = $percent_synced;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "resource::${resource}::syncing",        value1 => $return->{resource}{$resource}{syncing},
+							name2 => "resource::${resource}::percent_synced", value2 => $return->{resource}{$resource}{percent_synced},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					if ($line =~ /\((\d+)\/(\d+)\)M/)
+					{
+						# The 'M' is 'Mibibyte'
+						my $left_to_sync  = $1;
+						my $total_to_sync = $2;
+						
+						$return->{resource}{$resource}{left_to_sync}  = $an->Readable->hr_to_bytes({size => $left_to_sync,  type => "MiB"});
+						$return->{resource}{$resource}{total_to_sync} = $an->Readable->hr_to_bytes({size => $total_to_sync, type => "MiB"});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "resource::${resource}::left_to_sync",  value1 => $return->{resource}{$resource}{left_to_sync},
+							name2 => "resource::${resource}::total_to_sync", value2 => $return->{resource}{$resource}{total_to_sync},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					if ($line =~ /finish: (\d+):(\d+):(\d+)/)
+					{
+						my $hours   = $1;
+						my $minutes = $2;
+						my $seconds = $3;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "hours",   value1 => $hours, 
+							name2 => "minutes", value2 => $minutes, 
+							name3 => "seconds", value3 => $seconds,
+						}, file => $THIS_FILE, line => __LINE__});
+						
+						# Convert to raw seconds.
+						$return->{resource}{$resource}{eta_to_sync} = ($hours * 3600) + ($minutes * 60) + $seconds;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name4 => "resource::${resource}::eta_to_sync", value4 => $return->{resource}{$resource}{eta_to_sync}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					if ($line =~ /speed: (.*?) \((.*?)\)/)
+					{
+						my $current_speed =  $1;
+						my $average_speed =  $2;
+						   $current_speed =~ s/,//g;
+						   $average_speed =~ s/,//g;
+						
+						$return->{resource}{$resource}{current_speed} = $an->Readable->hr_to_bytes({size => $current_speed, type => "KiB"});
+						$return->{resource}{$resource}{average_speed} = $an->Readable->hr_to_bytes({size => $average_speed, type => "KiB"});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "resource::${resource}::current_speed", value1 => $return->{resource}{$resource}{current_speed},
+							name2 => "resource::${resource}::average_speed", value2 => $return->{resource}{$resource}{average_speed},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					if ($line =~ /want: (.*?) K/)
+					{
+						# The 'want' line is only calculated on the sync target
+						my $want_speed =  $1;
+						   $want_speed =~ s/,//g;
+						
+						$return->{resource}{$resource}{want_speed} = $an->Readable->hr_to_bytes({size => $want_speed, type => "KiB"});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "resource::${resource}::want_speed", value1 => $return->{resource}{$resource}{want_speed},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
+		}
+	}
+	
+	return($return);
+}
+
+# This gathers the LVM data for a machine (local if no 'target' is defined).
+sub lvm_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# This will store the LVM data returned to the caller.
+	my $data     = {};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "port",     value2 => $port, 
+		name3 => "password", value3 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# These will store the output from the 'pvs', 'vgs' and 'lvs' calls, respectively.
+	my $pvscan_return = [];
+	my $vgscan_return = [];
+	my $lvscan_return = [];
+	my $pvs_return    = [];
+	my $vgs_return    = [];
+	my $lvs_return    = [];
+	
+	### NOTE: At this time, I don't care about the pvscan, vgscan or lvscan data. I call them mainly to 
+	###       make sure that the pvs, vgs and lvs output is current.
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Local calls
+		# Get the PV scan data
+		my $shell_call = $an->data->{path}{pvscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $pvscan_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Get the VG scan data
+		$shell_call = $an->data->{path}{vgscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $vgscan_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Get the LV scan data
+		$shell_call = $an->data->{path}{lvscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $lvscan_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Get the 'pvs' data
+		$shell_call = $an->data->{path}{pvs}." --noheadings --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $pvs_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Get the 'vgs' data
+		$shell_call = $an->data->{path}{vgs}." --noheadings --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $vgs_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		
+		# Now the 'lvs' data.
+		$shell_call = $an->data->{path}{lvs}." --noheadings --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $lvs_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Remote calls
+		# Get the PV scan data
+		my $shell_call = $an->data->{path}{pvscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$pvscan_return}, $line;
+		}
+		close $file_handle;
+		
+		# Get the VG scan data
+		$shell_call = $an->data->{path}{vgscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$vgscan_return}, $line;
+		}
+		close $file_handle;
+		
+		# Get the LV scan data
+		$shell_call = $an->data->{path}{lvscan};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$lvscan_return}, $line;
+		}
+		close $file_handle;
+		
+		# Get the 'pvs' data
+		$shell_call = $an->data->{path}{pvs}." --noheadings --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$pvs_return}, $line;
+		}
+		close $file_handle;
+		
+		# Get the 'vgs' data
+		$shell_call = $an->data->{path}{vgs}." --noheadings --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$vgs_return}, $line;
+		}
+		close $file_handle;
+		
+		# Now the 'lvs' data.
+		$shell_call = $an->data->{path}{lvs}." --noheadings --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$lvs_return}, $line;
+		}
+		close $file_handle;
+	}
+	
+	### NOTE: At this time, I don't care about the pvscan, vgscan or lvscan data. I call them mainly to 
+	###       make sure that the pvs, vgs and lvs output is current.
+	
+	### Now parse out the data.
+	# 'pvscan' data
+	foreach my $line (@{$pvscan_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 'vgscan' data
+	foreach my $line (@{$vgscan_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 'lvscan' data
+	foreach my $line (@{$lvscan_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 'pvs' data
+	foreach my $line (@{$pvs_return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#   pv_name,          vg_name,               pv_fmt,  pv_attr,     pv_size,     pv_free,    pv_used,    pv_uuid
+		my ($physical_volume, $used_by_volume_group, $format, $attributes, $total_size, $free_size, $used_size, $uuid) = (split /#!#/, $line);
+		$total_size =~ s/B$//;
+		$free_size  =~ s/B$//;
+		$used_size  =~ s/B$//;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "physical_volume",      value1 => $physical_volume,
+			name2 => "used_by_volume_group", value2 => $used_by_volume_group,
+			name3 => "format",               value3 => $format,
+			name4 => "attributes",           value4 => $attributes,
+			name5 => "total_size",           value5 => $total_size,
+			name6 => "free_size",            value6 => $free_size,
+			name7 => "used_size",            value7 => $used_size,
+			name8 => "uuid",                 value8 => $uuid,
+		}, file => $THIS_FILE, line => __LINE__});
+		$data->{physical_volume}{$physical_volume}{used_by_volume_group} = $used_by_volume_group;
+		$data->{physical_volume}{$physical_volume}{attributes}           = $attributes;
+		$data->{physical_volume}{$physical_volume}{total_size}           = $total_size;
+		$data->{physical_volume}{$physical_volume}{free_size}            = $free_size;
+		$data->{physical_volume}{$physical_volume}{used_size}            = $used_size;
+		$data->{physical_volume}{$physical_volume}{uuid}                 = $uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "physical_volume::${physical_volume}::used_by_volume_group", value1 => $data->{physical_volume}{$physical_volume}{used_by_volume_group},
+			name2 => "physical_volume::${physical_volume}::attributes",           value2 => $data->{physical_volume}{$physical_volume}{attributes},
+			name3 => "physical_volume::${physical_volume}::total_size",           value3 => $data->{physical_volume}{$physical_volume}{total_size},
+			name4 => "physical_volume::${physical_volume}::free_size",            value4 => $data->{physical_volume}{$physical_volume}{free_size},
+			name5 => "physical_volume::${physical_volume}::used_size",            value5 => $data->{physical_volume}{$physical_volume}{used_size},
+			name6 => "physical_volume::${physical_volume}::uuid",                 value6 => $data->{physical_volume}{$physical_volume}{uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 'vgs' data
+	foreach my $line (@{$vgs_return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#   vg_name,       vg_attr,     vg_extent_size,        vg_extent_count, vg_uuid, vg_size,            vg_free_count, vg_free,     pv_name
+		my ($volume_group, $attributes, $physical_extent_size, $extent_count,   $uuid,   $volume_group_size, $free_extents, $free_space, $pv_name) = split /#!#/, $line;
+		   $physical_extent_size =  "" if not defined $physical_extent_size;
+		   $volume_group_size    =  "" if not defined $volume_group_size;
+		   $free_space           =  "" if not defined $free_space;
+		   $attributes           =  "" if not defined $attributes;
+		   $physical_extent_size =~ s/B$//;
+		   $volume_group_size    =~ s/B$//;
+		   $free_space           =~ s/B$//;
+		my $used_extents         =  $extent_count      - $free_extents if (($extent_count)      && ($free_extents));
+		my $used_space           =  $volume_group_size - $free_space   if (($volume_group_size) && ($free_space));
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+			name1  => "volume_group",         value1  => $volume_group,
+			name2  => "attributes",           value2  => $attributes,
+			name3  => "physical_extent_size", value3  => $physical_extent_size,
+			name4  => "extent_count",         value4  => $extent_count,
+			name5  => "uuid",                 value5  => $uuid,
+			name6  => "volume_group_size",    value6  => $volume_group_size,
+			name7  => "used_extents",         value7  => $used_extents,
+			name8  => "used_space",           value8  => $used_space,
+			name9  => "free_extents",         value9  => $free_extents,
+			name10 => "free_space",           value10 => $free_space,
+			name11 => "pv_name",              value11 => $pv_name,
+		}, file => $THIS_FILE, line => __LINE__});
+		$data->{volume_group}{$volume_group}{clustered}            = $attributes =~ /c$/ ? 1 : 0;
+		$data->{volume_group}{$volume_group}{physical_extent_size} = $physical_extent_size;
+		$data->{volume_group}{$volume_group}{extent_count}         = $extent_count;
+		$data->{volume_group}{$volume_group}{uuid}                 = $uuid;
+		$data->{volume_group}{$volume_group}{size}                 = $volume_group_size;
+		$data->{volume_group}{$volume_group}{used_extents}         = $used_extents;
+		$data->{volume_group}{$volume_group}{used_space}           = $used_space;
+		$data->{volume_group}{$volume_group}{free_extents}         = $free_extents;
+		$data->{volume_group}{$volume_group}{free_space}           = $free_space;
+		$data->{volume_group}{$volume_group}{pv_name}              = $pv_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			name1  => "volume_group::${volume_group}::clustered",            value1  => $data->{volume_group}{$volume_group}{clustered},
+			name2  => "volume_group::${volume_group}::physical_extent_size", value2  => $data->{volume_group}{$volume_group}{physical_extent_size},
+			name3  => "volume_group::${volume_group}::extent_count",         value3  => $data->{volume_group}{$volume_group}{extent_count},
+			name4  => "volume_group::${volume_group}::uuid",                 value4  => $data->{volume_group}{$volume_group}{uuid},
+			name5  => "volume_group::${volume_group}::size",                 value5  => $data->{volume_group}{$volume_group}{size},
+			name6  => "volume_group::${volume_group}::used_extents",         value6  => $data->{volume_group}{$volume_group}{used_extents},
+			name7  => "volume_group::${volume_group}::used_space",           value7  => $data->{volume_group}{$volume_group}{used_space},
+			name8  => "volume_group::${volume_group}::free_extents",         value8  => $data->{volume_group}{$volume_group}{free_extents},
+			name9  => "volume_group::${volume_group}::free_space",           value9  => $data->{volume_group}{$volume_group}{free_space},
+			name10 => "volume_group::${volume_group}::pv_name",              value10 => $data->{volume_group}{$volume_group}{pv_name},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# 'lvs' data
+	foreach my $line (@{$lvs_return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#   lv_name,         vg_name,           lv_attr,     lv_size,     lv_uuid, lv_path, devices
+		my ($logical_volume, $on_volume_group,  $attributes, $total_size, $uuid,   $path,   $devices) = (split /#!#/, $line);
+		$total_size =~ s/B$//;
+		$devices    =~ s/\(\d+\)//g;	# Strip the starting PE number
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "logical_volume",  value1 => $logical_volume,
+			name2 => "on_volume_group", value2 => $on_volume_group,
+			name3 => "attributes",      value3 => $attributes,
+			name4 => "total_size",      value4 => $total_size,
+			name5 => "uuid",            value5 => $uuid,
+			name6 => "path",            value6 => $path,
+			name7 => "device(s)",       value7 => $devices,
+		}, file => $THIS_FILE, line => __LINE__});
+		$data->{logical_volume}{$path}{name}            = $logical_volume;
+		$data->{logical_volume}{$path}{on_volume_group} = $on_volume_group;
+		$data->{logical_volume}{$path}{active}          = ($attributes =~ /.{4}(.{1})/)[0] eq "a" ? 1 : 0;
+		$data->{logical_volume}{$path}{attributes}      = $attributes;
+		$data->{logical_volume}{$path}{total_size}      = $total_size;
+		$data->{logical_volume}{$path}{uuid}            = $uuid;
+		$data->{logical_volume}{$path}{on_devices}      = $devices;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "logical_volume::${path}::name",            value1 => $data->{logical_volume}{$path}{name},
+			name2 => "logical_volume::${path}::on_volume_group", value2 => $data->{logical_volume}{$path}{on_volume_group},
+			name3 => "logical_volume::${path}::active",          value3 => $data->{logical_volume}{$path}{active},
+			name4 => "logical_volume::${path}::attribute",       value4 => $data->{logical_volume}{$path}{attributes},
+			name5 => "logical_volume::${path}::total_size",      value5 => $data->{logical_volume}{$path}{total_size},
+			name6 => "logical_volume::${path}::uuid",            value6 => $data->{logical_volume}{$path}{uuid},
+			name7 => "logical_volume::${path}::on_devices",      value7 => $data->{logical_volume}{$path}{on_devices},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($data);
 }
 
 # This looks for a server by name on both nodes. If it is not found on either, it looks for the server in

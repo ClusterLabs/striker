@@ -6,6 +6,20 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Storage.pm";
 
+### Methods
+# 
+# get_lvm_data
+# prep_local_uuid
+# rsync
+# find
+# read_conf
+# search_dirs
+# read_ssh_config
+# read_hosts
+# read_xml_file
+# _create_rsync_wrapper
+
+
 # The constructor
 sub new
 {
@@ -18,9 +32,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -34,7 +47,7 @@ sub parent
 # Get (create if needed) my UUID.
 sub prep_local_uuid
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
 	
 	# Clear any prior errors.
@@ -223,53 +236,6 @@ sub rsync
 	close $file_handle;
 	
 	return(0);
-}
-
-# This does the actual work of creating the 'expect' wrapper script and returns the path to that wrapper.
-sub _create_rsync_wrapper
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an    = $self->parent;
-	$an->Alert->_set_error;
-	
-	# Check my parameters.
-	my $target   = $parameter->{target};
-	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "target",   value1 => $target, 
-		name2 => "password", value2 => $password, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $target) || (not $password))
-	{
-		# Can't do much without a target or password.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	my $wrapper    = "/tmp/rsync.$target";
-	my $shell_call = "
-".$an->data->{path}{echo}." '#!".$an->data->{path}{expect}."' > $wrapper
-".$an->data->{path}{echo}." 'set timeout 3600' >> $wrapper
-".$an->data->{path}{echo}." 'eval spawn rsync \$argv' >> $wrapper
-".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
-".$an->data->{path}{echo}." 'expect eof' >> $wrapper
-".$an->data->{path}{'chmod'}." 755 $wrapper;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-	while(<$file_handle>)
-	{
-		print $_;
-	}
-	close $file_handle;
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "wrapper", value1 => $wrapper, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($wrapper);
 }
 
 ### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
@@ -725,6 +691,53 @@ sub read_xml_file
 	$hash->{data} = $data;
 	
 	return($hash);
+}
+
+# This does the actual work of creating the 'expect' wrapper script and returns the path to that wrapper.
+sub _create_rsync_wrapper
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an    = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Check my parameters.
+	my $target   = $parameter->{target};
+	my $password = $parameter->{password};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "password", value2 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $target) || (not $password))
+	{
+		# Can't do much without a target or password.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0034", code => 21, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $wrapper    = "/tmp/rsync.$target";
+	my $shell_call = "
+".$an->data->{path}{echo}." '#!".$an->data->{path}{expect}."' > $wrapper
+".$an->data->{path}{echo}." 'set timeout 3600' >> $wrapper
+".$an->data->{path}{echo}." 'eval spawn rsync \$argv' >> $wrapper
+".$an->data->{path}{echo}." 'expect \"password:\" \{ send \"$password\\n\" \}' >> $wrapper
+".$an->data->{path}{echo}." 'expect eof' >> $wrapper
+".$an->data->{path}{'chmod'}." 755 $wrapper;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		print $_;
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "wrapper", value1 => $wrapper, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($wrapper);
 }
 
 1;

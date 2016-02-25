@@ -66,7 +66,7 @@ sub boot_server
 	my ($servers, $state) = $an->Cman->get_cluster_server_list();
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name", value1 => $server_name, 
 			name2 => "server",      value2 => $server, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -84,6 +84,9 @@ sub boot_server
 	}
 	
 	# Did we find it?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_found", value1 => $server_found, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $server_found)
 	{
 		# We're done.
@@ -93,6 +96,9 @@ sub boot_server
 	### TODO: Check with 'virsh' on both nodes. If it's running on either, immediately start it on that
 	###       node.
 	# Is it already running?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "state", value1 => $state, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($state =~ /start/)
 	{
 		# Yup
@@ -102,8 +108,38 @@ sub boot_server
 	# If we're still alive, we're going to try and start it now. Start by getting the information about 
 	# the server so that we can be smart about it.
 	
-	# Call clustat to make sure the requested server is here.
+	# Get the server's data and the general LVM and DRBD data so that we can determine where best to boot
+	# the server.
+	my $server_data = $an->Get->server_data({server => $server});
+	my $drbd_data   = $an->Get->drbd_data();
+	my $lvm_data    = $an->Get->lvm_data();
 	
+	# Look at storage
+	my $device_type = "disk";
+	foreach my $target_device (sort {$a cmp $b} keys %{$server_data->{storage}{$device_type}{target_device}})
+	{
+		my $backing_device = $server_data->{storage}{$device_type}{target_device}{$target_device}{backing_device};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "server",         value1 => $server, 
+			name2 => "backing_device", value2 => $backing_device, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Find what PV(s) the backing device is on. Comma-separated list of PVs that this LV spans.
+		# Usually only one device.
+		my $on_devices = $lvm_data->{logical_volume}{$backing_device}{on_devices};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "on_devices", value1 => $on_devices, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $device (split/,/, $on_devices)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "device", value1 => $device, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Check to see if this device is UpToDate on both nodes. If a node isn't, it will not
+			# be a boot target.
+		}
+	}
 	
 	return(0);
 }
@@ -128,7 +164,7 @@ sub get_cluster_server_list
 		   $line =~ s/^\s+//;
 		   $line =~ s/\s+$//;
 		   $line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		

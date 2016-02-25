@@ -442,7 +442,7 @@ The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' v
 
 =head2 C<51>
 
-The 'AN::Tools::Get->server_note()' method was called but 'server' and 'uuid' values were not set. One of them must be passed.
+The 'AN::Tools::Get->server_node()' method was called but 'server' and 'uuid' values were not set. One of them must be passed.
 
 =head2 C<52>
 

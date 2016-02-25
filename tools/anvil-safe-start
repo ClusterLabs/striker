@@ -174,6 +174,9 @@ wait_if_node2($an);
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
+# $an->Cman->boot_server({server => "vm01-c6-1"});
+# exit(0);
+
 # Start the cluster
 start_the_cluster($an);
 

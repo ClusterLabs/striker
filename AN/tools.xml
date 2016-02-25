@@ -92,6 +92,7 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 - password:          [---]
 - initialize:        [#!variable!initialize!#]
 		</key>
+		<key name="tools_log_0008">Unexpected element: [#!variable!element!#] while parsing: [#!variable!source_data!#] data.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -474,7 +475,7 @@ Variables:
 		<key name="error_message_0048"><![CDATA[The 'AN::Tools::DB->initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself. Please be sure to run ScanCore (at least once) on all configured dashboards.]]></key>
 		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
-		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_note()' method was called but the 'server' value wasn't set.]]></key>
+		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_node()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0052">Failed to create a symlink from: [#!variable!target!#] to: [#!variable!link!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0053">Failed to delete the file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0054"><![CDATA[The 'AN::Tools::Check->daemon()' method was called but the 'daemon' value wasn't set.]]></key>

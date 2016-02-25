@@ -458,6 +458,7 @@ sub _set_paths
 	$an->data->{path}{ls}              = "/bin/ls";
 	$an->data->{path}{lsmod}           = "/sbin/lsmod";
 	$an->data->{path}{lvchange}        = "/sbin/lvchange";
+	$an->data->{path}{lvs}             = "/sbin/lvs";
 	$an->data->{path}{lvscan}          = "/sbin/lvscan";
 	$an->data->{path}{modprobe}        = "/sbin/modprobe";
 	$an->data->{path}{mount}           = "/bin/mount";
@@ -471,6 +472,7 @@ sub _set_paths
 	$an->data->{path}{ps}              = "/bin/ps";
 	$an->data->{path}{pvchange}        = "/sbin/pvchange";
 	$an->data->{path}{pvscan}          = "/sbin/pvscan";
+	$an->data->{path}{pvs}             = "/sbin/pvs";
 	$an->data->{path}{rsync}           = "/usr/bin/rsync",
 	$an->data->{path}{sed}             = "/bin/sed",
 	$an->data->{path}{ssh}             = "/usr/bin/ssh";
@@ -480,6 +482,7 @@ sub _set_paths
 	$an->data->{path}{touch}           = "/bin/touch";
 	$an->data->{path}{vgchange}        = "/sbin/vgchange";
 	$an->data->{path}{vgscan}          = "/sbin/vgscan";
+	$an->data->{path}{vgs}             = "/sbin/vgs";
 	$an->data->{path}{virsh}           = "/usr/bin/virsh";
 	
 	# Text files

@@ -11800,9 +11800,6 @@ sub parse_proc_drbd
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "in parse_proc_drbd() for node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
 	my $resource     = "";
 	my $minor_number = "";
 	foreach my $line (@{$array})
@@ -13145,9 +13142,6 @@ sub parse_lvm_scan
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "in parse_lvm_scan() for node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$array})
 	{
 		$line =~ s/^\s+//;
@@ -13389,14 +13383,6 @@ sub parse_lvm_data
 				name7 => "total size",   value7 => $conf->{node}{$node}{lvm}{lv}{$path}{total_size},
 				name8 => "uuid",         value8 => $conf->{node}{$node}{lvm}{lv}{$path}{uuid},
 				name9 => "on device(s)", value9 => $conf->{node}{$node}{lvm}{lv}{$path}{on_devices},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-				name1 => "node",         value1 => $node,
-				name2 => "path",         value2 => $path,
-				name3 => "name",         value3 => $conf->{node}{$node}{lvm}{lv}{$path}{name},
-				name4 => "on VG",        value4 => $conf->{node}{$node}{lvm}{lv}{$path}{on_vg},
-				name5 => "total size",   value5 => $conf->{node}{$node}{lvm}{lv}{$path}{total_size},
-				name6 => "on device(s)", value6 => $conf->{node}{$node}{lvm}{lv}{$path}{on_devices},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
