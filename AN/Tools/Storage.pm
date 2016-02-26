@@ -7,8 +7,7 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "Storage.pm";
 
 ### Methods
-# 
-# get_lvm_data
+# cleanup_gfs2
 # prep_local_uuid
 # rsync
 # find
@@ -42,6 +41,124 @@ sub parent
 	$self->{HANDLE}{TOOLS} = $parent if $parent;
 	
 	return ($self->{HANDLE}{TOOLS});
+}
+
+# This cleans up stale gfs2 lock files.
+sub cleanup_gfs2
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure gfs2 isn't, in fact, running
+	my $gfs2_running = 0;
+	my $return       = [];
+	my $shell_call   = $an->data->{path}{pgrep}." gfs2";
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Any return means that something is running and we DON'T want to remove the lock file.
+		$gfs2_running = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "gfs2_running", value1 => $gfs2_running, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	if (not $gfs2_running)
+	{
+		# Remove the lock file.
+		die "GFS2 lock file path appears to be invalid! Path is: [".$an->data->{path}{gfs2_lock}."], should be under '/var/lock/'.\n" if $an->data->{path}{gfs2_lock} !~ /^\/var\/lock/;
+		my $return     = [];
+		my $shell_call = $an->data->{path}{rm}." -f ".$an->data->{path}{gfs2_lock};
+		if ($target)
+		{
+			# Remote call.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $target,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			# Local call
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 # Get (create if needed) my UUID.

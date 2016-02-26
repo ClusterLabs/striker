@@ -152,7 +152,7 @@ sub kernel_module
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -238,12 +238,12 @@ sub daemon
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -260,7 +260,7 @@ sub daemon
 	if ($target)
 	{
 		# Remote call.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -381,7 +381,7 @@ sub drbd_resource
 		name2 => "target",   value2 => $target, 
 		name3 => "port",     value3 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

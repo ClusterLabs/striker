@@ -473,6 +473,7 @@ sub _set_paths
 	$an->data->{path}{pvchange}        = "/sbin/pvchange";
 	$an->data->{path}{pvscan}          = "/sbin/pvscan";
 	$an->data->{path}{pvs}             = "/sbin/pvs";
+	$an->data->{path}{rm}              = "/bin/rm",
 	$an->data->{path}{rsync}           = "/usr/bin/rsync",
 	$an->data->{path}{sed}             = "/bin/sed",
 	$an->data->{path}{ssh}             = "/usr/bin/ssh";
@@ -494,11 +495,15 @@ sub _set_paths
 
 	# Directories
 	$an->data->{path}{definitions}     = "/shared/definitions";
+	$an->data->{path}{status}          = "/shared/status";
 	$an->data->{path}{initd}           = "/etc/init.d";
 	$an->data->{path}{shared}          = "/shared";
 	
 	# Tools
 	$an->data->{path}{'striker-delayed-run'} = "/sbin/striker/striker-delayed-run";
+	
+	# Lock files
+	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";
 	
 	return(0);
 }

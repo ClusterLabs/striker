@@ -33,6 +33,7 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+### TODO: For now, this requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
 # not ready (ie: The VM's backing storage is on a DRBD resource that is Inconsistent on one of the nodes).
 # Returns:
@@ -97,9 +98,9 @@ sub boot_server
 	###       node.
 	# Is it already running?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "state", value1 => $state, 
+		name1 => "state->{$server}", value1 => $state->{$server}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($state =~ /start/)
+	if ($state->{$server} =~ /start/)
 	{
 		# Yup
 		return(1);
@@ -108,11 +109,55 @@ sub boot_server
 	# If we're still alive, we're going to try and start it now. Start by getting the information about 
 	# the server so that we can be smart about it.
 	
-	# Get the server's data and the general LVM and DRBD data so that we can determine where best to boot
-	# the server.
-	my $server_data = $an->Get->server_data({server => $server});
-	my $drbd_data   = $an->Get->drbd_data();
-	my $lvm_data    = $an->Get->lvm_data();
+	# Get the server's data, the cluster config, and the general LVM and DRBD data so that we can 
+	# determine where best to boot the server.
+	my $server_data    = $an->Get->server_data({server => $server});
+	my $lvm_data       = $an->Get->lvm_data();
+	my $cluster_data   = $an->Get->cluster_conf_data();
+	my $drbd_data      = $an->Get->drbd_data();
+	my $nodes          = {};
+	my $my_host_name   = "";         
+	my $peer_host_name = "";         
+	
+	# Get the cluster names for node 1 and 2.
+	foreach my $node (sort {$a cmp $b} keys %{$cluster_data->{node}})
+	{
+		$nodes->{$node}{healthy}       = "";
+		$nodes->{$node}{storage_ready} = 0;
+		$nodes->{$node}{preferred}     = 0;
+		$nodes->{$node}{'local'}       = 0;
+		if (($node eq $an->hostname) or ($node eq $an->short_hostname))
+		{
+			$nodes->{$node}{'local'} = 1;
+			$my_host_name            = $node;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "my_host_name", value1 => $my_host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$peer_host_name = $node;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_host_name", value1 => $peer_host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# What is the preferred node given the failover domain?
+	my $failoverdomain = $cluster_data->{server}{$server}{domain};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "failoverdomain", value1 => $failoverdomain, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Which node are we?
+	
+	# Take the highest priority node
+	foreach my $priority (sort {$a cmp $b} keys %{$cluster_data->{failoverdomain}{$failoverdomain}{priority}})
+	{
+		my $node = $cluster_data->{failoverdomain}{$failoverdomain}{priority}{$priority};
+		$nodes->{$node}{preferred} = 1;
+		last;
+	}
 	
 	# Look at storage
 	my $device_type = "disk";
@@ -138,7 +183,68 @@ sub boot_server
 			
 			# Check to see if this device is UpToDate on both nodes. If a node isn't, it will not
 			# be a boot target.
+			my $resource = $drbd_data->{device}{$device}{resource};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "resource", value1 => $resource, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Check the state of the backing device on both nodes.
+			my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
+			my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "local_disk_state", value1 => $local_disk_state, 
+				name2 => "peer_disk_state",  value2 => $peer_disk_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($local_disk_state != /UpToDate/i)
+			{
+				$nodes->{$my_host_name}{storage_ready} = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "nodes->${my_host_name}::storage_ready", value1 => $nodes->{$my_host_name}{storage_ready}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($peer_disk_state != /UpToDate/i)
+			{
+				$nodes->{$peer_host_name}{storage_ready} = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "nodes->${peer_host_name}::storage_ready", value1 => $nodes->{$peer_host_name}{storage_ready}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
+	}
+	
+	# Check the node health files and log what we've found.
+	foreach my $node (sort {$a cmp $b} keys %{$nodes})
+	{
+		my $short_host_name =  $node;
+		   $short_host_name =~ s/\..*$//;
+		my $health_file     = $an->data->{path}{status}."/.".$short_host_name;
+		if (-e $health_file)
+		{
+			my $shell_call = $health_file;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$nodes->{$node}{healthy} = ($line =~ /health = (.*)$/)[0];
+			}
+			close $file_handle;
+		}
+		
+		# Report
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "${node}::healthy",       value1 => $nodes->{$node}{healthy}, 
+			name2 => "${node}::storage_ready", value2 => $nodes->{$node}{storage_ready}, 
+			name3 => "${node}::preferred",     value3 => $nodes->{$node}{preferred}, 
+			name4 => "${node}::local",         value4 => $nodes->{$node}{'local'}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);

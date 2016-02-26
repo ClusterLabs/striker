@@ -174,9 +174,6 @@ wait_if_node2($an);
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
-# $an->Cman->boot_server({server => "vm01-c6-1"});
-# exit(0);
-
 # Start the cluster
 start_the_cluster($an);
 
@@ -1398,7 +1395,7 @@ sub wait_if_node2
 sub start_daemons
 {
 	my ($an, $daemon, $syncronous) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_daemons" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemons" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "daemon",     value1 => $daemon, 
 		name2 => "syncronous", value2 => $syncronous,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1414,8 +1411,34 @@ sub start_daemons
 		password	=>	$an->data->{sys}{anvil_password},
 		port		=>	"",
 	});
+	
+	# If the daemon is 'gfs2' and the state is '2', there is a stale lock file. Delete it and check 
+	# again.
+	if ($daemon eq "gfs2")
+	{
+		if ($local_state eq "2")
+		{
+			$an->Storage->cleanup_gfs2();
+			$local_state  = $an->Check->daemon({daemon => $daemon});
+		}
+		if ($remote_state eq "2")
+		{
+			$an->Storage->cleanup_gfs2({
+				target		=>	$an->data->{sys}{peer_node}, 
+				password	=>	$an->data->{sys}{anvil_password},
+				port		=>	"",
+			});
+			$remote_state = $an->Check->daemon({
+				daemon		=>	$daemon,
+				target		=>	$an->data->{sys}{peer_node}, 
+				password	=>	$an->data->{sys}{anvil_password},
+				port		=>	"",
+			});
+		}
+	}
+	
 	my $shell_call = $an->data->{path}{initd}."/$daemon start";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "daemon",       value1 => $daemon, 
 		name2 => "local_state",  value2 => $local_state, 
 		name3 => "remote_state", value3 => $remote_state, 
