@@ -446,6 +446,7 @@ sub _set_paths
 	$an->data->{path}{'chown'}         = "/bin/chown";
 	$an->data->{path}{cp}              = "/bin/cp";
 	$an->data->{path}{clustat}         = "/usr/sbin/clustat";
+	$an->data->{path}{clusvcadm}       = "/usr/sbin/clusvcadm";
 	$an->data->{path}{drbdadm}         = "/sbin/drbdadm",
 	$an->data->{path}{'drbd-overview'} = "/usr/sbin/drbd-overview",
 	$an->data->{path}{echo}            = "/bin/echo";

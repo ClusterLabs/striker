@@ -47,11 +47,16 @@ sub boot_server
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $server = $parameter->{server} ? $parameter->{server} : "";
-	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "server", value1 => $server, 
-		name2 => "node",   value2 => $node, 
+	# If requested_node is healthy, we will boot on that. If 'force' is set and both nodes are sick, 
+	# we'll boot on the requested node or, if not set, the highest priority node, if storage is OK on 
+	# both, or else it will boot on the UpToDate node.
+	my $server         = $parameter->{server} ? $parameter->{server} : "";
+	my $requested_node = $parameter->{node}   ? $parameter->{node}   : "";
+	my $force          = $parameter->{force}  ? $parameter->{force}  : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "server",         value1 => $server, 
+		name2 => "requested_node", value2 => $requested_node, 
+		name3 => "force",          value3 => $force, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If we weren't given a server name, then why were we called?
@@ -123,7 +128,7 @@ sub boot_server
 	foreach my $node (sort {$a cmp $b} keys %{$cluster_data->{node}})
 	{
 		$nodes->{$node}{healthy}       = "";
-		$nodes->{$node}{storage_ready} = 0;
+		$nodes->{$node}{storage_ready} = 1;
 		$nodes->{$node}{preferred}     = 0;
 		$nodes->{$node}{'local'}       = 0;
 		if (($node eq $an->hostname) or ($node eq $an->short_hostname))
@@ -196,14 +201,14 @@ sub boot_server
 				name2 => "peer_disk_state",  value2 => $peer_disk_state, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			if ($local_disk_state != /UpToDate/i)
+			if ($local_disk_state !~ /UpToDate/i)
 			{
 				$nodes->{$my_host_name}{storage_ready} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "nodes->${my_host_name}::storage_ready", value1 => $nodes->{$my_host_name}{storage_ready}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($peer_disk_state != /UpToDate/i)
+			if ($peer_disk_state !~ /UpToDate/i)
 			{
 				$nodes->{$peer_host_name}{storage_ready} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -237,15 +242,225 @@ sub boot_server
 			}
 			close $file_handle;
 		}
-		
-		# Report
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "${node}::healthy",       value1 => $nodes->{$node}{healthy}, 
-			name2 => "${node}::storage_ready", value2 => $nodes->{$node}{storage_ready}, 
-			name3 => "${node}::preferred",     value3 => $nodes->{$node}{preferred}, 
-			name4 => "${node}::local",         value4 => $nodes->{$node}{'local'}, 
-		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	# All thing being equal, which node is preferred?
+	my $preferred_node = "";
+	my $secondary_node = "";
+	foreach my $node (sort {$a cmp $b} keys %{$nodes})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",                     value1 => $node, 
+			name2 => "requested_node",           value2 => $requested_node, 
+			name3 => "nodes->{$node}{preferred}", value3 => $nodes->{$node}{preferred}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($requested_node)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",           value1 => $node, 
+				name2 => "requested_node", value2 => $requested_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($node eq $requested_node)
+			{
+				$preferred_node = $node;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "preferred_node", value1 => $preferred_node, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		elsif ($nodes->{$node}{preferred})
+		{
+			$preferred_node = $node;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "preferred_node", value1 => $preferred_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	foreach my $node (sort {$a cmp $b} keys %{$nodes})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",           value1 => $node, 
+			name2 => "preferred_node", value2 => $preferred_node, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($node ne $preferred_node)
+		{
+			$secondary_node = $node;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "secondary_node", value1 => $secondary_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	### Now we know which node is preferred, is it healthy?
+	# If the user's requested node is healthy, boot it. If there is no requested node, see if the 
+	# failover domain's highest priority node is ready. If not, is the peer? If not, sadness,
+	my $booted = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "nodes->{$preferred_node}{storage_ready}", value1 => $nodes->{$preferred_node}{storage_ready}, 
+		name2 => "nodes->{$secondary_node}{storage_ready}", value2 => $nodes->{$secondary_node}{storage_ready}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($nodes->{$preferred_node}{storage_ready})
+	{
+		# The preferred node's storage is healthy, so will boot here *if*:
+		# - Storage is healhy
+		# - Health is OK *or* both nodes are 'warning' and 'force' was used.
+		# Storage is good. Are we healthy?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "nodes->{$preferred_node}{healthy}",       value1 => $nodes->{$preferred_node}{healthy}, 
+			name2 => "nodes->{$secondary_node}{storage_ready}", value2 => $nodes->{$secondary_node}{storage_ready}, 
+			name3 => "nodes->{$secondary_node}{healthy}",       value3 => $nodes->{$secondary_node}{healthy}, 
+			name4 => "force",                                   value4 => $force, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($nodes->{$preferred_node}{healthy} eq "ok")
+		{
+			# wee!
+			my $ok = $an->Cman->_do_server_boot({
+				server => $server, 
+				node   => $preferred_node, 
+			});
+			$booted = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",     value1 => $ok, 
+				name2 => "booted", value2 => $booted, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# Is the peer OK?
+		elsif (($nodes->{$secondary_node}{storage_ready}) && ($nodes->{$secondary_node}{healthy}))
+		{
+			# The peer is perfectly healthy, boot there.
+			my $ok = $an->Cman->_do_server_boot({
+				server => $server, 
+				node   => $secondary_node, 
+			});
+			$booted = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",     value1 => $ok, 
+				name2 => "booted", value2 => $booted, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		# If I was forced, boot locally.
+		elsif ($force)
+		{
+			# OK, Go.
+			my $ok = $an->Cman->_do_server_boot({
+				server => $server, 
+				node   => $preferred_node, 
+			});
+			$booted = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",     value1 => $ok, 
+				name2 => "booted", value2 => $booted, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# TODO: Catch unbooted condition.
+		}
+	}
+	elsif ($nodes->{$secondary_node}{storage_ready})
+	{
+		# Secondary's storage is healthy, we'll boot here if our health is OK. If not, we'll boot 
+		# here if we were forced.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "nodes->{$secondary_node}{healthy}", value1 => $nodes->{$secondary_node}{healthy}, 
+			name2 => "force",                             value2 => $force, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($nodes->{$secondary_node}{healthy} eq "ok")
+		{
+			# Good enough
+			my $ok = $an->Cman->_do_server_boot({
+				server => $server, 
+				node   => $secondary_node, 
+			});
+			$booted = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",     value1 => $ok, 
+				name2 => "booted", value2 => $booted, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($force)
+		{
+			# We've been told...
+			my $ok = $an->Cman->_do_server_boot({
+				server => $server, 
+				node   => $secondary_node, 
+			});
+			$booted = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "ok",     value1 => $ok, 
+				name2 => "booted", value2 => $booted, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# TODO: Catch unbooted condition.
+		}
+	}
+	else
+	{
+		# TODO: Catch unbooted condition.
+	}
+	
+	# Rescan if booted.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "booted", value1 => $booted, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($booted)
+	{
+		($servers, $state) = $an->Cman->get_cluster_server_list();
+		foreach my $server_name (sort {$a cmp $b} keys %{$state})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "server_name", value1 => $server_name, 
+				name2 => "server",      value2 => $server, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($server_name eq $server)
+			{
+				$server_found = 1;
+				$server_state = $state->{$server_name};
+				$server_uuid  = $an->data->{server_name}{$server_name}{uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "server_found", value1 => $server_found, 
+					name2 => "server_state", value2 => $server_state, 
+					name3 => "server_uuid",  value3 => $server_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This performs the actual boot on the server after sanity checks are done. This should not be called directly!
+sub _do_server_boot
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $server = $parameter->{server} ? $parameter->{server} : "";
+	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "node",   value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{clusvcadm}." -e $server -m $node";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# TODO: If this fails, look for/solve problems (like an ISO mounted that no longer exits...)
+	}
+	close $file_handle;
 	
 	return(0);
 }
