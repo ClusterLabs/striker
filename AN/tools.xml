@@ -93,6 +93,15 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 - initialize:        [#!variable!initialize!#]
 		</key>
 		<key name="tools_log_0008">Unexpected element: [#!variable!element!#] while parsing: [#!variable!source_data!#] data.</key>
+		<key name="tools_log_0009"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#], but it appears to already be running. No action taken.]]></key>
+		<key name="tools_log_0010">The server: [#!variable!server!#]'s backing storage device: [#!variable!disk!#] is backed by the DRBD resource: [#!variable!resource!#]. The local DRBD backing device is not 'UpToDate' but instead is: [#!variable!disk_state!#]. It is not safe to run the server locally.</key>
+		<key name="tools_log_0011">The server: [#!variable!server!#]'s backing storage device: [#!variable!disk!#] is backed by the DRBD resource: [#!variable!resource!#]. The peer's DRBD backing device is not 'UpToDate' but instead is: [#!variable!disk_state!#]. It is not safe to run the server on the: [#!variable!peer!#] peer.</key>
+		<key name="tools_log_0012">The preferred node: [#!variable!node!#] is ready, booting: [#!variable!server!#] now.</key>
+		<key name="tools_log_0013">The secondary node: [#!variable!node!#] is healthier than the preferred node, so we'll boot: [#!variable!server!#] there now.</key>
+		<key name="tools_log_0014">Neither node is healthy, but the storage is ready on the preferred node: [#!variable!node!#] and the boot was forced. Booting: [#!variable!server!#] it now.</key>
+		<key name="tools_log_0015">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#] node is healthy. Booting: [#!variable!server!#] it there now.</key>
+		<key name="tools_log_0016">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#]'s storage is. The secondary node is not healthy, but the boot was forced. Booting: [#!variable!server!#] it there now.</key>
+		<key name="tools_log_0017">Successfully booted: [#!variable!server!#] on: [#!variable!node!#].</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -377,10 +386,16 @@ Variables:
 		<key name="warning_title_0005">Failed to create an RSA key for the user: [#!variable!user!#]. Skipping this user.</key>
 		<key name="warning_title_0006">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read.</key>
 		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
+		<key name="warning_title_0008">Dangerous</key>
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
 		<key name="warning_message_0002">Unable to determine what environment this script is being called in.</key>
+		<key name="warning_message_0003"><![CDATA[AN::Tools::Cman->boot_server() was asked to boot: [#!variable!server!#], but that was not found. Unable to proceed.]]></key>
+		<key name="warning_message_0004">Booting the server: [#!variable!server!#] failed. No healthy node was found and the boot wasn't forced, so the server will be left off.</key>
+		<key name="warning_message_0005">One or more virtual hard drives used by the server: [#!variable!server!#] is on a replicated storage that is not 'UpToDate' on both nodes. The boot was forced though, so it will be booted on: [#!variable!server!#] now. If either node goes offline, this server will lose access to its storage!</key>
+		<key name="warning_message_0006">Failed to boot the server: [#!variable!server!#]. Neither node has a fully updated view of the storage backing this server. Booting would be unsafe.</key>
+		<key name="warning_message_0007">Failed to boot the server: [#!variable!server!#] on the node: [#!variable!#]. The error was: [#!variable!error!#].</key>
 		
 		<!-- notice messages -->
 		<key name="notice_message_0001">The database: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>

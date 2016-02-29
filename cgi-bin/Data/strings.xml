@@ -2419,6 +2419,13 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_log_0023">[ Error ] - Failed to mount the shared cluster file system on: [#!variable!node!#].</key>
 		<key name="asst_log_0024">No servers were found on this #!string!brand_0004!#, nothing more to do.</key>
 		<key name="asst_log_0025">The cluster managed storage is not up yet. Waiting a short bit and then will check again.</key>
+		<key name="asst_log_0026">One or more servers has not yet been processed. Sleeping for a moment and then will check again.</key>
+		<key name="asst_log_0027">The server: [#!variable!server!#] was set to start after: [#!variable!start_after!#]. That server had been shut down by the user earlier and thus will not be started. So this server will be booted now.</key>
+		<key name="asst_log_0028">The server: [#!variable!server!#] was set to start after: [#!variable!start_after!#]. That server is configured to not start on boot and will not be booted. So this server will be booted now.</key>
+		<key name="asst_log_0029">The server: [#!variable!server!#] was set to start after: [#!variable!start_after!#]. That server failed to boot (human intervention is required). This server will be booted now.</key>
+		<key name="asst_log_0030">The server: [#!variable!server!#] is set to start: [#!variable!start_delay!#] seconds after: [#!variable!start_after!#]. It was booted: [#!variable!time_since_boot!#] seconds ago, so we're ready. The server will now be booted.</key>
+		<key name="asst_log_0031">The server: [#!variable!server!#] is set to start: [#!variable!start_delay!#] seconds after: [#!variable!start_after!#]. It was booted: [#!variable!time_since_boot!#] seconds ago, so we still need to wait.</key>
+		<key name="asst_log_0032">The server: [#!variable!server!#] is set to start after a server with the UUID: [#!variable!start_after_uuid!#] which wasn't found on this #!string!brand_0004!#, so there is no point in waiting. The server will boot now.</key>
 		
 		<!-- normal messages -->
 		<key name="asst_message_0001">#!variable!this_file!# has been enabled.</key>

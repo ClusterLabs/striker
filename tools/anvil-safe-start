@@ -22,6 +22,7 @@ use strict;
 use warnings;
 use IO::Handle;
 use AN::Tools;
+use Data::Dumper;
 
 # Turn off buffering.
 $| = 1;
@@ -257,6 +258,15 @@ FROM
 			start_delay	=>	$server_start_delay, 
 		};
 		$an->data->{server_name}{$server_name}{uuid} = $server_uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "server_uuid",                              value1 => $server_uuid, 
+			name2 => "server_uuid::${server_uuid}::processed",   value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+			name3 => "server_uuid::${server_uuid}::name",        value3 => $an->data->{server_uuid}{$server_uuid}{name},
+			name4 => "server_uuid::${server_uuid}::stop_reason", value4 => $an->data->{server_uuid}{$server_uuid}{stop_reason}, 
+			name5 => "server_uuid::${server_uuid}::start_after", value5 => $an->data->{server_uuid}{$server_uuid}{start_after}, 
+			name6 => "server_uuid::${server_uuid}::start_delay", value6 => $an->data->{server_uuid}{$server_uuid}{start_delay}, 
+			name7 => "server_name::${server_name}::uuid",        value7 => $an->data->{server_name}{$server_name}{uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Weed out servers from the DB that aren't on this Anvil!
@@ -264,35 +274,38 @@ FROM
 	{
 		my $this_server_name = $an->data->{server_uuid}{$server_uuid}{name};
 		my $on_this_anvil    = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_uuid",      value1 => $server_uuid, 
 			name2 => "this_server_name", value2 => $this_server_name, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		foreach my $server_name (sort {$a cmp $b} @{$servers})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "server_name",      value1 => $server_name, 
 				name2 => "this_server_name", value2 => $this_server_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($this_server_name eq $server_name)
 			{
 				$on_this_anvil = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "on_this_anvil", value1 => $on_this_anvil, 
 				}, file => $THIS_FILE, line => __LINE__});
+				last;
 			}
-			
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		}
+		
+		# Delete it from the hash if it wasn't found.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "on_this_anvil", value1 => $on_this_anvil, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $on_this_anvil)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "on_this_anvil", value1 => $on_this_anvil, 
+				name2 => "server_uuid",   value2 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $on_this_anvil)
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "server_uuid", value1 => $server_uuid, 
-				}, file => $THIS_FILE, line => __LINE__});
-				delete $an->data->{server_uuid}{$server_uuid};
-			}
+			delete $an->data->{server_uuid}{$server_uuid};
 		}
 	}
 	
@@ -300,7 +313,7 @@ FROM
 	# time because we don't know when they booted so, from a delay perspective, we will assume the worst.
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name",           value1 => $server_name, 
 			name2 => "state->{$server_name}", value2 => $state->{$server_name}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -324,22 +337,32 @@ FROM
 	until($done)
 	{
 		# This will get set to '0' if we hit any servers we're not dealing with in this loop.
-		my $all_dealth_with = 1;
+		my $all_dealt_with = 1;
 		
 		foreach my $server_uuid (keys %{$an->data->{server_uuid}})
 		{
 			# Gather our thoughts...
-			my $stop_reason = $an->data->{server_uuid}{$server_uuid}{stop_reason};
-			my $start_after = $an->data->{server_uuid}{$server_uuid}{server_start_after};
-			my $start_delay = $an->data->{server_uuid}{$server_uuid}{server_start_delay};
-			my $server_name = $an->data->{server_uuid}{$server_uuid}{name};
-			my $processed   = $an->data->{server_uuid}{$server_uuid}{processed};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "server_uuid",                              value1 => $server_uuid, 
+				name2 => "server_uuid::${server_uuid}::processed",   value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+				name3 => "server_uuid::${server_uuid}::name",        value3 => $an->data->{server_uuid}{$server_uuid}{name},
+				name4 => "server_uuid::${server_uuid}::stop_reason", value4 => $an->data->{server_uuid}{$server_uuid}{stop_reason}, 
+				name5 => "server_uuid::${server_uuid}::start_after", value5 => $an->data->{server_uuid}{$server_uuid}{start_after}, 
+				name6 => "server_uuid::${server_uuid}::start_delay", value6 => $an->data->{server_uuid}{$server_uuid}{start_delay}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $processed   = $an->data->{server_uuid}{$server_uuid}{processed}   ? $an->data->{server_uuid}{$server_uuid}{processed}   : "";
+			my $server_name = $an->data->{server_uuid}{$server_uuid}{name}        ? $an->data->{server_uuid}{$server_uuid}{name}        : "";
+			my $stop_reason = $an->data->{server_uuid}{$server_uuid}{stop_reason} ? $an->data->{server_uuid}{$server_uuid}{stop_reason} : "";
+			my $start_after = $an->data->{server_uuid}{$server_uuid}{start_after} ? $an->data->{server_uuid}{$server_uuid}{start_after} : "";
+			my $start_delay = $an->data->{server_uuid}{$server_uuid}{start_delay} ? $an->data->{server_uuid}{$server_uuid}{start_delay} : "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
-				name2 => "stop_reason", value2 => $stop_reason, 
-				name3 => "start_delay", value3 => $start_delay, 
-				name4 => "server_name", value4 => $server_name, 
-				name5 => "processed",   value5 => $processed, 
+				name2 => "processed",   value2 => $processed, 
+				name3 => "server_name", value3 => $server_name, 
+				name4 => "stop_reason", value4 => $stop_reason, 
+				name5 => "start_after", value5 => $start_after, 
+				name6 => "start_delay", value6 => $start_delay, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Nothing to do if the server has already been processed.
@@ -351,19 +374,224 @@ FROM
 				# Leave it off. Set the 'processed' to '1' instead of the time so that we can
 				# tell that the server wasn't booted.
 				$an->data->{server_uuid}{$server_uuid}{processed} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
 			}
 			
 			# If the dependent UUID is all '0', we're leaving it off.
+			if ($start_after eq "00000000-0000-0000-0000-000000000000")
+			{
+				$an->data->{server_uuid}{$server_uuid}{processed} = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			
+			# If this server isn't dependent on anyone else, boot it.
+			if (not $start_after)
+			{
+				# 0 = Didn't boot (maybe no healthy node?)
+				# 1 = Booted
+				# 2 = Tried to boot, but it failed.
+				my $booted = $an->Cman->boot_server({server => $server_name});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "booted", value1 => $booted, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($booted eq "1")
+				{
+					# Excellent!
+					$an->data->{server_uuid}{$server_uuid}{processed} = time;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next;
+				}
+				elsif ($booted eq "2")
+				{
+					# Human intervention required. :(
+					$an->data->{server_uuid}{$server_uuid}{processed} = 3;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					next;
+				}
+				else
+				{
+					# Didn't boot it for some reason, like a node isn't ready yet.
+					$all_dealt_with = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "all_dealt_with", value1 => $all_dealt_with, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				### There is a dependent server. 
+				# Does it still exist?
+				my $boot = 0;
+				if ($an->data->{server_uuid}{$start_after}{name})
+				{
+					# It does exist. Has it been processed?
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "server_uuid::${start_after}::processed", value1 => $start_after, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{server_uuid}{$start_after}{processed})
+					{
+						# Looks like it.
+						if ($an->data->{server_uuid}{$start_after}{processed} eq "1")
+						{
+							# The dependent was cleanly turned off, so we might 
+							# as well boot it now.
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0027", message_variables => {
+								server      => $server_name, 
+								start_after => $an->data->{server_uuid}{$server_uuid}{name},
+							}, file => $THIS_FILE, line => __LINE__});
+							$boot = 1;
+						}
+						elsif ($an->data->{server_uuid}{$start_after}{processed} eq "2")
+						{
+							# The dependent is configured to never boot, so there
+							# is no reason to wait.
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0028", message_variables => {
+								server      => $server_name, 
+								start_after => $an->data->{server_uuid}{$server_uuid}{name},
+							}, file => $THIS_FILE, line => __LINE__});
+							$boot = 1;
+						}
+						elsif ($an->data->{server_uuid}{$start_after}{processed} eq "3")
+						{
+							# The dependent failed to boot, so there is no reason
+							# to wait.
+							$an->Log->entry({log_level => 1, message_key => "asst_log_0029", message_variables => {
+								server      => $server_name, 
+								start_after => $an->data->{server_uuid}{$server_uuid}{name},
+							}, file => $THIS_FILE, line => __LINE__});
+							$boot = 1;
+						}
+						else
+						{
+							# It appears to have booted cleanly, but how long 
+							# ago?
+							my $current_time    = time;
+							my $time_since_boot = $current_time - $an->data->{server_uuid}{$start_after}{processed};
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+								name1 => "current_time",                           value1 => $current_time, 
+								name2 => "server_uuid::${start_after}::processed", value2 => $an->data->{server_uuid}{$start_after}{processed},
+								name3 => "time_since_boot",                        value3 => $time_since_boot, 
+								name4 => "start_delay",                            value4 => $start_delay, 
+							}, file => $THIS_FILE, line => __LINE__});
+							if ($time_since_boot >= $start_delay)
+							{
+								# Boot it!
+								$an->Log->entry({log_level => 1, message_key => "asst_log_0030", message_variables => {
+									server          => $server_name, 
+									start_after     => $an->data->{server_uuid}{$server_uuid}{name},
+									start_delay     => $start_delay, 
+									time_since_boot => $time_since_boot, 
+								}, file => $THIS_FILE, line => __LINE__});
+								$boot = 1;
+							}
+							else
+							{
+								# Not yet.
+								$an->Log->entry({log_level => 1, message_key => "asst_log_0031", message_variables => {
+									server          => $server_name, 
+									start_after     => $an->data->{server_uuid}{$server_uuid}{name},
+									start_delay     => $start_delay, 
+									time_since_boot => $time_since_boot, 
+								}, file => $THIS_FILE, line => __LINE__});
+								
+								$all_dealt_with = 0;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "all_dealt_with", value1 => $all_dealt_with, 
+								}, file => $THIS_FILE, line => __LINE__});
+							}
+						}
+					}
+					else
+					{
+						# The dependent server hasn't booted yet.
+						$all_dealt_with = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "all_dealt_with", value1 => $all_dealt_with, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					# The dependent doesn't seem to exist now, so we'll boot immediately.
+					$an->Log->entry({log_level => 1, message_key => "asst_log_0032", message_variables => {
+						server           => $server_name, 
+						start_after_uuid => $an->data->{server_uuid}{$server_uuid}{name},
+					}, file => $THIS_FILE, line => __LINE__});
+					$boot = 1;
+				}
+				
+				# Boot?
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "boot", value1 => $boot, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($boot)
+				{
+					# 0 = Didn't boot (maybe no healthy node?)
+					# 1 = Booted
+					# 2 = Tried to boot, but it failed.
+					my $booted = $an->Cman->boot_server({server => $server_name});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "booted", value1 => $booted, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($booted eq "1")
+					{
+						# Excellent!
+						$an->data->{server_uuid}{$server_uuid}{processed} = time;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						next;
+					}
+					elsif ($booted eq "2")
+					{
+						# Human intervention required. :(
+						$an->data->{server_uuid}{$server_uuid}{processed} = 3;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "server_uuid::${server_uuid}::processed", value1 => $an->data->{server_uuid}{$server_uuid}{processed}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						next;
+					}
+					else
+					{
+						# Didn't boot it for some reason, like neither node is ready 
+						# yet.
+						$all_dealt_with = 0;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "all_dealt_with", value1 => $all_dealt_with, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
 		}
 		
-		
-		if ($all_dealth_with)
+		# Are we done?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "all_dealt_with", value1 => $all_dealt_with, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($all_dealt_with)
 		{
 			# \o/
 			$done = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "done", value1 => $done, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
+			### TODO: Determine if sleeping only 1 second puts too much of a load on the system.
+			$an->Log->entry({log_level => 1, message_key => "asst_log_0026", file => $THIS_FILE, line => __LINE__});
 			sleep 1;
 		}
 	}

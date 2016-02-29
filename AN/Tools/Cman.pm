@@ -96,6 +96,9 @@ sub boot_server
 	if (not $server_found)
 	{
 		# We're done.
+		$an->Alert->warning({message_key => "warning_message_0003", message_variables => {
+			server => $server,
+		}, file => $THIS_FILE, line => __LINE__});
 		return(2);
 	}
 	
@@ -108,6 +111,9 @@ sub boot_server
 	if ($state->{$server} =~ /start/)
 	{
 		# Yup
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0009", message_variables => {
+			server => $server,
+		}, file => $THIS_FILE, line => __LINE__});
 		return(1);
 	}
 	
@@ -154,13 +160,15 @@ sub boot_server
 		name1 => "failoverdomain", value1 => $failoverdomain, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Which node are we?
-	
 	# Take the highest priority node
 	foreach my $priority (sort {$a cmp $b} keys %{$cluster_data->{failoverdomain}{$failoverdomain}{priority}})
 	{
-		my $node = $cluster_data->{failoverdomain}{$failoverdomain}{priority}{$priority};
-		$nodes->{$node}{preferred} = 1;
+		my $node                      = $cluster_data->{failoverdomain}{$failoverdomain}{priority}{$priority};
+		   $nodes->{$node}{preferred} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node",                      value1 => $node, 
+			name2 => "nodes->${node}::preferred", value2 => $nodes->{$node}{preferred}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		last;
 	}
 	
@@ -203,6 +211,13 @@ sub boot_server
 			
 			if ($local_disk_state !~ /UpToDate/i)
 			{
+				# Not safe to run locally.
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0010", message_variables => {
+					server     => $server,
+					disk       => $device, 
+					disk_state => $local_disk_state, 
+					resource   => $resource, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$nodes->{$my_host_name}{storage_ready} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "nodes->${my_host_name}::storage_ready", value1 => $nodes->{$my_host_name}{storage_ready}, 
@@ -210,6 +225,14 @@ sub boot_server
 			}
 			if ($peer_disk_state !~ /UpToDate/i)
 			{
+				# Not safe to run on the peer, either.
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0011", message_variables => {
+					server     => $server,
+					disk       => $device, 
+					disk_state => $local_disk_state, 
+					resource   => $resource, 
+					peer       => $peer_host_name, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$nodes->{$peer_host_name}{storage_ready} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "nodes->${peer_host_name}::storage_ready", value1 => $nodes->{$peer_host_name}{storage_ready}, 
@@ -224,6 +247,11 @@ sub boot_server
 		my $short_host_name =  $node;
 		   $short_host_name =~ s/\..*$//;
 		my $health_file     = $an->data->{path}{status}."/.".$short_host_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",            value1 => $node, 
+			name2 => "short_host_name", value2 => $short_host_name, 
+			name3 => "health_file",     value3 => $health_file, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (-e $health_file)
 		{
 			my $shell_call = $health_file;
@@ -239,6 +267,9 @@ sub boot_server
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$nodes->{$node}{healthy} = ($line =~ /health = (.*)$/)[0];
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "nodes->${node}::healthy", value1 => $nodes->{$node}{healthy}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			close $file_handle;
 		}
@@ -314,47 +345,56 @@ sub boot_server
 		if ($nodes->{$preferred_node}{healthy} eq "ok")
 		{
 			# wee!
-			my $ok = $an->Cman->_do_server_boot({
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0012", message_variables => {
+				server => $server,
+				node   => $preferred_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$booted = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $preferred_node, 
 			});
-			$booted = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "ok",     value1 => $ok, 
-				name2 => "booted", value2 => $booted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		# Is the peer OK?
 		elsif (($nodes->{$secondary_node}{storage_ready}) && ($nodes->{$secondary_node}{healthy}))
 		{
 			# The peer is perfectly healthy, boot there.
-			my $ok = $an->Cman->_do_server_boot({
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0013", message_variables => {
+				server => $server,
+				node   => $secondary_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$booted = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
-			$booted = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "ok",     value1 => $ok, 
-				name2 => "booted", value2 => $booted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		# If I was forced, boot locally.
 		elsif ($force)
 		{
 			# OK, Go.
-			my $ok = $an->Cman->_do_server_boot({
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0014", message_variables => {
+				server => $server,
+				node   => $secondary_node, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$booted = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $preferred_node, 
 			});
-			$booted = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "ok",     value1 => $ok, 
-				name2 => "booted", value2 => $booted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			# TODO: Catch unbooted condition.
+			# No luck
+			$an->Alert->warning({message_key => "warning_message_0004", message_variables => {
+				server => $server,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif ($nodes->{$secondary_node}{storage_ready})
@@ -368,44 +408,68 @@ sub boot_server
 		if ($nodes->{$secondary_node}{healthy} eq "ok")
 		{
 			# Good enough
-			my $ok = $an->Cman->_do_server_boot({
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0015", message_variables => {
+				preferred_node => $preferred_node,
+				secondary_node => $secondary_node,
+				server         => $server,
+			}, file => $THIS_FILE, line => __LINE__});
+			$booted = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
-			$booted = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "ok",     value1 => $ok, 
-				name2 => "booted", value2 => $booted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($force)
 		{
 			# We've been told...
-			my $ok = $an->Cman->_do_server_boot({
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0016", message_variables => {
+				preferred_node => $preferred_node,
+				secondary_node => $secondary_node,
+				server         => $server,
+			}, file => $THIS_FILE, line => __LINE__});
+			$booted = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
 			$booted = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "ok",     value1 => $ok, 
-				name2 => "booted", value2 => $booted, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "booted", value1 => $booted, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			# TODO: Catch unbooted condition.
+			# No luck...
+			$an->Alert->warning({message_key => "warning_message_0004", message_variables => {
+				server => $server,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
+	}
+	elsif ($force)
+	{
+		# We'll boot on the preferred node... May his noodly appendages take mercy on our soul.
+		$an->Alert->warning({title_key => "warning_title_0008", message_key => "warning_message_0005", message_variables => {
+			server => $server,
+		        node   => $preferred_node, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
-		# TODO: Catch unbooted condition.
+		# No safe node to boot on
+		$an->Alert->warning({message_key => "warning_message_0006", message_variables => {
+			server => $server,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# Rescan if booted.
+	### Rescan if booted.
+	# 0 = Not booted
+	# 1 = Booted
+	# 2 = Failed to boot.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "booted", value1 => $booted, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($booted)
+	if ($booted eq "1")
 	{
 		($servers, $state) = $an->Cman->get_cluster_server_list();
 		foreach my $server_name (sort {$a cmp $b} keys %{$state})
@@ -428,7 +492,7 @@ sub boot_server
 		}
 	}
 	
-	return(0);
+	return($booted);
 }
 
 # This performs the actual boot on the server after sanity checks are done. This should not be called directly!
@@ -438,6 +502,7 @@ sub _do_server_boot
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
+	my $return = 0;
 	my $server = $parameter->{server} ? $parameter->{server} : "";
 	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -458,11 +523,46 @@ sub _do_server_boot
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# TODO: If this fails, look for/solve problems (like an ISO mounted that no longer exits...)
+		if ($line =~ /success/i)
+		{
+			### TODO: Update 'server' with the new state and host.
+			$return = 1;
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0017", message_variables => {
+				server => $server,
+				node   => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /fail/i)
+		{
+			### TODO: Add some recovery options here.
+			### TODO: Update the database to mark the 'stop_reason' as 'failed'.
+			$an->Alert->warning({message_key => "warning_message_0007", message_variables => {
+				server => $server,
+				node   => $node, 
+				error  => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			$return = 2;
+			
+			# Disable it
+			my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}	
+			close $file_handle;
+		}
 	}
 	close $file_handle;
 	
-	return(0);
+	return($return);
 }
 
 # This returns an array reference of the servers found on this Anvil!
@@ -474,7 +574,7 @@ sub get_cluster_server_list
 	my $servers = [];
 	my $state   = {};
 	my $shell_call = $an->data->{path}{clustat};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -493,7 +593,7 @@ sub get_cluster_server_list
 		{
 			my $server = $1;
 			my $status = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "server", value1 => $server, 
 				name2 => "status", value2 => $status, 
 			}, file => $THIS_FILE, line => __LINE__});

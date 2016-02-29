@@ -851,7 +851,7 @@ sub drbd_data
 						$return->{resource}{$resource}{minor_number}   = $minor_number;
 						$return->{resource}{$resource}{drbd_device}    = $drbd_device;
 						$return->{resource}{$resource}{backing_device} = $backing_device;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 							name1 => "resource::${resource}::metadisk",       value1 => $return->{resource}{$resource}{metadisk},
 							name2 => "resource::${resource}::minor_number",   value2 => $return->{resource}{$resource}{minor_number},
 							name3 => "resource::${resource}::drbd_device",    value3 => $return->{resource}{$resource}{drbd_device},
@@ -861,7 +861,7 @@ sub drbd_data
 						# Make it easy to find the resource name and minor number by the given DRBD device path.
 						$return->{device}{$drbd_device}{resource}     = $resource;
 						$return->{device}{$drbd_device}{minor_number} = $minor_number;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 							name1 => "device::${drbd_device}::resource",     value1 => $return->{device}{$drbd_device}{resource},
 							name2 => "device::${drbd_device}::minor_number", value2 => $return->{device}{$drbd_device}{minor_number},
 						}, file => $THIS_FILE, line => __LINE__});
