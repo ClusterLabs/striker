@@ -14,10 +14,16 @@
 # 
 # This program is released under the GPL v2+
 # 
+# Return Codes
+# 0  = Successful run
+# 1  = Source ISO not found
+# 2  = Source not mounted and 'isoinfo' and/or 'iso-read' not installed.
+# 
 
 use strict;
 use warnings;
 use IO::Handle;
+use Data::Dumper;
 
 my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
@@ -29,16 +35,23 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $conf = {
 	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
 	executable	=>	{
+		isoinfo		=>	"isoinfo",
+		'iso-read'	=>	"",
 		# Used to verify that the source provided matches what we expect.
 		md5sum		=>	"md5sum",
+		mount		=>	"mount",
 	},
 	# Paths to files and directories
 	path		=>	{
-		# Source ISO will be mounted under here in a 'rhel' or 'centos' subdirectory, as appropriate.
-		mount		=>	"/tmp/",
+		# Directories and files we download, copy or create will be placed under this directory, 
+		# which itself will be appended to the user's home directory.
+		working_dir	=>	"anvil",
+		# This will store the mount path if the ISO was mounted
+		source_path	=>	"",
 	},
+	source_packages	=>	{},
 	sys		=>	{
-		debug		=>	0,
+		debug		=>	1,
 		md5sum		=>	{
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"rhel",		# v6.7
 			'51f90e8ddd2ea199780065eaf75130ad'	=>	"centos",	# v6.7
@@ -50,6 +63,12 @@ my $conf = {
 			file		=>	"",
 		},
 		use_anvil	=>	0,
+		# This is will be set to '1' if the source ISO is not mounted.
+		use_isoread	=>	0,
+		user		=>	{
+			name		=>	$ENV{HOME},
+			home		=>	$ENV{USER},
+		},
 	},
 };
 
@@ -66,10 +85,18 @@ if (($conf->{switches}{h})   ||
 
 find_executables($conf);
 
+# Possibly useful later
+#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; }
+
+# Genreate an MD5 sum and see if it matches one we know.
 validate_source($conf);
 
-# If we're still alive, we're ready.
+# Mount the source, if it isn't already
+prep_source($conf);
 
+exit(0);
+
+# If we're still alive, we're ready.
 get_package_list($conf);
 
 if (1)
@@ -129,6 +156,170 @@ if (1)
 
 exit(0);
 
+
+# This checks to see if the source is mounted or not. If not, it mounts it
+sub prep_source
+{
+	my ($conf) = @_;
+	
+	# First, is the source already mounted?
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug} >= 2;
+	my $source_file = ($conf->{switches}{source} =~ /^.*\/(.*)$/)[0];
+	my $mounted     = 0;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file]\n" if $conf->{sys}{debug} >= 2;
+	my $shell_call = $conf->{executable}{mount};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		
+		if ($line =~ /^\/.*?\/$source_file on (.*?) /)
+		{
+			$conf->{path}{source_path} = $1;
+			$mounted                   = 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - mounted: [$mounted], path::source_path: [$conf->{path}{source_path}]\n" if $conf->{sys}{debug} >= 2;
+			print "- The source ISO: [$conf->{switches}{source}] was found to be mounted at: [$conf->{path}{source_path}].\n";
+		}
+	}
+	close $file_handle;
+	
+	# If the source isn't mounted, we'll need to try and read the files out of the ISO directly because
+	# 'mount' requires root, and we can't assume the user has that.
+	if (not $mounted)
+	{
+		# Not mounted... Do we have the needed tools?
+		print "- The source ISO: [$conf->{switches}{source}] is not mounted. Will read and copy files directly out of the ISO.\n";
+		if ((-x $conf->{executable}{isoinfo}) && (-x $conf->{executable}{'iso-read'}))
+		{
+			# We're good to use this method to get our files.
+			$conf->{sys}{use_isoread} = 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::use_isoread: [$conf->{sys}{use_isoread}]\n" if $conf->{sys}{debug} >= 2;
+		}
+		else
+		{
+			# Nothing more we can do...
+			print "
+[ Error ] - The source ISO: [$conf->{switches}{source}]
+[ Error ]   is not mounted and the 'isoinfo' and/or 'iso-read' programs are not
+[ Error ]   installed. Please mount the source ISO 'loop-back';
+[ Error ]   \$ sudo mkdir /mnt/iso
+[ Error ]   \$ sudo mount -o loop $conf->{switches}{source} /mnt/iso
+[ Error ]   or install 'libcdio' and 'genisoimage' (or your OS's version of) 
+[ Error ]   and then re-run this program.
+
+";
+			exit(2);
+		}
+	}
+	
+	# Now get a list of the source files.
+	$conf->{sys}{files_read}       = 0;
+	$conf->{sys}{directories_read} = 0;
+	if ($conf->{sys}{use_isoread})
+	{
+		# We'll neeed to dig the file names out the hard way.
+		print "- Reading the contents of the ISO now...\n";
+		my $files       = 0;
+		my $directories = 0;
+		my $in_path     = "";
+		my $shell_call  = $conf->{executable}{isoinfo}." -lR -i ".$conf->{switches}{source};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			   $line =~ s/\s+$//;
+			   $line =~ s/\s+/ /g;
+			next if not $line;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /Directory listing of (\/.*)?/)
+			{
+				$in_path = $1;
+				$in_path =~ s/\/$// if $in_path ne "/";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - in_path: [$in_path]\n" if $conf->{sys}{debug} >= 2;
+				$conf->{sys}{directories_read}++;
+			}
+			
+			next if not $in_path;
+			if ($line =~ /-.*? \d+ \d+ \d+ (\d+) \w+ \d+ \d+ \[.*?\] (.*)$/)
+			{
+				my $bytes = $1;
+				my $file  = $2;
+				next if (($file eq ".") or ($file eq ".."));
+				die "Failed to parse file name from: [$line]\n" if not $line;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$file], bytes: [$bytes]\n" if $conf->{sys}{debug} >= 2;
+				$conf->{source_packages}{$in_path}{$file} = $bytes;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - source_packages::${in_path}::${file}: [$conf->{source_packages}{$in_path}{$file}]\n" if $conf->{sys}{debug} >= 2;
+				$conf->{sys}{files_read}++;
+			}
+		}
+		close $file_handle;
+		print "- Done. Read in: [$conf->{sys}{files_read}] files across: [$conf->{sys}{directories_read}] directories.\n";
+	}
+	else
+	{
+		# Walk the mount point.
+		print "- Reading the contents of the ISO now...\n";
+		read_directory($conf, $conf->{path}{source_path});
+		print "- Done. Read in: [$conf->{sys}{files_read}] files across: [$conf->{sys}{directories_read}] directories.\n";
+	}
+	
+	# Get a count of RPMs found in '/Packages'
+	my $package_count = 0;
+	foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{'/Packages'}})
+	{
+		next if $file !~ /\.rpm$/;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$file]\n" if $conf->{sys}{debug};
+		$package_count++;
+	}
+	print "- Found: [$package_count] source packages.\n";
+	
+	return(0);
+}
+
+# This reads the files in from the given directory, decending into any subdirectories, and recording the 
+# files it finds into the 'sourc_packages::<path>::<file>' hash, where '<path>' has the 'path::source_path'
+# stripped off.
+sub read_directory
+{
+	my ($conf, $directory) = @_;
+	$conf->{sys}{directories_read}++;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	
+	my $source_path =  $directory;
+	   $source_path =~ s/^$conf->{path}{source_path}//;
+	   $source_path =~ s/\/$//;
+	   $source_path =  "/$source_path" if $source_path !~ /^\//;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Reading in the contents of: [$directory], recording as: [$source_path]\n" if $conf->{sys}{debug} >= 2;
+	local(*DIR);
+	opendir(DIR, $directory) or die "Failed to open the directory: [$directory], error was: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if (($file eq ".") or ($file eq ".."));
+		my $this_path = $directory."/".$file;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - this_path: [$this_path]\n" if $conf->{sys}{debug} >= 3;
+		if (-d $this_path)
+		{
+			read_directory($conf, $this_path);
+		}
+		elsif (-f $this_path)
+		{
+			# Record the size. (position 7 in the returned array)
+			$conf->{source_packages}{$source_path}{$file} = (stat($this_path))[7];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_packages::${source_path}::${file}: [$conf->{source_packages}{$source_path}{$file}]\n" if $conf->{sys}{debug} >= 2;
+			$conf->{sys}{files_read}++;
+		}
+	}
+	
+	return(0)
+}
+
 # This validates the source ISO. It will exit if problems are found.
 sub validate_source
 {
@@ -138,10 +329,10 @@ sub validate_source
 	{
 		if (-e $conf->{switches}{source})
 		{
-			print "[ Debug ] - Parsing source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug};
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Parsing source: [$conf->{switches}{source}]\n" if $conf->{sys}{debug} >= 2;
 			
 			($conf->{sys}{source}{directory}, $conf->{sys}{source}{file}) = ($conf->{switches}{source} =~ /^(.*)\/(.*)$/);
-			print "[ Debug ] - Source directory: [$conf->{sys}{source}{directory}], file: [$conf->{sys}{source}{file}]\n" if $conf->{sys}{debug};
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Source directory: [$conf->{sys}{source}{directory}], file: [$conf->{sys}{source}{file}]\n" if $conf->{sys}{debug} >= 2;
 		}
 		else
 		{
@@ -150,37 +341,39 @@ sub validate_source
 		}
 		
 		print "- Generating md5sum of the source, please wait a moment...\n";
-		my $source_sum = "";
-		my $shell_call = "$conf->{executable}{md5sum} $conf->{switches}{source}";
-		print "[ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug};
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			print "[ Debug ] - line: [$line]\n" if $conf->{sys}{debug};
-			
-			if ($line =~ /^(\S+)\s+$conf->{switches}{source}/)
-			{
-				$source_sum = $1;
-				print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
-			}
-		}
-		close $file_handle;
+		my $source_sum = "51f90e8ddd2ea199780065eaf75130ad";
+### TODO: Uncomment this
+# 		my $source_sum = "";
+# 		my $shell_call = $conf->{executable}{md5sum}." ".$conf->{switches}{source};
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+# 		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+# 		while(<$file_handle>)
+# 		{
+# 			chomp;
+# 			my $line = $_;
+# 			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 			
+# 			if ($line =~ /^(\S+)\s+$conf->{switches}{source}/)
+# 			{
+# 				$source_sum = $1;
+# 				print "$THIS_FILE ".__LINE__."; [ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug} >= 2;
+# 			}
+# 		}
+# 		close $file_handle;
 		
 		# If we got a sum, make sure it matches an expected one.
 		if ($source_sum)
 		{
 			foreach my $this_sum (sort {$a cmp $b} keys %{$conf->{sys}{md5sum}})
 			{
-				print "[ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug};
-				print "[ Debug ] - this_sum:   [$this_sum]\n" if $conf->{sys}{debug};
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - source_sum: [$source_sum]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - this_sum:   [$this_sum]\n" if $conf->{sys}{debug} >= 2;
 				if ($source_sum eq $this_sum)
 				{
 					# Match!
 					$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
 					print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n";
-					#print "[ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
+					#print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::os: [$conf->{sys}{os}]\n" if $conf->{sys}{debug};
 				}
 			}
 		}
@@ -190,8 +383,6 @@ sub validate_source
 			print "[ Error ] - It is important to verify the source ISO, so unfortunately, we can not proceed.\n\n";
 			exit(1);
 		}
-		exit;
-		
 		
 		# Did I find an OS?
 		if ($conf->{sys}{os} eq "rhel")
@@ -224,13 +415,13 @@ sub validate_source
 sub find_executables
 {
 	my ($conf) = @_;
-	print "[ Debug ] - Searching for executables...\n" if $conf->{sys}{debug};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Searching for executables...\n" if $conf->{sys}{debug} >= 2;
 	
 	my $ok = 1;
 	foreach my $executable (sort {$a cmp $b} keys %{$conf->{executable}})
 	{
 		next if $conf->{executable}{$executable} =~ /^\//;
-		print "[ Debug ]   - Program: [$executable]... \n" if $conf->{sys}{debug};
+		print "$THIS_FILE ".__LINE__."; [ Debug ]   - Program: [$executable]... \n" if $conf->{sys}{debug} >= 2;
 		foreach my $path (split/:/, $ENV{'PATH'})
 		{
 			my $test_path = "$path/$executable";
@@ -238,20 +429,21 @@ sub find_executables
 			{
 				# Found it.
 				$conf->{executable}{$executable} = $test_path;
-				print "[ Debug ]     - Found it: [$conf->{executable}{$executable}].\n" if $conf->{sys}{debug};
+				print "$THIS_FILE ".__LINE__."; [ Debug ]     - Found it: [$conf->{executable}{$executable}].\n" if $conf->{sys}{debug} >= 2;
 				last;
 			}
 		}
 		
+		### NOTE: We no longer die on this because we can work around some missing tools
 		# Die if we didn't find it.
-		if ($conf->{executable}{$executable} !~ /^\//)
-		{
-			$ok = 0;
-			print "\n[ Error ] - Failed to find the: [$executable] program. Is it installed?\n";
-			print "[ Error ] - If so, is it in one of the directories in your PATH environment variable?\n\n";
-		}
+		#if ($conf->{executable}{$executable} !~ /^\//)
+		#{
+		#	$ok = 0;
+		#	print "\n[ Error ] - Failed to find the: [$executable] program. Is it installed?\n";
+		#	print "[ Error ] - If so, is it in one of the directories in your PATH environment variable?\n\n";
+		#}
 	}
-	exit(1) if not $ok;
+	#exit(1) if not $ok;
 	
 	return(0);
 }
@@ -1271,11 +1463,11 @@ sub get_switches
 	}
 	
 	# Debug
-	if ($conf->{sys}{debug})
+	if ($conf->{sys}{debug} >= 2)
 	{
 		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
 		{
-			print "Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - switches::$variable: [$conf->{switches}{$variable}]\n";
 		}
 	}
 	
