@@ -20,6 +20,7 @@
 # 2  = Source(es( not mounted and 'isoinfo' and/or 'iso-read' not installed.
 # 3  = Source ISO(s) have unrecognized mds5 sums.
 # 4  = No source ISO given
+# 5  = Failed to copy a file to Packages/ but the shell call itself didn't fail.
 # 
 
 use strict;
@@ -37,6 +38,7 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $conf = {
 	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
 	executable	=>	{
+		cp		=>	"cp",
 		isoinfo		=>	"isoinfo",
 		'iso-read'	=>	"",
 		# Used to verify that the source provided matches what we expect.
@@ -48,8 +50,21 @@ my $conf = {
 		# Directories and files we download, copy or create will be placed under this directory, 
 		# which itself will be appended to the user's home directory.
 		working_dir	=>	"anvil",
-		# This will store the mount path if the ISO was mounted
-		source_path	=>	"",
+		# This will be the root of the ISO. The 'working_dir' above will hold other temporary files
+		# like things we need to download.
+		source_path	=>	"source",
+		# These diretories are needed for the ISO and will be made under 'source_path' as needed.
+		iso		=>	{
+			kickstart	=>	"ks",
+			repodata	=>	"repodata",
+			striker		=>	"striker",	# striker-master will be created by git
+			syslinux	=>	"syslinux",
+			isolinux	=>	"isolinux",
+			packages	=>	"Packages",
+			fence		=>	"Tools/fence",
+			fujitsu		=>	"Tools/Fujitsu",
+			avago		=>	"Tools/Avago",
+		},
 	},
 	source		=>	{},
 	source_packages	=>	{},
@@ -69,13 +84,13 @@ my $conf = {
 		# This is will be set to '1' if the source ISO is not mounted.
 		use_isoread	=>	0,
 		user		=>	{
-			name		=>	$ENV{HOME},
-			home		=>	$ENV{USER},
+			name		=>	$ENV{USER},
+			home		=>	$ENV{HOME},
+			current_dir	=>	$ENV{PWD},
 		},
 	},
 };
 
-print "Beginning Anvil! ISO generation process. Please be patient!\n";
 get_switches($conf);
 $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 if (($conf->{switches}{h})   || 
@@ -86,10 +101,15 @@ if (($conf->{switches}{h})   ||
 	exit(0);
 }
 
+# Make sure we know where executables are on this system.
 find_executables($conf);
 
 # Possibly useful later
-#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; }
+#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; } exit;
+
+# Setup our build environment. This creates the directories we'll need for the new ISO, copy over isolinux
+# and syslinux, ask the user to download binary files, load our kickstart scripts and splash screens, etc.
+setup_build_environment($conf); 
 
 # Genreate an MD5 sum and see if it matches one we know.
 validate_source($conf);
@@ -103,96 +123,165 @@ get_package_list($conf);
 # Build the list of source files to copy.
 build_source_copy_list($conf);
 
-exit(0);
-if (1)
-{
-	print "# Common packages:\n";
-	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{common}})
-	{
-		print "$package ";
-	}
-	print "\n\n";
-}
-
-if ($conf->{sys}{os} eq "rhel")
-{
-	print "# RHEL packages:\n";
-	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{rhel}})
-	{
-		print "$package ";
-	}
-	print "\n\n";
-}
-
-if ($conf->{sys}{os} eq "centos")
-{
-	print "# CentOS packages:\n";
-	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{centos}})
-	{
-		print "$package ";
-	}
-	print "\n\n";
-}
-
-if (1)
-{
-	print "# Alteeve packages:\n";
-	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{alteeve}})
-	{
-		print "$package ";
-	}
-	print "\n\n";
-}
-
-if (1)
-{
-	print "# Third party, binary packages:\n";
-	print "yum install ";
-	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{binary}})
-	{
-		print "$package ";
-	}
-	print "\n\n";
-}
+# Download things we need.
 
 exit(0);
 
-
+ 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Setup our build environment. This creates the directories we'll need for the new ISO, copy over isolinux
+# and syslinux, ask the user to download binary files, load our kickstart scripts and splash screens, etc.
+sub setup_build_environment
+{
+	my ($conf) = @_;
+	
+	system('clear');
+	print "\n-=] Thank you for your interest in the Anvil! platform! [=-\n";
+	
+	print "
+We're going to ask for you to confirm some steps as we prepare to build the 
+Anvil! ISO. If you've not already done so, we will guide you through 
+downloading some programs from third-party vendors. This is a bit annoying, we
+admit, but it's how we play nice with others.
+
+You can quit this process at any time my pressing <ctrl> + <c>
+
+";
+	#sleep 2;
+	
+	$conf->{path}{iso}{working_directory} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir};
+	if (-e $conf->{path}{iso}{working_directory})
+	{
+		print "The working directory: [$conf->{path}{iso}{working_directory}] exist already.\n";
+	}
+	else
+	{
+		print "The working directory: [$conf->{path}{iso}{working_directory}] doesn't exist.\n";
+		print "- Can I create it (and needed subdirectories) now? [Y/n]\n";
+		my $answer = <STDIN>;
+		chomp($answer);
+		if ((not $answer) or ($answer =~ /^y/i))
+		{
+			print "- Thank you, proceeding now.\n";
+			$conf->{path}{iso}{working_directory} = make_directory($conf, $conf->{path}{iso}{working_directory});
+		}
+	}
+	
+	# Make sure the rest of the directories now exist.
+	$conf->{path}{iso}{source_directory} = make_directory($conf, $conf->{path}{iso}{working_directory}."/".$conf->{path}{source_path});
+	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{kickstart});
+	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{packages});
+	$conf->{path}{iso}{iso_repodata}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{repodata});
+	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker});
+	$conf->{path}{iso}{iso_syslinux}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{syslinux});
+	$conf->{path}{iso}{iso_isolinux}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{isolinux});
+	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fence});
+	$conf->{path}{iso}{iso_fujitsu}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu});
+	$conf->{path}{iso}{iso_avago}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago});
+	
+	return(0);
+}
+
+# This makes a directory similar to 'mkdir -p' at the shell.
+sub make_directory
+{
+	my ($conf, $directory) = @_;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	
+	# If the directory starts with '/', we're building from /. If the directory starts with '~', we're 
+	# building from the user's home.
+	if ($directory =~ /^~/)
+	{
+		$directory =~ s/^~/$conf->{sys}{user}{home}/;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	}
+	if ($directory !~ /^\//)
+	{
+		$directory = $ENV{PWD}."/".$directory;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	}
+	$directory =~ s/\/\//\//g;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	
+	my $current_directory = "";
+	foreach my $sub_directory (split/\//, $directory)
+	{
+		next if not $sub_directory;
+		$current_directory .= "/$sub_directory";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 2;
+		
+		if (not -e $current_directory)
+		{
+			print "- Creating the directory: [$current_directory]\n";
+			mkdir $current_directory or die "failed to create the directory: [$current_directory]. The error was: $!\n";
+		}
+	}
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 2;
+	return($current_directory);
+}
 
 # Build the list of source files to copy.
 sub build_source_copy_list
 {
 	my ($conf) = @_;
 	
-	# Find the common RPMs
+	print "- Please be patient! 
+- We're looking through the source ISO(s) to find which installation packages 
+  are needed. This can take a minute.
+";
+	
+	# Build a list of all the packages needed for this OS (common plus distro-specific).
+	my $extra_packages = "";
+	my $distro_list    = [];
+	if ($conf->{sys}{os} =~ /centos/i)
+	{
+		$extra_packages = "centos";
+	}
+	elsif ($conf->{sys}{os} =~ /rhel/i)
+	{
+		$extra_packages = "rhel";
+	}
+	# Add the common files.
 	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{common}})
+	{
+		push @{$distro_list}, $package;
+	}
+	# Now add the distro-specific files
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{$extra_packages}})
+	{
+		push @{$distro_list}, $package;
+	}
+	
+	foreach my $package (sort {$a cmp $b} @{$distro_list})
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
 		my $found         = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
 		
 		foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 2;
 			foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
 				foreach my $source_package (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 				{
 					next if $source_package !~ /^\Q$file\E/;
 					next if $source_package !~ /\Q$arch\E/;
-					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 1;
+					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
 					if ($source_package =~ /^\Q$file\E-\d/)
 					{
-						print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] matches!\n" if $conf->{sys}{debug} >= 1;
+						print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
 						$found++;
+						$conf->{copy}{$package} = {
+							source    => $iso,
+							directory => $directory,
+							file      => $source_package,
+						};
 					}
 				}
 			}
@@ -202,7 +291,61 @@ sub build_source_copy_list
 		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
 		die "[ Error ] - The package: [$package] (file: [$file], arch: [$arch]) had multiple matches!\n" if $found > 1;
 	}
-
+	
+	# Copy!
+	print "- Ready to copy files!\n";
+	if ($conf->{sys}{debug} >= 1)
+	{
+		foreach my $package (sort {$a cmp $b} keys %{$conf->{copy}})
+		{
+			my $iso         = $conf->{copy}{$package}{source};
+			my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
+			if (-e $destination)
+			{
+				print "- The package: [$destination] already exists, no need to copy it.\n";
+			}
+			else
+			{
+				# Copy it. But how?
+				my $shell_call = "";
+				if ($conf->{source}{$iso}{mount})
+				{
+					# copy
+					my $source     = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
+					   $shell_call = $conf->{executable}{cp}." -av $source $destination";
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+				}
+				else
+				{
+					# Use iso-read
+					my $extract_file = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
+					   $shell_call   = $conf->{executable}{'iso-read'}." --image $iso --extract $extract_file --output-file $destination";
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+				}
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+				open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				}
+				close $file_handle;
+				if (-e $destination)
+				{
+					print "- The package: [$destination] was written successfully.\n";
+				}
+				else
+				{
+					print "[ Error ] - Failed to copy: [$destination]!\n";
+					print "[ Error ] - Tried to copy via: [$shell_call]\n";
+					print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
+					exit(5);
+				}
+			}
+		}
+	}
+	
 	return(0);
 }
 
@@ -214,11 +357,10 @@ sub prep_source
 	# First, are the sources already mounted?
 	foreach my $iso (sort {$a cmp $b} @{$conf->{sys}{source}{iso}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 1;
-		   $conf->{source}{$iso}{use_isoread} = 0;
-		my $source_file                       = ($iso =~ /^.*\/(.*)$/)[0];
-		my $mounted                           = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso]\n" if $conf->{sys}{debug} >= 2;
+		$conf->{source}{$iso}{mount}       = "";
+		$conf->{source}{$iso}{source_file} = ($iso =~ /^.*\/(.*)$/)[0];
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::source_file: [$conf->{source}{$iso}{source_file}]\n" if $conf->{sys}{debug} >= 2;
 		my $shell_call = $conf->{executable}{mount};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -228,27 +370,25 @@ sub prep_source
 			my $line = $_;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 			
-			if ($line =~ /^\/.*?\/$source_file on (.*?) /)
+			if ($line =~ /^\/.*?\/\Q$conf->{source}{$iso}{source_file}\E on (.*?) /)
 			{
-				$conf->{source}{$iso}{path} = $1;
-				$mounted                    = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - mounted: [$mounted], source::${iso}::path: [$conf->{source}{$iso}{path}]\n" if $conf->{sys}{debug} >= 2;
-				print "- The source ISO: [$iso] was found to be mounted at: [$conf->{source}{$iso}{path}].\n";
+				$conf->{source}{$iso}{mount} = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [$conf->{source}{$iso}{mount}]\n" if $conf->{sys}{debug} >= 2;
+				print "- The source ISO: [$iso] was found to be mounted at: [$conf->{source}{$iso}{mount}].\n";
 			}
 		}
 		close $file_handle;
 		
 		# If the source isn't mounted, we'll need to try and read the files out of the ISO directly because
 		# 'mount' requires root, and we can't assume the user has that.
-		if (not $mounted)
+		if (not $conf->{source}{$iso}{mount})
 		{
 			# Not mounted... Do we have the needed tools?
 			print "- The source ISO: [$iso] is not mounted. Will read and copy files directly out of the ISO.\n";
 			if ((-x $conf->{executable}{isoinfo}) && (-x $conf->{executable}{'iso-read'}))
 			{
 				# We're good to use this method to get our files.
-				$conf->{source}{$iso}{use_isoread} = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::use_isoread: [$conf->{source}{$iso}{use_isoread}]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - 'isoinfo' and 'iso-read' found!\n" if $conf->{sys}{debug} >= 2;
 			}
 			else
 			{
@@ -270,11 +410,11 @@ sub prep_source
 		# Now get a list of the source files.
 		$conf->{source}{$iso}{files_read}       = 0;
 		$conf->{source}{$iso}{directories_read} = 0;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::use_isoread: [$conf->{source}{$iso}{use_isoread}]\n" if $conf->{sys}{debug} >= 1;
-		if ($conf->{source}{$iso}{use_isoread})
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::mount: [$conf->{source}{$iso}{mount}]\n" if $conf->{sys}{debug} >= 2;
+		if (not $conf->{source}{$iso}{mount})
 		{
 			# We'll neeed to dig the file names out the hard way.
-			print "- Reading the contents of the: [$source_file] ISO now...\n";
+			print "- Reading the contents of the: [$conf->{source}{$iso}{source_file}] ISO now...\n";
 			my $files       = 0;
 			my $directories = 0;
 			my $in_path     = "";
@@ -319,7 +459,7 @@ sub prep_source
 		{
 			# Walk the mount point.
 			print "- Reading the contents of the ISO now...\n";
-			read_directory($conf, $iso, $conf->{source}{$iso}{path});
+			read_directory($conf, $iso, $conf->{source}{$iso}{mount});
 			print "- Done. Read in: [$conf->{source}{$iso}{files_read}] files across: [$conf->{source}{$iso}{directories_read}] directories.\n";
 		}
 	}
@@ -538,6 +678,7 @@ sub get_package_list
 {
 	my ($conf) = @_;
 	
+	# These are common to CentOS and RHEL
 	$conf->{sys}{packages}{common} = [
 		"ConsoleKit-libs.x86_64",
 		"ConsoleKit-x11.x86_64",
