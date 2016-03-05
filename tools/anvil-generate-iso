@@ -22,6 +22,7 @@
 # 4  = No source ISO given
 # 5  = Failed to copy a file to Packages/ but the shell call itself didn't fail.
 # 6  = Failed to clone Striker from github.
+# 7  = Failed to download an RPM from an-repo.
 # 
 
 use strict;
@@ -41,6 +42,7 @@ my $conf = {
 	executable	=>	{
 		createrepo	=>	"createrepo",
 		cp		=>	"cp",
+		curl		=>	"curl",
 		git		=>	"git",
 		isoinfo		=>	"isoinfo",
 		'iso-read'	=>	"iso-read",
@@ -91,6 +93,7 @@ my $conf = {
 	},
 	url		=>	{
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
+		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
 	},
 };
 
@@ -187,6 +190,116 @@ sub download_striker
 ";
 		exit(6);
 	}
+	
+	# Download RPMs from our repo.
+	download_anrepo_rpms($conf);
+	
+	# Now start copying files into place.
+	
+	return(0);
+}
+
+# This curl's the 'x86_64' and 'noarch' directories in the 'url::an-repo' URL. Then it looks through the RPMs
+# in out package list to find matches and downloads them.
+sub download_anrepo_rpms
+{
+	my ($conf) = @_;
+	
+	# First, get a lit of the RPMs available
+	print "- Downloading packages from the Alteeve's Niche! repository now.\n";
+	foreach my $arch ("x86_64", "noarch")
+	{
+		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ($line =~ /href="(.*?)">/)
+			{
+				my $download_package = $1;
+				next if $download_package !~ /\.rpm$/;
+				my $download_url =  $conf->{url}{'an-repo'}."/$arch/$download_package";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - arch: [$arch], download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 2;
+				$conf->{download_packages}{$download_package} = $download_url;
+			}
+		}
+		close $file_handle;
+	}
+	
+	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{alteeve}})
+	{
+		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
+		my $found         = 0;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+		
+		foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
+		{
+			next if $download_package !~ /^\Q$file\E/;
+			next if $download_package !~ /\Q$arch\E/;
+			print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+			if ($download_package =~ /^\Q$file\E-\d/)
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
+				$found++;
+				$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
+			}
+		}
+		
+		### It's normal for there to be multiple matches, so we don't fail on too many here.
+		# If I didn't finf a match, or if I found too many matches, die.
+		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
+	}
+	
+	foreach my $package (sort {$a cmp $b} keys %{$conf->{download}})
+	{
+		my $package_name = ($conf->{download}{$package}{url} =~ /^.*\/(.*)$/)[0];
+		my $package_file = $conf->{path}{iso}{iso_packages}."/".$package_name;
+		if (-e $package_file)
+		{
+			print "- The package: [$package_file] is already downloaded.\n" if $conf->{sys}{debug} >= 2;
+		}
+		else
+		{
+			print "- Downloading: [$conf->{download}{$package}{url}]\n";
+			my $shell_call = $conf->{executable}{curl}." $conf->{download}{$package}{url} > $package_file";
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+			open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			}
+			close $file_handle;
+			
+			if (-e $package_file)
+			{
+				# Downloaded, but is it binary or text? If it's text, it's a failure message.
+				if (-B $package_file)
+				{
+					# Yay!
+					print "  The package: [$package_file] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+				}
+				else
+				{
+					# :(
+					print "[ Error ] - Failed to download: [$conf->{download}{$package}{url}]\n";
+					unlink $package_file or die "[ Error ] - Failed to delete plain-text: [$package_file] (it's a failed download message, not the package).\n";
+					exit(7);
+				}
+			}
+			else
+			{
+				# Looks like curl failed?
+				print "[ Error ] - Failed to download: [$conf->{download}{$package}{url}]\n";
+				exit(7);
+			}
+		}
+	}
+	print "- Done! All Anvil! packages are in place.\n";
 	
 	return(0);
 }
@@ -891,13 +1004,6 @@ sub find_executables
 [ Error ] - Note that 'iso-read' and 'isoinfo' are not needed if you mount the
 [ Error ]   ISO manually. (\$ sudo mount -o loop <iso> <mountpoint>)
 ";
-		createrepo	=>	"createrepo",
-		cp		=>	"cp",
-		git		=>	"git",
-		isoinfo		=>	"isoinfo",
-		'iso-read'	=>	"iso-read",
-		md5sum		=>	"md5sum",
-		mkisofs		=>	"mkisofs",
 		exit(1);
 	}
 	
