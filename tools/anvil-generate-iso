@@ -21,6 +21,7 @@
 # 3  = Source ISO(s) have unrecognized mds5 sums.
 # 4  = No source ISO given
 # 5  = Failed to copy a file to Packages/ but the shell call itself didn't fail.
+# 6  = Failed to clone Striker from github.
 # 
 
 use strict;
@@ -38,11 +39,13 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $conf = {
 	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
 	executable	=>	{
+		createrepo	=>	"createrepo",
 		cp		=>	"cp",
+		git		=>	"git",
 		isoinfo		=>	"isoinfo",
-		'iso-read'	=>	"",
-		# Used to verify that the source provided matches what we expect.
+		'iso-read'	=>	"iso-read",
 		md5sum		=>	"md5sum",
+		mkisofs		=>	"mkisofs",
 		mount		=>	"mount",
 	},
 	# Paths to files and directories
@@ -56,10 +59,7 @@ my $conf = {
 		# These diretories are needed for the ISO and will be made under 'source_path' as needed.
 		iso		=>	{
 			kickstart	=>	"ks",
-			repodata	=>	"repodata",
 			striker		=>	"striker",	# striker-master will be created by git
-			syslinux	=>	"syslinux",
-			isolinux	=>	"isolinux",
 			packages	=>	"Packages",
 			fence		=>	"Tools/fence",
 			fujitsu		=>	"Tools/Fujitsu",
@@ -88,6 +88,9 @@ my $conf = {
 			home		=>	$ENV{HOME},
 			current_dir	=>	$ENV{PWD},
 		},
+	},
+	url		=>	{
+		striker		=>	"https://github.com/ClusterLabs/striker.git",
 	},
 };
 
@@ -121,9 +124,10 @@ prep_source($conf);
 get_package_list($conf);
 
 # Build the list of source files to copy.
-build_source_copy_list($conf);
+build_source($conf);
 
 # Download things we need.
+download_striker($conf);
 
 exit(0);
 
@@ -131,6 +135,61 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This checks out the Striker repository, which includes the files we need.
+sub download_striker
+{
+	my ($conf) = @_;
+	
+	### TODO: Make this version dependent (use a version file at 
+	###       'https://alteeve.ca/files/striker_latest.txt').
+	# Checkout/update the git repo.
+	my $git_directory  = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/.git";
+	my $pull_directory = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - git_directory: [$git_directory], pull_directory: [$pull_directory]\n" if $conf->{sys}{debug} >= 2;
+	
+	# If the git directory exists, 'pull'. Otherwise, clone.
+	my $shell_call = "";
+	if (-e $git_directory)
+	{
+		print "- Updating the Striker git repository.\n";
+		$shell_call = $conf->{executable}{git}." -C $pull_directory pull";
+	}
+	else
+	{
+		print "- Cloning the Striker git repository.\n";
+		print "  Please be patient, this might take a minute...\n";
+		$shell_call = $conf->{executable}{git}." -C ".$conf->{path}{iso}{source_directory}." clone ".$conf->{url}{striker};
+	}
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+	}
+	close $file_handle;
+	if (-e $git_directory)
+	{
+		print "- Striker source is ready.\n";
+	}
+	else
+	{
+		print "
+[ Error ] - Failed to clone the Striker source code! 
+[ Error ]   An attempt was made to clone the repository:
+[ Error ]   $conf->{url}{striker}
+[ Error ] - This should have created the directory:
+[ Error ]   $git_directory
+[ Error ]   which was not found, meaning the check-out probably failed. Is your
+[ Error ]   Internet connection up?
+";
+		exit(6);
+	}
+	
+	return(0);
+}
 
 # Setup our build environment. This creates the directories we'll need for the new ISO, copy over isolinux
 # and syslinux, ask the user to download binary files, load our kickstart scripts and splash screens, etc.
@@ -174,10 +233,7 @@ You can quit this process at any time my pressing <ctrl> + <c>
 	$conf->{path}{iso}{source_directory} = make_directory($conf, $conf->{path}{iso}{working_directory}."/".$conf->{path}{source_path});
 	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{kickstart});
 	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{packages});
-	$conf->{path}{iso}{iso_repodata}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{repodata});
 	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker});
-	$conf->{path}{iso}{iso_syslinux}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{syslinux});
-	$conf->{path}{iso}{iso_isolinux}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{isolinux});
 	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fence});
 	$conf->{path}{iso}{iso_fujitsu}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu});
 	$conf->{path}{iso}{iso_avago}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago});
@@ -203,7 +259,7 @@ sub make_directory
 		$directory = $ENV{PWD}."/".$directory;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
 	}
-	$directory =~ s/\/\//\//g;
+	$directory =~ s/\/+/\//g;
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
 	
 	my $current_directory = "";
@@ -225,7 +281,7 @@ sub make_directory
 }
 
 # Build the list of source files to copy.
-sub build_source_copy_list
+sub build_source
 {
 	my ($conf) = @_;
 	
@@ -302,7 +358,7 @@ sub build_source_copy_list
 			my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
 			if (-e $destination)
 			{
-				print "- The package: [$destination] already exists, no need to copy it.\n";
+				print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
 			}
 			else
 			{
@@ -333,7 +389,7 @@ sub build_source_copy_list
 				close $file_handle;
 				if (-e $destination)
 				{
-					print "- The package: [$destination] was written successfully.\n";
+					print "- The package: [$destination] was written successfully.\n" if $conf->{sys}{debug} >= 1;
 				}
 				else
 				{
@@ -345,6 +401,155 @@ sub build_source_copy_list
 			}
 		}
 	}
+	print "- Packages copied. Copying auxiliary source files now.\n";
+	
+	# Now copy the rest of the source files. Note that we'll watch for 'syslinux' and if we don't see it,
+	# we'll copy 'isolinux' over.
+	my $syslinux_found = 0;
+	foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
+	{
+		# We only care about disk 1
+		next if $conf->{source}{$iso}{name} !~ /disk 1/i;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso] -> [$conf->{source}{$iso}{name}]\n" if $conf->{sys}{debug} >= 2;
+		foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
+		{
+			# Skip '/Packages'
+			next if $directory =~ /\/Packages$/;
+			$syslinux_found = 1 if $directory =~ /\/syslinux$/;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+			foreach my $file (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
+			{
+				next if $file eq "TRANS.TBL";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$directory/$file]\n" if $conf->{sys}{debug} >= 2;
+				# To determine the copy target, we first need to strip off the mount point 
+				# (if mounted) and append it to the source directory.
+				my $destination           = "";
+				my $destination_directory = "";
+				if ($conf->{source}{$iso}{mount})
+				{
+					my $destination_sub_directory =  $directory;
+					   $destination_sub_directory =~ s/\Q$conf->{source}{$iso}{mount}\E//;
+					   $destination               =  $conf->{path}{iso}{source_directory}."/".$destination_sub_directory."/".$file;
+					   $destination_directory     =  $conf->{path}{iso}{source_directory}."/".$destination_sub_directory;
+				}
+				else
+				{
+					$destination           = $conf->{path}{iso}{source_directory}."/".$directory."/".$file;
+					$destination_directory = $conf->{path}{iso}{source_directory}."/".$directory;
+				}
+				$destination           =~ s/\/+/\//g;
+				$destination_directory =~ s/\/+/\//g;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - destination: [$destination], destination_directory: [$destination_directory]\n" if $conf->{sys}{debug} >= 2;
+				# Create the destination directory if needed
+				$destination_directory = make_directory($conf, $destination_directory);
+				
+				if (-e $destination)
+				{
+					print "$THIS_FILE ".__LINE__."; [ Debug ]- The file: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+				}
+				else
+				{
+					# Copy it, but again, how?
+					my $shell_call = "";
+					
+					if ($conf->{source}{$iso}{mount})
+					{
+						# copy
+						my $source     =  $directory."/".$file;
+						   $source     =~ s/\/+/\//g;
+						   $shell_call =  $conf->{executable}{cp}." -av $source $destination";
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					}
+					else
+					{
+						# Use iso-read
+						my $extract_file =  $directory."/".$file;
+						   $extract_file =~ s/\/+/\//g;
+						   $shell_call   =  $conf->{executable}{'iso-read'}." --image $iso --extract $extract_file --output-file $destination";
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					}
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+					}
+					close $file_handle;
+					if (-e $destination)
+					{
+						print "- The file: [$destination] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+					}
+					else
+					{
+						print "[ Error ] - Failed to copy: [$destination]!\n";
+						print "[ Error ] - Tried to copy via: [$shell_call]\n";
+						print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
+						exit(5);
+					}
+				}
+			}
+		}
+	}
+	
+	print "- Verifying 'syslinux' was created.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - syslinux_found: [$syslinux_found]\n" if $conf->{sys}{debug} >= 2;
+	if (not $syslinux_found)
+	{
+		print "- The 'syslinux' directory was not in the source. Creating it now, if needed.\n";
+		my $isolinux_directory = $conf->{path}{iso}{source_directory}."/isolinux";
+		my $syslinux_directory = $conf->{path}{iso}{source_directory}."/syslinux";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - isolinux_directory: [$isolinux_directory], syslinux_directory: [$syslinux_directory]\n" if $conf->{sys}{debug} >= 2;
+		$syslinux_directory = make_directory($conf, $syslinux_directory);
+		
+		# Read all the files in isolinux. For each file we find, copy it to syslinux if it doesn't 
+		# exist yet. We'll rename anything 'isolinux' to 'syslinux' in the process.
+		local(*DIR);
+		opendir(DIR, $isolinux_directory) or die "Failed to open the directory: [$isolinux_directory], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $destination_file =  $file;
+			   $destination_file =~ s/isolinux/syslinux/;
+			my $source_path      =  $isolinux_directory."/".$file;
+			my $destination_path =  $syslinux_directory."/".$destination_file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_path: [$source_path], destination_path: [$destination_path]\n" if $conf->{sys}{debug} >= 2;
+			if (-e $destination_path)
+			{
+				print "- The syslinux file: [$destination_path] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+			}
+			else
+			{
+				# Copy it.
+				my $shell_call = $conf->{executable}{cp}." -av $source_path $destination_path";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+				open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+				}
+				close $file_handle;
+				if (-e $destination_path)
+				{
+					print "- The file: [$destination_path] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+				}
+				else
+				{
+					print "[ Error ] - Failed to copy: [$destination_path]!\n";
+					print "[ Error ] - Tried to copy via: [$shell_call]\n";
+					print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
+					exit(5);
+				}
+			}
+		}
+		closedir(DIR);
+	}
+	
+	print "- Auxiliary files now in place, ready to grab Anvil! files.\n";
+	
 	
 	return(0);
 }
@@ -458,7 +663,7 @@ sub prep_source
 		else
 		{
 			# Walk the mount point.
-			print "- Reading the contents of the ISO now...\n";
+			print "- Reading the contents of the ISO: [$iso] now...\n";
 			read_directory($conf, $iso, $conf->{source}{$iso}{mount});
 			print "- Done. Read in: [$conf->{source}{$iso}{files_read}] files across: [$conf->{source}{$iso}{directories_read}] directories.\n";
 		}
@@ -518,6 +723,7 @@ sub read_directory
 			$conf->{source}{$iso}{files_read}++;
 		}
 	}
+	closedir(DIR);
 	
 	return(0)
 }
@@ -600,7 +806,8 @@ sub validate_source
 				if ($conf->{source}{$iso}{sum} eq $this_sum)
 				{
 					# Match!
-					$conf->{sys}{os} = $conf->{sys}{md5sum}{$this_sum};
+					$conf->{sys}{os}            = $conf->{sys}{md5sum}{$this_sum};
+					$conf->{source}{$iso}{name} = $conf->{sys}{md5sum}{$this_sum};
 					print "- Source identified as: [$conf->{sys}{os}] (sum: [$this_sum])\n" if $conf->{sys}{debug} >= 2;
 				}
 			}
@@ -659,16 +866,40 @@ sub find_executables
 			}
 		}
 		
-		### NOTE: We no longer die on this because we can work around some missing tools
+		### NOTE: We don't die on iso-read or isoinfo as they may not be needed.
 		# Die if we didn't find it.
-		#if ($conf->{executable}{$executable} !~ /^\//)
-		#{
-		#	$ok = 0;
-		#	print "\n[ Error ] - Failed to find the: [$executable] program. Is it installed?\n";
-		#	print "[ Error ] - If so, is it in one of the directories in your PATH environment variable?\n\n";
-		#}
+		if (($conf->{executable}{$executable} !~ /^\//) && ($executable ne "iso-read") && ($executable ne "isoinfo"))
+		{
+			$ok = 0;
+			print "[ Error ] - Failed to find the: [$executable] program.\n";
+		}
 	}
-	#exit(1) if not $ok;
+	if (not $ok)
+	{
+		print "
+[ Error ] - Some programs needed to build the Anvil! ISO appear to not be 
+[ Error ]   installed. Please ensure the following programs are installed:
+[ Error ]   'createrepo, iso-read, isoinfo, git and mkisofs'.
+[ Error ]   On RPM-based distros, the following command should provide 
+[ Error ]   everything:
+[ Error ] 
+[ Error ] - \$ sudo yum -y install createrepo genisoimage git libcdio 
+[ Error ] 
+[ Error ] - Note that your distro may use 'dnf' instead of 'yum'. On non-RPM
+[ Error ]   based distros, these programs may be provided by different 
+[ Error ]   packages. Once these are installed, please run this program again.
+[ Error ] - Note that 'iso-read' and 'isoinfo' are not needed if you mount the
+[ Error ]   ISO manually. (\$ sudo mount -o loop <iso> <mountpoint>)
+";
+		createrepo	=>	"createrepo",
+		cp		=>	"cp",
+		git		=>	"git",
+		isoinfo		=>	"isoinfo",
+		'iso-read'	=>	"iso-read",
+		md5sum		=>	"md5sum",
+		mkisofs		=>	"mkisofs",
+		exit(1);
+	}
 	
 	return(0);
 }

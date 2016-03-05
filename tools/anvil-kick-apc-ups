@@ -1252,7 +1252,7 @@ SWITCHES
 
  --shutdown
 
-	This tells all UPSes to power in $conf->{sys}{apc}{'shutdown'}{power_off_delay} off and stay off. The effect of
+	This tells all UPSes to power off in $conf->{sys}{apc}{'shutdown'}{power_off_delay} and stay off. The effect of
 	this is that everything powered by the Anvil!'s UPSes will shut down
 	entirely and stay off until power is manually restored.
 	
