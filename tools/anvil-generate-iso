@@ -62,6 +62,7 @@ my $conf = {
 			# the OS being build on.
 			centos		=>	"CentOS",
 			rhel		=>	"RHEL",
+			suffix		=>	"6/Anvil",
 			
 		},
 		# Directories and files we download, copy or create will be placed under this directory, 
@@ -78,6 +79,21 @@ my $conf = {
 			fence		=>	"Tools/fence",
 			fujitsu		=>	"Tools/Fujitsu",
 			avago		=>	"Tools/Avago",
+			git_iso		=>	"ISO",
+			# These keys are appended to the 'path::'git::<os>' path. The 'target' is where the 
+			# files in these directories should be copied to. The 'target' will be appended to
+			# 'path::source_path'.
+			git_copy	=>	{
+				isolinux	=>	{
+					target		=>	"isolinux",
+				},
+				syslinux	=>	{
+					target		=>	"syslinux",
+				},
+				ks		=>	{
+					target		=>	"ks",
+				},
+			}
 		},
 	},
 	source		=>	{},
@@ -120,7 +136,10 @@ my $conf = {
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
 		Fujitsu		=>	{
-			primecollect	=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
+			primecollect	=>	{
+				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
+				mode		=>	0755,
+			},
 		},
 	},
 };
@@ -169,98 +188,6 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
-
-# This asks the user to agree to terms of use for third party applications.
-sub agree_to_terms
-{
-	my ($conf) = @_;
-	
-	system('clear');
-	print "-=] Thank you for using the 'Anvil!' Intelligent Availability platform! [=-\n\n";
-	if ($conf->{switches}{'accept-third-part-licenses'})
-	{
-		print "- Third-party licenses agreed via '--accept-third-part-licenses'.\n";
-	}
-	else
-	{
-		print "Before we begin, we need to address some important house-keeping.
-
-To simplify and automate as much of the build process as possible, the tool can
-download third party tools which add support for some hardware. These tools are
-not built, maintained or in any way owned by Alteeve's Niche! and have separate
-terms of service and use. 
-
-You will be prompted now to read and accept or deny the terms of service for
-each third party vendor. If you decline any, the install will proceed but some
-features related to a given vendor may not work. Of course, if you do not have
-any hardware related to that vendor, it is safe to decline. In any case, the 
-creation of the ISO will proceed.
-
-<press enter to begin>
-";
-		my $answer = <STDIN>;
-		   $answer = "";
-
-		# Fujitsu.
-		print "====
-
-If you are using Fujitsu Primergy nodes, and if you agree to Fujitsu's 'Terms 
-of use' found here:
-
-$conf->{sys}{third_party}{Fujitsu}{terms}
-
-Support for 'Primecollect' will be added to the ISO. The 'Primecollect' tool is
-used to gather information about the hardware when opening a service request.
-
-Do you agree to Fujitsu's 'Terms of Use'? [y/N]
-";
-		$answer = <STDIN>;
-		chomp($answer);
-		if ($answer =~ /^y/i)
-		{
-			print "- Thank you.\n\n";
-			$conf->{sys}{third_party}{Fujitsu}{agree} = 1;
-		}
-		else
-		{
-			print "- Noted. Fujitsu support will not be added.\n\n";
-		}
-		$answer = "";
-		sleep 1;
-
-		# Avago.
-		print "====
-
-If you are using an Avago (formerly LSI) based RAID controller, and if you 
-agree to Avago's 'Download Agreement' found here:
-
-$conf->{sys}{third_party}{Avago}{terms}
-
-Support for managing RAID arrays in Striker and monitoring of the controller
-hardware and attached drives will be added to ScanCore. LSI-based controllers
-are used by most Tier-1 vendors, like Fujitsu, Dell, IBM/Lenovo as well as most
-white-box servers from companies like Intel, Supermicro and so on.
-
-Do you agree to Avago's 'Download Agreement'? [y/N]
-";
-		$answer = <STDIN>;
-		chomp($answer);
-		if ($answer =~ /^y/i)
-		{
-			print "- Thank you.\n\n";
-			$conf->{sys}{third_party}{Avago}{agree} = 1;
-		}
-		else
-		{
-			print "- Noted. Avago support will not be added.\n\n";
-		}
-		$answer = "";
-		sleep 1;
-		print "====\n";
-	}
-	
-	return(0);
-}
 
 # This checks out the Striker repository, which includes the files we need.
 sub download_striker
@@ -320,9 +247,232 @@ sub download_striker
 	# Download non-RPM tools
 	download_anrepo_tools($conf);
 	
-	### Now start copying files into place.
-	# isolinux
+	# Now start copying files into place.
+	copy_files_from_git($conf);
 	
+	
+	return(0);
+}
+
+# This copies files checked out from git to their directories.
+sub copy_files_from_git
+{
+	my ($conf) = @_;
+	
+	# I need the OS-specific source.
+	my $distro_directory = "";
+	if ($conf->{sys}{os} =~ /centos/i)
+	{
+		$distro_directory = $conf->{path}{git}{centos};
+	}
+	elsif ($conf->{sys}{os} =~ /rhel/i)
+	{
+		$distro_directory = $conf->{path}{git}{rhel};
+	}
+	my $git_iso_source = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker}."/".$conf->{path}{iso}{git_iso}."/".$distro_directory."/".$conf->{path}{git}{suffix};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - git_iso_source: [$git_iso_source]\n" if $conf->{sys}{debug} >= 2;
+	
+	# isolinux
+	foreach my $directory (sort {$a cmp $b} keys %{$conf->{path}{iso}{git_copy}})
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory], path::iso::git_copy::${directory}::target: [$conf->{path}{iso}{git_copy}{$directory}{target}]\n" if $conf->{sys}{debug} >= 2;
+		my $source = $git_iso_source."/".$directory;
+		my $target = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{git_copy}{$directory}{target});
+		   $source =~ s/\/\/+/\//g;
+		   #$target =~ s/\/\/+/\//g;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+		local(*DIR);
+		opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $source_file = $source."/".$file;
+			my $target_file = $target."/".$file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file], target_file: [$target_file]\n" if $conf->{sys}{debug} >= 2;
+			copy_file($conf, $source_file, $target_file, 1);
+		}
+		closedir(DIR);
+	}
+	
+	return(0);
+}
+
+# This copies a file from the given ISO file using 'iso-read'
+sub isoread_file
+{
+	my ($conf, $iso, $source, $target) = @_;
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso: [$iso], source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+	if (-e $target)
+	{
+		print "- The target file: [$target] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+	}
+	else
+	{
+		my $shell_call = $conf->{executable}{'iso-read'}." --image $iso --extract $source --output-file $target";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		if (-e $target)
+		{
+			print "- The file: [$target] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+		}
+		else
+		{
+			print "[ Error ] - Failed to copy: [$source]\n";
+			print "[ Error ]   from: [$iso]\n";
+			print "[ Error ]   to: [$target]\n";
+			print "[ Error ] - No error was reported, but the target file doesn't exist.\n";
+			exit(5);
+		}
+	}
+	
+	return(0);
+}
+
+# This handles copying a file. Fancy, I know.
+sub copy_file
+{
+	my ($conf, $source, $target, $force) = @_;
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+	# Delete the target if 'force'd and target exists.
+	if (($force) && (-e $target))
+	{
+		print "- The target file: [$target] exists and the copy is forced, deleting the old file.\n" if $conf->{sys}{debug} >= 2;
+		unlink $target or die "[ Error ] - Failed to delete: [$target] to make room for the new file.\n";
+	}
+	# Copy unless the target exists.
+	if (-e $target)
+	{
+		print "- The target file: [$target] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+	}
+	else
+	{
+		# Copy it.
+		print "- Copying the source file: [$source] to: [$target]\n" if $conf->{sys}{debug} >= 2;
+		my $shell_call = $conf->{executable}{cp}." -av $source $target";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		if (-e $target)
+		{
+			print "- The file: [$target] was written successfully.\n";
+		}
+		else
+		{
+			print "[ Error ] - Failed to copy: [$target]!\n";
+			print "[ Error ] - Tried to copy via: [$shell_call]\n";
+			print "[ Error ] - No error was reported in the copy operation but the target file doesn't exist.\n";
+			exit(5);
+		}
+	}
+	
+	return(0);
+}
+
+# This asks the user to agree to terms of use for third party applications.
+sub agree_to_terms
+{
+	my ($conf) = @_;
+	
+	system('clear');
+	print "-=] Thank you for using the 'Anvil!' Intelligent Availability platform! [=-\n\n";
+	if ($conf->{switches}{'accept-third-part-licenses'})
+	{
+		print "- Third-party licenses agreed via '--accept-third-part-licenses'.\n";
+		$conf->{sys}{third_party}{Fujitsu}{agreed} = 1;
+		$conf->{sys}{third_party}{Avago}{agreed}   = 1;
+	}
+	else
+	{
+		print "Before we begin, we need to address some important house-keeping.
+
+To simplify and automate as much of the build process as possible, the tool can
+download third party tools which add support for some hardware. These tools are
+not built, maintained or in any way owned by Alteeve's Niche! and have separate
+terms of service and use. 
+
+You will be prompted now to read and accept or deny the terms of service for
+each third party vendor. If you decline any, the install will proceed but some
+features related to a given vendor may not work. Of course, if you do not have
+any hardware related to that vendor, it is safe to decline. In any case, the 
+creation of the ISO will proceed.
+
+<press enter to begin>
+";
+		my $answer = <STDIN>;
+		   $answer = "";
+
+		# Fujitsu.
+		print "====
+
+If you are using Fujitsu Primergy nodes, and if you agree to Fujitsu's 'Terms 
+of use' found here:
+
+$conf->{sys}{third_party}{Fujitsu}{terms}
+
+Support for 'Primecollect' will be added to the ISO. The 'Primecollect' tool is
+used to gather information about the hardware when opening a service request.
+
+Do you agree to Fujitsu's 'Terms of Use'? [y/N]
+";
+		$answer = <STDIN>;
+		chomp($answer);
+		if ($answer =~ /^y/i)
+		{
+			print "- Thank you.\n\n";
+			$conf->{sys}{third_party}{Fujitsu}{agreed} = 1;
+		}
+		else
+		{
+			print "- Noted. Fujitsu support will not be added.\n\n";
+		}
+		$answer = "";
+		sleep 1;
+
+		# Avago.
+		print "====
+
+If you are using an Avago (formerly LSI) based RAID controller, and if you 
+agree to Avago's 'Download Agreement' found here:
+
+$conf->{sys}{third_party}{Avago}{terms}
+
+Support for managing RAID arrays in Striker and monitoring of the controller
+hardware and attached drives will be added to ScanCore. LSI-based controllers
+are used by most Tier-1 vendors, like Fujitsu, Dell, IBM/Lenovo as well as most
+white-box servers from companies like Intel, Supermicro and so on.
+
+Do you agree to Avago's 'Download Agreement'? [y/N]
+";
+		$answer = <STDIN>;
+		chomp($answer);
+		if ($answer =~ /^y/i)
+		{
+			print "- Thank you.\n\n";
+			$conf->{sys}{third_party}{Avago}{agreed} = 1;
+		}
+		else
+		{
+			print "- Noted. Avago support will not be added.\n\n";
+		}
+		$answer = "";
+		sleep 1;
+		print "====\n";
+	}
 	
 	return(0);
 }
@@ -333,9 +483,116 @@ sub download_anrepo_tools
 	my ($conf) = @_;
 	
 	# Fujitsu stuff
-	#$conf->{path}{iso}{iso_fujitsu}
-	#$conf->{url}{Fujitsu}{primecollect} -> $conf->{path}{iso}{fujitsu}
+	print "- Downloading non-RPM third party tools.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::third_party::Fujitsu::agreed: [$conf->{sys}{third_party}{Fujitsu}{agreed}].\n" if $conf->{sys}{debug} >= 2;
+	if ($conf->{sys}{third_party}{Fujitsu}{agreed})
+	{
+		# Primecollect shar
+		my $file_name = ($conf->{url}{Fujitsu}{primecollect}{url} =~ /^.*\/(.*)$/)[0];
+		my $source    = $conf->{url}{Fujitsu}{primecollect}{url};
+		my $target    = $conf->{path}{iso}{iso_fujitsu}."/".$file_name;
+		my $mode      = $conf->{url}{Fujitsu}{primecollect}{mode};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		download_file($conf, $source, $target, $mode);
+	}
 	
+	return(0);
+}
+
+# This downloads the give file, if it's not already downloaded, and verifies that it is not a curl failure 
+# message.
+sub download_file
+{
+	my ($conf, $source, $target, $mode) = @_;
+	$mode = "" if not defined $mode;
+	
+	if (-e $target)
+	{
+		print "- The file: [$target] is already downloaded.\n" if $conf->{sys}{debug} >= 2;
+	}
+	else
+	{
+		print "- Downloading: [$source]\n";
+		my $shell_call = $conf->{executable}{curl}." $source > $target";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		
+		my $file_ok = 0;
+		if (-e $target)
+		{
+			# Downloaded, but is it binary or text? If it's text, make sure it's not a failure 
+			# message.
+			if (-B $target)
+			{
+				# Yay!
+				$file_ok = 1;
+			}
+			else
+			{
+				# If the file is less than 1024 bytes, read it in to make sure it's not a 
+				# failure message.
+				my $size = (stat($target))[7];
+				if ($size < 1024)
+				{
+					# Read it in.
+					my $shell_call = $target;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					open (my $file_handle, "<$shell_call") or die "\n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+						if ($line =~ /Could not resolve host/i)
+						{
+							# Bad URL
+							print "[ Error ] - Failed to download: [$target].\n";
+							print "[ Error ]   It appears that the domain name is invalid.\n";
+						}
+						if ($line =~ /<title>404 Not Found<\/title>/i)
+						{
+							# File not found.
+							print "[ Error ] - Failed to download: [$target].\n";
+							print "[ Error ]   It appears that the file was not found on the server.\n";
+						}
+					}
+					close $file_handle;
+				}
+				else
+				{
+					# Too big to be a failure, so we're probably good.
+					$file_ok = 1;
+				}
+			}
+		}
+		if ($file_ok)
+		{
+			print "  The file: [$target] was downloaded successfully.\n" if $conf->{sys}{debug} >= 1;
+		}
+		else
+		{
+			# Sadness.
+			if (-e $target)
+			{
+				# Remove the sadness
+				unlink $target or die "[ Error ] - Failed to delete: [$target] (it's a failed download message, not the file).\n";
+			}
+			exit(7);
+		}
+	}
+	
+	# Set the mode, if needed
+	if ($mode)
+	{
+		chmod $mode, $target;
+	}
 	
 	return(0);
 }
@@ -350,7 +607,7 @@ sub download_anrepo_rpms
 	print "- Downloading packages from the Alteeve's Niche! repository now.\n";
 	foreach my $arch ("x86_64", "noarch")
 	{
-		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
+		my $shell_call = $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
@@ -398,8 +655,8 @@ sub download_anrepo_rpms
 	# Find the packages in the Third Party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agree: [$conf->{sys}{third_party}{$vendor}{agree}]\n" if $conf->{sys}{debug} >= 2;
-		next if not $conf->{sys}{third_party}{$vendor}{agree};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 2;
+		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{third_party}."/$vendor/";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -422,8 +679,8 @@ sub download_anrepo_rpms
 	# Match our requirements to the packages available in the third party repo
 	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agree: [$conf->{sys}{third_party}{$vendor}{agree}]\n" if $conf->{sys}{debug} >= 2;
-		next if not $conf->{sys}{third_party}{$vendor}{agree};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agreed: [$conf->{sys}{third_party}{$vendor}{agreed}]\n" if $conf->{sys}{debug} >= 2;
+		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{third_party}{$vendor}})
 		{
 			my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
@@ -460,40 +717,7 @@ sub download_anrepo_rpms
 		}
 		else
 		{
-			print "- Downloading: [$conf->{download}{$package}{url}]\n";
-			my $shell_call = $conf->{executable}{curl}." $conf->{download}{$package}{url} > $package_file";
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-			open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-			}
-			close $file_handle;
-			
-			if (-e $package_file)
-			{
-				# Downloaded, but is it binary or text? If it's text, it's a failure message.
-				if (-B $package_file)
-				{
-					# Yay!
-					print "  The package: [$package_file] was written successfully.\n" if $conf->{sys}{debug} >= 1;
-				}
-				else
-				{
-					# :(
-					print "[ Error ] - Failed to download: [$conf->{download}{$package}{url}]\n";
-					unlink $package_file or die "[ Error ] - Failed to delete plain-text: [$package_file] (it's a failed download message, not the package).\n";
-					exit(7);
-				}
-			}
-			else
-			{
-				# Looks like curl failed?
-				print "[ Error ] - Failed to download: [$conf->{download}{$package}{url}]\n";
-				exit(7);
-			}
+			download_file($conf, $conf->{download}{$package}{url}, $package_file);
 		}
 	}
 	
@@ -539,8 +763,8 @@ sub setup_build_environment
 	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fence});
 	
 	# These are only created if the user agreed to them
-	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agree};
-	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agree};
+	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
+	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
 	
 	return(0);
 }
@@ -671,36 +895,14 @@ sub build_source
 				if ($conf->{source}{$iso}{mount})
 				{
 					# copy
-					my $source     = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
-					   $shell_call = $conf->{executable}{cp}." -av $source $destination";
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+					my $source = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
+					copy_file($conf, $source, $destination, 0);
 				}
 				else
 				{
 					# Use iso-read
 					my $extract_file = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
-					   $shell_call   = $conf->{executable}{'iso-read'}." --image $iso --extract $extract_file --output-file $destination";
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-				}
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-				open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-				}
-				close $file_handle;
-				if (-e $destination)
-				{
-					print "- The package: [$destination] was written successfully.\n" if $conf->{sys}{debug} >= 1;
-				}
-				else
-				{
-					print "[ Error ] - Failed to copy: [$destination]!\n";
-					print "[ Error ] - Tried to copy via: [$shell_call]\n";
-					print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
-					exit(5);
+					isoread_file($conf, $iso, $extract_file, $destination);
 				}
 			}
 		}
@@ -761,36 +963,14 @@ sub build_source
 						# copy
 						my $source     =  $directory."/".$file;
 						   $source     =~ s/\/+/\//g;
-						   $shell_call =  $conf->{executable}{cp}." -av $source $destination";
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+						copy_file($conf, $source, $destination, 0);
 					}
 					else
 					{
 						# Use iso-read
 						my $extract_file =  $directory."/".$file;
 						   $extract_file =~ s/\/+/\//g;
-						   $shell_call   =  $conf->{executable}{'iso-read'}." --image $iso --extract $extract_file --output-file $destination";
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-					}
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-					open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-					while(<$file_handle>)
-					{
-						chomp;
-						my $line = $_;
-						print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-					}
-					close $file_handle;
-					if (-e $destination)
-					{
-						print "- The file: [$destination] was written successfully.\n" if $conf->{sys}{debug} >= 1;
-					}
-					else
-					{
-						print "[ Error ] - Failed to copy: [$destination]!\n";
-						print "[ Error ] - Tried to copy via: [$shell_call]\n";
-						print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
-						exit(5);
+						isoread_file($conf, $iso, $extract_file, $destination);
 					}
 				}
 			}
@@ -819,35 +999,7 @@ sub build_source
 			my $source_path      =  $isolinux_directory."/".$file;
 			my $destination_path =  $syslinux_directory."/".$destination_file;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_path: [$source_path], destination_path: [$destination_path]\n" if $conf->{sys}{debug} >= 2;
-			if (-e $destination_path)
-			{
-				print "- The syslinux file: [$destination_path] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
-			}
-			else
-			{
-				# Copy it.
-				my $shell_call = $conf->{executable}{cp}." -av $source_path $destination_path";
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-				open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-				}
-				close $file_handle;
-				if (-e $destination_path)
-				{
-					print "- The file: [$destination_path] was written successfully.\n" if $conf->{sys}{debug} >= 1;
-				}
-				else
-				{
-					print "[ Error ] - Failed to copy: [$destination_path]!\n";
-					print "[ Error ] - Tried to copy via: [$shell_call]\n";
-					print "[ Error ] - No error was reported, not the destination file doesn't exist.\n";
-					exit(5);
-				}
-			}
+			copy_file($conf, $source_path, $destination_path, 0);
 		}
 		closedir(DIR);
 	}
