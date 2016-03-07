@@ -23,6 +23,7 @@
 # 5  = Failed to copy a file to Packages/ but the shell call itself didn't fail.
 # 6  = Failed to clone Striker from github.
 # 7  = Failed to download an RPM from an-repo.
+# 8  = User rejected the creation of the working directory.
 # 
 
 use strict;
@@ -52,6 +53,17 @@ my $conf = {
 	},
 	# Paths to files and directories
 	path		=>	{
+		# This details files to be copied out of git to a directory in the source.
+		git		=>	{
+			# This is where we find the root of the ISO data from the git checkout under 
+			# 'path::source_path'.
+			root		=>	"striker/ISO",
+			# These are the subdirectory names we'll used under 'path::git::root' depending on
+			# the OS being build on.
+			centos		=>	"CentOS",
+			rhel		=>	"RHEL",
+			
+		},
 		# Directories and files we download, copy or create will be placed under this directory, 
 		# which itself will be appended to the user's home directory.
 		working_dir	=>	"anvil",
@@ -90,10 +102,26 @@ my $conf = {
 			home		=>	$ENV{HOME},
 			current_dir	=>	$ENV{PWD},
 		},
+		# These are the request for permission to download third-party tools.
+		third_party	=>	{
+			Avago		=>	{
+				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Avago/#tc",
+				agreed		=>	0,
+			},
+			Fujitsu		=>	{
+				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/#tc",
+				agreed		=>	0,
+			},
+		},
 	},
 	url		=>	{
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
 		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
+		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
+		# These are non-RPM packages we want to download for the ISO.
+		Fujitsu		=>	{
+			primecollect	=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
+		},
 	},
 };
 
@@ -109,6 +137,9 @@ if (($conf->{switches}{h})   ||
 
 # Make sure we know where executables are on this system.
 find_executables($conf);
+
+# Ask the user to ACK third party tools
+agree_to_terms($conf);
 
 # Possibly useful later
 #foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; } exit;
@@ -138,6 +169,98 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This asks the user to agree to terms of use for third party applications.
+sub agree_to_terms
+{
+	my ($conf) = @_;
+	
+	system('clear');
+	print "-=] Thank you for using the 'Anvil!' Intelligent Availability platform! [=-\n\n";
+	if ($conf->{switches}{'accept-third-part-licenses'})
+	{
+		print "- Third-party licenses agreed via '--accept-third-part-licenses'.\n";
+	}
+	else
+	{
+		print "Before we begin, we need to address some important house-keeping.
+
+To simplify and automate as much of the build process as possible, the tool can
+download third party tools which add support for some hardware. These tools are
+not built, maintained or in any way owned by Alteeve's Niche! and have separate
+terms of service and use. 
+
+You will be prompted now to read and accept or deny the terms of service for
+each third party vendor. If you decline any, the install will proceed but some
+features related to a given vendor may not work. Of course, if you do not have
+any hardware related to that vendor, it is safe to decline. In any case, the 
+creation of the ISO will proceed.
+
+<press enter to begin>
+";
+		my $answer = <STDIN>;
+		   $answer = "";
+
+		# Fujitsu.
+		print "====
+
+If you are using Fujitsu Primergy nodes, and if you agree to Fujitsu's 'Terms 
+of use' found here:
+
+$conf->{sys}{third_party}{Fujitsu}{terms}
+
+Support for 'Primecollect' will be added to the ISO. The 'Primecollect' tool is
+used to gather information about the hardware when opening a service request.
+
+Do you agree to Fujitsu's 'Terms of Use'? [y/N]
+";
+		$answer = <STDIN>;
+		chomp($answer);
+		if ($answer =~ /^y/i)
+		{
+			print "- Thank you.\n\n";
+			$conf->{sys}{third_party}{Fujitsu}{agree} = 1;
+		}
+		else
+		{
+			print "- Noted. Fujitsu support will not be added.\n\n";
+		}
+		$answer = "";
+		sleep 1;
+
+		# Avago.
+		print "====
+
+If you are using an Avago (formerly LSI) based RAID controller, and if you 
+agree to Avago's 'Download Agreement' found here:
+
+$conf->{sys}{third_party}{Avago}{terms}
+
+Support for managing RAID arrays in Striker and monitoring of the controller
+hardware and attached drives will be added to ScanCore. LSI-based controllers
+are used by most Tier-1 vendors, like Fujitsu, Dell, IBM/Lenovo as well as most
+white-box servers from companies like Intel, Supermicro and so on.
+
+Do you agree to Avago's 'Download Agreement'? [y/N]
+";
+		$answer = <STDIN>;
+		chomp($answer);
+		if ($answer =~ /^y/i)
+		{
+			print "- Thank you.\n\n";
+			$conf->{sys}{third_party}{Avago}{agree} = 1;
+		}
+		else
+		{
+			print "- Noted. Avago support will not be added.\n\n";
+		}
+		$answer = "";
+		sleep 1;
+		print "====\n";
+	}
+	
+	return(0);
+}
 
 # This checks out the Striker repository, which includes the files we need.
 sub download_striker
@@ -194,7 +317,25 @@ sub download_striker
 	# Download RPMs from our repo.
 	download_anrepo_rpms($conf);
 	
-	# Now start copying files into place.
+	# Download non-RPM tools
+	download_anrepo_tools($conf);
+	
+	### Now start copying files into place.
+	# isolinux
+	
+	
+	return(0);
+}
+
+# This downloads various (third party) tools needed for the Anvil! that are not RPM packages.
+sub download_anrepo_tools
+{
+	my ($conf) = @_;
+	
+	# Fujitsu stuff
+	#$conf->{path}{iso}{iso_fujitsu}
+	#$conf->{url}{Fujitsu}{primecollect} -> $conf->{path}{iso}{fujitsu}
+	
 	
 	return(0);
 }
@@ -205,7 +346,7 @@ sub download_anrepo_rpms
 {
 	my ($conf) = @_;
 	
-	# First, get a lit of the RPMs available
+	# First, get a list of the RPMs available
 	print "- Downloading packages from the Alteeve's Niche! repository now.\n";
 	foreach my $arch ("x86_64", "noarch")
 	{
@@ -229,6 +370,7 @@ sub download_anrepo_rpms
 		close $file_handle;
 	}
 	
+	# Match requirements to the available RPMs
 	foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{alteeve}})
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
@@ -253,6 +395,61 @@ sub download_anrepo_rpms
 		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
 	}
 	
+	# Find the packages in the Third Party repo
+	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agree: [$conf->{sys}{third_party}{$vendor}{agree}]\n" if $conf->{sys}{debug} >= 2;
+		next if not $conf->{sys}{third_party}{$vendor}{agree};
+		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{third_party}."/$vendor/";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ($line =~ /href="(.*?)">/)
+			{
+				my $download_package = $1;
+				next if $download_package !~ /\.rpm$/;
+				my $download_url =  $conf->{url}{third_party}."/$vendor/$download_package";
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - download_package: [$download_package], download_url: [$download_url]\n" if $conf->{sys}{debug} >= 2;
+				$conf->{download_packages}{$download_package} = $download_url;
+			}
+		}
+	}
+	
+	# Match our requirements to the packages available in the third party repo
+	foreach my $vendor (sort {$a cmp $b} keys %{$conf->{sys}{packages}{third_party}})
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - vendor: [$vendor], sys::third_party::${vendor}::agree: [$conf->{sys}{third_party}{$vendor}{agree}]\n" if $conf->{sys}{debug} >= 2;
+		next if not $conf->{sys}{third_party}{$vendor}{agree};
+		foreach my $package (sort {$a cmp $b} @{$conf->{sys}{packages}{third_party}{$vendor}})
+		{
+			my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
+			my $found         = 0;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Looking for the: [$arch] package: [$package] in the source.\n" if $conf->{sys}{debug} >= 2;
+			
+			foreach my $download_package (sort {$a cmp $b} keys %{$conf->{download_packages}})
+			{
+				next if $download_package !~ /^\Q$file\E/;
+				next if $download_package !~ /\Q$arch\E/;
+				print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+				if ($download_package =~ /^\Q$file\E-\d/)
+				{
+					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$download_package] matches!\n" if $conf->{sys}{debug} >= 2;
+					$found++;
+					$conf->{download}{$package}{url} = $conf->{download_packages}{$download_package};
+				}
+			}
+			
+			### It's normal for there to be multiple matches, so we don't fail on too many here.
+			# If I didn't finf a match, or if I found too many matches, die.
+			die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
+		}
+	}
+	
+	# Download everything
 	foreach my $package (sort {$a cmp $b} keys %{$conf->{download}})
 	{
 		my $package_name = ($conf->{download}{$package}{url} =~ /^.*\/(.*)$/)[0];
@@ -299,6 +496,7 @@ sub download_anrepo_rpms
 			}
 		}
 	}
+	
 	print "- Done! All Anvil! packages are in place.\n";
 	
 	return(0);
@@ -310,28 +508,14 @@ sub setup_build_environment
 {
 	my ($conf) = @_;
 	
-	system('clear');
-	print "\n-=] Thank you for your interest in the Anvil! platform! [=-\n";
-	
-	print "
-We're going to ask for you to confirm some steps as we prepare to build the 
-Anvil! ISO. If you've not already done so, we will guide you through 
-downloading some programs from third-party vendors. This is a bit annoying, we
-admit, but it's how we play nice with others.
-
-You can quit this process at any time my pressing <ctrl> + <c>
-
-";
-	#sleep 2;
-	
 	$conf->{path}{iso}{working_directory} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir};
 	if (-e $conf->{path}{iso}{working_directory})
 	{
-		print "The working directory: [$conf->{path}{iso}{working_directory}] exist already.\n";
+		print "- The working directory: [$conf->{path}{iso}{working_directory}] already exists.\n";
 	}
 	else
 	{
-		print "The working directory: [$conf->{path}{iso}{working_directory}] doesn't exist.\n";
+		print "- The working directory: [$conf->{path}{iso}{working_directory}] doesn't exist.\n";
 		print "- Can I create it (and needed subdirectories) now? [Y/n]\n";
 		my $answer = <STDIN>;
 		chomp($answer);
@@ -339,6 +523,11 @@ You can quit this process at any time my pressing <ctrl> + <c>
 		{
 			print "- Thank you, proceeding now.\n";
 			$conf->{path}{iso}{working_directory} = make_directory($conf, $conf->{path}{iso}{working_directory});
+		}
+		else
+		{
+			print "- Without a working directory, ISO generation can not proceed. Exiting.\n";
+			exit(8);
 		}
 	}
 	
@@ -348,8 +537,10 @@ You can quit this process at any time my pressing <ctrl> + <c>
 	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{packages});
 	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker});
 	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fence});
-	$conf->{path}{iso}{iso_fujitsu}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu});
-	$conf->{path}{iso}{iso_avago}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago});
+	
+	# These are only created if the user agreed to them
+	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agree};
+	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agree};
 	
 	return(0);
 }
@@ -1897,11 +2088,20 @@ sub get_package_list
 	];
 	
 	# Binary packages from third parties
-	$conf->{sys}{packages}{binary} = [
-		# 3rd party to add manually
-		"MegaCli.noarch", 					# MegaCli-8.07.08-1.noarch.rpm
-		"storcli.noarch", 					# storcli-1.09.13-1.noarch.rpm
-	];
+	$conf->{sys}{packages}{third_party} = {
+		Fujitsu		=>	[
+			"SVSystemMonitor.noarch", 
+			"ServerViewConnectorService.x86_64", 
+			"srv-cimprovider.x86_64", 
+			"srvmagt-agents.x86_64", 
+			"srvmagt-eecd.x86_64",
+			"srvmagt-mods_src.x86_64", 
+		],
+		Avago		=>	[
+			"MegaCli.noarch",
+			"storcli.noarch",
+		],
+	};
 	
 	return(0);
 }
@@ -2003,6 +2203,20 @@ Alteeve's Niche!.
 
 
 SWITCHES
+
+--accept-third-part-licenses
+
+	This switch confirms that you have read and agree to the following 
+	third party agreements.
+	
+	Fujitsu:
+	- $conf->{sys}{third_party}{Fujitsu}{terms}
+	
+	Avago:
+	- $conf->{sys}{third_party}{Avago}{terms}
+	
+	With this agreement, support for this hardware will be added to the
+	Anvil! ISO.
 
 -h, -?, --help
 
