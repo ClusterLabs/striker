@@ -380,31 +380,41 @@ CREATE TRIGGER trigger_shared
 
 -- This stores information about the server.
 CREATE TABLE server (
-	server_uuid		uuid				not null	primary key,	-- This comes from the server's XML definition file.
-	server_name		text				not null,
-	server_stop_reason	text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
-	server_start_after	uuid,								-- This can be the UUID of another server. If set, this server will boot 'server_start_delay' seconds after the referenced server boots. A value of '00000000-0000-0000-0000-000000000000' will tell 'anvil-safe-start' to not boot the server at all.
-	server_start_delay	integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
-	server_note		text,								-- User's place to keep notes about their server.
-	server_definition	text				not null,			-- The XML definition file for the server.
-	server_host		text,								-- This is the current host for this server, which may be empty if it's off.
-	server_state		text,								-- This is the current state of this server.
-	modified_date		timestamp with time zone	not null
+	server_uuid			uuid				not null	primary key,	-- This comes from the server's XML definition file.
+	server_name			text				not null,
+	server_stop_reason		text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
+	server_start_after		uuid,								-- This can be the UUID of another server. If set, this server will boot 'server_start_delay' seconds after the referenced server boots. A value of '00000000-0000-0000-0000-000000000000' will tell 'anvil-safe-start' to not boot the server at all.
+	server_start_delay		integer				not null	default 0,	-- How many seconds to delay booting for after the last server in the previous group boots.
+	server_note			text,								-- User's place to keep notes about their server.
+	server_definition		text				not null,			-- The XML definition file for the server.
+	server_host			text,								-- This is the current host for this server, which may be empty if it's off.
+	server_state			text,								-- This is the current state of this server.
+	server_migration_type		text				not null	default 'live',	-- This is either 'live' or 'cold'. Cold migration involves "shut down" -> "Boot" on the peer.
+	server_pre_migration_script	text,								-- This is set to the name of a script to run before migrating a server. This must match an entry in /shared/files/.
+	server_pre_migration_arguments	text,								-- These are arguments to pass to the pre-migration script
+	server_post_migration_script	text,								-- This is set to the name of a script to run after migrating a server. This must match an entry in /shared/files/.
+	server_post_migration_arguments	text,								-- These are arguments to pass to the post-migration script
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE server OWNER TO #!variable!user!#;
 
 CREATE TABLE history.server (
-	history_id		bigserial,
-	server_uuid		uuid,
-	server_name		text,
-	server_stop_reason	text,
-	server_start_after	uuid,
-	server_start_delay	integer,
-	server_note		text,
-	server_definition	text,
-	server_host		text,
-	server_state		text,
-	modified_date		timestamp with time zone	not null
+	history_id			bigserial,
+	server_uuid			uuid,
+	server_name			text,
+	server_stop_reason		text,
+	server_start_after		uuid,
+	server_start_delay		integer,
+	server_note			text,
+	server_definition		text,
+	server_host			text,
+	server_state			text,
+	server_migration_type		text,
+	server_pre_migration_script	text,
+	server_pre_migration_arguments	text,
+	server_post_migration_script	text,
+	server_post_migration_arguments	text,
+	modified_date			timestamp with time zone	not null
 );
 ALTER TABLE history.server OWNER TO #!variable!user!#;
 
@@ -424,6 +434,11 @@ BEGIN
 		 server_definition, 
 		 server_host, 
 		 server_state, 
+		 server_migration_type, 
+		 server_pre_migration_script, 
+		 server_pre_migration_arguments, 
+		 server_post_migration_script, 
+		 server_post_migration_arguments, 
 		 modified_date)
 	VALUES
 		(history_server.server_uuid, 
@@ -435,6 +450,11 @@ BEGIN
 		 history_server.server_definition, 
 		 history_server.server_host, 
 		 history_server.server_state, 
+		 history_server.server_migration_type, 
+		 history_server.server_pre_migration_script, 
+		 history_server.server_pre_migration_arguments, 
+		 history_server.server_post_migration_script, 
+		 history_server.server_post_migration_arguments, 
 		 history_server.modified_date);
 	RETURN NULL;
 END;

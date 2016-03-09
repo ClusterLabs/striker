@@ -580,6 +580,9 @@ sub image_and_upload
 	return (0);
 }
 
+### TODO: Rework this to use the new AN::Tools rsync and remote_call methods.
+###       Also, add 'is script' flag to warn the user that their scripts will run as root.
+###       Send an alert email when new scripts are uploaded to help prevent abuse (scan-anvil?).
 # This takes a path to a file on the dashboard and uploads it to the cluster's
 # /shared/files/ folder.
 sub upload_to_shared

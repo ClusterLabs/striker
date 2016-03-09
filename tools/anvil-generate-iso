@@ -24,6 +24,7 @@
 # 6  = Failed to clone Striker from github.
 # 7  = Failed to download an RPM from an-repo.
 # 8  = User rejected the creation of the working directory.
+# 9  = The source ISO's .discinfo file wasn't copied to the source directory.
 # 
 
 use strict;
@@ -63,11 +64,13 @@ my $conf = {
 			centos		=>	"CentOS",
 			rhel		=>	"RHEL",
 			suffix		=>	"6/Anvil",
-			
 		},
 		# Directories and files we download, copy or create will be placed under this directory, 
 		# which itself will be appended to the user's home directory.
 		working_dir	=>	"anvil",
+		# This is used to differentiate between CentOS and RHEL ISOs being generated.
+		centos_dir	=>	"CentOS",
+		rhel_dir	=>	"RHEL",
 		# This will be the root of the ISO. The 'working_dir' above will hold other temporary files
 		# like things we need to download.
 		source_path	=>	"source",
@@ -99,6 +102,8 @@ my $conf = {
 	source		=>	{},
 	source_packages	=>	{},
 	sys		=>	{
+		date		=>	"",
+		'time'		=>	"",
 		debug		=>	1,
 		md5sum		=>	{
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"RHEL 6.7, Disk 1",	# v6.7
@@ -110,7 +115,13 @@ my $conf = {
 		source		=>	{
 			iso		=>	[],
 		},
-		use_anvil	=>	0,
+		name		=>	{
+			centos		=>	"CentOS",
+			rhel		=>	"RHEL",
+			release		=>	"6.7",
+			suffix		=>	"alpha",
+			mark		=>	"m2",
+		},
 		# This is will be set to '1' if the source ISO is not mounted.
 		use_isoread	=>	0,
 		user		=>	{
@@ -157,18 +168,17 @@ if (($conf->{switches}{h})   ||
 # Make sure we know where executables are on this system.
 find_executables($conf);
 
+get_date($conf);
+
 # Ask the user to ACK third party tools
 agree_to_terms($conf);
 
-# Possibly useful later
-#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; } exit;
+# Genreate an MD5 sum and see if it matches one we know.
+validate_source($conf);
 
 # Setup our build environment. This creates the directories we'll need for the new ISO, copy over isolinux
 # and syslinux, ask the user to download binary files, load our kickstart scripts and splash screens, etc.
 setup_build_environment($conf); 
-
-# Genreate an MD5 sum and see if it matches one we know.
-validate_source($conf);
 
 # Mount the source, if it isn't already
 prep_source($conf);
@@ -182,12 +192,182 @@ build_source($conf);
 # Download things we need.
 download_striker($conf);
 
+# Prepare the 'Packages' repository
+prep_packages_repo($conf);
+
 exit(0);
 
  
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Prepare the 'Packages' repository
+sub prep_packages_repo
+{
+	my ($conf) = @_;
+	
+	### Set the ISO name.
+	# We'll 
+	my $os_name = "";
+	if ($conf->{sys}{os} =~ /centos/i)
+	{
+		$os_name = $conf->{sys}{name}{centos};
+	}
+	elsif ($conf->{sys}{os} =~ /rhel/i)
+	{
+		$os_name = $conf->{sys}{name}{rhel};
+	}
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - os_name: [$os_name]\n" if $conf->{sys}{debug} >= 2;
+	my $iso_name = "Anvil_".$conf->{sys}{name}{mark}."_".$os_name."_".$conf->{sys}{name}{release};
+	if ($conf->{sys}{name}{suffix})
+	{
+		$iso_name .= "_".$conf->{sys}{name}{suffix};
+	}
+	$iso_name .= ".iso";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_name: [$iso_name]\n" if $conf->{sys}{debug} >= 1;
+	
+	# Get the '.discinfo' number
+	my $disc_id = get_disc_id($conf);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 1;
+	
+	# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
+	my $xml_file = get_repodata_xml_file_name($conf);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 1;
+	
+	return(0);
+}
+
+# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
+sub get_repodata_xml_file_name
+{
+	my ($conf) = @_;
+	
+	my $xml_file = "";
+	my $source   = $conf->{path}{iso}{source_directory}."/repodata";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+	local(*DIR);
+	opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
+	while (my $file = readdir(DIR))
+	{
+		next if (($file eq ".") or ($file eq ".."));
+		my $full_path = $source."/".$file;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+		
+		#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
+		if (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+		{
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
+		}
+		elsif ($file =~ /comps\.xml$/)
+		{
+			$xml_file = $file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+		}
+		else
+		{
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	closedir(DIR);
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+	return($xml_file);
+}
+
+# This blows away all files in the source's 'repodata' directory.
+sub wipe_repodata
+{
+	my ($conf) = @_;
+	
+	my $source = $conf->{path}{iso}{source_directory}."/repodata";
+	if (-e $source)
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+		local(*DIR);
+		opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
+		while (my $file = readdir(DIR))
+		{
+			next if (($file eq ".") or ($file eq ".."));
+			my $full_path = $source."/".$file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
+		}
+		closedir(DIR);
+	}
+	
+	return(0);
+}
+
+# This reads in the ISO disk 1's .discinfo file.
+sub get_disc_id
+{
+	my ($conf) = @_;
+	
+	my $disc_id        = "";
+	my $disc_info_file = $conf->{path}{iso}{source_directory}."/.discinfo";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_info_file: [$disc_info_file]\n" if $conf->{sys}{debug} >= 2;
+	
+	if (-e $disc_info_file)
+	{
+		my $shell_call = $disc_info_file;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "<$shell_call") or die "\n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ((not $disc_id) && ($line =~ /^\d+/))
+			{
+				$disc_id = $line;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# We might be able to generate this ourself later, but for now, error out.
+		print "
+[ Error ] - The source ISO (disc 1) should have contained '.discinfo' in its 
+[ Error ]   root, but it either doesn't exist or it wasn't copied the the 
+[ Error ]   'source' build directory. This is needed to generate the new ISO.
+";
+		exit(9);
+	}
+	
+	return($disc_id);
+}
+
+# This date is used in the ISO
+sub get_date
+{
+	my ($conf) = @_;
+	
+	my %time = ();
+	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime();
+	
+	# 0-pad the numbers
+	$time{pad_hour} = sprintf("%02d", $time{hour});
+	$time{pad_min}  = sprintf("%02d", $time{min});
+	$time{pad_sec}  = sprintf("%02d", $time{sec});
+	$time{pad_mon}  = sprintf("%02d", $time{mon});
+	$time{pad_mday} = sprintf("%02d", $time{mday});
+	
+	# Adjust the year and month
+	$time{year} = ($time{year} + 1900);
+	$time{mon}++;
+	
+	$conf->{sys}{date}   = $time{year}."/".$time{pad_mon}."/".$time{pad_mday};
+	$conf->{sys}{'time'} = $time{pad_hour}.":".$time{pad_min}.":".$time{pad_sec};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::date: [$conf->{sys}{date}], sys::time: [$conf->{sys}{'time'}]\n" if $conf->{sys}{debug} >= 2;
+	
+	return(0);
+}
 
 # This checks out the Striker repository, which includes the files we need.
 sub download_striker
@@ -732,7 +912,16 @@ sub setup_build_environment
 {
 	my ($conf) = @_;
 	
+	# Which OS?
 	$conf->{path}{iso}{working_directory} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir};
+	if ($conf->{sys}{os} =~ /centos/i)
+	{
+		$conf->{path}{iso}{working_directory} .= "/".$conf->{path}{centos_dir};
+	}
+	elsif ($conf->{sys}{os} =~ /rhel/i)
+	{
+		$conf->{path}{iso}{working_directory} .= "/".$conf->{path}{rhel_dir};
+	}
 	if (-e $conf->{path}{iso}{working_directory})
 	{
 		print "- The working directory: [$conf->{path}{iso}{working_directory}] already exists.\n";
@@ -765,6 +954,9 @@ sub setup_build_environment
 	# These are only created if the user agreed to them
 	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
 	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
+	
+	# Make sure any old repodata files are removed.
+	wipe_repodata($conf);
 	
 	return(0);
 }
@@ -856,10 +1048,10 @@ sub build_source
 				{
 					next if $source_package !~ /^\Q$file\E/;
 					next if $source_package !~ /\Q$arch\E/;
-					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
 					if ($source_package =~ /^\Q$file\E-\d/)
 					{
-						print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
+						print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
 						$found++;
 						$conf->{copy}{$package} = {
 							source    => $iso,
@@ -873,7 +1065,11 @@ sub build_source
 		
 		# If I didn't finf a match, or if I found too many matches, die.
 		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
-		die "[ Error ] - The package: [$package] (file: [$file], arch: [$arch]) had multiple matches!\n" if $found > 1;
+		if (($found > 1) && ($conf->{sys}{debug} >= 2))
+		{
+			print "[ Warning ] - The package: [$package] (file: [$file], arch: [$arch]) had multiple matches!\n";
+			print "[ Warning ]   Using; source: [$conf->{copy}{$package}{source}], directory: [$conf->{copy}{$package}{directory}], file: [$conf->{copy}{$package}{file}]!\n";
+		}
 	}
 	
 	# Copy!
@@ -1230,6 +1426,10 @@ sub validate_source
 		{
 			$conf->{source}{$iso}{sum} = "efd54b939787519b350d986329e2c7a3";
 		}
+		elsif ($iso eq "/data1/VMs/files/rhel-server-6.7-x86_64-dvd.iso")
+		{
+			$conf->{source}{$iso}{sum} = "a2bc9de743bfb0bfe1f14676a46a624b";
+		}
 		else
 		{
 			print "- Generating md5sum of the source, please wait a moment...\n";
@@ -1357,6 +1557,9 @@ sub find_executables
 sub get_package_list
 {
 	my ($conf) = @_;
+	
+	# These packages were removed for being pains in the arse to source on one distro or another.
+	#mtr-gtk.x86_64		# Available on CentOS disk 2, not at all on RHEL, src.rpm doesn't build
 	
 	# These are common to CentOS and RHEL
 	$conf->{sys}{packages}{common} = [
@@ -2189,18 +2392,10 @@ sub get_package_list
 		"compat-libstdc++-33.i686",
 		"libstdc++-devel.i686",
 		"libstdc++.i686",
-		"mtr-gtk.x86_64",
-		"pcp-gui.x86_64",
-		"perl-Algorithm-Diff.noarch",
-		"perl-Text-Diff.noarch",
-		"sharutils.x86_64",
-		"syslinux-tftpboot.noarch",
 	];
 	
 	# These are packages specific to one source
 	$conf->{sys}{packages}{rhel} = [
-		"mtr-gtk.x86_64",					# mtr-gtk-0.75-5.el6.x86_64.rpm
-		"pcp-gui.x86_64",					# pcp-gui-3.10.3-3.el6.x86_64.rpm
 		"python-gudev.x86_64",					# python-gudev-147.1-4.el6_0.1.x86_64.rpm
 		"python-rhsm.x86_64",					# python-rhsm-1.14.3-1.el6.x86_64.rpm
 		"redhat-indexhtml.noarch",				# redhat-indexhtml-6-6.el6.noarch.rpm
@@ -2219,6 +2414,13 @@ sub get_package_list
 		"yum-plugin-fastestmirror.noarch",			# yum-plugin-fastestmirror-1.1.30-30.el6.noarch.rpm
 		"centos-indexhtml.noarch",				# centos-indexhtml-6-2.el6.centos.noarch.rpm
 		"centos-release.x86_64",				# centos-release-6-7.el6.centos.12.3.x86_64.rpm
+		# These are not available on RHEL's ISO, so we get them from the AN!Repo when the user is
+		# using RHEL, but from CentOS when the user is using CentOS.
+		"mtr-gtk.x86_64",
+		"pcp-gui.x86_64",
+		"perl-Algorithm-Diff.noarch",
+		"perl-Text-Diff.noarch",
+		"sharutils.x86_64",
 	];
 	
 	# Alteeve-source packages
@@ -2238,6 +2440,18 @@ sub get_package_list
 		"shorewall.noarch",
 		"shorewall-core.noarch",
 	];
+	
+	# If the user is using RHEL, we will append these packages to get them from AN!Repo as we can't get
+	# them on the RHEL ISO.
+	if ($conf->{sys}{os} =~ /rhel/i)
+	{
+		push @{$conf->{sys}{packages}{alteeve}}, "mtr-gtk.x86_64";		# See rhbz#1315856
+		push @{$conf->{sys}{packages}{alteeve}}, "pcp-gui.x86_64";
+		push @{$conf->{sys}{packages}{alteeve}}, "perl-Algorithm-Diff.noarch";
+		push @{$conf->{sys}{packages}{alteeve}}, "perl-Text-Diff.noarch";
+		push @{$conf->{sys}{packages}{alteeve}}, "sharutils.x86_64";
+		push @{$conf->{sys}{packages}{alteeve}}, "syslinux-tftpboot.noarch";
+	}
 	
 	# Binary packages from third parties
 	$conf->{sys}{packages}{third_party} = {

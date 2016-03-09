@@ -2,11 +2,13 @@
 # 
 # AN!MediaConnector
 # 
-# This allows a mechanism for taking a CD or DVD, turning it into an ISO and
-# pushing it to a cluster's /shared/files/ directory. It also allows for 
-# connecting and disconnecting these ISOs to and from VMs.
+# This allows a mechanism for taking a CD or DVD, turning it into an ISO and pushing it to a cluster's 
+# /shared/files/ directory. It also allows for connecting and disconnecting these ISOs to and from VMs.
 # 
-# TODO: Merge this into the main program.
+# This also manages pre and post migration scripts that the user can run before/after a server is migrated.
+# 
+# TODO: 
+# - Add a check-box on upload called 'This is a script' and chmod the file to 755 if selected.
 #       
 
 use strict;
@@ -96,6 +98,7 @@ AN::Cluster::get_cgi_vars($conf, [
 	"name",
 	"task",
 	"url",
+	"script", 
 ]);
 
 # Print the header.
