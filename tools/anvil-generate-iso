@@ -25,6 +25,8 @@
 # 7  = Failed to download an RPM from an-repo.
 # 8  = User rejected the creation of the working directory.
 # 9  = The source ISO's .discinfo file wasn't copied to the source directory.
+# 10 = Error processing an RPM when running 'createrepo'.
+# 11 = mkisofs failed.
 # 
 
 use strict;
@@ -104,7 +106,7 @@ my $conf = {
 	sys		=>	{
 		date		=>	"",
 		'time'		=>	"",
-		debug		=>	1,
+		debug		=>	0,
 		md5sum		=>	{
 			'a2bc9de743bfb0bfe1f14676a46a624b'	=>	"RHEL 6.7, Disk 1",	# v6.7
 			'51f90e8ddd2ea199780065eaf75130ad'	=>	"CentOS 6.7, Disk 1",	# v6.7, Disk 1
@@ -165,11 +167,20 @@ if (($conf->{switches}{h})   ||
 	exit(0);
 }
 
+# Enable debugging if the user requested it.
+$conf->{sys}{debug} = 1 if $conf->{switches}{v};
+$conf->{sys}{debug} = 2 if $conf->{switches}{vv};
+$conf->{sys}{debug} = 3 if $conf->{switches}{vvv};
+
 # Make sure we know where executables are on this system.
 find_executables($conf);
 
+# Prepare the current date and time for later use in mkisofs.
 get_date($conf);
 
+# Possibly useful later
+#foreach my $key (sort {$a cmp $b} keys %ENV) { print "$key\t->\t[$ENV{$key}]\n"; } exit;
+ 
 # Ask the user to ACK third party tools
 agree_to_terms($conf);
 
@@ -207,8 +218,28 @@ sub prep_packages_repo
 {
 	my ($conf) = @_;
 	
-	### Set the ISO name.
-	# We'll 
+	# Get the '.discinfo' number
+	my $disc_id = get_disc_id($conf);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
+	
+	# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
+	my $xml_file = get_repodata_xml_file_name($conf);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+	
+	# Build the repository
+	build_repository($conf, $disc_id, $xml_file);
+	
+	# Finally, create the ISO!
+	build_iso($conf);
+	
+	return(0);
+}
+
+# This builds the actual ISO.
+sub build_iso
+{
+	my ($conf) = @_;
+	
 	my $os_name = "";
 	if ($conf->{sys}{os} =~ /centos/i)
 	{
@@ -225,15 +256,94 @@ sub prep_packages_repo
 		$iso_name .= "_".$conf->{sys}{name}{suffix};
 	}
 	$iso_name .= ".iso";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_name: [$iso_name]\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_name: [$iso_name]\n" if $conf->{sys}{debug} >= 2;
 	
-	# Get the '.discinfo' number
-	my $disc_id = get_disc_id($conf);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 1;
+	my $say_date = $conf->{sys}{date}." ".$conf->{sys}{'time'};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - say_date: [$say_date]\n" if $conf->{sys}{debug} >= 2;
 	
-	# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
-	my $xml_file = get_repodata_xml_file_name($conf);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 1;
+	# Get the current user's name and the hostname.
+	my $say_user = $ENV{USERNAME} ? $ENV{USERNAME} : $ENV{USER};
+	my $say_host = $ENV{HOSTNAME};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - say_user: [$say_user], say_host: [$say_host]\n" if $conf->{sys}{debug} >= 2;
+	
+	# Put the output path together.
+	my $output_file = $conf->{sys}{user}{current_dir}."/".$conf->{path}{working_dir}."/".$iso_name;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - output_file: [$output_file]\n" if $conf->{sys}{debug} >= 2;
+	
+	# Make sure that 'isolinux/isolinux.bin' is writable.
+	my $isolinux_bin = $conf->{path}{iso}{source_directory}."/isolinux/isolinux.bin";
+	chmod 0644, $isolinux_bin;
+	
+	# Delete any existing ISO
+	if (-e $output_file)
+	{
+		print "- Deleting old ISO: [$output_file]\n";
+		unlink $output_file or die "[ Error ] - Failed to delete old ISO: [$output_file]. The error was: $!\n";
+	}
+	
+	# Build!
+	my $shell_call     = $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$iso_name' -appid 'Anvil\\\! ".$conf->{sys}{name}{mark}." Installer' -publisher \"Alteeve's Niche\\\! - https://alteeve.ca/w/Support\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
+	my $mkisofs_output = "";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		$mkisofs_output .= "$line\n";
+	}
+	close $file_handle;
+	
+	if (-e $output_file)
+	{
+		# All done!
+		print "The ISO file: [$output_file] has been generated!\n";
+	}
+	else
+	{
+		# So close!
+		print "
+[ Error ] - It appears that the ISO: [$output_file] failed to build! The output
+[ Error ]   from the build follows:
+====
+$mkisofs_output
+====
+[ Error ] - You can re-run this program with '-v', '-vv' or '-vvv' to 
+[ Error ]   additional debugging information.
+";
+		exit(11);
+	}
+	
+	return(0);
+}
+
+# This builds the repodata for the Packages directory.
+sub build_repository
+{
+	my ($conf, $disc_id, $xml_file) = @_;
+	
+	my $shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file." ".$conf->{path}{iso}{source_directory};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		
+		if ($line =~ /Error opening Package/)
+		{
+			print "
+[ Error ] - There was an error when generating the 'Packages' repository data.
+[ Error ]   It is possible some downloaded or copied 'RPM' package files are 
+[ Error ]   corrupt. Check that your Internet connection is working. If the 
+[ Error ]   error is not obvious, re-run this with '-vv' for debugging output.
+";
+			exit(10);
+		}
+	}
+	close $file_handle;
 	
 	return(0);
 }
@@ -258,11 +368,11 @@ sub get_repodata_xml_file_name
 		if (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
 		{
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
-			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
+			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
 		}
 		elsif ($file =~ /comps\.xml$/)
 		{
-			$xml_file = $file;
+			$xml_file = $full_path;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
 		}
 		else
@@ -526,7 +636,7 @@ sub copy_file
 	if (($force) && (-e $target))
 	{
 		print "- The target file: [$target] exists and the copy is forced, deleting the old file.\n" if $conf->{sys}{debug} >= 2;
-		unlink $target or die "[ Error ] - Failed to delete: [$target] to make room for the new file.\n";
+		unlink $target or die "[ Error ] - Failed to delete: [$target] to make room for the new file. The error was: $!\n";
 	}
 	# Copy unless the target exists.
 	if (-e $target)
@@ -549,7 +659,7 @@ sub copy_file
 		close $file_handle;
 		if (-e $target)
 		{
-			print "- The file: [$target] was written successfully.\n";
+			print "- The file: [$target] was written successfully.\n" if $conf->{sys}{debug} >= 1;
 		}
 		else
 		{
@@ -693,14 +803,21 @@ sub download_file
 	else
 	{
 		print "- Downloading: [$source]\n";
-		my $shell_call = $conf->{executable}{curl}." $source > $target";
+		### NOTE: Do NOT use 2>&1 as this pushes the download progress into the download file. If 
+		###       debug is enabled, we'll dump the progress to the screen.
+		my $shell_call = $conf->{executable}{curl}." $source 2>/dev/null > $target";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		if ($conf->{sys}{debug})
+		{
+			$shell_call = $conf->{executable}{curl}." $source > $target";
+		}
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
 		}
 		close $file_handle;
 		
@@ -762,7 +879,7 @@ sub download_file
 			if (-e $target)
 			{
 				# Remove the sadness
-				unlink $target or die "[ Error ] - Failed to delete: [$target] (it's a failed download message, not the file).\n";
+				unlink $target or die "[ Error ] - Failed to delete: [$target] (it's a failed download message, not the file). The error was: $!\n";
 			}
 			exit(7);
 		}
@@ -965,7 +1082,7 @@ sub setup_build_environment
 sub make_directory
 {
 	my ($conf, $directory) = @_;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 	
 	# If the directory starts with '/', we're building from /. If the directory starts with '~', we're 
 	# building from the user's home.
@@ -987,7 +1104,7 @@ sub make_directory
 	{
 		next if not $sub_directory;
 		$current_directory .= "/$sub_directory";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
 		
 		if (not -e $current_directory)
 		{
@@ -996,7 +1113,7 @@ sub make_directory
 		}
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - current_directory: [$current_directory]\n" if $conf->{sys}{debug} >= 3;
 	return($current_directory);
 }
 
@@ -2603,6 +2720,10 @@ SWITCHES
 	
 	If you provide a CentOS ISO, the RHEL packages will be skipped and 
 	CentOS-specific packages will be added.
+
+-v, -vv, -vvv
+
+	Enable debugging output (each additional 'v' increases the verbosity).
 
 
 EXAMPLES
