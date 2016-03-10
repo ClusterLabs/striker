@@ -8195,9 +8195,13 @@ sub do_node_reboot
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
+		### TODO: This can be racey when the server reboots very quickly (like a VM on a fast host)
+		###       If the timeout is hit, log in and read the 'uptime'.
 		# We need to give the system time to shut down.
 		my $has_shutdown = 0;
-		my $timeout      = time + 120;
+		my $time_limit   = 120;
+		my $uptime_max   = $time_limit + 60;
+		my $timeout      = time + $time_limit;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "time",    value1 => time,
 			name2 => "timeout", value2 => $timeout,
@@ -8213,6 +8217,50 @@ sub do_node_reboot
 					name1 => "has_shutdown", value1 => $has_shutdown,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			else
+			{
+				# Log in and see if the uptime is short.
+				my $uptime     = 99999999;
+				my $shell_call = $an->data->{path}{nodes}{cat}." /proc/uptime";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	1,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line =~ /^(\d+)\./)
+					{
+						$uptime = $1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "uptime", value1 => $uptime, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "uptime",     value1 => $uptime, 
+						name2 => "uptime_max", value2 => $uptime_max, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($uptime < $uptime_max)
+					{
+						# We rebooted and missed it.
+						$has_shutdown = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "has_shutdown", value1 => $has_shutdown, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+			}
 			if (time > $timeout)
 			{
 				$return_code = 4;
@@ -8221,7 +8269,7 @@ sub do_node_reboot
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
 			}
-			sleep 1;
+			sleep 3;
 		}
 		
 		# Now loop for $conf->{sys}{reboot_timeout} seconds waiting to

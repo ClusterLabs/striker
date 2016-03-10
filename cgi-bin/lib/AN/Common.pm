@@ -613,6 +613,7 @@ sub initialize_conf
 				bcn_bond1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_bond1",
 				bcn_link1_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link1",
 				bcn_link2_config	=>	"/etc/sysconfig/network-scripts/ifcfg-bcn_link2",
+				cat			=>	"/bin/cat",
 				cluster_conf		=>	"/etc/cluster/cluster.conf",
 				cron_root		=>	"/var/spool/cron/root",
 				drbd			=>	"/etc/drbd.d",
