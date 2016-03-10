@@ -155,8 +155,10 @@ my $conf = {
 			domain		=>	"alteeve.ca",
 			ifn_dns1	=>	"8.8.8.8",
 			ifn_dns2	=>	"8.8.4.4",
-			ifn_gateway	=>	"10.255.255.254",
-			ifn_netmask	=>	"16",
+			#ifn_gateway	=>	"10.255.255.254",
+			ifn_gateway	=>	"192.168.122.1",
+			#ifn_netmask	=>	"16",
+			ifn_netmask	=>	"24",
 			keyboard	=>	"us",
 			language	=>	"en_CA.UTF-8",
 			os_version	=>	"6.7",
@@ -164,7 +166,8 @@ my $conf = {
 			password	=>	"Initial1",	# User and 'root'.
 			prefix		=>	"an",
 			striker_bcn	=>	"10.20.4",
-			striker_ifn	=>	"10.255.4",
+			#striker_ifn	=>	"10.255.4",
+			striker_ifn	=>	"192.168.122",
 			striker_name	=>	"Striker",
 			timezone	=>	"America/Toronto",
 		},
@@ -443,7 +446,7 @@ $common_post
 # Download 'list-ips' from the Striker we're installing from.
 echo \"Downloading 'list-ips'.\"
 mkdir /sbin/striker
-curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/Striker/striker-master/tools/list-ips > /sbin/striker/list-ips
+curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/striker/tools/list-ips > /sbin/striker/list-ips
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
@@ -455,7 +458,7 @@ chmod 755 /usr/sbin/fence_raritan_snmp
 
 # Download 'anvil-map-network' from the Striker we're installing from.
 echo \"Downloading 'anvil-map-network'.\"
-curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/Striker/striker-master/tools/anvil-map-network > /sbin/striker/anvil-map-network
+curl http://$conf->{sys}{ks}{striker_bcn}.${source}/$os_dir/x86_64/img/striker/tools/anvil-map-network > /sbin/striker/anvil-map-network
 chown root:root /sbin/striker/hap-map-network
 chmod 755 /sbin/striker/anvil-map-network
 
@@ -477,13 +480,13 @@ sed -i 's/ quiet//' /boot/grub/grub.conf
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/$conf->{sys}{ks}{prefix}-striker01.repo << EOF\n";
 			$ks_body .= "[$conf->{sys}{ks}{prefix}-striker01]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 01 Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 01 Repository";
 		}
 		else
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/striker01.repo << EOF\n";
 			$ks_body .= "[striker01]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 01 Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 01 Repository";
 		}
 		$ks_body .= "
 baseurl=http://$conf->{sys}{ks}{striker_bcn}.1/$os_dir/x86_64/img/
@@ -498,13 +501,13 @@ EOF
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/$conf->{sys}{ks}{prefix}-striker02.repo << EOF\n";
 			$ks_body .= "[$conf->{sys}{ks}{prefix}-striker02]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 02 Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 02 Repository";
 		}
 		else
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/striker02.repo << EOF\n";
 			$ks_body .= "[striker02]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 02 Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 02 Repository";
 		}
 		$ks_body .= "
 baseurl=http://$conf->{sys}{ks}{striker_bcn}.2/$os_dir/x86_64/img/
@@ -638,7 +641,7 @@ cp -v /mnt/source/$conf->{path}{iso}{file_name} /mnt/sysimage/var/www/html/$os_d
 # Setup 'list-ips'.
 echo \"Setting up 'list-ips'.\"
 mkdir /mnt/sysimage/sbin/striker
-cp /mnt/source/Striker/striker-master/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
+cp /mnt/source/striker/tools/list-ips /mnt/sysimage/sbin/striker/list-ips
 chown root:root /sbin/striker/list-ips
 chmod 755 /sbin/striker/list-ips
 
@@ -658,10 +661,8 @@ echo 'Setting the PXE wallpaper.'
 cp /mnt/source/syslinux/$conf->{sys}{ks}{background} /mnt/sysimage/var/lib/tftpboot/
 
 # Copy the $conf->{sys}{ks}{striker_name} source files and installer into place
-echo 'Copying the $conf->{sys}{ks}{striker_name} installer and source code into place.'
-cp      /mnt/source/$conf->{sys}{ks}{striker_name}/master.zip                             /mnt/sysimage/root/
-cp -Rvp /mnt/source/$conf->{sys}{ks}{striker_name}/striker-master                         /mnt/sysimage/root/
-cp      /mnt/source/$conf->{sys}{ks}{striker_name}/striker-master/tools/striker-installer /mnt/sysimage/root/
+cp -Rvp /mnt/source/$conf->{path}{iso}{striker}                         /mnt/sysimage/root/
+cp      /mnt/source/$conf->{path}{iso}{striker}/tools/striker-installer /mnt/sysimage/root/
 
 echo \"Copying 'Tools' into /mnt/sysimage/var/www/html/$os_dir/x86_64/files/\"
 rsync -av /mnt/source/Tools /mnt/sysimage/var/www/html/$os_dir/x86_64/files/
@@ -686,13 +687,13 @@ echo 'Writing out local yum repository config'
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/$conf->{sys}{ks}{prefix}-striker0${number}.repo << EOF\n";
 			$ks_body .= "[$conf->{sys}{ks}{prefix}-striker0${number}-$os_dir]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 0${number} $os_dir v$conf->{sys}{name}{release} + Custom Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{prefix}-$conf->{sys}{ks}{striker_name} 0${number} $os_dir v$conf->{sys}{name}{release} + Custom Repository";
 		}
 		else
 		{
 			$ks_body .= "cat > /etc/yum.repos.d/striker0${number}.repo << EOF\n";
 			$ks_body .= "[striker0${number}-$os_dir]\n";
-			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 0${number} $os_dir v$conf->{sys}{name}{release} + Custom Repository\n";
+			$ks_body .= "name=$conf->{sys}{ks}{striker_name} 0${number} $os_dir v$conf->{sys}{name}{release} + Custom Repository";
 		}
 		$ks_body .= "
 baseurl=http://localhost/$os_dir/x86_64/img/
@@ -2736,6 +2737,7 @@ sub get_package_list
 		"cpp.x86_64",
 		"cracklib-dicts.x86_64",
 		"cracklib.x86_64",
+		"createrepo.noarch",
 		"cronie-anacron.x86_64",
 		"cronie.x86_64",
 		"crontabs.noarch",
@@ -2762,6 +2764,7 @@ sub get_package_list
 		"dejavu-sans-fonts.noarch",
 		"dejavu-sans-mono-fonts.noarch",
 		"dejavu-serif-fonts.noarch",
+		"deltarpm.x86_64",
 		"desktop-file-utils.x86_64",
 		"device-mapper-event-libs.x86_64",
 		"device-mapper-event.x86_64",
@@ -3286,6 +3289,7 @@ sub get_package_list
 		"pygtk2.x86_64",
 		"pyorbit.x86_64",
 		"python-argparse.noarch",
+		"python-deltarpm.x86_64",
 		"python-iniparse.noarch",
 		"python-libs.x86_64",
 		"python-pcp.x86_64",
@@ -3518,10 +3522,13 @@ sub get_package_list
 		"perl-Algorithm-Diff.noarch",
 		"perl-Text-Diff.noarch",
 		"sharutils.x86_64",
+		"syslinux-tftpboot.noarch",
+		"yum-plugin-priorities.noarch",
 	];
 	
 	# Alteeve-source packages
 	$conf->{sys}{packages}{alteeve} = [
+		"alteeve-repo.noarch",
 		"bash-completion.noarch",
 		"drbd84-utils.x86_64",
 		"kmod-drbd84.x86_64",

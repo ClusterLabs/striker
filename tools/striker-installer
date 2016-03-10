@@ -67,7 +67,7 @@
 #         (broadcast 'I am $hostname on ip $ip' once per second, and then have
 #          striker stop this when it first starts to configure the node).
 #       - When installing without --rhel-iso or --centos-iso, look for existing
-#         source in /var/www/html/{c6,rhel6} and, if so, setup kickstart/PXE.
+#         source in /var/www/html/{centos6,rhel6} and, if so, setup kickstart/PXE.
 #         
 # BUG: 
 # - If the BCN isn't 10.20.4.{1,2}, the kickstart files fail.
@@ -120,8 +120,8 @@ my $conf = {
 		apache_manifests	=>	"/var/www/html/manifests",
 		apache_subdirs		=>	["archive", "cache", "media", "status"],
 		apache_files		=>	"/var/www/html/files",		# Files that will be used to populate /sbin/Striker/ will go here.
-		centos_pxe_web		=>	"html/c6",			# Appeanded to 'document_root' + arch appended after
-		centos_tftp_boot	=>	"c6",				# Appeanded to 'pxelinux_boot' + arch
+		centos_pxe_web		=>	"html/centos6",			# Appeanded to 'document_root' + arch appended after
+		centos_tftp_boot	=>	"centos6",			# Appeanded to 'pxelinux_boot' + arch
 		document_root		=>	"/var/www/",
 		media			=>	"/var/www/home/media",
 		perl_library		=>	"/usr/share/perl5",
@@ -726,7 +726,7 @@ my $conf = {
 			node2_ks	=>	"anvil-m2-node02_centos.ks",
 			striker1_ks	=>	"anvil-m2-striker01_centos.ks",
 			striker2_ks	=>	"anvil-m2-striker02_centos.ks",
-			short_name	=>	"c6",
+			short_name	=>	"centos6",
 		},
 		rhel		=>	{
 			enabled		=>	0,
@@ -888,7 +888,7 @@ if (($conf->{network}{bcn}{ip} ne "10.20.4.1") && ($conf->{network}{bcn}{ip} ne 
 	logger($conf, $THIS_FILE, __LINE__, "#          This is OK, but the stock kickstart files will need to be updated #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          to point at this (and the peer) dashboards. Please be sure to     #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          update the kickstart files in;                                    #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{rhel6,c6}/x86_64/ks/*.ks                         #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{rhel6,centos6}/x86_64/ks/*.ks                    #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          You will also need to manually update the PXE server's            #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          configuration file's pointers to the kickstart files in;          #", 0);
@@ -4132,7 +4132,7 @@ plymouth-set-default-theme details -R
 
 ";
 	
-	my $os_directory = "c6";
+	my $os_directory = "centos6";
 	my $say_os       = "CentOS";
 	if ($os eq "rhel")
 	{
@@ -8266,7 +8266,7 @@ Normal install, downloading ISOs from local web server:
                   -u "admin:secret password" \
                   -p 10.20.10.200:10.20.10.210 \
                   -r http://10.255.255.254/repo/rhel6/local.repo \
-                  --centos-iso http://10.255.255.254/c6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
+                  --centos-iso http://10.255.255.254/centos6/x86_64/iso/CentOS-6.6-x86_64-bin-DVD1.iso \
                   --rhel-iso http://10.255.255.254/rhel6/x86_64/iso/rhel-server-6.6-x86_64-dvd.iso \
                   -b 10.20.4.1/16 \
                   -i 10.255.4.1/16,dg=10.255.255.254,dns1=8.8.8.8,dns2=8.8.4.4

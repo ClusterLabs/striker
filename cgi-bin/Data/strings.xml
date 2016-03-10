@@ -2490,6 +2490,49 @@ Deadline Scheduler Configuration (sda):
 		<key name="anp_error_0007">Failed to find a peer's interface with the peer's IP address: [#!variable!peer_ip!#].</key>
 		
 		
+		<!-- anvil-migrate-server -->
+		<!-- messages -->
+		<key name="ams_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program migrates the named server to the peer node using the 'server' ->
+'server_migration_type' value in the #!variable!brand_0019!# database. If the server
+isn't found, a live-migration is performed.
+
+This program will not migrate a server to a node whose health is not 'ok'
+according to '/shared/status/.<node>' unless '--force' is used.
+
+
+SWITCHES
+
+ --server <server>
+ 
+	This is the name of the server to migrate.
+
+ --force
+ 
+	Force the migration, regardless of the peer's health.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="ams_message_0002"><![CDATA[]]></key>
+		
+		<!-- logs -->
+		<key name="ams_log_0001">#!variable!this_file!# has started.</key>
+		
+		
 		<!-- striker-delete-anvil -->
 		<!-- messages -->
 		<key name="sda_message_0001"><![CDATA[
