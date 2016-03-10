@@ -27,6 +27,7 @@
 # 9  = The source ISO's .discinfo file wasn't copied to the source directory.
 # 10 = Error processing an RPM when running 'createrepo'.
 # 11 = mkisofs failed.
+# 12 = Copied file size is different from the source file size.
 # 
 
 use strict;
@@ -73,6 +74,10 @@ my $conf = {
 		# This is used to differentiate between CentOS and RHEL ISOs being generated.
 		centos_dir	=>	"CentOS",
 		rhel_dir	=>	"RHEL",
+		# If this directory exists under the 'sys::user::current_dir', we'll check for a 
+		# 'sys::name::<os>' subdirectory. If one is found, packages in there will be used to generate
+		# the new ISO's 'Packages' directory.
+		updates_dir	=>	"Updates",
 		# This will be the root of the ISO. The 'working_dir' above will hold other temporary files
 		# like things we need to download.
 		source_path	=>	"source",
@@ -299,7 +304,7 @@ setup_build_environment($conf);
 # Mount the source, if it isn't already
 prep_source($conf);
 
-# If we're still alive, we're ready.
+# Get the list of packages we want to install for this OS.
 get_package_list($conf);
 
 # Build the list of source files to copy.
@@ -1250,6 +1255,7 @@ sub build_iso
 	if (-e $output_file)
 	{
 		# All done!
+		print "- New ISO generated.\n";
 		my $size   = (stat($output_file))[7];
 		my $suffix = "MiB";
 		if ($size >= (2 ** 30))
@@ -1592,7 +1598,7 @@ sub copy_file
 {
 	my ($conf, $source, $target, $force) = @_;
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target], force: [$force]\n" if $conf->{sys}{debug} >= 2;
 	# Delete the target if 'force'd and target exists.
 	if (($force) && (-e $target))
 	{
@@ -1602,7 +1608,7 @@ sub copy_file
 	# Copy unless the target exists.
 	if (-e $target)
 	{
-		print "- The target file: [$target] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+		print "- The target file: [$target] exists, no need to copy it.\n" if $conf->{sys}{debug} >= 1;
 	}
 	else
 	{
@@ -1615,12 +1621,30 @@ sub copy_file
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 3;
 		}
 		close $file_handle;
 		if (-e $target)
 		{
-			print "- The file: [$target] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+			# Get the size of the file and the source, make sure they match.
+			my $source_size = (stat($source))[7];
+			my $target_size = (stat($target))[7];
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - source_size: [$source_size], target_size: [$target_size], force: [$force]\n" if $conf->{sys}{debug} >= 3;
+			if ($source_size ne $target_size)
+			{
+				print "[ Error ] - The file: [$target] files is not the same size as the source!\n";
+				print "[ Error ] - Source size (in bytes): [$source_size]\n";
+				print "[ Error ] - Target size (in bytes): [$target_size]\n";
+				exit(12);
+			}
+			elsif (not $target_size)
+			{
+				print "[ Note ] - The file: [$target] was written successfully, but it and the source are empty files.\n" if $conf->{sys}{debug} >= 1;
+			}
+			else
+			{
+				print "- The file: [$target] was written successfully.\n" if $conf->{sys}{debug} >= 1;
+			}
 		}
 		else
 		{
@@ -2061,6 +2085,10 @@ sub setup_build_environment
 	$conf->{path}{iso}{file_name} .= ".iso";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::file_name: [$conf->{path}{iso}{file_name}]\n" if $conf->{sys}{debug} >= 2;
 	
+	# This will be where we look for updated RPMs.
+	$conf->{path}{updates_dir} = $conf->{sys}{user}{current_dir}."/".$conf->{path}{updates_dir}."/".$conf->{sys}{name}{$os_type};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - path::updates_dir: [$conf->{path}{updates_dir}]\n" if $conf->{sys}{debug} >= 2;
+	
 	return(0);
 }
 
@@ -2128,6 +2156,10 @@ sub build_source
 		push @{$distro_list}, $package;
 	}
 	
+	### TODO: Check to see if there is a matching RPM already in Packages, but with a different version
+	###       name from what we plan to copy, and unlink it if so (so that updates don't leave their 
+	###       older copy in the ISO).
+	# Find where we will copy files from.
 	foreach my $package (sort {$a cmp $b} @{$distro_list})
 	{
 		my ($file, $arch) = ($package =~ /^(.*)\.(.*?)$/);
@@ -2136,18 +2168,18 @@ sub build_source
 		
 		foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso]\n" if $conf->{sys}{debug} >= 3;
 			foreach my $directory (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}})
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - ISO: [$iso], Directory: [$directory]\n" if $conf->{sys}{debug} >= 3;
 				foreach my $source_package (sort {$a cmp $b} keys %{$conf->{source_packages}{$iso}{$directory}})
 				{
 					next if $source_package !~ /^\Q$file\E/;
 					next if $source_package !~ /\Q$arch\E/;
-					print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 2;
+					print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] POSSIBLE match...\n" if $conf->{sys}{debug} >= 3;
 					if ($source_package =~ /^\Q$file\E-\d/)
 					{
-						print "$THIS_FILE ".__LINE__."; [ Debug ]   - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
+						print "$THIS_FILE ".__LINE__."; [ Debug ] - Source file: [$iso]:[$directory]/[$source_package] matches!\n" if $conf->{sys}{debug} >= 2;
 						$found++;
 						$conf->{copy}{$package} = {
 							source    => $iso,
@@ -2163,8 +2195,7 @@ sub build_source
 		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
 		if (($found > 1) && ($conf->{sys}{debug} >= 2))
 		{
-			print "[ Warning ] - The package: [$package] (file: [$file], arch: [$arch]) had multiple matches!\n";
-			print "[ Warning ]   Using; source: [$conf->{copy}{$package}{source}], directory: [$conf->{copy}{$package}{directory}], file: [$conf->{copy}{$package}{file}]!\n";
+			print "[ Note ] - The package: [$package] had multiple matches, Using; source: [$conf->{copy}{$package}{source}], file: [$conf->{copy}{$package}{file}]!\n";
 		}
 	}
 	
@@ -2417,6 +2448,16 @@ sub prep_source
 		}
 	}
 	
+	# If the 'Updates' directory exists for this OS, read it in.
+	if (-e $conf->{path}{updates_dir})
+	{
+		# We use 'z_' to make sure it sorts last.
+		my $iso = "z_updates";
+		read_directory($conf, $iso, $conf->{path}{updates_dir});
+		$conf->{source}{$iso}{name}  = "Local updates";
+		$conf->{source}{$iso}{mount} = 1;
+}
+	
 	# Get a count of RPMs found in '/Packages'
 	my $package_count = 0;
 	foreach my $iso (sort {$a cmp $b} keys %{$conf->{source_packages}})
@@ -2458,7 +2499,7 @@ sub read_directory
 	{
 		next if (($file eq ".") or ($file eq ".."));
 		my $this_path = $directory."/".$file;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - this_path: [$this_path]\n" if $conf->{sys}{debug} >= 3;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - this_path: [$this_path]\n" if $conf->{sys}{debug} >= 2;
 		if (-d $this_path)
 		{
 			read_directory($conf, $iso, $this_path);
@@ -2655,9 +2696,6 @@ sub find_executables
 sub get_package_list
 {
 	my ($conf) = @_;
-	
-	# These packages were removed for being pains in the arse to source on one distro or another.
-	#mtr-gtk.x86_64		# Available on CentOS disk 2, not at all on RHEL, src.rpm doesn't build
 	
 	# These are common to CentOS and RHEL
 	$conf->{sys}{packages}{common} = [

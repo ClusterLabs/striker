@@ -10,6 +10,16 @@ use IO::Handle;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Cman.pm";
 
+### Methods
+# boot_server
+# cluster_conf_data
+# get_cluster_server_list
+# peer_hostname
+# peer_short_hostname
+# cluster_name
+# _do_server_boot
+# _read_cluster_conf
+
 sub new
 {
 	my $class = shift;
@@ -124,7 +134,7 @@ sub boot_server
 	# determine where best to boot the server.
 	my $server_data    = $an->Get->server_data({server => $server});
 	my $lvm_data       = $an->Get->lvm_data();
-	my $cluster_data   = $an->Get->cluster_conf_data();
+	my $cluster_data   = $an->Cman->cluster_conf_data();
 	my $drbd_data      = $an->Get->drbd_data();
 	my $nodes          = {};
 	my $my_host_name   = "";         
@@ -495,72 +505,254 @@ sub boot_server
 	return($booted);
 }
 
-# This performs the actual boot on the server after sanity checks are done. This should not be called directly!
-sub _do_server_boot
+# This gathers the data from a cluster.conf file. Returns '0' if the file wasn't read successfully.
+sub cluster_conf_data
 {
 	my $self      = shift;
 	my $parameter = shift;
-	my $an        = $self->parent;
 	
-	my $return = 0;
-	my $server = $parameter->{server} ? $parameter->{server} : "";
-	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "server", value1 => $server, 
-		name2 => "node",   value2 => $node, 
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# This will store the LVM data returned to the caller.
+	my $return   = {};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "port",     value2 => $port, 
+		name3 => "password", value3 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = $an->data->{path}{clusvcadm}." -e $server -m $node";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	# These will store the output from the 'drbdadm' call and /proc/drbd data.
+	my $cluster_conf_return = [];
+	my $shell_call          = $an->data->{path}{cat}." ".$an->data->{path}{cman_config};
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		### Remote calls
+		# Read in drbdadm dump-xml regardless of whether the module is loaded.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $cluster_conf_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$cluster_conf_return}, $line;
+		}
+		close $file_handle;
+	}
+	
+	### Parsing the XML data is a little involved.
+	# Convert the XML array into a string.
+	my $xml_data  = "";
+	my $good_data = 0;
+	foreach my $line (@{$cluster_conf_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($line =~ /success/i)
+		if ($line =~ /<\/cluster>/)
 		{
-			### TODO: Update 'server' with the new state and host.
-			$return = 1;
-			$an->Log->entry({log_level => 1, message_key => "tools_log_0017", message_variables => {
-				server => $server,
-				node   => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$good_data = 1;
 		}
-		if ($line =~ /fail/i)
+		$xml_data .= "$line\n";
+	}
+	
+	# Did we get actual data?
+	if (not $good_data)
+	{
+		# Sadness
+		return(0);
+	}
+	
+	# Parse the data from XML::Simple
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml_data", value1 => $xml_data,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($xml_data)
+	{
+		my $xml  = XML::Simple->new();
+		my $data = $xml->XMLin($xml_data, KeyAttr => {node => 'name'}, ForceArray => 1);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "data", value1 => $data,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Cluster core details
+		$return->{cluster_name}    = $data->{name};
+		$return->{config_version}  = $data->{config_version};
+		$return->{totem}{secauth}  = $data->{totem}->[0]->{secauth};
+		$return->{totem}{rrp_mode} = $data->{totem}->[0]->{rrp_mode};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "cluster_name",    value1 => $return->{cluster_name},
+			name2 => "config_version",  value2 => $return->{config_version},
+			name3 => "totem::secauth",  value3 => $return->{totem}{secauth},
+			name4 => "totem::rrp_mode", value4 => $return->{totem}{rrp_mode},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Dig out the fence devices (methods will be collected per-node)
+		$return->{fence}{post_join_delay} = $data->{fence_daemon}->[0]->{post_join_delay};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "fence::post_join_delay", value1 => $return->{fence}{post_join_delay},
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $hash_ref (@{$data->{fencedevices}->[0]->{fencedevice}})
 		{
-			### TODO: Add some recovery options here.
-			### TODO: Update the database to mark the 'stop_reason' as 'failed'.
-			$an->Alert->warning({message_key => "warning_message_0007", message_variables => {
-				server => $server,
-				node   => $node, 
-				error  => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-			$return = 2;
-			
-			# Disable it
-			my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
-			}, file => $THIS_FILE, line => __LINE__});
-			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-			while(<$file_handle>)
+			my $device_name = $hash_ref->{name};
+			foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
 			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
+				next if $variable eq "name";
+				$return->{fence}{device}{$device_name}{$variable} = $hash_ref->{$variable};
+				if ($variable =~ /passw/)
+				{
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+						name1 => "fence::device::${device_name}::${variable}", value1 => $return->{fence}{device}{$device_name}{$variable},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "fence::device::${device_name}::${variable}", value1 => $return->{fence}{device}{$device_name}{$variable},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		
+		# Dig out cluster node details. Yes, fencing is a little complicated because we have ordered
+		# methods and then ordered devices within those methods.
+		foreach my $hash_ref (@{$data->{clusternodes}->[0]->{clusternode}})
+		{
+			# One entry per node.
+			my $node_name                           = $hash_ref->{name};
+			   $return->{node}{$node_name}{nodeid}  = $hash_ref->{nodeid};
+			   $return->{node}{$node_name}{altname} = $hash_ref->{altname}->[0]->{name} ? $hash_ref->{altname}->[0]->{name} : "";
+			   $return->{node}{$node_name}{fence}   = [];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "node::${node_name}::nodeid",  value1 => $return->{node}{$node_name}{nodeid},
+				name2 => "node::${node_name}::altname", value2 => $return->{node}{$node_name}{altname},
+				name3 => "node::${node_name}::fence",   value3 => $return->{node}{$node_name}{fence},
+			}, file => $THIS_FILE, line => __LINE__});
+			for (my $i = 0; $i < @{$hash_ref->{fence}->[0]->{method}}; $i++)
+			{
+				$return->{node}{$node_name}{fence}->[$i]->{name}   = $hash_ref->{fence}->[0]->{method}->[$i]->{name};
+				$return->{node}{$node_name}{fence}->[$i]->{method} = [];
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node_name}::fence::[$i]::name", value1 => $return->{node}{$node_name}{fence}->[$i]->{name},
 				}, file => $THIS_FILE, line => __LINE__});
-			}	
-			close $file_handle;
+				for (my $j = 0; $j < @{$hash_ref->{fence}->[0]->{method}->[$i]->{device}}; $j++)
+				{
+					foreach my $variable (sort {$a cmp $b} keys %{$hash_ref->{fence}->[0]->{method}->[$i]->{device}->[$j]})
+					{
+						$return->{node}{$node_name}{fence}->[$i]->{method}->[$j]->{$variable} = $hash_ref->{fence}->[0]->{method}->[$i]->{device}->[$j]->{$variable};
+						if ($variable =~ /passw/)
+						{
+							$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+								name1 => "node::${node_name}::fence::[$i]::method::[$j]::${variable}", value1 => $return->{node}{$node_name}{fence}->[$i]->{method}->[$j]->{$variable},
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						else
+						{
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+								name1 => "node::${node_name}::fence::[$i]::method::[$j]::${variable}", value1 => $return->{node}{$node_name}{fence}->[$i]->{method}->[$j]->{$variable},
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+				}
+			}
+		}
+		
+		# Now dig out the servers.
+		foreach my $hash_ref (@{$data->{rm}->[0]->{vm}})
+		{
+			my $server_name = $hash_ref->{name};
+			foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+			{
+				next if $variable eq "name";
+				$return->{server}{$server_name}{$variable} = $hash_ref->{$variable};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::${server_name}::${variable}", value1 => $return->{server}{$server_name}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+		}
+		
+		# Dig out the resources.
+		foreach my $resource_type (sort {$a cmp $b} keys %{$data->{rm}->[0]->{resources}->[0]})
+		{
+			foreach my $hash_ref (@{$data->{rm}->[0]->{resources}->[0]->{$resource_type}})
+			{
+				my $resource_name = $hash_ref->{name};
+				foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+				{
+					next if $variable eq "name";
+					$return->{resource}{type}{$resource_type}{name}{$resource_name}{$variable} = $hash_ref->{$variable};
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "resource::type::${resource_type}::name::${resource_name}::${variable}", value1 => $return->{resource}{type}{$resource_type}{name}{$resource_name}{$variable},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		
+		# Dig out the failover domain info
+		foreach my $hash_ref (@{$data->{rm}->[0]->{failoverdomains}->[0]->{failoverdomain}})
+		{
+			my $failoverdomain_name = $hash_ref->{name};
+			foreach my $hash_ref2 (@{$hash_ref->{failoverdomainnode}})
+			{
+				my $priority = $hash_ref2->{priority} ? $hash_ref2->{priority} : 0;
+				$return->{failoverdomain}{$failoverdomain_name}{priority}{$priority} = $hash_ref2->{name};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "failoverdomain::${failoverdomain_name}::priority::${priority}", value1 => $return->{failoverdomain}{$failoverdomain_name}{priority}{$priority},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+			{
+				next if $variable eq "name";
+				next if $variable eq "failoverdomainnode";
+				$return->{failoverdomain}{$failoverdomain_name}{$variable} = $hash_ref->{$variable};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "failoverdomain::${failoverdomain_name}::${variable}", value1 => $return->{failoverdomain}{$failoverdomain_name}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Finally, dig out services... This can get complex.
+		foreach my $hash_ref (@{$data->{rm}->[0]->{service}})
+		{
+			my $service_name = $hash_ref->{name};
+			foreach my $variable (sort {$a cmp $b} keys %{$hash_ref})
+			{
+				next if $variable eq "name";
+				# For now, we don't bother digging down this, so we'll just record and return
+				# array references. The caller can handle it if they wish.
+				$return->{service}{$service_name}{$variable} = $hash_ref->{$variable};
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "service::${service_name}::${variable}", value1 => $return->{service}{$service_name}{$variable},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
-	close $file_handle;
 	
 	return($return);
 }
@@ -703,6 +895,76 @@ sub cluster_name
 	my $cluster_name = $an->data->{cman_config}{data}{name};
 	
 	return($cluster_name);
+}
+
+# This performs the actual boot on the server after sanity checks are done. This should not be called directly!
+sub _do_server_boot
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return = 0;
+	my $server = $parameter->{server} ? $parameter->{server} : "";
+	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "node",   value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{clusvcadm}." -e $server -m $node";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /success/i)
+		{
+			### TODO: Update 'server' with the new state and host.
+			$return = 1;
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0017", message_variables => {
+				server => $server,
+				node   => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /fail/i)
+		{
+			### TODO: Add some recovery options here.
+			### TODO: Update the database to mark the 'stop_reason' as 'failed'.
+			$an->Alert->warning({message_key => "warning_message_0007", message_variables => {
+				server => $server,
+				node   => $node, 
+				error  => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			$return = 2;
+			
+			# Disable it
+			my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}	
+			close $file_handle;
+		}
+	}
+	close $file_handle;
+	
+	return($return);
 }
 
 # This reads in cluster.conf if needed.

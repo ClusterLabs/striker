@@ -14761,9 +14761,40 @@ sub generate_cluster_conf
 		foreach my $method (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}})
 		{
 			$conf->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
+			
+			# Count how many devices we have.
+			my $device_count = 0;
 			foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
 			{
-				$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+				$device_count++;
+			}
+			
+			# If there are multiple methods, we need to say 'off', then additional entries for 
+			# 'on'. Otherwise, 'reboot' is fine.
+			if ($device_count == 1)
+			{
+				# Reboot.
+				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+				}
+			}
+			else
+			{
+				# Off
+				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					my $say_string =  $conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					   $say_string =~ s/reboot/off/;
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+				}
+				# On
+				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				{
+					my $say_string =  $conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					   $say_string =~ s/reboot/on/;
+					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+				}
 			}
 			$conf->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}

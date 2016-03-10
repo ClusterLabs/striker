@@ -13,6 +13,7 @@ use strict;
 use warnings;
 use IO::Handle;
 use AN::Tools;
+use Data::Dumper;
 
 # Turn off buffering.
 $| = 1;
@@ -89,7 +90,8 @@ sub sanity_check_cluster
 {
 	my ($an) = @_;
 	
-	
+	my $cluster_data = $an->Cman->cluster_conf_data();
+	print Dumper $cluster_data;
 	
 	return(0);
 }
