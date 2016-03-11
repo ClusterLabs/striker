@@ -467,7 +467,7 @@ Variables:
 		<key name="error_message_0025">Connecting to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#] is not possible, the port is invalid.</key>
 		<key name="error_message_0026">#!variable!method!# was asked to call: [#!variable!shell_call!#] but no target was defined. This is probably a program error, sorry about the inconvenience. Please contact support (#!string!brand_0012!#) and we will try to help fix this.</key>
 		<key name="error_message_0027">Host name: [#!variable!target!#] does not resolve to an IP address.</key>
-		<key name="error_message_0028">Connection to: [#!variable!target!#] on port: [#!variable!port!#] as the user: [#!variable!user!#] was refused. If you recently booted this server, it may be just about finished booting. It is normal for the connection to be refused for a brief time during the boot process.</key>
+		<key name="error_message_0028"><![CDATA[Connection to: [#!variable!target!#] on port: [#!variable!port!#] as the user: [#!variable!user!#] was refused.</br /> If you recently booted this server, it may be just about finished booting. It is normal for the connection to be refused for a brief time during the boot process.]]></key>
 		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>
 		<key name="error_message_0030">Timed out while waiting for a reply from: [#!variable!target!#]. Is the machine booting up? If so, please wait a minute or two and try again.</key>
 		<key name="error_message_0031">Unknown error while connecting to: [#!variable!target!#]. The error was: [#!variable!error!#]</key>

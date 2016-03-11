@@ -797,6 +797,8 @@ sub remote_call
 				# This is for the user
 				$error = $an->String->get({key => "error_message_0028", variables => {
 						target	=>	$target,
+						port	=>	$port,
+						user	=>	$user,
 					},
 				});
 				# This is for our logs

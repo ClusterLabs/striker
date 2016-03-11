@@ -5715,23 +5715,22 @@ sub provision_vm
 				name3 => "lv_size",   value3 => $lv_size,
 				name4 => "lv_device", value4 => $lv_device,
 			}, file => $THIS_FILE, line => __LINE__});
-			$provision .= "if [ -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "if [ ! -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
 			$provision .= "then\n";
-			$provision .= "\tlvremove -f /dev/$vg/$conf->{new_vm}{name}_$i\n";
-			$provision .= "fi\n";
 			if (lc($lv_size) eq "all")
 			{
-				$provision .= "lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
 			}
 			elsif ($lv_size =~ /^(\d+\.?\d+?)%$/)
 			{
 				my $size = $1;
-				$provision .= "lvcreate -l $size\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -l $size\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
 			}
 			else
 			{
-				$provision .= "lvcreate -L ${lv_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -L ${lv_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
 			}
+			$provision .= "fi\n";
 			push @logical_volumes, $lv_device;
 		}
 	}
@@ -5772,9 +5771,10 @@ sub provision_vm
 		$provision .= "  --disk path=$lv_device";
 		if ($conf->{new_vm}{virtio}{disk})
 		{
+			### NOTE: Not anymore.
 			# The 'cache=writeback' is required to support systems built on 4kb native sector 
 			# size disks.
-			$provision .= ",bus=virtio,cache=writeback";
+			$provision .= ",bus=virtio,cache=writethrough";
 		}
 		$provision .= " \\\\\n";
 	}
