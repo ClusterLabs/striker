@@ -87,9 +87,12 @@ my $conf = {
 			kickstart	=>	"ks",
 			striker		=>	"striker",	# striker-master will be created by git
 			packages	=>	"Packages",
-			fence		=>	"Tools/fence",
-			fujitsu		=>	"Tools/Fujitsu",
-			avago		=>	"Tools/Avago",
+			tools		=>	"Tools",
+			### NOTE: Entries below here are appended to 'path::iso::tools'.
+			fence		=>	"fence",
+			fujitsu		=>	"Fujitsu",
+			avago		=>	"Avago",
+			### NOTE: Entries above here are appended to 'path::iso::tools'.
 			git_iso		=>	"ISO",
 			# These keys are appended to the 'path::'git::<os>' path. The 'target' is where the 
 			# files in these directories should be copied to. The 'target' will be appended to
@@ -1139,12 +1142,12 @@ sub generate_kickstart_files
 						{
 							# Remove it.
 							print "- Deleting the old kickstart file: [$ks_file_name]\n" if $conf->{sys}{debug} >= 1;
-							unlink $ks_file_name or die "[ Error ] - Failed to delete old kickstart file: [$ks_file_name]. The error was: $!\n";
+							unlink $ks_file_name or die __LINE__."; [ Error ] - Failed to delete old kickstart file: [$ks_file_name]. The error was: $!\n";
 						}
 						
 						# Write out the new one.
 						my $shell_call = $ks_file_name;
-						open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
+						open (my $file_handle, ">$shell_call") or die __LINE__."; Failed to write: [$shell_call], error: $!\n";
 						print $file_handle $ks_body;
 						close $file_handle;
 						print "- Wrote the kickstart file: [$ks_file_name] successfully.\n" if $conf->{sys}{debug} >= 1;
@@ -1162,12 +1165,12 @@ sub generate_kickstart_files
 					{
 						# Remove it.
 						print "- Deleting the old kickstart file: [$ks_file_name]\n" if $conf->{sys}{debug} >= 1;
-						unlink $ks_file_name or die "[ Error ] - Failed to delete old kickstart file: [$ks_file_name]. The error was: $!\n";
+						unlink $ks_file_name or die __LINE__."; [ Error ] - Failed to delete old kickstart file: [$ks_file_name]. The error was: $!\n";
 					}
 					
 					# Write out the new one.
 					my $shell_call = $ks_file_name;
-					open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error: $!\n";
+					open (my $file_handle, ">$shell_call") or die __LINE__."; Failed to write: [$shell_call], error: $!\n";
 					print $file_handle $ks_body;
 					close $file_handle;
 					print "- Wrote the kickstart file: [$ks_file_name] successfully.\n" if $conf->{sys}{debug} >= 1;
@@ -1231,7 +1234,7 @@ sub build_iso
 	if (-e $output_file)
 	{
 		print "- Deleting old ISO: [$output_file]\n";
-		unlink $output_file or die "[ Error ] - Failed to delete old ISO: [$output_file]. The error was: $!\n";
+		unlink $output_file or die __LINE__."; [ Error ] - Failed to delete old ISO: [$output_file]. The error was: $!\n";
 	}
 	
 	# Build!
@@ -1242,7 +1245,7 @@ sub build_iso
 	my $shell_call     =  $conf->{executable}{mkisofs}." -rock -joliet-long -translation-table -no-emul-boot -boot-load-size 4 -boot-info-table -V '$conf->{path}{iso}{file_name}' -appid '$say_anvil ".$conf->{sys}{name}{mark}." Installer' -publisher \"$say_company - $conf->{sys}{ks}{support_url}\" -preparer 'Built by $say_user on $say_host at $say_date' -eltorito-boot isolinux/isolinux.bin -eltorito-catalog isolinux/boot.cat -x 'lost+found' -o $output_file $conf->{path}{iso}{source_directory}";
 	my $mkisofs_output = "";
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1297,7 +1300,7 @@ sub build_repository
 	
 	my $shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file." ".$conf->{path}{iso}{source_directory};
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1327,32 +1330,35 @@ sub get_repodata_xml_file_name
 	
 	my $xml_file = "";
 	my $source   = $conf->{path}{iso}{source_directory}."/repodata";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
-	local(*DIR);
-	opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
-	while (my $file = readdir(DIR))
+	if (-e $source)
 	{
-		next if (($file eq ".") or ($file eq ".."));
-		my $full_path = $source."/".$file;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
-		
-		#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
-		if (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+		local(*DIR);
+		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
+		while (my $file = readdir(DIR))
 		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
-			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
+			next if (($file eq ".") or ($file eq ".."));
+			my $full_path = $source."/".$file;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			
+			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
+			if (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+				unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
+			}
+			elsif ($file =~ /comps\.xml$/)
+			{
+				$xml_file = $full_path;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+			}
+			else
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			}
 		}
-		elsif ($file =~ /comps\.xml$/)
-		{
-			$xml_file = $full_path;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
-		}
-		else
-		{
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 2;
-		}
+		closedir(DIR);
 	}
-	closedir(DIR);
 	
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
 	return($xml_file);
@@ -1368,7 +1374,7 @@ sub wipe_repodata
 	{
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
 		local(*DIR);
-		opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
+		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
@@ -1376,7 +1382,7 @@ sub wipe_repodata
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
 			
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
-			unlink $full_path or die "[ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
+			unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path].\n";
 		}
 		closedir(DIR);
 	}
@@ -1397,7 +1403,7 @@ sub get_disc_id
 	{
 		my $shell_call = $disc_info_file;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "<$shell_call") or die "\n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1477,7 +1483,7 @@ sub download_striker
 		$shell_call = $conf->{executable}{git}." -C ".$conf->{path}{iso}{source_directory}." clone ".$conf->{url}{striker};
 	}
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+	open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1539,7 +1545,7 @@ sub copy_files_from_git
 		   #$target =~ s/\/\/+/\//g;
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source], target: [$target]\n" if $conf->{sys}{debug} >= 2;
 		local(*DIR);
-		opendir(DIR, $source) or die "Failed to open the directory: [$source], error was: $!\n";
+		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
@@ -1568,7 +1574,7 @@ sub isoread_file
 	{
 		my $shell_call = $conf->{executable}{'iso-read'}." --image $iso --extract $source --output-file $target";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1603,7 +1609,7 @@ sub copy_file
 	if (($force) && (-e $target))
 	{
 		print "- The target file: [$target] exists and the copy is forced, deleting the old file.\n" if $conf->{sys}{debug} >= 2;
-		unlink $target or die "[ Error ] - Failed to delete: [$target] to make room for the new file. The error was: $!\n";
+		unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] to make room for the new file. The error was: $!\n";
 	}
 	# Copy unless the target exists.
 	if (-e $target)
@@ -1616,7 +1622,7 @@ sub copy_file
 		print "- Copying the source file: [$source] to: [$target]\n" if $conf->{sys}{debug} >= 2;
 		my $shell_call = $conf->{executable}{cp}." -av $source $target";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1787,7 +1793,7 @@ sub download_anrepo_tools
 	{
 		my $file_name = ($conf->{url}{Tools}{vm_sh}{url} =~ /^.*\/(.*)$/)[0];
 		my $source    = $conf->{url}{Tools}{vm_sh}{url};
-		my $target    = $conf->{path}{iso}{iso_fence}."/".$file_name;
+		my $target    = $conf->{path}{iso}{iso_tools}."/".$file_name;
 		my $mode      = $conf->{url}{Tools}{vm_sh}{mode};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
@@ -1819,7 +1825,7 @@ sub download_file
 			$shell_call = $conf->{executable}{curl}." $source > $target";
 		}
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1848,7 +1854,7 @@ sub download_file
 					# Read it in.
 					my $shell_call = $target;
 					print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-					open (my $file_handle, "<$shell_call") or die "\n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
+					open (my $file_handle, "<$shell_call") or die __LINE__."; \n[ Error ] - Failed to read: [$shell_call]. Received error: $!\n\n";
 					while(<$file_handle>)
 					{
 						chomp;
@@ -1886,7 +1892,7 @@ sub download_file
 			if (-e $target)
 			{
 				# Remove the sadness
-				unlink $target or die "[ Error ] - Failed to delete: [$target] (it's a failed download message, not the file). The error was: $!\n";
+				unlink $target or die __LINE__."; [ Error ] - Failed to delete: [$target] (it's a failed download message, not the file). The error was: $!\n";
 			}
 			exit(7);
 		}
@@ -1913,7 +1919,7 @@ sub download_anrepo_rpms
 	{
 		my $shell_call = $conf->{executable}{curl}." ".$conf->{url}{'an-repo'}."/$arch/";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1953,7 +1959,7 @@ sub download_anrepo_rpms
 		
 		### It's normal for there to be multiple matches, so we don't fail on too many here.
 		# If I didn't finf a match, or if I found too many matches, die.
-		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
+		die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
 	}
 	
 	# Find the packages in the Third Party repo
@@ -1963,7 +1969,7 @@ sub download_anrepo_rpms
 		next if not $conf->{sys}{third_party}{$vendor}{agreed};
 		my $shell_call =  $conf->{executable}{curl}." ".$conf->{url}{third_party}."/$vendor/";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2006,7 +2012,7 @@ sub download_anrepo_rpms
 			
 			### It's normal for there to be multiple matches, so we don't fail on too many here.
 			# If I didn't finf a match, or if I found too many matches, die.
-			die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
+			die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch])! Is the Internet connection working?\n" if not $found;
 		}
 	}
 	
@@ -2063,14 +2069,15 @@ sub setup_build_environment
 	
 	# Make sure the rest of the directories now exist.
 	$conf->{path}{iso}{source_directory} = make_directory($conf, $conf->{path}{iso}{working_directory}."/".$conf->{path}{source_path});
-	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{kickstart});
-	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{packages});
-	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker});
-	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fence});
+	$conf->{path}{iso}{iso_tools}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{tools});
+	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{kickstart});
+	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{packages});
+	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{striker});
+	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fence});
 	
 	# These are only created if the user agreed to them
-	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
-	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
+	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
+	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
 	
 	# Make sure any old repodata files are removed.
 	wipe_repodata($conf);
@@ -2123,7 +2130,7 @@ sub make_directory
 		if (not -e $current_directory)
 		{
 			print "- Creating the directory: [$current_directory]\n";
-			mkdir $current_directory or die "failed to create the directory: [$current_directory]. The error was: $!\n";
+			mkdir $current_directory or die __LINE__."; failed to create the directory: [$current_directory]. The error was: $!\n";
 		}
 	}
 	
@@ -2192,7 +2199,7 @@ sub build_source
 		}
 		
 		# If I didn't finf a match, or if I found too many matches, die.
-		die "[ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
+		die __LINE__."; [ Error ] - Failed to find: [$package] (file: [$file], arch: [$arch]) in the source!\n" if not $found;
 		if (($found > 1) && ($conf->{sys}{debug} >= 2))
 		{
 			print "[ Note ] - The package: [$package] had multiple matches, Using; source: [$conf->{copy}{$package}{source}], file: [$conf->{copy}{$package}{file}]!\n";
@@ -2313,7 +2320,7 @@ sub build_source
 		# Read all the files in isolinux. For each file we find, copy it to syslinux if it doesn't 
 		# exist yet. We'll rename anything 'isolinux' to 'syslinux' in the process.
 		local(*DIR);
-		opendir(DIR, $isolinux_directory) or die "Failed to open the directory: [$isolinux_directory], error was: $!\n";
+		opendir(DIR, $isolinux_directory) or die __LINE__."; Failed to open the directory: [$isolinux_directory], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
@@ -2347,7 +2354,7 @@ sub prep_source
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - source::${iso}::source_file: [$conf->{source}{$iso}{source_file}]\n" if $conf->{sys}{debug} >= 2;
 		my $shell_call = $conf->{executable}{mount};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -2404,7 +2411,7 @@ sub prep_source
 			my $in_path     = "";
 			my $shell_call  = $conf->{executable}{isoinfo}." -lR -i ".$iso;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-			open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2429,7 +2436,7 @@ sub prep_source
 					my $bytes = $1;
 					my $file  = $2;
 					next if (($file eq ".") or ($file eq ".."));
-					die "Failed to parse file name from: [$line]\n" if not $line;
+					die __LINE__."; Failed to parse file name from: [$line]\n" if not $line;
 					print "$THIS_FILE ".__LINE__."; [ Debug ] - file: [$file], bytes: [$bytes]\n" if $conf->{sys}{debug} >= 2;
 					$conf->{source_packages}{$iso}{$in_path}{$file} = $bytes;
 					print "$THIS_FILE ".__LINE__."; [ Debug ] - source_packages::${iso}::${in_path}::${file}: [$conf->{source_packages}{$iso}{$in_path}{$file}]\n" if $conf->{sys}{debug} >= 2;
@@ -2494,7 +2501,7 @@ sub read_directory
 	   $source_path =  "/$source_path" if $source_path !~ /^\//;
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - Reading in the contents of: [$directory], recording as: [$source_path]\n" if $conf->{sys}{debug} >= 2;
 	local(*DIR);
-	opendir(DIR, $directory) or die "Failed to open the directory: [$directory], error was: $!\n";
+	opendir(DIR, $directory) or die __LINE__."; Failed to open the directory: [$directory], error was: $!\n";
 	while (my $file = readdir(DIR))
 	{
 		next if (($file eq ".") or ($file eq ".."));
@@ -2573,7 +2580,7 @@ sub validate_source
 			$conf->{source}{$iso}{sum} = "";
 			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
-			open (my $file_handle, "$shell_call 2>&1 |") or die "\n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 			while(<$file_handle>)
 			{
 				chomp;
@@ -3768,7 +3775,7 @@ $conf->{sys}{ks}{support_url}
 
                                                           Alteeve's Niche! Inc.
 ";
-	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die __LINE__."; Couldn't write help to /tmp/, error was: $!\n";
 	print $file_handle $help;
 	close $file_handle;
 	
