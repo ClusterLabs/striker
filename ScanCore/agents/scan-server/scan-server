@@ -22,7 +22,7 @@
 #  - Add a 'maintenance mode' where the VM is no longer monitored by the cluster. When in maintenance mode,
 #    we will not touch it. Otherwise, if it is found to be running on a node but not in clustat, use 
 #    clusvcadm to add it to the cluster control.
-#  - If a VM becomes 'defined', undefine it.
+#  - If a VM becomes 'defined', undefine it. (virsh dominfo <server> | grep Persistent) -> yes|no
 # 
 
 # Use my modules.
@@ -628,26 +628,31 @@ WHERE
 		}
 		else
 		{
+			# If the user hasn't set the default migration type, make it 'live'.
+			$an->data->{sys}{'default'}{migration_type} = "live" if not $an->data->{sys}{'default'}{migration_type};
+			
 			# New server, INSERT everything.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
-			my $server_name        = $an->data->{server_uuid}{$server_uuid}{name};
-			my $server_stop_reason = "";
-			my $server_start_after = "NULL";
-			my $server_start_delay = 0;
-			my $server_host        = $an->data->{server_uuid}{$server_uuid}{host};
-			my $server_state       = $an->data->{server_uuid}{$server_uuid}{'state'};
-			my $server_definition  = $an->data->{server_uuid}{$server_uuid}{definition};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-				name1 => "server_uuid",        value1 => $server_uuid, 
-				name2 => "server_name",        value2 => $server_name, 
-				name3 => "server_stop_reason", value3 => $server_stop_reason, 
-				name4 => "server_start_after", value4 => $server_start_after, 
-				name5 => "server_start_delay", value5 => $server_start_delay, 
-				name6 => "server_host",        value6 => $server_host, 
-				name7 => "server_definition",  value7 => $server_definition, 
-				name8 => "server_state",       value8 => $server_state, 
+			my $server_name           = $an->data->{server_uuid}{$server_uuid}{name};
+			my $server_stop_reason    = "";
+			my $server_start_after    = "NULL";
+			my $server_start_delay    = 0;
+			my $server_host           = $an->data->{server_uuid}{$server_uuid}{host};
+			my $server_state          = $an->data->{server_uuid}{$server_uuid}{'state'};
+			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
+			my $server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "server_uuid",           value1 => $server_uuid, 
+				name2 => "server_name",           value2 => $server_name, 
+				name3 => "server_stop_reason",    value3 => $server_stop_reason, 
+				name4 => "server_start_after",    value4 => $server_start_after, 
+				name5 => "server_start_delay",    value5 => $server_start_delay, 
+				name6 => "server_host",           value6 => $server_host, 
+				name7 => "server_migration_type", value7 => $server_migration_type, 
+				name8 => "server_definition",     value8 => $server_definition, 
+				name9 => "server_state",          value9 => $server_state, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $query = "
@@ -662,6 +667,7 @@ INSERT INTO
     server_host, 
     server_state, 
     server_definition, 
+    server_migration_type, 
     modified_date
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($server_uuid).", 
@@ -672,6 +678,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($server_host).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_state).", 
     ".$an->data->{sys}{use_db_fh}->quote($server_definition).", 
+    ".$an->data->{sys}{use_db_fh}->quote($server_migration_type).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			$query =~ s/'NULL'/NULL/g;
@@ -719,6 +726,7 @@ INSERT INTO
 					host			=>	$server_host, 
 					'state'			=>	$server_state, 
 					definition		=>	$server_definition,
+					migration_type		=>	$an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "#!string!scan_server_state_0002!#" : "#!string!scan_server_state_0001!#";
 				},
 			});
 		}

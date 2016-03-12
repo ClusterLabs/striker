@@ -130,7 +130,7 @@ WHERE
 			if (not $count)
 			{
 				# Too early, we can't set an alert.
-				$an->Alert->warning({message_key => "scancore_error_0018", message_variables => {
+				$an->Alert->warning({message_key => "error_message_0068", message_variables => {
 					type			=>	$type, 
 					alert_sent_by		=>	$alert_sent_by, 
 					alert_record_locator	=>	$alert_record_locator, 

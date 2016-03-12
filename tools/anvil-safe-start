@@ -1541,7 +1541,7 @@ sub wait_for_scancore_database
 	until ($connections)
 	{
 		$connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-		$an->Log->entry({log_level => 3, message_key => "notice_message_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "notice_message_0001", message_variables => {
 			connections	=>	$connections,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $connections)

@@ -9863,6 +9863,7 @@ sub build_select
 	return ($select);
 }
 
+### TODO: Replace this with '$an->Get->shared_files().
 # This looks for a node we have access to and returns the first one available.
 sub read_files_on_shared
 {
@@ -9882,7 +9883,7 @@ sub read_files_on_shared
 		my $fail       = 0;
 		my $raw        = "";
 		my $shell_call = "df -P && ls -l /shared/files/";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10777,10 +10778,14 @@ sub gather_node_details
 		$conf->{node}{$node}{up}   = 1;
 		push @{$conf->{up_nodes}}, $node;
 		
+		# If this is the first up node, mark it as the one to use later if another function needs to
+		# get more info from the Anvil!.
+		$conf->{sys}{use_node} = $node if not $conf->{sys}{use_node};
+		
 		### Get the rest of the shell calls done before starting to parse.
 		# Get meminfo
 		my $shell_call = "cat /proc/meminfo";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10796,7 +10801,7 @@ sub gather_node_details
 		
 		# Get drbd info
 		$shell_call = "if [ -e /proc/drbd ]; then cat /proc/drbd; else echo 'drbd offline'; fi";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10811,7 +10816,7 @@ sub gather_node_details
 		my $proc_drbd = $return;
 		
 		$shell_call = "drbdadm dump-xml";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10827,7 +10832,7 @@ sub gather_node_details
 		
 		# clustat info
 		$shell_call = "clustat";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10843,7 +10848,7 @@ sub gather_node_details
 		
 		# Read cluster.conf
 		$shell_call = "cat /etc/cluster/cluster.conf";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10865,7 +10870,7 @@ sub gather_node_details
 /etc/init.d/clvmd status; echo striker:clvmd:\$?; 
 /etc/init.d/gfs2 status; echo striker:gfs2:\$?; 
 /etc/init.d/libvirtd status; echo striker:libvirtd:\$?;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10881,7 +10886,7 @@ sub gather_node_details
 		
 		# LVM data
 		$shell_call = "pvscan; vgscan; lvscan";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10899,7 +10904,7 @@ sub gather_node_details
 pvs --units b --separator \\\#\\\!\\\# -o pv_name,vg_name,pv_fmt,pv_attr,pv_size,pv_free,pv_used,pv_uuid; 
 vgs --units b --separator \\\#\\\!\\\# -o vg_name,vg_attr,vg_extent_size,vg_extent_count,vg_uuid,vg_size,vg_free_count,vg_free,pv_name; 
 lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uuid,lv_path,devices;",
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10915,7 +10920,7 @@ lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uui
 		
 		# GFS2 data
 		$shell_call = "cat /etc/fstab | grep gfs2 && df -hP";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10931,7 +10936,7 @@ lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uui
 		
 		# virsh data
 		$shell_call = "virsh list --all";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10947,7 +10952,7 @@ lvs --units b --separator \\\#\\\!\\\# -o lv_name,vg_name,lv_attr,lv_size,lv_uui
 		
 		# VM definitions - from file
 		$shell_call = "cat /shared/definitions/*";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10968,7 +10973,7 @@ do
     virsh dumpxml \$server; 
 done
 ";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10984,7 +10989,7 @@ done
 		
 		# Host name, in case the cluster isn't configured yet.
 		$shell_call = "hostname";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11007,7 +11012,7 @@ done
 		
 		# Read the node's host file.
 		$shell_call = "cat /etc/hosts";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11023,7 +11028,7 @@ done
 		
 		# Read the node's dmesg.
 		$shell_call = "dmesg";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11057,7 +11062,7 @@ else
         cat \$i;
     done;
 fi;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11735,7 +11740,7 @@ sub parse_dmidecode
 	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_cores}))
 	{
 		$conf->{node}{$node}{hardware}{total_node_cores}   = $conf->{resources}{total_cpus};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",                                      value1 => $node,
 			name2 => "node::${node}::hardware::total_node_cores", value2 => $conf->{node}{$node}{hardware}{total_node_cores},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11743,7 +11748,7 @@ sub parse_dmidecode
 	if (($conf->{resources}{total_cpus}) && (not $conf->{node}{$node}{hardware}{total_node_threads}))
 	{
 		$conf->{node}{$node}{hardware}{total_node_threads} = $conf->{node}{$node}{hardware}{total_node_cores};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",                                        value1 => $node,
 			name2 => "node::${node}::hardware::total_node_threads", value2 => $conf->{node}{$node}{hardware}{total_node_threads},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -11806,7 +11811,7 @@ sub parse_proc_drbd
 	{
 		if ($line =~ /drbd offline/)
 		{
-			$an->Log->entry({log_level => 2, message_key => "log_0267", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "log_0267", message_variables => {
 				node => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
@@ -11820,7 +11825,7 @@ sub parse_proc_drbd
 		if ($line =~ /version: (.*?) \(/)
 		{
 			$conf->{node}{$node}{drbd}{version} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node::${node}::drbd::version", value1 => $conf->{node}{$node}{drbd}{version},
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
@@ -11856,7 +11861,7 @@ sub parse_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $conf->{node}{$node}{drbd}{minor_number}{$minor_number}{resource};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "node",                                                         value1 => $node,
 					name2 => "resource",                                                     value2 => $resource,
 					name3 => "node::${node}::drbd::resource::${resource}::minor_number",     value3 => $conf->{node}{$node}{drbd}{resource}{$resource}{minor_number},
@@ -12331,7 +12336,7 @@ sub parse_clustat
 	if (not $line_count)
 	{
 		# CMAN isn't running.
-		$an->Log->entry({log_level => 2, message_key => "log_0022", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0022", message_variables => {
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{get_host_from_cluster_conf} = 1;
@@ -12939,7 +12944,7 @@ sub parse_cluster_conf
 						{
 							# Convert the script to a password.
 							my $shell_call = $password_script;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 								name1 => "shell_call", value1 => $shell_call,
 								name2 => "node",       value2 => $node,
 							}, file => $THIS_FILE, line => __LINE__});
@@ -13969,7 +13974,7 @@ sub write_node_cache
 	{
 		# Write the command to disk so that I can check the power state
 		# in the future when both nodes are offline.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",                value1 => $node,
 			name2 => "power check command", value2 => $conf->{node}{$node}{info}{power_check_command},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -13997,7 +14002,7 @@ sub write_node_cache
 	
 	if (@lines > 0)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "writing", value1 => $cache_file,
 		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = "$cache_file";
@@ -14029,7 +14034,7 @@ sub read_node_cache
 	# offline.
 	my $cluster    = $conf->{cgi}{cluster};
 	my $cache_file = "$conf->{path}{'striker_cache'}/cache_".$cluster."_".$node.".striker";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "cluster",    value1 => $cluster,
 		name2 => "cache file", value2 => $cache_file,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14052,7 +14057,7 @@ sub read_node_cache
 		# It exists! Read it.
 		my $in_hosts   = 0;
 		my $shell_call = $cache_file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
@@ -14112,7 +14117,7 @@ sub read_node_cache
 		$conf->{clusters}{$cluster}{cache_exists} = 0;
 		$conf->{node}{$node}{info}{host_name}     = $node;
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "host name",           value1 => $conf->{node}{$node}{info}{host_name},
 		name2 => "power check command", value2 => $conf->{node}{$node}{info}{power_check_command},
 	}, file => $THIS_FILE, line => __LINE__});

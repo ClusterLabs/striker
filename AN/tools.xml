@@ -42,6 +42,16 @@ This is the AN::Tools master 'words' file.
 		
 		<!-- Branding stuff that others might want to change. -->
 		<key name="an_brand_0001">https://alteeve.ca</key>
+		<key name="an_brand_0002">ScanCore</key>
+		
+		<!-- Titles -->
+		<key name="tools_title_0001">Debug</key>
+		<key name="tools_title_0002">Warning</key>
+		<key name="tools_title_0003">Error</key>
+		<key name="tools_title_0004">Success</key>
+		<key name="tools_title_0005">Note</key>
+		<key name="tools_title_0006">Information</key>
+		<key name="tools_title_0007">Critical</key>
 		
 		<!-- Suffixes used often -->
 		<key name="tools_suffix_0001">h</key>
@@ -75,7 +85,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_default_0001">Debug</key>
 		
 		<!-- log messages -->
-		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
+		<key name="tools_log_0001">Entering: [ #!variable!function!#() ]</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>
@@ -102,6 +112,13 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0015">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#] node is healthy. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0016">The preferred node: [#!variable!preferred_node!#]'s storage is not ready, but the secondary: [#!variable!secondary_node!#]'s storage is. The secondary node is not healthy, but the boot was forced. Booting: [#!variable!server!#] it there now.</key>
 		<key name="tools_log_0017">Successfully booted: [#!variable!server!#] on: [#!variable!node!#].</key>
+		<key name="tools_log_0018">The file: [#!variable!file!#] wasn't found.</key>
+		<key name="tools_log_0019">Connected to database: [#!variable!name!#] (id: [#!variable!id!#]) on host: [#!variable!host!#:#!variable!port!#]. The file handle is: [#!variable!data_dbh!# (#!variable!dbh!#)].</key>
+		<key name="tools_log_0020">The database: [#!variable!name!#] on: [#!variable!host!#] needs to be initialized.</key>
+		<key name="tools_log_0021">[ #!variable!title!# ] - #!variable!message!#</key>
+		<key name="tools_log_0022">The DB with ID: [#!variable!id!#] is behind.</key>
+		<key name="tools_log_0023">The database: [#!variable!name!#] on: [#!variable!host!#] needs to have the: [#!variable!file!#] SQL schema loaded.</key>
+		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -396,6 +413,26 @@ Variables:
 		<key name="warning_message_0005">One or more virtual hard drives used by the server: [#!variable!server!#] is on a replicated storage that is not 'UpToDate' on both nodes. The boot was forced though, so it will be booted on: [#!variable!server!#] now. If either node goes offline, this server will lose access to its storage!</key>
 		<key name="warning_message_0006">Failed to boot the server: [#!variable!server!#]. Neither node has a fully updated view of the storage backing this server. Booting would be unsafe.</key>
 		<key name="warning_message_0007">Failed to boot the server: [#!variable!server!#] on the node: [#!variable!#]. The error was: [#!variable!error!#].</key>
+		<key name="warning_message_0008">The database: [#!variable!name!#] on host: [#!variable!host!#] with ID: [#!variable!id!#] can not be used, skipping it.</key>
+		<key name="warning_message_0009">
+The error was:
+----------
+#!variable!dbi_error!#
+----------
+		</key>
+		<key name="warning_message_0010">Is the server running and does the firewall allow connections on TCP port: [#!variable!port!#]?</key>
+		<key name="warning_message_0011"><![CDATA[The password was not passed, and it is required. Please set: [scancore::db::#!variable!id!#::password = <password>] in: [#!variable!config_file!#].]]></key>
+		<key name="warning_message_0012"><![CDATA[
+
+The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either not the owner of the database: [#!variable!name!#], or the password for that user is incorrect. 
+- Please edit: [#!variable!config_file!#]
+  * If the user name is not correct, please update: 
+    scancore::db::#!variable!id!#::user = <user>
+  * If the user name is correct, please update: 
+    scancore::db::#!variable!id!#::password = <password>
+		]]></key>
+		<key name="warning_message_0013">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
+		<key name="warning_message_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		
 		<!-- notice messages -->
 		<key name="notice_message_0001">The database: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
@@ -426,6 +463,7 @@ Variables:
 		<key name="error_title_0011">Illegal value in '#!variable!method!#'</key>
 		<key name="error_title_0012">'AN::Tools::Readable->hr_to_bytes()' was not able to parse a valid size type</key>
 		<key name="error_title_0013">'AN::Tools' tried to load the '#!variable!module!#' module but it does not seem to be available</key>
+		<!-- These shouldn't be titles... -->
 		<key name="error_title_0014">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0015">Failed to write to the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_title_0016">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
@@ -438,6 +476,11 @@ Variables:
 		<key name="error_title_0023">Unable to read the XML file</key>
 		<key name="error_title_0024">Bad hash reference</key>
 		<key name="error_title_0025">Failed to parse cman config</key>
+		<key name="error_title_0026">The AN::Tools::DB->do_db_write() method was called without a query.</key>
+		<key name="error_title_0027">Failed to do an update or insert the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="error_title_0028">I was asked to query the database: [#!variable!server!#], but the connection is down. This should never happen and is probably a bug.</key>
+		<key name="error_title_0029">Failed to prepare the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
+		<key name="error_title_0030">Failed to execute the database query: [#!variable!query!#] on: [#!variable!server!#]. The error was: [#!variable!db_error!#].</key>
 		
 		<!-- Error messages -->
 		<key name="error_message_0001">The 'AN::Tools::String' module's 'get' method was passed an empty 'key' value. This must be passed so that a string can be looked up.</key>
@@ -499,6 +542,28 @@ Variables:
 		<key name="error_message_0057"><![CDATA[The 'AN::Tools::Log->db_transactions()' method was passed an invalid value: [#!variable!set!#]. Only '0' (disable) and '1' (enable) are valid.]]></key>
 		<key name="error_message_0058"><![CDATA[The 'AN::Tools::Get->server_data()' failed to find the UUID for the named server. The returned UUID was: [#!variable!uuid!#].]]></key>
 		<key name="error_message_0059"><![CDATA[The 'AN::Tools::Cman->boot_server()' method was not passed a 'server' name to boot.]]></key>
+		<key name="error_message_0060">Failed to connect to any database, unable to proceed.</key>
+		<key name="error_message_0061">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
+		<key name="error_message_0062">No ID passed to the AN::Tools::DB->load_schema() method.</key>
+		<key name="error_message_0063">No schema file passed to the AN::Tools::DB->load_schema() method.</key>
+		<key name="error_message_0064">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was not found.</key>
+		<key name="error_message_0065">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
+		<key name="error_message_0066">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_message_0067">No ID passed to the AN::Tools::DB->initialize_db() method.</key>
+		<key name="error_message_0068">
+Failed to send an alert because this host is not yet in the database. This can happen on the very first run of #!string!an_brand_0002!# when the peer is not accessible so the initial attempt to connect to the DB fails and tries to register an alert before this host gets into the DB. If this is the case, this warning can be ignored.
+* Details of the alert:
+- Type:           [#!variable!type!#]
+- Sent By:        [#!variable!alert_sent_by!#]
+- Record Locator: [#!variable!alert_record_locator!#]
+- Name:           [#!variable!alert_name!#]
+- Timestamp:      [#!variable!modified_date!#]
+		</key>
+		<key name="error_message_0069">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
+		<key name="error_message_0070">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		
+		<!-- Cleared warning/error messages -->
+		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
 	</lang>
 	
 	<!-- 日本語 -->

@@ -229,8 +229,12 @@ sub process_task
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::task",    value1 => $conf->{cgi}{task}, 
+		name2 => "cgi::confirm", value2 => $conf->{cgi}{confirm}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
@@ -2998,32 +3002,42 @@ sub change_vm
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster                =  $conf->{cgi}{cluster};
-	my $vm                     =  $conf->{cgi}{vm};
-	my $say_vm                 =  ($vm =~ /vm:(.*)/)[0];
-	my $node1                  =  $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2                  =  $conf->{clusters}{$cluster}{nodes}[1];
-	my $device                 =  $conf->{cgi}{device};
-	my $new_server_note        =  $conf->{cgi}{server_note};
-	my $new_server_start_after =  $conf->{cgi}{server_start_after};
-	   $new_server_start_after =~ s/^\s+//;
-	   $new_server_start_after =~ s/\s+$//;
-	my $new_server_start_delay = $conf->{cgi}{server_start_delay};
-	   $new_server_start_delay =~ s/^\s+//;
-	   $new_server_start_delay =~ s/\s+$//;
-	my $definition_file        =  "/shared/definitions/$say_vm.xml";
-	my $other_allocated_ram    =  $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
-		name1  => "cluster",                value1  => $cluster,
-		name2  => "vm",                     value2  => $vm,
-		name3  => "say_vm",                 value3  => $say_vm,
-		name4  => "node1",                  value4  => $node1,
-		name5  => "node2",                  value5  => $node2,
-		name6  => "device",                 value6  => $device,
-		name7  => "new_server_note",        value7  => $new_server_note,
-		name8  => "new_server_start_after", value8  => $new_server_start_after,
-		name9  => "new_server_start_delay", value9  => $new_server_start_delay,
-		name10 => "other_allocated_ram",    value10 => $other_allocated_ram,
+	my $cluster                             =  $conf->{cgi}{cluster};
+	my $vm                                  =  $conf->{cgi}{vm};
+	my $say_vm                              =  ($vm =~ /vm:(.*)/)[0];
+	my $node1                               =  $conf->{clusters}{$cluster}{nodes}[0];
+	my $node2                               =  $conf->{clusters}{$cluster}{nodes}[1];
+	my $device                              =  $conf->{cgi}{device};
+	my $new_server_note                     =  $conf->{cgi}{server_note};
+	my $new_server_migration_type           =  $conf->{cgi}{server_migration_type};
+	my $new_server_pre_migration_script     =  $conf->{cgi}{server_pre_migration_script};
+	my $new_server_pre_migration_arguments  =  $conf->{cgi}{server_pre_migration_arguments};
+	my $new_server_post_migration_script    =  $conf->{cgi}{server_post_migration_script};
+	my $new_server_post_migration_arguments =  $conf->{cgi}{server_post_migration_arguments};
+	my $new_server_start_after              =  $conf->{cgi}{server_start_after};
+	   $new_server_start_after              =~ s/^\s+//;
+	   $new_server_start_after              =~ s/\s+$//;
+	my $new_server_start_delay              = $conf->{cgi}{server_start_delay};
+	   $new_server_start_delay              =~ s/^\s+//;
+	   $new_server_start_delay              =~ s/\s+$//;
+	my $definition_file                     =  "/shared/definitions/$say_vm.xml";
+	my $other_allocated_ram                 =  $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
+		name1  => "cluster",                             value1  => $cluster,
+		name2  => "vm",                                  value2  => $vm,
+		name3  => "say_vm",                              value3  => $say_vm,
+		name4  => "node1",                               value4  => $node1,
+		name5  => "node2",                               value5  => $node2,
+		name6  => "device",                              value6  => $device,
+		name7  => "new_server_note",                     value7  => $new_server_note,
+		name8  => "new_server_migration_type",           value8  => $new_server_migration_type, 
+		name9  => "new_server_pre_migration_script",     value9  => $new_server_pre_migration_script, 
+		name10 => "new_server_pre_migration_arguments",  value10 => $new_server_pre_migration_arguments, 
+		name11 => "new_server_post_migration_script",    value11 => $new_server_post_migration_script, 
+		name12 => "new_server_post_migration_arguments", value12 => $new_server_post_migration_arguments, 
+		name13 => "new_server_start_after",              value13 => $new_server_start_after,
+		name14 => "new_server_start_delay",              value14 => $new_server_start_delay,
+		name15 => "other_allocated_ram",                 value15 => $other_allocated_ram,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Read the values the user passed, see if they differ from what was read in the config and scancore 
@@ -3054,15 +3068,25 @@ sub change_vm
 		server => $say_vm, 
 		anvil  => $cluster, 
 	});
-	my $server_uuid            = $return->{uuid};
-	my $old_server_note        = $return->{note};
-	my $old_server_start_after = $return->{start_after};
-	my $old_server_start_delay = $return->{start_delay};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "server_uuid",            value1 => $server_uuid,
-		name2 => "old_server_note",        value2 => $old_server_note,
-		name3 => "old_server_start_after", value3 => $old_server_start_after,
-		name4 => "old_server_start_delay", value4 => $old_server_start_delay,
+	my $server_uuid                         = $return->{uuid};
+	my $old_server_note                     = $return->{note};
+	my $old_server_start_after              = $return->{start_after};
+	my $old_server_start_delay              = $return->{start_delay};
+	my $old_server_migration_type           = $return->{migration_type};
+	my $old_server_pre_migration_script     = $return->{pre_migration_script};
+	my $old_server_pre_migration_arguments  = $return->{pre_migration_arguments};
+	my $old_server_post_migration_script    = $return->{post_migration_script};
+	my $old_server_post_migration_arguments = $return->{post_migration_arguments};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		name1 => "server_uuid",                         value1 => $server_uuid,
+		name2 => "old_server_note",                     value2 => $old_server_note,
+		name3 => "old_server_start_after",              value3 => $old_server_start_after,
+		name4 => "old_server_start_delay",              value4 => $old_server_start_delay,
+		name5 => "old_server_migration_type",           value5 => $old_server_migration_type, 
+		name6 => "old_server_pre_migration_script",     value6 => $old_server_pre_migration_script, 
+		name7 => "old_server_pre_migration_arguments",  value7 => $old_server_pre_migration_arguments, 
+		name8 => "old_server_post_migration_script",    value8 => $old_server_post_migration_script, 
+		name9 => "old_server_post_migration_arguments", value9 => $old_server_post_migration_arguments, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the table.
@@ -3073,15 +3097,30 @@ sub change_vm
 		title	=>	$title,
 	});
 	
+	# If the script was removed, wipe the arguments as well.
+	if (not $new_server_pre_migration_script)
+	{
+		$new_server_pre_migration_arguments = "";
+	}
+	if (not $new_server_post_migration_script)
+	{
+		$new_server_post_migration_arguments = "";
+	}
+	
 	# Did the note change (and do I have a connection to a database)?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::db_connections", value1 => $an->data->{sys}{db_connections},
 	}, file => $THIS_FILE, line => __LINE__});
 	my $db_error = "";
 	if (($an->data->{sys}{db_connections}) && 
-	    (($old_server_note        ne $new_server_note)        or 
-	     ($old_server_start_after ne $new_server_start_after) or 
-	     ($old_server_start_delay ne $new_server_start_delay)))
+	    (($old_server_note                     ne $new_server_note)        or 
+	     ($old_server_start_after              ne $new_server_start_after) or 
+	     ($old_server_start_delay              ne $new_server_start_delay) or 
+	     ($old_server_migration_type           ne $new_server_migration_type) or 
+	     ($old_server_pre_migration_script     ne $new_server_pre_migration_script) or 
+	     ($old_server_pre_migration_arguments  ne $new_server_pre_migration_arguments) or
+	     ($old_server_post_migration_script    ne $new_server_post_migration_script) or 
+	     ($old_server_post_migration_arguments ne $new_server_post_migration_arguments)))
 	{
 		# Something changed. If there was a UUID, we'll update. Otherwise we'll insert.
 		$database_changed = 1;
@@ -3134,10 +3173,15 @@ sub change_vm
 UPDATE 
     server 
 SET 
-    server_note        = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
-    server_start_after = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_after).", 
-    server_start_delay = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_delay).", 
-    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+    server_note                     = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
+    server_start_after              = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_after).", 
+    server_start_delay              = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_delay).", 
+    server_migration_type           = ".$an->data->{sys}{use_db_fh}->quote($new_server_migration_type).", 
+    server_pre_migration_script     = ".$an->data->{sys}{use_db_fh}->quote($new_server_pre_migration_script).", 
+    server_pre_migration_arguments  = ".$an->data->{sys}{use_db_fh}->quote($new_server_pre_migration_arguments).", 
+    server_post_migration_script    = ".$an->data->{sys}{use_db_fh}->quote($new_server_post_migration_script).", 
+    server_post_migration_arguments = ".$an->data->{sys}{use_db_fh}->quote($new_server_post_migration_arguments).", 
+    modified_date                   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
@@ -3868,7 +3912,7 @@ sub manage_vm
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "manage_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manage_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
 	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
@@ -3917,7 +3961,7 @@ sub manage_vm
 	}
 	
 	# First up, if the cluster is not running, go no further.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1}::daemon::gfs2::exit_code", value1 => $conf->{node}{$node1}{daemon}{gfs2}{exit_code},
 		name2 => "node::${node2}::daemon::gfs2::exit_code", value2 => $conf->{node}{$node2}{daemon}{gfs2}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3929,7 +3973,7 @@ sub manage_vm
 	# Now choose the node to work through.
 	my $node          = "";
 	my $vm_is_running = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "vm::${vm}::current_host", value1 => $conf->{vm}{$vm}{current_host},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{vm}{$vm}{current_host})
@@ -3988,7 +4032,7 @@ sub manage_vm
 		if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 		{
 			$server_uuid = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4067,12 +4111,17 @@ sub manage_vm
 	
 	# See if I have access to ScanCore and, if so, check for a note, the start group and start delay. If 
 	# we have a database connection, show these options.
-	my $show_db_options    = 0;
-	my $server_note        = "";
-	my $modified_date      = "";
-	my $server_start_after = "";
-	my $server_start_delay = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	my $show_db_options                 = 0;
+	my $server_note                     = "";
+	my $modified_date                   = "";
+	my $server_start_after              = "";
+	my $server_start_delay              = "";
+	my $server_migration_type           = "";
+	my $server_pre_migration_script     = "";
+	my $server_pre_migration_arguments  = "";
+	my $server_post_migration_script    = "";
+	my $server_post_migration_arguments = "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "server_uuid",         value1 => $server_uuid, 
 		name2 => "sys::db_connections", value2 => $an->data->{sys}{db_connections}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4086,19 +4135,29 @@ sub manage_vm
 			uuid  => $server_uuid, 
 			anvil => $cluster, 
 		});
-		$server_note        = $results->{note};
-		$server_start_after = $results->{start_after};
-		$server_start_delay = $results->{start_delay};
-		$modified_date      = $results->{modified_date};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-			name1 => "show_db_options",    value1 => $show_db_options, 
-			name2 => "server_note",        value2 => $server_note, 
-			name3 => "server_start_after", value3 => $server_start_after, 
-			name4 => "server_start_delay", value4 => $server_start_delay, 
-			name5 => "modified_date",      value5 => $modified_date, 
+		$server_note                     = $results->{note};
+		$server_start_after              = $results->{start_after};
+		$server_start_delay              = $results->{start_delay};
+		$server_migration_type           = $results->{migration_type};
+		$server_pre_migration_script     = $results->{pre_migration_script};
+		$server_pre_migration_arguments  = $results->{pre_migration_arguments};
+		$server_post_migration_script    = $results->{post_migration_script};
+		$server_post_migration_arguments = $results->{post_migration_arguments};
+		$modified_date                   = $results->{modified_date};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "show_db_options",                 value1  => $show_db_options, 
+			name2  => "server_note",                     value2  => $server_note, 
+			name3  => "server_start_after",              value3  => $server_start_after, 
+			name4  => "server_start_delay",              value4  => $server_start_delay, 
+			name5  => "server_migration_type",           value5  => $server_migration_type, 
+			name6  => "server_pre_migration_script",     value6  => $server_pre_migration_script, 
+			name7  => "server_pre_migration_arguments",  value7  => $server_pre_migration_arguments, 
+			name8  => "server_post_migration_script",    value8  => $server_post_migration_script, 
+			name9  => "server_post_migration_arguments", value9  => $server_post_migration_arguments, 
+			name10 => "modified_date",                   value10 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_db_options", value1 => $show_db_options
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4149,7 +4208,7 @@ sub manage_vm
 	# Get the list of files on the /shared/files/ directory.
 	my $shell_call = "df -P && ls -l /shared/files/";
 	my $password   = $conf->{sys}{root_password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4450,6 +4509,15 @@ sub manage_vm
 		{
 			$conf->{cgi}{server_start_after} = $return->{start_after};
 		}
+		
+		# These will become the select boxes
+		my $say_boot_delay_disabled          = "disabled";
+		my $say_boot_after_select            = "#!string!message_0308!#";
+		my $say_migration_type_select        = "--";
+		my $say_pre_migration_script_select  = "--";
+		my $say_post_migration_script_select = "--";
+		
+		# Now get the information to build the "Boot After" select.
 		my $other_servers = [];
 		my $server_uuid   = $return->{uuid};
 		my $query         = "
@@ -4463,16 +4531,15 @@ WHERE
 AND 
     server_name != 'DELETED'
 ORDER BY 
-    server_name ASC;
+    server_name ASC
 ;";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $results    = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count      = @{$results};
-		my $say_select = "--";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4511,15 +4578,89 @@ ORDER BY
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$other_servers}, "00000000-0000-0000-0000-000000000000#!#<i>$say_dont_boot</i>";
 			
-			# Build the select
-			$say_select = AN::Cluster::build_select($conf, "server_start_after", 0, 1, 150, $conf->{cgi}{server_start_after}, $other_servers);
+			# Build the Start After select
+			$say_boot_after_select   = AN::Cluster::build_select($conf, "server_start_after", 0, 1, 150, $conf->{cgi}{server_start_after}, $other_servers);
+			$say_boot_delay_disabled = "";
 		}
+		
+		### Now build the rest of the selects.
+		# If the user didn't click save, load the DB values.
+		if (not $conf->{cgi}{change})
+		{
+			if (not $conf->{cgi}{server_migration_type})
+			{
+				$conf->{cgi}{server_migration_type} = $server_migration_type;
+			}
+			if (not $conf->{cgi}{server_pre_migration_script})
+			{
+				$conf->{cgi}{server_pre_migration_script} = $server_pre_migration_script;
+			}
+			if (($conf->{cgi}{server_pre_migration_script}) && (not $conf->{cgi}{server_pre_migration_arguments}))
+			{
+				$conf->{cgi}{server_pre_migration_arguments} = $server_pre_migration_arguments;
+			}
+			else
+			{
+				# No script, so clear args.
+				$conf->{cgi}{server_pre_migration_arguments} = "";
+			}
+			if (not $conf->{cgi}{server_post_migration_script})
+			{
+				$conf->{cgi}{server_post_migration_script} = $server_post_migration_script;
+			}
+			if (($conf->{cgi}{server_post_migration_script}) && (not $conf->{cgi}{server_post_migration_arguments}))
+			{
+				$conf->{cgi}{server_post_migration_arguments} = $server_post_migration_arguments;
+			}
+			else
+			{
+				# No script, so clear args.
+				$conf->{cgi}{server_post_migration_arguments} = "";
+			}
+		}
+		
+		# Migration type
+		$say_migration_type_select = AN::Cluster::build_select($conf, "server_migration_type", 0, 0, 150, $conf->{cgi}{server_migration_type}, ["live#!##!string!state_0126!#", "cold#!##!string!state_0127!#"]);;
+		
+		# Get a list of files from /shared/files that are not ISOs and have their
+		# 'executable' bit set.
+		my $password = $conf->{sys}{root_password};
+		my $node     = $conf->{sys}{use_node};
+		my $port     = $conf->{node}{$node}{port};
+		my $scripts  = [];
+		my $files    = $an->Get->shared_files({
+			password	=>	$password,
+			port		=>	$port,
+			target		=>	$node,
+		});
+		foreach my $file (sort {$a cmp $b} keys %{$files})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "${file}::executable", value1 => $files->{$file}{executable},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($files->{$file}{executable})
+			{
+				push @{$scripts}, $file;
+			}
+		}
+		
+		# Build the Pre and Post migration script selection boxes.
+		$say_pre_migration_script_select  = AN::Cluster::build_select($conf, "server_pre_migration_script", 0, 1, 150, $conf->{cgi}{server_pre_migration_script}, $scripts);;
+		$say_post_migration_script_select = AN::Cluster::build_select($conf, "server_post_migration_script", 0, 1, 150, $conf->{cgi}{server_post_migration_script}, $scripts);;
+		
+		# Take the fractional component of the second off the modified date stamp.
 		$modified_date =~ s/\..*//;
 		$note_form = AN::Common::template($conf, "server.html", "start-server-show-db-options", {
-			server_note		=>	$server_note,
-			server_start_after	=>	$say_select,
-			server_start_delay	=>	$server_start_delay,
-			modified_date		=>	$modified_date,
+			server_note			=>	$server_note,
+			server_start_after		=>	$say_boot_after_select,
+			server_start_delay		=>	$server_start_delay,
+			server_start_delay_disabled	=>	$say_boot_delay_disabled, 
+			server_migration_type		=>	$say_migration_type_select,
+			server_pre_migration_script	=>	$say_pre_migration_script_select, 
+			server_pre_migration_arguments	=>	$an->data->{cgi}{server_pre_migration_arguments}, 
+			server_post_migration_script	=>	$say_post_migration_script_select, 
+			server_post_migration_arguments	=>	$an->data->{cgi}{server_post_migration_arguments}, 
+			modified_date			=>	$modified_date,
 		});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "note_form", value1 => $note_form,
@@ -10556,7 +10697,7 @@ sub check_node_readiness
 					my $role             = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{role};
 					my $disk_state       = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{disk_state};
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "resource",         value1 => $resource,
 						name2 => "connection_state", value2 => $connection_state,
 						name3 => "role",             value3 => $role,
@@ -10856,7 +10997,7 @@ sub read_vm_definition
 		}
 	}
 	my $xml_line_count = @{$conf->{vm}{$vm}{raw_xml}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "xml_line_count", value1 => $xml_line_count,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -10878,7 +11019,7 @@ sub check_lv
 	if ($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
 	{
 		# Node is down, skip LV check.
-		$an->Log->entry({log_level => 2, message_key => "log_0258", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0258", message_variables => {
 			node           => $node, 
 			logical_volume => $lv,
 			server         => $vm, 
@@ -10935,7 +11076,7 @@ sub check_lv
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $conf->{drbd}{$on_res}{node}{$node}{connection_state};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $conf->{drbd}{$on_res}{node}{$node}{role};
 		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $conf->{drbd}{$on_res}{node}{$node}{disk_state};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
 			name2 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::role",             value2 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
 			name3 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},

@@ -5,9 +5,12 @@
 # 
 # Return codes:
 # 0  = Normal exit.
+# 1  = Server not passed
+# 2  = Server isn't running.
+# 3  = rgmanager isn't running locally
+# 4  = rgmanager isn't running on the peer.
+# 5  = The target node is not healthy and '--force' wasn't used.
 # 
-
-# - Add this to /etc/gdm/PreSession/Default 
 
 use strict; 
 use warnings;
@@ -43,10 +46,12 @@ my $an = AN::Tools->new({data => {
 		},
 		switches	=>	{},
 		sys		=>	{
+			db_connection	=>	0,
 			language	=>	"en_CA",
 			local_users	=>	[],
 			log_language	=>	"en_CA",
 			log_level	=>	2,
+			migration_target =>	"",
 		},
 	},
 });
@@ -60,13 +65,33 @@ $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
-if (($an->data->{switches}{h})    or 
-    ($an->data->{switches}{'?'})  or
-    ($an->data->{switches}{help}) or 
-    (not $an->data->{switches}{server}))
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or
+    ($an->data->{switches}{help}))
 {
 	print_usage($an);
 	exit(0);
+}
+if (not $an->data->{switches}{server})
+{
+	print_usage($an);
+	exit(1);
+}
+
+# Can I connect to a database?
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	name1 => "connections", value1 => $connections, 
+}, file => $THIS_FILE, line => __LINE__});
+if (not $connections)
+{
+	# Nope, warn the user.
+	my $migration_type = $an->data->{sys}{'default'}{migration_type} ? $an->data->{sys}{'default'}{migration_type} : "live";
+	my $variables      = {
+		migration_type => $migration_type,
+	};
+	print $an->String->get({key => "ams_warning_0002", variables => $variables})."\n";
+	$an->Log->entry({log_level => 1, message_key => "ams_warning_0002", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
 }
 
 # Log our startup
@@ -77,6 +102,9 @@ $an->Log->entry({log_level => 3, message_key => "ams_log_0001", message_variable
 # Make sure both I and my peer are in the cluster.
 sanity_check_cluster($an);
 
+# Still alive? Migrate!
+migrate_server($an);
+
 
 
 exit(0);
@@ -85,13 +113,363 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# Migrate the server based on the rules in the database.
+sub migrate_server
+{
+	my ($an) = @_;
+	
+	# Read in the info for the server.
+	my $migration_type           = $an->data->{server_data}{migration_type};
+	my $migration_target         = $an->data->{sys}{migration_target};
+	my $pre_migration_script     = $an->data->{server_data}{pre_migration_script};
+	my $pre_migration_arguments  = $an->data->{server_data}{pre_migration_arguments};
+	my $post_migration_script    = $an->data->{server_data}{post_migration_script};
+	my $post_migration_arguments = $an->data->{server_data}{post_migration_arguments};
+	
+	# Set the migration type to the default if I didn't read it.
+	if (not $migration_type)
+	{
+		$migration_type = $an->data->{sys}{'default'}{migration_type} ? $an->data->{sys}{'default'}{migration_type} : "live";
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "migration_type",           value1 => $migration_type, 
+		name2 => "migration_target",         value2 => $migration_target, 
+		name3 => "pre_migration_script",     value3 => $pre_migration_script, 
+		name4 => "pre_migration_arguments",  value4 => $pre_migration_arguments, 
+		name5 => "post_migration_script",    value5 => $post_migration_script, 
+		name6 => "post_migration_arguments", value6 => $post_migration_arguments, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Do I have a pre-migration script?
+	if ($pre_migration_script)
+	{
+		# Yup!
+		$pre_migration_script = $an->data->{path}{shared_files}."/".$pre_migration_script;
+		if (-e $pre_migration_script)
+		{
+			my $shell_call = $pre_migration_script;
+			if ($pre_migration_arguments) 
+			{
+				$shell_call .= " ".$pre_migration_arguments;
+			}
+			
+			# User script, so log_level is '1'.
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => "$line"
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# The pre-migration script no longer exists.
+			$an->Log->entry({log_level => 1, message_key => "ams_warning_0003", message_variables => { script => $pre_migration_script }, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I am doing a cold migration, this is two steps. If I am doing a live miration, it is one.
+	if ($migration_type eq "cold")
+	{
+		### Two-step
+		# Off
+		
+		### TODO:
+		# Set the 'clean off' in the DB, if we have a DB connection, so that ScanCore doesn't try to boot it.
+		my $shell_call = $an->data->{path}{clusvcadm}." -d ".$an->data->{switches}{server};
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			### TODO: Handle failures
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => "$line"
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+		
+		# This is likely not needed.
+		sleep 1;
+		
+		# On
+		### TODO:
+		# Clear the 'clean off' 
+		$shell_call = $an->data->{path}{clusvcadm}." -e ".$an->data->{switches}{server}." -m $migration_target";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			### TODO: Handle failures
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => "$line"
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Live!
+		my $shell_call = $an->data->{path}{clusvcadm}." -M ".$an->data->{switches}{server}." -m $migration_target";
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while (<$file_handle>)
+		{
+			### TODO: Handle failures
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => "$line"
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	
+	# Do I have a post-migration script?
+	if ($post_migration_script)
+	{
+		$post_migration_script = $an->data->{path}{shared_files}."/".$post_migration_script;
+		if (-e $post_migration_script)
+		{
+			my $shell_call = $post_migration_script;
+			if ($post_migration_arguments) 
+			{
+				$shell_call .= " ".$post_migration_arguments;
+			}
+			
+			# User script, so log_level is '1'.
+			$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => "$line"
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
+		}
+		else
+		{
+			# The post-migration script no longer exists.
+			$an->Log->entry({log_level => 1, message_key => "ams_warning_0003", message_variables => { script => $post_migration_script }, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+### TODO: Make (sure) this work if we can't reach either database server
 # This makes sure both I and my peer are in the cluster.
 sub sanity_check_cluster
 {
 	my ($an) = @_;
 	
-	my $cluster_data = $an->Cman->cluster_conf_data();
-	print Dumper $cluster_data;
+	# Gather info I will need
+	my $server     = $an->data->{switches}{server};
+	my $anvil_data = $an->Get->local_anvil_details({
+		hostname_full	=>	$an->hostname,
+		hostname_short	=>	$an->short_hostname,
+	});
+	my $clustat_data = $an->Cman->get_clustat_data();
+	my $server_data  = $an->Get->server_data({server => $server});
+	my $lvm_data     = $an->Get->lvm_data();
+	my $drbd_data    = $an->Get->drbd_data();
+	
+	my $local_health = $anvil_data->{health}{'local'};
+	my $peer_health  = $anvil_data->{health}{peer};
+	my $server_state = $clustat_data->{server}{$server}{status};
+	my $server_host  = $clustat_data->{server}{$server}{host};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "local_health", value1 => $local_health, 
+		name2 => "peer_health",  value2 => $peer_health, 
+		name3 => "server",       value3 => $server, 
+		name4 => "server_state", value4 => $server_state, 
+		name5 => "server_host",  value5 => $server_host, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the server isn't running, we're out.
+	if ($server_state !~ /start/i)
+	{
+		my $variables = {
+			server  => $server,
+			'state' => $server_state,
+		};
+		print $an->String->get({key => "ams_error_0001", variables => $variables})."\n";
+		$an->Log->entry({log_level => 0, message_key => "ams_error_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		exit(2);
+	}
+	
+	# If the peer is down (or if I am down and failed to read the peer's state), abort.
+	if (not $clustat_data->{node}{peer}{rgmanager})
+	{
+		# Is it me or you?
+		if (not $clustat_data->{node}{'local'}{rgmanager})
+		{
+			# It's me, sorry 'bout that.
+			print $an->String->get({key => "ams_error_0002"})."\n";
+			$an->Log->entry({log_level => 0, message_key => "ams_error_0002", file => $THIS_FILE, line => __LINE__});
+			exit(3);
+		}
+		else
+		{
+			# It's not me, it's you.
+			print $an->String->get({key => "ams_error_0002"})."\n";
+			$an->Log->entry({log_level => 0, message_key => "ams_error_0002", file => $THIS_FILE, line => __LINE__});
+			exit(4);
+		}
+	}
+	
+	# Still alive? Find my target node.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "clustat_data->node::local::name", value1 => $clustat_data->{node}{'local'}{name}, 
+		name2 => "clustat_data->node::peer::name",  value2 => $clustat_data->{node}{peer}{name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Who is the target?
+	my $target = "";
+	if ($server_host eq $clustat_data->{node}{'local'}{name})
+	{
+		# It's running locally, so move it to the peer.
+		$target = "peer";
+	}
+	else
+	{
+		# It's running on the peer, so move it here.
+		$target = "local";
+	}
+	$an->data->{sys}{migration_target} = $clustat_data->{node}{$target}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",                value1 => $target, 
+		name2 => "sys::migration_target", value2 => $an->data->{sys}{migration_target}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Is my target healthy?
+	my $target_storage_ready = 1;
+	
+	# Look at storage
+	my $device_type = "disk";
+	foreach my $target_device (sort {$a cmp $b} keys %{$server_data->{storage}{$device_type}{target_device}})
+	{
+		my $backing_device = $server_data->{storage}{$device_type}{target_device}{$target_device}{backing_device};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "server",         value1 => $server, 
+			name2 => "backing_device", value2 => $backing_device, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Find what PV(s) the backing device is on. Comma-separated list of PVs that this LV spans.
+		# Usually only one device.
+		my $on_devices = $lvm_data->{logical_volume}{$backing_device}{on_devices};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "on_devices", value1 => $on_devices, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $device (split/,/, $on_devices)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "device", value1 => $device, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Check to see if this device is UpToDate on both nodes. If a node isn't, it will not
+			# be a boot target.
+			my $resource = $drbd_data->{device}{$device}{resource};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "resource", value1 => $resource, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Check the state of the backing device on both nodes.
+			my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
+			my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "local_disk_state", value1 => $local_disk_state, 
+				name2 => "peer_disk_state",  value2 => $peer_disk_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Is the peer's disk ready?
+			if ($target eq "local")
+			{
+				if ($local_disk_state !~ /UpToDate/i)
+				{
+					# Not safe to run locally.
+					$target_storage_ready = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "target_storage_ready", value1 => $target_storage_ready, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				if ($peer_disk_state !~ /UpToDate/i)
+				{
+					# Not safe to run on the peer.
+					$target_storage_ready = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "target_storage_ready", value1 => $target_storage_ready, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	# So, is the target healthy?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target_storage_ready",          value1 => $target_storage_ready, 
+		name2 => "anvil_data->health::${target}", value2 => $anvil_data->{health}{$target}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $target_storage_ready) or ($anvil_data->{health}{$target} ne "ok"))
+	{
+		# Abort unless forced.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "switches::force", value1 => $an->data->{switches}{force}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $storage_message = $target_storage_ready ? "#!string!state_0009!#" : "#!string!state_0006!#";
+		my $variables = {
+			server  => $server,
+			target  => $target, 
+			health  => $anvil_data->{health}{$target}, 
+			storage => $storage_message,
+		};
+		if (not $an->data->{switches}{force})
+		{
+			# We're out
+			print $an->String->get({key => "ams_error_0004", variables => $variables})."\n";
+			$an->Log->entry({log_level => 0, message_key => "ams_error_0004", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+			exit(5);
+		}
+		else
+		{
+			# Eff it, we'll do it live!
+			print $an->String->get({key => "ams_warning_0001", variables => $variables})."\n";
+			$an->Log->entry({log_level => 1, message_key => "ams_warning_0001", message_variables => $variables, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	#print Dumper $anvil_data;
+	#print Dumper $clustat_data;
+	#print Dumper $server_data;
+	#print Dumper $lvm_data;
+	#print Dumper $drbd_data;
+	
+	# I'll need this data shortly.
+	$an->data->{server_data} = $server_data;
 	
 	return(0);
 }

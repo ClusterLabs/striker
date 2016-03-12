@@ -1403,20 +1403,46 @@
 <!-- start start-server-show-db-options -->
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0282!#
+			#!string!row_0293!#
 		</td>
 		<td style="text-align: left;">
-			#!replace!server_start_after!#<br />
-			<span class="subtle_text">#!string!explain_0101!#</span>
+			#!replace!server_migration_type!#<br />
+			<span class="subtle_text">#!string!explain_0158!#</span>
 		</td>
 	</tr>
 	<tr>
 		<td class="highlight_good_bold">
-			#!string!row_0283!#
+			#!string!row_0294!#
 		</td>
 		<td style="text-align: left;">
-			<input type="input" id="server_start_delay" name="server_start_delay" value="#!replace!server_start_delay!#" style="width: 100px;"> #!string!suffix_0015!#<br />
-			<span class="subtle_text">#!string!explain_0105!#</span>
+			#!replace!server_pre_migration_script!# <input type="input" id="server_pre_migration_arguments" name="server_pre_migration_arguments" value="#!replace!server_pre_migration_arguments!#" style="width: 250px;"> <br />
+			<span class="subtle_text">#!string!explain_0159!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0295!#
+		</td>
+		<td style="text-align: left;">
+			#!replace!server_post_migration_script!# <input type="input" id="server_post_migration_arguments" name="server_post_migration_arguments" value="#!replace!server_post_migration_arguments!#" style="width: 250px;"> <br />
+			<span class="subtle_text">#!string!explain_0160!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			&nbsp;
+		</td>
+		<td style="text-align: left;">
+			<span class="subtle_text">#!string!explain_0161!#</span>
+		</td>
+	</tr>
+	<tr>
+		<td class="highlight_good_bold">
+			#!string!row_0282!#
+		</td>
+		<td style="text-align: left;">
+			<input type="input" id="server_start_delay" name="server_start_delay" value="#!replace!server_start_delay!#" style="width: 100px;" #!replace!server_start_delay_disabled!#> #!string!message_0452!# #!replace!server_start_after!# <br />
+			<span class="subtle_text">#!string!explain_0101!#</span>
 		</td>
 	</tr>
 	<tr>

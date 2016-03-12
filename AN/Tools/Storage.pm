@@ -196,7 +196,7 @@ sub prep_local_uuid
 			
 			# Set the mode
 			my $directory_mode = 0775;
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "tools_log_0024", message_variables => {
 				directory_mode => sprintf("%04o", $directory_mode), 
 			}, file => $THIS_FILE, line => __LINE__});
 			chmod $directory_mode, $an->data->{path}{email_directory};
@@ -232,7 +232,8 @@ sub prep_local_uuid
 	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# derp
-		$an->Log->entry({log_level => 0, message_key => "scancore_error_0017", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 0, message_key => "error_message_0069", file => $THIS_FILE, line => __LINE__});
+		### TODO: Make this exit 69?
 		exit(7);
 	}
 	

@@ -757,6 +757,168 @@ sub cluster_conf_data
 	return($return);
 }
 
+# This returns a hash reference containing the cluster information from 'clustat'.
+sub get_clustat_data
+{
+	my $self      = shift;
+	my $an        = $self->parent;
+	
+	my $details    = {};
+	my $shell_call = $an->data->{path}{clustat};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Header
+		if ($line =~ /Cluster Status for (.*?) \@/)
+		{
+			$details->{cluster}{name} = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "details->cluster::name", value1 => $details->{cluster}{name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /Member Status: (.*)$/)
+		{
+			my $quorate = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "quorate", value1 => $quorate, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$details->{cluster}{quorate} = lc($quorate) eq "quorate" ? 1 : 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "details->cluster::quorate", value1 => $details->{cluster}{quorate}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Parse out nodes.
+		if ($line =~ /^(.*?) (\d+) (.*)$/)
+		{
+			my $node_name  = $1;
+			my $node_id    = $2;
+			my $node_state = $3;
+			my $cman       = $node_state =~ /online/i    ? 1 : 0;
+			my $rgmanager  = $node_state =~ /rgmanager/i ? 1 : 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "node_name",  value1 => $node_name, 
+				name2 => "node_id",    value2 => $node_id, 
+				name3 => "node_state", value3 => $node_state, 
+				name4 => "cman",       value4 => $cman, 
+				name5 => "rgmanager",  value5 => $rgmanager, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Is this us or our peer?
+			if ($node_state =~ /local/i)
+			{
+				# Us.
+				$details->{node}{'local'} = {
+					name      => $node_name,
+					id        => $node_id,
+					cman      => $cman,
+					rgmanager => $rgmanager
+				},
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "details->node::local::name",      value1 => $details->{node}{'local'}{name}, 
+					name2 => "details->node::local::id",        value2 => $details->{node}{'local'}{id}, 
+					name3 => "details->node::local::cman",      value3 => $details->{node}{'local'}{cman}, 
+					name4 => "details->node::local::rgmanager", value4 => $details->{node}{'local'}{rgmanager}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Peer
+				$details->{node}{peer} = {
+					name      => $node_name,
+					id        => $node_id,
+					cman      => $cman,
+					rgmanager => $rgmanager
+				},
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					name1 => "details->node::peer::name",      value1 => $details->{node}{peer}{name}, 
+					name2 => "details->node::peer::id",        value2 => $details->{node}{peer}{id}, 
+					name3 => "details->node::peer::cman",      value3 => $details->{node}{peer}{cman}, 
+					name4 => "details->node::peer::rgmanager", value4 => $details->{node}{peer}{rgmanager}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Parse out services.
+		if ($line =~ /service:(.*?) (.*?) (.*)$/)
+		{
+			my $service = $1;
+			my $host    = $2;
+			my $status  = $3;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "service", value1 => $service, 
+				name2 => "host",    value2 => $host, 
+				name3 => "status",  value3 => $status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If the service isn't starting, started or stopping, the host is useless.
+			if (($status !~ /start/) && ($status !~ /stopping/))
+			{
+				$status = "--";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "status", value1 => $status, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$details->{service}{$service} = {
+				host   => $host,
+				status => $status,
+			};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "details->service::${service}::host",   value1 => $details->{service}{$service}{host}, 
+				name2 => "details->service::${service}::status", value2 => $details->{service}{$service}{status}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Parse out servers.
+		if ($line =~ /vm:(.*?) (.*?) (.*)$/)
+		{
+			my $server = $1;
+			my $host   = $2;
+			my $status = $3;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "server", value1 => $server, 
+				name2 => "host",   value2 => $host, 
+				name3 => "status", value3 => $status, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If the server isn't starting, started or stopping, the host is useless.
+			if (($status !~ /start/) && ($status !~ /stopping/))
+			{
+				$status = "--";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "status", value1 => $status, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			$details->{server}{$server} = {
+				host   => $host,
+				status => $status,
+			};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
+				name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	return($details);
+}
+
 # This returns an array reference of the servers found on this Anvil!
 sub get_cluster_server_list
 {

@@ -305,11 +305,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0098"><![CDATA[This can be used to specify a backup NTP server, if available.]]></key>
 		<key name="explain_0099"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address or domain name.<br />Please enter the value as a <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a> or <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
 		<key name="explain_0100"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
-		<key name="explain_0101"><![CDATA[When an #!string!brand_0003!# node starts, it will boot any servers that it finds powered off, <br />unless is was gracefully shut down by a user. If you want to control boot ordering,<br />choose the server you want this machine to start after.]]></key>
+		<key name="explain_0101"><![CDATA[When an #!string!brand_0003!# node starts, it will boot any servers that it finds powered off<br />unless is was gracefully shut down by a user. You can use this option to create a boot order<br />and timing. The left field can be a delay (in seconds) to wait before this server is booted.<br />If set to '<i>#!string!title_0105!#</i>', the server will not be booted.]]></key>
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
-		<key name="explain_0105"><![CDATA[This server will boot up this number of seconds after the selected '#!string!row_0282!#' server.<br />This is ignored if '#!variable!row_0282!#' is either not set or set to '#!string!title_0105!#'.<br />Note that the server will not booted if it was gracefully shut down by a user.]]></key>
+		<key name="explain_0105"><![CDATA[..free..]]></key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
@@ -362,6 +362,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0155"><![CDATA[The UPSes will now be told to power off.]]></key>
 		<key name="explain_0156"><![CDATA[The MTU, or "Maximum Tranmission Unit", indicates the largest amount of data that can be sent in a given "packet" of data on a network.<br />In most cases, leave this as '1500'.<br />If you are certain all of your network equipment supports a higher MTU though, increasing this may improve performance.<br /><span class="highlight_warning_bold">Warning</span>: Do <b>NOT</b> change this unless you know for sure that the larger size will be supported!]]></key>
 		<key name="explain_0157"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" is too small. The smallest valid MTU size is '576' (see RFC 879).]]></key>
+		<key name="explain_0158"><![CDATA[This controls how a server migrates to the peer node.<br />If it is "#!string!state_0126!#", the server is migrated while it is running, without service interruption.<br />In some rare cases, a "#!string!state_0127!#" migration, where the server is gracefully shut down<br />and then rebooted on the new node, may be preferred.]]></key>
+		<key name="explain_0159"><![CDATA[You can select a script to run <b>before</b> migrating a server.<br />The text field to the right can be used to pass arguments to your script]]></key>
+		<key name="explain_0160"><![CDATA[You can select a script to run <b>after</b> migrating a server.<br />The text field to the right can be used to pass arguments to your script]]></key>
+		<key name="explain_0161"><![CDATA[<span class="highlight_note">Note</span>: 'Pre' and 'Post' migration scripts are not triggered on a normal boot or recovery.<br />Scripts can be uploaded in the <a href="mediaLibrary?cluster=#!conf!cgi::cluster!#" target="_new">#!string!button_0023!#</a>.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -699,8 +703,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0279">NTP 2</key>
 		<key name="row_0280">Booting Server</key>
 		<key name="row_0281">Adding</key>
-		<key name="row_0282">Start After</key>
-		<key name="row_0283">Start Delay</key>
+		<key name="row_0282">Boot Order</key>
+		<key name="row_0283">..free..</key>
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
@@ -710,6 +714,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0290">Configuring SELinux</key>
 		<key name="row_0291">MTU Byte Size</key>
 		<key name="row_0292">Synchronized</key>
+		<key name="row_0293">Migration Type</key>
+		<key name="row_0294">Pre-Migration Script</key>
+		<key name="row_0295">Post-Migration Script</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1063,6 +1070,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0123">Failed to start</key>
 		<key name="state_0124">Drive is empty</key>
 		<key name="state_0125">Disc in drive</key>
+		<key name="state_0126">Live</key>
+		<key name="state_0127">Cold</key>
+		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
 		<key name="title_0001">Please choose an #!string!brand_0003!#</key>
@@ -1093,7 +1103,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0026">Requested CPU count was higher than available.</key>
 		<key name="title_0027">You need to power off the server for the changes to take effect.</key>
 		<key name="title_0028">There are two ways to do this:</key>
-		<key name="title_0029">It looks like nothing was changed.</key>
+		<key name="title_0029"><![CDATA[It looks like nothing was changed.<br /><span class="subtle_text"><span class="highlight_note">Note</span>: Arguments without a script are ignored.</span>]]></key>
 		<key name="title_0030"><![CDATA[Inserting <span class="fixed_width">#!variable!media!#</span> into <span class="fixed_width">#!variable!drive!#</span>...]]></key>
 		<key name="title_0031"><![CDATA[Ejecting <span class="fixed_width">#!variable!device!#</span>...]]></key>
 		<key name="title_0032"><![CDATA[Manage <span class="fixed_width">#!variable!server!#</span>.]]></key>
@@ -1579,7 +1589,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0305"><![CDATA[The drive in <span class="fixed_width">#!variable!device!#</span> appears to not be ready.]]></key>
 		<key name="message_0306">Please reload to try and read the disc again.</key>
 		<key name="message_0307"><![CDATA[The disc in <span class="fixed_width">#!variable!device!#</span> appears to have been removed.]]></key>
-		<key name="message_0308">...free...</key>
+		<key name="message_0308"><![CDATA[<span class="highlight_unavailable">(no other servers exists)</span>]]></key>
 		<key name="message_0309">It looks like the upload failed.</key>
 		<key name="message_0310">It looks like the upload succeeded, unlinking the source image.</key>
 		<key name="message_0311">The disc will be converted into an image file.</key>
@@ -1723,6 +1733,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0449"><![CDATA[Merged our configuration with: [<span class="highlight_detail">#!variable!peer!#</span>]<br />Setup Virtual Machine Manager (if it is installed)]]>.</key>
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
 		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
+		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
 		
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
@@ -2498,7 +2509,7 @@ Deadline Scheduler Configuration (sda):
 DESCRIPTION
 
 This program migrates the named server to the peer node using the 'server' ->
-'server_migration_type' value in the #!variable!brand_0019!# database. If the server
+'server_migration_type' value in the #!string!brand_0019!# database. If the server
 isn't found, a live-migration is performed.
 
 This program will not migrate a server to a node whose health is not 'ok'
@@ -2531,6 +2542,30 @@ SUPPORT
 		
 		<!-- logs -->
 		<key name="ams_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- warnings -->
+		<key name="ams_warning_0001">
+The server: [#!variable!server!#] will be migrated to the node: [#!variable!target!#].
+Either the node's healthy is not OK and/or the storage under the server is not ready.
+* Health:  [#!variable!health!#]
+* Storage: [#!variable!storage!#]
+[ Warning ] - Migration has been forced, so we're proceeding.
+		</key>
+		<key name="ams_warning_0002">Unable to connect to a #!string!brand_0019!# database. The migration type will be: [#!variable!migration_type!#] and no pre or post migration scripts will be invoked.</key>
+		<key name="ams_warning_0003">The pre-migration script: [#!variable!script!#] was not found, skipping.</key>
+		<key name="ams_warning_0004">The post-migration script: [#!variable!script!#] was not found, skipping.</key>
+		
+		<!-- errors -->
+		<key name="ams_error_0001">The server: [#!variable!server!#] is not running (current state: [#!variable!state!#]), unable to proceed.</key>
+		<key name="ams_error_0002">The resource manager isn't running on this node, unable to proceed.</key>
+		<key name="ams_error_0003">The resource manager isn't running on the peer node, unable to proceed.</key>
+		<key name="ams_error_0004">
+Unable to migrate the server: [#!variable!server!#] to the node: [#!variable!target!#].
+Either the node's healthy is not OK and/or the storage under the server is not ready.
+* Health:  [#!variable!health!#]
+* Storage: [#!variable!storage!#]
+[ Note ] - Migration can be forced with '--force', if the situation is dire enough. 
+		</key>
 		
 		
 		<!-- striker-delete-anvil -->

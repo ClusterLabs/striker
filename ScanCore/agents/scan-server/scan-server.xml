@@ -55,11 +55,12 @@ https://alteeve.ca/w/Support                             Alteeve's Niche! Inc.
 		<key name="scan_server_message_0004">
 
 Details:
-* UUID:          [#!variable!uuid!#]
-* Current Host:  [#!variable!host!#]
-* Current State: [#!variable!state!#]
-* Start After:   [#!variable!start_after!#]
-* Start Delay:   [#!variable!start_delay!#]
+* UUID:           [#!variable!uuid!#]
+* Current Host:   [#!variable!host!#]
+* Current State:  [#!variable!state!#]
+* Start After:    [#!variable!start_after!#]
+* Start Delay:    [#!variable!start_delay!#]
+* Migration Type: [#!variable!migration_type!#]
 * Definition:
 ====
 #!variable!definition!#
@@ -102,5 +103,9 @@ Old: [#!variable!diff!#]
 New: [#!variable!new!#]
 Old: [#!variable!diff!#]
 		</key>
+		
+		<!-- These are state strings added to other strings. -->
+		<key name="scan_server_state_0001">Live</key>
+		<key name="scan_server_state_0002">Cold (Power Cycle)</key>
 	</lang>
 </strings>

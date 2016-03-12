@@ -57,9 +57,9 @@ sub do_db_write
 	# If I don't have a query, die.
 	if (not $query)
 	{
-		print $an->String->get({ key => "scancore_message_0002", variables => {
-			title	=>	$an->String->get({key => "scancore_title_0003"}),
-			message	=>	$an->String->get({key => "scancore_error_0011"}),
+		print $an->String->get({ key => "tools_log_0021", variables => {
+			title	=>	$an->String->get({key => "tools_title_0003"}),
+			message	=>	$an->String->get({key => "error_title_0026"}),
 		}})."\n";
 		exit(1);
 	}
@@ -123,7 +123,7 @@ sub do_db_write
 			
 			# Just one query.
 			#print "id: [$id], query:\n============\n$query\n============\n";
-			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0012", message_variables => { 
+			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
 								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
 								db_error => $DBI::errstr
@@ -170,7 +170,7 @@ sub do_db_query
 	if (not defined $an->data->{dbh}{$id})
 	{
 		# Can't proceed on an undefined connection...
-		$an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0019", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
 			server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 		}, code => 4, file => "$THIS_FILE", line => __LINE__});
 	}
@@ -183,10 +183,10 @@ sub do_db_query
 			name4 => "line",   value4 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0001", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
+	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
 	# Execute on the query
-	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0002", message_variables => {
+	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 
 					server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
 					db_error => $DBI::errstr
@@ -226,7 +226,7 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file  = $parameter->{file};
 	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
@@ -291,7 +291,7 @@ sub connect_to_databases
 		if ($@)
 		{
 			# Something went wrong...
-			$an->Alert->warning({message_key => "scancore_warning_0006", message_variables => {
+			$an->Alert->warning({message_key => "warning_message_0008", message_variables => {
 				id    => $id,
 				host  => $host,
 				name  => $name,
@@ -302,39 +302,39 @@ sub connect_to_databases
 			if (not defined $DBI::errstr)
 			{
 				# General error
-				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => {
 					dbi_error	=>	$@,
 					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => {
 					dbi_error	=>	$@,
 				}};
 			}
 			elsif ($DBI::errstr =~ /No route to host/)
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0002", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0010", message_variables => {
 					port	=>	$port,
 					quiet	=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0002", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0010", message_variables => {
 					port	=>	$port,
 				}};
 			}
 			elsif ($DBI::errstr =~ /no password supplied/)
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0003", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0011", message_variables => {
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
 					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0003", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0011", message_variables => {
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
 				}};
 			}
 			elsif ($DBI::errstr =~ /password authentication failed for user/)
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0004", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0012", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
 					user		=>	$user,
@@ -342,7 +342,7 @@ sub connect_to_databases
 					config_file	=>	$an->data->{path}{striker_config},
 					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0004", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0012", message_variables => {
 					user		=>	$user,
 					id		=>	$id,
 					config_file	=>	$an->data->{path}{striker_config},
@@ -350,13 +350,13 @@ sub connect_to_databases
 			}
 			elsif ($DBI::errstr =~ /Connection refused/)
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0011", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0013", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
 					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0011", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0013", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
@@ -364,13 +364,13 @@ sub connect_to_databases
 			}
 			elsif ($DBI::errstr =~ /Temporary failure in name resolution/i)
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0014", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0014", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
 					quiet		=>	$quiet,
 				}, file	 => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0014", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0014", message_variables => {
 					name		=>	$name,
 					host		=>	$host,
 					port		=>	$port,
@@ -378,11 +378,11 @@ sub connect_to_databases
 			}
 			else
 			{
-				$an->Alert->warning({ message_key => "scancore_warning_0005", message_variables => {
+				$an->Alert->warning({ message_key => "warning_message_0009", message_variables => {
 					dbi_error	=>	$DBI::errstr,
 					quiet		=>	$quiet,
 				}, file => $THIS_FILE, line => __LINE__});
-				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "scancore_warning_0005", message_variables => {
+				push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0009", message_variables => {
 					dbi_error	=>	$DBI::errstr,
 				}};
 			}
@@ -393,7 +393,7 @@ sub connect_to_databases
 			$connections++;
 			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
-			$an->Log->entry({log_level => 3, title_key => "scancore_title_0004", message_key => "scancore_log_0004", message_variables => {
+			$an->Log->entry({log_level => 3, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
 				host		=>	$host,
 				port		=>	$port,
 				name		=>	$name,
@@ -468,9 +468,9 @@ sub connect_to_databases
 	if (not $connections)
 	{
 		# Failed to connect to any database.
-		print $an->String->get({ key => "scancore_message_0002", variables => {
-			title		=>	$an->String->get({key => "scancore_title_0003"}),
-			message		=>	$an->String->get({key => "scancore_error_0004"}),
+		print $an->String->get({ key => "tools_log_0021", variables => {
+			title		=>	$an->String->get({key => "tools_title_0003"}),
+			message		=>	$an->String->get({key => "error_message_0060"}),
 		}})."\n";
 		exit(1);
 	}
@@ -562,7 +562,7 @@ sub connect_to_databases
 					alert_level		=>	"warning", 
 					alert_agent_name	=>	"ScanCore",
 					alert_title_key		=>	"an_alert_title_0006",
-					alert_message_key	=>	"scancore_cleared_0001",
+					alert_message_key	=>	"cleared_message_0001",
 					alert_message_variables	=>	{
 						name			=>	$an->data->{scancore}{db}{$id}{name},
 						host			=>	$an->data->{scancore}{db}{$id}{host},
@@ -593,7 +593,7 @@ sub connect_to_databases
 	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# derp
-		$an->Log->entry({log_level => 0, message_key => "scancore_error_0017", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 0, message_key => "error_message_0061", file => $THIS_FILE, line => __LINE__});
 		
 		# Disconnect and set the connection count to '0'.
 		$an->DB->disconnect_from_databases();
@@ -828,7 +828,7 @@ AND
 		if ($an->data->{scancore}{sql}{source_updated_time} > $an->data->{scancore}{db}{$id}{last_updated})
 		{
 			# This database is behind
-			$an->Log->entry({log_level => 1, message_key => "scancore_log_0031", message_variables => {
+			$an->Log->entry({log_level => 1, message_key => "tools_log_0022", message_variables => {
 				id => $id, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{scancore}{db_to_update}{$id}{behind} = 1;
@@ -861,7 +861,7 @@ sub get_sql_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "get_sql_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "get_sql_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	# Make the variables easier to read
 	my $id       = $an->data->{scancore}{sql}{source_db_id};
@@ -884,7 +884,9 @@ sub get_sql_schema
 	# Now I need to connect to the remote host and dump the DB schema. I need to do this by setting 
 	# .pgpass.
 	my $shell_call = "$pgpass";
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	print $file_handle "$host:*:*:$user:$password\n";
 	close $file_handle;
@@ -897,8 +899,10 @@ sub get_sql_schema
 	$shell_call =  $an->data->{path}{pg_dump}." --host $host";
 	$shell_call .= " --port $port" if $port;
 	$shell_call .= " --username $user --schema-only $name 2>&1 |";
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0006", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open ($file_handle, "$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -1164,7 +1168,7 @@ sub verify_host_uuid
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Get->uuid({get => "host_uuid"});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -1213,7 +1217,7 @@ sub load_schema
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "load_schema" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file = $parameter->{file} ? $parameter->{file} : "";
 	my $id   = $parameter->{id}   ? $parameter->{id}   : "";
@@ -1229,13 +1233,13 @@ sub load_schema
 		# We can't load the schema into all. That's not safe as DBs
 		# can't be sync'ed until their schema exists.
 		print $an->String->get({
-			key		=>	"scancore_message_0002",
+			key		=>	"tools_log_0021",
 			variables	=>	{
-				title		=>	$an->String->get({key => "scancore_title_0003"}),
-				message		=>	$an->String->get({key => "scancore_error_0007"}),
+				title		=>	$an->String->get({key => "tools_title_0003"}),
+				message		=>	$an->String->get({key => "error_message_0062"}),
 			},
 		})."\n";
-		exit(1);
+		exit(62);
 	}
 	
 	# Do I have a file to load?
@@ -1243,43 +1247,43 @@ sub load_schema
 	{
 		# what file?
 		print $an->String->get({
-			key		=>	"scancore_message_0002",
+			key		=>	"tools_log_0021",
 			variables	=>	{
-				title		=>	$an->String->get({key => "scancore_title_0003"}),
-				message		=>	$an->String->get({key => "scancore_error_0008"}),
+				title		=>	$an->String->get({key => "tools_title_0003"}),
+				message		=>	$an->String->get({key => "error_message_0063"}),
 			},
 		})."\n";
-		exit(1);
+		exit(63);
 	}
 	# Does the file exist?
 	if (not -e $file)
 	{
 		# file not found
 		print $an->String->get({
-			key		=>	"scancore_message_0002",
+			key		=>	"tools_log_0021",
 			variables	=>	{
-				title		=>	$an->String->get({key => "scancore_title_0003"}),
-				message		=>	$an->String->get({key => "scancore_error_0009", variables => { file => $file }}),
+				title		=>	$an->String->get({key => "tools_title_0003"}),
+				message		=>	$an->String->get({key => "error_message_0064", variables => { file => $file }}),
 			},
 		})."\n";
-		exit(1);
+		exit(64);
 	}
 	# And can I read it?
 	if (not -r $file)
 	{
 		# file found, but can't be read. <sad_trombine />
 		print $an->String->get({
-			key		=>	"scancore_message_0002",
+			key		=>	"tools_log_0021",
 			variables	=>	{
-				title		=>	$an->String->get({key => "scancore_title_0003"}),
-				message		=>	$an->String->get({key => "scancore_error_0010", variables => { file => $file }}),
+				title		=>	$an->String->get({key => "tools_title_0003"}),
+				message		=>	$an->String->get({key => "error_message_0065", variables => { file => $file }}),
 			},
 		})."\n";
-		exit(1);
+		exit(65);
 	}
 	
 	# Tell the user we're loading a schema
-	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0021", message_variables => {
+	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0023", message_variables => {
 		name => $an->data->{scancore}{db}{$id}{name}, 
 		host => $an->data->{scancore}{db}{$id}{host}, 
 		file => $file
@@ -1292,8 +1296,10 @@ sub load_schema
 	
 	# Create the read shell call.
 	my $shell_call = $file;
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;
@@ -1341,20 +1347,20 @@ sub initialize_db
 	if (not $id)
 	{
 		# what DB?
-		print $an->String->get({key => "scancore_message_0002", variables => {
-			title		=>	$an->String->get({key => "scancore_title_0003"}),
-			message		=>	$an->String->get({key => "scancore_error_0005"}),
+		print $an->String->get({key => "tools_log_0021", variables => {
+			title		=>	$an->String->get({key => "tools_title_0003"}),
+			message		=>	$an->String->get({key => "error_message_0067"}),
 		}})."\n";
-		exit(1);
+		exit(67);
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "id", value1 => $id
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user we need to initialize
-	$an->Log->entry({log_level => 1, title_key => "scancore_title_0005", message_key => "scancore_log_0009", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success = 1;
 	
@@ -1371,8 +1377,10 @@ sub initialize_db
 	
 	# Create the read shell call.
 	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 3, message_key => "scancore_log_0007", message_variables => {shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "scancore_title_0003", message_key => "scancore_error_0003", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
 	while (<$file_handle>)
 	{
 		chomp;

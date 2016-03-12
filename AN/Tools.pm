@@ -499,6 +499,7 @@ sub _set_paths
 	$an->data->{path}{status}          = "/shared/status";
 	$an->data->{path}{initd}           = "/etc/init.d";
 	$an->data->{path}{shared}          = "/shared";
+	$an->data->{path}{shared_files}    = "/shared/files";
 	
 	# Tools
 	$an->data->{path}{'striker-delayed-run'} = "/sbin/striker/striker-delayed-run";
