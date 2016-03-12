@@ -8417,7 +8417,7 @@ sub control_install_target
 {
 	my ($conf, $action) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "control_install_target" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "control_install_target" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "action", value1 => $action, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -8527,8 +8527,7 @@ fi
 	}
 	else
 	{
-		# We don't start libvirtd, period.
-		# Stop shorewall and start iptables
+		# We don't start libvirtd, period. Stop shorewall and start iptables
 		$shell_call .= "
 if [ -e '$conf->{path}{initd_libvirtd}' ];
 then
@@ -8542,7 +8541,7 @@ then
         then 
             echo 'libvirtd stopped'
         else
-#             echo 'libvirtd failed to stop'
+            echo 'libvirtd failed to stop'
         fi;
     else
         echo 'libvirtd not running'
@@ -8590,7 +8589,7 @@ then
     if [ \"\$?\" -eq \"0\" ];
     then 
         echo 'dhcpd running, stopping it'
-        $conf->{path}{control_dhcpd} restart
+        $conf->{path}{control_dhcpd} stop
         $conf->{path}{control_dhcpd} status
         if [ \"\$?\" -eq \"3\" ];
         then 
@@ -8607,7 +8606,7 @@ fi
 ";
 	}
 	$shell_call .= "$conf->{path}{control_dhcpd} $action; echo rc:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
@@ -8794,7 +8793,7 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Stop libvirtd, stop iptables, start shorewall, start dhcpd
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "start");
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "dhcpd_ok",     value1 => $dhcpd_rc,
 				name2 => "libvirtd_rc",  value2 => $libvirtd_rc,
 				name3 => "shorewall_rc", value3 => $shorewall_rc,
@@ -8807,8 +8806,7 @@ sub show_anvil_selection_and_striker_options
 			# 2 == was running but stopped
 			# 3 == running and failed to stop.
 			
-			# If libvirtd was stopped (or failed to stop), warn the
-			# user.
+			# If libvirtd was stopped (or failed to stop), warn the user.
 # 			if ($libvirtd_rc eq "2")
 # 			{
 # 				# Warn the user that we turned off libvirtd.
@@ -8902,8 +8900,8 @@ sub show_anvil_selection_and_striker_options
 		{
 			# Disable it.
 			my ($dhcpd_rc, $libvirtd_rc, $shorewall_rc, $iptables_rc) = control_install_target($conf, "stop");
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "dhcpd_ok",     value1 => $dhcpd_rc,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "dhcpd_rc",     value1 => $dhcpd_rc,
 				name2 => "libvirtd_rc",  value2 => $libvirtd_rc,
 				name3 => "shorewall_rc", value3 => $shorewall_rc,
 				name4 => "iptables_rc",  value4 => $iptables_rc,
@@ -8945,42 +8943,21 @@ sub show_anvil_selection_and_striker_options
 			my $class   = "highlight_warning_bold";
 			if ($dhcpd_rc eq "0")
 			{
+				$row     = "#!string!row_0024!#";
+				$message = "#!string!message_0435!#";
+			}
+			if ($dhcpd_rc eq "2")
+			{
+				# Success!
 				$row     = "#!string!row_0083!#";
 				$message = "#!string!message_0414!#";
 				$class   = "highlight_good_bold";
 			}
-			if ($dhcpd_rc eq "2")
-			{
-				$message = "#!string!message_0415!#";
-			}
-			print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
-				row	=>	$row,
+			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
 				class	=>	$class,
+				row	=>	$row,
 				message	=>	$message,
 			});
-			
-			### NOTE: At this time, 'stop' action should never stop
-			###       libvirtd, so this *should* always return 0.
-			# If libvirtd was stopped (or failed to stop), warn the
-			# user.
-			if ($libvirtd_rc eq "2")
-			{
-				# Warn the user that we turned off libvirtd.
-				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
-					class	=>	"highlight_warning_bold",
-					row	=>	"#!string!row_0044!#",
-					message	=>	"#!string!message_0117!#",
-				});
-			}
-			elsif ($libvirtd_rc eq "3")
-			{
-				# Warn the user that we failed to turn off libvirtd.
-				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
-					class	=>	"highlight_warning_bold",
-					row	=>	"#!string!row_0044!#",
-					message	=>	"#!string!message_0364!#",
-				});
-			}
 		}
 	}
 	

@@ -445,7 +445,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0021">Description</key>
 		<key name="row_0022">Tracking URL</key>
 		<key name="row_0023">Owner</key>
-		<key name="row_0024">...free...</key>
+		<key name="row_0024">No Change</key>
 		<key name="row_0025">Password</key>
 		<key name="row_0026">Mail Settings</key>
 		<key name="row_0027">Mail Server Address</key>
@@ -1717,7 +1717,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0432"><![CDATA[If you think the problem is now resolved, you can try re-running the install.]]></key>
 		<key name="message_0433"><![CDATA[If you a node was part of an #!string!brand_0003!# before, it might be seeing<br />the old <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Clustered_Logical_Volume_Management" target="_new">LVM</a> signature from the previous install. There is no safe way to determine<br />if this is the case, or if this partition contains real data. So for safety, the<br />install will now abort. If you are sure that there is no data on the partition, you<br />can wipe any data using the 'dd' command. To do this, you need to log into the<br />node(s) and run:<br /><br /><span class="code">dd if=/dev/zero of=/dev/X bs=4M count=1000</span><br /><br />Where '/dev/X' is replaced by the device in the error(s) above.<br /><span class="highlight_dangerous_bold">BE WARNED!</span><br />The above command, if misused, can destroy all data on the node!<br />]]></key>
 		<key name="message_0434"><![CDATA[It looked like the server install should have started, but it wasn't found when checked.]]></key>
-		<key name="message_0435">...free...</key>
+		<key name="message_0435"><![CDATA[The "#!string!button_0056!#" function is not available.]]></key>
 		<key name="message_0436"><![CDATA[Power-down initiated. The node should offline in a few moments.<br /><span class="highlight_warning_bold">All devices powered by your UPS(es) will lose power shortly</span>!<br />This likely includes this #!string!brand_0002!#.<br />The UPS(es) will restore power after their configured "sleep time", usually five minutes.<br />You can monitor this by examining the LCD panel on the UPSes (if equipped).If the dashboards are running #!string!brand_0015!# with the 'nodemonitor' scan agent,<br />and if the dashboards are configured to power on when AC is restored,<br />your #!string!brand_0003!# should boot shortly there after.<br />If the nodes are using the #!string!brand_0016!# tool,<br />then your server(s) should come online automatically.]]></key>
 		<key name="message_0437"><![CDATA[Failed to provision the new server: [#!variable!server!#].<br />It is possible that something on the node: [#!variable!node!#] is using too much RAM.<br />#!string!brand_0014!#]]></key>
 		<key name="message_0438"><![CDATA[The provision script: [#!variable!provision_script!#] appears to be incomplete.<br />The error message received when trying to run it was:<br /><span class="highlight_detail">#!variable!error!#</span><br />#!string!brand_0014!#]]></key>
