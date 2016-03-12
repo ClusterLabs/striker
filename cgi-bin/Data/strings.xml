@@ -1072,6 +1072,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0125">Disc in drive</key>
 		<key name="state_0126">Live</key>
 		<key name="state_0127">Cold</key>
+		<key name="state_0128"><![CDATA[<span class="highlight_warning">Unknown (was: [#!variable!host!#])</span>]]></key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -1325,7 +1326,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0058">Drive is coming online</key>
 		<key name="message_0059"><![CDATA[You've requested that the new RAM for this server be <span class="fixed_width">#!variable!requested_ram!#</span>.<br />Unfortunately, the highest you can use is <span class="fixed_width">#!variable!max_ram!#</span>.<br />Did someone else allocate some of the free RAM to another server?<br />No changes were made.]]></key>
 		<key name="message_0060"><![CDATA[You've requested that the CPU count for this server be <span class="fixed_width">#!variable!requested_cpus!#</span>.<br />Unfortunately, the highest you can use is <span class="fixed_width">#!variable!max_cpus!#</span>.<br />No changes were made.]]></key>
-		<key name="message_0061"><![CDATA[<br />Setting the RAM to <span class="fixed_width">#!variable!ram!# #!variable!ram_suffix!#</span>, the number of CPUs to <span class="fixed_width">#!variable!requested_cpus!#</span> and the boot device to '<span class="fixed_width">#!variable!requested_boot_device!#</span>'.<br /><br />]]></key>
+		<key name="message_0061"><![CDATA[<br />Setting the RAM to <span class="highlight_detail">#!variable!ram!# #!variable!ram_suffix!#</span>, the number of CPUs to <span class="highlight_detail">#!variable!requested_cpus!#</span> and the boot device to '<span class="highlight_detail">#!variable!requested_boot_device!#</span>'.<br /><br />]]></key>
 		<key name="message_0062">Gracefully power off and then boot back up the server.</key>
 		<key name="message_0063"><![CDATA[While logged into your server, directly shut the OS down.<br /><span class="fixed_width"> &nbsp;</span> The #!string!brand_0003!# will automatically restart the server with the new settings.]]></key>
 		<key name="message_0064">Please don't just reboot. The configuration file is read on initial boot only.</key>
@@ -1616,8 +1617,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0332">No disc drive device name was given. This is probably a program error. #!string!brand_0011!#.</key>
 		<key name="message_0333">It looks like the name you gave matched an existing directory name.</key>
 		<key name="message_0334"><![CDATA[The '<span class="fixed_width">expect</span>' program is not installed (or it was not found at '<span class="fixed_width">#!conf!path::expect!#</span>').<br />If you have not setup <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Copy_Public_Keys_to_Enable_SSH_Without_a_Password" target="_new">passwordless SSH</a>, then access to the node(s) will fail.]]></key>
-		<key name="message_0335">...free...</key>
-		<key name="message_0336">...free...</key>
+		<key name="message_0335">The new definition file is ok.</key>
+		<key name="message_0336">The new definition file appears to be corrupt. Restoring the backup now.</key>
 		<key name="message_0337"><![CDATA[It looks like there was a program error!]]></key>
 		<key name="message_0338"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are empty.]]></key>
 		<key name="message_0339"><![CDATA[I was about to write the new definition file: [<span class="fixed_width">#!variable!definition_file!#</span>],<br />but it appears the contents are not formed properly.]]></key>

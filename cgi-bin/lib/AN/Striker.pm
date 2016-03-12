@@ -229,7 +229,7 @@ sub process_task
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::task",    value1 => $conf->{cgi}{task}, 
@@ -3055,7 +3055,7 @@ sub change_vm
 	my $requested_cpus        =  $conf->{cgi}{cpu_cores};
 	my $current_boot_device   =  $conf->{vm}{$vm}{current_boot_device};
 	my $requested_boot_device =  $conf->{cgi}{boot_device};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "vm",             value1 => $vm,
 		name2 => "requested_ram",  value2 => $requested_ram,
 		name3 => "current_ram",    value3 => $current_ram,
@@ -3097,7 +3097,7 @@ sub change_vm
 		title	=>	$title,
 	});
 	
-	# If the script was removed, wipe the arguments as well.
+	# If either script was removed, wipe its arguments as well.
 	if (not $new_server_pre_migration_script)
 	{
 		$new_server_pre_migration_arguments = "";
@@ -3107,7 +3107,17 @@ sub change_vm
 		$new_server_post_migration_arguments = "";
 	}
 	
-	# Did the note change (and do I have a connection to a database)?
+	# If the 'server_start_delay' field was disabled, it would have passed nothing at all. In that case,
+	# set it to the old value to avoid a needless DB update.
+	if ($new_server_start_delay eq "")
+	{
+		$new_server_start_delay = $old_server_start_delay;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "new_server_start_delay", value1 => $new_server_start_delay,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Did any DB values change (and do I have a connection to a database)?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::db_connections", value1 => $an->data->{sys}{db_connections},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3194,16 +3204,20 @@ WHERE
 	}
 	
 	# Did something in the hardware change?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "current_ram",           value1 => $current_ram,
+		name2 => "requested_ram",         value2 => $requested_ram,
+		name3 => "requested_cpus",        value3 => $requested_cpus,
+		name4 => "current_cpus",          value4 => $current_cpus,
+		name5 => "current_boot_device",   value5 => $current_boot_device,
+		name6 => "requested_boot_device", value6 => $requested_boot_device,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($current_ram         ne $requested_ram) or 
 	    ($current_cpus        ne $requested_cpus) or
 	    ($current_boot_device ne $requested_boot_device))
 	{
 		# Something has changed. Make sure the request is sane,
-		$hardware_changed = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "hardware_changed", value1 => $hardware_changed,
-		}, file => $THIS_FILE, line => __LINE__});
-		my $max_cpus         = $conf->{resources}{total_threads};
+		my $max_cpus = $conf->{resources}{total_threads};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "requested_ram",  value1 => $requested_ram,
 			name2 => "max_ram",        value2 => $max_ram,
@@ -3239,17 +3253,25 @@ WHERE
 		else
 		{
 			# Request is sane. Archive the current definition.
-			my ($backup) = archive_file($conf, $node, $definition_file, 1);
+			$hardware_changed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "hardware_changed", value1 => $hardware_changed,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my ($backup_file) = archive_file($conf, $node, $definition_file, 1);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "backup_file", value1 => $backup_file,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Make the boot device easier to understand.
 			my $say_requested_boot_device = $requested_boot_device;
 			if ($requested_boot_device eq "hd")
 			{
-				$say_requested_boot_device = "Hard drive";
+				$say_requested_boot_device = "#!string!device_0001!#";
 			}
 			elsif ($requested_boot_device eq "cdrom")
 			{
-				$say_requested_boot_device = "Optical drive";
+				$say_requested_boot_device = "#!string!device_0002!#";
 			}
 			
 			# Rewrite the XML file.
@@ -3259,9 +3281,9 @@ WHERE
 				requested_cpus		=>	$requested_cpus,
 				requested_boot_device	=>	$say_requested_boot_device,
 			}});
-			my $new_definition = "cat $definition_file";
+			my $new_definition = "";
 			my $in_os          = 0;
-			my $shell_call     = "";
+			my $shell_call     = $an->data->{path}{cat}." $definition_file";
 			my $password       = $conf->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -3277,7 +3299,7 @@ WHERE
 			});
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3386,8 +3408,8 @@ WHERE
 					{
 						$new_definition .= "$line\n";
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "vm",                          value1 => $vm,
-							name2 => "Adding to 'os' element line", value2 => $line,
+							name1 => "vm",   value1 => $vm,
+							name2 => "line", value2 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
 						next;
 					}
@@ -3404,11 +3426,14 @@ WHERE
 			$new_definition =~ s/(\S)\s+$/$1\n/;
 			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "new definition", value1 => $new_definition,
+				name1 => "new_definition", value1 => $new_definition,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# See if I need to insert or edit any network interface driver elements.
 			$new_definition = update_network_driver($conf, $new_definition);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "new_definition", value1 => $new_definition,
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Write the new definition file.
 			$shell_call = "echo \"$new_definition\" > $definition_file && chmod 644 $definition_file";
@@ -3435,12 +3460,66 @@ WHERE
 				});
 			}
 			
+			# Sanity check the new XML and restore the backup if anything goes wrong.
+			my $say_ok  =  AN::Common::get_string($conf, {key => "message_0335"});
+			my $say_bad =  AN::Common::get_string($conf, {key => "message_0336"});
+			   $say_ok  =~ s/'/\\'/g;
+			   $say_ok  =~ s/\\/\\\\/g;
+			   $say_bad =~ s/'/\\'/g;
+			   $say_bad =~ s/\\/\\\\/g;
+			$shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '</domain>' $definition_file);
+then
+    echo '$say_ok'; 
+else 
+    echo revert
+    echo '$say_bad';
+    ".$an->data->{path}{cp}." -f $backup_file $definition_file
+fi
+";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /revert/)
+				{
+					$hardware_changed = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "hardware_changed", value1 => $hardware_changed,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					print AN::Common::template($conf, "common.html", "shell-call-output", {
+						line	=>	$line,
+					});
+				}
+			}
+			# This just puts a space under the output above.
+			print AN::Common::template($conf, "common.html", "shell-call-output", {
+				line	=>	"&nbsp;",
+			});
+			
 			# Wipe and re-read the definition file's XML and reset the amount of RAM and the 
 			# number of CPUs allocated to this machine.
 			$conf->{vm}{$vm}{xml}     = [];
 			@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "requested_ram (KiB)",     value1 => $requested_ram,
+				name1 => "requested_ram",           value1 => $requested_ram,
 				name2 => "vm::${vm}::details::ram", value2 => $conf->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -3961,7 +4040,7 @@ sub manage_vm
 	}
 	
 	# First up, if the cluster is not running, go no further.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node1}::daemon::gfs2::exit_code", value1 => $conf->{node}{$node1}{daemon}{gfs2}{exit_code},
 		name2 => "node::${node2}::daemon::gfs2::exit_code", value2 => $conf->{node}{$node2}{daemon}{gfs2}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4014,12 +4093,12 @@ sub manage_vm
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
-	$conf->{vm}{$vm}{current_boot_device}    = "";
-	$conf->{vm}{$vm}{available_boot_devices} = "";
-	my $say_current_boot_device              = "";
-	my $in_os                                = 0;
-	my $saw_cdrom                            = 0;
-	my $server_uuid                          = "";
+	   $conf->{vm}{$vm}{current_boot_device}    = "";
+	   $conf->{vm}{$vm}{available_boot_devices} = "";
+	my $say_current_boot_device                 = "";
+	my $in_os                                   = 0;
+	my $saw_cdrom                               = 0;
+	my $server_uuid                             = "";
 	foreach my $line (@{$conf->{vm}{$vm}{xml}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -4109,8 +4188,9 @@ sub manage_vm
 		name1 => "boot select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# See if I have access to ScanCore and, if so, check for a note, the start group and start delay. If 
-	# we have a database connection, show these options.
+	# See if I have access to ScanCore and, if so, check for a note, the start after, start delay, 
+	# migration type and pre/post migration scripts/args. If we have a database connection, show these 
+	# options.
 	my $show_db_options                 = 0;
 	my $server_note                     = "";
 	my $modified_date                   = "";
@@ -5517,11 +5597,12 @@ sub update_network_driver
 		name1 => "new_xml", value1 => $new_xml, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::server::bcn_nic_driver", value1 => $conf->{sys}{server}{bcn_nic_driver},
 		name2 => "sys::server::sn_nic_driver",  value2 => $conf->{sys}{server}{sn_nic_driver},
 		name3 => "sys::server::ifn_nic_driver", value3 => $conf->{sys}{server}{ifn_nic_driver},
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Clear out the old array and refill it with the possibly-edited 'new_xml'.
 	my @new_vm_xml;
 	foreach my $line (split/\n/, $new_xml)
@@ -5633,10 +5714,10 @@ sub update_network_driver
 		
 		$new_xml .= "$line\n";
 	}
+	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "new_xml", value1 => $new_xml,
 	}, file => $THIS_FILE, line => __LINE__});
-	
 	return($new_xml);
 }
 
@@ -10332,10 +10413,10 @@ sub display_free_resources
 	}, "", 1);
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "in enough_storage", value1 => $enough_storage,
-		name2 => "free_ram",          value2 => $free_ram,
-		name3 => "node1 cman",        value3 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
-		name4 => "node2 cman",        value4 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
+		name1 => "enough_storage", value1 => $enough_storage,
+		name2 => "free_ram",       value2 => $free_ram,
+		name3 => "node1 cman",     value3 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
+		name4 => "node2 cman",     value4 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
 	    ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
@@ -10684,7 +10765,7 @@ sub check_node_readiness
 		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
 		{
 			# Make sure the LV is active.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "vm::${vm}::node::${node}::lv::${lv}::active", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
@@ -10774,7 +10855,7 @@ sub read_vm_definition
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",  value1 => $vm,
 		name2 => "XML", value2 => $conf->{vm}{$vm}{xml},
 		name3 => "def", value3 => $conf->{vm}{$vm}{definition_file},

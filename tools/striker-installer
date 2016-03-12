@@ -355,6 +355,7 @@ my $conf = {
 		installed	=>	{},
 	},
 	path		=>	{
+		an_repo			=>	"/etc/yum.repos.d/an-el6.repo",
 		apache_config		=>	"/etc/httpd/conf/httpd.conf",
 		apache_home		=>	"/var/www/home",
 		apache_htpasswd		=>	"/var/www/home/htpasswd",
@@ -6497,52 +6498,6 @@ sub get_list_of_installed_packages
 	}
 	close $file_handle;
 	logger($conf, $THIS_FILE, __LINE__, "Done!\n", 1);
-	
-	return(0);
-}
-
-# This configures the local RHEL repo, if supported.
-sub configure_striker_rhel_repo
-{
-	my ($conf) = @_;
-	
-	return(0) if not $conf->{pxe}{rhel}{enabled};
-	
-	if (-e $conf->{path}{an_repo})
-	{
-		logger($conf, $THIS_FILE, __LINE__, "- The Striker RHEL repo is already configured.", 1);
-	}
-	else
-	{
-		# Create the repo
-		logger($conf, $THIS_FILE, __LINE__, "- The local Striker RHEL repo hasn't been added yet, adding it now.", 1);
-		open (my $file_handle, ">", $conf->{path}{an_repo}) or die "$THIS_FILE ".__LINE__."; Failed to write: [$conf->{path}{an_repo}], the error was: $!\n";
-		print $file_handle "[striker-$conf->{sys}{hostname}-bcn_rhel]\n";
-		print $file_handle "name=Striker $conf->{sys}{hostname}'s RHEL repo.\n";
-		print $file_handle "baseurl=http://$conf->{network}{bcn}{ip}/rhel6/x86_64/img/\n";
-		print $file_handle "enabled=1\n";
-		print $file_handle "gpgcheck=0\n";
-		print $file_handle "\n";
-		print $file_handle "[striker-$conf->{sys}{hostname}-ifn_rhel]\n";
-		print $file_handle "name=Striker $conf->{sys}{hostname}'s RHEL repo.\n";
-		print $file_handle "baseurl=http://$conf->{network}{ifn}{ip}/rhel6/x86_64/img/\n";
-		print $file_handle "enabled=1\n";
-		print $file_handle "gpgcheck=0\n";
-		close $file_handle;
-		
-		# No clear yum's cache
-		logger($conf, $THIS_FILE, __LINE__, "- Added. Clearing yum's cache.", 1);
-		my $shell_call = "$conf->{executable}{yum} clean all";
-		open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "- output: [$line]", 1);
-		}
-		close $file_handle;
-		logger($conf, $THIS_FILE, __LINE__, "- Done!\n", 1);
-	}
 	
 	return(0);
 }

@@ -10333,7 +10333,7 @@ sub post_scan_calculations
 		foreach my $resource (sort {$a cmp $b} keys %{$conf->{node}{$node}{drbd}{resource}})
 		{
 			my $connection_state = $conf->{node}{$node}{drbd}{resource}{$resource}{connection_state};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "connection_state", value1 => $conf->{node}{$node}{drbd}{resource}{$resource}{io_flags},
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -12436,35 +12436,16 @@ sub parse_clustat
 				}
 				if ($state eq "failed")
 				{
-					# Disable the VM.
-					my $shell_call = "clusvcadm -d $vm";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "shell_call", value1 => $shell_call,
-						name2 => "node",       value2 => $node,
-					}, file => $THIS_FILE, line => __LINE__});
-					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-						target		=>	$node,
-						port		=>	$conf->{node}{$node}{port}, 
-						password	=>	$conf->{sys}{root_password},
-						ssh_fh		=>	"",
-						'close'		=>	0,
-						shell_call	=>	$shell_call,
-					});
-					foreach my $line (@{$return})
-					{
-						$line =~ s/^\s+//;
-						$line =~ s/\s+$//;
-						$line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "line", value1 => $line, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
+					# Don't do anything here now, it's possible the server is still 
+					# running. Set the host to 'Unknown' and let the user decide what to 
+					# do. This can happen if, for example, the XML file is temporarily
+					# removed or corrupted.
+					$host = AN::Common::get_string($conf, {key => "state_0128", variables => {host => $host} });
 				}
 				
-				# If the service is disabled, it will 
-				# have '()' which I need to remove.
-				$host =~ s/\(//g;
-				$host =~ s/\)//g;
+				# If the service is disabled, it will have '()' around the host name which I 
+				# need to remove.
+				$host =~ s/^\((.*?)\)$/$1/g;
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "node", value1 => $node,
