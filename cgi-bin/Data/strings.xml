@@ -708,7 +708,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
-		<key name="row_0287"><![CDATA[Configuring <span class="highlight_detail">safe_anvil_start</span>]]></key>
+		<key name="row_0287"><![CDATA[Configuring <span class="highlight_detail">anvil-safe-start</span>]]></key>
 		<key name="row_0288"><![CDATA[Configuring <span class="highlight_detail">anvil-kick-apc-ups</span>]]></key>
 		<key name="row_0289">Configuring #!string!brand_0015!#</key>
 		<key name="row_0290">Configuring SELinux</key>

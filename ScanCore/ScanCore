@@ -363,7 +363,8 @@ while(1)
 		name2 => "----------------------------------------", value2 => "----------------------------------------"
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Did the user disabled ScanCore while the agents were running?
+	# Did the user disabled ScanCore while the agents were running (or was this a '--one-shot')?
+	exit_if_one_shot($an);
 	exit_if_disabled($an);
 	
 	# Exit if I hit an error.
@@ -373,7 +374,6 @@ while(1)
 		exit(0);
 	}
 	
-	### TODO: change this to level 2 before final release.
 	# Sleep.
 	$an->Log->entry({log_level => 3, title_key => "scancore_title_0001", message_key => "scancore_log_0012", message_variables => {
 		run_time	=>	(time - $start_time),
@@ -388,6 +388,35 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# This exits if ScanCore was called with '--one-shot'
+sub exit_if_one_shot
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "exit_if_one_shot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	if ($an->data->{switches}{'one-shot'})
+	{
+		$an->Log->entry({log_level => 1, message_key => "scancore_log_0083", file => $THIS_FILE, line => __LINE__});
+		my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+		if ($connections)
+		{
+			# Log that we're exiting on being disabled.
+			$an->Alert->register_alert({
+				alert_level		=>	"notice", 
+				alert_agent_name	=>	"$THIS_FILE",
+				alert_title_key		=>	"an_alert_title_0003",
+				alert_message_key	=>	"scancore_log_0083",
+				alert_message_variables	=>	"",
+			});
+			process_alerts($an, 0);
+			$an->DB->disconnect_from_databases();
+		}
+		exit(0);
+	}
+	
+	return(0);
+}
 
 # This exits if the user has disabled ScanCore.
 sub exit_if_disabled

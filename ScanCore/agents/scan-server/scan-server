@@ -726,7 +726,7 @@ INSERT INTO
 					host			=>	$server_host, 
 					'state'			=>	$server_state, 
 					definition		=>	$server_definition,
-					migration_type		=>	$an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "#!string!scan_server_state_0002!#" : "#!string!scan_server_state_0001!#";
+					migration_type		=>	$an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "#!string!scan_server_state_0002!#" : "#!string!scan_server_state_0001!#",
 				},
 			});
 		}

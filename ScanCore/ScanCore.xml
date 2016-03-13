@@ -149,6 +149,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0080">The temperature of this machine has entered a critical state!</key>
 		<key name="scancore_log_0081">The power feeding this machine has returned to a healthy state.</key>
 		<key name="scancore_log_0082">The temperature of this machine has returned to a healthy state!</key>
+		<key name="scancore_log_0083">#!string!scancore_brand_0001!# was invoked with '--one-shot' and the run is finished, exiting.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

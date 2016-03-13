@@ -4676,20 +4676,20 @@ sub load_install_manifest
 				elsif ($b eq "tools")
 				{
 					# Used to control which Anvil! tools are used and how to use them.
-					my $safe_anvil_start   = $a->{$b}->[0]->{'use'}->[0]->{safe_anvil_start};
+					my $anvil-safe-start   = $a->{$b}->[0]->{'use'}->[0]->{anvil-safe-start};
 					my $anvil_kick_apc_ups = $a->{$b}->[0]->{'use'}->[0]->{'anvil-kick-apc-ups'};
 					my $scancore           = $a->{$b}->[0]->{'use'}->[0]->{scancore};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "Tools; use 'safe_anvil_start'", value1 => $safe_anvil_start,
+						name1 => "Tools; use 'anvil-safe-start'", value1 => $anvil-safe-start,
 						name2 => "use: 'anvil-kick-apc-ups'",     value2 => $anvil_kick_apc_ups,
 						name3 => "use: 'scancore'",               value3 => $scancore,
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					# Make sure we're using digits.
-					$safe_anvil_start   =~ s/true/1/i;
-					$safe_anvil_start   =~ s/yes/1/i;
-					$safe_anvil_start   =~ s/false/0/i;
-					$safe_anvil_start   =~ s/no/0/i;
+					$anvil-safe-start   =~ s/true/1/i;
+					$anvil-safe-start   =~ s/yes/1/i;
+					$anvil-safe-start   =~ s/false/0/i;
+					$anvil-safe-start   =~ s/no/0/i;
 					
 					$anvil_kick_apc_ups =~ s/true/1/i;  
 					$anvil_kick_apc_ups =~ s/yes/1/i;
@@ -4701,11 +4701,11 @@ sub load_install_manifest
 					$scancore           =~ s/false/0/i; 
 					$scancore           =~ s/no/0/i;
 					
-					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     = defined $safe_anvil_start   ? $safe_anvil_start   : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
+					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{anvil-safe-start}     = defined $anvil-safe-start   ? $anvil-safe-start   : $conf->{sys}{install_manifest}{'default'}{use_anvil-safe-start};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} = defined $anvil_kick_apc_ups ? $anvil_kick_apc_ups : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 					$conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             = defined $scancore           ? $scancore           : $conf->{sys}{install_manifest}{'default'}{use_scancore};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "Tools; use 'safe_anvil_start'", value1 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start},
+						name1 => "Tools; use 'anvil-safe-start'", value1 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{anvil-safe-start},
 						name2 => "use: 'anvil-kick-apc-ups'",     value2 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'},
 						name3 => "use: 'scancore'",               value3 => $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -5116,11 +5116,11 @@ sub load_install_manifest
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Tools
-		$conf->{sys}{install_manifest}{use_safe_anvil_start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{safe_anvil_start}     : $conf->{sys}{install_manifest}{'default'}{use_safe_anvil_start};
+		$conf->{sys}{install_manifest}{use_anvil-safe-start}     = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{anvil-safe-start}     ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{anvil-safe-start}     : $conf->{sys}{install_manifest}{'default'}{use_anvil-safe-start};
 		$conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{'anvil-kick-apc-ups'} : $conf->{sys}{install_manifest}{'default'}{'use_anvil-kick-apc-ups'};
 		$conf->{sys}{install_manifest}{use_scancore}             = defined $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             ? $conf->{install_manifest}{$file}{common}{cluster}{tools}{'use'}{scancore}             : $conf->{sys}{install_manifest}{'default'}{use_scancore};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "sys::install_manifest::use_safe_anvil_start",   value1 => $conf->{sys}{install_manifest}{use_safe_anvil_start},
+			name1 => "sys::install_manifest::use_anvil-safe-start",   value1 => $conf->{sys}{install_manifest}{use_anvil-safe-start},
 			name2 => "sys::install_manifest::use_anvil-kick-apc-ups", value2 => $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
 			name3 => "sys::install_manifest::use_scancore",           value3 => $conf->{sys}{install_manifest}{use_scancore},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -6173,15 +6173,15 @@ Striker Version: $conf->{sys}{version}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
-		name2 => "sys::install_manifest::use_safe_anvil_start",   value2 => $conf->{sys}{install_manifest}{use_safe_anvil_start},
+		name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $conf->{sys}{install_manifest}{use_anvil-safe-start},
 		name3 => "sys::install_manifest::use_scancore",           value3 => $conf->{sys}{install_manifest}{use_scancore},
 	}, file => $THIS_FILE, line => __LINE__});
 	my $say_use_anvil_kick_apc_ups = $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
-	my $say_use_safe_anvil_start   = $conf->{sys}{install_manifest}{use_safe_anvil_start}     ? "true" : "false";
+	my $say_use_anvil-safe-start   = $conf->{sys}{install_manifest}{use_anvil-safe-start}     ? "true" : "false";
 	my $say_use_scancore           = $conf->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
-		name2 => "say_use_safe_anvil_start",   value2 => $say_use_safe_anvil_start,
+		name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil-safe-start,
 		name3 => "say_use_scancore",           value3 => $say_use_scancore,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -6219,7 +6219,7 @@ Striker Version: $conf->{sys}{version}
 			<!-- <provision use_spice_graphics=\"0\" /> -->
 		</servers>
 		<tools>
-			<use safe_anvil_start=\"$say_use_safe_anvil_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
+			<use anvil-safe-start=\"$say_use_anvil-safe-start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
 		</tools>
 	</common>
 </config>

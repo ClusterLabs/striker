@@ -645,9 +645,9 @@ sub initialize_conf
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
 				perl_library		=>	"/usr/share/perl5",
-				safe_anvil_start	=>	"/sbin/striker/safe_anvil_start",
+				anvil-safe-start	=>	"/sbin/striker/anvil-safe-start",
 				# Used to verify it was enabled properly.
-				safe_anvil_start_link	=>	"/etc/rc3.d/S99_safe_anvil_start",
+				anvil-safe-start_link	=>	"/etc/rc3.d/S99_anvil-safe-start",
 				scancore		=>	"/sbin/striker/ScanCore/ScanCore",
 				sed			=>	"/bin/sed",
 				setsebool		=>	"/usr/sbin/setsebool",
@@ -831,7 +831,7 @@ sub initialize_conf
 					ups2_ip				=>	"",
 					ups2_name			=>	"",
 					'use_anvil-kick-apc-ups'	=>	0,
-					use_safe_anvil_start		=>	1,
+					use_anvil-safe-start		=>	1,
 					use_scancore			=>	0,
 				},
 				# If the user wants to build install manifests for environments with 4 PDUs,
@@ -881,8 +881,8 @@ sub initialize_conf
 				},
 				# This sets anvil-kick-apc-ups to start on boot
 				'use_anvil-kick-apc-ups' =>	0,
-				# This controls whether safe_anvil_start is enabled or not.
-				use_safe_anvil_start	=>	1,
+				# This controls whether anvil-safe-start is enabled or not.
+				use_anvil-safe-start	=>	1,
 				# This controls whether ScanCore will run on boot or not.
 				use_scancore		=>	1,
 			},
@@ -1029,7 +1029,7 @@ sub initialize_conf
 			'anvil-kick-apc-ups'	=>	{
 				enabled			=>	0,
 			},
-			'safe_anvil_start'	=>	{
+			'anvil-safe-start'	=>	{
 				enabled			=>	0,
 			},
 			'striker-push-ssh'	=>	{

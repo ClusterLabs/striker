@@ -404,7 +404,7 @@ sub enable_tools
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# sas_rc  == safe_anvil_start, return code
+	# sas_rc  == anvil-safe-start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
 	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
 	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
@@ -424,7 +424,7 @@ sub enable_tools
 	
 	my $ok = 1;
 	
-	# Report on safe_anvil_start, first.
+	# Report on anvil-safe-start, first.
 	my $node1_class   = "highlight_warning_bold";
 	my $node1_message = "#!string!state_0001!#";
 	my $node2_class   = "highlight_warning_bold";
@@ -659,19 +659,19 @@ sub enable_tools_on_node
 		name2 => "node_name", value2 => $node_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### safe_anvil_start
-	# If requested, enable safe_anvil_start, otherwise, disable it.
+	### anvil-safe-start
+	# If requested, enable anvil-safe-start, otherwise, disable it.
 	my $sas_rc     = 0;
-	my $shell_call = "$conf->{path}{nodes}{safe_anvil_start} --disable\n";
+	my $shell_call = "$conf->{path}{nodes}{anvil-safe-start} --disable\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::install_manifest::use_safe_anvil_start", value1 => $conf->{sys}{install_manifest}{use_safe_anvil_start},
+		name1 => "sys::install_manifest::use_anvil-safe-start", value1 => $conf->{sys}{install_manifest}{use_anvil-safe-start},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
+	if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
 	{
-		$shell_call = "$conf->{path}{nodes}{safe_anvil_start} --enable\n";
+		$shell_call = "$conf->{path}{nodes}{anvil-safe-start} --enable\n";
 	}
 	$shell_call .= "
-if [ -e $conf->{path}{nodes}{safe_anvil_start_link} ];
+if [ -e $conf->{path}{nodes}{anvil-safe-start_link} ];
 then 
     echo enabled; 
 else 
@@ -698,7 +698,7 @@ fi
 		
 		if ($line eq "enabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
+			if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
 			{
 				# Good.
 				$sas_rc = 1;
@@ -711,7 +711,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_safe_anvil_start})
+			if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
 			{
 				# Not good, should have been disabled
 				$sas_rc = 4;
@@ -1380,13 +1380,13 @@ else
     echo \"Adding ScanCore to root's cron table.\"
     echo '*/1 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
 fi
-grep -q safe_anvil_start $conf->{path}{nodes}{cron_root}
+grep -q anvil-safe-start $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-    echo 'safe_anvil_start exits'
+    echo 'anvil-safe-start exits'
 else
-    echo \"Adding 'safe_anvil_start' to root's cron table.\"
-    echo '*/1 * * * * $conf->{path}{nodes}{safe_anvil_start}' >> $conf->{path}{nodes}{cron_root}
+    echo \"Adding 'anvil-safe-start' to root's cron table.\"
+    echo '*/1 * * * * $conf->{path}{nodes}{anvil-safe-start}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
