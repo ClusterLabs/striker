@@ -61,8 +61,8 @@ while(<$file_handle>)
 		if (($this_bridge) && ($this_device))
 		{
 			#print "this_bridge: [$this_bridge], bcn_bridge: [bcn_bridge1], sn_bridge: [sn_bridge1], ifn_bridge: [ifn_bridge1]\n";
-			if    (($this_bridge eq "bcn_bridge1") || ($this_bridge eq "bcn-bridge1")) { push @bcn_nic, $this_device; }
-			elsif (($this_bridge eq "sn_bridge1")  || ($this_bridge eq "sn-bridge1"))  { push @sn_nic, $this_device; }
+			if    (($this_bridge =~ /bcn_bridge\d/) || ($this_bridge =~ /bcn-bridge\d/)) { push @bcn_nic, $this_device; }
+			elsif (($this_bridge =~ /sn_bridge\d/)  || ($this_bridge =~ /sn-bridge\d/))  { push @sn_nic, $this_device; }
 			elsif (($this_bridge eq "ifn_bridge1") || ($this_bridge eq "ifn-bridge1")) { push @ifn_nic, $this_device; }
 			else
 			{

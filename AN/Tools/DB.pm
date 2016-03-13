@@ -272,6 +272,27 @@ sub connect_to_databases
 			name1 => "postgres_password", value1 => $postgres_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		### NOTE: This slows things down a lot when a dashboard is offline, so I am disabling it.
+		### TODO: Note that it's possible some time in the future, a server might be available but 
+		###       not pingable. Add a switch to ignore pings.
+		# Before I try to connect, very I can ping.
+# 		my $ping_rc = $an->Check->ping({target => $host, count => 3});
+# 		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+# 			name1 => "ping_rc", value1 => $ping_rc
+# 		}, file => $THIS_FILE, line => __LINE__});
+# 		if ($ping_rc eq "1")
+# 		{
+# 			$an->Alert->warning({ message_key => "warning_message_0015", message_variables => {
+# 				host	=>	$host,
+# 			}, file => $THIS_FILE, line => __LINE__});
+# 			push @{$an->data->{scancore}{db}{$id}{connection_error}}, { message_key => "warning_message_0015", message_variables => {
+# 				host	=>	$host,
+# 			}};
+# 			$an->data->{scancore}{db}{$id}{connection_error} = [];
+# 			push @{$failed_connections}, $id;
+# 			next;
+# 		}
+		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

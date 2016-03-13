@@ -7936,6 +7936,10 @@ sub remove_an_repo
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Not found.", 1);
 	}
+	
+	# Remove the alteeve-repo RPM from the list of packages to install.
+	delete $conf->{packages}{to_install}{'alteeve-repo'};
+	
 	$conf->{sys}{repositories} = "";
 	logger($conf, $THIS_FILE, __LINE__, "- Done!\n", 1);
 	

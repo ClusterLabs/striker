@@ -583,7 +583,7 @@ sub warning
 	my $log_to            = $parameter->{log_to}            ? $parameter->{log_to}            : $an->default_log_file();
 	my $quiet             = $parameter->{quiet}             ? $parameter->{quiet}             : 0;
 	my $code              = 1;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+	$an->Log->entry({log_level => 1, message_key => "an_variables_0008", message_variables => {
 		name1 => 'title_key',         value1 => $title_key, 
 		name2 => 'title_variables',   value2 => $title_variables, 
 		name3 => 'message_key',       value3 => $message_key, 
