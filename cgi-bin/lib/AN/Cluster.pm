@@ -9840,7 +9840,8 @@ sub build_select
 	return ($select);
 }
 
-### TODO: Replace this with '$an->Get->shared_files().
+### TODO: Replace this with '$an->Get->shared_files(). See MediaLibrary.pm->read_shared() for the new way to 
+###       use this.
 # This looks for a node we have access to and returns the first one available.
 sub read_files_on_shared
 {
@@ -9878,7 +9879,7 @@ sub read_files_on_shared
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			next if $fail;

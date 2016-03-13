@@ -8,6 +8,7 @@ my $THIS_FILE = "Check.pm";
 
 ### Methods:
 # ping
+# access
 # kernel_module
 # daemon
 # drbd_resource
@@ -39,6 +40,58 @@ sub parent
 	$self->{HANDLE}{TOOLS} = $parent if $parent;
 	
 	return ($self->{HANDLE}{TOOLS});
+}
+
+# This tries to ssh into the target and echo back '1'.
+sub access
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "AN::Tools::Check->access()" }, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $parameter->{target})
+	{
+		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0009", file => "$THIS_FILE", line => __LINE__});
+		return(2);
+	}
+	
+	my $access     = 0;
+	my $target     = $parameter->{target};
+	my $port       = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password   = $parameter->{password} ? $parameter->{password} : "";
+	my $shell_call = $an->data->{path}{echo}." 1";
+
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "target",     value2 => $target,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line eq "1")
+		{
+			$access = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "access", value1 => $access, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return($access);
 }
 
 # This pings the target (hostname or IP) and if it can be reached, it returns '0'. If it can't be reached, it

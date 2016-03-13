@@ -71,6 +71,8 @@
 		<key name="button_0064">Create</key>
 		<key name="button_0065">Power Cycle System</key>
 		<key name="button_0066">Power Off System</key>
+		<key name="button_0067">Make 'executable'</key>
+		<key name="button_0068">Make 'plain-text'</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -489,7 +491,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0065">Disk Cache Policy</key>
 		<key name="row_0066">Span, Arm, Device ID</key>
 		<key name="row_0067">Device ID</key>
-		<key name="row_0068">...free...</key>
+		<key name="row_0068">Delete</key>
 		<key name="row_0069">World Wide Number</key>
 		<key name="row_0070">Drive Temperature</key>
 		<key name="row_0071">Identify Light</key>
@@ -634,9 +636,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0210">DNS1</key>
 		<key name="row_0211">DNS2</key>
 		<key name="row_0212">Outlet</key>
-		<key name="row_0213">...free...</key>
+		<key name="row_0213">Script</key>
 		<key name="row_0214"><![CDATA[Storage Pool <span class="highlight_bad_bold">2</span>]]></key> <!-- Not used now -->
-		<key name="row_0215">...free...</key>
+		<key name="row_0215">Disc</key>
 		<key name="row_0216">Ready?</key>
 		<key name="row_0217">Current Address [:port]</key>
 		<key name="row_0218">Current root Password</key>
@@ -797,6 +799,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="script_0045"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Exiting.]]></key>
 		<key name="script_0046"><![CDATA[[ <span class="highlight_bad">Error</span> ] - Desired NIC: [<span class="code">#!variable!nic!#</span>] doesn't have a referenced interface!]]></key>
 		<key name="script_0047"><![CDATA[Interface: [<span class="code">#!variable!mac!#</span>], currently named: [<span class="code">#!variable!current!#</span>], will be renamed to: [<span class="code">#!variable!new!#</span>]]]></key>
+		<!-- wtf is this? -->
 		<key name="script_0048"><![CDATA[
 <br />
 <table class="hidden_table">
@@ -1635,8 +1638,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0350"><![CDATA[Failed to load the manifest file: [<span class="code"><span class="highlight_ready">#!variable!manifest_file!#</span></span>].<br />Was it deleted, perhaps?]]></key>
 		<key name="message_0351"><![CDATA[Please <b>carefully</b> review the information below.<br />If you are happy with the values, enter the current IP address and password for the nodes below.<br />If this is being run to replace a lost node, enter the healthy node's IP.<br />It's data will be used to populate the other node (overriding manifest values as needed).]]></key>
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
-		<key name="message_0353">...free...</key>
-		<key name="message_0354">...free...</key>
+		<key name="message_0353">Script?</key>
+		<key name="message_0354"><![CDATA[[ <span class="highlight_bad_bold">Error</span> ] - ]]></key>
 		<key name="message_0355">...free...</key>
 		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>

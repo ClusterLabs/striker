@@ -382,19 +382,23 @@ sub shared_files
 	
 	# We use '-l' because we can't do normal file tests like checking for executable bits remotely and
 	# it's a waste to parse the output in two different ways.
-	my $shell_call = $an->data->{path}{ls}." -l ".$an->data->{path}{shared_files};
+	my $ls_shell_call = $an->data->{path}{ls}." -l ".$an->data->{path}{shared_files};
+	my $df_shell_call = $an->data->{path}{df}." -P";
 	
 	# This will store the list of files and the output of our 'ls' call that we'll parse to feed it.
 	my $files     = {};
+	my $partition = {};
 	my $ls_return = [];
+	my $df_return = [];
 	
 	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
-		# Remote call
+		### Remote call
+		# ls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "ls_shell_call", value1 => $ls_shell_call,
+			name2 => "target",        value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
 		(my $error, my $ssh_fh, $ls_return) = $an->Remote->remote_call({
 			target		=>	$target,
@@ -402,16 +406,31 @@ sub shared_files
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	$shell_call,
+			shell_call	=>	$ls_shell_call,
+		});
+		
+		# df
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "df_shell_call", value1 => $df_shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $df_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$df_shell_call,
 		});
 	}
 	else
 	{
-		# Local call
+		### Local call
+		# ls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
+			name1 => "ls_shell_call", value1 => $ls_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$ls_shell_call 2>&1 |") or die "Failed to call: [$ls_shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
@@ -419,9 +438,23 @@ sub shared_files
 			push @{$ls_return}, $line;
 		}
 		close $file_handle;
+		
+		# df
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "df_shell_call", value1 => $df_shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$df_shell_call 2>&1 |") or die "Failed to call: [$df_shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$df_return}, $line;
+		}
+		close $file_handle;
 	}
 	
-	# Now parse out the data.
+	### Now parse out the data.
+	# ls
 	foreach my $line (@{$ls_return})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -509,7 +542,41 @@ sub shared_files
 		}
 	}
 	
-	return($files);
+	# df
+	foreach my $line (@{$df_return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		if ($line =~ /\s(\d+)-blocks\s/)
+		{
+			$partition->{block_size} = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "block_size", value1 => $partition->{block_size},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+
+		if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
+		{
+			$partition->{total_space}  = $1;
+			$partition->{used_space}   = $2;
+			$partition->{free_space}   = $3;
+			$partition->{used_percent} = $4;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "total_space",  value1 => $partition->{total_space},
+				name2 => "used_space",   value2 => $partition->{used_space},
+				name3 => "used_percent", value3 => $partition->{free_space},
+				name4 => "free_space",   value4 => $partition->{used_percent},
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+	}
+	
+	return($files, $partition);
 }
 
 # This gathers DRBD data

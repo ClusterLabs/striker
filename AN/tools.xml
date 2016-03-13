@@ -404,6 +404,7 @@ Variables:
 		<key name="warning_title_0006">The user: [#!variable!user!#], has a public RSA file: [#!variable!file!#], but the key wasn't found or read.</key>
 		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		<key name="warning_title_0008">Dangerous</key>
+		<key name="warning_title_0009">AN::Tools::Check->access() called without a target being specified.</key>
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>

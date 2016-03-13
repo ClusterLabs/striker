@@ -85,8 +85,60 @@ sub process_task
 			confirm_download_url($conf);
 		}
 	}
+	elsif ($conf->{cgi}{task} eq "make_plain_text")
+	{
+		toggle_executable($conf, "off");
+	}
+	elsif ($conf->{cgi}{task} eq "make_executable")
+	{
+		toggle_executable($conf, "on");
+	}
 	
 	return (0);
+}
+
+# This chmod's the file to 755 if 'on' and 644 if 'off'.
+sub toggle_executable
+{
+	my ($conf, $turn) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "toggle_executable" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "turn", value1 => $turn, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $file = $an->data->{path}{shared_files}."/".$an->data->{cgi}{name};
+	my $mode = $turn eq "on" ? "755" : "644";
+	my $node = $an->data->{sys}{use_node};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "file", value1 => $file,
+		name2 => "mode", value2 => $mode,
+		name3 => "node", value3 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{'chmod'}." $mode $file";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",       value1 => $node, 
+		name2 => "shell_call", value2 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$an->data->{node}{$node}{port}, 
+		password	=>	$an->data->{sys}{root_password},
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Show the files.
+	AN::MediaLibrary::read_shared($conf);
+	
+	return(0);
 }
 
 # This downloads a given URL directly to the cluster using 'wget'.
@@ -113,10 +165,11 @@ sub download_url
 		base	=>	$base,
 	});
 
+	my $failed          = 0;
 	my $header_printed  = 0;
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
-	my $shell_call      = "wget -c --progress=dot -e dotbytes=10M $url -O /shared/files/$file";
+	my $shell_call      = $an->data->{path}{wget}." -c --progress=dot -e dotbytes=10M $url -O ".$an->data->{path}{shared_files}."/$file";
 	my $password        = $conf->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -141,6 +194,14 @@ sub download_url
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($line =~ /Name or service not known/i) or ($line =~ /unable to resolve/i))
+		{
+			$failed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "failed", value1 => $failed, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 		
 		if ($line =~ /^(\d+)K .*? (\d+)% (.*?)(\w) (.*?)$/)
 		{
@@ -277,9 +338,62 @@ sub download_url
 				print AN::Common::template($conf, "common.html", "open-shell-call-output");
 				$header_printed = 1;
 			}
+			
+			if ($failed)
+			{
+				$line = AN::Common::get_string($conf, {key => "message_0354"}).$line;
+			}
+			
 			print AN::Common::template($conf, "common.html", "shell-call-output", {
 				line	=>	$line,
 			});
+		}
+	}
+	
+	# If the 'script' bit was set, chmod the target file.
+	if ($failed)
+	{
+		# Remove the file if it exists
+		my $shell_call = $an->data->{path}{rm}." -f ".$an->data->{path}{shared_files}."/".$file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ($an->data->{cgi}{script})
+	{
+		my $shell_call = $an->data->{path}{'chmod'}." 755 ".$an->data->{path}{shared_files}."/".$file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	if ($header_printed)
@@ -580,97 +694,65 @@ sub image_and_upload
 	return (0);
 }
 
-### TODO: Rework this to use the new AN::Tools rsync and remote_call methods.
-###       Also, add 'is script' flag to warn the user that their scripts will run as root.
-###       Send an alert email when new scripts are uploaded to help prevent abuse (scan-anvil?).
 # This takes a path to a file on the dashboard and uploads it to the cluster's
 # /shared/files/ folder.
 sub upload_to_shared
 {
-	my ($conf, $node, $source_file) = @_;
+	my ($conf, $node, $source) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "upload_to_shared(); source_file", value1 => $source_file,
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "upload_to_shared" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "source", value1 => $source, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Some prep work.
-	my $failed = 0;
-	($failed) = AN::Common::test_ssh_fingerprint($conf, $node);
+	my $cluster     = $an->data->{cgi}{cluster};
+	my $password    = $an->data->{sys}{root_password};
+	my $switches    = $an->data->{args}{rsync};
+	my $file        = ($source =~ /^.*\/(.*)$/)[0];
+	my $destination = "root\@${node}:".$an->data->{path}{shared_files}."/";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "cluster",     value1 => $cluster,
+		name2 => "switches",    value2 => $switches,
+		name3 => "destination", value3 => $destination,
+		name4 => "file",        value4 => $file,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $failed = $an->Storage->rsync({
+		source		=>	$source,
+		target		=>	$node,
+		password	=>	$password,
+		destination	=>	$destination,
+		switches	=>	$switches,
+	});
+	
+	# If the 'script' bit was set, chmod the target file.
+	if ($an->data->{cgi}{script})
+	{
+		my $shell_call = $an->data->{path}{'chmod'}." 755 ".$an->data->{path}{shared_files}."/".$file;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "failed", value1 => $failed,
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	if ($failed)
-	{
-		my $message = AN::Common::get_string($conf, {key => "message_0359", variables => {
-			node	=>	$node,
-			file	=>	$source_file,
-		}});
-		print AN::Common::template($conf, "common.html", "generic-error", {
-			message	=>	$message,
-		});
-	}
-	else
-	{
-		my $shell_call = "$conf->{path}{rsync} $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "user",       value2 => $<,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		### TODO: This is a dumb way to check, try a test upload and see if it fails.
-		if (-e $conf->{path}{expect})
-		{
-			# Creating 'expect' rsync wrapper.
-			$an->Log->entry({log_level => 2, message_key => "log_0214", file => $THIS_FILE, line => __LINE__});
-			AN::Common::create_rsync_wrapper($conf, $node);
-			
-			$shell_call = "~/rsync.$node $conf->{args}{rsync} $source_file root\@$node:$conf->{path}{shared}";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "user",       value2 => $<,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			print AN::Common::template($conf, "media-library.html", "image-and-upload-expect-not-found");
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "user",       value2 => $<,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $header_printed = 0;
-		my $no_key         = 0;
-		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /Permission denied/i)
-			{
-				$failed = 1;
-			}
-			if (not $header_printed)
-			{
-				print AN::Common::template($conf, "common.html", "open-shell-call-output");
-				$header_printed = 1;
-			}
-			print AN::Common::template($conf, "common.html", "shell-call-output", {
-				line	=>	$line,
-			});
-		}
-		close $file_handle;
-		
-		if ($header_printed)
-		{
-			print AN::Common::template($conf, "common.html", "close-shell-call-output");
-		}
-	}
-	
 	return ($failed);
 }
 
@@ -960,40 +1042,43 @@ sub read_shared
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	check_status($conf);
+	# Look for info on running jobs (not implemented yet)
+	#check_status($conf);
 	
-	# Let the user know that this might take a bit.
-	print AN::Common::template($conf, "common.html", "scanning-message", {
-		anvil	=>	$conf->{cgi}{cluster},
-	});
-	
-	my $cluster   = $conf->{cgi}{cluster};
 	my $connected = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "cluster",   value1 => $cluster,
-		name2 => "connecter", value2 => $connected,
-	}, file => $THIS_FILE, line => __LINE__});
 	
-	# This returns the name of the node used to read /shared/files/. If no
-	# node was available, it returns an empty string.
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node", value1 => $node,
+	# What node should I use?
+	my $cluster = $conf->{cgi}{cluster};
+	my $node    = $an->data->{sys}{use_node};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cluster", value1 => $cluster,
+		name2 => "node",    value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	print AN::Common::template($conf, "media-library.html", "read-shared-header");
 	if ($node)
 	{
-		my $block_size       = $conf->{partition}{shared}{block_size};
-		my $total_space      = ($conf->{partition}{shared}{total_space} * $block_size);
-		my $say_total_space  = AN::Cluster::bytes_to_hr($conf, $total_space);
-		my $used_space       = ($conf->{partition}{shared}{used_space} * $block_size);
-		my $say_used_space   = AN::Cluster::bytes_to_hr($conf, $used_space);
-		my $free_space       = ($conf->{partition}{shared}{free_space} * $block_size);
-		my $say_free_space   = AN::Cluster::bytes_to_hr($conf, $free_space);
-		my $say_used_percent = $conf->{partition}{shared}{used_percent}."%";
+		# Get the shared partition info and the list of files.
+		my ($files, $partition) = $an->Get->shared_files({
+			password	=>	$an->data->{sys}{root_password},
+			port		=>	$conf->{node}{$node}{port},
+			target		=>	$node,
+		});
+		
+		my $block_size       = $partition->{block_size};
+		my $say_total_space  = $an->Readable->bytes_to_hr({'bytes' => ($partition->{total_space} * $block_size)});
+		my $say_used_space   = $an->Readable->bytes_to_hr({'bytes' => ($partition->{used_space} * $block_size)});
+		my $say_free_space   = $an->Readable->bytes_to_hr({'bytes' => ($partition->{free_space} * $block_size)});
+		my $say_used_percent = $partition->{used_percent}."%";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "block_size",       value1 => $block_size,
+			name2 => "say_total_space",  value2 => $say_total_space,
+			name3 => "say_used_space",   value3 => $say_used_space,
+			name4 => "say_free_space",   value4 => $say_free_space,
+			name5 => "say_used_percent", value5 => $say_used_percent,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Print the general header and the files header
 		my $say_title = AN::Common::get_string($conf, {key => "title_0138", variables => {
@@ -1007,20 +1092,63 @@ sub read_shared
 		});
 		
 		# Show existing files.
-		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+		foreach my $file (sort {$a cmp $b} keys %{$files})
 		{
-			next if $conf->{files}{shared}{$file}{type} ne "-";
-			my $say_size = AN::Cluster::bytes_to_hr($conf, $conf->{files}{shared}{$file}{size});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+				name1  => "${file}::type",       value1  => $files->{$file}{type},
+				name2  => "${file}::mode",       value2  => $files->{$file}{mode},
+				name3  => "${file}::owner",      value3  => $files->{$file}{user},
+				name4  => "${file}::group",      value4  => $files->{$file}{group},
+				name5  => "${file}::size",       value5  => $files->{$file}{size},
+				name6  => "${file}::modified",   value6  => $files->{$file}{month},
+				name7  => "${file}::day",        value7  => $files->{$file}{day},
+				name8  => "${file}::time",       value8  => $files->{$file}{'time'},
+				name9  => "${file}::year",       value9  => $files->{$file}{year},
+				name10 => "${file}::target",     value10 => $files->{$file}{target},
+				name11 => "${file}::optical",    value11 => $files->{$file}{optical},
+				name12 => "${file}::executable", value12 => $files->{$file}{executable},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			next if $files->{$file}{type} ne "-";
+			my $say_size = $an->Readable->bytes_to_hr({'bytes' => $files->{$file}{size}});
+
 			my $delete_button = AN::Common::template($conf, "common.html", "enabled-button", {
 				button_link	=>	"?cluster=$cluster&task=delete&name=$file",
-				button_text	=>	"#!string!button_0030!#",
+				button_text	=>	"<img src=\"#!conf!url::skins!#/#!conf!sys::skin!#/images/icon_clear-fields_16x16.png\" alt=\"#!string!button_0030!#\" border=\"0\" />",
 				button_class	=>	"highlight_bad",
 				id		=>	"delete_$file",
 			}, "", 1);
+			
+			my $script_button = AN::Common::template($conf, "common.html", "enabled-button", {
+				button_link	=>	"?cluster=$cluster&task=make_executable&name=$file",
+				button_text	=>	"<img src=\"#!conf!url::skins!#/#!conf!sys::skin!#/images/icon_plain-text_16x16.png\" alt=\"#!string!button_0067!#\" border=\"0\" />",
+				button_class	=>	"highlight_bad",
+				id		=>	"executable_$file",
+			}, "", 1);
+			if ($files->{$file}{executable})
+			{
+				$script_button = AN::Common::template($conf, "common.html", "enabled-button", {
+					button_link	=>	"?cluster=$cluster&task=make_plain_text&name=$file",
+					button_text	=>	"<img src=\"#!conf!url::skins!#/#!conf!sys::skin!#/images/icon_executable_16x16.png\" alt=\"#!string!button_0068!#\" border=\"0\" />",
+					button_class	=>	"highlight_bad",
+					id		=>	"executable_$file",
+				}, "", 1);
+			}
+			
+			# Add an optical disk icon if it's an ISO
+			my $iso_icon = "&nbsp;";
+			if ($files->{$file}{optical})
+			{
+				$iso_icon      = "<img src=\"#!conf!url::skins!#/#!conf!sys::skin!#/images/icon_plastic-circle_16x16.png\" alt=\"#!string!row_0215!#\" border=\"0\" />";
+				$script_button = "&nbsp;";
+			}
+			
 			print AN::Common::template($conf, "media-library.html", "read-shared-file-entry", {
-				size		=>	$say_size,
-				file		=>	$file,
-				delete_button	=>	$delete_button,
+				size			=>	$say_size,
+				file			=>	$file,
+				delete_button		=>	$delete_button,
+				executable_button	=>	$script_button,
+				iso_icon		=>	$iso_icon,
 			});
 		}
 		
@@ -1099,6 +1227,12 @@ sub read_shared
 			value	=>	"",
 			width	=>	"250px",
 		});
+		my $script_input = AN::Common::template($conf, "common.html", "form-input-checkbox", {
+			name	=>	"script",
+			id	=>	"script",
+			value	=>	"true",
+			checked	=>	"",
+		});
 		my $download_button = AN::Common::template($conf, "common.html", "form-input", {
 			type	=>	"submit",
 			name	=>	"null",
@@ -1109,6 +1243,7 @@ sub read_shared
 		print AN::Common::template($conf, "media-library.html", "read-shared-direct-download", {
 			hidden_inputs	=>	$hidden_inputs,
 			url_input	=>	$url_input,
+			script_input	=>	$script_input,
 			download_button	=>	$download_button,
 		});
 
@@ -1143,6 +1278,7 @@ sub read_shared
 		print AN::Common::template($conf, "media-library.html", "read-shared-upload", {
 			hidden_inputs	=>	$hidden_inputs,
 			file_input	=>	$file_input,
+			script_input	=>	$script_input,
 			upload_button	=>	$upload_button,
 		});
 	}

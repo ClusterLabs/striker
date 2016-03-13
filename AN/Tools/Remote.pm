@@ -253,12 +253,13 @@ sub add_target_to_known_hosts
 	
 	my $user   = $parameter->{user}; 
 	my $target = $parameter->{target};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",   value1 => $user,
 		name2 => "target", value2 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $users_home = $an->Get->users_home({user => $user});
+	# Get the local user's home
+	my $users_home = $an->Get->users_home({user => getpwuid($<)});
 	if (not $users_home)
 	{
 		# No sense proceeding... An error will already have been recorded.
@@ -267,7 +268,7 @@ sub add_target_to_known_hosts
 	
 	# I'll need to make sure I've seen the fingerprint before.
 	my $known_hosts = "$users_home/.ssh/known_hosts";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "known_hosts", value1 => $known_hosts, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -277,7 +278,7 @@ sub add_target_to_known_hosts
 	{
 		# Yup, see if the target is there already,
 		$known_machine = $an->Remote->_check_known_hosts_for_target({target => $target, known_hosts => $known_hosts});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -287,19 +288,19 @@ sub add_target_to_known_hosts
 	{
 		# We don't know about this machine yet, so scan it.
 		my $added = $an->Remote->_call_ssh_keyscan({user => $user, target => $target, known_hosts => $known_hosts});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "added", value1 => $added, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Verify
 		$known_machine = $an->Remote->_check_known_hosts_for_target({target => $target, known_hosts => $known_hosts});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "known_machine", value1 => $known_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($known_machine)
 		{
 			# Successfully added!
-			$an->Log->entry({log_level => 3, message_key => "notice_message_0009", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "notice_message_0009", message_variables => {
 				target => $target, 
 				user => $user, 
 			}, file => $THIS_FILE, line => __LINE__});

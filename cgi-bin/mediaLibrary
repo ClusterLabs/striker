@@ -118,6 +118,31 @@ if ($conf->{cgi}{cluster})
 		name2 => "task",               value2 => $conf->{cgi}{task},
 		name3 => "sys::root_password", value3 => $conf->{sys}{root_password},
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{sys}{use_node} = "";
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my $access = $an->Check->access({
+			target		=>	$node,
+			password	=>	$an->data->{sys}{root_password},
+			port		=>	$conf->{node}{$node}{port},
+		});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($access)
+		{
+			$an->data->{sys}{use_node} = $node;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::use_node", value1 => $an->data->{sys}{use_node},
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	
 	if ($conf->{cgi}{task})
 	{
 		$conf->{sys}{show_refresh} = 0;
@@ -125,7 +150,7 @@ if ($conf->{cgi}{cluster})
 	}
 	else
 	{
-		# Set the node list.
+		# Show the files.
 		AN::MediaLibrary::read_shared($conf);
 	}
 }

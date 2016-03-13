@@ -4708,7 +4708,7 @@ ORDER BY
 		my $node     = $conf->{sys}{use_node};
 		my $port     = $conf->{node}{$node}{port};
 		my $scripts  = [];
-		my $files    = $an->Get->shared_files({
+		my ($files, $partition) = $an->Get->shared_files({
 			password	=>	$password,
 			port		=>	$port,
 			target		=>	$node,

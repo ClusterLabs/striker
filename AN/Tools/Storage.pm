@@ -257,24 +257,29 @@ sub rsync
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "target",      value1 => $target, 
-		name2 => "password",    value2 => $password, 
-		name3 => "source",      value3 => $source, 
-		name4 => "destination", value4 => $destination, 
-		name5 => "switches",    value5 => $switches, 
+		name2 => "source",      value2 => $source, 
+		name3 => "destination", value3 => $destination, 
+		name4 => "switches",    value4 => $switches, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure I have everything I need.
+	my $failed = 0;
 	if (not $source)
 	{
 		# No source
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => "$THIS_FILE", line => __LINE__});
+		$failed = 1;
 	}
 	if (not $destination)
 	{
 		# No destination
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => "$THIS_FILE", line => __LINE__});
+		$failed = 1;
 	}
 	
 	# If either the source or destination is remote, we need to make sure we have the remote machine in
@@ -309,15 +314,17 @@ sub rsync
 		{
 			# No target, set the 'remote_machine' as the target.
 			$target = $remote_machine;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "target", value1 => $target, 
 			}, file => $THIS_FILE, line => __LINE__});
 			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
+			$failed = 1;
 		}
 		if (not $password)
 		{
 			# No password
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
+			$failed = 1;
 		}
 	}
 	
@@ -330,7 +337,7 @@ sub rsync
 			target   => $target,
 			password => $password, 
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "wrapper", value1 => $wrapper, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -338,7 +345,7 @@ sub rsync
 		$shell_call = "$wrapper $switches $source $destination";
 	}
 	# Now make the call
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -347,13 +354,14 @@ sub rsync
 		# There should never be any output, but just in case...
 		chomp;
 		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		   $line =~ s/\r//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	close $file_handle;
 	
-	return(0);
+	return($failed);
 }
 
 ### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
