@@ -662,16 +662,16 @@ sub enable_tools_on_node
 	### anvil-safe-start
 	# If requested, enable anvil-safe-start, otherwise, disable it.
 	my $sas_rc     = 0;
-	my $shell_call = "$conf->{path}{nodes}{anvil-safe-start} --disable\n";
+	my $shell_call = "$conf->{path}{nodes}{'anvil-safe-start'} --disable\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::install_manifest::use_anvil-safe-start", value1 => $conf->{sys}{install_manifest}{use_anvil-safe-start},
+		name1 => "sys::install_manifest::use_anvil-safe-start", value1 => $conf->{sys}{install_manifest}{'use_anvil-safe-start'},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
+	if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
 	{
-		$shell_call = "$conf->{path}{nodes}{anvil-safe-start} --enable\n";
+		$shell_call = "$conf->{path}{nodes}{'anvil-safe-start'} --enable\n";
 	}
 	$shell_call .= "
-if [ -e $conf->{path}{nodes}{anvil-safe-start_link} ];
+if [ -e $conf->{path}{nodes}{'anvil-safe-start_link'} ];
 then 
     echo enabled; 
 else 
@@ -698,7 +698,7 @@ fi
 		
 		if ($line eq "enabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
+			if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
 			{
 				# Good.
 				$sas_rc = 1;
@@ -711,7 +711,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_anvil-safe-start})
+			if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
 			{
 				# Not good, should have been disabled
 				$sas_rc = 4;
@@ -1386,7 +1386,7 @@ then
     echo 'anvil-safe-start exits'
 else
     echo \"Adding 'anvil-safe-start' to root's cron table.\"
-    echo '*/1 * * * * $conf->{path}{nodes}{anvil-safe-start}' >> $conf->{path}{nodes}{cron_root}
+    echo '*/1 * * * * $conf->{path}{nodes}{'anvil-safe-start'}' >> $conf->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
