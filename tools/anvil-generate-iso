@@ -2070,7 +2070,7 @@ sub setup_build_environment
 	# Make sure the rest of the directories now exist.
 	$conf->{path}{iso}{source_directory} = make_directory($conf, $conf->{path}{iso}{working_directory}."/".$conf->{path}{source_path});
 	$conf->{path}{iso}{iso_tools}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{tools});
-	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{kickstart});
+	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{kickstart});
 	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{packages});
 	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{striker});
 	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fence});
