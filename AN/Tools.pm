@@ -504,7 +504,8 @@ sub _set_paths
 	$an->data->{path}{shared_files}    = "/shared/files";
 	
 	# Tools
-	$an->data->{path}{'striker-delayed-run'} = "/sbin/striker/striker-delayed-run";
+	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
+	$an->data->{path}{'striker-delayed-run'}  = "/sbin/striker/striker-delayed-run";
 	
 	# Lock files
 	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";

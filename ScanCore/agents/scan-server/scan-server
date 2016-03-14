@@ -509,7 +509,7 @@ sub find_changes
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "old_server_name",       value1 => $old_server_name, 
 				name2 => "new_server_name",       value2 => $new_server_name, 
-				name3 => "old_server_name",       value3 => $old_server_name, 
+				name3 => "old_server_host",       value3 => $old_server_host, 
 				name4 => "new_server_host",       value4 => $new_server_host, 
 				name5 => "old_server_state",      value5 => $old_server_state, 
 				name6 => "new_server_state",      value6 => $new_server_state, 
@@ -521,7 +521,36 @@ sub find_changes
 			    ($new_server_state      ne $old_server_state) || 
 			    ($new_server_definition ne $old_server_definition))
 			{
-				# New server name. Neat!
+				# Something has changed.
+				if ($new_server_name ne $old_server_name)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_name", value1 => $old_server_name, 
+						name2 => "new_server_name", value2 => $new_server_name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($new_server_host ne $old_server_host)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_host", value1 => $old_server_host, 
+						name2 => "new_server_host", value2 => $new_server_host, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($new_server_state ne $old_server_state)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "old_server_state", value1 => $old_server_state, 
+						name2 => "new_server_state", value2 => $new_server_state, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				if ($new_server_definition ne $old_server_definition)
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "old_server_definition", value1 => $old_server_definition, 
+						name2 => "new_server_definition", value2 => $new_server_definition, 
+						name3 => "diff",                  value3 => diff \$old_server_definition, \$new_server_definition, { STYLE => 'Unified' },
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 				my $query = "
 UPDATE 
     server 

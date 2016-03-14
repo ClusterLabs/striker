@@ -1311,7 +1311,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0040"><![CDATA[No route to: <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine in the process of booting up or powering off?<br />Is this dashboard server on the same network?]]></key>
 		<key name="message_0041"><![CDATA[Timed out while waiting for a reply from <span class="highlight_detail">#!variable!node!#</span>.<br />Is the machine booting up?<br />If so, please wait a minute or two and try again.]]></key>
 		<key name="message_0042"><![CDATA[Unknown error while connecting to <span class="highlight_detail">#!variable!node!#</span>: [<span class="highlight_detail">#!variable!error!#</span>]]]></key>
-		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
+		<key name="message_0043">Unable to log in. Please check the password for this #!string!brand_0004!#.</key>
 		<key name="message_0044"><![CDATA[One of more of the storage daemons are running on <span class="fixed_width">#!variable!node!#</span> while the #!string!brand_0003!#'s cluster is down.<br />#!string!brand_0011!#]]></key>
 		<key name="message_0045"><![CDATA[The logical volume <span class="fixed_width">#!variable!lv!#</span> on node <span class="fixed_width">#!variable!node!#</span> is inactive!<br />Please <a href="#!string!brand_0012!#" target="_new">contact support</a>, or if you are comfortable, active the LV as soon as possible.]]></key>
 		<key name="message_0046"><![CDATA[There was a problem when scanning the storage. The nodes report different sizes and/or volume groups for the logical volume <span class="fixed_width">#!variable!lv!#</span>. Saw sizes <span class="fixed_width">#!variable!size!#</span> vs. <span class="fixed_width">#!variable!bytes!#</span> and the backing volume group is <span class="fixed_width">#!variable!vg_1!#</span> vs. <span class="fixed_width">#!variable!vg_2!#</span>.]]></key>
@@ -2457,6 +2457,63 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0012">[ Warning ] - Failed to kill (with SIGTERM) the process with ID: [#!variable!pid!#]!</key>
 		<key name="asst_message_0013">The daemon: [#!variable!daemon!#] is already running on both nodes.</key>
 		<key name="asst_message_0014">The kernel module: [#!variable!module!#] is already loaded on both nodes.</key>
+		<key name="asst_message_0015"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program checks to see if it can talk to the peer node on boot. If it can,
+it performs a series of sanity checks to make sure everything is healthy. If
+all is well, the nodes will start the cluster stack and then servers will be
+booted.
+
+Servers that were gracefully shut down, and servers set to never boot, will be
+skipped.
+
+
+SWITCHES
+
+
+ --abort
+
+	This will cause any running instances of this program to be killed.
+
+ --disable
+
+	Prevent this tool from starting on boot. Be sure to disable it on BOTH
+	nodes!
+
+ --enable
+ 
+	Enable this tool on boot. Note that if this is enable on either node,
+	the #!string!brand_0004!# will be started.
+
+ --force
+ 
+	Normally, if another instance of this program is already running, this
+	instance will immediately exit. Using this switch skips this check and
+	forces the instance to run. Be careful using this!
+
+ --state, --status
+
+	Reports whether this tool is enabled on boot or not.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="asst_message_0016">#!variable!this_file!# has been called. It will run within a minute.</key>
+		<key name="asst_message_0017">#!variable!this_file!# has been turned off. No other instances will run until the next reboot, proceeding.</key>
+		<key name="asst_message_0018">#!variable!this_file!# had already been called, no changes made.</key>
+		<key name="asst_message_0019">#!variable!this_file!# had already been turned off, no changes made.</key>
 		
 		<!-- error messages -->
 		<key name="asst_error_0001">Failed to start the DRBD kernel module on one of the nodes. Local: [#!variable!local_state!#], peer: [#!variable!peer_state!#] (1 == loaded).</key>
@@ -2469,6 +2526,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_error_0008">The local DRBD resource: [#!variable!resource!#] failed to connect.</key>
 		<key name="asst_error_0009">One of more clustered logical volumes is 'inactive'. Unable to proceed.</key>
 		<key name="asst_error_0010">The 'shared' cluster file system failed to mount on one or both nodes. Unable to proceed.</key>
+		<key name="asst_error_0011">Unable to locate this #!string!brand_0004!#'s password in #!data!path::striker_config!#. Has it been added?</key>
 		
 		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->

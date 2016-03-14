@@ -9788,7 +9788,7 @@ sub build_select
 				my $value       =  $1;
 				my $description =  $2;
 				   $select      .= "<option value=\"$value\">$description</option>\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value,
 					name2 => "description", value2 => $description,
 				}, file => $THIS_FILE, line => __LINE__});

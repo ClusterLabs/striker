@@ -16,6 +16,7 @@
 # 9  = A DRBD resource on the local machine failed to connect.
 # 10 = A clustered LV failed to ACTIVATE.
 # 11 = Failed to mount /shared
+# 12 = Failed to find this Anvil!'s password in the local striker.conf
 #
 
 use strict;
@@ -79,7 +80,7 @@ my $an = AN::Tools->new({data => {
 			language		=>	"en_CA",
 			local_node		=>	"",
 			log_language		=>	"en_CA",
-			log_level		=>	2,
+			log_level		=>	1,
 			peer_node		=>	"",
 			resync_max_wait_time	=>	600,
 		},
@@ -101,6 +102,12 @@ if (($an->data->{switches}{h})   or
     ($an->data->{switches}{help}))
 {
 	print_usage($an);
+	exit(0);
+}
+if ($an->data->{switches}{start})
+{
+	# Create the /etc/rc3.d link.
+	update_striker_conf($an, "enable");
 	exit(0);
 }
 if ($an->data->{switches}{enable})
@@ -133,6 +140,11 @@ if (not $an->data->{switches}{force})
 	# Exit if another instance is running already.
 	avoid_duplicate_run($an);
 }
+# Exit if we're disabled.
+if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-start'}{enabled}))
+{
+	exit(0);
+}
 
 # Log our startup
 $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => {
@@ -161,6 +173,9 @@ $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variabl
 #    - Reset DRBD config before proceeding.
 # 6. Using Start Groups/Delays (and ignoring 'clean' off VMs), boot servers.
 # 
+
+# Disable myself in /etc/striker/striker.conf to block further runs.
+update_striker_conf($an, "disable");
 
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
@@ -191,6 +206,87 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This updates the tools::anvil-safe-start::enabled value in striker.conf
+sub update_striker_conf
+{
+	my ($an, $task) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_striker_conf" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "task", value1 => $task, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# $an->data->{tools}{anvil-safe-start}{enabled}
+	my $changed = 0;
+	my $set     = $task eq "enable" ? 1 : 0;
+	
+	# Read in striker.conf.
+	my $new_config = "";
+	my $shell_call = $an->data->{path}{striker_config};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^tools::anvil-safe-start::enabled(\s+)=(\s+)(.*)$/)
+		{
+			my $space1 = $1;
+			my $space2 = $2;
+			my $value  = $3;
+			if ($value ne $set)
+			{
+				$changed = 1;
+				$line    = "tools::anvil-safe-start::enabled".$space1."=".$space2."$set";
+			}
+		}
+		
+		$new_config .= "$line\n";
+	}
+	close $file_handle;
+	
+	if ($changed)
+	{
+		# Write out the new version.
+		my $shell_call = $an->data->{path}{striker_config};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $new_config;
+		close $file_handle;
+		if ($set)
+		{
+			# Called
+			print $an->String->get({key => "asst_message_0016", variables => { this_file => $THIS_FILE }})."\n";
+		}
+		else
+		{
+			# Cancelled.
+			print $an->String->get({key => "asst_message_0017", variables => { this_file => $THIS_FILE }})."\n";
+		}
+	}
+	else
+	{
+		if ($set)
+		{
+			# Already called
+			print $an->String->get({key => "asst_message_0018", variables => { this_file => $THIS_FILE }})."\n";
+		}
+		else
+		{
+			# Already cancelled.
+			print $an->String->get({key => "asst_message_0019", variables => { this_file => $THIS_FILE }})."\n";
+		}
+	}
+	
+	return(0);
+}
 
 # This starts the servers in the user's requested order. Any servers that the user turned off gracefully in
 # Striker or that are set to never start will be left off. A check is made to ensure we're only booting 
@@ -787,7 +883,7 @@ sub start_gfs2
 	{
 		# We don't try to fix this yet. Only known reason for this to fail at this stage is if the
 		# cluster was renamed and we're NOT mucking with the gfs2 metadata.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0010", code => 11, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0010", code => 11, file => "$THIS_FILE", line => __LINE__});
 		exit(11);
 	}
 	
@@ -956,7 +1052,7 @@ sub start_clvmd
 		if ($inactive)
 		{
 			# We're dead...
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0009", code => 10, file => "$THIS_FILE", line => __LINE__});
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0009", code => 10, file => "$THIS_FILE", line => __LINE__});
 			exit(10);
 		}
 		else
@@ -1067,7 +1163,7 @@ sub start_drbd
 	else
 	{
 		# Unexpected state
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0002", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0002", message_variables => {
 			local_state	=>	$local_state,
 			remote_state	=>	$remote_state,
 		}, code => 3, file => "$THIS_FILE", line => __LINE__});
@@ -1085,7 +1181,7 @@ sub start_drbd
 	if ((not $local_state) or (not $remote_state))
 	{
 		# What?!
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0001", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0001", message_variables => {
 			local_state	=>	$local_state,
 			remote_state	=>	$remote_state,
 		}, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -1216,7 +1312,7 @@ sub start_drbd
 				if ($peer_resource->{connection_state} =~ /StandAlone/) 
 				{
 					# Failed to Connect...
-					$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0007", message_variables => {
+					$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0007", message_variables => {
 						resource	=>	$resource, 
 					}, code => 8, file => "$THIS_FILE", line => __LINE__});
 					exit(8);
@@ -1284,7 +1380,7 @@ sub start_drbd
 				if ($local_resource->{connection_state} =~ /StandAlone/) 
 				{
 					# Failed to Connect...
-					$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0007", message_variables => {
+					$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0007", message_variables => {
 						resource	=>	$resource, 
 					}, code => 8, file => "$THIS_FILE", line => __LINE__});
 					exit(8);
@@ -1623,7 +1719,7 @@ sub wait_if_node2
 sub start_daemons
 {
 	my ($an, $daemon, $syncronous) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemons" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_daemons" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "daemon",     value1 => $daemon, 
 		name2 => "syncronous", value2 => $syncronous,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1791,7 +1887,7 @@ sub start_daemons
 	elsif ($local_state eq "2")
 	{
 		# Not installed locally
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0004", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0004", message_variables => {
 			daemon	=>	$daemon,
 		}, code => 5, file => "$THIS_FILE", line => __LINE__});
 		exit(5);
@@ -1799,7 +1895,7 @@ sub start_daemons
 	elsif ($remote_state eq "2")
 	{
 		# Not installed on the peer.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0005", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0005", message_variables => {
 			daemon	=>	$daemon,
 		}, code => 6, file => "$THIS_FILE", line => __LINE__});
 		exit(6);
@@ -1807,7 +1903,7 @@ sub start_daemons
 	else
 	{
 		# Unexpected state
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0003", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0003", message_variables => {
 			daemon		=>	$daemon,
 			local_state	=>	$local_state,
 			remote_state	=>	$remote_state,
@@ -1832,7 +1928,7 @@ sub start_daemons
 	if (($local_state ne "1") or ($remote_state ne "1"))
 	{
 		# Something went wrong.
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "asst_error_0006", message_variables => {
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0006", message_variables => {
 			daemon		=>	$daemon, 
 			local_state	=>	$local_state, 
 			remote_state	=>	$remote_state, 
@@ -1986,6 +2082,12 @@ sub find_myself
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I didn't get a password, exit.
+	if (not $an->data->{sys}{anvil_password})
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0011", code => 12, file => "$THIS_FILE", line => __LINE__});
+	}
 	
 	# If I am node 2, make note so that we can delay and let node 1 run first.
 	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))
@@ -2182,9 +2284,8 @@ sub print_usage
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $help = "";
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
-	print $file_handle $help;
+	print $file_handle $an->String->get({key => "asst_message_0015"})."\n";
 	close $file_handle;
 	
 	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");

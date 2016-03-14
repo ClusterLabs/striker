@@ -335,7 +335,8 @@ sub boot_server
 	### Now we know which node is preferred, is it healthy?
 	# If the user's requested node is healthy, boot it. If there is no requested node, see if the 
 	# failover domain's highest priority node is ready. If not, is the peer? If not, sadness,
-	my $booted = 0;
+	my $booted      = 0;
+	my $boot_return = "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "nodes->{$preferred_node}{storage_ready}", value1 => $nodes->{$preferred_node}{storage_ready}, 
 		name2 => "nodes->{$secondary_node}{storage_ready}", value2 => $nodes->{$secondary_node}{storage_ready}, 
@@ -359,7 +360,7 @@ sub boot_server
 				server => $server,
 				node   => $preferred_node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$booted = $an->Cman->_do_server_boot({
+			($booted, $boot_return) = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $preferred_node, 
 			});
@@ -375,7 +376,7 @@ sub boot_server
 				server => $server,
 				node   => $secondary_node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$booted = $an->Cman->_do_server_boot({
+			($booted, $boot_return) = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
@@ -391,7 +392,7 @@ sub boot_server
 				server => $server,
 				node   => $secondary_node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$booted = $an->Cman->_do_server_boot({
+			($booted, $boot_return) = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $preferred_node, 
 			});
@@ -423,7 +424,7 @@ sub boot_server
 				secondary_node => $secondary_node,
 				server         => $server,
 			}, file => $THIS_FILE, line => __LINE__});
-			$booted = $an->Cman->_do_server_boot({
+			($booted, $boot_return) = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
@@ -439,7 +440,7 @@ sub boot_server
 				secondary_node => $secondary_node,
 				server         => $server,
 			}, file => $THIS_FILE, line => __LINE__});
-			$booted = $an->Cman->_do_server_boot({
+			($booted, $boot_return) = $an->Cman->_do_server_boot({
 				server => $server, 
 				node   => $secondary_node, 
 			});
@@ -502,7 +503,7 @@ sub boot_server
 		}
 	}
 	
-	return($booted);
+	return($booted, $boot_return);
 }
 
 # This gathers the data from a cluster.conf file. Returns '0' if the file wasn't read successfully.
@@ -1059,6 +1060,109 @@ sub cluster_name
 	return($cluster_name);
 }
 
+# This stops a server
+sub stop_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# This will store the LVM data returned to the caller.
+	my $return   = [];
+	my $server   = $parameter->{server}   ? $parameter->{server}   : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we weren't given a server name, then why were we called?
+	if (not $server)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0071", code => 71, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		# Read in drbdadm dump-xml regardless of whether the module is loaded.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# TODO: Handle stop failures
+	my $details     = $an->Get->server_data({server => $server});
+	my $server_uuid = $details->{uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_uuid", value1 => $server_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{read_db_id})
+	{
+		my $query = "
+UPDATE 
+    server 
+SET 
+    server_stop_reason = 'clean', 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($return);
+}
+
 # This performs the actual boot on the server after sanity checks are done. This should not be called directly!
 sub _do_server_boot
 {
@@ -1066,9 +1170,10 @@ sub _do_server_boot
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $return = 0;
-	my $server = $parameter->{server} ? $parameter->{server} : "";
-	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
+	my $return      = 0;
+	my $boot_return = [];
+	my $server      = $parameter->{server} ? $parameter->{server} : "";
+	my $node        = $parameter->{node}   ? $parameter->{node}   : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "node",   value2 => $node, 
@@ -1083,6 +1188,8 @@ sub _do_server_boot
 	{
 		chomp;
 		my $line = $_;
+		push @{$boot_return}, $line;
+		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1095,6 +1202,31 @@ sub _do_server_boot
 				server => $server,
 				node   => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $details     = $an->Get->server_data({server => $server});
+			my $server_uuid = $details->{uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server_uuid", value1 => $server_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{sys}{read_db_id})
+			{
+				my $query = "
+UPDATE 
+    server 
+SET 
+    server_stop_reason = NULL, 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
 		}
 		if ($line =~ /fail/i)
 		{
@@ -1126,7 +1258,7 @@ sub _do_server_boot
 	}
 	close $file_handle;
 	
-	return($return);
+	return($return, $boot_return);
 }
 
 # This reads in cluster.conf if needed.

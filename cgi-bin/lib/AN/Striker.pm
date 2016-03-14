@@ -7375,7 +7375,8 @@ sub migrate_vm
 		print AN::Common::template($conf, "server.html", "migrate-server-header", {
 			title	=>	$say_title,
 		});
-		my $shell_call = "$conf->{path}{clusvcadm} -M vm:$vm -m $target";
+		#my $shell_call = "$conf->{path}{clusvcadm} -M vm:$vm -m $target";
+		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $vm";
 		my $password   = $conf->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -7475,19 +7476,11 @@ sub stop_vm
 		title	=>	$say_title,
 	});
 	my $say_node = node_name_to_long_host_name($conf, $node);
-	my $shell_call = "$conf->{path}{clusvcadm} -d vm:$vm";
-	my $password   = $conf->{sys}{root_password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
+	my $return = $an->Cman->stop_server({
+		server		=>	$vm,
+		target		=>	$node, 
 		port		=>	$conf->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
+		password	=>	$conf->{sys}{root_password},
 	});
 	foreach my $line (@{$return})
 	{

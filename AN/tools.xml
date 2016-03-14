@@ -516,7 +516,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>
 		<key name="error_message_0030">Timed out while waiting for a reply from: [#!variable!target!#]. Is the machine booting up? If so, please wait a minute or two and try again.</key>
 		<key name="error_message_0031">Unknown error while connecting to: [#!variable!target!#]. The error was: [#!variable!error!#]</key>
-		<key name="error_message_0032">Unable to log in. Please check the password for this #!string!brand_0003!#.</key>
+		<key name="error_message_0032">Unable to log in. Please check the password for this #!string!brand_0004!#.</key>
 		<key name="error_message_0033">Failed to establish channel to target: [#!variable!target!#] for shell call: [#!variable!shell_call!#]</key>
 		<key name="error_message_0034">The 'AN::Tools::Storage->_create_rsync_wrapper() private function was called without passing the target machine and/or target password.</key>
 		<key name="error_message_0035"><![CDATA[The 'AN::Tools::Storage->rsync() method was called without a 'target' parameter. Please use 'target => <remote_machine_address>'.]]></key>
@@ -563,6 +563,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		</key>
 		<key name="error_message_0069">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
 		<key name="error_message_0070">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
+		<key name="error_message_0071"><![CDATA[The 'AN::Tools::Cman->stop_server()' method was not passed a 'server' name to shut down.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

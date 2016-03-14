@@ -443,7 +443,7 @@ sub shared_files
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "df_shell_call", value1 => $df_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$df_shell_call 2>&1 |") or die "Failed to call: [$df_shell_call], error was: $!\n";
+		open ($file_handle, "$df_shell_call 2>&1 |") or die "Failed to call: [$df_shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
