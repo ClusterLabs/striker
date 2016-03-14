@@ -382,7 +382,6 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "migrate_vm")
 	{
-		# Confirmed yet?
 		if ($conf->{cgi}{confirm})
 		{
 			migrate_vm($conf);
@@ -11567,11 +11566,30 @@ sub display_vm_state_and_controls
 		}, "", 1);
 		if ($conf->{vm}{$vm}{can_migrate})
 		{
+			# If we're doing a cold migration, ask for confirmation. If this would be a live 
+			# migration, just do it.
+			my $button_link = "?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}";
+			my $server_data = $an->Get->server_data({
+				server   => $say_vm, 
+				anvil    => $an->data->{cgi}{cluster}, 
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "button_link",                 value1 => $button_link,
+				name2 => "server_data->migration_type", value2 => $server_data->{migration_type},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($server_data->{migration_type} eq "live")
+			{
+				$button_link .= "&confirm=true";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "button_link",                 value1 => $button_link,
+					name2 => "server_data->migration_type", value2 => $server_data->{migration_type},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 			my $say_target = AN::Common::get_string($conf, {key => "button_0025", variables => {
 				migration_target	=>	$say_migration_target,
 			}});
 			$migrate_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}&confirm=true",
+				button_link	=>	$button_link,
 				button_text	=>	$say_target,
 				id		=>	"migrate_vm_$vm",
 			}, "", 1);
@@ -12275,7 +12293,7 @@ sub display_node_controls
 		else
 		{
 			$say_node_name[$i] = AN::Common::template($conf, "common.html", "disabled-button-with-class", {
-				button_class	=>	"highlight_offline_fixed_width",
+				button_class	=>	"highlight_offline_fixed_width_button",
 				button_text	=>	"$conf->{node}{$node}{info}{host_name}",
 			}, "", 1);
 		}

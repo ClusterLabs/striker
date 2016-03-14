@@ -263,11 +263,13 @@ sub update_striker_conf
 		if ($set)
 		{
 			# Called
+			$an->Log->entry({log_level => 1, message_key => "asst_message_0016", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0016", variables => { this_file => $THIS_FILE }})."\n";
 		}
 		else
 		{
 			# Cancelled.
+			$an->Log->entry({log_level => 1, message_key => "asst_message_0017", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0017", variables => { this_file => $THIS_FILE }})."\n";
 		}
 	}
@@ -276,11 +278,13 @@ sub update_striker_conf
 		if ($set)
 		{
 			# Already called
+			$an->Log->entry({log_level => 1, message_key => "asst_message_0018", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0018", variables => { this_file => $THIS_FILE }})."\n";
 		}
 		else
 		{
 			# Already cancelled.
+			$an->Log->entry({log_level => 1, message_key => "asst_message_0019", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
 			print $an->String->get({key => "asst_message_0019", variables => { this_file => $THIS_FILE }})."\n";
 		}
 	}
@@ -1966,7 +1970,7 @@ sub wait_for_access
 		my $bcn_return_code = $an->Check->ping({target => $peer_bcn});
 		my $sn_return_code  = $an->Check->ping({target => $peer_sn});
 		my $ifn_return_code = $an->Check->ping({target => $peer_ifn});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "bcn_return_code", value1 => $bcn_return_code, 
 			name2 => "sn_return_code",  value2 => $sn_return_code, 
 			name3 => "ifn_return_code", value3 => $ifn_return_code, 

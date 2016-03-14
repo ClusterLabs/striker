@@ -1125,7 +1125,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0044"><![CDATA[About to forcefully power off <span class="fixed_width">#!variable!server!#</span>!]]></key>
 		<key name="title_0045"><![CDATA[About to <span class="highlight_dangerous"><b>delete</b></span> the <b>#!variable!server!#</b> server!]]></key>
 		<key name="title_0046"><![CDATA[Booting <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
-		<key name="title_0047"><![CDATA[About to migrate the server <span class="fixed_width">#!variable!server!#</span> to <b><span class="fixed_width">#!variable!target!#</span></b>.]]></key>
+		<key name="title_0047"><![CDATA[About to <span class="highlight_dangerous">cold migrate</span> the server <span class="fixed_width">#!variable!server!#</span> to <b><span class="fixed_width">#!variable!target!#</span></b>.]]></key>
 		<key name="title_0048"><![CDATA[Booting of <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> failed!]]></key>
 		<key name="title_0049"><![CDATA[Migrating <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!target!#</span> now...]]></key>
 		<key name="title_0050"><![CDATA[Migration of <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!migration_target!#</span> aborted!]]></key>
@@ -1458,8 +1458,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0174">It will be removed from the #!string!brand_0003!#'s management and forced off, if necessary.</key>
 		<key name="message_0175">The definition file will be deleted and it's backing storage will be removed.</key>
 		<key name="message_0176">Ensure you have backed up any data on the machine before proceeding!</key>
-		<key name="message_0177"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be migrated to the #!string!brand_0003!# node <span class="fixed_width">#!variable!target!#</span>.<br />This server has <span class="fixed_width">#!variable!ram!#</span> RAM, which will take roughly <span class="fixed_width">#!variable!migration_time_estimate!#</span> seconds to migrate.]]></key>
-		<key name="message_0178"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be <span class="highlight_dangerous"><b>destroyed and deleted!</b></span>]]></key>
+		<key name="message_0177"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be <span class="highlight_dangerous">cold migrated</span> to the node <span class="highlight_detail">#!variable!target!#</span>.<br />Cold migration means that the server will be gracefully <span class="highlight_dangerous">shut down</span>, then rebooted on the target node.]]></key>
+		<key name="message_0178"><![CDATA[The server named <span class="highlight_detail">#!variable!server!#</span> will be <span class="highlight_dangerous"><b>destroyed and deleted!</b></span>]]></key>
 		<key name="message_0179">System call output below:</key>
 		<key name="message_0180">The server is already running.</key>
 		<key name="message_0181">It looks like the attempt to start the server Failed. Will try to recover now...</key>
@@ -2451,7 +2451,7 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0006">#!variable!this_file!# will NOT run when the system boots.</key>
 		<key name="asst_message_0007">#!variable!this_file!# is running:</key>
 		<key name="asst_message_0008">- Process ID: [#!variable!pid!#]</key>
-		<key name="asst_message_0009">Not other instance of #!variable!this_file!# is running.</key>
+		<key name="asst_message_0009">No other instance of #!variable!this_file!# is running.</key>
 		<key name="asst_message_0010">Killed the process with ID: [#!variable!pid!#]</key>
 		<key name="asst_message_0011">[ Note ] - Killed the process with ID: [#!variable!pid!#], but SIGKILL was needed.</key>
 		<key name="asst_message_0012">[ Warning ] - Failed to kill (with SIGTERM) the process with ID: [#!variable!pid!#]!</key>

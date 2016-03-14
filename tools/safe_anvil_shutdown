@@ -43,6 +43,8 @@ my $conf = {
 		},
 	},
 	path		=>	{
+		'anvil-migrate-server'	=>	"/sbin/striker/anvil-migrate-server",
+		'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 		clustat			=>	"/usr/sbin/clustat",
 		clusvcadm		=>	"/usr/sbin/clusvcadm",
 		definitions		=>	"/shared/definitions",
@@ -51,7 +53,6 @@ my $conf = {
 		health_file		=>	"/shared/status",	# under this directory will be a file called ".<node_name>" for each node.
 		lvdisplay		=>	"/sbin/lvdisplay",
 		lvs			=>	"/sbin/lvs",
-		'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
 		virsh			=>	"/usr/bin/virsh",
 	},
 	sys		=>	{
@@ -305,7 +306,7 @@ sub health_check
 		{
 			print "- Migrating: [$server] to: [$conf->{node}{peer}{name}]\n";
 			my $success    = 0;
-			my $shell_call = "$conf->{path}{clusvcadm} -M vm:$server -m $conf->{node}{peer}{name}";
+			my $shell_call = $conf->{path}{'anvil-migrate-server'}." --server $server";
 			print "[ Debug ] ".__LINE__."; - shell_call: [$shell_call]\n";# if $conf->{sys}{debug};
 			open (my $file_handle, '-|', "$shell_call") || die "Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
