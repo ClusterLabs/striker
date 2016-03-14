@@ -13521,26 +13521,29 @@ sub check_if_on
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the peer is on, use it to check the power.
-	my $peer                    = "";
-	$conf->{node}{$node}{is_on} = 9;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "up nodes", value1 => $conf->{sys}{up_nodes},
+	my $peer                       = "";
+	   $conf->{node}{$node}{is_on} = 9;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
 	}, file => $THIS_FILE, line => __LINE__});
-	### TODO: This fails when node 1 is down because it has not yet looked
-	###       for node 2 to see if it is on or not. Check manually.
+	### TODO: This fails when node 1 is down because it has not yet looked for node 2 to see if it is on 
+	###       or not. Check manually.
 	if ($conf->{sys}{up_nodes} == 1)
 	{
 		# It has to be the peer of this node.
 		$peer = @{$conf->{up_nodes}}[0];
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node", value1 => $node,
 		name2 => "peer", value2 => $peer,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($peer)
 	{
 		# Check the power state using the peer node.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $conf->{node}{$node}{info}{power_check_command})
 		{
 			my $error = AN::Common::get_string($conf, {key => "message_0047", variables => {
@@ -13549,23 +13552,14 @@ sub check_if_on
 			}});
 			error($conf, $error);
 		}
-		else
-		{
-			### NOTE: Not needed with the new SSH method.
-			# Escape out password double-quotes.
-			#$conf->{node}{$node}{info}{power_check_command} =~ s/-p \"(.*?)\"/-p \\\"$1\\\"/g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node}::info::power_check_command", value1 => $conf->{node}{$node}{info}{power_check_command},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
 		my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o status";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
-			name2 => "node",       value2 => $node,
+			name2 => "peer",       value2 => $peer,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			target		=>	$peer,
+			port		=>	$conf->{node}{$peer}{port}, 
 			password	=>	$conf->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,

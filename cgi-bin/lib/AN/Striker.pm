@@ -9096,18 +9096,19 @@ sub poweron_node
 	# Make sure no VMs are running.
 	my $node              = $conf->{cgi}{node};
 	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "in poweron_node(), node", value1 => $node,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",              value1 => $node,
+		name2 => "node_cluster_name", value2 => $node_cluster_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
 	AN::Cluster::scan_cluster($conf);
 	AN::Cluster::check_if_on($conf, $node);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node",  value1 => $node,
-		name2 => "is on", value2 => $conf->{node}{$node}{is_on},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node::${node}::is_on",  value1 => $conf->{node}{$node}{is_on},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $proceed      = 0;
+	
+	my $proceed = 0;
 	# Unknown error is the default.
 	my $abort_reason = AN::Common::get_string($conf, {key => "message_0224", variables => {
 		node	=>	$node,
@@ -9152,7 +9153,7 @@ sub poweron_node
 		my $peer  = "";
 		my $is_on = 2;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "up nodes", value1 => $conf->{sys}{up_nodes},
+			name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{sys}{up_nodes} == 1)
 		{
@@ -9160,7 +9161,7 @@ sub poweron_node
 			$peer = @{$conf->{up_nodes}}[0];
 		}
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node", value1 => $node,
 			name2 => "peer", value2 => $peer,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9180,11 +9181,11 @@ sub poweron_node
 			my $password   = $conf->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
-				name2 => "node",       value2 => $node,
+				name2 => "peer",       value2 => $peer,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				target		=>	$peer,
+				port		=>	$conf->{node}{$peer}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
