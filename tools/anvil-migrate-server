@@ -444,12 +444,6 @@ sub sanity_check_cluster
 		}
 	}
 	
-	#print Dumper $anvil_data;
-	#print Dumper $clustat_data;
-	#print Dumper $server_data;
-	#print Dumper $lvm_data;
-	#print Dumper $drbd_data;
-	
 	# I'll need this data shortly.
 	$an->data->{server_data} = $server_data;
 	

@@ -368,6 +368,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0159"><![CDATA[You can select a script to run <b>before</b> migrating a server.<br />The text field to the right can be used to pass arguments to your script]]></key>
 		<key name="explain_0160"><![CDATA[You can select a script to run <b>after</b> migrating a server.<br />The text field to the right can be used to pass arguments to your script]]></key>
 		<key name="explain_0161"><![CDATA[<span class="highlight_note">Note</span>: 'Pre' and 'Post' migration scripts are not triggered on a normal boot or recovery.<br />Scripts can be uploaded in the <a href="mediaLibrary?cluster=#!conf!cgi::cluster!#" target="_new">#!string!button_0023!#</a>.]]></key>
+		<key name="explain_0162"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/PTS" target="_new">power transfer switch</a>.]]></key>
+		<key name="explain_0163"><![CDATA[The IP address of the first power transfer switch.<br />If you don't have a PTS, or your PTS does not have a network card, you can leave this blank.]]></key>
+		<key name="explain_0164"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/PTS" target="_new">power transfer switch</a>.]]></key>
+		<key name="explain_0165"><![CDATA[The IP address of the second power transfer switch.<br />If you don't have two PTSes, or your PTSes do not have network cards, you can leave this blank.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -422,6 +426,15 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="terse_0154"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0155"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0156"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0157"><![CDATA[The smallest valid MTU size is '576' (see RFC 879).]]></key>
+		<key name="terse_0158"><![CDATA["#!string!state_0126!#", the server is migrated while it is running. "#!string!state_0127!#" migration, the server is rebooted on the new node.]]></key>
+		<key name="terse_0159"><![CDATA[Script runs <b>before</b> migrating a server.]]></key>
+		<key name="terse_0160"><![CDATA[Script runs <b>after</b> migrating a server.]]></key>
+		<key name="terse_0161"><![CDATA['Pre' and 'Post' migration scripts are not triggered on a normal boot or recovery.]]></key>
+		<key name="terse_0162"><![CDATA[Used to populate <span class="highlight_detail">/etc/hosts</span>.]]></key>
+		<key name="terse_0163"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0164"><![CDATA[&nbsp;]]></key>
+		<key name="terse_0165"><![CDATA[&nbsp;]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -648,7 +661,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0222">Checking Storage</key>
 		<key name="row_0223">Checking Internet Access</key>
 		<key name="row_0224">Note!</key>
-		<key name="row_0225">...free...</key>
+		<key name="row_0225">PTSes</key>
 		<key name="row_0226">Installing Programs</key>
 		<key name="row_0227">Updating OS</key>
 		<key name="row_0228">Network Configuration</key>
@@ -719,6 +732,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0293">Migration Type</key>
 		<key name="row_0294">Pre-Migration Script</key>
 		<key name="row_0295">Post-Migration Script</key>
+		<key name="row_0296">PTS 1 Host Name</key>
+		<key name="row_0297">PTS 1 IP Address</key>
+		<key name="row_0298">PTS 2 Host Name</key>
+		<key name="row_0299">PTS 2 IP Address</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>

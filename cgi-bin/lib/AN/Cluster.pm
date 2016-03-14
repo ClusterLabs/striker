@@ -2646,6 +2646,10 @@ sub create_install_manifest
 	$conf->{form}{anvil_ups1_ip_star}                  = "";
 	$conf->{form}{anvil_ups2_name_star}                = "";
 	$conf->{form}{anvil_ups2_ip_star}                  = "";
+	$conf->{form}{anvil_pts1_name_star}                = "";
+	$conf->{form}{anvil_pts1_ip_star}                  = "";
+	$conf->{form}{anvil_pts2_name_star}                = "";
+	$conf->{form}{anvil_pts2_ip_star}                  = "";
 	$conf->{form}{anvil_striker1_name_star}            = "";
 	$conf->{form}{anvil_striker1_bcn_ip_star}          = "";
 	$conf->{form}{anvil_striker1_ifn_ip_star}          = "";
@@ -2966,6 +2970,10 @@ sub create_install_manifest
 			if (not $conf->{cgi}{anvil_ups1_ip})            { $conf->{cgi}{anvil_ups1_ip}            = $conf->{sys}{install_manifest}{'default'}{ups1_ip}; }
 			if (not $conf->{cgi}{anvil_ups2_name})          { $conf->{cgi}{anvil_ups2_name}          = $conf->{sys}{install_manifest}{'default'}{ups2_name}; }
 			if (not $conf->{cgi}{anvil_ups2_ip})            { $conf->{cgi}{anvil_ups2_ip}            = $conf->{sys}{install_manifest}{'default'}{ups2_ip}; }
+			if (not $conf->{cgi}{anvil_pts1_name})          { $conf->{cgi}{anvil_pts1_name}          = $conf->{sys}{install_manifest}{'default'}{pts1_name}; }
+			if (not $conf->{cgi}{anvil_pts1_ip})            { $conf->{cgi}{anvil_pts1_ip}            = $conf->{sys}{install_manifest}{'default'}{pts1_ip}; }
+			if (not $conf->{cgi}{anvil_pts2_name})          { $conf->{cgi}{anvil_pts2_name}          = $conf->{sys}{install_manifest}{'default'}{pts2_name}; }
+			if (not $conf->{cgi}{anvil_pts2_ip})            { $conf->{cgi}{anvil_pts2_ip}            = $conf->{sys}{install_manifest}{'default'}{pts2_ip}; }
 			if (not $conf->{cgi}{anvil_pdu1_name})          { $conf->{cgi}{anvil_pdu1_name}          = $conf->{sys}{install_manifest}{'default'}{pdu1_name}; }
 			if (not $conf->{cgi}{anvil_pdu1_ip})            { $conf->{cgi}{anvil_pdu1_ip}            = $conf->{sys}{install_manifest}{'default'}{pdu1_ip}; }
 			if (not $conf->{cgi}{anvil_pdu2_name})          { $conf->{cgi}{anvil_pdu2_name}          = $conf->{sys}{install_manifest}{'default'}{pdu2_name}; }
@@ -3826,6 +3834,87 @@ sub create_install_manifest
 					value		=>	$conf->{cgi}{$ip_key},
 					star		=>	$conf->{form}{$ip_star_key},
 					more_info	=>	"$network_ups_ip_more_info",
+				});
+			}
+		}
+		
+		# PTSes
+		foreach my $i (1, 2)
+		{
+			my $name_key         = "anvil_pts${i}_name";
+			my $name_star_key    = "anvil_pts${i}_name_star";
+			my $ip_key           = "anvil_pts${i}_ip";
+			my $ip_star_key      = "anvil_pts${i}_ip_star";
+			my $say_name_row     = "";
+			my $say_name_explain = "";
+			my $say_name_url     = "";
+			my $say_ip_row       = "";
+			my $say_ip_explain   = "";
+			my $say_ip_url       = "";
+			if ($i == 1)
+			{
+				$say_name_row     = "#!string!row_0296!#";
+				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0162!#" : "#!string!explain_0162!#";
+				$say_name_url     = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names";
+				$say_ip_row       = "#!string!row_0297!#";
+				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0163!#" : "#!string!explain_0163!#";
+				$say_ip_url       = "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Network_Managed_PTSes_Are_Worth_It";
+			}
+			elsif ($i == 2)
+			{
+				$say_name_row     = "#!string!row_0298!#";
+				$say_name_explain = $conf->{sys}{expert_ui} ? "#!string!terse_0164!#" : "#!string!explain_0164!#";
+				$say_name_url     = "";
+				$say_ip_row       = "#!string!row_0299!#";
+				$say_ip_explain   = $conf->{sys}{expert_ui} ? "#!string!terse_0165!#" : "#!string!explain_0165!#";
+				$say_ip_url       = "";
+			}
+			
+			# PTSes
+			if (not $conf->{sys}{install_manifest}{show}{pts_fields})
+			{
+				# PTS name
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+				});
+				
+				# PTS IP
+				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+				});
+			}
+			else
+			{
+				# PTS name
+				my $network_pts_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_name_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_name_row",
+					explain		=>	"$say_name_explain",
+					name		=>	"$name_key",
+					id		=>	"$name_key",
+					value		=>	$conf->{cgi}{$name_key},
+					star		=>	$conf->{form}{$name_star_key},
+					more_info	=>	"$network_pts_name_more_info",
+				});
+				
+				# PTS IP
+				my $network_pts_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
+					url	=>	"$say_ip_url",
+				});
+				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					row		=>	"$say_ip_row",
+					explain		=>	"$say_ip_explain",
+					name		=>	"$ip_key",
+					id		=>	"$ip_key",
+					value		=>	$conf->{cgi}{$ip_key},
+					star		=>	$conf->{form}{$ip_star_key},
+					more_info	=>	"$network_pts_ip_more_info",
 				});
 			}
 		}
@@ -5039,6 +5128,25 @@ sub load_install_manifest
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
+				elsif ($b eq "pts")
+				{
+					foreach my $c (@{$a->{$b}->[0]->{pts}})
+					{
+						my $name = $c->{name};
+						my $ip   = $c->{ip};
+						my $type = $c->{type};
+						my $port = $c->{port};
+						$conf->{install_manifest}{$file}{common}{pts}{$name}{ip}   = $ip   ? $ip   : "";
+						$conf->{install_manifest}{$file}{common}{pts}{$name}{type} = $type ? $type : "";
+						$conf->{install_manifest}{$file}{common}{pts}{$name}{port} = $port ? $port : "";
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+							name1 => "UPS",  value1 => $name,
+							name2 => "IP",   value2 => $conf->{install_manifest}{$file}{common}{pts}{$name}{ip},
+							name3 => "type", value3 => $conf->{install_manifest}{$file}{common}{pts}{$name}{type},
+							name4 => "port", value4 => $conf->{install_manifest}{$file}{common}{pts}{$name}{port},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
 				else
 				{
 					# Extra element.
@@ -5229,6 +5337,23 @@ sub load_install_manifest
 			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{ups}{$ups}{ip};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "UPS",       value1 => $ups,
+				name2 => "name_key",  value2 => $name_key,
+				name3 => "ip_key",    value3 => $ip_key,
+				name4 => "CGI; Name", value4 => $conf->{cgi}{$name_key},
+				name5 => "IP",        value5 => $conf->{cgi}{$ip_key},
+			}, file => $THIS_FILE, line => __LINE__});
+			$i++;
+		}
+		# PTSes
+		$i = 1;
+		foreach my $pts (sort {$a cmp $b} keys %{$conf->{install_manifest}{$file}{common}{pts}})
+		{
+			my $name_key = "anvil_pts".$i."_name";
+			my $ip_key   = "anvil_pts".$i."_ip";
+			$conf->{cgi}{$name_key} = $pts;
+			$conf->{cgi}{$ip_key}   = $conf->{install_manifest}{$file}{common}{pts}{$pts}{ip};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "PTS",       value1 => $pts,
 				name2 => "name_key",  value2 => $name_key,
 				name3 => "ip_key",    value3 => $ip_key,
 				name4 => "CGI; Name", value4 => $conf->{cgi}{$name_key},
@@ -5946,6 +6071,8 @@ sub generate_install_manifest
 	my ($pdu4_short_name)     = ($conf->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
 	my ($ups1_short_name)     = ($conf->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
 	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
+	my ($pts1_short_name)     = ($conf->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
+	my ($pts2_short_name)     = ($conf->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 	my ($striker2_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 	my $date      =  get_date($conf);
@@ -6150,6 +6277,10 @@ Striker Version: $conf->{sys}{version}
 			<ups name=\"$conf->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$conf->{cgi}{anvil_ups1_ip}\" />
 			<ups name=\"$conf->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$conf->{cgi}{anvil_ups2_ip}\" />
 		</ups>
+		<pts>
+			<pts name=\"$conf->{cgi}{anvil_pts1_name}\" type=\"raritan\" port=\"161\" ip=\"$conf->{cgi}{anvil_pts1_ip}\" />
+			<pts name=\"$conf->{cgi}{anvil_pts2_name}\" type=\"raritan\" port=\"161\" ip=\"$conf->{cgi}{anvil_pts2_ip}\" />
+		</pts>
 		<pdu>";
 	# PDU 1 and 2 always exist.
 	my $pdu1_agent = $conf->{cgi}{anvil_pdu1_agent} ? $conf->{cgi}{anvil_pdu1_agent} : $conf->{sys}{install_manifest}{anvil_pdu_agent};
@@ -6547,6 +6678,15 @@ sub show_summary_manifest
 		column4		=>	$conf->{cgi}{anvil_ups2_ip},
 	});
 	
+	# PTSes
+	print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+		row		=>	"#!string!row_0225!#",
+		column1		=>	$conf->{cgi}{anvil_pts1_name},
+		column2		=>	$conf->{cgi}{anvil_pts1_ip},
+		column3		=>	$conf->{cgi}{anvil_pts2_name},
+		column4		=>	$conf->{cgi}{anvil_pts2_ip},
+	});
+	
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = AN::Common::get_string($conf, {key => "brand_0017"});
 	my $say_raritan    = AN::Common::get_string($conf, {key => "brand_0018"});
@@ -6759,6 +6899,10 @@ sub show_summary_manifest
 		anvil_ups1_ip			=>	$conf->{cgi}{anvil_ups1_ip},
 		anvil_ups2_name			=>	$conf->{cgi}{anvil_ups2_name},
 		anvil_ups2_ip			=>	$conf->{cgi}{anvil_ups2_ip},
+		anvil_pts1_name			=>	$conf->{cgi}{anvil_pts1_name},
+		anvil_pts1_ip			=>	$conf->{cgi}{anvil_pts1_ip},
+		anvil_pts2_name			=>	$conf->{cgi}{anvil_pts2_name},
+		anvil_pts2_ip			=>	$conf->{cgi}{anvil_pts2_ip},
 		anvil_pdu1_name			=>	$conf->{cgi}{anvil_pdu1_name},
 		anvil_pdu1_ip			=>	$conf->{cgi}{anvil_pdu1_ip},
 		anvil_pdu1_agent		=>	$conf->{cgi}{anvil_pdu1_agent},
@@ -7106,6 +7250,10 @@ sub sanity_check_manifest_answers
 	$conf->{cgi}{anvil_ups1_ip}         = "" if $conf->{cgi}{anvil_ups1_ip}         eq "--";
 	$conf->{cgi}{anvil_ups2_name}       = "" if $conf->{cgi}{anvil_ups2_name}       eq "--";
 	$conf->{cgi}{anvil_ups2_ip}         = "" if $conf->{cgi}{anvil_ups2_ip}         eq "--";
+	$conf->{cgi}{anvil_pts1_name}       = "" if $conf->{cgi}{anvil_pts1_name}       eq "--";
+	$conf->{cgi}{anvil_pts1_ip}         = "" if $conf->{cgi}{anvil_pts1_ip}         eq "--";
+	$conf->{cgi}{anvil_pts2_name}       = "" if $conf->{cgi}{anvil_pts2_name}       eq "--";
+	$conf->{cgi}{anvil_pts2_ip}         = "" if $conf->{cgi}{anvil_pts2_ip}         eq "--";
 	$conf->{cgi}{anvil_striker1_name}   = "" if $conf->{cgi}{anvil_striker1_name}   eq "--";
 	$conf->{cgi}{anvil_striker1_bcn_ip} = "" if $conf->{cgi}{anvil_striker1_bcn_ip} eq "--";
 	$conf->{cgi}{anvil_striker1_ifn_ip} = "" if $conf->{cgi}{anvil_striker1_ifn_ip} eq "--";
@@ -7547,6 +7695,78 @@ sub sanity_check_manifest_answers
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
 			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0173!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check that PTS #1's host name and IP are sane.
+	if (not $conf->{cgi}{anvil_pts1_name})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0296!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pts1_name}))
+	{
+		$conf->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0296!#"}}),
+		});
+		$problem = 1;
+	}
+	if (not $conf->{cgi}{anvil_pts1_ip})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0297!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts1_ip}))
+	{
+		$conf->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0297!#"}}),
+		});
+		$problem = 1;
+	}
+	
+	# Check that PTS #2's host name and IP are sane.
+	if (not $conf->{cgi}{anvil_pts2_name})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0298!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pts2_name}))
+	{
+		$conf->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0103", variables => { field => "#!string!row_0298!#"}}),
+		});
+		$problem = 1;
+	}
+	if (not $conf->{cgi}{anvil_pts2_ip})
+	{
+		# Not allowed to be blank.
+		$conf->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0299!#"}}),
+		});
+		$problem = 1;
+	}
+	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts2_ip}))
+	{
+		$conf->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
+		print AN::Common::template($conf, "config.html", "form-error", {
+			message	=>	AN::Common::get_string($conf, {key => "explain_0104", variables => { field => "#!string!row_0299!#"}}),
 		});
 		$problem = 1;
 	}
