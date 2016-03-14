@@ -1518,7 +1518,7 @@ sub server_uuid
 	my $uuid = "";
 	my $server = $parameter->{server};
 	my $anvil  = $parameter->{anvil};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "anvil",  value2 => $anvil, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1527,6 +1527,14 @@ sub server_uuid
 		# No server? pur quois?!
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0049", code => 49, file => "$THIS_FILE", line => __LINE__});
 		return("");
+	}
+	# If an anvil wasn't specified, see if one was set by cgi.
+	if ((not $anvil) && (($an->data->{cgi}{cluster}) or ($an->data->{cgi}{anvil})))
+	{
+		$anvil = $an->data->{cgi}{anvil} ? $an->data->{cgi}{anvil} : $an->data->{cgi}{cluster};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil", value1 => $anvil, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### TODO: Finish this, but remember that this is likely being called from Striker so we can't assume

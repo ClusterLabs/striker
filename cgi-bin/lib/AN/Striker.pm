@@ -7450,8 +7450,8 @@ sub stop_vm
 	
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "current time", value1 => ".time.",
-		name2 => "cgi::expire",  value2 => $conf->{cgi}{expire},
+		name1 => "time",        value1 => time,
+		name2 => "cgi::expire", value2 => $conf->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (time > $conf->{cgi}{expire})
 	{
