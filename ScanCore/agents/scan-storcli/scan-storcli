@@ -127,8 +127,12 @@ $an->String->read_words({file => $an->data->{path}{core_strings}});
 $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for help.
-print $an->String->get({key => "scan_storcli_message_0001"})."\n";
 $an->Get->switches();
+
+# Adjust the log level if requested.
+adjust_log_level($an);
+
+print $an->String->get({key => "scan_storcli_message_0001"})."\n";
 
 # This does two things; It checks to see if storcli64 is installed (exits '1' if not, exits '2' if not 
 # executable) and then checks to see if any controllers are found in the system (exits '3' if not). 
@@ -156,6 +160,33 @@ nice_exit($an);
 #############################################################################################################
 # Function below                                                                                            #
 #############################################################################################################
+
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my ($an) = @_;
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{'scan-storcli'}{log_level} = 1;
+		$an->Log->level($an->data->{'scan-storcli'}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{'scan-storcli'}{log_level} = 2;
+		$an->Log->level($an->data->{'scan-storcli'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{'scan-storcli'}{log_level} = 3;
+		$an->Log->level($an->data->{'scan-storcli'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{'scan-storcli'}{log_level} = 4;
+		$an->Log->level($an->data->{'scan-storcli'}{log_level});
+	}
+	return(0);
+}
 
 # This gathers the various data from the controller(s).
 sub gather_data

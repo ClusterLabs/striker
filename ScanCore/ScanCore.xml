@@ -244,6 +244,11 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0004">This change was not anticipated. Please report it (#!string!brand_0012!#) so that we can improve #!string!brand_0019!# by catching this change in the future.</key>
 		<key name="scancore_message_0005">#!string!scancore_brand_0001!# has been enabled. It will start within one minute.</key>
 		<key name="scancore_message_0006">#!string!scancore_brand_0001!# has been disabled. It will exit when the next sweep is called.</key>
+		<key name="scancore_message_0007">#!string!scancore_brand_0001!# is enabled.</key>
+		<key name="scancore_message_0008">#!string!scancore_brand_0001!# is disabled.</key>
+		<key name="scancore_message_0009">#!string!scancore_brand_0001!# is running:</key>
+		<key name="scancore_message_0010">- Process ID: [#!variable!pid!#]</key>
+		<key name="scancore_message_0011">No other instance of #!string!scancore_brand_0001!# is running.</key>
 		
 		<!-- Tools related to ScanCore will use these strings. -->
 		<key name="scancore_tools_0001">

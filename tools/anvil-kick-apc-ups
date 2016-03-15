@@ -580,9 +580,9 @@ sub energize_upses
 			my $say_state_ups          = $conf->{snmp}{current_state}{ups}{'values'}{$current_state_ups};
 			my $say_state_group1       = $conf->{snmp}{current_state}{group1}{'values'}{$current_state_group1};
 			my $say_state_group2       = $conf->{snmp}{current_state}{group2}{'values'}{$current_state_group2};
-			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - General UPS state: ...... [$say_state_ups ($current_state_ups)]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - Output state; Group 1: .. [$say_state_group1 ($current_state_group1)]");
-			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - Output state; Group 2: .. [$say_state_group2 ($current_state_group2)]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - General UPS state: ...... [$say_state_ups ($current_state_ups)]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Output state; Group 1: .. [$say_state_group1 ($current_state_group1)]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Output state; Group 2: .. [$say_state_group2 ($current_state_group2)]");
 			
 			# Make sure the UPS is healty enough
 			my $power_on_ups    = 0;

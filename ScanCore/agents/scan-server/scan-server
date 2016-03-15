@@ -103,6 +103,11 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 # Get the switches before printing anything in case the user is asking for help.
 $an->Get->switches();
 
+# Adjust the log level if requested.
+adjust_log_level($an);
+
+print $an->String->get({key => "scan_server_message_0001"})."\n";
+
 # Don't bother proceeding if there is no cluster.conf.
 if (not -e $an->data->{path}{cluster_conf})
 {
@@ -115,9 +120,6 @@ if (not scan_servers($an))
 	# libvirtd not found, exit.
 	nice_exit($an, 1);
 }
-
-# Still alive?
-print $an->String->get({key => "scan_server_message_0001"})."\n";
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
@@ -147,6 +149,33 @@ nice_exit($an, 0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my ($an) = @_;
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{'scan-server'}{log_level} = 1;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{'scan-server'}{log_level} = 2;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{'scan-server'}{log_level} = 3;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{'scan-server'}{log_level} = 4;
+		$an->Log->level($an->data->{'scan-server'}{log_level});
+	}
+	return(0);
+}
 
 # This looks for servers locally and on the peer and reads in their data.
 sub scan_servers

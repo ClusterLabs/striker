@@ -856,21 +856,39 @@ sub remote_call
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
-				# This is for the user
-				$error = $an->String->get({key => "error_message_0032", variables => {
-						target	=>	$target,
-					},
-				});
-				# This is for our logs
-				$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => {
-					target	=>	$target,
+				# Can we log in without a password?
+				my $public_key  = $an->Get->users_home({user => getpwuid($<)})."/.ssh/id_rsa.pub";
+				my $private_key = $an->Get->users_home({user => getpwuid($<)})."/.ssh/id_rsa";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "public_key",  value1 => $public_key, 
+					name2 => "private_key", value2 => $private_key, 
 				}, file => $THIS_FILE, line => __LINE__});
+				if ($ssh_fh->auth_publickey($user, $public_key, $private_key)) 
+				{
+					# We're in! Record the file handle for this target.
+					$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
+					$an->Log->entry({log_level => 2, message_key => "notice_message_0014", message_variables => {
+						target => $target, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# This is for the user
+					$error = $an->String->get({key => "error_message_0032", variables => {
+							target	=>	$target,
+						},
+					});
+					# This is for our logs
+					$an->Log->entry({log_level => 1, message_key => "error_message_0032", message_variables => {
+						target	=>	$target,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
 			}
 			else
 			{
 				# We're in! Record the file handle for this target.
 				$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
-				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "notice_message_0004", message_variables => {
 					target => $target, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}

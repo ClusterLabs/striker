@@ -89,8 +89,6 @@ sub local_users
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		#my $user       = (split/:/, $line)[0];
-		#my $users_home = (split/:/, $line)[5];
 		my ($user, $users_home) = (split/:/, $line)[0,5];
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "user",       value1 => $user, 

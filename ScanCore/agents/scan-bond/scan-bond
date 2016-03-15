@@ -95,8 +95,12 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for
 # help.
-print $an->String->get({key => "scan_bond_message_0001"})."\n";
 $an->Get->switches();
+
+# Adjust the log level if requested.
+adjust_log_level($an);
+
+print $an->String->get({key => "scan_bond_message_0001"})."\n";
 
 # Read in bond. If it returns '1', then bond wasn't found and we will exit.
 if (parse_bonds($an))
@@ -139,6 +143,33 @@ nice_exit($an, 0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my ($an) = @_;
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{'scan-bond'}{log_level} = 1;
+		$an->Log->level($an->data->{'scan-bond'}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{'scan-bond'}{log_level} = 2;
+		$an->Log->level($an->data->{'scan-bond'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{'scan-bond'}{log_level} = 3;
+		$an->Log->level($an->data->{'scan-bond'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{'scan-bond'}{log_level} = 4;
+		$an->Log->level($an->data->{'scan-bond'}{log_level});
+	}
+	return(0);
+}
 
 # This looks at each DB's 'updated' table to see if any are behind. If any are, it will update the tables 
 # based on the time the last entry was made for a given host.

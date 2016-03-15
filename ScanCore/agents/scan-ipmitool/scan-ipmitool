@@ -165,8 +165,12 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # Get the switches before printing anything in case the user is asking for
 # help.
-print $an->String->get({key => "scan_ipmitool_message_0001"})."\n";
 $an->Get->switches();
+
+# Adjust the log level if requested.
+adjust_log_level($an);
+
+print $an->String->get({key => "scan_ipmitool_message_0001"})."\n";
 
 # This calls anvil-report-ipmi-details to find IPMI devices to scan. It also handles any user-defined IPMI 
 # devices set in striker.conf.
@@ -215,6 +219,33 @@ nice_exit($an);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my ($an) = @_;
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{'scan-ipmitool'}{log_level} = 1;
+		$an->Log->level($an->data->{'scan-ipmitool'}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{'scan-ipmitool'}{log_level} = 2;
+		$an->Log->level($an->data->{'scan-ipmitool'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{'scan-ipmitool'}{log_level} = 3;
+		$an->Log->level($an->data->{'scan-ipmitool'}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{'scan-ipmitool'}{log_level} = 4;
+		$an->Log->level($an->data->{'scan-ipmitool'}{log_level});
+	}
+	return(0);
+}
 
 # This reads in the last scan data from one of the databases and compares it
 # against the just-read data. If anything changed, register an alert.

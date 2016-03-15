@@ -495,6 +495,7 @@ sub _set_paths
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
 	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
+	$an->data->{path}{root_crontab}    = "/var/spool/cron/root",
 
 	# Directories
 	$an->data->{path}{definitions}     = "/shared/definitions";
@@ -505,6 +506,8 @@ sub _set_paths
 	
 	# Tools
 	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
+	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
+	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
 	$an->data->{path}{'striker-delayed-run'}  = "/sbin/striker/striker-delayed-run";
 	
 	# Lock files

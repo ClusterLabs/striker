@@ -450,6 +450,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="notice_message_0011">Backing up: [#!variable!source!#] to: [#!variable!destination!#].</key>
 		<key name="notice_message_0012">Backed up: [#!variable!source!#] to: [#!variable!destination!#] on: [#!variable!host!#].</key>
 		<key name="notice_message_0013">Connected to: [#!variable!connections!#] database(s).</key>
+		<key name="notice_message_0014">SSH session opened without a password to: [#!variable!target!#].</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
@@ -516,7 +517,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0029">No route to: [#!variable!target!#]. Is the machine in the process of booting up or powering off? Is this dashboard server on the same network?</key>
 		<key name="error_message_0030">Timed out while waiting for a reply from: [#!variable!target!#]. Is the machine booting up? If so, please wait a minute or two and try again.</key>
 		<key name="error_message_0031">Unknown error while connecting to: [#!variable!target!#]. The error was: [#!variable!error!#]</key>
-		<key name="error_message_0032">Unable to log in. Please check the password for this #!string!brand_0004!#.</key>
+		<key name="error_message_0032">Unable to log in to: [#!variable!target!#]. Please check the password.</key>
 		<key name="error_message_0033">Failed to establish channel to target: [#!variable!target!#] for shell call: [#!variable!shell_call!#]</key>
 		<key name="error_message_0034">The 'AN::Tools::Storage->_create_rsync_wrapper() private function was called without passing the target machine and/or target password.</key>
 		<key name="error_message_0035"><![CDATA[The 'AN::Tools::Storage->rsync() method was called without a 'target' parameter. Please use 'target => <remote_machine_address>'.]]></key>

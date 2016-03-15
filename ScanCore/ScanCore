@@ -158,6 +158,7 @@ my $an = AN::Tools->new({data =>
 				temperature_is_warning	=>	0,
 			},
 			use_db_fh		=>	"",
+			user_set_log_level	=>	"",
 		},
 	}
 });
@@ -180,6 +181,10 @@ $an->String->read_words({file => $an->data->{path}{striker_strings}});
 
 # See if the user is forcing the issue
 $an->Get->switches();
+
+# Adjust the log level if requested.
+adjust_log_level($an);
+
 if ($an->data->{switches}{enable})
 {
 	my $rc   = update_configuration($an, "enable");
@@ -201,6 +206,11 @@ elsif ($an->data->{switches}{disable})
 		print $an->String->get({key => "scancore_message_0006"})."\n";
 	}
 	exit($exit);
+}
+elsif (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
+{
+	report_state($an);
+	exit(0);
 }
 elsif ($an->data->{switches}{force})
 {
@@ -389,6 +399,79 @@ nice_exit($an);
 # Functions                                                                   #
 ###############################################################################
 
+# Change to a user-requested log level.
+sub adjust_log_level
+{
+	my ($an) = @_;
+	if ($an->data->{switches}{v})
+	{
+		$an->data->{scancore}{user_set_log_level} = "-v";
+		$an->data->{scancore}{log_level}          = 1;
+		$an->Log->level($an->data->{scancore}{log_level});
+	}
+	elsif ($an->data->{switches}{vv})
+	{
+		$an->data->{scancore}{user_set_log_level} = "-vv";
+		$an->data->{scancore}{log_level}          = 2;
+		$an->Log->level($an->data->{scancore}{log_level});
+	}
+	elsif ($an->data->{switches}{vvv})
+	{
+		$an->data->{scancore}{user_set_log_level} = "-vvv";
+		$an->data->{scancore}{log_level}          = 3;
+		$an->Log->level($an->data->{scancore}{log_level});
+	}
+	elsif ($an->data->{switches}{vvvv})
+	{
+		$an->data->{scancore}{user_set_log_level} = "-vvvv";
+		$an->data->{scancore}{log_level}          = 4;
+		$an->Log->level($an->data->{scancore}{log_level});
+	}
+	return(0);
+}
+
+# This checks to see if an instance of the program is running. It also checks to see if the program is 
+# configured to run on boot.
+sub report_state
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "report_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is it enabled in striker.conf?
+	if ($an->data->{scancore}{enabled})
+	{
+		# Yup.
+		print $an->String->get({key => "scancore_message_0007"})."\n";
+	}
+	else
+	{
+		# Nope.
+		print $an->String->get({key => "scancore_message_0008"})."\n";
+	}
+	
+	# Is it running now?
+	my $pids  = $an->Get->pids({program_name => $0});
+	my $count = @{$pids};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "count", value1 => $count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($count)
+	{
+		# Yup.
+		print $an->String->get({key => "scancore_message_0009"})."\n";
+		foreach my $pid (sort {$a cmp $b} @{$pids})
+		{
+			print $an->String->get({key => "scancore_message_0010", variables => { pid => $pid }})."\n";
+		}
+	}
+	else
+	{
+		print $an->String->get({key => "scancore_message_0011"})."\n";
+	}
+	
+	return(0);
+}
+
 # This exits if ScanCore was called with '--one-shot'
 sub exit_if_one_shot
 {
@@ -493,6 +576,29 @@ fi";
 				$an->Alert->warning({message_key => "scancore_warning_0015", file => $THIS_FILE, line => __LINE__});
 				$ok = 0;
 			}
+			
+			# Make sure the crontab entry exists.
+			my $shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '".$an->data->{path}{ScanCore}."' ".$an->data->{path}{striker_config}.");
+then 
+    ".$an->data->{path}{echo}." 'in crontab'; 
+else 
+    ".$an->data->{path}{echo}." 'adding the crontab';
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{ScanCore}."' >> ".$an->data->{path}{root_crontab}."
+fi";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			close $file_handle;
 		}
 		elsif ($line =~ /disabled/)
 		{
@@ -5392,6 +5498,10 @@ sub call_agents
 		# I call these sequentially to minimize the load on the host.
 		my $agent_rc   = "9999";
 		my $shell_call = "$agent; echo rc:\$?";
+		if ($an->data->{scancore}{user_set_log_level})
+		{
+			$shell_call = "$agent ".$an->data->{scancore}{user_set_log_level}."; echo rc:\$?";
+		}
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0007", message_variables => { shell_call => $shell_call }, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0070", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)

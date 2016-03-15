@@ -116,6 +116,7 @@ if ($an->data->{switches}{enable})
 {
 	# Create the /etc/rc3.d link.
 	create_rc3d_symlink($an);
+	add_to_root_crontab($an);
 	exit(0);
 }
 if ($an->data->{switches}{disable})
@@ -2216,6 +2217,38 @@ sub report_state
 	{
 		print $an->String->get({key => "asst_message_0009", variables => { this_file => $THIS_FILE }})."\n";
 	}
+	
+	return(0);
+}
+
+# This adds anvil-safe-start to the root user's cron table if needed.
+sub add_to_root_crontab
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_to_root_crontab" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure the crontab entry exists.
+	my $shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '".$an->data->{path}{'anvil-safe-start'}."' ".$an->data->{path}{striker_config}.");
+then 
+    ".$an->data->{path}{echo}." 'in crontab'; 
+else 
+    ".$an->data->{path}{echo}." 'adding the crontab';
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-safe-start'}."' >> ".$an->data->{path}{root_crontab}."
+fi";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
 	
 	return(0);
 }
