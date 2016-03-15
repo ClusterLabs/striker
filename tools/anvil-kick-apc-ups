@@ -27,10 +27,12 @@
 # 5  = The program was not run as root.
 # 6  = Disable was called and the cancel succeeded, but failed to update striker.conf
 # 7  = Failed to enable in striker.conf.
+# 8  = Time since last run was too short.
 # 
 # TODO
+# - Rewrite this whole mess... >_<
 # - Honour 'sys::apc::ups:kick_frequency'.
-# - Call explicit 'on' 
+# 
 
 # Play safe!
 use strict;
@@ -64,10 +66,12 @@ my $conf = {
 		'grep'		=>	"/bin/grep",
 		hosts		=>	"/etc/hosts",
 		logger		=>	"/bin/logger",
+		ps		=>	"/bin/ps",
 		sed		=>	"/bin/sed",
 		snmpget		=>	"/usr/bin/snmpget",
 		snmpset		=>	"/usr/bin/snmpset",
 		striker_config	=>	"/etc/striker/striker.conf",
+		timing		=>	"/tmp/${THIS_FILE}.timing",
 	},
 	snmp		=>	{
 		model_number	=>	{
@@ -100,6 +104,9 @@ my $conf = {
 			# Setting either one controls both groups it seems. Set both at the same time to be safe.
 			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.1'	=>	"Sleep Time; Outlet Group 1",	# Called 'Main Outlet Group' on SMT1500
 			'.1.3.6.1.4.1.318.1.1.1.12.2.2.1.5.2'	=>	"Sleep Time; Outlet Group 2",	# Called 'Outlet Group 1' on SMT1500
+			# Check/set the group states
+			'.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1'	=>	"Energize State; Group 1",	# Called 'Main Outlet Group' on SMT1500, '1' => "Online", '2' => "Offline", '3' => "Unknown"
+			'.1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.2'	=>	"Energize State; Group 2",	# Called 'Outlet Group 1' on SMT1500,    '1' => "Online", '2' => "Offline", '3' => "Unknown"
 		},
 		reboot_ups	=>	{
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.2.0",
@@ -165,6 +172,16 @@ my $conf = {
 		sleep_ups	=>	{
 			oid		=>	".1.3.6.1.4.1.318.1.1.1.6.2.3.0",
 			off_integer	=>	3,
+		},
+		group1		=>	{
+			oid		=>	".1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.1",
+			on_integer	=>	1,
+			off_integer	=>	2, 
+		},
+		group2		=>	{
+			oid		=>	".1.3.6.1.4.1.318.1.1.1.12.1.2.1.3.2",
+			on_integer	=>	1,
+			off_integer	=>	2, 
 		},
 		current_state	=>	{
 			group1		=>	{
@@ -304,6 +321,22 @@ if ($conf->{switches}{cancel})
 	exit($exit);
 }
 
+# All-On is always allowed.
+if ($conf->{switches}{'all-on'})
+{
+	logger($conf, $THIS_FILE, __LINE__, "Energizing all outlet groups on all UPSes.");
+	get_ups_ips($conf);
+	energize_upses($conf);
+	exit(0);
+}
+
+# Disabling is also always allowed.
+if (($conf->{switches}{'state'}) or ($conf->{switches}{status}))
+{
+	report_state($conf);
+	exit(0);
+}
+
 # Disabling is also always allowed.
 if ($conf->{switches}{disable})
 {
@@ -346,6 +379,13 @@ elsif (not $conf->{tools}{'anvil-kick-apc-ups'}{enabled})
 	# We're disabled, exit.
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Anvil! Kick APC UPS has been disabled, exiting.");
 	exit(0);
+}
+elsif ($conf->{sys}{apc}{ups}{kick_frequency})
+{
+	# We've not been forced and the user has asked for timed kicks. Read 'path::timing', if it exists. If
+	# it doesn't, create it with the current time. If it does, read the time in that file, subtract it 
+	# from the current time and if the difference is less that sys::apc::ups::kick_frequency, exit.
+	check_timing($conf);
 }
 
 # Figure out what UPS(es) we're using.
@@ -407,6 +447,13 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling any pending power off.");
 			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]");
+			
+			# Explicitely call the groups on.
+			my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			
+			my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
 			
 			if ($conf->{switches}{reboot})
 			{
@@ -512,6 +559,275 @@ exit(0);
 ###############################################################################
 # Functions                                                                   #
 ###############################################################################
+
+# This calls each UPS and tells it to turn on its outlet group(s);
+sub energize_upses
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - report_state();");
+	
+	my $problem = 0;
+	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups]");
+		if (get_current_settings($conf, $ups, "old"))
+		{
+			$conf->{sys}{connections}++;
+			my $current_state_ups      = $conf->{snmp}{current_state}{ups}{value}{old};
+			my $current_state_group1   = $conf->{snmp}{current_state}{group1}{value}{old};
+			my $current_state_group2   = $conf->{snmp}{current_state}{group2}{value}{old};
+			my $say_state_ups          = $conf->{snmp}{current_state}{ups}{'values'}{$current_state_ups};
+			my $say_state_group1       = $conf->{snmp}{current_state}{group1}{'values'}{$current_state_group1};
+			my $say_state_group2       = $conf->{snmp}{current_state}{group2}{'values'}{$current_state_group2};
+			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - General UPS state: ...... [$say_state_ups ($current_state_ups)]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - Output state; Group 1: .. [$say_state_group1 ($current_state_group1)]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debugg ] - Output state; Group 2: .. [$say_state_group2 ($current_state_group2)]");
+			
+			# Make sure the UPS is healty enough
+			my $power_on_ups    = 0;
+			my $energize_group1 = 0;
+			my $energize_group2 = 0;
+			if ($current_state_ups eq "1")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The UPS: [$ups] is in an unknown state! Proceeding would be dangerous, skipping this UPS.");
+				$problem = 1;
+			}
+			elsif ($current_state_ups eq "5")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS is off in a timed sleep. It will be turned on now.");
+				$power_on_ups = 1;
+			}
+			elsif ($current_state_ups eq "7")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS is off. It will be turned on now.");
+				$power_on_ups = 1;
+			}
+			elsif ($current_state_ups eq "8")
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS: [$ups] is rebooting, We will wait until it is on.");
+				my $start_time = time;
+				my $wait       = 1;
+				while ($wait)
+				{
+					sleep 1;
+					get_current_settings($conf, $ups, "old");
+					if ($current_state_ups ne "8")
+					{
+						# TODO: Make sure it's actually on.
+						logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS: [$ups] is no longer reboot, proceding.");
+						$wait = 0;
+					}
+					else
+					{
+						# have I been waiting over a minute?
+						if ((time - $start_time) > 60)
+						{
+							logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The UPS: [$ups] is still in 'reboot' and we've waited a minute now. Something is wrong, skipping this UPS.");
+							$wait    = 0;
+							$problem = 1;
+						}
+						else
+						{
+							logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The UPS: [$ups] is still rebooting, waiting.");
+						}
+					}
+				}
+			}
+			
+			# Skip to the next UPS if we have a problem.
+			if ($problem)
+			{
+				next;
+			}
+			
+			# We're good. Do we need to turn on the UPS?
+			if ($power_on_ups)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Powering on: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
+				my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]");
+				if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to power on the UPS: [$ups]! Skipping this UPS");
+					$problem = 1;
+					next;
+				}
+				else
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - UPS: [$ups] powered on.");
+					# Give the UPS a moment to come up.
+					sleep 5;
+				}
+			}
+			
+			# Now energize the outlet groups.
+			if ($current_state_group1 eq "2")
+			{
+				my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+				if ($group1_on_return eq "1")
+				{
+					logger($conf, $THIS_FILE, __LINE__, "- Group 1 ('Main Group' on some models) was turned on successfully.");
+				}
+				else
+				{
+					$problem = 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Group 1 ('Main Group' on some models) failed to turn on! State is: [$group1_on_return], should be '1'.");
+				}
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Group 1 ('Main Group' on some models) is already on.");
+			}
+			if ($current_state_group2 eq "2")
+			{
+				my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
+				if ($group2_on_return eq "1")
+				{
+					logger($conf, $THIS_FILE, __LINE__, "- Group 2 ('Group 1' on models that call group 1 'Main group') was turned on successfully.");
+				}
+				else
+				{
+					$problem = 1;
+					logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Group 2 ('Group 1' on models that call group 1 'Main group') failed to turn on! State is: [$group2_on_return], should be '1'.");
+				}
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Group 2 ('Group 1' on models that call group 1 'Main group') is already on.");
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This checks to see if an instance of the program is running. It also checks to see if the program is 
+# configured to run on boot.
+sub report_state
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - report_state();");
+	
+	# Is it enabled on boot?
+	my $shell_call = "
+if \$($conf->{path}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $conf->{path}{striker_config});
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]");
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE: [$line]\n";
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+	}
+	close $file_handle;
+	
+	# Is it running now?
+	my $pids       = [];
+	my $my_pid     = $$;
+	   $shell_call = $conf->{path}{ps}." aux";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell call: [$shell_call]");
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line =  $_;
+		   $line =~ s/^\s+//;
+		   $line =~ s/\s+$//;
+		   $line =~ s/\s+/ /g;
+		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+		if ($line =~ /^\S+ \d+ /)
+		{
+			my ($user, $pid, $cpu, $memory, $virtual_memory_size, $resident_set_size, $control_terminal, $state_codes, $start_time, $time, $command) = ($line =~ /^(\S+) (\d+) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*)$/);
+			if ($command =~ /$THIS_FILE/)
+			{
+				# Don't count ourself.
+				if ($pid ne $my_pid)
+				{
+					push @{$pids}, $pid;
+				}
+			}
+		}
+	}
+	close $file_handle;
+	
+	my $count = @{$pids};
+	if ($count)
+	{
+		# Yup.
+		print "$THIS_FILE: [running]\n";
+		foreach my $pid (sort {$a cmp $b} @{$pids})
+		{
+			print "- pid: [$pid]\n";
+		}
+	}
+	else
+	{
+		print "$THIS_FILE: [not running].\n";
+	}
+	
+	return(0);
+}
+
+# This reads 'path::timing', if it exists. If it doesn't, it is created with the current time. If it does, it
+# reads the time in that file, subtracts it from the current time and if the difference is less than
+# sys::apc::ups::kick_frequency, it exits.
+sub check_timing
+{
+	my ($conf) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - check_timing();");
+	
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - path::timing: [$conf->{path}{timing}]");
+	my $last_run = 0;
+	if (-e $conf->{path}{timing})
+	{
+		my $shell_call = $conf->{path}{timing};
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+		open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /^\d+$/)
+			{
+				$last_run = $line;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - last_run: [$last_run]");
+				last;
+			}
+		}
+		close $file_handle;
+	}
+	
+	if ($last_run)
+	{
+		my $time_now              = time;
+		my $second_since_last_run = $time_now - $last_run;
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - time_now: [$time_now], second_since_last_run: [$second_since_last_run], sys::apc::ups::kick_frequency: [$conf->{sys}{apc}{ups}{kick_frequency}]");
+		if ($second_since_last_run < $conf->{sys}{apc}{ups}{kick_frequency})
+		{
+			# We're out.
+			logger($conf, $THIS_FILE, __LINE__, "[ Note ] - The last run was too recent. The last run was: [$second_since_last_run] seconds ago and we need to wait at least: [$conf->{sys}{apc}{ups}{kick_frequency}] between runs.");
+			exit(8);
+		}
+	}
+	
+	# Not dead? Write the new time out.
+	my $shell_call = $conf->{path}{timing};
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
+	open (my $file_handle, ">$shell_call") or die "Failed to write: [$shell_call], error was: $!\n";
+	print $file_handle time."\n";
+	close $file_handle;
+	
+	return(0);
+}
 
 # This cancels the pending count-down.
 sub cancel_countdown
@@ -700,7 +1016,7 @@ sub get_current_settings
 	my ($current_state_ups) = read_oid_integer($conf, $ups, $conf->{snmp}{current_state}{ups}{oid});
 	if ($current_state_ups eq "#!no_connection!#")
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - SNMP connection to UPS: [$ups] timed out!");
+		logger($conf, $THIS_FILE, __LINE__, "[ Note ] - SNMP connection to UPS: [$ups] timed out!");
 		return(0);
 	}
 	# Still alive? Good!
@@ -1194,6 +1510,14 @@ servers.
 
 SWITCHES
 
+ --all-on
+
+	This will ask all accessible UPSes to turn on their outlet group(s) if
+	they aren't on already.
+	
+	WARNING: Be sure no one is maintaining connected equipment! Failure to
+	         check could cause injury or death!
+
  --cancel
 
 	This will cancel any previous power-off timer. This should be used
@@ -1219,6 +1543,10 @@ SWITCHES
 	enabled. It does the same thing as manually editing 
 	$conf->{path}{striker_config} and changing setting:
 	tools::anvil-kick-apc-ups::enabled = 1
+	
+	WARNING: Be sure to affix a warning on the UPS outlets indicating that
+	         the outlets may become energized automatically. Failure to 
+	         warn maintenance personel may result in injury or death!
 
  --force
 
@@ -1252,6 +1580,11 @@ SWITCHES
 	sys::apc::reboot::sleep_time      = x
 	
 	Where 'x' is the desired time in seconds.
+
+ --state, --status
+
+	Reports whether the program is enabled or disabled and whether any 
+	instance of this program is currently running.
 
  --shutdown
 
@@ -1332,7 +1665,7 @@ sub logger
 	my ($conf, $file, $line_number, $message) = @_;
 	
 	# We split on new-lines so that multi-line message render better in syslog.
-	if (($message =~ /\[ Debug \]/i) && (not $conf->{sys}{debug}))
+	if ((($message =~ /\[ Debug \]/i) or ($message =~ /\[ Note \]/i)) && (not $conf->{sys}{debug}))
 	{
 		# User is suppressing debug messages.
 		return(0);
