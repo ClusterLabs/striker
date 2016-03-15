@@ -28,6 +28,9 @@
 # 6  = Disable was called and the cancel succeeded, but failed to update striker.conf
 # 7  = Failed to enable in striker.conf.
 # 
+# TODO
+# - Honour 'sys::apc::ups:kick_frequency'.
+# - Call explicit 'on' 
 
 # Play safe!
 use strict;

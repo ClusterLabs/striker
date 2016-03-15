@@ -18,6 +18,8 @@
 # 11 = Failed to mount /shared
 # 12 = Failed to find this Anvil!'s password in the local striker.conf
 #
+# TODO:
+# - For each accessible UPS, call an explicit "on" to the outlet groups. Pass '--start-all' to scan-apc-ups?
 
 use strict;
 use warnings;
@@ -145,6 +147,7 @@ if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-st
 {
 	exit(0);
 }
+
 
 # Log our startup
 $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => {

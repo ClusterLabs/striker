@@ -8497,7 +8497,9 @@ sub cold_stop_anvil
 	# Make sure we've got an up-to-date view of the cluster.
 	AN::Cluster::scan_cluster($conf);
 	
-	# Abort if the system is down already.
+	# If the system is already down, the user may be asking to power cycle/ power off the rack anyway.
+	# So if the Anvil! is down, we'll instead perform the requested sub-task using our local copy of the
+	# kick script.
 	if ($conf->{sys}{up_nodes} > 0)
 	{
 		my $say_title = AN::Common::get_string($conf, {key => "title_0181", variables => {
@@ -8857,6 +8859,17 @@ poweroff";
 			});
 		}
 	}
+	elsif ($an->data->{cgi}{note} eq "no_abort")
+	{
+		# The user called this while the Anvil! was down, so don't throw a warning.
+		my $say_subtask = $conf->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
+		my $say_title   = AN::Common::get_string($conf, {key => "title_0153", variables => {
+			subtask	=>	$say_subtask,
+		}});
+		print AN::Common::template($conf, "server.html", "cold-stop-header", {
+			title		=>	$say_title,
+		});
+	}
 	else
 	{
 		# Already down, abort.
@@ -8889,7 +8902,7 @@ poweroff";
 		# Nighty night, see you in the morning!
 		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --reboot --force";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Calling", value1 => $shell_call,
+			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -8915,7 +8928,7 @@ poweroff";
 		# Do eet!
 		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --shutdown --force";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Calling", value1 => $shell_call,
+			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -9028,7 +9041,7 @@ sub dual_boot
 			message	=>	$say_message,
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "Calling", value1 => $shell_call,
+			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -9227,7 +9240,7 @@ sub poweron_node
 					# I can reach it directly
 					my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "Calling", value1 => $shell_call,
+						name1 => "shell_call", value1 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
 					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 					while(<$file_handle>)
@@ -9459,7 +9472,7 @@ sub fence_node
 			else
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Calling", value1 => $shell_call,
+					name1 => "shell_call", value1 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
@@ -9552,7 +9565,7 @@ sub fence_node
 			else
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Calling", value1 => $shell_call,
+					name1 => "shell_call", value1 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
@@ -10157,7 +10170,7 @@ sub display_details
 			
 			# This generates a panel below 'Available Resources' 
 			# *if* the user has enabled 'tools::anvil-kick-apc-ups::enabled'
-			$watchdog_panel = display_watchdog_panel($conf);
+			$watchdog_panel = display_watchdog_panel($conf, "");
 		}
 		else
 		{
@@ -10165,6 +10178,10 @@ sub display_details
 			$no_access_panel = AN::Common::template($conf, "server.html", "display-details-nodes-unreachable", {
 				message	=>	"#!string!message_0268!#",
 			});
+			
+			# This generates a panel below 'Available Resources' 
+			# *if* the user has enabled 'tools::anvil-kick-apc-ups::enabled'
+			$watchdog_panel = display_watchdog_panel($conf, "no_abort");
 		}
 		
 		print AN::Common::template($conf, "server.html", "main-page", {
@@ -10186,14 +10203,19 @@ sub display_details
 # This returns a panel for controlling hard-resets via the 'APC UPS Watchdog' tools
 sub display_watchdog_panel
 {
-	my ($conf) = @_;
+	my ($conf, $note) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_watchdog_panel" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "display_watchdog_panel" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "note", value1 => $note, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $watchdog_panel = "";
-	my $use_node       = "";
-	my $this_cluster   = $conf->{cgi}{cluster};
-	my $enable         = 0;
+	my $expire_time      =  time + $conf->{sys}{actime_timeout};
+	my $power_cycle_link = "?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_cycle";
+	my $power_off_link   = "?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_off";
+	my $watchdog_panel   = "";
+	my $use_node         = "";
+	my $this_cluster     = $conf->{cgi}{cluster};
+	my $enable           = 0;
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
 	{
 		if ($conf->{node}{$node}{up})
@@ -10203,58 +10225,104 @@ sub display_watchdog_panel
 		}
 	}
 	
-	# Return nothing if this feature is disabled or if neither node is up.
+	### TODO: If not 'use_node', use our local copy of the watchdog script if we can reach the UPSes.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "tools::anvil-kick-apc-ups::enabled", value1 => $conf->{tools}{'anvil-kick-apc-ups'}{enabled},
 		name2 => "use_node",                           value2 => $use_node,
 	}, file => $THIS_FILE, line => __LINE__});
-	return("") if (not $use_node);
-	my $node = $use_node;
-
-	# Check that 'anvil-kick-apc-ups' exists.
-	my $shell_call = "
+	if ($use_node)
+	{
+		# Check that 'anvil-kick-apc-ups' exists.
+		my $node       = $use_node;
+		my $shell_call = "
 if \$($conf->{path}{nodes}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $conf->{path}{nodes}{striker_config});
 then 
     echo enabled; 
 else 
     echo disabled;
 fi";
-	my $password = $conf->{sys}{root_password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		my $password = $conf->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line eq "enabled")
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
 		{
-			$enable = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line eq "enabled")
+			{
+				$enable = 1;
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "enable", value1 => $enable,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($enable)
+		{
+			# It exists, load the template
+			$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
+						power_cycle	=>	$power_cycle_link,
+						power_off	=>	$power_off_link,
+					}, "", 1);
+			$watchdog_panel =~ s/\n$//;
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "enable", value1 => $enable,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($enable)
+	else
 	{
-		# It exists, load the template
-		my $expire_time = time + $conf->{sys}{actime_timeout};
-		$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
-					power_cycle	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_cycle",
-					power_off	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_off",
-				}, "", 1);
-		$watchdog_panel =~ s/\n$//;
+		# Anvil! is down, try to use our own copy.
+		my $shell_call = "
+if \$(".$an->data->{path}{'grep'}." -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' ".$an->data->{path}{striker_config}.");
+then 
+    echo enabled; 
+else 
+    echo disabled;
+fi
+";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line eq "enabled")
+			{
+				$enable = 1;
+			}
+		}
+		close $file_handle;
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "enable", value1 => $enable,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($enable)
+		{
+			# It exists, load the template
+			$power_cycle_link .= "&note=$note";
+			$power_off_link   .= "&note=$note";
+			$watchdog_panel = AN::Common::template($conf, "server.html", "watchdog_panel", {
+						power_cycle	=>	$power_cycle_link,
+						power_off	=>	$power_off_link,
+					}, "", 1);
+			$watchdog_panel =~ s/\n$//;
+		}
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

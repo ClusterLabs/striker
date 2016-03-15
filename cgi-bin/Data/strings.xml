@@ -1248,7 +1248,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0150">Primary Configuration Values</key>
 		<key name="title_0151">Secondary Configuration Values</key>
 		<key name="title_0152"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span> Variables]]></key>
-		<key name="title_0153">...free..</key>
+		<key name="title_0153"><![CDATA[[<span class="highlight_detail">#!variable!subtask!#</span>] under way.]]></key>
 		<key name="title_0154">Shared Variables</key>
 		<key name="title_0155">Problem with the specified form values.</key>
 		<key name="title_0156"><![CDATA[Node <span class="highlight_bad_bold">#!variable!node_number!#</span>]]></key>

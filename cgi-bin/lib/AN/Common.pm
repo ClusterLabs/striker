@@ -182,6 +182,7 @@ sub read_in_cgi_variables
 		"max_storage",
 		"name",
 		"node",
+		"note",
 		"node_cluster_name",
 		"os_variant",
 		"perform_install", 
