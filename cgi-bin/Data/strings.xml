@@ -594,7 +594,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0155">System Message</key>
 		<key name="row_0156">Configure</key>
 		<key name="row_0157">Info</key>
-		<key name="row_0158">...free...</key>
+		<key name="row_0158">Please Wait</key>
 		<key name="row_0159">#!string!brand_0003!# Prefix</key>
 		<key name="row_0160">Domain Name</key>
 		<key name="row_0161">Sequence Number</key>
@@ -1284,6 +1284,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0186">Forcing-off the server was aborted!</key>
 		<key name="title_0187">Powering off the node was aborted!</key>
 		<key name="title_0188">Fencing the node was aborted!</key>
+		<key name="title_0189">Startup Underway!</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1657,7 +1658,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0352"><![CDATA[&lt;prompt&gt;]]></key>
 		<key name="message_0353">Script?</key>
 		<key name="message_0354"><![CDATA[[ <span class="highlight_bad_bold">Error</span> ] - ]]></key>
-		<key name="message_0355">...free...</key>
+		<key name="message_0355"><![CDATA[One or both of the nodes recently started.<br />The: [<span class="highlight_detail">anvil-safe-start</span>] tool is running, so start-up is underway.<br />Please be patient. Some steps can take up to five minutes to complete.<br />Services should come online shortly.]]></key>
 		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
 		<key name="message_0358">...free...</key>
@@ -2464,11 +2465,11 @@ Deadline Scheduler Configuration (sda):
 		<key name="asst_message_0002">#!variable!this_file!# was already enabled.</key>
 		<key name="asst_message_0003">#!variable!this_file!# has been disabled.</key>
 		<key name="asst_message_0004">#!variable!this_file!# was already disabled.</key>
-		<key name="asst_message_0005">#!variable!this_file!# will run when the system boots.</key>
-		<key name="asst_message_0006">#!variable!this_file!# will NOT run when the system boots.</key>
-		<key name="asst_message_0007">#!variable!this_file!# is running:</key>
+		<key name="asst_message_0005">#!variable!this_file!#: [enabled]</key>
+		<key name="asst_message_0006">#!variable!this_file!#: [disabled]</key>
+		<key name="asst_message_0007">#!variable!this_file!#: [running]</key>
 		<key name="asst_message_0008">- Process ID: [#!variable!pid!#]</key>
-		<key name="asst_message_0009">No other instance of #!variable!this_file!# is running.</key>
+		<key name="asst_message_0009">#!variable!this_file!#: [stopped]</key>
 		<key name="asst_message_0010">Killed the process with ID: [#!variable!pid!#]</key>
 		<key name="asst_message_0011">[ Note ] - Killed the process with ID: [#!variable!pid!#], but SIGKILL was needed.</key>
 		<key name="asst_message_0012">[ Warning ] - Failed to kill (with SIGTERM) the process with ID: [#!variable!pid!#]!</key>
@@ -2531,6 +2532,7 @@ SUPPORT
 		<key name="asst_message_0017">#!variable!this_file!# has been turned off. No other instances will run until the next reboot, proceeding.</key>
 		<key name="asst_message_0018">#!variable!this_file!# had already been called, no changes made.</key>
 		<key name="asst_message_0019">#!variable!this_file!# had already been turned off, no changes made.</key>
+		<key name="asst_message_0020">#!variable!this_file!#: [queued]</key>
 		
 		<!-- error messages -->
 		<key name="asst_error_0001">Failed to start the DRBD kernel module on one of the nodes. Local: [#!variable!local_state!#], peer: [#!variable!peer_state!#] (1 == loaded).</key>

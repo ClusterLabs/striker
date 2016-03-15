@@ -10294,7 +10294,7 @@ sub scan_cluster
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "scan_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "scan_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	AN::Striker::set_node_names($conf);
 	
@@ -10324,12 +10324,9 @@ sub check_node_status
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $cluster = $conf->{cgi}{cluster};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "In check_node_status() checking nodes in cluster", value1 => $cluster,
-	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
 	{
 		# set daemon states to 'Unknown'.
@@ -10916,7 +10913,7 @@ sub gather_node_details
 {
 	my ($conf, $node) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "gather_node_details" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "gather_node_details" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -10928,8 +10925,8 @@ sub gather_node_details
 	$conf->{node}{$node}{up}             = 0;
 	$conf->{node}{$node}{enable_poweron} = 0;
 	
-	my $cluster                     = $conf->{cgi}{cluster};
-	$conf->{node}{$node}{connected} = 0;
+	my $cluster                        = $conf->{cgi}{cluster};
+	   $conf->{node}{$node}{connected} = 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node", value1 => $node,
 		name2 => "port", value2 => $conf->{node}{$node}{port},
@@ -10938,6 +10935,7 @@ sub gather_node_details
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $conf->{sys}{root_password},
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $shell_call = "dmidecode -t 4,16,17";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -10966,7 +10964,7 @@ sub gather_node_details
 		$conf->{node}{$node}{connected} = 1;
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node::${node}::connected", value1 => $conf->{node}{$node}{connected},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($conf->{node}{$node}{connected})
@@ -10981,13 +10979,29 @@ sub gather_node_details
 		$conf->{sys}{use_node} = $node if not $conf->{sys}{use_node};
 		
 		### Get the rest of the shell calls done before starting to parse.
-		# Get meminfo
-		my $shell_call = "cat /proc/meminfo";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		# Check to see if 'anvil-safe-start' is running
+		my $shell_call = $an->data->{path}{nodes}{'anvil-safe-start'}." --status";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$conf->{sys}{root_password},
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		my $anvil_safe_start = $return;
+		
+		# Get meminfo
+		$shell_call = "cat /proc/meminfo";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
 			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$conf->{sys}{root_password},
@@ -11274,22 +11288,23 @@ fi;";
 		});
 		my $bond = $return;
 		
-		parse_dmidecode      ($conf, $node, $dmidecode);
-		parse_meminfo        ($conf, $node, $meminfo);
-		parse_drbdadm_dumpxml($conf, $node, $parse_drbdadm_dumpxml);
-		parse_proc_drbd      ($conf, $node, $proc_drbd);
-		parse_clustat        ($conf, $node, $clustat);
-		parse_cluster_conf   ($conf, $node, $cluster_conf);
-		parse_daemons        ($conf, $node, $daemons);
-		parse_lvm_scan       ($conf, $node, $lvm_scan);
-		parse_lvm_data       ($conf, $node, $lvm_data);
-		parse_gfs2           ($conf, $node, $gfs2);
-		parse_virsh          ($conf, $node, $virsh);
-		parse_vm_defs        ($conf, $node, $vm_defs);
-		parse_vm_defs_in_mem ($conf, $node, $vm_defs_in_mem);	# Always parse this after 'parse_vm_defs()' so that we overwrite it.
-		parse_bonds          ($conf, $node, $bond);
-		parse_hosts          ($conf, $node, $hosts);
-		parse_dmesg          ($conf, $node, $dmesg);
+		parse_anvil_safe_start($conf, $node, $anvil_safe_start);
+		parse_dmidecode       ($conf, $node, $dmidecode);
+		parse_meminfo         ($conf, $node, $meminfo);
+		parse_drbdadm_dumpxml ($conf, $node, $parse_drbdadm_dumpxml);
+		parse_proc_drbd       ($conf, $node, $proc_drbd);
+		parse_clustat         ($conf, $node, $clustat);
+		parse_cluster_conf    ($conf, $node, $cluster_conf);
+		parse_daemons         ($conf, $node, $daemons);
+		parse_lvm_scan        ($conf, $node, $lvm_scan);
+		parse_lvm_data        ($conf, $node, $lvm_data);
+		parse_gfs2            ($conf, $node, $gfs2);
+		parse_virsh           ($conf, $node, $virsh);
+		parse_vm_defs         ($conf, $node, $vm_defs);
+		parse_vm_defs_in_mem  ($conf, $node, $vm_defs_in_mem);	# Always parse this after 'parse_vm_defs()' so that we overwrite it.
+		parse_bonds           ($conf, $node, $bond);
+		parse_hosts           ($conf, $node, $hosts);
+		parse_dmesg           ($conf, $node, $dmesg);
 		# Some stuff, like setting the system memory, needs some
 		# post-scan math.
 		post_node_calculations($conf, $node);
@@ -11617,15 +11632,15 @@ sub parse_vm_defs
 			push @{$this_array}, $line;
 		}
 		
-		# When the end of a domain is found, push the array over to
-		# $conf.
+		# When the end of a domain is found, push the array over to $conf.
+		my $lines = @{$this_array};
 		if ($line =~ /<\/domain>/)
 		{
 			my $vm_key = "vm:$this_vm";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",    value1 => $this_vm,
 				name2 => "array", value2 => $this_array,
-				name3 => "lines", value3 => ".@{$this_array}.",
+				name3 => "lines", value3 => $lines,
 			}, file => $THIS_FILE, line => __LINE__});
 			$conf->{vm}{$vm_key}{xml} = $this_array;
 			$in_domain  = 0;
@@ -11634,6 +11649,34 @@ sub parse_vm_defs
 	}
 	
 	return (0);
+}
+
+# Parse the 'anvil-safe-start' status.
+sub parse_anvil_safe_start
+{
+	my ($conf, $node, $array) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_dmidecode" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{node}{$node}{'anvil-safe-start'} = 0;
+	foreach my $line (@{$array})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($line =~ /\[running\]/i) or ($line =~ /\[queued\]/i))
+		{
+			$an->data->{node}{$node}{'anvil-safe-start'} = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::anvil-safe-start", value1 => $an->data->{node}{$node}{'anvil-safe-start'},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 # Parse the dmidecode data.
@@ -11645,9 +11688,6 @@ sub parse_dmidecode
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "in parse_dmidecode() for node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
 	#foreach my $line (@{$array})
 	#{
 	#	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -11698,9 +11738,9 @@ sub parse_dmidecode
 	$conf->{resources}{total_cpus}    = 0;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "Cluster; total cores", value1 => $conf->{resources}{total_cores},
-		name2 => "total threads",        value2 => $conf->{resources}{total_threads},
-		name3 => "total memory",         value3 => $conf->{resources}{total_ram},
+		name1 => "total_cores",   value1 => $conf->{resources}{total_cores},
+		name2 => "total_threads", value2 => $conf->{resources}{total_threads},
+		name3 => "total_memory",  value3 => $conf->{resources}{total_ram},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $line (@{$array})

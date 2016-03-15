@@ -2179,6 +2179,7 @@ sub abort_other_instances
 	return(0);
 }
 
+### TODO: This will break if translated; add '--script' to have codes printed and parse that.
 # This checks to see if an instance of the program is running. It also checks to see if the program is 
 # configured to run on boot.
 sub report_state
@@ -2216,6 +2217,13 @@ sub report_state
 	else
 	{
 		print $an->String->get({key => "asst_message_0009", variables => { this_file => $THIS_FILE }})."\n";
+	}
+	
+	# Is it queued?
+	if ($an->data->{tools}{'anvil-safe-start'}{enabled})
+	{
+		# Yup
+		print $an->String->get({key => "asst_message_0020", variables => { this_file => $THIS_FILE }})."\n";
 	}
 	
 	return(0);

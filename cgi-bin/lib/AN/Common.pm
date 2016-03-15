@@ -617,6 +617,7 @@ sub initialize_conf
 			nodes			=>	{
 				'anvil-adjust-vnet'	=>	"/sbin/striker/anvil-adjust-vnet",
 				'anvil-kick-apc-ups'	=>	"/sbin/striker/anvil-kick-apc-ups",
+				'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
 				# This is the actual DRBD wait script
 				'anvil-wait-for-drbd'	=>	"/sbin/striker/anvil-wait-for-drbd",
 				backups			=>	"/root/backups",

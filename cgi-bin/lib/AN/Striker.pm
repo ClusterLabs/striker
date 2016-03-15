@@ -10134,6 +10134,7 @@ sub display_details
 		my $node_control_panel = display_node_controls($conf);
 		#print $node_control_panel;
 		
+		my $anvil_safe_start_notice    = "";
 		my $vm_state_and_control_panel = "";
 		my $node_details_panel         = "";
 		my $server_details_panel       = "";
@@ -10150,6 +10151,9 @@ sub display_details
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{sys}{up_nodes} > 0)
 		{
+			# Displays a notice if anvil-safe-start is running on either node.
+			$anvil_safe_start_notice = display_anvil_safe_start_notice($conf);
+			
 			# Show the user the current VM states and the control buttons.
 			$vm_state_and_control_panel = display_vm_state_and_controls($conf);
 			
@@ -10185,6 +10189,7 @@ sub display_details
 		}
 		
 		print AN::Common::template($conf, "server.html", "main-page", {
+			anvil_safe_start_notice		=>	$anvil_safe_start_notice, 
 			node_control_panel		=>	$node_control_panel,
 			vm_state_and_control_panel	=>	$vm_state_and_control_panel,
 			node_details_panel		=>	$node_details_panel,
@@ -10473,7 +10478,7 @@ sub display_free_resources
 		button_text	=>	"#!string!button_0023!#",
 	}, "", 1);
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "enough_storage", value1 => $enough_storage,
 		name2 => "free_ram",       value2 => $free_ram,
 		name3 => "node1 cman",     value3 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
@@ -10700,7 +10705,7 @@ sub display_vm_details
 		{
 			for (my $i=1; $loop_count > $i; $i++)
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "vm",          value1 => $vm,
 					name2 => "lv_path[$i]", value2 => $lv_path[$i],
 					name3 => "lv_size[$i]", value3 => $lv_size[$i],
@@ -10711,7 +10716,7 @@ sub display_vm_details
 				if ($bridge[$i])
 				{
 					my $say_net_host = "";
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "vm",   value1 => $vm,
 						name2 => "host", value2 => $conf->{vm}{$vm}{host},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -10850,7 +10855,7 @@ sub check_node_readiness
 					if (($role ne "Primary") or ($disk_state ne "UpToDate"))
 					{
 						$ready = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "ready", value1 => $ready,
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -10861,7 +10866,7 @@ sub check_node_readiness
 				# The LV is inactive.
 				# TODO: Try to change the LV to active.
 				$ready = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "vm",    value1 => $vm,
 					name2 => "node",  value2 => $node,
 					name3 => "ready", value3 => $ready,
@@ -11553,6 +11558,40 @@ sub set_node_names
 	return (0);
 }
 
+# This shows a banner asking for patience in anvil-safe-start is running on either node.
+sub display_anvil_safe_start_notice
+{
+	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "display_anvil_safe_start_notice" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_safe_start_notice = "";
+	
+	my $display_notice = 0;
+	my $this_cluster   = $conf->{cgi}{cluster};
+	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	{
+		$display_notice = 1 if $an->data->{node}{$node}{'anvil-safe-start'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node::${node}::anvil-safe-start", value1 => $an->data->{node}{$node}{'anvil-safe-start'},
+			name2 => "display_notice",                  value2 => $display_notice,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "display_notice", value1 => $display_notice,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($display_notice)
+	{
+		$anvil_safe_start_notice = AN::Common::template($conf, "server.html", "anvil_safe_start_notice");
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_safe_start_notice", value1 => $anvil_safe_start_notice,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($anvil_safe_start_notice)
+}
+
 # This shows the current state of the VMs as well as the available control buttons.
 sub display_vm_state_and_controls
 {
@@ -12160,7 +12199,7 @@ sub display_node_controls
 	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
 	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
 	my $cold_stop  = ($conf->{sys}{up_nodes} > 0)                                                         ? 1 : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
 		name2 => "dual_boot",     value2 => $dual_boot,
 		name3 => "dual_join",     value3 => $dual_join,
@@ -12193,11 +12232,11 @@ sub display_node_controls
 		{
 			# The name in the config doesn't match the name in the cluster.
 			$node_long_name = "??";
-			$an->Log->entry({log_level => 2, message_key => "log_0260", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "log_0260", message_variables => {
 				node => $say_short_name, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_long_name", value1 => $node_long_name,
 		}, file => $THIS_FILE, line => __LINE__});
 		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
@@ -12284,7 +12323,7 @@ sub display_node_controls
 			
 			# If either node is up, offer the 'Cold-Stop Anvil!'
 			# button.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cold_stop", value1 => $cold_stop,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($cold_stop)

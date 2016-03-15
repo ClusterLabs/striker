@@ -3171,6 +3171,8 @@
 
 <!-- start main-page -->
 <table class="hidden_table" border="0">
+	<!-- This may not be displayed at all, which is why it is not in a preset <tr> -->
+	#!replace!anvil_safe_start_notice!#
 	<tr>
 		<td class="td_hidden">
 			<!-- node_control_panel -->
@@ -3249,3 +3251,26 @@
 		</td>
 	</tr>
 <!-- end watchdog_panel -->
+
+<!-- start anvil_safe_start_notice -->
+	<tr>
+		<td class="td_hidden">
+			<table>
+				<tr>
+					<td colspan="3">
+						<b>#!string!title_0189!#</b>
+					</td>
+				</tr>
+				<tr>
+					<td class="highlight_warning_bold">
+						#!string!row_0158!#
+					</td>
+					<td>
+						#!string!message_0355!#
+					</td>
+				</tr>
+			</table>
+			<br />
+		</td>
+	</tr>
+<!-- end anvil_safe_start_notice -->
