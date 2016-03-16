@@ -20,6 +20,8 @@
 #
 # TODO:
 # - For each accessible UPS, call an explicit "on" to the outlet groups. Pass '--start-all' to scan-apc-ups?
+# - Test running without a password (passwordless SSH should be setup and works now)
+#
 
 use strict;
 use warnings;
@@ -1671,7 +1673,7 @@ sub wait_if_node2
 		###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
 		sleep 30;
 		my $pids = $an->Get->pids({
-			program_name	=>	$THIS_FILE, 
+			program_name	=>	$0, 
 			target		=>	$an->data->{sys}{peer_node}, 
 			password	=>	$an->data->{sys}{anvil_password},
 			port		=>	"",
@@ -1691,7 +1693,7 @@ sub wait_if_node2
 			while ($wait)
 			{
 				my $pids = $an->Get->pids({
-					program_name	=>	$THIS_FILE, 
+					program_name	=>	$0, 
 					target		=>	$an->data->{sys}{peer_node}, 
 					password	=>	$an->data->{sys}{anvil_password},
 					port		=>	"",
@@ -2091,11 +2093,12 @@ sub find_myself
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### This should work without a password now.
 	# If I didn't get a password, exit.
-	if (not $an->data->{sys}{anvil_password})
-	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0011", code => 12, file => "$THIS_FILE", line => __LINE__});
-	}
+	#if (not $an->data->{sys}{anvil_password})
+	#{
+	#	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0011", code => 12, file => "$THIS_FILE", line => __LINE__});
+	#}
 	
 	# If I am node 2, make note so that we can delay and let node 1 run first.
 	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))
@@ -2128,7 +2131,7 @@ sub avoid_duplicate_run
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $pids  = $an->Get->pids({program_name => $0});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
@@ -2147,7 +2150,7 @@ sub abort_other_instances
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_other_instances" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $pids  = $an->Get->pids({program_name => $0});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
@@ -2200,7 +2203,7 @@ sub report_state
 	}
 	
 	# Is it running now?
-	my $pids  = $an->Get->pids({program_name => $THIS_FILE});
+	my $pids  = $an->Get->pids({program_name => $0});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 

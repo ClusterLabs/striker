@@ -709,15 +709,16 @@ sub remote_call
 	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 1;
 	my $shell_call = $parameter->{shell_call};
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "port",       value2 => $port,
 		name3 => "user",       value3 => $user,
-		name4 => "password",   value4 => $password,
-		name5 => "ssh_fh",     value5 => $ssh_fh,
-		name6 => "close",      value6 => $close,
- 		name7 => "shell_call", value7 => $shell_call,
-
+		name4 => "ssh_fh",     value4 => $ssh_fh,
+		name5 => "close",      value5 => $close,
+ 		name6 => "shell_call", value6 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this a better looking error.
@@ -850,9 +851,11 @@ sub remote_call
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $error)
 		{
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-				name1 => "user",     value1 => $user, 
-				name2 => "password", value2 => $password, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "user", value1 => $user, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{

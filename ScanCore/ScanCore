@@ -452,7 +452,7 @@ sub report_state
 	# Is it running now?
 	my $pids  = $an->Get->pids({program_name => $0});
 	my $count = @{$pids};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($count)
@@ -476,7 +476,7 @@ sub report_state
 sub exit_if_one_shot
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "exit_if_one_shot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "exit_if_one_shot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if ($an->data->{switches}{'one-shot'})
 	{
@@ -505,7 +505,7 @@ sub exit_if_one_shot
 sub exit_if_disabled
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "exit_if_disabled" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "exit_if_disabled" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $an->data->{scancore}{enabled})
 	{
@@ -669,19 +669,17 @@ sub do_post_scan_checks
 	return(0);
 }
 
-# This will read it's /etc/striker/striker.conf file and for each node it sees,
-# it will reference it's cache to check it's power status. If the node if off,
-# it will check hosts -> host_emergency_stop and if it is TRUE, check to see if
-# it is safe to boot the nodes back up.
+# This will read it's /etc/striker/striker.conf file and for each node it sees, it will reference it's cache 
+# to check it's power status. If the node if off, it will check hosts -> host_emergency_stop and if it is 
+# TRUE, check to see if it is safe to boot the nodes back up.
 sub do_post_scan_dashboard_tasks
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_dashboard_tasks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# So first thing, see if any nodes are in emergency_stop. If not, there
-	# is nothing further for us to do. We order by host name to be sure to
-	# boot node 1 first, when both are recoverable. 'Tis but a minor thing,
-	# but hey, why not.
+	# So first thing, see if any nodes are in emergency_stop. If not, there is nothing further for us to 
+	# do. We order by host name to be sure to boot node 1 first, when both are recoverable. 'Tis but a 
+	# minor thing, but hey, why not.
 	my $query = "
 SELECT 
     host_uuid, 
@@ -692,8 +690,11 @@ FROM
     hosts 
 WHERE 
     host_type = 'node' 
+AND 
+    host_emergency_stop = TRUE 
 ORDER BY 
-    host_name;";
+    host_name ASC
+;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
@@ -706,8 +707,8 @@ ORDER BY
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($count)
 	{
-		# At least one node is in an emergency-off state. See if we can recover it and if it is safe
-		# to do so.
+		### At least one node is in an emergency-off state. See if we can recover it and if it is 
+		### safe to do so.
 		
 		# First step is to read in any/all cache files. If we don't have a cache directory, then 
 		# we're done.
@@ -718,6 +719,8 @@ ORDER BY
 		{
 			# This will be stuck onto the start of fence agents that don't have a full path.
 			my $fence_path = $an->data->{path}{fence_agents};
+			
+			### TODO: Create and use AN::Tools::Get->node_cache().
 			
 			# So we do have a cache directory. What about actual cache files?
 			local(*DIRECTORY);
@@ -802,14 +805,10 @@ ORDER BY
 			# their particulars and decide on a case by case basis if it is safe to boot them 
 			# back up.
 			
-			# First, read in the power table.
+			# Read in the power table.
 			read_power_table($an);
 			
-			# Now read in the temperature table.
-			read_temperature_table($an);
-			
-			# Now that I've read in my cache files, start looking
-			# at the nodes that are down.
+			# Now that I've read in my cache files, start looking at the nodes that are down.
 			foreach my $row (@{$results})
 			{
 				my $host_uuid           = $row->[0];
@@ -832,7 +831,7 @@ ORDER BY
 				my $my_temperature_is_ok = check_node_temperature_health($an, $an->hostname);
 				
 				# See if the power is safe enough to boot this node.
-				my $power_is_safe       = check_node_power_health      ($an, $host_name);
+				my $power_is_safe       = check_node_power_health      ($an, $host_uuid);
 				my $temperature_is_safe = check_node_temperature_health($an, $host_name);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "power_is_safe",                 value1 => $power_is_safe, 
@@ -1115,13 +1114,15 @@ WHERE
 	return(0);
 }
 
+### TODO: Let the user set a minimum percentage based on 1 powered UPS and a separate one (that can be lower)
+###       when both UPSes are powered.
 # This pulls in the list of UPSes powering the given node and checks to see if they are healthy enough to 
 # power the node.
 sub check_node_power_health
 {
-	my ($an, $node) = @_;
+	my ($an, $node_uuid) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power_health" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => "$node" 
+		name1 => "node_uuid", value1 => "$node_uuid" 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $power_is_safe = 0;
@@ -1129,6 +1130,7 @@ sub check_node_power_health
 	# This will hold the percentag charge of the strongest UPS powering the node that has input power.
 	my $highest_charge = 0;
 	
+	### TODO: This should use power_ups_uuid, NOT power_ups_name!
 	# Read in the names of the UPSes watched by this node.
 	my $query = "
 SELECT 
@@ -1136,7 +1138,7 @@ SELECT
 FROM 
     power 
 WHERE 
-    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -1160,8 +1162,9 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $power_ups_name = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "power_ups_name", value1 => $power_ups_name, 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "power_ups_name",                value1 => $power_ups_name, 
+				name2 => "ref(power::${power_ups_name})", value2 => ref($an->data->{power}{$power_ups_name}),
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Do I know about this UPS?
@@ -1181,6 +1184,11 @@ WHERE
 					name1 => "power_on_battery", value1 => $power_on_battery, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "power_on_battery",        value1 => $power_on_battery, 
+					name2 => "power_charge_percentage", value2 => $power_charge_percentage, 
+					name3 => "highest_charge",          value3 => $highest_charge, 
+				}, file => $THIS_FILE, line => __LINE__});
 				if ((not $power_on_battery) && ($power_charge_percentage > $highest_charge))
 				{
 					$highest_charge = $power_charge_percentage;
@@ -1202,7 +1210,7 @@ WHERE
 		{
 			# Yup, bueno!
 			$power_is_safe = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "power_is_safe", value1 => $power_is_safe
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1431,20 +1439,9 @@ ORDER BY
 	return($temperature_is_safe);
 }
 
-# TODO: This is still to be written...
-sub read_temperature_table
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_temperature_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	
-	return(0);
-}
-
-# This reads in all of the entries in the 'power' table that this host knows
-# about. This will be used by 'do_post_scan_dashboard_tasks()' to see if the 
-# node can be booted is it is in an emergency-stop condition because of power
-# loss.
+# This reads in all of the entries in the 'power' table that this host knows about. This will be used by 
+# 'do_post_scan_dashboard_tasks()' to see if the node can be booted if it is in an emergency-stop condition 
+# because of power loss.
 sub read_power_table
 {
 	my ($an) = @_;
@@ -1604,10 +1601,51 @@ WHERE
 		process_alerts($an, 0);
 		if ($do_shutdown)
 		{
+			# Stop the anvil-kick-apc-ups if it is in use.
+			my $stop_kicking = 0;
+			my $shell_call   = $an->data->{path}{'anvil-kick-apc-ups'}." --status";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /\[enabled\]/)
+				{
+					$stop_kicking = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "stop_kicking", value1 => $stop_kicking, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			close $file_handle;
+			if ($stop_kicking)
+			{
+				my $shell_call   = $an->data->{path}{'anvil-kick-apc-ups'}." --cancel";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				close $file_handle;
+			}
+			
 			# And now die via 'safe_anvil_shutdown'. We should be dead  before this exits. So ya,
 			# so long and thanks for all the fish.
-			my $shell_call = $an->data->{path}{safe_anvil_shutdown}." 2>&1 |";
-			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			$shell_call = $an->data->{path}{safe_anvil_shutdown};
+			open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2061,11 +2099,11 @@ WHERE
 		# Log the time remaining. I know this might get noisey, but it could be very helpful to an
 		# admin watching the logs.
 		$an->Log->entry({log_level => 1, message_key => "scancore_warning_0022", message_variables => {
-			highest_holdup_time	=>	$highest_holdup_time,
-			minimum_ups_runtime	=>	$minimum_ups_runtime,
+			highest_holdup_time => $highest_holdup_time,
+			minimum_ups_runtime => $minimum_ups_runtime,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if ($minimum_ups_runtime > $highest_holdup_time)
+		if ($minimum_ups_runtime >= $highest_holdup_time)
 		{
 			# Time to go zzz
 			$node_power_ok = 3;

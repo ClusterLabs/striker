@@ -2548,6 +2548,77 @@ SUPPORT
 		<key name="asst_error_0011">Unable to locate this #!string!brand_0004!#'s password in #!data!path::striker_config!#. Has it been added?</key>
 		
 		
+		<!-- anvil-safe-stop -->
+		<!-- log entries -->
+		<key name="assp_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- messages -->
+		<key name="assp_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program shuts down an #!string!brand_0004!# node.
+
+Which node shuts down depends on how it is invoked. If it is invoked with
+'--local', the local machine will be shut down *unless* it is the SyncSource
+for the peer (it has data on the replicated storage the peer doesn't). In such
+a case, the program will throw an error and exit with a non-0 exit code. 
+
+If it is invoked with '--shed-load', then which node shuts down depends on 
+several criteria in a certain priority order.
+
+1. Can the peer be reached? If not, load shedding is aborted (as it is assumed
+   the peer is already offline, in this context).
+
+2. If one node is the 'SyncSource' for the other, then the Inconsistent peer
+   will be shut down.
+   
+   NOTE: if *both* nodes are SyncSource (on different storage pools), the load
+         shed will throw an error and exit with a non-0 exit code.
+
+3. If both nodes are UpToDate, and one node's health is not 'OK', then the sick
+   node will be shut down.
+
+4. If both nodes are UpToDate and healthy, the the sum of the RAM used by 
+   servers on each node is added. The node with the least amount of RAM used by
+   servers will shutdown.
+   
+5. If the RAM in use by servers on both nodes is the same, node 2 will shut 
+   down.
+
+   
+In all cases, the node that is shutting down will try to migrate its servers to
+the peer. The only exception will be when the peer is also in a 'warning' or
+'critical' state (which indicates an external issue, like low UPS batteries or
+an overtemperature event). In such a case, the server that is shutting down 
+will gracefully shut down servers running on it.
+
+
+SWITCHES
+
+
+ --local
+
+	Shut this machine down.
+
+ --shed-load
+
+	Picks a node to turn off based on the above criteria.
+ 
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		
+		
 		<!-- anvil-network-profiler; Find the optimal network configuration -->
 		<key name="anp_log_0001">#!variable!this_file!# has started.</key>
 		<key name="anp_log_0002">...free...</key>

@@ -85,7 +85,7 @@ This is the AN::Tools master 'words' file.
 		<key name="tools_default_0001">Debug</key>
 		
 		<!-- log messages -->
-		<key name="tools_log_0001">Entering: [ #!variable!function!#() ]</key>
+		<key name="tools_log_0001">Entering: #!variable!function!#()</key>
 		<key name="tools_log_0002"><![CDATA[<function takes no arguments>]]></key>
 		<key name="tools_log_0003">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="tools_log_0004">I am not recording the alert with message_key: [#!variable!message_key!#] to the database because its log level was lower than any recipients.</key>

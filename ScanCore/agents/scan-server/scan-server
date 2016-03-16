@@ -123,7 +123,7 @@ if (not scan_servers($an))
 
 # I'll need to loop through the DBs and ensure our schema is loaded for each one.
 my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => {
+$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => {
 	connections	=>	$connections,
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -212,7 +212,7 @@ sub scan_servers
 	{
 		# First, check for local servers.
 		my $shell_call = $an->data->{path}{virsh}." list --all";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -230,7 +230,7 @@ sub scan_servers
 			{
 				# Not running
 				$local_access = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "local_access", value1 => $local_access, 
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
@@ -256,7 +256,7 @@ sub scan_servers
 		
 		# Now check the peer.
 		my $peer_access = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $an->data->{sys}{peer_node},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -280,7 +280,7 @@ sub scan_servers
 			{
 				# Not running
 				$peer_access = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "peer_access", value1 => $peer_access, 
 				}, file => $THIS_FILE, line => __LINE__});
 				last;
@@ -303,7 +303,7 @@ sub scan_servers
 			}
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_access", value1 => $local_access, 
 			name2 => "peer_access",  value2 => $peer_access, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -336,7 +336,7 @@ sub scan_servers
 				{
 					my $this_server = $1;
 					my $full_path   = $an->data->{path}{definitions}."/".$file;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "file",        value1 => $file,
 						name2 => "this_server", value2 => $this_server,
 						name3 => "full_path",   value3 => $full_path,
@@ -344,7 +344,7 @@ sub scan_servers
 					my $already_found = 0;
 					foreach my $server_name (sort {$a cmp $b} keys %{$an->data->{server_name}})
 					{
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "server_name", value1 => $server_name,
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($server_name eq $this_server)
@@ -356,7 +356,7 @@ sub scan_servers
 						}
 					}
 					
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "already_found", value1 => $already_found,
 					}, file => $THIS_FILE, line => __LINE__});
 					if (not $already_found)
@@ -365,7 +365,7 @@ sub scan_servers
 						my $definition  = "";
 						my $server_uuid = "";
 						my $shell_call  = $full_path;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "shell_call", value1 => $shell_call,
 						}, file => $THIS_FILE, line => __LINE__});
 						open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
@@ -381,13 +381,13 @@ sub scan_servers
 							if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 							{
 								$server_uuid = $1;
-								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 									name1 => "server_uuid", value1 => $server_uuid, 
 								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
 						# Record it if we found the UUID.
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "server_uuid", value1 => $server_uuid, 
 						}, file => $THIS_FILE, line => __LINE__});
 						if ($server_uuid)
@@ -412,7 +412,7 @@ sub scan_servers
 		{
 			my $server_host  = $an->data->{server_name}{$server_name}{host};
 			my $server_state = $an->data->{server_name}{$server_name}{'state'};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "server_name",     value1 => $server_name, 
 				name2 => "server_host",     value2 => $server_host, 
 				name3 => "server_state",    value3 => $server_state, 
@@ -425,7 +425,7 @@ sub scan_servers
 			if ($server_host eq $an->data->{sys}{local_node})
 			{
 				# Locally hosted, call virsh directly
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -443,7 +443,7 @@ sub scan_servers
 			elsif ($server_host eq $an->data->{sys}{peer_node})
 			{
 				# Remote, call over SSH.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "target",     value2 => $an->data->{sys}{peer_node},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -471,7 +471,7 @@ sub scan_servers
 				if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 				{
 					$an->data->{server_name}{$server_name}{uuid} = $1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "server_name::${server_name}::uuid", value1 => $an->data->{server_name}{$server_name}{uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -479,7 +479,7 @@ sub scan_servers
 			
 			# Now that I have the UUID, record the details using the UUID as the key
 			my $server_uuid = $an->data->{server_name}{$server_name}{uuid};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($server_uuid)
@@ -498,7 +498,7 @@ sub scan_servers
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "proceed", value1 => $proceed, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($proceed);
@@ -514,7 +514,7 @@ sub find_changes
 	# Loop through each server
 	foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{server_uuid}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -553,28 +553,28 @@ sub find_changes
 				# Something has changed.
 				if ($new_server_name ne $old_server_name)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_name", value1 => $old_server_name, 
 						name2 => "new_server_name", value2 => $new_server_name, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($new_server_host ne $old_server_host)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_host", value1 => $old_server_host, 
 						name2 => "new_server_host", value2 => $new_server_host, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($new_server_state ne $old_server_state)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "old_server_state", value1 => $old_server_state, 
 						name2 => "new_server_state", value2 => $new_server_state, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				if ($new_server_definition ne $old_server_definition)
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "old_server_definition", value1 => $old_server_definition, 
 						name2 => "new_server_definition", value2 => $new_server_definition, 
 						name3 => "diff",                  value3 => diff \$old_server_definition, \$new_server_definition, { STYLE => 'Unified' },
@@ -593,7 +593,7 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
 				$query =~ s/'NULL'/NULL/g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "query", value1 => $query, 
 				}, file => $THIS_FILE, line => __LINE__});
 				push @{$an->data->{sys}{sql}}, $query;
@@ -690,7 +690,7 @@ WHERE
 			$an->data->{sys}{'default'}{migration_type} = "live" if not $an->data->{sys}{'default'}{migration_type};
 			
 			# New server, INSERT everything.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 			my $server_name           = $an->data->{server_uuid}{$server_uuid}{name};
@@ -701,7 +701,7 @@ WHERE
 			my $server_state          = $an->data->{server_uuid}{$server_uuid}{'state'};
 			my $server_definition     = $an->data->{server_uuid}{$server_uuid}{definition};
 			my $server_migration_type = $an->data->{sys}{'default'}{migration_type} =~ /cold/i ? "cold" : "live";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "server_uuid",           value1 => $server_uuid, 
 				name2 => "server_name",           value2 => $server_name, 
 				name3 => "server_stop_reason",    value3 => $server_stop_reason, 
@@ -740,7 +740,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query, 
 			}, file => $THIS_FILE, line => __LINE__});
 			push @{$an->data->{sys}{sql}}, $query;
@@ -749,13 +749,13 @@ INSERT INTO
 			# is all '0', then the server won't boot via 'anvil-safe-start' at all.
 			my $say_start_after    = "";
 			   $server_start_after = "" if $server_start_after eq "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_start_after", value1 => $server_start_after, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($server_start_after eq "00000000-0000-0000-0000-000000000000")
 			{
 				$say_start_after = "#!string!scan_server_message_0005!#";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "say_start_after", value1 => $say_start_after, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -765,7 +765,7 @@ INSERT INTO
 					uuid  => $server_start_after, 
 				});
 				$say_start_after = $return->{name};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "say_start_after", value1 => $say_start_after, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -830,12 +830,12 @@ WHERE
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
 	$query =~ s/'NULL'/NULL/g;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -882,7 +882,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($count);

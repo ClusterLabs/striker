@@ -505,6 +505,7 @@ sub _set_paths
 	$an->data->{path}{shared_files}    = "/shared/files";
 	
 	# Tools
+	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/dashboard/hap-kick-apc-ups",
 	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
