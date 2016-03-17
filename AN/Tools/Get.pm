@@ -127,7 +127,7 @@ sub server_data
 	my $server_name = $parameter->{server} ? $parameter->{server} : "";
 	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
 	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -152,7 +152,7 @@ sub server_data
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -270,22 +270,33 @@ WHERE
 		}
 	}
 	
-	# See if the server is running 
-	
 	# Now dig out the storage and network details.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "return->definition", value1 => $return->{definition}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	my $xml  = XML::Simple->new();
-	my $data = $xml->XMLin($return->{definition}, ForceArray => 1);
+	my $data = $xml->XMLin($return->{definition}, KeyAttr => {}, ForceArray => 1);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "data", value1 => $data, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This array will store the boot devices in their boot priority.
 	$return->{boot_devices} = [];
 	foreach my $device (@{$data->{os}->[0]->{boot}})
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "device", value1 => $device->{dev}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return->{boot_devices}}, $device->{dev};
 	}
 	
 	# Pull out the RAM.
 	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
 	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "return->current_ram", value1 => $return->{current_ram}, 
+		name2 => "return->maximum_ram", value2 => $return->{maximum_ram}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
 	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
@@ -297,20 +308,37 @@ WHERE
 	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
 	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
 	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "return->cpu::total",   value1 => $return->{cpu}{total}, 
+		name2 => "return->cpu::cores",   value2 => $return->{cpu}{cores}, 
+		name3 => "return->cpu::sockets", value3 => $return->{cpu}{sockets}, 
+		name4 => "return->cpu::threads", value4 => $return->{cpu}{threads}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Pull out the optical disks.
 	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
 	{
 		# Disk or cdrom?
 		my $device_type = $hash_ref->{device};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "device_type", value1 => $device_type, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# The backing device (LV or path the the source file, usually) and cache policy, if set.
-		my $backing_device = $hash_ref->{source}->[0]->{dev} ? $hash_ref->{source}->[0]->{dev} : $hash_ref->{source}->[0]->{file}; 
-		my $cache_policy   = $hash_ref->{driver}->{qemu}->{cache} ? $hash_ref->{driver}->{qemu}->{cache} : "";
+		my $backing_device = $hash_ref->{source}->[0]->{dev}   ? $hash_ref->{source}->[0]->{dev}   : $hash_ref->{source}->[0]->{file}; 
+		my $cache_policy   = $hash_ref->{driver}->[0]->{cache} ? $hash_ref->{driver}->[0]->{cache} : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "backing_device", value1 => $backing_device, 
+			name2 => "cache_policy",   value2 => $cache_policy, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This is the device presented to the guest OS (vda, hdc, etc) and the bus type (virtio, IDE, etc)
 		my $target_device = $hash_ref->{target}->[0]->{dev};
 		my $target_bus    = $hash_ref->{target}->[0]->{bus};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target_device", value1 => $target_device, 
+			name2 => "target_bus",    value2 => $target_bus, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Store it all
 		$return->{storage}{$device_type}{target_device}{$target_device} = {
@@ -318,21 +346,37 @@ WHERE
 			cache_policy	=>	$cache_policy, 
 			target_bus	=>	$target_bus, 
 		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "return->storage::${device_type}::target_device::${target_device}::backing_device", value1 => $return->{storage}{$device_type}{target_device}{$target_device}{backing_device}, 
+			name2 => "return->storage::${device_type}::target_device::${target_device}::cache_policy",   value2 => $return->{storage}{$device_type}{target_device}{$target_device}{cache_policy}, 
+			name3 => "return->storage::${device_type}::target_device::${target_device}::target_bus",     value3 => $return->{storage}{$device_type}{target_device}{$target_device}{target_bus}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Dig out the graphical connection information (the address is complicated for some reason...)
 	$return->{graphics}{port}    = $data->{devices}->[0]->{graphics}->[0]->{port};
 	$return->{graphics}{type}    = $data->{devices}->[0]->{graphics}->[0]->{type};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "return->graphics::port", value1 => $return->{graphics}{port}, 
+		name2 => "return->graphics::type", value2 => $return->{graphics}{type}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	$return->{graphics}{address} = "";
 	foreach my $item (@{$data->{devices}->[0]->{graphics}->[0]->{'listen'}})
 	{
 		if (ref($item) eq "HASH")
 		{
 			$return->{graphics}{address} = $item->{address};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $return->{graphics}{address})
 		{
 			$return->{graphics}{address} = $item;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -340,6 +384,11 @@ WHERE
 	$return->{on_poweroff} = $data->{on_poweroff}->[0];
 	$return->{on_reboot}   = $data->{on_reboot}->[0];
 	$return->{on_crash}    = $data->{on_crash}->[0];
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "return->on_poweroff", value1 => $return->{on_poweroff}, 
+		name2 => "return->on_reboot",   value2 => $return->{on_reboot}, 
+		name3 => "return->on_crash",    value3 => $return->{on_crash}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Dig out the network details.
 	foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
@@ -353,6 +402,11 @@ WHERE
 			model	=>	$model,
 			vnet	=>	$vnet,
 		};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "return->network::mac_address::${mac_address}::bridge", value1 => $return->{network}{mac_address}{$mac_address}{bridge}, 
+			name2 => "return->network::mac_address::${mac_address}::model",  value2 => $return->{network}{mac_address}{$mac_address}{model}, 
+			name3 => "return->network::mac_address::${mac_address}::vnet",   value3 => $return->{network}{mac_address}{$mac_address}{vnet}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return($return);

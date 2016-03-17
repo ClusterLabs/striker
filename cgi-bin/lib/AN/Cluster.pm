@@ -7700,16 +7700,7 @@ sub sanity_check_manifest_answers
 	}
 	
 	# Check that PTS #1's host name and IP are sane.
-	if (not $conf->{cgi}{anvil_pts1_name})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0296!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pts1_name}))
+	if (($conf->{cgi}{anvil_pts1_name}) && (not is_domain_name($conf, $conf->{cgi}{anvil_pts1_name})))
 	{
 		$conf->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
@@ -7717,16 +7708,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	if (not $conf->{cgi}{anvil_pts1_ip})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0297!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts1_ip}))
+	if (($conf->{cgi}{anvil_pts1_ip}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts1_ip})))
 	{
 		$conf->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
@@ -7736,16 +7718,7 @@ sub sanity_check_manifest_answers
 	}
 	
 	# Check that PTS #2's host name and IP are sane.
-	if (not $conf->{cgi}{anvil_pts2_name})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0298!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_pts2_name}))
+	if (($conf->{cgi}{anvil_pts2_name}) && (not is_domain_name($conf, $conf->{cgi}{anvil_pts2_name})))
 	{
 		$conf->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
@@ -7753,16 +7726,7 @@ sub sanity_check_manifest_answers
 		});
 		$problem = 1;
 	}
-	if (not $conf->{cgi}{anvil_pts2_ip})
-	{
-		# Not allowed to be blank.
-		$conf->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0100", variables => { field => "#!string!row_0299!#"}}),
-		});
-		$problem = 1;
-	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts2_ip}))
+	if (($conf->{cgi}{anvil_pts2_ip}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts2_ip})))
 	{
 		$conf->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
 		print AN::Common::template($conf, "config.html", "form-error", {
