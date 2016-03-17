@@ -24,8 +24,8 @@
 # 4  = Local mount point is a file.
 # 5  = Unable to find a free mount point on the remote system.
 # 6  = Unable to create the remote mount point
-# 7  = Remote machine does not have 'sshfs' installed.
-# 8  = sshfs call to ourselves failed.
+# 7  = Remote machine does not have 'nfs-utils' installed.
+# 8  = 
 # 9  = The remote user does not have permission to create the remote mount point.
 # 10 = No mountable device found.
 # 11 = The file system on the device can not be mounted locally.
@@ -114,11 +114,8 @@ elsif (not $conf->{'remote-usb'}{enable_remote_usb_mount})
 
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script started.");
 
-#find_usb_devices($conf);
 check_sd_devices($conf);
 
-#read_syslog($conf);
-#parse_syslog($conf);
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Insert Script finished.");
 
 exit(0);
@@ -408,7 +405,7 @@ sub format_device_luks
 		exit(14);
 	}
 	
-	# Delete all existing partition and create a single one using all the space on the disk.
+	# Delete all existing partitions and create a single one using all the space on the disk.
 	my $device_name = ($device =~ /^.*\/(.*?)$/)[0];
 	my $dm_path     = "/dev/mapper/$device_name";
 	my $temp_file   = "/tmp/".time;
@@ -609,8 +606,7 @@ $conf->{path}{rm} -f $conf->{path}{format_running}
 	return($fs, $uuid, $label);
 }
 
-# This mounts the file system locally and then connects to the remote machine
-# and uses sshfs to mount our just-mounted FS.
+# This mounts the file system locally and then connects to the remote machine and uses nfs to mount our just-mounted FS.
 sub mount_filesystems
 {
 	my ($conf, $active_device) = @_;
@@ -677,9 +673,10 @@ fi";
 		}
 		
 		# Now call which-ever shell call is needed.
-		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call].");
 		if ($shell_call)
 		{
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 			while (<$file_handle>)
 			{
@@ -828,10 +825,8 @@ fi";
 					($device) = format_device_luks($conf, $device);
 					logger($conf, $THIS_FILE, __LINE__, "returned device: [$device].");
 					
-					# If the formatted FS has a label, and
-					# the old FS didn't, we'll want to 
-					# append the label to the mount point 
-					# now.
+					# If the formatted FS has a label, and the old FS didn't, we'll want
+					# to append the label to the mount point now.
 					if ($conf->{devices}{$device}{label})
 					{
 						# A label was set, update the mount name.
@@ -942,7 +937,7 @@ fi;";
 			
 			# Check that it actually mounted.
 			my $mounted    = 0;
-			$shell_call = "$conf->{path}{df} -hP";
+			   $shell_call = "$conf->{path}{df} -hP";
 			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
 			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 			while (<$file_handle>)
@@ -961,6 +956,81 @@ fi;";
 			if ($mounted)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "Successfully mounted: [$device] locally on: [$local_mount].");
+				
+				# Make sure NFS is running and start it if not.
+				logger($conf, $THIS_FILE, __LINE__, "Verifying that NFS is running.");
+				my $start_nfs  = 0;
+				my $shell_call = $conf->{path}{initd_nfs}." status; echo rc:\$?";
+				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+				while (<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
+					if ($line =~ /rc:(\d+)/)
+					{
+						my $return_code = $1;
+						if ($return_code eq "0")
+						{
+							# It's not running.
+							$start_nfs = 1;
+							logger($conf, $THIS_FILE, __LINE__, "NFS is NOT running, it will be started now.");
+						}
+						elsif ($return_code eq "3")
+						{
+							logger($conf, $THIS_FILE, __LINE__, "NFS is running, no further action needed.");
+						}
+						else
+						{
+							logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - NFS is in an unknown state (return code was: [$return_code], expected 0 or 3). We will attempt to proceed, but errors are likely.");
+						}
+					}
+				}
+				close $file_handle;
+				
+				if ($start_nfs)
+				{
+					# We need to start it.
+					my $shell_call = $conf->{path}{initd_nfs}." start; echo rc:\$?";
+					logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+					open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+					while (<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						logger($conf, $THIS_FILE, __LINE__, "mount: [$line]");
+						if ($line =~ /rc:(\d+)/)
+						{
+							my $return_code = $1;
+							if ($return_code eq "0")
+							{
+								# Started!
+								logger($conf, $THIS_FILE, __LINE__, "NFS has been started.");
+							}
+							else
+							{
+								# Uh oh...
+								logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Starting NFS returned an unknown state (return code was: [$return_code], expected 0). We will attempt to proceed, but errors are likely.");
+							}
+						}
+					}
+					close $file_handle;
+				}
+				
+				# Now export the mount.
+				logger($conf, $THIS_FILE, __LINE__, "Exporting: [$local_mount] to the host: [$remote].");
+				$shell_call = $conf->{path}{exportfs}." ".$conf->{'remote-usb'}{'local'}{export_options}." $remote:$local_mount";
+				logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+				open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+				while (<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					logger($conf, $THIS_FILE, __LINE__, "export: [$line]");
+					### TODO: Parse the output and handle errors.
+				}
+				close $file_handle;
 			}
 			else
 			{
@@ -980,7 +1050,7 @@ fi;";
 		}
 		my $mount_needed       = 1;
 		   $shell_call         = "
-if mount | grep -q '$local_user\@$local_host:$local_mount';
+if mount | grep -q '$local_host:$local_mount';
 then 
     echo 'already mounted'; 
 else 
@@ -1001,7 +1071,7 @@ fi;";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 			if ($line eq "already mounted")
 			{
-				logger($conf, $THIS_FILE, __LINE__, "Our local mount: [$local_user\@$local_host:$local_mount] is already mounted on the remote machine.");
+				logger($conf, $THIS_FILE, __LINE__, "Our local mount: [$local_host:$local_mount] is already mounted on the remote machine.");
 				$mount_needed = 0;
 			}
 		}
@@ -1119,43 +1189,9 @@ fi";
 			}
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - local_host: [$local_host], local_user: [$local_user], local_password: [$local_password], remote_known_hosts: [$remote_known_hosts]");
 			
-			# Make sure the remote machine's user has us in their
-			# known_hosts file.
-			logger($conf, $THIS_FILE, __LINE__, "Ready to mount local: [$local_mount] on remote: [$remote] at: [$remote_mount].");
-			$shell_call = "
-if [ ! -e '$remote_known_hosts' ] || ! \$($conf->{path}{grep} -q $local_host $remote_known_hosts)
-then
-    ssh-keyscan $local_host >> $remote_known_hosts
-    echo 'RSA key added'
-else
-    echo 'RSA key exists'
-fi";
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
-			my ($error, $ssh_fh, $return) = remote_call($conf, {
-				remote		=>	$remote,
-				port		=>	22,
-				user		=>	$remote_user,
-				password	=>	$remote_password,
-				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-			foreach my $line (@{$return})
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-				if ($line =~ /getaddrinfo (.*?): Name or service not known/)
-				{
-					my $name = $1;
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Asked the remote machine: [$remote] to connect to this machine using the name or IP: [$name].");
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If this is a host name, can the remote machine resolve it to an IP?");
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Perhaps the remote machine's '/etc/hosts' file needs to be updated?");
-					unmount($conf, $device);
-					exit(20);
-				}
-			}
-			
 			# Try the mount
-			$shell_call  = "$conf->{path}{echo} $local_password | $conf->{path}{sshfs} -o password_stdin -o idmap=user -o sshfs_sync -o no_readahead -o direct_io $local_user\@$local_host:$local_mount $remote_mount";
+			#              mount                   -t nfs                                         <dashboard_ifn_ip_addr>:/mnt/<USB drive mount point> <local mount point>
+			$shell_call = $conf->{path}{mount}." ".$conf->{'remote-usb'}{remote}{mount_options}." ".$conf->{'remote-usb'}{'local'}{host}.":$local_mount $remote_mount";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
 			($error, $ssh_fh, $return) = remote_call($conf, {
 				remote		=>	$remote,
@@ -1169,30 +1205,33 @@ fi";
 			foreach my $line (@{$return})
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-				if ($line =~ /sshfs: command not found/)
+				if ($line =~ /missing codepage or helper program, or other error/)
 				{
-					# Make this stand out in syslog
-					logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
-					logger($conf, $THIS_FILE, __LINE__, "ERROR: Remote machine: [$remote] does not have 'sshfs' installed.");
-					logger($conf, $THIS_FILE, __LINE__, "ERROR: Unable to mount this USB device on the target node.");
-					logger($conf, $THIS_FILE, __LINE__, "ERROR: ========================================================================");
-					unmount($conf, $device);
+					print "[ Error ] - It appears that the NFS client is not installed on: [$remote]\n";
+					print "[ Error ]   Please install: [nfs-utils] and reinsert the USB drive again.\n";
+					print "[ Error ]   Unable to proceed.\n";
 					exit(7);
 				}
-				elsif ($line =~ /fuse: failed to exec fusermount: Permission denied/)
+			}
+			
+			# Verify that it mounted
+			$shell_call = "df -hP";
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Remote: [$remote_user\@$remote], shell_call: [$shell_call].");
+			($error, $ssh_fh, $return) = remote_call($conf, {
+				remote		=>	$remote,
+				port		=>	22,
+				user		=>	$remote_user,
+				password	=>	$remote_password,
+				ssh_fh		=>	$conf->{node}{$remote}{ssh_fh},
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /$remote_mount/)
 				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Calling: [$shell_call] on the remote machine returned a 'permission denied' error.");
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Is the remote user: [$remote_user] user in the 'fuse' group?");
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   If not, please run: [usermod -a -G fuse $remote_user] on the remote server and try again.");
-					logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Unable to proceed.");
-					unmount($conf, $device);
-					exit(8);
-				}
-				elsif ($line =~ /Timeout waiting for prompt/i)
-				{
-					logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call] on the remote machine returned a timed out. Unable to proceed.");
-					unmount($conf, $device);
-					exit(18);
+					print "[ Success ] - The USB drive is now mounted on: [$remote] at: [$remote_mount]\n";
 				}
 			}
 			
@@ -1428,6 +1467,7 @@ sub call_blkid
 	my $fs    = "";
 	my $label = "";
 	my $shell_call = "$conf->{path}{blkid} -c /dev/null $device";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
@@ -1453,7 +1493,7 @@ sub call_blkid
 	}
 	close $file_handle;
 	
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs]");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - fs: [$fs]");
 	if ($fs)
 	{
 		$conf->{devices}{$device}{fs}    = $fs;
@@ -1469,116 +1509,6 @@ sub call_blkid
 		$conf->{devices}{$device}{uuid}  = "";
 		$conf->{devices}{$device}{label} = "";
 		$conf->{devices}{$device}{path}  = "";
-	}
-	
-	return(0);
-}
-
-# This looks for USB devices plugged into the dashboard
-sub find_usb_devices
-{
-	my ($conf) = @_;
-	
-	my $device     = "";
-	my $shell_call = "$conf->{path}{lsusb} -v";
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Calling: [$shell_call].");
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-		if (not $line)
-		{
-			$device = "";
-			next;
-		}
-		if (not $device)
-		{
-			if ($line =~ /^Bus (\d+) .* hub$/)
-			{
-				$device = "hub";
-				#logger($conf, $THIS_FILE, __LINE__, "device: [$device]");
-			}
-			else
-			{
-				(my $bus, my $device_id, my $vendor, my $product, $device) = ($line =~ /Bus (\d+) Device (\d+): ID (\w\w\w\w):(\w\w\w\w) (.*)$/);
-				#logger($conf, $THIS_FILE, __LINE__, "device: [$device], bus: [$bus], device_id: [$device_id]");
-				$conf->{device}{$device} = {
-					bus			=>	$bus,
-					device_id		=>	$device_id,
-					vendor			=>	$vendor,
-					say_vendor		=>	"",
-					product			=>	$product,
-					say_product		=>	"",
-					id_product		=>	"",
-					manufacturer		=>	"",
-					serial			=>	"",
-					interface_class		=>	"",
-				};
-			}
-		}
-		if (($device) && ($device ne "hub"))
-		{
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-			if ($line =~ /idVendor\s+0x\w\w\w\w (.*)$/)
-			{
-				$conf->{device}{$device}{say_vendor} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Vendor: ............ [$conf->{device}{$device}{say_vendor}]");
-			}
-			if ($line =~ /idProduct\s+0x\w\w\w\w (.*)$/)
-			{
-				$conf->{device}{$device}{id_product} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- ID Product: ........ [$conf->{device}{$device}{id_product}]");
-			}
-			if ($line =~ /iManufacturer\s+\d+ (.*)$/)
-			{
-				$conf->{device}{$device}{manufacturer} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Manufacturer: ...... [$conf->{device}{$device}{manufacturer}]");
-			}
-			if ($line =~ /iProduct\s+\d+ (.*)$/)
-			{
-				$conf->{device}{$device}{say_product} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Product: ........... [$conf->{device}{$device}{say_product}]");
-			}
-			if ($line =~ /iSerial\s+\d+ (.*)$/)
-			{
-				$conf->{device}{$device}{serial} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Serial: ............ [$conf->{device}{$device}{serial}]");
-			}
-			if ($line =~ /bInterfaceClass\s+\d+ (.*)$/)
-			{
-				$conf->{device}{$device}{interface_class} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Interface Class: ... [$conf->{device}{$device}{interface_class}]");
-			}
-			if ($line =~ /bInterfaceSubClass\s+\d+ (.*)$/)
-			{
-				$conf->{device}{$device}{interface_subclass} = $1;
-				#logger($conf, $THIS_FILE, __LINE__, "- Interface Sub-Class: [$conf->{device}{$device}{interface_subclass}]");
-			}
-		}
-	}
-	close $file_handle;
-	
-	foreach my $device (sort {$a cmp $b} keys %{$conf->{device}})
-	{
-		next if $conf->{device}{$device}{interface_class}    ne "Mass Storage";
-		next if $conf->{device}{$device}{interface_subclass} ne "SCSI";
-		
-		# Skip flash readers
-		next if $device =~ /Flash Reader/;
-		
-		my $id = "$conf->{device}{$device}{bus}:$conf->{device}{$device}{device_id}";
-		logger($conf, $THIS_FILE, __LINE__, "Device: [$id - $device]");
-		logger($conf, $THIS_FILE, __LINE__, "- Bus: ..,............ [$conf->{device}{$device}{bus}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Device ID: ..,...... [$conf->{device}{$device}{device_id}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Vendor: ............ [0x$conf->{device}{$device}{vendor} ($conf->{device}{$device}{say_vendor})]");
-		logger($conf, $THIS_FILE, __LINE__, "- ID Product: ........ [$conf->{device}{$device}{id_product}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Manufacturer: ...... [$conf->{device}{$device}{manufacturer}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Product: ........... [0x$conf->{device}{$device}{product} ($conf->{device}{$device}{say_product})]");
-		logger($conf, $THIS_FILE, __LINE__, "- Serial: ............ [$conf->{device}{$device}{serial}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Interface Class: ... [$conf->{device}{$device}{interface_class}]");
-		logger($conf, $THIS_FILE, __LINE__, "- Interface Sub-Class: [$conf->{device}{$device}{interface_subclass}]");
 	}
 	
 	return(0);

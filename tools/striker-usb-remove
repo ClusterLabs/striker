@@ -8,8 +8,9 @@ my $THIS_FILE = "striker-usb-remove";
 
 # All this script does is look for mounts that have lost their backing device and cleans up if found.
 # 
-# NOTE: Unmount fuser mounts with 'fusermount -u /mnt/point'. The 'umount' command will not work!
-# 
+# Exit codes:
+# 0  = Normal exit.
+# 1  = Failed to unmount a stale mount point.
 
 my $conf = inititialize_configuration();
 read_configuration($conf);
@@ -39,8 +40,8 @@ logger($conf, $THIS_FILE, __LINE__, "Striker USB Removal Script");
 # Look for anything mounted locally that no longer has a backing device.
 find_missing_devices($conf);
 
-#parse_syslog($conf);
 logger($conf, $THIS_FILE, __LINE__, "Striker USB Removal Script finished.");
+
 
 exit(0);
 
@@ -52,6 +53,7 @@ sub find_missing_devices
 	# Read all currently mounted partitions. The ones under 'remote-usb::local::mount' will be checked to
 	# see if the backing device still exists.
 	my $shell_call = "$conf->{path}{df} -hP";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote-usb::local::mount: [$conf->{'remote-usb'}{'local'}{mount}]");
 	logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
@@ -60,7 +62,7 @@ sub find_missing_devices
 		my $line = $_;
 		next if not $line;
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
-		if ($line =~ /(\/dev\/.*?)\s+\w+\s+\w+\s+\w+\s+\d+%\s($conf->{'remote-usb'}{'local'}{mount}_.*)/)
+		if ($line =~ /(\/dev\/.*?)\s+\S+\s+\S+\s+\S+\s+\d+%\s(\Q$conf->{'remote-usb'}{'local'}{mount}\E_.*)/)
 		{
 			my $device = $1;
 			my $mount  = $2;
@@ -83,8 +85,14 @@ sub find_missing_devices
 		{
 			# This catches devices that were directly mounted.
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The device: [$device ($device_name)] no longer exists, cleaning up locally.");
+			
+			# Unmount it from the target first, otherwise this will be held open.
+			cleanup_remote($conf, $conf->{device}{$device}{local_mount});
+			
+			# Now unmount it locally
 			unmount($conf, $conf->{device}{$device}{local_mount});
 		}
+		
 		
 		# Clean up stray device mapper devices.
 		if (cleanup_dm($conf, $device_name))
@@ -93,9 +101,6 @@ sub find_missing_devices
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - The device: [$device ($device_name)] was a stale device-mapped device and was cleaned up. Now cleaning up remote machine mounts that point to: [$conf->{device}{$device}{local_mount}].");
 		}
 	}
-
-	# Look for mounts on the remote machine pointing to no-longer existing local mounts.
-	cleanup_remote($conf);
 	
 	# get a list of device-mapped devices.
 	my $dm_devices = [];
@@ -224,17 +229,18 @@ fi;
 # Clean up the client's mount(s) if any left-over mount points.
 sub cleanup_remote
 {
-	my ($conf) = @_;
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cleanup_remote()");
+	my ($conf, $mount_point) = @_;
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - cleanup_remote(): mount_point: [$mount_point]");
 	
 	my $remote          = $conf->{'remote-usb'}{remote}{host};
 	my $remote_user     = $conf->{'remote-usb'}{remote}{user};
 	my $remote_password = $conf->{'remote-usb'}{remote}{password};
 	my $local_host      = $conf->{'remote-usb'}{'local'}{host};
-	my $local_user      = $conf->{'remote-usb'}{'local'}{user};
+	#my $local_user      = $conf->{'remote-usb'}{'local'}{user};
 	my $local_password  = $conf->{'remote-usb'}{'local'}{password};
-	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
-	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that point to stale mounts on: [$local_user\@$local_host]");
+	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - remote: [$remote], remote_user: [$remote_user], remote_password: [$remote_password], local_host: [$local_host], local_user: [$local_user], local_password: [$local_password]");
+	#logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote_user\@$remote] that point to stale mounts on: [$local_user\@$local_host]");
+	logger($conf, $THIS_FILE, __LINE__, "I will clean up mounts on: [$remote] that point to stale mounts on: [${local_host}:${mount_point}]");
 	
 	# Now look at the mounts on the remote machine.
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Getting a list of mounts on: [$remote]");
@@ -254,32 +260,31 @@ sub cleanup_remote
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
 		if ($line =~ /df: `(\/.*?)': No such file or directory/)
 		{
-			my $mount = $1;
-			$conf->{remove}{$mount} = 1;
+			my $mount                  = $1;
+			   $conf->{remove}{$mount} = 1;
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Mount point: [$mount] is stale.");
 		}
-		elsif ($line =~ /.*?\@$local_host:(\/mnt\/.*?)\s.*?(\/.*)/)
+		elsif ($line =~ /$local_host:$mount_point\s+.*?(\/.*)$/)
 		{
-			my $this_local_mount  = $1;
-			my $this_remote_mount = $2;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_local_mount: [$this_local_mount], this_remote_mount: [$this_remote_mount]");
-			
-			$conf->{mount}{$this_local_mount} = "" if not defined $conf->{mount}{$this_local_mount};
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount::$this_local_mount: [$conf->{mount}{$this_local_mount}]");
-			# Make sure this local mount exists...
-			if (not $conf->{mount}{$this_local_mount})
-			{
-				# Mount exists
-				$conf->{remove}{$this_remote_mount} = 1;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Mount point: [$this_remote_mount] is stale.");
-			}
+			my $mount                  = $1;
+			   $conf->{remove}{$mount} = 1;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Mount point: [$mount] is stale.");
 		}
 	}
 	
 	foreach my $mount (sort {$a cmp $b} keys %{$conf->{remove}})
 	{
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Killing any stale sshfs PIDs for the mount point: [$mount]");
-		my $shell_call = "$conf->{path}{fusermount} -u $mount; echo rc:\$?";
+		my $post_script = "/home/$remote_user/.post_unmount";
+		if ($remote_user eq "root")
+		{
+			$post_script = "/$remote_user/.post_unmount";
+		}
+		my $shell_call = "
+echo 'Unmounting: [$mount].'
+umount $mount
+sync
+df -hP
+";
 		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 		my ($error, $ssh_fh, $return) = remote_call($conf, {
 			remote		=>	$remote,
@@ -293,15 +298,16 @@ sub cleanup_remote
 		foreach my $line (@{$return})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /$local_host:$mount_point\s+.*?$mount$/)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to unmount: [$mount]!");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Cleanup aborted.");
+				exit(1);
+			}
 		}
 		
-		my $post_script = "/home/$remote_user/.post_unmount";
-		if ($remote_user eq "root")
-		{
-			$post_script = "/$remote_user/.post_unmount";
-		}
 		$shell_call = "
-echo 'Removing mount point: [$mount].'
+echo 'Removing empty mount point: [$mount].'
 rmdir $mount
 if [ -e '$mount' ]
 then
@@ -340,10 +346,44 @@ sub unmount
 	my ($conf, $mount_point) = @_;
 	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - unmount(); mount_point: [$mount_point]");
 	
-	my $ok         = 1;
-	my $shell_call = "$conf->{path}{sync}; $conf->{path}{umount} -f $mount_point";
+	# First, unexport the mount.
+	my $ok             = 1;
+	my $shell_call     = $conf->{path}{showmount}." -e ".$conf->{'remote-usb'}{'local'}{host};
+	my $unexprt_string = "";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]");
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+		if ($line =~ /^$mount_point (.*?)$/)
+		{
+			$unexprt_string = $1.":$mount_point";
+			logger($conf, $THIS_FILE, __LINE__, "unexprt_string: [$unexprt_string]");
+		}
+	}
+	close $file_handle;
+	
+	# Unexport if needed
+	if ($unexprt_string)
+	{
+		my $shell_call = $conf->{path}{exportfs}." -u $unexprt_string";
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+		}
+		close $file_handle;
+	}
+	
+	# Unmount
+	$shell_call = "$conf->{path}{sync}; $conf->{path}{umount} -f $mount_point";
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]");
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;

@@ -103,6 +103,7 @@ my $conf = {
 			#"ksmtuned", 
 			"ktune", 
 			"network", 
+			"nfs", 
 			"ntpd", 
 			"numad", 
 			"tuned", 
@@ -213,6 +214,9 @@ my $conf = {
 			mod_ssl				=>	0,
 			mtr				=>	0,
 			'mtr-gtk'			=>	0,
+			# NFS packages used for remote usb function.
+			'nfs-utils'			=>	0,
+			'nfs-utils-lib'			=>	0,
 			ntp				=>	0,
 			patch				=>	0,
 			pciutils			=>	0,

@@ -22,10 +22,12 @@ sub inititialize_configuration
 			df			=>	"/bin/df",
 			dmsetup			=>	"/sbin/dmsetup",
 			echo			=>	"/bin/echo",
+			exportfs		=>	"/usr/sbin/exportfs",
 			format_running		=>	"/tmp/.striker-usb-formatting",
 			fusermount		=>	"/bin/fusermount",
 			'grep'			=>	"/bin/grep",
 			hostname		=>	"/bin/hostname",
+			initd_nfs		=>	"/etc/init.d/nfs", 
 			ls			=>	"/bin/ls",
 			lsblk			=>	"/bin/lsblk",
 			lsusb			=>	"/usr/sbin/lsusb",
@@ -36,13 +38,22 @@ sub inititialize_configuration
 			partprobe		=>	"/sbin/partprobe",
 			rm			=>	"/bin/rm",
 			sed			=>	"/bin/sed",
-			sshfs			=>	"/usr/bin/sshfs",
+			showmount		=>	"/usr/sbin/showmount",
 			striker_config		=>	"/etc/striker/striker.conf",
 			sync			=>	"/bin/sync",
 			tail			=>	"/usr/bin/tail",
 			touch			=>	"/bin/touch",
 			udevadm			=>	"/sbin/udevadm",
 			umount			=>	"/bin/umount",
+		},
+		'remote-usb'	=>	{
+			'local'		=>	{
+				export_options	=>	"-i -o rw,sync,no_root_squash",
+			},
+			remote		=>	{
+				### The -o sync drops performance to ~35 MB/sec...
+				mount_options	=>	"-t nfs -o sync",
+			},
 		},
 		sys	=>	{
 			partition_seen		=>	0,
@@ -64,13 +75,13 @@ sub get_short_hostname
 	if (not $conf->{sys}{short_hostname})
 	{
 		my $shell_call = "$conf->{path}{hostname} -s";
-		logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]");
+		#logger($conf, $THIS_FILE, __LINE__, "shell call: [$shell_call]");
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
+			#logger($conf, $THIS_FILE, __LINE__, "line: [$line]");
 			$conf->{sys}{short_hostname} = $line;
 			last;
 		}
@@ -222,10 +233,10 @@ sub read_configuration
 	# Swap out '#!short_hostname!# for this machine's host name.
 	get_short_hostname($conf);
 	
-	logger($conf, $THIS_FILE, __LINE__, ">> remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], sys::short_hostname: [$conf->{sys}{short_hostname}]");
+	#logger($conf, $THIS_FILE, __LINE__, ">> remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], sys::short_hostname: [$conf->{sys}{short_hostname}]");
 	my $short_hostname = $conf->{sys}{short_hostname};
 	$conf->{'remote-usb'}{'local'}{host} =~ s/#!short_hostname!#/$short_hostname/;
-	logger($conf, $THIS_FILE, __LINE__, "<< remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], short_hostname: [$short_hostname]");
+	#logger($conf, $THIS_FILE, __LINE__, "<< remote-usb::local::host: [$conf->{'remote-usb'}{'local'}{host}], short_hostname: [$short_hostname]");
 	
 	return(0);
 }
@@ -272,11 +283,11 @@ sub remote_call
 	#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - ssh_fh: [$ssh_fh]");
 	if ($ssh_fh !~ /^Net::SSH2/)
 	{
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Opening an SSH connection to: [$user\@$remote:$port]");
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Opening an SSH connection to: [$user\@$remote:$port]");
 		$ssh_fh = Net::SSH2->new();
 		if (not $ssh_fh->connect($remote, $port, Timeout => 10))
 		{
-			#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$@]");
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - error: [$@]");
 			if ($@ =~ /Bad hostname/)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
@@ -293,13 +304,17 @@ sub remote_call
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
-				exit(11);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Returning without making the remote call.");
+				return("");
+				#exit(11);
 			}
 			elsif ($@ =~ /timeout/)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Error was: [$@]");
-				exit(12);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Returning without making the remote call.");
+				return("");
+				#exit(12);
 			}
 			else
 			{
@@ -315,7 +330,7 @@ sub remote_call
 			if (not $ssh_fh->auth_password($user, $password)) 
 			{
 				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to connect to the host: [$remote]");
-				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Please check that the password provides is the correct password for 'root' on the target machine.");
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Please check that the password provides is the correct password for: [root\@$remote].");
 				exit(14);
 			}
 			else
