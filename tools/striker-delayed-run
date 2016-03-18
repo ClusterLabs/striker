@@ -53,6 +53,7 @@ my $an = AN::Tools->new({data => {
 			crontab_string		=>	"",
 			date_and_time		=>	"",
 			date_string		=>	"",
+			duplicate		=>	0,
 			language		=>	"en_CA",
 			log_language		=>	"en_CA",
 			log_level		=>	2,
@@ -115,8 +116,11 @@ if ($an->data->{switches}{token})
 	$an->data->{sys}{token} = $an->data->{switches}{token};
 	delete_crontab_entry($an);
 	
-	# Do the call. This will exit the program.
-	run_call($an);
+	if (not $an->data->{switches}{abort})
+	{
+		# Do the call. This will exit the program.
+		run_call($an);
+	}
 }
 else
 {
@@ -133,7 +137,10 @@ else
 	generate_token($an);
 	
 	# Add it to crontab.
-	add_entry_to_crontab($an);
+	if (not $an->data->{sys}{duplicate})
+	{
+		add_entry_to_crontab($an);
+	}
 	
 	# Report the token. Note that this is NOT translated as it is meant to be parsed by a caller script.
 	print "token:  [".$an->data->{sys}{token}."]\n";
@@ -185,11 +192,21 @@ sub avoid_duplicate_entries
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($duplicate)
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sdr_error_0002", message_variables => {
-			call	=>	$an->data->{switches}{call}, 
-			line	=>	$duplicate, 
-		}, code => 1, file => "$THIS_FILE", line => __LINE__});
-		exit(1);
+		### Take the token from the duplicate call and pretend we created it.
+		$an->data->{sys}{token}      = ($duplicate =~ /--token ([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/)[0];
+		$an->data->{sys}{token_file} = ($duplicate =~ /> (\/.*)$/)[0];
+		$an->data->{sys}{duplicate}  = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "sys::token",      value1 => $an->data->{sys}{token}, 
+			name2 => "sys::token_file", value2 => $an->data->{sys}{token_file}, 
+			name3 => "sys::duplicate",  value3 => $an->data->{sys}{duplicate}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		#$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sdr_error_0002", message_variables => {
+		#	call	=>	$an->data->{switches}{call}, 
+		#	line	=>	$duplicate, 
+		#}, code => 1, file => "$THIS_FILE", line => __LINE__});
+		#exit(1);
 	}
 
 	return(0);
@@ -335,6 +352,7 @@ sub add_entry_to_crontab
 	
 	if ($time->{hour} eq "24")
 	{
+		$time->{min}  = 0;
 		$time->{hour} = 0;
 		$time->{mday}++;
 	}
@@ -371,6 +389,9 @@ sub generate_token
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_token" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::token", value1 => $an->data->{sys}{token}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{sys}{token})
 	{
 		$an->data->{sys}{token} = $an->Get->uuid();
