@@ -14753,12 +14753,14 @@ sub generate_cluster_conf
 	#       concern is overhead/performance. Given that the Anvil! is strictly a 2-node setup and given
 	#       that performance on the gfs2 partition is of minimal concern, the benefit of wider network 
 	#       support of unicast wins out, so we're using UDP-unicast instead of UDP-multicast.
+	#       
+	# NOTE: RRP can't be used because SCTP is not compatible/reliable with DLM.
+	# 
 	$conf->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
 <cluster name=\"$conf->{cgi}{anvil_name}\" config_version=\"1\">
 	<cman expected_votes=\"1\" two_node=\"1\" transport=\"udpu\" />
 	<clusternodes>
 		<clusternode name=\"$conf->{cgi}{anvil_node1_name}\" nodeid=\"1\">
-			<altname name=\"${node1_short_name}.sn\" />
 			<fence>\n";
 	# Fence methods for node 1
 	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node1_full_name}{order}})
@@ -14807,7 +14809,6 @@ sub generate_cluster_conf
 	$conf->{sys}{cluster_conf} .= "\t\t\t</fence>
 		</clusternode>
 		<clusternode name=\"$conf->{cgi}{anvil_node2_name}\" nodeid=\"2\">
-			<altname name=\"${node2_short_name}.sn\" />
 			<fence>\n";
 	# Fence methods for node 2
 	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node2_full_name}{order}})
@@ -14866,7 +14867,7 @@ sub generate_cluster_conf
 	}
 	$conf->{sys}{cluster_conf} .= "\t</fencedevices>
 	<fence_daemon post_join_delay=\"$conf->{sys}{post_join_delay}\" />
-	<totem rrp_mode=\"passive\" secauth=\"off\"/>
+	<totem rrp_mode=\"none\" secauth=\"off\"/>
 	<rm log_level=\"5\">
 		<resources>
 			<script file=\"/etc/init.d/drbd\" name=\"drbd\"/>
