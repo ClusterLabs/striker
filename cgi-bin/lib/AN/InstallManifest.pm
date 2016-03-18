@@ -2249,6 +2249,26 @@ sub configure_storage_stage3
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "configure_ok", value1 => $configure_ok,
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				### Stop everything now.
+				# gfs2
+				my $gfs2_node1_rc = stop_service_on_node($conf, "gfs2", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+				my $gfs2_node2_rc = stop_service_on_node($conf, "gfs2", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "gfs2_node1_rc", value1 => $gfs2_node1_rc, 
+					name2 => "gfs2_node2_rc", value2 => $gfs2_node2_rc, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# clvmd
+				my $clvmd_node1_rc = stop_service_on_node($conf, "clvmd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+				my $clvmd_node2_rc = stop_service_on_node($conf, "clvmd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "clvmd_node1_rc", value1 => $clvmd_node1_rc, 
+					name2 => "clvmd_node2_rc", value2 => $clvmd_node2_rc, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# This looks at the Disk State and stops the resources intelligently.
+				stop_drbd($conf);
 			}
 			else
 			{
@@ -2587,6 +2607,127 @@ sub restart_rgmanager_service
 	}
 	
 	return(0);
+}
+
+# This looks at the disk states for r0 and if one node is Inconsistent, it is stopped first. Otherwise, we'll
+# stop node 1, then node 2.
+sub stop_drbd
+{
+	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# get the current disk states from node 1's perspective.
+	my $stop_first = "node1";
+	my $node       = $conf->{cgi}{anvil_node1_current_ip};
+	my $password   = $conf->{cgi}{anvil_node1_current_password};
+	my $shell_call = "cat /proc/drbd";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^0: /)
+		{
+			my $connected_state = ($line =~ /cs:(.*?)\s/)[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "connected_state", value1 => $connected_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($connected_state =~ /SyncSource/i)
+			{
+				# Stop node 2 first
+				$stop_first = "node2";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "stop_first", value1 => $stop_first, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "stop_first", value1 => $stop_first, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($stop_first eq "node2")
+	{
+		# Stop 2 -> 1
+		my $drbd_node2_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my $drbd_node1_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "drbd_node1_rc", value1 => $drbd_node1_rc, 
+			name2 => "drbd_node2_rc", value2 => $drbd_node2_rc, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Stop 1 -> 2
+		my $drbd_node1_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my $drbd_node2_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "drbd_node1_rc", value1 => $drbd_node1_rc, 
+			name2 => "drbd_node2_rc", value2 => $drbd_node2_rc, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return(0);
+}
+
+# This stops the named service on the named node.
+sub stop_service_on_node
+{
+	my ($conf, $service, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "service", value1 => $service, 
+		name2 => "node",    value2 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 127;
+	my $shell_call  = "/etc/init.d/".$service." stop; echo rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^rc:(\d+)/)
+		{
+			$return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
 }
 
 # This starts rgmanager on both a node
