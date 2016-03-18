@@ -278,7 +278,7 @@ my $conf = {
 				power_off_delay		=>	60,
 			},
 		},
-		debug		=>	1,
+		debug		=>	0,
 		version		=>	"1.0",
 		connections	=>	0,
 	},

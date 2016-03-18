@@ -40,9 +40,11 @@ $ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
 $< = $>;
 $( = $);
 
+### NOTE: I can't use '$0' here because it picks up the rc3.d symlink name instead of the real name
 # Figure out who and where I am.
-my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
-my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+my $program_name        =  "/sbin/striker/anvil-safe-start";
+my $THIS_FILE           =  ($program_name =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($program_name =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
 	        $running_directory =~ s/^\./$ENV{PWD}/;
@@ -86,6 +88,7 @@ my $an = AN::Tools->new({data => {
 			log_language		=>	"en_CA",
 			log_level		=>	2,
 			peer_node		=>	"",
+			program_name		=>	$program_name,
 			resync_max_wait_time	=>	600,
 		},
 	},
@@ -151,7 +154,6 @@ if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-st
 {
 	exit(0);
 }
-
 
 # Log our startup
 $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => {
@@ -246,10 +248,18 @@ sub update_striker_conf
 			my $space1 = $1;
 			my $space2 = $2;
 			my $value  = $3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "value", value1 => $value, 
+				name2 => "set",   value2 => $set, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($value ne $set)
 			{
 				$changed = 1;
 				$line    = "tools::anvil-safe-start::enabled".$space1."=".$space2."$set";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "changed", value1 => $changed, 
+					name2 => "line",    value2 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
@@ -257,6 +267,9 @@ sub update_striker_conf
 	}
 	close $file_handle;
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "changed", value1 => $changed, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($changed)
 	{
 		# Write out the new version.
@@ -1093,9 +1106,10 @@ sub start_drbd
 		password	=>	$an->data->{sys}{anvil_password},
 		port		=>	"",
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "local_state",  value1 => $local_state, 
-		name2 => "remote_state", value2 => $remote_state, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "module",       value1 => $module, 
+		name2 => "local_state",  value2 => $local_state, 
+		name3 => "remote_state", value3 => $remote_state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Will be called below, if needed.
@@ -1248,7 +1262,7 @@ sub start_drbd
 			target		=>	$an->data->{sys}{peer_node},
 			password	=>	$an->data->{sys}{anvil_password},
 		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_resource", value1 => $local_resource, 
 			name2 => "peer_resource",  value2 => $peer_resource, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1686,7 +1700,7 @@ sub wait_if_node2
 		###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
 		sleep 30;
 		my $pids = $an->Get->pids({
-			program_name	=>	$0, 
+			program_name	=>	$an->data->{sys}{program_name}, 
 			target		=>	$an->data->{sys}{peer_node}, 
 			password	=>	$an->data->{sys}{anvil_password},
 			port		=>	"",
@@ -1706,7 +1720,7 @@ sub wait_if_node2
 			while ($wait)
 			{
 				my $pids = $an->Get->pids({
-					program_name	=>	$0, 
+					program_name	=>	$an->data->{sys}{program_name}, 
 					target		=>	$an->data->{sys}{peer_node}, 
 					password	=>	$an->data->{sys}{anvil_password},
 					port		=>	"",
@@ -1717,10 +1731,10 @@ sub wait_if_node2
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($count)
 				{
-					sleep 10;
 					$an->Log->entry({log_level => 1, message_key => "asst_log_0008", message_variables => {
 						program	=>	$THIS_FILE, 
 					}, file => $THIS_FILE, line => __LINE__});
+					sleep 10;
 				}
 				else
 				{
@@ -2110,13 +2124,13 @@ sub wait_for_access
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line eq "1")
 			{
 				$access = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "access", value1 => $access, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2156,7 +2170,7 @@ sub wait_for_access
 sub find_myself
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_myself" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "find_myself" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hostname_full  = $an->hostname();
 	my $hostname_short = $an->short_hostname();
@@ -2222,7 +2236,7 @@ sub avoid_duplicate_run
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $pids  = $an->Get->pids({program_name => $0});
+	my $pids  = $an->Get->pids({program_name => $an->data->{sys}{program_name}});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
@@ -2241,7 +2255,7 @@ sub abort_other_instances
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "abort_other_instances" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $pids  = $an->Get->pids({program_name => $0});
+	my $pids  = $an->Get->pids({program_name => $an->data->{sys}{program_name}});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
@@ -2297,7 +2311,7 @@ sub report_state
 	}
 	
 	# Is it running now?
-	my $pids  = $an->Get->pids({program_name => $0});
+	my $pids  = $an->Get->pids({program_name => $an->data->{sys}{program_name}});
 	my $count = @{$pids};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 

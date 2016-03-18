@@ -2844,15 +2844,16 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
-		<key name="sdr_message_0002"></key>
 		
 		<!-- logs -->
 		<key name="sdr_log_0001">Crontab line: [#!variable!line!#] has our token: [#!variable!token!#], removing it.</key>
 		<key name="sdr_log_0002">Rewrote the crontab file to remove our entry.</key>
 		<key name="sdr_log_0003">Added the entry: [#!variable!crontab_string!#] to crontab.</key>
+		<key name="sdr_log_0004">Called with token: [#!variable!token!#], beginning run of delayed call.</key>
 		
 		<!-- errors -->
 		<key name="sdr_error_0001"><![CDATA[Must be called with '--call "</path/to/call [args]>"'.]]></key>
+		<key name="sdr_error_0002">The requested call: [#!variable!call!#] seems to match the existing entry: [#!variable!line!#]. This is usually caused by a bug in a program calling is too many times.</key>
 	
 	</lang>
 

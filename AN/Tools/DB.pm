@@ -47,7 +47,7 @@ sub do_db_write
 	my $source = $parameter->{source} ? $parameter->{source} : "";
 	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
 	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "id",     value1 => $id, 
 		name2 => "source", value2 => $source, 
 		name3 => "line",   value3 => $line, 
@@ -64,8 +64,7 @@ sub do_db_write
 		exit(1);
 	}
 	
-	# This array will hold either just the passed DB ID or all of them, if
-	# no ID was specified.
+	# This array will hold either just the passed DB ID or all of them, if no ID was specified.
 	my @db_ids;
 	if ($id)
 	{
@@ -73,7 +72,8 @@ sub do_db_write
 	}
 	else
 	{
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		#foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 		{
 			push @db_ids, $id;
 		}
@@ -121,6 +121,15 @@ sub do_db_write
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
+			if (not $an->data->{dbh}{$id})
+			{
+				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
+					id     => $id, 
+					query  => $query, 
+					server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+				}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			}
+			
 			# Just one query.
 			#print "id: [$id], query:\n============\n$query\n============\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
@@ -160,10 +169,12 @@ sub do_db_query
 	my $source = $parameter->{source} ? $parameter->{source} : "";
 	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
 	my $query  = $parameter->{query}  ? $parameter->{query}  : "";	# This should throw an error
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "id",       value1 => $id, 
 		name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}, 
-		name3 => "query",    value3 => $query
+		name3 => "query",    value3 => $query, 
+		name4 => "source",   value4 => $source, 
+		name5 => "line",     value5 => $line, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Prepare the query
@@ -188,7 +199,7 @@ sub do_db_query
 	# Execute on the query
 	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
 					query    => $query, 
-					server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 					db_error => $DBI::errstr
 				}, code => 3, file => "$THIS_FILE", line => __LINE__});
 	

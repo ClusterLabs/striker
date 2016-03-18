@@ -7,9 +7,10 @@
 # 
 # Return codes:
 # 0  = Normal exit.
+# 1  = Duplicate entry found already in crontab
 # 
-# 
-# TODO: Merge sshd_config and cache files.
+# TODO:
+# - Add '--abort <token>' so that "Withdraw" can delete the entry if rgmanager stops properly.
 # 
 
 use strict; 
@@ -94,9 +95,22 @@ $an->data->{sys}{unix_time}     =  $unix_time;
 
 # If we have a token, we're being called by crontab and will perform the actual run. Otherwise, generate a 
 # token and add ourselves to crontab and return the token to the caller.
+$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	name1 => "switches::token", value1 => $an->data->{switches}{token}, 
+	name2 => "switches::call",  value2 => $an->data->{switches}{call}, 
+	name3 => "switches::abort", value3 => $an->data->{switches}{abort}, 
+}, file => $THIS_FILE, line => __LINE__});
 if ($an->data->{switches}{token})
 {
-	### Do the actual call!
+	# If am also called with '--abort', then remove the crontab entry and do nothing else.
+	if (not $an->data->{switches}{abort})
+	{
+		# Do the actual call!
+		$an->Log->entry({log_level => 2, message_key => "sdr_log_0004", message_variables => {
+			token => $an->data->{switches}{token}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# Delete our entry from crontab
 	$an->data->{sys}{token} = $an->data->{switches}{token};
 	delete_crontab_entry($an);
@@ -112,10 +126,13 @@ else
 		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sdr_error_0001", code => 1, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	### Add to crontab
+	# Verify that this call isn't already in the crontab.
+	avoid_duplicate_entries($an);
+	
 	# Generate a token
 	generate_token($an);
 	
+	# Add it to crontab.
 	add_entry_to_crontab($an);
 	
 	# Report the token. Note that this is NOT translated as it is meant to be parsed by a caller script.
@@ -129,10 +146,59 @@ exit(0);
 # Functions                                                                                                 #
 #############################################################################################################
 
+# This reads in root's cron and checks to see if the requested call is already in crontab. If it is, it 
+# throws an error and then exits.
+sub avoid_duplicate_entries
+{
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "avoid_duplicate_entries" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $duplicate  = "";
+	my $shell_call = $an->data->{path}{crontab};
+	my $call       = $an->data->{switches}{call};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+		name2 => "call",       value2 => $call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /\Q$call\E/)
+		{
+			# Duplicate entry.
+			$duplicate = $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "duplicate", value1 => $duplicate, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "duplicate", value1 => $duplicate, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($duplicate)
+	{
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "sdr_error_0002", message_variables => {
+			call	=>	$an->data->{switches}{call}, 
+			line	=>	$duplicate, 
+		}, code => 1, file => "$THIS_FILE", line => __LINE__});
+		exit(1);
+	}
+
+	return(0);
+}
+
 # This runs the shell call.
 sub run_call
 {
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_crontab_entry" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "run_call" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 0;
 	my $shell_call  = $an->data->{switches}{call}."; echo rc:\$?";
@@ -144,10 +210,16 @@ sub run_call
 	{
 		chomp;
 		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^rc:(\d+)$/)
 		{
 			$return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
@@ -202,6 +274,9 @@ sub delete_crontab_entry
 	close $file_handle;
 	
 	# Write out the new file if it was updated.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "updated", value1 => $updated, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($updated)
 	{
 		my $shell_call = $an->data->{path}{crontab};
@@ -236,7 +311,7 @@ sub add_entry_to_crontab
 	if ($an->data->{switches}{delay})
 	{
 		$now_time += $an->data->{switches}{delay};
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "now_time", value1 => $now_time, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -250,6 +325,22 @@ sub add_entry_to_crontab
 	# Round up the minute.
 	$time->{sec} = 0;
 	$time->{min}++;
+	
+	# Loop if the minute == 60;
+	if ($time->{min} eq "60")
+	{
+		$time->{min} = 0;
+		$time->{hour}++;
+	}
+	
+	if ($time->{hour} eq "24")
+	{
+		$time->{hour} = 0;
+		$time->{mday}++;
+	}
+	
+	### TODO: I'll need to hand hitting the barrier of a month at some point.
+	
 	my $say_call =  $an->data->{switches}{call};
 	   $say_call =~ s/'/\\'/g;
 
@@ -283,7 +374,7 @@ sub generate_token
 	if (not $an->data->{sys}{token})
 	{
 		$an->data->{sys}{token} = $an->Get->uuid();
-		$an->Log->entry({log_level => 1, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::token", value1 => $an->data->{sys}{token}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}

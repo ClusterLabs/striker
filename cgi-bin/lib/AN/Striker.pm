@@ -9677,15 +9677,51 @@ sub withdraw_node
 		print AN::Common::template($conf, "server.html", "withdraw-node-header", {
 			title	=>	$say_title,
 		});
-
-		my $rgmanager_stop = 1;
-		my $shell_call     = "/etc/init.d/rgmanager stop";
-		my $password       = $conf->{sys}{root_password};
+		
+		# Sometimes rgmanager gets stuck waiting for gfs2 and/or clvmd2 to stop. So to help with 
+		# these cases, we'll call 'striker-delayed-run' for 60 seconds in the future. This usually
+		# gives rgmanager the kick it needs to actually stop.
+		my $delay      = 60;
+		my $password   = $conf->{sys}{root_password};
+		my $shell_call = $an->data->{path}{'striker-delayed-run'}." --delay $delay --call '/etc/init.d/gfs2 stop && /etc/init.d/clvmd stop'";
+		my $token      = "";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /token:\s+\[(.*?)\]/i)
+			{
+				$token = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "token", value1 => $token,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		my $rgmanager_stop = 1;
+		   $shell_call     = "/etc/init.d/rgmanager stop";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
 			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$password,
@@ -9722,10 +9758,39 @@ sub withdraw_node
 		print AN::Common::template($conf, "server.html", "withdraw-node-close-output");
 		if ($rgmanager_stop)
 		{
+			# Stop the gfs2/clvmd stop call
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "token", value1 => $token,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($token)
+			{
+				my $shell_call = $an->data->{path}{'striker-delayed-run'}." --abort --token $token";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$conf->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			
 			print AN::Common::template($conf, "server.html", "withdraw-node-resource-manager-stopped");
 			my $cman_stop  = 1;
 			my $shell_call = "/etc/init.d/cman stop";
-			my $password   = $conf->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -9772,7 +9837,6 @@ sub withdraw_node
 				print AN::Common::template($conf, "server.html", "withdraw-node-membership-withdrawl-failed");
 				my $cman_start = 1;
 				my $shell_call = "/etc/init.d/cman start";
-				my $password   = $conf->{sys}{root_password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
