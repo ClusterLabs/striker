@@ -105,7 +105,6 @@ my $conf = {
 			"network", 
 			"nfs", 
 			"ntpd", 
-			"numad", 
 			"tuned", 
 			"xinetd"
 		],
@@ -114,6 +113,7 @@ my $conf = {
 			"ip6tables", 
 			"ipmidetectd", 
 			"NetworkManager", 
+			"numad", 
 		],
 	},
 	directory	=>	{
@@ -407,53 +407,53 @@ my $conf = {
 		# Compile by entering 'gcc -o $out_file $c_file'
 		'anvil-kick-apc-ups'	=>	{
 			c_file			=>	"/sbin/striker/call_anvil-kick-apc-ups.c",
-			out_file		=>	"call_anvil-kick-apc-ups",
+			out_file		=>	"/sbin/striker/call_anvil-kick-apc-ups",
 		},
 		'gather-system-info'	=>	{
 			c_file			=>	"/sbin/striker/call_gather-system-info.c",
-			out_file		=>	"call_gather-system-info",
+			out_file		=>	"/sbin/striker/call_gather-system-info",
 		},
 		'striker-push-ssh'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-push-ssh.c",
-			out_file		=>	"call_striker-push-ssh",
+			out_file		=>	"/sbin/striker/call_striker-push-ssh",
 		},
 		'striker-configure-vmm'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-configure-vmm.c",
-			out_file		=>	"call_striker-configure-vmm",
+			out_file		=>	"/sbin/striker/call_striker-configure-vmm",
 		},
 		'striker-delete-anvil'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-delete-anvil.c",
-			out_file		=>	"call_striker-delete-anvil",
+			out_file		=>	"/sbin/striker/call_striker-delete-anvil",
 		},
 		'striker-merge-dashboards'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-merge-dashboards.c",
-			out_file		=>	"call_striker-merge-dashboards",
+			out_file		=>	"/sbin/striker/call_striker-merge-dashboards",
 		},
 		# These just pass along directly to existing systems calls, hence the lack of 'call_' 
 		# prefixes.
 		'control_dhcpd'	=>	{
 			c_file			=>	"/sbin/striker/control_dhcpd.c",
-			out_file		=>	"control_dhcpd",
+			out_file		=>	"/sbin/striker/control_dhcpd",
 		},
 		'control_iptables'	=>	{
 			c_file			=>	"/sbin/striker/control_iptables.c",
-			out_file		=>	"control_iptables",
+			out_file		=>	"/sbin/striker/control_iptables",
 		},
 		'control_libvirtd'	=>	{
 			c_file			=>	"/sbin/striker/control_libvirtd.c",
-			out_file		=>	"control_libvirtd",
+			out_file		=>	"/sbin/striker/control_libvirtd",
 		},
 		'control_shorewall'	=>	{
 			c_file			=>	"/sbin/striker/control_shorewall.c",
-			out_file		=>	"control_shorewall",
+			out_file		=>	"/sbin/striker/control_shorewall",
 		},
 		'do_dd'	=>	{
 			c_file			=>	"/sbin/striker/do_dd.c",
-			out_file		=>	"do_dd",
+			out_file		=>	"/sbin/striker/do_dd",
 		},
 		'touch_striker.log'	=>	{
 			c_file			=>	"/sbin/striker/touch_striker.log.c",
-			out_file		=>	"touch_striker.log",
+			out_file		=>	"/sbin/striker/touch_striker.log",
 		},
 	},
 	permissions	=>	{
@@ -2126,7 +2126,7 @@ sub compile_c_wrappers
 		logger($conf, $THIS_FILE, __LINE__, "- Compiling: [$wrapper]", 1);
 		my $c_file   = $conf->{setuid}{$wrapper}{c_file};
 		my $out_file = $conf->{setuid}{$wrapper}{out_file};
-		#logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - c_file: [$c_file], out_file: [$out_file]", 1);
 		
 		# Unlink the existing output file, if it exists.
 		if (-e $out_file)
@@ -2137,7 +2137,7 @@ sub compile_c_wrappers
 		
 		# Compile
 		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{

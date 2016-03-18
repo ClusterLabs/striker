@@ -714,7 +714,6 @@ sub initialize_conf
 					"modclusterd",	# LSB compliant
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
 					"ntpd",		# LSB compliant
-					"numad",	# LSB compliant
 					"ricci",	# LSB compliant
 					"snmpd",
 					"tuned",	# LSB compliant
@@ -727,6 +726,7 @@ sub initialize_conf
 					"gfs2",		# 
 					"ip6tables",	# 
 					"ipmidetectd",	# Not needed on the Anvil!
+					"numad",	# LSB compliant
 					"rgmanager",	# 
 					"snmptrapd",	# 
 					"systemtap",	# 

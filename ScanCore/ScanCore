@@ -669,17 +669,120 @@ sub do_post_scan_checks
 	return(0);
 }
 
-# This will read it's /etc/striker/striker.conf file and for each node it sees, it will reference it's cache 
-# to check it's power status. If the node if off, it will check hosts -> host_emergency_stop and if it is 
-# TRUE, check to see if it is safe to boot the nodes back up.
+### TODO: Make this AN::Tools::Get->node_cache().
+# This reads in the various node cache files
+sub read_cache_files
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cache_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-d $an->data->{path}{node_cache})
+	{
+		# This will be stuck onto the start of fence agents that don't have a full path.
+		my $fence_path = $an->data->{path}{fence_agents};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "fence_path", value1 => $fence_path
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# So we do have a cache directory. What about actual cache files?
+		local(*DIRECTORY);
+		opendir(DIRECTORY, $an->data->{path}{node_cache});
+		while(my $file = readdir(DIRECTORY))
+		{
+			next if $file eq ".";
+			next if $file eq "..";
+			next if $file !~ /cache_.*?\.striker/;
+			my $full_path = $an->data->{path}{node_cache}."/$file";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "full_path", value1 => "$full_path"
+			}, file => $THIS_FILE, line => __LINE__});
+			if (-r $full_path)
+			{
+				# Woot!
+				my $in_hosts       = 0;
+				my $shell_call     = $full_path;
+				my ($anvil, $node) = ($full_path =~ /cache_(.*?)_(.*?)\.striker/);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					name1 => "in_hosts",   value1 => "$in_hosts", 
+					name2 => "shell_call", value2 => "$shell_call", 
+					name3 => "anvil",      value3 => "$anvil", 
+					name4 => "node",       value4 => "$node", 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+						$line =~ s/\s+/ /g;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => "$line"
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					if ($line eq "#! start hosts !#")
+					{
+						$in_hosts = 1;
+						next;
+					}
+					if ($line eq "#! end hosts !#")
+					{
+						$in_hosts = 1;
+						next;
+					}
+					if (($in_hosts) && ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/))
+					{
+						my $this_ip   = $1;
+						my $this_host = $2;
+						$an->data->{cache}{$node}{host}{$this_host}{ip} = $this_ip;
+						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+							name1 => "cache::${node}::host::${this_host}::ip", value1 => $an->data->{cache}{$node}{host}{$this_host}{ip}
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						next if $line !~ /=/;
+						my ($variable, $value) = (split/=/, $line, 2);
+						$variable =~ s/^\s+//;
+						$variable =~ s/\s+$//;
+						$value    =~ s/^\s+//;
+						$value    =~ s/\s+$//;
+						
+						# Stick the full path onto the 'power_check_command'.
+						if ($variable eq "power_check_command")
+						{
+							$value =~ s/^fence/$fence_path\/fence/;
+						}
+						
+						$an->data->{cache}{$node}{info}{$variable} = $value;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cache::${node}::info::${variable}", value1 => $an->data->{cache}{$node}{info}{$variable}
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				close $file_handle;
+			}
+		}
+	}
+	
+	return(0);
+}
+
+# This will read in all nodes in 'hosts' and for each node it sees, it will reference it's cache to check 
+# it's power status. If the node if off, it will check hosts -> host_emergency_stop and if it is TRUE, check
+# to see if it is safe to boot the nodes back up. If the node is on, it will clear the 'host_emergency_stop'
+# and 'host_stop_reason', if set.
 sub do_post_scan_dashboard_tasks
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_post_scan_dashboard_tasks" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# So first thing, see if any nodes are in emergency_stop. If not, there is nothing further for us to 
-	# do. We order by host name to be sure to boot node 1 first, when both are recoverable. 'Tis but a 
-	# minor thing, but hey, why not.
+	# Start by reading in all the cache files we have. We'll skip any nodes we see in the DB that don't
+	# have a cache file.
+	read_cache_files($an);
+	
+	# Now read in all the nodes we know about.
 	my $query = "
 SELECT 
     host_uuid, 
@@ -690,8 +793,6 @@ FROM
     hosts 
 WHERE 
     host_type = 'node' 
-AND 
-    host_emergency_stop = TRUE 
 ORDER BY 
     host_name ASC
 ;";
@@ -705,277 +806,166 @@ ORDER BY
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($count)
+	foreach my $row (@{$results})
 	{
-		### At least one node is in an emergency-off state. See if we can recover it and if it is 
-		### safe to do so.
-		
-		# First step is to read in any/all cache files. If we don't have a cache directory, then 
-		# we're done.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "path::node_cache", value1 => $an->data->{path}{node_cache}
+		my $host_uuid           = $row->[0];
+		my $host_name           = $row->[1];
+		my $host_emergency_stop = $row->[2];
+		my $host_stop_reason    = $row->[3] ? $row->[3] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "host_uuid",                value1 => $host_uuid, 
+			name2 => "host_name",                value2 => $host_name, 
+			name3 => "host_emergency_stop",      value3 => $host_emergency_stop, 
+			name4 => "host_stop_reason",         value4 => $host_stop_reason, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (-d $an->data->{path}{node_cache})
+		
+		# Is the node online?
+		# - Node states:
+		# 0 - The fence device is reachable and the port is in the on state.
+		# 1 - The fence device could not be reached.
+		# 2 - The fence device is reachable and the port is in the off state.
+		my $state = check_node_power_state($an, $host_name, $host_uuid);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Nothing to do if we can't reach the node
+		if ($state eq "1")
 		{
-			# This will be stuck onto the start of fence agents that don't have a full path.
-			my $fence_path = $an->data->{path}{fence_agents};
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0084", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# If it's on, clear its 'host_emergency_stop' and 'host_stop_reason', if set. The exception
+		# being when the 'host_stop_reason' is a time stamp. 
+		if ($state eq "0")
+		{
+			# No need to check if it should be booted.
+			$an->Log->entry({log_level => 1, message_key => "scancore_log_0085", message_variables => {
+				node => $host_name, 
+			}, file => $THIS_FILE, line => __LINE__});
 			
-			### TODO: Create and use AN::Tools::Get->node_cache().
-			
-			# So we do have a cache directory. What about actual cache files?
-			local(*DIRECTORY);
-			opendir(DIRECTORY, $an->data->{path}{node_cache});
-			while(my $file = readdir(DIRECTORY))
+			# Check to see if there is a time-type stop reason and, if so, see if it's stale.
+			my $clear = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "host_stop_reason", value1 => $host_stop_reason, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($host_stop_reason =~ /^\d+$/)
 			{
-				next if $file eq ".";
-				next if $file eq "..";
-				next if $file !~ /cache_.*?\.striker/;
-				my $full_path = $an->data->{path}{node_cache}."/$file";
+				# Timed reboot. See if the timer has expired.
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "full_path", value1 => "$full_path"
+					name1 => "time", value1 => time, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if (-r $full_path)
+				if (time <= $host_stop_reason)
 				{
-					# Woot!
-					my $in_hosts       = 0;
-					my $shell_call     = $full_path;
-					my ($anvil, $node) = ($full_path =~ /cache_(.*?)_(.*?)\.striker/);
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-						name1 => "in_hosts",   value1 => "$in_hosts", 
-						name2 => "shell_call", value2 => "$shell_call", 
-						name3 => "anvil",      value3 => "$anvil", 
-						name4 => "node",       value4 => "$node", 
+					# It's active, don't clear it.
+					$clear = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "clear", value1 => $clear, 
 					}, file => $THIS_FILE, line => __LINE__});
-					open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-					while(<$file_handle>)
-					{
-						chomp;
-						my $line =  $_;
-						   $line =~ s/\s+/ /g;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "line", value1 => "$line"
-						}, file => $THIS_FILE, line => __LINE__});
-						
-						if ($line eq "#! start hosts !#")
-						{
-							$in_hosts = 1;
-							next;
-						}
-						if ($line eq "#! end hosts !#")
-						{
-							$in_hosts = 1;
-							next;
-						}
-						if (($in_hosts) && ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)/))
-						{
-							my $this_ip   = $1;
-							my $this_host = $2;
-							$an->data->{cache}{$node}{host}{$this_host}{ip} = $this_ip;
-							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-								name1 => "cache::${node}::host::${this_host}::ip", value1 => $an->data->{cache}{$node}{host}{$this_host}{ip}
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-						else
-						{
-							next if $line !~ /=/;
-							my ($variable, $value) = (split/=/, $line, 2);
-							$variable =~ s/^\s+//;
-							$variable =~ s/\s+$//;
-							$value    =~ s/^\s+//;
-							$value    =~ s/\s+$//;
-							
-							# Stick the full path onto the 'power_check_command'.
-							if ($variable eq "power_check_command")
-							{
-								$value =~ s/^fence/$fence_path\/fence/;
-							}
-							
-							$an->data->{cache}{$node}{info}{$variable} = $value;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "cache::${node}::info::${variable}", value1 => $an->data->{cache}{$node}{info}{$variable}
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-					}
-					close $file_handle;
 				}
 			}
 			
-			# I might be able to boot up nodes that are down, so I want to now read in the 
-			# 'power' and 'temperature' tables. As I loop through the downed nodes, I will pull 
-			# their particulars and decide on a case by case basis if it is safe to boot them 
-			# back up.
-			
-			# Read in the power table.
-			read_power_table($an);
-			
-			# Now that I've read in my cache files, start looking at the nodes that are down.
-			foreach my $row (@{$results})
+			# OK, if 'clear' and if there is a stop reason and/or estop flag, clear it
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "clear",               value1 => $clear, 
+				name2 => "host_emergency_stop", value2 => $host_emergency_stop, 
+				name3 => "host_stop_reason",    value3 => $host_stop_reason, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($clear) && (($host_emergency_stop) or ($host_stop_reason)))
 			{
-				my $host_uuid           = $row->[0];
-				my $host_name           = $row->[1];
-				my $host_emergency_stop = $row->[2];
-				my $host_stop_reason    = $row->[3] ? $row->[3] : "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-					name1 => "host_uuid",                value1 => $host_uuid, 
-					name2 => "host_name",                value2 => $host_name, 
-					name3 => "host_emergency_stop",      value3 => $host_emergency_stop, 
-					name4 => "host_stop_reason",         value4 => $host_stop_reason, 
-					name5 => "path::node_cache",         value5 => $an->data->{path}{node_cache}, 
-					name6 => "ref: cache::${host_name}", value6 => ref($an->data->{cache}{$host_name}),
+				# Clear it
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
+					node => $host_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				### TODO: Should we make it a config option to let the user decide if they
-				###       want to boot a node while a dashboard is in 'warning'?
-				
-				# Make sure our own temperature is good.
-				my $my_temperature_is_ok = check_node_temperature_health($an, $an->hostname);
-				
-				# See if the power is safe enough to boot this node.
-				my $power_is_safe       = check_node_power_health      ($an, $host_uuid);
-				my $temperature_is_safe = check_node_temperature_health($an, $host_name);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-					name1 => "power_is_safe",                 value1 => $power_is_safe, 
-					name2 => "temperature_is_safe",           value2 => $temperature_is_safe, 
-					name3 => "my_temperature_is_ok",          value3 => $my_temperature_is_ok, 
-					name4 => "scancore::disable::boot_nodes", value4 => $an->data->{scancore}{disable}{boot_nodes}
+				clear_node_stop($an, $host_uuid);
+			}
+			next;
+		}
+		
+		### If we're still here, the node is off so see if we can boot it.
+		# Read in the power table.
+		read_power_table($an);
+		
+		# Make sure our own temperature is good.
+		my $my_temperature_is_ok = check_node_temperature_health($an, $an->hostname);
+		
+		# See if the power and temperature at the node is safe enough to boot this node.
+		my $power_is_safe       = check_node_power_health      ($an, $host_uuid);
+		my $temperature_is_safe = check_node_temperature_health($an, $host_name);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "power_is_safe",                 value1 => $power_is_safe, 
+			name2 => "temperature_is_safe",           value2 => $temperature_is_safe, 
+			name3 => "my_temperature_is_ok",          value3 => $my_temperature_is_ok, 
+			name4 => "scancore::disable::boot_nodes", value4 => $an->data->{scancore}{disable}{boot_nodes}
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
+		# temperature is good, try to boot the node!
+		if ($host_stop_reason eq "clean")
+		{
+			# Leave it off.
+			if (not $an->data->{sys}{reported}{$host_name}{node_clean_off})
+			{
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0063", message_variables => {
+					node => $host_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				
-				# If 'host_stop_reason' is 'clean', don't boot. Otherwise, if the power and 
-				# temperature is good, try to boot the node!
-				if ($host_stop_reason eq "clean")
+				$an->data->{sys}{reported}{$host_name}{node_clean_off} = 1;
+			}
+		}
+		elsif ($an->data->{scancore}{disable}{boot_nodes})
+		{
+			# Booting is disabled.
+			if (not $an->data->{sys}{reported}{$host_name}{boot_disabled})
+			{
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0069", message_variables => {
+					node => $host_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->data->{sys}{reported}{$host_name}{boot_disabled} = 1;
+			}
+		}
+		elsif ($host_stop_reason =~ /^\d+$/)
+		{
+			# Timed reboot. See if the timer has expired.
+			if (time > $host_stop_reason)
+			{
+				# Time to boot.
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0067", message_variables => {
+					node => $host_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				boot_node($an, $host_name, $host_uuid);
+			}
+			else
+			{
+				# Not yet time to boot.
+				my $time_left = $host_stop_reason - time;
+				if (not $an->data->{sys}{reported}{$host_name}{boot_delayed})
 				{
-					# Leave it off.
-					if (not $an->data->{sys}{reported}{$host_name}{node_clean_off})
-					{
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0063", message_variables => {
-							node => $host_name, 
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->data->{sys}{reported}{$host_name}{node_clean_off} = 1;
-					}
-				}
-				elsif ($an->data->{scancore}{disable}{boot_nodes})
-				{
-					# Booting is disabled.
-					if (not $an->data->{sys}{reported}{$host_name}{boot_disabled})
-					{
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0069", message_variables => {
-							node => $host_name, 
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->data->{sys}{reported}{$host_name}{boot_disabled} = 1;
-					}
-				}
-				elsif ($host_stop_reason =~ /^\d+$/)
-				{
-					# Timed reboot. See if the timer has expired.
-					if (time > $host_stop_reason)
-					{
-						# Time to boot.
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0067", message_variables => {
-							node => $host_name, 
-						}, file => $THIS_FILE, line => __LINE__});
-						boot_node($an, $host_name, $host_uuid);
-					}
-					else
-					{
-						# Not yet time to boot.
-						my $time_left = $host_stop_reason - time;
-						if (not $an->data->{sys}{reported}{$host_name}{boot_delayed})
-						{
-							$an->Log->entry({log_level => 1, message_key => "scancore_log_0068", message_variables => {
-								node		=>	$host_name, 
-								time_left	=>	$time_left
-							}, file => $THIS_FILE, line => __LINE__});
-							$an->data->{sys}{reported}{$host_name}{boot_delayed} = 1;
-						}
-					}
-				}
-				elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
-				{
-					# Okie!
-					#print "I would have booted the node, but I'm lazy.\n";
-					boot_node($an, $host_name, $host_uuid);
-				}
-				else
-				{
-					# Not ready to boot yet.
-					if (not $an->data->{sys}{reported}{$host_name}{node_not_ready})
-					{
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0062", message_variables => {
-							node => $host_name, 
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->data->{sys}{reported}{$host_name}{node_not_ready} = 1;
-					}
+					$an->Log->entry({log_level => 1, message_key => "scancore_log_0068", message_variables => {
+						node		=>	$host_name, 
+						time_left	=>	$time_left
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->data->{sys}{reported}{$host_name}{boot_delayed} = 1;
 				}
 			}
+		}
+		elsif (($power_is_safe) && ($temperature_is_safe) && ($my_temperature_is_ok))
+		{
+			# Okie!
+			boot_node($an, $host_name, $host_uuid);
 		}
 		else
 		{
-			# I don't have any cache files, so ya, no bueno.
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0057", file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	else
-	{
-		# No nodes are in emergency-off, so nothing more to do.
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0056", file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now check to see which nodes are on and clear their reported states.
-	$query = "
-SELECT 
-    host_name
-FROM 
-    hosts 
-WHERE 
-    host_type = 'node' 
-AND 
-    host_stop_reason IS NULL
-ORDER BY 
-    host_name;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $host_name = $row->[0];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_name", value1 => $host_name, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($an->data->{sys}{reported}{$host_name}{boot_delayed})
-		{
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0073", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{sys}{reported}{$host_name}{boot_delayed} = 0;
-		}
-		if ($an->data->{sys}{reported}{$host_name}{boot_disabled})
-		{
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0074", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{sys}{reported}{$host_name}{boot_disabled} = 0;
-		}
-		if ($an->data->{sys}{reported}{$host_name}{node_clean_off})
-		{
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0075", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{sys}{reported}{$host_name}{node_clean_off} = 0;
-		}
-		if ($an->data->{sys}{reported}{$host_name}{node_not_ready})
-		{
-			$an->Log->entry({log_level => 2, message_key => "scancore_log_0076", message_variables => {
-				node => $host_name, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{sys}{reported}{$host_name}{node_not_ready} = 0;
+			# Not ready to boot yet.
+			if (not $an->data->{sys}{reported}{$host_name}{node_not_ready})
+			{
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0062", message_variables => {
+					node => $host_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->data->{sys}{reported}{$host_name}{node_not_ready} = 1;
+			}
 		}
 		
 	}
@@ -983,27 +973,50 @@ ORDER BY
 	return(0);
 }
 
-# This is called when the environment is safe enough to boot a node that was
-# put into emergency-stop. If the cache file gave us the power_check_command
-# and we can reach the node's IPMI, we'll boot it.
-sub boot_node
+# This clears the node's 'host_emergency_stop' and 'host_stop_reason' columns.
+sub clear_node_stop
+{
+	my ($an, $host_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "clear_node_stop" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "host_uuid", value1 => $host_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason    = NULL, 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	
+	
+	return(0);
+}
+
+# This checks to see if the node is up or down.
+sub check_node_power_state
 {
 	my ($an, $node, $host_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_node_power_state" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",      value1 => "$node", 
 		name2 => "host_uuid", value2 => "$host_uuid",
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Do I have the node's 'power_check_command'?
+	my $node_state = 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cache::${node}::info::power_check_command", value1 => $an->data->{cache}{$node}{info}{power_check_command}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cache}{$node}{info}{power_check_command})
 	{
-		# Fantastic! Check the power state to see if the node is
-		# already online. This can happen is the other Striker 
-		# dashboard got to the node faster than us.
-		my $boot_node  = 0;
+		# OK, we can check, so lets do so.
 		my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o status; echo rc:\$? 2>&1 |";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
@@ -1019,97 +1032,85 @@ sub boot_node
 			
 			if ($line =~ /^rc:(\d+)$/)
 			{
-				my $rc = $1;
 				# The return code is defined here: 
 				# https://fedorahosted.org/cluster/wiki/FenceAgentAPI#agent_ops
 				# 
 				# 0 - The fence device is reachable and the port is in the on state.
 				# 1 - The fence device could not be reached.
 				# 2 - The fence device is reachable and the port is in the off state.
-				$boot_node = 1 if $rc eq "2";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "rc",        value1 => $rc, 
-					name2 => "boot_node", value2 => $boot_node,
+				$node_state = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_state", value1 => $node_state,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		close $file_handle;
-		
-		# So? Are we good to go?
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_state", value1 => $node_state,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($node_state);
+}
+
+# This is called when the environment is safe enough to boot a node that was put into emergency-stop. If the
+# cache file gave us the power_check_command and we can reach the node's IPMI, we'll boot it.
+sub boot_node
+{
+	my ($an, $node, $host_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "node",      value1 => "$node", 
+		name2 => "host_uuid", value2 => "$host_uuid",
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This shouldn't be called unless we confirmed the node is off, so no need to check again, just boot.
+	my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$? 2>&1 |";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "boot_node", value1 => $boot_node,
+			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($boot_node)
+		
+		if ($line =~ /^rc:(\d+)$/)
 		{
-			# About darn time!
-			my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$? 2>&1 |";
+			my $rc = $1;
+			# 0 - The operation was successful
+			# 1 - Not successful or verification could not be performed. This includes inability
+			#     to contact the fence device at any point. 
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
+				name1 => "rc", value1 => $rc, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-			while(<$file_handle>)
+			if ($rc eq "0")
 			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
+				# Booted!
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0059", message_variables => {
+					node => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if ($line =~ /^rc:(\d+)$/)
-				{
-					my $rc = $1;
-					# 0 - The operation was successful
-					# 1 - Not successful or verification 
-					#     could not be performed. This 
-					#     includes inability to contact the
-					#     fence device at any point. 
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "rc", value1 => $rc, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($rc eq "0")
-					{
-						# Booted!
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0059", message_variables => {
-							node	=>	$node,
-						}, file => $THIS_FILE, line => __LINE__});
-						
-						# Clear the 'emergency_stop' flag.
-						my $query = "
-UPDATE 
-    hosts 
-SET 
-    host_emergency_stop = FALSE, 
-    host_stop_reason    = NULL, 
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
-;";
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "query", value1 => $query
-						}, file => $THIS_FILE, line => __LINE__});
-						$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-					}
-					else
-					{
-						# Maybe not booted.
-						$an->Log->entry({log_level => 1, message_key => "scancore_log_0060", message_variables => {
-							node		=>	$node,
-							shell_call	=>	$shell_call, 
-							rc		=>	$rc
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
+				# Clear the 'emergency_stop' flag.
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0086", message_variables => {
+					node => $node, 
+				}, file => $THIS_FILE, line => __LINE__});
+				clear_node_stop($an, $host_uuid);
 			}
-			close $file_handle;
+			else
+			{
+				# Maybe not booted.
+				$an->Log->entry({log_level => 1, message_key => "scancore_log_0060", message_variables => {
+					node		=>	$node,
+					shell_call	=>	$shell_call, 
+					rc		=>	$rc
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
-	else
-	{
-		# Nope :(
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0058", message_variables => {
-			node	=>	$node,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
+	close $file_handle;
 	
 	return(0);
 }
@@ -1445,7 +1446,7 @@ ORDER BY
 sub read_power_table
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_power_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_power_table" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, read in the UPS information that I know. The records for the
 	# nodes will be stale if they're off so they're not any use to us.
@@ -1461,12 +1462,12 @@ WHERE
     power_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
 ";
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "results", value1 => $results
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $row (@{$results})
@@ -1475,7 +1476,7 @@ WHERE
 		my $power_on_battery        = $row->[1] ? "TRUE" : "FALSE";
 		my $power_seconds_left      = $row->[2];
 		my $power_charge_percentage = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "power_ups_name",          value1 => $power_ups_name, 
 			name2 => "power_on_battery",        value2 => $power_on_battery, 
 			name3 => "power_seconds_left",      value3 => $power_seconds_left, 

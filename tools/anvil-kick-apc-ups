@@ -278,7 +278,7 @@ my $conf = {
 				power_off_delay		=>	60,
 			},
 		},
-		debug		=>	0,
+		debug		=>	1,
 		version		=>	"1.0",
 		connections	=>	0,
 	},
@@ -294,14 +294,6 @@ if (($conf->{switches}{h})   ||
 {
 	print_usage($conf);
 	exit(0);
-}
-
-# Make sure we're running as 'root'
-# $< == real UID, $> == effective UID
-if (($< != 0) && ($> != 0))
-{
-	logger($conf, $THIS_FILE, __LINE__, "I am sorry, but $THIS_FILE program must be run as the 'root' user.");
-	exit(5);
 }
 
 # Set the timers if the user defined them

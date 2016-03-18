@@ -270,6 +270,8 @@ WHERE
 		}
 	}
 	
+	### TODO: This doesn't handle no XML well. Before calling XML::Simple, validate that 'defition' 
+	###       contains XML.
 	# Now dig out the storage and network details.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return->definition", value1 => $return->{definition}, 

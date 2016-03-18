@@ -421,7 +421,7 @@ sub synchronous_command_run
 	my $node2    = $parameter->{node2};
 	my $delay    = $parameter->{delay} ? $parameter->{delay} : 30;
 	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "command",        value1 => $command, 
 		name2 => "node1",          value2 => $node1, 
 		name3 => "node2",          value3 => $node2, 

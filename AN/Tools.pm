@@ -475,6 +475,7 @@ sub _set_paths
 	$an->data->{path}{pvchange}        = "/sbin/pvchange";
 	$an->data->{path}{pvscan}          = "/sbin/pvscan";
 	$an->data->{path}{pvs}             = "/sbin/pvs";
+	$an->data->{path}{reboot}          = "/sbin/reboot",
 	$an->data->{path}{rm}              = "/bin/rm",
 	$an->data->{path}{rsync}           = "/usr/bin/rsync",
 	$an->data->{path}{sed}             = "/bin/sed",
