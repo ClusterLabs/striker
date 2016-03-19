@@ -2073,8 +2073,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0265">Timed out waiting for a 'striker-delay-run' task to execute.</key>
 		<key name="log_0266">The 'striker-delay-run' program wasn't found at: [#!data!path::striker-delayed-run!#]!</key>
 		<key name="log_0267">DRBD does not appear to be running on node: [#!variable!node!#].</key>
-		<key name="log_0268"></key>
-		<key name="log_0269"></key>
+		<key name="log_0268">[ Warning ] - One or more services failed to start. An attempt will be made to restart.</key>
+		<key name="log_0269">The restart appears to have been successful</key>
 		<key name="log_0270"></key>
 		
 		<!-- Legal strings - Please do not change these without speaking to Alteeve's Niche! first. -->

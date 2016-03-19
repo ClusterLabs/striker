@@ -2308,8 +2308,38 @@ sub configure_storage_stage3
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $clustat_ok)
 		{
-			$an->Log->entry({log_level => 1, message_key => "log_0042", file => $THIS_FILE, line => __LINE__});
-			$ok = 0;
+			$an->Log->entry({log_level => 1, message_key => "log_0268", file => $THIS_FILE, line => __LINE__});
+			my $rgmanager_node1_rc = stop_service_on_node($conf, "rgmanager", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			my $rgmanager_node2_rc = stop_service_on_node($conf, "rgmanager", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "rgmanager_node1_rc", value1 => $rgmanager_node1_rc, 
+				name2 => "rgmanager_node2_rc", value2 => $rgmanager_node2_rc, 
+			}, file => $THIS_FILE, line => __LINE__});
+			sleep 10;
+				
+			my ($node1_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			my ($node2_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node1_rc", value1 => $node1_rc,
+				name2 => "node2_rc", value2 => $node2_rc,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Go into a loop waiting for the rgmanager services to either
+			# start or fail.
+			my ($clustat_ok) = watch_clustat($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "clustat_ok", value1 => $clustat_ok,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($clustat_ok)
+			{
+				# \o/
+				$an->Log->entry({log_level => 1, message_key => "log_0269", file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$an->Log->entry({log_level => 1, message_key => "log_0042", file => $THIS_FILE, line => __LINE__});
+				$ok = 0;
+			}
 		}
 	}
 	
