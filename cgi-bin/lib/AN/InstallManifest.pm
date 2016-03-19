@@ -2268,23 +2268,35 @@ sub configure_storage_stage3
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# This looks at the Disk State and stops the resources intelligently.
-				stop_drbd($conf);
+				$ok = stop_drbd($conf);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ok", value1 => $ok, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				# das failed ;_;
 				$ok = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "ok", value1 => $ok, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		else
 		{
 			# Oh the huge manatee!
 			$ok = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ok", value1 => $ok, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
 	{
 		$ok = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ok", value1 => $ok, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2373,7 +2385,7 @@ sub watch_clustat
 	my $n02_libvirtd  = "";
 	my $abort_time    = time + $conf->{sys}{clustat_timeout};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "time",       value1 => ".time.",
+		name1 => "time",       value1 => time,
 		name2 => "abort_time", value2 => $abort_time,
 	}, file => $THIS_FILE, line => __LINE__});
 	until ($services_seen)
@@ -2408,7 +2420,15 @@ sub watch_clustat
 				# If it's not started or failed, I am not
 				# interested in it.
 				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started"));
-				if ($service eq "libvirtd_n01")
+				if ($state eq "stopped")
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "service", value1 => $service, 
+						name2 => "node",    value2 => $node, 
+					}, file => $THIS_FILE, line => __LINE__});
+					restart_rgmanager_service($conf, $node, $password, $service, "start"); 
+				}
+				elsif ($service eq "libvirtd_n01")
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "service",                value1 => $service,
@@ -2688,31 +2708,193 @@ sub stop_drbd
 		}
 	}
 	
+	my $ok = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "stop_first", value1 => $stop_first, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($stop_first eq "node2")
 	{
 		# Stop 2 -> 1
-		my $drbd_node2_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-		my $drbd_node1_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my $drbd_node2_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my $drbd_node1_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "drbd_node1_rc", value1 => $drbd_node1_rc, 
-			name2 => "drbd_node2_rc", value2 => $drbd_node2_rc, 
+			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
+			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
 		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $drbd_node1_ok) or (not $drbd_node2_ok))
+		{
+			$ok = 0;
+		}
 	}
 	else
 	{
 		# Stop 1 -> 2
-		my $drbd_node1_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		my $drbd_node2_rc = stop_service_on_node($conf, "drbd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my $drbd_node1_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my $drbd_node2_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "drbd_node1_rc", value1 => $drbd_node1_rc, 
-			name2 => "drbd_node2_rc", value2 => $drbd_node2_rc, 
+			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
+			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
 		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $drbd_node1_ok) or (not $drbd_node2_ok))
+		{
+			$ok = 0;
+		}
 	}
 	
-	return(0);
+	return($ok);
+}
+
+# This stops DRBD by first demoting to Secondary, then 'down'ing the resource and finally stopping the DRBD 
+# daemon itself.
+sub stop_drbd_on_node
+{
+	my ($conf, $service, $node, $password) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_drbd_on_node" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Find the up resources
+	my $stop = {};
+	my $shell_call = "cat /proc/drbd";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+): /)
+		{
+			my $minor    = $1;
+			my $resource = "r".$minor;
+			$stop->{$resource} = 1;
+		}
+	}
+	$return = "";
+	
+	# Demote.
+	foreach my $resource (sort {$a cmp $b} keys %{$stop})
+	{
+		my $shell_call  = "drbdadm secondary $resource; echo rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "node",       value2 => $node,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$node,
+			port		=>	$conf->{node}{$node}{port}, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
+	}
+	
+	my $ok = 1;
+	
+	# Verify they're all Secondary
+	$shell_call = "cat /proc/drbd";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($line =~ /^(\d+): /) && ($line =~ /Primary/i))
+		{
+			$ok = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ok", value1 => $ok, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If we're OK, stop
+	if ($ok)
+	{
+		# Down
+		foreach my $resource (sort {$a cmp $b} keys %{$stop})
+		{
+			my $shell_call  = "drbdadm down $resource; echo rc:\$?";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Stop
+		foreach my $resource (sort {$a cmp $b} keys %{$stop})
+		{
+			my $shell_call  = "/etc/init.d/drbd stop; echo rc:\$?";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($ok);
 }
 
 # This stops the named service on the named node.
