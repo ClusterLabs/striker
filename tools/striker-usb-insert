@@ -46,6 +46,8 @@
 # 25 = Failed to unmount a non-LUKS partition that needed to be reformatted LUKS.
 # 26 = The 'use_directory' variable in the mount_filesystems() function was not set.
 # 27 = Failed to find the local short host name.
+# 28 = The USB drive has the protected file '.protected' and, as such, won't be reformatted and encrypted.
+# 29 = Failed to unmount the device from the specified temporary mount point.
 # 
 # TODO:
 # - Verify that 'remote-usb::local::host' IP is accurate and/or use the subnet to find the actual local IP
@@ -606,6 +608,83 @@ $conf->{path}{rm} -f $conf->{path}{format_running}
 	return($fs, $uuid, $label);
 }
 
+# This checks for a .protected file on the USB drive and exits if it is found.
+sub check_if_protected
+{
+	my ($conf, $device) = @_;
+	
+	my $mounted     = 0;
+	my $mount_point = get_mount_point($conf, $device);
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mount_point: [$mount_point]");
+	if (not $mount_point)
+	{
+		# Mount it for a moment.
+		$mounted     = 1;
+		$mount_point = "/tmp/anvil.".time;
+		mkdir $mount_point or die "Failed to create the temporary mount point: [$mount_point], the error was: $!\n";
+		
+		my $shell_call  = "$conf->{path}{mount} $device $mount_point";
+		logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+			if ($line =~ /unknown filesystem type '(.*?)'/)
+			{
+				my $fs = $1;
+				logger($conf, $THIS_FILE, __LINE__, "Inserted device has the file system: [$fs] which this system can not mount. Unable to proceed.");
+				unlink $mount_point or die "Failed to remove the temporary mount point: [$mount_point], the error was: $!\n";
+				exit(11);
+			}
+		}
+		close $file_handle;
+	}
+	my $protected_file = $mount_point."/.protected";
+	logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - protected_file: [$protected_file]");
+	if (-e $protected_file)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "The device: [$device] has a protection file: [.protected], so this drive will NOT be reformatted or used.");
+		
+		# Clean up the temporary mount, if needed.
+		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - mounted: [$mounted]");
+		if ($mounted)
+		{
+			my $shell_call  = "
+$conf->{path}{umount} $device
+if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
+then 
+    echo 'failed to unmount the device: [$device] from the temporary mount point: [$mount_point]'
+fi
+";
+			logger($conf, $THIS_FILE, __LINE__, "Calling: [$shell_call].");
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+			while (<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line]");
+				if ($line =~ /failed/)
+				{
+					logger($conf, $THIS_FILE, __LINE__, "$line\n");
+					exit(29);
+				}
+			}
+			close $file_handle;
+			rmdir $mount_point or die "Failed to remove the temporary mount point: [$mount_point], the error was: $!\n";
+			logger($conf, $THIS_FILE, __LINE__, "Cleaned up temporary mount point: [$mount_point], exiting.");
+		}
+		exit(28);
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "The device: [$device] does NOT have a: [.protected] file.");
+	}
+	
+	return(0);
+}
+
 # This mounts the file system locally and then connects to the remote machine and uses nfs to mount our just-mounted FS.
 sub mount_filesystems
 {
@@ -654,7 +733,9 @@ fi";
 			}
 			else
 			{
-				# Not encypted, but should be.
+				# Not encypted, but should be. Before we reformat it though, see if there is
+				# a '.protected' file. If there is a .protected file, it will exit.
+				check_if_protected($conf, $device);
 				$shell_call = "
 if $conf->{path}{mount} | $conf->{path}{grep} -q $device; 
 then

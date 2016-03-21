@@ -170,7 +170,7 @@ sub push_ssh_keys
 	
 	# First up, read (and generate, if needed) the user's RSA public key.
 	my ($owner, $key) = $an->Get->rsa_public_key({user => $user, key_size => $an->data->{sys}{key_size}});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "owner", value1 => $owner, 
 		name2 => "key",   value2 => $key, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -182,6 +182,9 @@ sub push_ssh_keys
 		foreach my $node ($an->data->{anvil}{node1}, $an->data->{anvil}{node2})
 		{
 			# First, is it up?
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node", value1 => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->Check->ping({target => $node, count => 3}))
 			{
 				# Failed to reach it.

@@ -252,6 +252,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="scancore_message_0009">#!string!scancore_brand_0001!#: [running]</key>
 		<key name="scancore_message_0010">- Process ID: [#!variable!pid!#]</key>
 		<key name="scancore_message_0011">#!string!scancore_brand_0001!#: [stopped]</key>
+		<key name="scancore_message_0012">
+		</key>
 		
 		<!-- Tools related to ScanCore will use these strings. -->
 		<key name="scancore_tools_0001">

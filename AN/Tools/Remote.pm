@@ -251,7 +251,7 @@ sub add_target_to_known_hosts
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $user   = $parameter->{user}; 
+	my $user   = $parameter->{user}   ? $parameter->{user} : $<; 
 	my $target = $parameter->{target};
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "add_target_to_known_hosts" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",   value1 => $user,
@@ -259,7 +259,10 @@ sub add_target_to_known_hosts
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get the local user's home
-	my $users_home = $an->Get->users_home({user => getpwuid($<)});
+	my $users_home = $an->Get->users_home({user => $user});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "users_home", value1 => $users_home,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $users_home)
 	{
 		# No sense proceeding... An error will already have been recorded.

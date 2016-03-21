@@ -1417,6 +1417,11 @@ sub save_dashboard_configure
 		my $anvil_id       = $conf->{cgi}{anvil_id};
 		my $anvil_name_key = "cluster__${anvil_id}__name";
 		my $anvil_name     = $conf->{cgi}{$anvil_name_key};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "anvil_id",       value1 => $anvil_id,
+			name2 => "anvil_name_key", value2 => $anvil_name_key,
+			name3 => "anvil_name",     value3 => $anvil_name,
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Configure SSH and Virtual Machine Manager (if configured).
 		configure_ssh_local($conf, $anvil_name);
@@ -1618,8 +1623,9 @@ sub sync_with_peer
 	if ($peer_password)
 	{
 		# Both of these will exit on their own if needed, so we can blindly call them.
+		my $say_anvil  = $conf->{cgi}{anvil} ? $conf->{cgi}{anvil} : $conf->{cgi}{cluster};
 		my $shell_call = "
-$conf->{path}{'striker-push-ssh'} --anvil $conf->{cgi}{anvil}
+$conf->{path}{'striker-push-ssh'} --anvil $say_anvil
 $conf->{path}{'striker-configure-vmm'}
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2547,7 +2553,7 @@ sub configure_ssh_local
 {
 	my ($conf, $anvil_name) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh_local" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ssh_local" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "anvil_name", value1 => $anvil_name, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

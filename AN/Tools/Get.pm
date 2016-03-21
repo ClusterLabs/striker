@@ -1949,7 +1949,7 @@ fi
 	return($xml);
 }
 
-# This reads /etc/password to figure out the requested user's home directory.
+# This reads /etc/passwd to figure out the requested user's home directory.
 sub users_home
 {
 	my $self      = shift;
@@ -1957,7 +1957,7 @@ sub users_home
 	my $an        = $self->parent;
 	
 	my $user = $parameter->{user};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "user", value1 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $user)
@@ -2000,6 +2000,9 @@ sub users_home
 		}, code => 34, file => "$THIS_FILE", line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "users_home", value1 => $users_home, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($users_home);
 }
 
@@ -2010,14 +2013,14 @@ sub rsa_public_key
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $user     = $parameter->{user};
+	my $user = $parameter->{user};
 	if (not $user)
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0039", code => 33, file => "$THIS_FILE", line => __LINE__});
 	}
 	
 	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",     value1 => $user, 
 		name2 => "key_size", value2 => $key_size,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2025,7 +2028,7 @@ sub rsa_public_key
 	# Find the public RSA key file for this user.
 	my $users_home = $an->Get->users_home({user => $user});
 	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "rsa_file", value1 => $rsa_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
