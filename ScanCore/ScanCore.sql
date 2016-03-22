@@ -4,6 +4,471 @@
 SET client_encoding = 'UTF8';
 CREATE SCHEMA IF NOT EXISTS history;
 
+
+-- This stores information about the company or organization that owns one or more Anvil! systems. 
+CREATE TABLE owners (
+	owner_uuid		uuid				not null	primary key,	-- This is the single most important record in ScanCore. Everything links back to here.
+	owner_name		text				not null,
+	owner_note		text,								-- This is a free-form note area for admins to record details about this Anvil!.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE owners OWNER TO #!variable!user!#;
+
+CREATE TABLE history.owners (
+	history_id		bigserial,
+	owner_uuid		uuid, 
+	owner_name		text, 
+	owner_note		text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.owners OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_owners() RETURNS trigger
+AS $$
+DECLARE
+	history_owners RECORD;
+BEGIN
+	SELECT INTO history_owners * FROM owner WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.owners
+		(owner_uuid, 
+		 owner_name, 
+		 owner_note, 
+		 modified_date)
+	VALUES
+		(history_owners.owner_uuid, 
+		 history_owners.owner_name, 
+		 history_owners.owner_note, 
+		 history_owners.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_owners() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_owners
+	AFTER INSERT OR UPDATE ON owners
+	FOR EACH ROW EXECUTE PROCEDURE history_owners();
+
+
+-- This stores information about Anvil! systems. 
+CREATE TABLE anvils (
+	anvil_uuid		uuid				not null	primary key,	-- 
+	anvil_owner_uuid	uuid				not null,			-- NOTE: Make life easy for users; Auto-generate the 'owner' if they enter one that doesn't exist.
+	anvil_name		text				not null,
+	anvil_description	text				not null,			-- This is a short, one-line (usually) description of this particular Anvil!. It is displayed in the Anvil! selection list.
+	anvil_note		text,								-- This is a free-form note area for admins to record details about this Anvil!.
+	anvil_password		text				not null,			-- This is the 'ricci' or 'hacluster' user password. It is also used to access nodes that don't have a specific password set.
+	modified_date		timestamp with time zone	not null 
+);
+ALTER TABLE anvils OWNER TO #!variable!user!#;
+
+CREATE TABLE history.anvils (
+	history_id		bigserial,
+	anvil_uuid		uuid,
+	anvil_owner_uuid	uuid,
+	anvil_name		text,
+	anvil_description	text,
+	anvil_note		text,
+	anvil_password		text,
+	modified_date		timestamp with time zone	not null 
+);
+ALTER TABLE history.anvils OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_anvils() RETURNS trigger
+AS $$
+DECLARE
+	history_anvils RECORD;
+BEGIN
+	SELECT INTO history_anvils * FROM anvil WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.anvils
+		(anvil_uuid, 
+		 anvil_owner_uuid, 
+		 anvil_name, 
+		 anvil_description, 
+		 anvil_note, 
+		 anvil_password, 
+		 modified_date)
+	VALUES
+		(history_anvils.anvil_uuid, 
+		 history_anvils.anvil_owner_uuid, 
+		 history_anvils.anvil_name, 
+		 history_anvils.anvil_description, 
+		 history_anvils.anvil_note, 
+		 history_anvils.anvil_password, 
+		 history_anvils.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_anvils() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_anvils
+	AFTER INSERT OR UPDATE ON anvils
+	FOR EACH ROW EXECUTE PROCEDURE history_anvils();
+
+
+-- This stores information about Anvil! nodes.
+CREATE TABLE nodes (
+	node_uuid		uuid				not null	primary key,	-- 
+	node_anvil_uuid		uuid				not null,			-- This is the Anvil! that this node belongs to.
+	node_host_uuid		uuid				not null,			-- This is the 'hosts' -> 'host_uuid' for this node.
+	node_remote_ip		text,								-- if the node's IFN or BCN IPs do not match a Striker dashboard's IFN or BCN, it will be determined to be remote and this hostname/IP (and port) will be used to access it
+	node_remote_port	numeric,							-- if the port isn't set, '22' will be used by Striker.
+	node_note		text,
+	node_bcn		inet,								-- These will be checked against a given dashboard's interfaces and, if one matches, will be used to access it (BCN getting top priotity, then IFN, then remote)
+	node_sn			inet,
+	node_ifn		inet,
+	node_password		text,								-- This should not generally be set (should always use 'anvil_password'.
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(node_anvil_uuid) REFERENCES anvils(anvil_uuid)
+);
+ALTER TABLE nodes OWNER TO #!variable!user!#;
+
+CREATE TABLE history.nodes (
+	history_id		bigserial,
+	node_uuid		uuid,
+	node_anvil_uuid		uuid,
+	node_host_uuid		uuid,
+	node_remote_ip		text,
+	node_remote_port	numeric,
+	node_note		text,
+	node_bcn		inet,
+	node_sn			inet,
+	node_ifn		inet,
+	node_password		text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.nodes OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_nodes() RETURNS trigger
+AS $$
+DECLARE
+	history_nodes RECORD;
+BEGIN
+	SELECT INTO history_nodes * FROM nodes WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.nodes
+		(nodes_uuid, 
+		 nodes_anvil_uuid, 
+		 nodes_host_uuid, 
+		 nodes_remote_ip, 
+		 nodes_remote_port, 
+		 nodes_note, 
+		 nodes_bcn, 
+		 nodes_sn, 
+		 nodes_ifn, 
+		 nodes_password, 
+		 modified_date)
+	VALUES
+		(history_nodes.nodes_uuid, 
+		 history_nodes.nodes_anvil_uuid, 
+		 history_nodes.nodes_host_uuid, 
+		 history_nodes.nodes_remote_ip, 
+		 history_nodes.nodes_remote_port, 
+		 history_nodes.nodes_note, 
+		 history_nodes.nodes_bcn, 
+		 history_nodes.nodes_sn, 
+		 history_nodes.nodes_ifn, 
+		 history_nodes.nodes_password, 
+		 history_nodes.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_nodes() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_nodes
+	AFTER INSERT OR UPDATE ON nodes
+	FOR EACH ROW EXECUTE PROCEDURE history_nodes();
+
+
+-- This holds user-configurable variable that alter how Striker and ScanCore works. These values override defaults but NOT striker.conf.
+CREATE TABLE variables (
+	variable_uuid			uuid				not null	primary key,	-- 
+	variable_name			text				not null,			-- This is the 'x::y::z' style variable name.
+	variable_default		text,								-- This acts as a reference for the user should they want to roll-back changes.
+	variable_value			text,								-- It is up to the software to sanity check variable values before they are stored
+	variable_description		text,								-- This is a string key that describes this variable's use.
+	modified_date			timestamp with time zone	not null 
+);
+ALTER TABLE variables OWNER TO #!variable!user!#;
+
+CREATE TABLE history.variables (
+	history_id			bigserial,
+	variable_uuid			uuid,
+	variable_name			text,
+	variable_default		text,
+	variable_value			text,
+	variable_description		text,
+	modified_date			timestamp with time zone	not null 
+);
+ALTER TABLE history.variables OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_variables() RETURNS trigger
+AS $$
+DECLARE
+	history_variables RECORD;
+BEGIN
+	SELECT INTO history_variables * FROM variable WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.variables
+		(variable_uuid,
+		 variable_name, 
+		 variable_default, 
+		 variable_value, 
+		 variable_description, 
+		 modified_date)
+	VALUES
+		(history_variables.variable_uuid,
+		 history_variables.variable_name, 
+		 history_variables.variable_default, 
+		 history_variables.variable_value, 
+		 history_variables.variable_description, 
+		 history_variables.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_variables() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_variables
+	AFTER INSERT OR UPDATE ON variables
+	FOR EACH ROW EXECUTE PROCEDURE history_variables();
+
+
+-- This stores information on alerts written to a file
+CREATE TABLE file_alerts (
+	file_alert_uuid		uuid				not null	primary key,	-- 
+	file_alert_file		text				not null,			-- This is the full path and file name to write to.
+	file_alert_language	text				not null	default 'en_CA', -- The language to use. Must exist in all .xml language files!
+	file_alert_level	text				not null	default 'warning', -- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
+	file_alert_units	text				not null	default 'metric', -- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE file_alerts OWNER TO #!variable!user!#;
+
+-- This stores information on an email alert recipient
+CREATE TABLE history.file_alerts (
+	history_id		bigserial,
+	file_alert_uuid		uuid,
+	file_alert_file		text,
+	file_alert_language	text,
+	file_alert_level	text,
+	file_alert_units	text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.file_alerts OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_file_alerts() RETURNS trigger
+AS $$
+DECLARE
+	history_file_alerts RECORD;
+BEGIN
+	SELECT INTO history_file_alerts * FROM file_alert WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.file_alerts
+		(file_alert_uuid,
+		 file_alert_file,
+		 file_alert_language,
+		 file_alert_level,
+		 file_alert_units, 
+		 modified_date)
+	VALUES
+		(history_file_alerts.file_alert_uuid,
+		 history_file_alerts.file_alert_file,
+		 history_file_alerts.file_alert_language,
+		 history_file_alerts.file_alert_level,
+		 history_file_alerts.file_alert_units, 
+		 history_file_alerts.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_file_alerts() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_file_alerts
+	AFTER INSERT OR UPDATE ON file_alerts
+	FOR EACH ROW EXECUTE PROCEDURE history_file_alerts();
+
+
+-- This stores information on an email alert recipient
+CREATE TABLE email_alerts (
+	email_alert_uuid	uuid				not null	primary key,	-- 
+	email_alert_name	text				not null,			-- This is the Free-form name of the alart recipient used in the To: field
+	email_alert_address	text				not null,			-- This is the recipient's email address.
+	email_alert_language	text				not null	default 'en_CA', -- The language to use. Must exist in all .xml language files!
+	email_alert_level	text				not null	default 'warning', -- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
+	email_alert_units	text				not null	default 'metric', -- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE email_alerts OWNER TO #!variable!user!#;
+
+-- This stores information on an email alert recipient
+CREATE TABLE history.email_alerts (
+	history_id		bigserial,
+	email_alert_uuid	uuid,
+	email_alert_name	text,
+	email_alert_address	text,
+	email_alert_language	text,
+	email_alert_level	text,
+	email_alert_units	text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.email_alerts OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_email_alerts() RETURNS trigger
+AS $$
+DECLARE
+	history_email_alerts RECORD;
+BEGIN
+	SELECT INTO history_email_alerts * FROM email_alert WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.email_alerts
+		(email_alert_uuid,
+		 email_alert_name,
+		 email_alert_address,
+		 email_alert_language,
+		 email_alert_level,
+		 email_alert_units, 
+		 modified_date)
+	VALUES
+		(history_email_alerts.email_alert_uuid,
+		 history_email_alerts.email_alert_name,
+		 history_email_alerts.email_alert_address,
+		 history_email_alerts.email_alert_language,
+		 history_email_alerts.email_alert_level,
+		 history_email_alerts.email_alert_units, 
+		 history_email_alerts.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_email_alerts() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_email_alerts
+	AFTER INSERT OR UPDATE ON email_alerts
+	FOR EACH ROW EXECUTE PROCEDURE history_email_alerts();
+
+
+-- This links alert recipients to Anvil!'s the recipient wants to hear about
+CREATE TABLE recipients (
+	recipient_uuid			uuid				not null	primary key,	-- 
+	recipient_anvil_uuid		uuid				not null,			-- 
+	recipient_file_alert_uuid	uuid,
+	recipient_email_alert_uuid	uuid,
+	recipient_log_level		text,								-- If this is set, this log level will over-ride the level set in the file or email alert recipient table.
+	modified_date			timestamp with time zone	not null, 
+	
+	FOREIGN KEY(recipient_anvil_uuid)       REFERENCES anvils(anvil_uuid), 
+	FOREIGN KEY(recipient_file_alert_uuid)  REFERENCES file_alerts(file_alert_uuid), 
+	FOREIGN KEY(recipient_email_alert_uuid) REFERENCES email_alerts(email_alert_uuid) 
+);
+ALTER TABLE recipients OWNER TO #!variable!user!#;
+
+CREATE TABLE history.recipients (
+	history_id			bigserial,
+	recipient_uuid			uuid,
+	recipient_anvil_uuid		uuid,
+	recipient_file_alert_uuid	uuid,
+	recipient_email_alert_uuid	uuid,
+	recipient_log_level		text,
+	modified_date			timestamp with time zone	not null 
+);
+ALTER TABLE history.recipients OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_recipients() RETURNS trigger
+AS $$
+DECLARE
+	history_recipients RECORD;
+BEGIN
+	SELECT INTO history_recipients * FROM recipient WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.recipients
+		(recipient_uuid,
+		 recipient_anvil_uuid, 
+		 recipient_file_alert_uuid, 
+		 recipient_email_alert_uuid, 
+		 recipient_log_level, 
+		 modified_date)
+	VALUES
+		(history_recipients.recipient_uuid,
+		 history_recipients.recipient_anvil_uuid, 
+		 history_recipients.recipient_file_alert_uuid, 
+		 history_recipients.recipient_email_alert_uuid, 
+		 history_recipients.recipient_log_level, 
+		 history_recipients.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_recipients() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_recipients
+	AFTER INSERT OR UPDATE ON recipients
+	FOR EACH ROW EXECUTE PROCEDURE history_recipients();
+
+
+-- This stores infomation for sending email alerts. 
+CREATE TABLE smtp (
+	smtp_uuid		uuid				not null	primary key,	-- 
+	smtp_server		text				not null,			-- example; mail.example.com
+	smtp_port		integer				not null	default 587,
+	smtp_username		text				not null,			-- This is the user name (usually email address) used when authenticating against the mail server.
+	smtp_password		text,								-- This is the password used when authenticating against the mail server
+	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
+	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
+	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE smtp OWNER TO #!variable!user!#;
+
+CREATE TABLE history.smtp (
+	history_id		bigserial,
+	smtp_uuid		uuid,
+	smtp_server		text,
+	smtp_port		integer,
+	smtp_username		text,
+	smtp_password		text,
+	smtp_security		text,
+	smtp_authentication	text,
+	smtp_helo_domain	text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.smtp OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_smtp() RETURNS trigger
+AS $$
+DECLARE
+	history_smtp RECORD;
+BEGIN
+	SELECT INTO history_smtp * FROM smtp WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.smtp
+		(smtp_uuid, 
+		 smtp_server, 
+		 smtp_port, 
+		 smtp_username, 
+		 smtp_password, 
+		 smtp_security, 
+		 smtp_authentication, 
+		 smtp_helo_domain, 
+		 modified_date)
+	VALUES
+		(history_smtp.smtp_uuid, 
+		 history_smtp.smtp_server, 
+		 history_smtp.smtp_port, 
+		 history_smtp.smtp_username, 
+		 history_smtp.smtp_password, 
+		 history_smtp.smtp_security, 
+		 history_smtp.smtp_authentication, 
+		 history_smtp.smtp_helo_domain, 
+		 history_smtp.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_smtp() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_smtp
+	AFTER INSERT OR UPDATE ON smtp
+	FOR EACH ROW EXECUTE PROCEDURE history_smtp();
+
+
 -- This stores information about the host machine running this instance of
 -- ScanCore. All agents will reference this table.
 CREATE TABLE hosts (
@@ -552,5 +1017,3 @@ CREATE TABLE alert_sent (
 	FOREIGN KEY(alert_sent_host_uuid) REFERENCES hosts(host_uuid)
 );
 ALTER TABLE updated OWNER TO #!variable!user!#;
-
-

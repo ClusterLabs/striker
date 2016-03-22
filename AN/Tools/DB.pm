@@ -143,10 +143,10 @@ sub do_db_write
 		# Commit the changes.
 		if ($is_array)
 		{
-			$an->data->{dbh}{$id}->commit();
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "is_array", value1 => $is_array
 			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{dbh}{$id}->commit();
 		}
 	}
 	
