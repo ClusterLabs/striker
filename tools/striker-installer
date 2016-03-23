@@ -105,6 +105,7 @@ my $conf = {
 			"network", 
 			"nfs", 
 			"ntpd", 
+			"ntpdate", 
 			"tuned", 
 			"xinetd"
 		],

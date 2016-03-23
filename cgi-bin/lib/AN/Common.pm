@@ -714,6 +714,7 @@ sub initialize_conf
 					"modclusterd",	# LSB compliant
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
 					"ntpd",		# LSB compliant
+					"ntpdate", 
 					"ricci",	# LSB compliant
 					"snmpd",
 					"tuned",	# LSB compliant

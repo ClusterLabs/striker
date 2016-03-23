@@ -1,5 +1,4 @@
 package AN::InstallManifest;
-
 #
 # This contains functions related to configuring node(s) via the Install
 # Manifest tool.
@@ -2417,9 +2416,13 @@ sub watch_clustat
 			{
 				my $service = $1;
 				my $state   = $2;
-				# If it's not started or failed, I am not
-				# interested in it.
-				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started"));
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "service", value1 => $service, 
+					name2 => "state",   value2 => $state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# If it's not started or failed, I am not interested in it.
+				next if (($state ne "failed") && ($state ne "disabled") && ($state ne "started") && ($state ne "stopped"));
 				if ($state eq "stopped")
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2448,6 +2451,9 @@ sub watch_clustat
 					elsif (($state eq "started") || ($restarted_n01_libvirtd))
 					{
 						$n01_libvirtd = $state;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "n01_libvirtd", value1 => $n01_libvirtd, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($service eq "libvirtd_n02")
@@ -2470,6 +2476,9 @@ sub watch_clustat
 					elsif (($state eq "started") || ($restarted_n02_libvirtd))
 					{
 						$n02_libvirtd = $state;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "n02_libvirtd", value1 => $n02_libvirtd, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($service eq "storage_n01")
@@ -2492,6 +2501,9 @@ sub watch_clustat
 					elsif (($state eq "started") || ($restarted_n01_storage))
 					{
 						$n01_storage = $state;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "n01_storage", value1 => $n01_storage, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				elsif ($service eq "storage_n02")
@@ -2514,11 +2526,20 @@ sub watch_clustat
 					elsif (($state eq "started") || ($restarted_n02_storage))
 					{
 						$n02_storage = $state;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "n02_storage", value1 => $n02_storage, 
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 			}
 		}
 		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "n01_libvirtd", value1 => $n01_libvirtd, 
+			name2 => "n02_libvirtd", value2 => $n02_libvirtd, 
+			name3 => "n01_storage",  value3 => $n01_storage, 
+			name4 => "n02_storage",  value4 => $n02_storage, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if (($n01_libvirtd) && ($n02_libvirtd) && ($n01_storage) && ($n02_storage))
 		{
 			# Seen them all, exit and then analyze
@@ -5825,6 +5846,7 @@ sub populate_known_hosts_on_node
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "checking/adding fingerprint for", value1 => $name,
 		}, file => $THIS_FILE, line => __LINE__});
+		my $try_again  = 0;
 		my $shell_call = "
 if \$(grep -q $name ~/.ssh/known_hosts);
 then 
@@ -5879,7 +5901,67 @@ fi;";
 					node => $node, 
 					name => $name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$ok = 0;
+				
+				# One time, it failed for no apparent reasons and worked later. so if this 
+				# failed, sleep a few seconds and try a second time.
+				$try_again = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "try_again", value1 => $try_again,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "try_again", value1 => $try_again,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($try_again)
+		{
+			sleep 5;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "node",       value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$conf->{node}{$node}{port}, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /fingerprint recorded/)
+				{
+					# Already recorded
+					$an->Log->entry({log_level => 3, message_key => "log_0106", message_variables => {
+						node => $node, 
+						name => $name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /fingerprint added/)
+				{
+					# Added
+					$an->Log->entry({log_level => 2, message_key => "log_0107", message_variables => {
+						node => $node, 
+						name => $name, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /failed to record/)
+				{
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0108", message_variables => {
+						node => $node, 
+						name => $name, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# OK, now we give up
+					$ok = 0;
+				}
 			}
 		}
 	}
