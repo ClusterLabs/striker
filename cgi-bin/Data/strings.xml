@@ -330,7 +330,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0121"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number) or a floating point (number with a decimal) value.]]></key>
 		<key name="explain_0122"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" can not be longer than 15 characters.]]></key>
 		<key name="explain_0123"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters and dashes (<span class="code">-</span>).]]></key>
-		<key name="explain_0124"><![CDATA[The install manifest file: [<span class="code"><a href="#!variable!url!#">#!variable!file!#</a></span>] has been generated.<br />It has been added to the manifest list. You can click on the file name to download it now if you wish.]]></key>
+		<key name="explain_0124"><![CDATA[The install manifest has been generated successfully.]]></key>
 		<key name="explain_0125"><![CDATA[Have you reviewed the values that will be set carefully?<br /><br />If you are happy, enter the current IP address and the current <span class="code">root</span> user's password for both nodes.]]></key>
 		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
 		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
@@ -2069,9 +2069,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0261">Extra element in node: [#!variable!node!#]'s install manifest file: [#!variable!file!#] element: [#!variable!element!#].</key>
 		<key name="log_0262">Requested pool: [#!variable!pool!#] size was too big! Shrinking to: [#!variable!pool_size!#] (#!variable!hr_pool_size!#).</key>
 		<key name="log_0263">There was an error trying to start cluster communications. The error was: [#!variable!line!#].</key>
-		<key name="log_0264">Delayed run of the cluster communication layer startup set. Waiting now for a few minutes for the start-up to occur.</key>
+		<key name="log_0264">Delayed run set. Waiting now for a few minutes for the start-up to occur.</key>
 		<key name="log_0265">Timed out waiting for a 'striker-delay-run' task to execute.</key>
-		<key name="log_0266">The 'striker-delay-run' program wasn't found at: [#!data!path::striker-delayed-run!#]!</key>
+		<key name="log_0266">...free...</key>
 		<key name="log_0267">DRBD does not appear to be running on node: [#!variable!node!#].</key>
 		<key name="log_0268">[ Warning ] - One or more services failed to start. An attempt will be made to restart.</key>
 		<key name="log_0269">The restart appears to have been successful</key>
@@ -2854,7 +2854,69 @@ SUPPORT
 		<!-- errors -->
 		<key name="sdr_error_0001"><![CDATA[Must be called with '--call "</path/to/call [args]>"'.]]></key>
 		<key name="sdr_error_0002">The requested call: [#!variable!call!#] seems to match the existing entry: [#!variable!line!#]. This is usually caused by a bug in a program calling is too many times.</key>
-	
+		
+		
+		<!-- Anvil! run jobs  -->
+		<!-- logs -->
+		<key name="arj_log_0001">#!variable!this_file!# has started.</key>
+		<key name="arj_log_0002">The run is finished.</key>
+		<key name="arj_log_0003">Writing out the new jobs file: [#!data!path::anvil-jobs!#] with still-queued job(s).</key>
+		<key name="arj_log_0004">No queued jobs left, removing the jobs file: [#!data!path::anvil-jobs!#].</key>
+		<key name="arj_log_0005">Writing out the new jobs file: [#!data!path::anvil-jobs!#] with the aborted job(s) removed.</key>
+		
+		<!-- warnings -->
+		<key name="arj_warning_0001">There was a malformed line in the queue: [#!variable!line!#]. It has been removed.</key>
+		
+		<!-- messages -->
+		<key name="arj_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program is designed to run once per minute from cron. When it runs, it 
+looks to see if #!data!path::anvil-jobs!# exists.
+
+If it doesn't, the program exits. If it does, it is read in and parsed. The
+format is:
+
+<time>:<token>:'<command {args}>'
+
+The 'time' field is a unix time stamp. If the current time is equal to or 
+greater than the time stamp, the command is run. If not, it is left in the
+queue for later.
+
+The token is used to track the job and is used to generate the file where the
+call's STDOUT is written. Once a job is started, it is removed from the queue.
+If no jobs are left, the jobs file is removed.
+
+
+NOTE
+
+Jobs are queued by AN::Tools::Remote->synchronous_command_run(). This is not
+meant to be used by other tools or applications, though there should be no harm
+in doing so.
+
+
+SWITCHES
+
+ --abort <string>
+
+	This will remove the queued job with the matching string (usually the 
+	token, but the command could be used as well). Note that if the job has
+	already started, it will NOT be cancelled.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
 	</lang>
 
 	<!-- Japanese -->

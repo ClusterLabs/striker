@@ -1,0 +1,318 @@
+#!/usr/bin/perl
+# 
+# This looks for jobs in 'path::anvil-jobs' and runs them.
+# 
+# Exit Codes;
+# 0  = OK
+#
+# TODO:
+# - 
+#
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+use Data::Dumper;
+
+# Turn off buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+my $time = time;
+
+my $an = AN::Tools->new({data => {
+		'anvil-safe-start' =>	{
+			drbd		=>	{
+				boost_speed	=>	80,
+				max_wait_time	=>	300,
+			},
+		},
+		path		=>	{
+			log_file		=>	"/var/log/striker.log",
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{
+		},
+		sys		=>	{
+			language		=>	"en_CA",
+			log_language		=>	"en_CA",
+			log_level		=>	2,
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Readable->base2(1);
+
+if (($an->data->{switches}{h})   or 
+    ($an->data->{switches}{'?'}) or 
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	exit(0);
+}
+
+# Exit immediately if there is not job file.
+if (not -e $an->data->{path}{'anvil-jobs'})
+{
+	exit(0);
+}
+	
+# Log our startup
+$an->Log->entry({log_level => 1, message_key => "arj_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Aborting a job?
+if ($an->data->{switches}{abort})
+{
+	abort_job($an);
+}
+else
+{
+	run_jobs($an);
+}
+
+
+# We're done.
+$an->Log->entry({log_level => 1, message_key => "arj_log_0002", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+exit(0);
+
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This reads in the jobs file, calling any jobs that are ready to run, skipping any that are not. Once done,
+# if no jobs are left, the jobs file is unlinked.
+sub run_jobs
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "run_jobs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $time = time;
+	
+	# Read the file.
+	my $jobs       = {};
+	my $new_file   = "";
+	my $shell_call = $an->data->{path}{'anvil-jobs'};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(\d+):(.*?):(.*)$/)
+		{
+			my $runtime = $1;
+			my $token   = $2;
+			my $command = $3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "time",    value1 => $time, 
+				name2 => "runtime", value2 => $runtime, 
+				name3 => "token",   value3 => $token, 
+				name4 => "command", value4 => $command, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($time >= $runtime)
+			{
+				# Run it.
+				$jobs->{$token} = $command;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "jobs->$token", value1 => $jobs->{$token}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Put it back in the queue.
+				$new_file .= "$line\n";
+			}
+		}
+		else
+		{
+			# what?! Log and purge.
+			$an->Log->entry({log_level => 2, title_key => "title_0190", message_key => "arj_warning_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+		}
+	}
+	close $file_handle;
+	
+	# Update or unlink the jobs file.
+	if ($new_file)
+	{
+		$an->Log->entry({log_level => 2, message_key => "arj_log_0003", file => $THIS_FILE, line => __LINE__});
+		my $shell_call = $an->data->{path}{'anvil-jobs'};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		print $file_handle $new_file;
+		close $file_handle;
+	}
+	else
+	{
+		$an->Log->entry({log_level => 2, message_key => "arj_log_0004", file => $THIS_FILE, line => __LINE__});
+		my $file = $an->data->{path}{'anvil-jobs'};
+		unlink $file or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0053", message_variables => { file => $file, error => $! }, code => 53, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# Now run the jobs.
+	foreach my $token (keys %{$jobs})
+	{
+		my $command =  $jobs->{$token};
+		my $output  =  $an->data->{path}{'anvil-jobs-output'};
+		   $output  =~ s/#!token!#/$token/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "token",   value1 => $token, 
+			name1 => "command", value1 => $command, 
+			name1 => "output",  value1 => $output, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Open up a file handle to write out to the output file.
+		my $output_file = $output;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "output_file", value1 => $output_file, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $output_file_handle, ">$output_file") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $output_file, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+		
+		# Do the actual shell call.
+		my $return_code = 0;
+		my $shell_call  = $command."; echo rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^rc:(\d+)$/)
+			{
+				$return_code = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# Don't molest this line, it's being logged.
+				print $output_file_handle "$line\n";
+			}
+		}
+		close $file_handle;
+		
+		# Record the exit code;
+		print $output_file_handle "arj-rc:$return_code\n";
+		
+		# Close the output file.
+		close $output_file_handle;
+	}
+	
+	return(0);
+}
+
+# This looks in the queue for a job with the passed token and removes it, if found.
+sub abort_job
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $changed    = 0;
+	my $new_file   = "";
+	my $shell_call = $an->data->{path}{'anvil-jobs'};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line  = $_;
+		my $abort = $an->data->{switches}{abort};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "line",  value1 => $line, 
+			name2 => "abort", value2 => $abort,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /$abort/)
+		{
+			$changed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "changed", value1 => $changed,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$new_file .= "$line\n";
+		}
+	}
+	close $file_handle;
+	
+	# Update or unlink the jobs file.
+	if ($changed)
+	{
+		if ($new_file)
+		{
+			$an->Log->entry({log_level => 2, message_key => "arj_log_0005", file => $THIS_FILE, line => __LINE__});
+			my $shell_call = $an->data->{path}{'anvil-jobs'};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 254, file => "$THIS_FILE", line => __LINE__});
+			print $file_handle $new_file;
+			close $file_handle;
+		}
+		else
+		{
+			$an->Log->entry({log_level => 2, message_key => "arj_log_0004", file => $THIS_FILE, line => __LINE__});
+			my $file = $an->data->{path}{'anvil-jobs'};
+			unlink $file or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0053", message_variables => { file => $file, error => $! }, code => 53, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# Print the usage information.
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "arj_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+
+	return(0);
+}

@@ -1395,6 +1395,14 @@ else
     echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
     echo '*/1 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
 fi
+grep -q anvil-run-jobs $conf->{path}{nodes}{cron_root}
+if [ \"\$?\" -eq '0' ];
+then
+    echo 'anvil-run-jobs exits'
+else
+    echo \"Adding 'anvil-run-jobs' to root's cron table.\"
+    echo '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $conf->{path}{nodes}{cron_root}
+fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,

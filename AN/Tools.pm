@@ -491,12 +491,16 @@ sub _set_paths
 	$an->data->{path}{wget}            = "/usr/bin/wget",
 	
 	# Text files
+	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
 	$an->data->{path}{etc_hosts}       = "/etc/hosts";
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
 	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
 	$an->data->{path}{root_crontab}    = "/var/spool/cron/root",
+	
+	# This is a text file with '#!token!#' replaced with a job's UUID token when running Anvil! jobs from 'anvil-run-jobs'
+	$an->data->{path}{'anvil-jobs-output'} = "/tmp/anvil-job.#!token!#.txt",
 
 	# Directories
 	$an->data->{path}{definitions}     = "/shared/definitions";
@@ -506,11 +510,11 @@ sub _set_paths
 	$an->data->{path}{shared_files}    = "/shared/files";
 	
 	# Tools
-	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/dashboard/hap-kick-apc-ups",
+	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups",
+	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs",
 	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
-	$an->data->{path}{'striker-delayed-run'}  = "/sbin/striker/striker-delayed-run";
 	
 	# Lock files
 	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";

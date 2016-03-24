@@ -7670,7 +7670,7 @@ sub dual_join
 			title	=>	$say_title,
 		});
 
-		# Not call the command against both nodes using 'striker-delayed-run'.
+		# Now call the command against both nodes using '$an->Remote->synchronous_command_run()'.
 		my $command         = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
 		my ($node1, $node2) = @{$conf->{clusters}{$cluster}{nodes}};
 		my $password        = $conf->{sys}{root_password};
@@ -7683,7 +7683,7 @@ sub dual_join
 			command		=>	$command, 
 			node1		=>	$node1, 
 			node2		=>	$node2, 
-			delay		=>	30,
+			delay		=>	0,
 			password	=>	$password, 
 		});
 		
@@ -9679,49 +9679,24 @@ sub withdraw_node
 		});
 		
 		# Sometimes rgmanager gets stuck waiting for gfs2 and/or clvmd2 to stop. So to help with 
-		# these cases, we'll call 'striker-delayed-run' for 60 seconds in the future. This usually
-		# gives rgmanager the kick it needs to actually stop.
-		my $delay      = 60;
-		my $password   = $conf->{sys}{root_password};
-		my $shell_call = $an->data->{path}{'striker-delayed-run'}." --delay $delay --call '/etc/init.d/gfs2 stop && /etc/init.d/clvmd stop'";
-		my $token      = "";
+		# these cases, we'll call '$an->Remote->delayed_run()' for at least 60 seconds in the future.
+		# This usually gives rgmanager the kick it needs to actually stop.
+		my $password = $conf->{sys}{root_password};
+		my ($token, $output, $problem) = $an->Remote->delayed_run({
+			command  => "/etc/init.d/gfs2 stop && /etc/init.d/clvmd stop",
+			delay    => 60,
+			target   => $node,
+			password => $password,
+			port     => $conf->{node}{$node}{port},
+		});
+		
+		my $rgmanager_stop = 1;
+		my $shell_call     = "/etc/init.d/rgmanager stop";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
-		{
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($line =~ /token:\s+\[(.*?)\]/i)
-			{
-				$token = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "token", value1 => $token,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		
-		my $rgmanager_stop = 1;
-		   $shell_call     = "/etc/init.d/rgmanager stop";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "node",       value2 => $node,
-		}, file => $THIS_FILE, line => __LINE__});
-		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
 			port		=>	$conf->{node}{$node}{port}, 
 			password	=>	$password,
@@ -9756,7 +9731,11 @@ sub withdraw_node
 			});
 		}
 		print AN::Common::template($conf, "server.html", "withdraw-node-close-output");
-		if ($rgmanager_stop)
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "rgmanager_stop", value1 => $rgmanager_stop, 
+			name2 => "token",          value2 => $token, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($rgmanager_stop) && ($token))
 		{
 			# Stop the gfs2/clvmd stop call
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -9764,7 +9743,7 @@ sub withdraw_node
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($token)
 			{
-				my $shell_call = $an->data->{path}{'striker-delayed-run'}." --abort --token $token";
+				my $shell_call = $an->data->{path}{'anvil-run-jobs'}." --abort $token";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -10311,7 +10290,7 @@ else
     echo disabled;
 fi";
 		my $password = $conf->{sys}{root_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10325,7 +10304,7 @@ fi";
 		});
 		foreach my $line (@{$return})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -10335,7 +10314,7 @@ fi";
 			}
 		}
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "enable", value1 => $enable,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($enable)

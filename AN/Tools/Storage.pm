@@ -307,7 +307,7 @@ sub rsync
 	if ($remote_machine)
 	{
 		# Make sure we know the fingerprint of the remote machine
-		$an->Remote->add_target_to_known_hosts({user => $remote_user, target => $remote_machine});
+		$an->Remote->add_target_to_known_hosts({target => $remote_machine});
 		
 		# Make sure we have a target and password for the remote machine.
 		if (not $target)

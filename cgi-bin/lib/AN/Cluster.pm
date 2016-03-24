@@ -2713,7 +2713,7 @@ sub create_install_manifest
 				# OK to proceed.
 				unlink $file or die "Failed to delete: [$conf->{cgi}{'delete'}], error was: $!\n";
 				my $message = AN::Common::get_string($conf, { key => "message_0349", variables => {
-					file		=>	$file,
+					file	=>	$file,
 				}});
 				print AN::Common::template($conf, "config.html", "delete-manifest-success", {
 					message	=>	$message,
@@ -3331,31 +3331,11 @@ sub create_install_manifest
 			});
 		}
 		
-		### NOTE: Dropping support for repos
-		# Anvil! extra repos
-		#if (not $conf->{sys}{install_manifest}{show}{repository_field})
-		#{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
-				name		=>	"anvil_repositories",
-				id		=>	"anvil_repositories",
-				value		=>	$conf->{cgi}{anvil_repositories},
-			});
-		#}
-		#else
-		#{
-		#	my $anvil_repositories_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-		#		url	=>	"https://en.wikipedia.org/wiki/RPM_Package_Manager#Repositories",
-		#	});
-		#	print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
-		#		row		=>	"#!string!row_0244!#",
-		#		explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0139!#" : "#!string!explain_0139!#",
-		#		name		=>	"anvil_repositories",
-		#		id		=>	"anvil_repositories",
-		#		value		=>	$conf->{cgi}{anvil_repositories},
-		#		star		=>	$conf->{form}{anvil_repositories_star},
-		#		more_info	=>	"$anvil_repositories_more_info",
-		#	});
-		#}
+		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			name		=>	"anvil_repositories",
+			id		=>	"anvil_repositories",
+			value		=>	$conf->{cgi}{anvil_repositories},
+		});
 		
 		# Button to pre-populate the rest of the form.
 		print AN::Common::template($conf, "config.html", "install-manifest-form-spacer");

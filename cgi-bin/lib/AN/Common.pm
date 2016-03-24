@@ -595,7 +595,6 @@ sub initialize_conf
 			striker_cache		=>	"/var/www/home/cache",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_files		=>	"/var/www/home",
-			'striker-delayed-run'	=>	"/sbin/striker/striker-delayed-run",
 			'striker-push-ssh'	=>	"/sbin/striker/striker-push-ssh",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
 			sync			=>	"/bin/sync",
