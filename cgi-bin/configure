@@ -1,0 +1,125 @@
+#!/usr/bin/perl
+#
+# This is the section that handles configuring, backing up and restoring Striker and managed Anvil! systems.
+# 
+# This software is released under the GNU GPL v2+ license.
+# 
+
+use strict;
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Turn off buffering.
+$| = 1;
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	$running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		'log'		=>	{
+			file		=>	"/var/log/striker.log", 
+			language	=>	"en_CA",
+			level		=>	1,
+		},
+		path		=>	{
+			striker_config		=>	"/etc/striker/striker.conf",
+			striker_strings		=>	"/sbin/striker/Data/strings.xml",
+		},
+		sys		=>	{
+			error_limit		=>	1000,
+			language		=>	"en_CA",
+			skin			=>	"alteeve",
+		},
+		url		=>	{
+			skins			=>	"/skins",
+			cgi			=>	"/cgi-bin",
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{'log'}{language});
+$an->default_log_file    ($an->data->{'log'}{file});
+$an->Log->level          ($an->data->{'log'}{level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+$an->Get->cgi({variables => [
+	"anvil", 
+	"task", 
+]});
+
+# Connect to the databases.
+$an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
+	file  => $THIS_FILE,
+	quiet => 1, 
+});
+
+if (not $an->data->{cgi}{task})
+{
+	# Show the main menu
+	show_main_menu($an);
+}
+
+exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# This shows the main Striker configuration menu
+sub show_main_menu
+{
+	my ($an) = @_;
+	
+	my $back_image = $an->Get->template({
+			file     => "common.html",
+			template => "image", 
+			replace  => {
+				image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+				alt_text     => "#!string!button_0001!#",
+				id           => "back_icon",
+			},
+		});
+	my $refresh_image = $an->Get->template({
+			file     => "common.html", 
+			template => "image", 
+			replace  => {
+				image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+				alt_text     => "#!string!button_0002!#",
+				id           => "refresh_icon",
+			},
+		});
+	my $header = $an->Get->template({
+			file		=>	"configure.html",
+			template	=>	"configure-header",
+			replace		=>	{
+				back		=>	$back_image,
+				refresh		=>	$refresh_image,
+			},
+		});
+	
+	my $footer = $an->Get->template({
+				file		=>	"configure.html",
+				template	=>	"configure-footer",
+			});
+	
+	print $an->Get->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				body		=>	"TODO", 
+				footer		=>	$footer, 
+			},
+		});
+	
+	return(0);
+}

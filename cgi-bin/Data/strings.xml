@@ -1758,6 +1758,1126 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
 		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
 		
+		<!-- Configuration variable descriptions -->
+		<key name="config_title_0001">Owner Name</key>
+		<key name="config_title_0002">Anvil! Name</key>
+		<key name="config_title_0003">Anvil! Description</key>
+		<key name="config_title_0004">Anvil! Note</key>
+		<key name="config_title_0005">Anvil! Password</key>
+		<key name="config_title_0006"></key>
+		<key name="config_title_0007"></key>
+		<key name="config_title_0008"></key>
+		<key name="config_title_0009"></key>
+		<key name="config_title_0010"></key>
+		
+		<key name="config_explain_0001">This is a free-form name of the company or organization who owns or manages an Anvil! system.</key>
+		<key name="config_explain_0002">This is a free-form name for a specific Anvil! system. This is often the model number or similar identifier.</key>
+		<key name="config_explain_0003">This is a short description of a specific Anvil! system. Typically this indicates the systems's purpose, location or similar.</key>
+		<key name="config_explain_0004">This is a section for notes on a specific Anvil! system. This can record warranty information, system details, support information, installation location, purpose or other information you may find useful.</key>
+		<key name="config_explain_0005"><![CDATA[<span class="highlight_warning_bold">NOTE</span>: This password is stored in plain text and echoed back to you!<br />This is the password used by the dashboard when accessing and controlling the Anvil! system.]]></key>
+		<key name="config_explain_0006"></key>
+		<key name="config_explain_0007"></key>
+		<key name="config_explain_0008"></key>
+		<key name="config_explain_0009"></key>
+		<key name="config_explain_0010"></key>
+<!--
+###############################################################################
+#                                                                             #
+# Alteeve's Niche!                                      Striker Configuration #
+#                                                                             #
+# This is the global configuration for the Striker dashboard and ScanCore     #
+# alert system. Once configured on a dashboard, you can copy it as-is to your #
+# Anvil! nodes.                                                               #
+#                                                                             #
+###############################################################################
+
+### Common - These values apply to all utilities.
+
+# This configures how email is sent from this machine. Please be sure to set
+# the values below to the values given to you by your mail administrator (if
+# that's not you).
+#
+# This is the mail server to connect to when sending email.
+smtp::server			=	mail.example.com
+
+# This is the TCP port used to connect to the mail server.
+smtp::port			=	587
+
+# This is the email address/IMAP user to send to the mail server. It is also
+# the address used in the "From: " field for emails sent from this machine.
+# NOTE: If you IMAP user name is not an email address, this may not work (it
+# has not been tested). If you have trouble, please let us know:
+# - https://alteeve.ca/w/Support
+smtp::username			=	alert@example.com
+
+# This is the password used for the email account above.
+smtp::password			=	secret
+
+# This is the security level to use when connecting to the peer, if needed.
+smtp::security			=	STARTTLS
+
+# This tells us to use an encrypted connection to the mail server. Set to '0'
+# to send email plain-text (not recommended!).
+smtp::encrypt_pass		=	1
+
+# This is the domain given to the mail server when establishing the connection.
+smtp::helo_domain		=	example.com
+
+# This sets the "sending domain" when sending email. It should match
+# smtp::server in most cases.
+mail_data::sending_domain	=	example.com
+
+# If you create a custom skin, uncomment this and change the value to the name
+# of the directory your skin is stored in under /var/www/html/skins/
+#sys::skin			=	alteeve
+
+# This controls how many seconds to wait before reloading the main page and
+# status pages. Set to '0' to never refresh the page. Yes, this is because we
+# suck at AJAX... Patches welcomed. ;)
+#sys::reload_page_timer		=	0
+
+# By default, the install manifest uses the standard MTU of 1500 for all
+# networks. This is not (yet) configurable in the Install Manifest menu. If you
+# know your network will proprely work with a higher MTU, uncomment this and
+# set your desired MTU.
+# 
+# NOTE: If the MTU is too large, The install manifest run will hang when it
+#       tries to start DRBD.
+#       
+#sys::install_manifest::default::mtu_size	=	1500
+
+# In rare cases, you may wish to force DRBD into UpToDate/UpToDate state 
+# without an initial sync. Generally this is not a good idea because DRBD's
+# backing devices won't be the same until data is written to them via DRBD. So
+# a verify call will find a lot of inconsistencies should it be run. However,
+# if you have a large storage pool and data is rapidly written to it, you may
+# wish to enable this. 
+# In short; this calls; 'drbdadm -- --clear-bitmap new-current-uuid <res>'
+# when first building the DRBD resource.
+#sys::install_manifest::default::immediate-uptodate	=	0
+
+
+##############################################################################
+# ScanCore Alert Targets                                                     #
+##############################################################################
+
+# This controls who gets alerts. The available alert options are:
+# 
+# - debug;    Useful for trying to solve problems and should only be logged.
+#             This will generate an alert on just about every state change.
+# - info;     This level will generate an alert on events that are almost
+#             always harmless.
+# - notice;   This is the lowest alert level that most people will actually
+#             want to use. It includes events like migrations, servers booting,
+#             BBU/FBU self tests, etc.
+# - warning;  Most technical staff will want to receive these alerts. Any state
+#             change that could indicate an interruption will use this alert
+#             level.
+#             NOTE: This is the default level
+# - critical; This alert level will be of interest to non-technical users, like
+#             managers. Alerts at this level almost always indicate a serious
+#             event has occured, like a node being lost/fenced, thermal shut
+#             down occuring and so forth.
+#
+# A user who is listening to a given alert level will also receive all higher
+# level warnings.
+# 
+# Alert recipients can either be 'email' or 'file'. The 'email' type are meant
+# for humans to receive and are dispatched via a local postfix relay. The
+# 'file' type records alerts to the specified file which sits on the local
+# disk until it is collected by a person or program.
+# 
+# By default, metric units are used in reporting values. If the user prefers
+# imperial measurements (ie: Fahrenheit instead of Celsius for temperatures),
+# you can use 'units=imperial'.
+# 
+# E-mail recipients are entered in the following format:
+#alerts::recipient::1::email		=	name="Admin User",email="admin@example.com",language="en_CA",level="notice"
+#
+# File recipients are entered in the following format, with "imperial"
+# measurements selected as an example:
+#alerts::recipient::2::file		=	file="/var/log/alerts.en_CA.log",language="en_CA",level="info",units="imperial"
+#
+# What is important is that the integer after 'alerts::recipient::X' is unique.
+# 
+# NOTE: If a language is selected but not supported, the alert will fall back
+#       to 'en_CA'. Please be sure all the scan agents you plan to use, along
+#       with ScanCore itself, have the appropriate language strings before you
+#       use them!
+# 
+# NOTE: Be sure to put the value in double-quotes.
+# 
+alerts::recipient::1::email		=	name="Awesome Person",email="awesome@example.com",language="en_CA",level="notice"
+alerts::recipient::2::file		=	file="/var/log/alerts.en_CA.log",language="en_CA",level="info",units="imperial"
+
+
+###############################################################################
+# Tools control                                                               #
+###############################################################################
+
+# This section is used to control the behaviour of various Striker and Anvil!
+# tools.
+
+# Setting this to '1' will enable 'anvil-kick-apc-ups', which is a tool that
+# uses the Anvil!'s APC UPSes as a form of system-wide watchdog timer. When
+# enabled, the system will tell the UPS to power off after a set amount of time
+# and then turn back on after another set amount of time. During normal 
+# operation, the shutdown will be cancelled and the timer reset repeatedly.
+# This way, the UPSes never shut off unless something anvilpens which causes all
+# machines running 'anvil-kick-apc-ups' to fail to reset the timer, such as a
+# switch stack failure that knocks out all networking. The goal is to force a
+# hard reset of the entire rack in such a case, in the hopes that the power-
+# cycle will restore normal operation.
+# 
+# This can be enables and disabled using:
+# /sbin/striker/anvil-kick-apc-ups --{enable,disable}
+# 
+# The current state can be checked with '--status'.
+# 
+# WARNING: Be sure to affix a warning on the UPS outlets indicating that the 
+#          outlets may become energized automatically if this is enabled. 
+#          Failure to warn maintenance personel may result in injury or death!
+#
+# NOTE: This is default-off (0) on dashboards. It will be set to '1' on nodes
+#       when 'sys::install_manifest::use_hap-kick-apc-ups' is set to '1' when
+#       an install manifest is generated. On CCRS, this is always set to '1'.
+#
+tools::anvil-kick-apc-ups::enabled	=	0
+
+# If you enable 'anvil-kick-apc-ups', which turns the UPSes into a rack-wide 
+# watchdog time, you can control the shutdown timer, restart timer and the 
+# frequency that the UPSes are "kicked" using these variables. 
+# 
+# This controls how far in the future to tell the UPS to shut off. The default
+# is '600' (ten minutes).
+#sys::apc::ups::power_off_delay		=	600
+#
+# If the timer runs out and the UPS shuts down, this controls how long the UPS
+# "sleeps" for before turning back on. The default is '300' (5 minutes).
+#sys::apc::ups::sleep_time		=	300
+#
+# The kick script is started once a minute. If you want to reduce the frequency
+# that the UPSes are actually kicked, set this value to how many seconds you 
+# want to wait between kicks. We stick with 'seconds' for consistency with
+# other variables, but it will be rounded to minutes. For example, to perform 
+# the actual kick once every five minutes (one in five runs), set this to 
+# '300'.
+#sys::apc::ups::kick_frequency		=	300
+
+# The 'anvil-safe-start' tool, when enabled, will run when a node powers on.
+# It will perform various sanity checks, including trying to connect to the 
+# peer node. If it can reach the peer, it will join the nodes to the cluster
+# stack and then boot servers on the preferred host if possible, or on the
+# healthiest node when not.
+# 
+# This variable controls when 'anvil-safe-start' runs. If set to '1', it will
+# run within one minute and that run will reset this back to '0'. On node boot,
+# an rc3.d script changes this value to '1' and exits (so that the run doesn't
+# block the boot process). Once it runs, anvil-safe-start resets this to 0 so
+# that it won't run again until the next reboot.
+# 
+# If you want to disable anvil-safe-start entirely, please use:
+# 
+# /sbin/striker/anvil-safe-start --disable
+# 
+# To re-enable this feature later, use:
+# 
+# /sbin/striker/anvil-safe-start --enable
+# 
+# Note that servers set to 'Do Not Start' in Striker, or that were gracefully
+# shut off in striker, will stay off. Servers stopped as part of a Cold 
+# Shutdown and any servers running after a total loss of power or an emergency
+# shutdown will start.
+# 
+# DO NOT CHANGE THIS VALUE MANUALLY.
+tools::anvil-safe-start::enabled	=	0
+
+# During anvil-safe-start, when it first connects the replicated storage layer,
+# it checks to see if one of the nodes is 'Inconsistent'. If it is, it will 
+# pause the boot process, boost the resync speed and then wait 15 seconds. Then
+# it will check to see the estimated timed to reach full resync. 
+# 
+# If it is less than 'max_wait_time', it will continue to wait, watching the 
+# resync process. Once it reaches UpToDate/UpToDate on both nodes, it will 
+# restore the default resync speed and proceed with the boot process.
+# 
+# If the estimated resync time, after boosting, is higher that 'max_wait_time',
+# the resync speed will be reset to default and the boot process will proceed
+# with the Inconsistent node being treated as degraded (meaning servers will 
+# likely not boot on it).
+# 
+# By default, the boosted speed is 80 MB/sec and the maximum wait time is five
+# minutes (300 seconds). If you wish to tune these values, you can do so here.
+# Please use integers only!
+# 
+#anvil-safe-start::drbd::boost_speed	=	80
+#anvil-safe-start::drbd::max_wait_time	=	300
+
+# If you plan to use Virtual Machine Manager with a GUI install on your Striker
+# dashboards, setting this option to '1' will add the Striker user's public RSA
+# keys on each managed Anvil!. This will prevent the need for the user to
+# repeatedly enter each node's root password when trying to connect to a 
+# server.
+# 
+# NOTE: Consider the security implications of this! If this is enabled, anyone
+#       who has access to the dashboard will have unfettered access to the
+#       Anvil! nodes. Enable this feature only in environments where physical
+#       access is controlled.
+#
+tools::striker-push-ssh::enabled	=	1
+
+# Set this to '1' to have Striker automatically configure Virtual Machine 
+# Manager when new Anvil! systems are added to Striker. Note that this has no
+# effect unless 'virt-manager' is installed.
+tools::striker-configure-vmm::enabled	=	1
+
+# By default, Striker will sync with its peer when its configuration changes
+# via the web interface. This works by looking at the 'scancore::x::host'
+# entries, matching the local machine with one entry and selecting the other
+# as the peer node. The database password needs to be the same as the root
+# password for this to work. To disable this automatic sync process, set this
+# to '0'.
+tools::striker::auto-sync		=	1
+
+### NOTE: This is quite weak security... an attacker with root access can 
+###       disable this function and avoid the need for a passphrase entirely.
+###       We could add a check against the passphrase against the controller
+###       but that would be no better. In the end, the commands to send to the
+###       controller are not secured so any attempt at security here is little
+###       more than a delay tactic against a malicious attacker.
+###       
+###       The primary purpose of this tool is to render the data forensically
+###       unrecoverable by a trusted user of the system. With this option 
+###       available, it is *critical* that you trust whomever has access to 
+###       your Anvil!. If the system is critical enough to use this feature, it
+###       should really be air-gapped from any public network.
+# 
+# This sets a minimum password length. Default is '6'.
+tools::anvil-self-destruct::minimum_length	=	6
+
+# If you're Anvil! uses SafeStore and self-encrypted drives, you can enable the
+# self-destruct function by setting a passphrase below. 
+# 
+# Generate the hash by running:
+# - /sbin/dashboard/anvil-generate-passphrase <secret>
+# Copy the value in '- Hash: [...]' and save it below.
+# The default passphrase is 'secret'. 
+# 
+# **************************************
+# *** CHANGE THIS BEFORE PRODUCTION! ***
+# **************************************
+# 
+tools::anvil-self-destruct::hash		=	vSsar3708Jvp9Szi2NWZZ02Bqp1qRCFpbcTZPdBhnWgs5WtNZKnvCXdhztmeD2cmW192CF5bDufKRpayrW/isg
+
+
+##############################################################################
+# ScanCore configuration variables                                           #
+##############################################################################
+
+# This is the master switch for ScanCore. If this is set to '0', ScanCore will
+# immediately exit, if run.
+# 
+# This can be enables and disabled using:
+# /sbin/striker/ScanCore/ScanCore --{enable,disable}
+scancore::enabled			=	1
+
+# Database connection variables.
+# 
+# Hostname or IP of the Striker dashboard with the database.
+#scancore::db::X::host
+# 
+# TCP port used to connect to the postgres server on the host.
+#scancore::db::X::port
+# 
+# ScanCore database name
+#scancore::db::X::name
+# 
+# ScanCore database user
+#scancore::db::X::user
+#
+# ScanCore database password
+#scancore::db::X::password
+# 
+#scancore::db::1::host			=	an-striker01.alteeve.ca
+#scancore::db::1::port			=	5432
+#scancore::db::1::name			=	scancore
+#scancore::db::1::user			=	admin
+#scancore::db::1::password		=	Initial1
+#
+#scancore::db::2::host			=	an-striker02.alteeve.ca
+#scancore::db::2::port			=	5432
+#scancore::db::2::name			=	scancore
+#scancore::db::2::user			=	admin
+#scancore::db::2::password		=	Initial1
+
+
+# ScanCore can trigger a shutdown of a node for two reasons; Overheating and
+# insufficient remaining runtime in batteries. The former protects your nodes
+# from potential damage. Both provide a mechanism for gracefully shutting down
+# the hosted virtual machines gracefully and cleanly powering down the nodes
+# *before* they would shut down anyway from loss of power or hardware-based
+# over-temperature shutdown.
+# 
+# Obviously, this means that ScanCore can potentially screw up and take the
+# nodes offline if there was a bug. We don't pretend to be perfect.
+# 
+# If you want to disable this automatic shutdown feature, you can do so by 
+# setting these variables to '1'.
+#scancore::disable::power_shutdown	=	0
+#scancore::disable::thermal_shutdown	=	0
+
+# Setting this to '1' will disable ScanCore's automatic booting of nodes that are
+# off. When enabled, nodes will be booted provided the power and temperature is
+# good and that the nodes were not cleanly stopped via Striker's WebUI.
+scancore::disable::boot_nodes		=	0
+
+### Logging and Language
+# ScanCore itself, plus each agent, can have customized log levels, language,
+# log files. You can also customize the language used when ScanCore or an agent
+# prints to STDOUT (the screen). By default, all log to '/var/log/ScanCore.log'
+# in 'en_CA' (Canadian English) with log level '1', which covers important or 
+# warning messages only. Likewise, output to STDOUT is also in 'en_CA'.
+# 
+# To customize, you can use the following four variables:
+# 
+#scancore::log_file			=	/var/log/ScanCore.log
+#scancore::log_level			=	1
+#scancore::log_language			=	en_CA
+#scancore::language			=	en_CA
+
+# If you are hitting database problems, you can use this option to log all 
+# database writes. Note that you will need to set the similar variable for each
+# agent you want to monitor (or, just enable the DB logging if the agent giving
+# you grief).
+#scancore::log_db_transactions		=	1
+
+# The same five variables are used to configure the agents, simply substitute 
+# 'scancore' for the name of the agent. For example, to customize the IPMI
+# scan agent 'scan-ipmitool', you can use:
+# 
+#scan-ipmitool::log_file		=	/var/log/ScanCore.log
+#scan-ipmitool::log_level		=	1
+#scan-ipmitool::log_language		=	en_CA
+#scan-ipmitool::language		=	en_CA
+#scan-ipmitool::log_db_transactions	=	1
+# 
+# NOTE: The language you choose MUST exist in the XML "strings" files!
+# 
+
+# ScanCore itself:
+#scancore::log_file			=	/var/log/ScanCore.log
+#scancore::log_level			=	1
+#scancore::log_language			=	en_CA
+#scancore::language			=	en_CA
+#scancore::log_db_transactions		=	0
+
+# IPMI scan agent:
+#scan-ipmitool::log_file		=	/var/log/ScanCore.log
+#scan-ipmitool::log_level		=	2
+#scan-ipmitool::log_language		=	en_CA
+#scan-ipmitool::language		=	en_CA
+#scan-ipmitool::log_db_transactions	=	0
+
+# LSI/Avago RAID controller scan agent:
+#scan-storcli::log_file			=	/var/log/ScanCore.log
+#scan-storcli::log_level		=	2
+#scan-storcli::log_language		=	en_CA
+#scan-storcli::language			=	en_CA
+#scan-storcli::log_db_transactions	=	0
+
+# RHEL's Resource Group manager's 'clustat' scan agent:
+#scan-clustat::log_file			=	/var/log/ScanCore.log
+#scan-clustat::log_level		=	2
+#scan-clustat::log_language		=	en_CA
+#scan-clustat::language			=	en_CA
+#scan-clustat::log_db_transactions	=	0
+
+# Linux bond driver scan agent:
+#scan-bond::log_file			=	/var/log/ScanCore.log
+#scan-bond::log_level			=	2
+#scan-bond::log_language		=	en_CA
+#scan-bond::language			=	en_CA
+#scan-bond::log_db_transactions		=	0
+
+# APC/Schneider brand SNMP UPS scan agent:
+#scan-apc-ups::log_file			=	/var/log/ScanCore.log
+#scan-apc-ups::log_level		=	2
+#scan-apc-ups::log_language		=	en_CA
+#scan-apc-ups::language			=	en_CA
+#scan-apc-ups::log_db_transactions	=	0
+
+# KVM/QEMU virtual machine scan agent:
+#scan-server::log_file			=	/var/log/ScanCore.log
+#scan-server::log_level			=	2
+#scan-server::log_language		=	en_CA
+#scan-server::language			=	en_CA
+#scan-server::log_db_transactions	=	0
+
+
+###############################
+# Power Shutdown Variables    #
+###############################
+
+# ScanCore will power down an Anvil! when the UPSes powering it lose input 
+# power and drain below a minimum estimated hold up time. When the power is
+# restored, the nodes will be booted once one of the UPSes has a minimum
+# charge percentage.
+# 
+# By default, the minimum hold-up time when running on batteries is set to
+# 10 minutes (600 seconds). The default minimum charge percentage to boot back
+# up is 45%. 
+# 
+# You may want to adjust this to better suit your needs, however. 
+# 
+# Your minimum hold-up time should be the time it takes to perform a 
+# "Cold Shut Down" from Striker, with all of your servers running, plus a
+# little extra time as a buffer. This will ensure that your Anvil! will safely
+# power down before the UPSes completely deplete.
+# 
+# The minimum charge percentage should be set to a high enough number to handle
+# losing power during the boot process. To know this percentage depends a lot
+# on your environment. To calculate it, look at the load on your UPSes under
+# normal operation (as a number of watts). Then consult your UPS's "Runtime" or
+# "Hold-Up Time" chart. This will tell you how many minutes your UPS will run 
+# given your load and a full charge. Divide the time you need to fully boot and
+# then shut down your Anvil! by the runtime at full charge for your load. 
+# Multiply the result by 100 to get your minimum charge percentage.
+# 
+# For example;
+# 
+# Assume you need 15 minutes at worst from the time you start to boot your 
+# Anvil! until you can shut it back down. Also assume you have an average 400w
+# load on an APC SmartUPS 1500 UPS.
+# 
+# Looking at the "Batteries & Runtime" chart here:
+# http://www.apc.com/resource/include/techspec_index.cfm?base_sku=SMT1500RM2U
+# We see that a full charge can hold up a 400w load for 37 minutes. 
+# 
+# Knowing this, we have: ((15 % 37) x 100) == 40.5%. We'll pad this to 45%
+# 
+# To configure this manually, uncomment the lines below. The 
+# 'scancore::minimum_ups_runtime' is the number of seconds and 
+# 'scancore::minimum_safe_charge' is the percentage (without the % sign).
+#
+#scancore::minimum_ups_runtime		=	600
+#scancore::minimum_safe_charge		=	45
+
+
+###############################
+# Thermal Shutdown Variables  #
+###############################
+
+# Each sensor has a default "weight" of '1'. When ScanCore finishes a cycle,
+# it will look at the number of sensors that have gone above their high 
+# critical threshold, or below their low critical threshold, and add up their
+# weights. If the total value is equal to or greater than this shutdown limit,
+# ScanCore will initiate a withdrawl and power down of the node.
+#scancore::temperature::shutdown_limit	=	5
+
+# When a node goes into thermal shutdown, many of its temperature (and other)
+# sensors go offline. So a dashboard has a limited ability to determine if it
+# is safe to boot a node back up. 
+# 
+# To account for this, when a node is in a thermal emergency stop, the 
+# dashboard will check its own temperature (if it has temp sensors) and if it
+# is OK, it will read the node's 'Ambient' and 'Systemboard' (or the sensors
+# defined by you in 'scan-ipmitool::offline_sensor_list' (or similar from other
+# scan agents). 
+# 
+# If those sensors on the target node are OK, then the last step is to count
+# how many times in the last six hours the node went into thermal shutdown. The
+# more times it has gone into thermal shutdown, the longer it waits before
+# booting the node. By default, the delays are:
+# 
+# Reboots | Wait X seconds until boot
+# --------+--------------------------
+#  1      | 600   (10 minutes)
+#  2      | 1800  (30 minutes)
+#  3      | 3600  (1 hour)
+#  4      | 7200  (2 hours)
+#  >4     | 21600 (6 hours)
+# --------+--------------------------
+# 
+# The goal here is to minimize the risk of damage to the hardware. ScanCore
+# tries to shutdown a node before it goes into hardware-thermal shutdown and
+# before damage can occur, but it's not perfect. It is possible that thermal
+# shutdown is disabled in the BIOS and that the graceful shutdown of the node
+# could take too long and damage could occur. This increasing delay is 
+# designed to help minimize the risk of a chronic failure in the node causing
+# the node to repeatedly be put at risk.
+# 
+# The trade off, of course, is increased downtime. Particularly if both nodes
+# went into shutdown. So it is possible for you to override the default timing
+# using the variables below.
+#scancore::thermal_reboot_delay::1	=	600
+#scancore::thermal_reboot_delay::2	=	1800
+#scancore::thermal_reboot_delay::3	=	3600
+#scancore::thermal_reboot_delay::4	=	7200
+#scancore::thermal_reboot_delay::more	=	21600
+
+
+##############################################################################
+# ScanCore - Scan Agent Overrides                                            #
+##############################################################################
+
+### scan-ipmitool
+# Where possible, the upper and lower temperature sensor values are pulled from
+# the IPMI sensor data itself. Some sensor values do not specify their upper
+# and lower sensor values, however. In this case, scan-ipmitool uses the 
+# following default limits (all in °C!):
+# high_warning	=	50
+# high_critical	=	55
+# low_warning	=	5
+# low_critical	=	0
+# 
+# To catch sudden increases in temperature, usually indicative of an AC
+# failure, we set a "jump" of 'delta' value. If the temperature of a sensor
+# increases by more than this number of degrees celsius, a "sudden change"
+# alert will be generated.
+# The default 'jump' value is 5°C between two scans, typically 30 seconds or
+# so.
+# 
+# To avoid repeated alerts when a thermal sensor is hovering around a 
+# threshold, a buffer is used. For an alert to clear, a sensor must drop or 
+# rise 2*C below or above and high or low threshold, respectively. For example,
+# if a sensor goes into warning at 50*C, it must drop below 48*C for the alert
+# to be cleared.
+# 
+# If you want to use a different set of defaults, you can do so by uncommenting
+# and editing the following variables:
+#scan-ipmitool::thresholds::default::high_warning	=	50
+#scan-ipmitool::thresholds::default::high_critical	=	55
+#scan-ipmitool::thresholds::default::low_warning	=	5
+#scan-ipmitool::thresholds::default::low_critical	=	0
+#scan-ipmitool::thresholds::default::jump		=	5
+#scan-ipmitool::thresholds::default::buffer		=	2
+
+# To override the thresholds of a single sensor, you can do so using the sensor
+# name reported by 'ipmitool'. To get a list of the sensors and their names,
+# you can use the command (from a linux machine):
+# 
+# ipmitool -H an-a05n01.ipmi -U admin sensor list all
+# 
+# Replace 'an-a05n01.ipmi' with the hostname or IP of your IPMI device.
+# Replace 'admin' with the IPMI user name for your IPMI device.
+# Enter the IPMI user's password when prompted.
+#
+# NOTE: Be sure to match the sensor name exactly!
+# 
+# As an example, if you wanted to manually adjust the threshold 'Ambient' 
+# threshold, you can use the following;
+#scan-ipmitool::thresholds::Ambient::high_warning	=	50
+#scan-ipmitool::thresholds::Ambient::high_critical	=	55
+#scan-ipmitool::thresholds::Ambient::low_warning	=	5
+#scan-ipmitool::thresholds::Ambient::low_critical	=	0
+#scan-ipmitool::thresholds::Ambient::jump		=	5
+#scan-ipmitool::thresholds::Ambient::buffer		=	2
+#
+# You can adjust the weight of a given sensor (up or down) using 'weight',
+# expressed as a whole or real number.
+#scan-ipmitool::thresholds::Ambient::weight		=	1.5
+
+
+# When a node is shut down because the temperature got too high or low, most
+# of the thermal sensors stop reporting data. In most cases, though, the
+# 'Ambient' and 'Systemboard' remain readable. By default, the dashboard will
+# check its own temperature and, if that is OK, check these sensors on the
+# target node to determine if the node is safe to boot back up. If your nodes
+# use different names, or if you have access to additional sensors, you can
+# change the list of sensors checked by specifying them here as a 
+# comma-separated list.
+# 
+# NOTE! The sensor names are case-sensitive and must match exactly to the 
+#       output show in ipmitool!
+#
+# To determine which sensor values are available when your nodes are off, you
+# can run the following command from the Striker dashboard:
+# 
+# ipmitool -H <node_ipmi_ip> -U <ipmi_user> sensor list all | grep 'degrees C'
+#
+#==== 
+#Ambient          | 25.000     | degrees C  | ok    | na        | 1.000     | 6.000     | 37.000    | 42.000    | na        
+#Systemboard      | 35.000     | degrees C  | ok    | na        | na        | na        | 65.000    | 70.000    | na        
+#==== 
+# If you have different hardware nodes, and the sensors differ between them,
+# list all of the sensors here. Once that are not found will be ignored.
+#scan-ipmitool::offline_sensor_list			=	Ambient,Systemboard
+
+
+# Most Striker Dashboards run commodity hardware and, thus, do not have IPMI.
+# When a dashboard does have IPMI, it can make a much more informed decision
+# about whether it is safe to boot a node that has gone into thermal shutdown
+# because it will be able to check all of its own sensors. If any are in a
+# 'warning' state, it will not boot the nodes. This is excellent when dealing
+# with a data center or room that has lost cooling.
+# 
+# If your dashboards do have IPMI, you can tell scan-ipmitool about how to 
+# access it using:
+# 
+#scan-ipmitool::machine::<hostname>::power_check_command = <fence_ipmilan call>
+# 
+# The 'fence_ipmilan' command is the command used by Striker dashboards to
+# check the state of and to control the nodes. Generally, the command looks
+# like this:
+# 
+#fence_ipmilan -a <ipmi_ip> -l <ipmi_user> -p <password> -o status
+# 
+# Try this call out on the dashboard to see if you can get the power state of
+# the machine. It should return:
+# 
+#Status: ON
+# 
+# If it doesn't, please read 'man fence_ipmilan' to see what other switches you
+# might need to be able to read it. 
+# 
+# Once you can read the status, remove the '-o status' and use the rest of the
+# command as the value for this variable. Here is an example for the Striker
+# dashboard called 'an-striker01.alteeve.ca':
+# 
+#scan-ipmitool::machine::an-striker01.alteeve.ca::power_check_command	=	fence_ipmilan -a an-striker01.ipmi -l admin -p Initial1
+
+
+###############################################################################
+# Striker USB management                                                      #
+###############################################################################
+
+### Overview
+# 
+# This control how USB mass storage devices will be managed when plugged into
+# given physical USB ports. It provides a mechanism for mounting a USB drive on
+# a server running linux as though the USB drive had been plugged into the 
+# server directly, from the user's perspective.
+# 
+# It works by mounting a USB storage locally, then connecting to the target
+# server and uses nfs to mount it on the target. In this way, the drive will
+# appear automatically on the user's desktop (or at a defined mount point)
+# automatically, and clean itself up automatically, when a USB drive is
+# inserted or removed from the host.
+# 
+# It also supports LUKS encrypted USB drives, including the ability to setup
+# encryption on the USB drive if it is not yet encrypted, for you. This does
+# require storing the USB drive's passphrase on this machine, so caution is
+# required when used this way.
+
+### Variables
+#
+# This is set to '1' when you want to enable this feature. When using 
+# auto-encryption, be careful to only enable this when there is low risk of a
+# user accidentally inserting a USB drive they don't want reformated!
+remote-usb::enable_remote_usb_mount	=	0
+
+# When it's time to mount the local USB drive's mount point on a remote
+# machine, we need to pass credentials to the remote machine in order for it
+# to connect to this machine.
+#
+# The host name entered below must be resolvable on the target server. If in
+# doubt, use this machine's IP address.
+# 
+# NOTE: If you use a host name, make sure the remote machine can resolve it to
+#       an IP address!
+# 
+# The local 'mount' will have the USB device address appended to it. If the 
+# mounted filesystem has a label, that will be appended after the USB address
+# as well.
+# 
+# The 'host' can be the special replacement variable '#!short_hostname!#' which
+# Striker will translate into the current dashboard's host name. This way, the
+# same/sync'ed striker.conf will work on both nodes.
+# 
+# NOTE: when using multiple options with 'export_options', do NOT use multiple
+#       '-o X -o Y' calls! Use '-o x,y' or else the NFS mount will be 
+#       read-only.
+# 
+#remote-usb::local::host		=	#!short_hostname!#
+#remote-usb::local::user		=	root
+#remote-usb::local::password		=	secret
+#remote-usb::local::mount		=	/mnt/remote
+#remote-usb::local::export_options	=	-i -o rw,sync,no_root_squash
+
+# This configured which remote host to mount the USB drive on. Note that
+# because of how sshfs works, only the user set below will be able to access
+# the mount point.
+# 
+# NOTE: Be sure that the local machine can resolve the 'host' name to an IP.
+#       As above, it is usually safest to use an IP address directly.
+#
+# The remote 'mount' will have the same appended suffix as the local mount.
+# 
+#remote-usb::remote::host		=	10.255.6.1
+#remote-usb::remote::user		=	root
+#remote-usb::remote::password		=	secret
+#remote-usb::remote::mount		=	/mnt/remote
+#remote-usb::remote::mount_options	=	-t nfs -o sync
+
+# It is possible to decrypt LUKS-encrypted partition, provided the LUKS key is
+# provided. At this time, only one global LUKS key is supported. Enter it in
+# the following variable.
+#remote-usb::luks::passphrase		=	supersecret
+
+# If the partition is not 'ext4' or if it's not encrypted, setting this to '1'
+# will cause the drive to be reformatted and encrypted without prompt. This
+# should only be enabled in very specific circumstances. If used, be sure to
+# warn users that their drives will be reformatted if they plug them into a
+# managed port and they are not encrupted!
+#remote-usb::luks::force_initialize	=	1
+
+# This tells us what file system to create on the decrypted device mapper
+# device after we created the LUKS encrypted partition.
+#remote-usb::luks::use_filesystem	=	ext4
+
+# Set this below if you want to define a specific label when formatting a newly
+# encrypted device with the filesystem set above. If your selected filesystem
+# doesn't support labels, leave this blank.
+#remote-usb::luks::fs_label		=	nc0
+#remote-usb::luks::fs_options		=	-L #!variable!fs_label!# 
+
+# If the 'force_initialize' option is enabled, you can use this option to
+# selectively block the forced reformatting based on the label of the drive.
+# This can be a static name or a basic regular expression. If the value ends
+# in '*', then a label will be considered a match if the start of the string
+# matches the value to the left of the '*' here. The string *is* case 
+# sensitive.
+#remote-usb::luks::protected_label	=	c*
+
+
+###############################################################################
+# Server Configuration                                                        #
+###############################################################################
+
+# By default, servers will be set to "Live" migrate (move to the other host 
+# node) without shutting down the server. This is preferred almost all of the
+# time because it causes no interruption in service. In some corner cases 
+# though, live-migration is not ideal. In such cases, it is better to 
+# gracefully shut down the server and then reboot it on the new host. This can
+# be configured per-server in Striker and changed at any time. This option
+# allows you to change the default set for new servers to 'cold' (default is
+# 'live'). If this is used, all *new* servers will use this migration method.
+# Note that existing servers will *not* be changed.
+#sys::default::migration_type			=	cold
+
+# If you need to specify a custom queue length for the interface linking your
+# servers to the Anvil!'s bridge, you can do so by setting the variable below.
+# This works via a 'udev' trigger will fire when ever a new 'vnetX' interface 
+# is created. This in turn calls 'tools/anvil-adjust-vnet' which looks here for
+# this variable. This generally anvilpens fast enough that the change is in place
+# before the server reaches the start of the OS boot sequence or before the 
+# server finished migrating to the target node.
+# 
+# This is set PER SERVER. So to use it, you must put the server's name (as it
+# appears on the Anvil!'s main screen) as the variable before '::qlen'. For
+# example, to adjust the queue length for a server named 'vm01-foo', you would
+# set:
+#tools::anvil-adjust-vnet::vm01-foo::qlen	=	6000
+
+
+###############################################################################
+# Default system value overrides                                              #
+###############################################################################
+
+# By default, the Anvil! sets aside approximately 4 GiB of the node's RAM for
+# the host OS. If you want to change this, set the value below, in bytes, to 
+# reserve for the host. 
+# 
+# Note: Striker rounds off to an even GiB of RAM available for servers. If you
+#       node sets aside a certain amount of system RAM for things like shared
+#       video RAM, the OS will see slightly less RAM than if actually 
+#       installed. If this is the case for you, setting this to '3221225472'
+#       (3 GiB) and if you have 32 GiB of RAM installed, 28 GiB will be 
+#       available for servers. This is because Striker takes the requested 
+#       3 GiB off, sees an uneven amount of RAM left and sets aside enough RAM,
+#       in addition to your requested 3 GiB, to get an even number. So the 
+#       result is that approximately 4 GiB is reserved for the host.
+#sys::unusable_ram				=	3221225472
+
+
+###############################################################################
+# Default Install Manifest value overrides                                    #
+###############################################################################
+
+# By default, Striker checks its own hostname for a prefix (x-striker0Y) and
+# uses that as the default prefix for new manifests. You can override this
+# behaviour using this variable. Setting it to a blank value prevents any 
+# prefix from being set.
+#sys::install_manifest::default::prefix				=
+
+# By default, the Anvil! sequence always sets to '01'. You can set this to a
+# different value to change this.
+#sys::install_manifest::default::sequence			=	01
+
+# By default, Striker looks at its own fully qualified hostname and uses the
+# domain name portion to set the default domain name. You can force a different
+# domain name using this variable.
+#sys::install_manifest::default::domain				=	example.com
+
+### Set the common options.
+# This is the default password to use when building the new Anvil!.
+#sys::install_manifest::default::password			=	
+
+# If you need to set any special 'ethtool' options to tune your BCN network
+# interfaces, you can do so here. If you use a variable, please escape it with
+# a backslash, like '\${DEVICE}'. 
+#sys::install_manifest::default::bcn_ethtool_opts		=	
+
+# This is the network to use for the BCN. Be sure to set '0' in the variable 
+# octets. For example, if your network is '10.20.0.0/255.255.0.0', then the 
+# value to set here is '10.20.0.0'.
+#sys::install_manifest::default::bcn_network			=	10.20.0.0
+
+# This is the subnet mask for the BCN.
+#sys::install_manifest::default::bcn_subnet			=	255.255.0.0
+
+# These are the same options as above, but for the SN and IFN.
+#sys::install_manifest::default::sn_ethtool_opts			=	
+#sys::install_manifest::default::sn_network			=	10.10.0.0
+#sys::install_manifest::default::sn_subnet			=	255.255.0.0
+#sys::install_manifest::default::ifn_ethtool_opts		=	
+#sys::install_manifest::default::ifn_network			=	10.255.0.0
+#sys::install_manifest::default::ifn_subnet			=	255.255.0.0
+
+# If your Anvil! will have access to the internet, set the default gateway and
+# DNS server addresses here.
+#sys::install_manifest::default::ifn_gateway			=	10.255.255.254
+#sys::install_manifest::default::dns1				=	8.8.8.8
+#sys::install_manifest::default::dns2				=	8.8.4.4
+
+# If you want to use custom time servers, set their IP addresses here.
+#sys::install_manifest::default::ntp1				=	
+#sys::install_manifest::default::ntp2				=	
+
+# This sets the default name of the Anvil! in the HA software stack. By 
+# default, this is set to '<prefix>-anvil-<sequence_number>' and generally 
+# should not be set manually.
+#sys::install_manifest::default::name				=	
+
+# This is the default size of the "Media Library" (size and the units, which
+# can be 'GiB' or 'TiB').
+#sys::install_manifest::default::library_size			=	40
+#sys::install_manifest::default::library_unit			=	GiB
+
+### Tune DRBD  
+# If you have a hardware RAID controller *with* flash-backed or batter-backed
+# write cache, and if the cache policy is set to write-back with FBWC/BBWC, 
+# then the following three options can be set to 'false'. In *all* other cases,
+# this must be set to 'true' (the default).
+#sys::install_manifest::default::anvil_drbd_disk_disk-barrier	=	false
+#sys::install_manifest::default::anvil_drbd_disk_disk-flushes	=	false
+#sys::install_manifest::default::anvil_drbd_disk_md-flushes	=	false
+
+# If you need to control which CPUs DRBD uses, you can do so with cpu mask. For
+# details on how to use this, see: 
+# https://drbd.linbit.com/users-guide/s-latency-tuning.html#s-latency-tuning-cpu-mask
+#sys::install_manifest::default::anvil_drbd_options_cpu-mask	=	f
+
+# These options tune how the network is handled in DRBD. See:
+# https://drbd.linbit.com/users-guide/s-throughput-tuning.html
+#sys::install_manifest::default::anvil_drbd_net_max-buffers	=	16000
+#sys::install_manifest::default::anvil_drbd_net_sndbuf-size	=	10M
+#sys::install_manifest::default::anvil_drbd_net_rcvbuf-size	=	10M
+
+### Foundation pack - Set the host names and IP addresses of the various 
+###                   foundation pack devices.
+# Ethernet switches. If you are using stacked switches, the host name and IP 
+# of the second switch can be set, but will likely be ignored.
+#sys::install_manifest::default::switch1_name			=	an-switch01
+#sys::install_manifest::default::switch1_ip			=	10.20.1.1
+#sys::install_manifest::default::switch2_name			=	an-switch02
+#sys::install_manifest::default::switch2_ip			=	10.20.1.2
+
+# This sets the switched PDU information. The 'pduX_agent' controls which fence
+# agent the Anvil! will use to communicate with it. Supported options are:
+# APC brand     - fence_apc_snmp
+# Raritan brand - fence_raritan_snmp
+# The Anvil! supports either 2 or 4 PDU configurations. If all equipment will
+# be in the same rack, you can skip pdu3 and pdu4. If you are building a 
+# dual-rack setup with a pair of PDUs per rack, then set 'pdu_count' to '4'
+# and define all four PDU entries.
+#sys::install_manifest::pdu_count				=	4
+#sys::install_manifest::default::pdu1_name			=	an-pdu01
+#sys::install_manifest::default::pdu1_ip				=	10.20.2.1
+#sys::install_manifest::default::pdu1_agent			=	fence_apc_snmp
+#sys::install_manifest::default::pdu2_name			=	an-pdu02
+#sys::install_manifest::default::pdu2_ip				=	10.20.2.2
+#sys::install_manifest::default::pdu2_agent			=	fence_apc_snmp
+#sys::install_manifest::default::pdu3_name			=	
+#sys::install_manifest::default::pdu3_ip				=	
+#sys::install_manifest::default::pdu3_agent			=	
+#sys::install_manifest::default::pdu4_name			=	
+#sys::install_manifest::default::pdu4_ip				=	
+#sys::install_manifest::default::pdu4_agent			=	
+
+# This controls the default PDU fence agent to use. The default is 
+# 'fence_apc_snmp' which supports APC-brand PDUs. If you use Raritan brand 
+# though, you may wish to set this to 'fence_raritan_snmp'.
+#sys::install_manifest::pdu_agent				=	fence_apc_snmp
+
+# This configures the UPSes.
+#sys::install_manifest::default::ups1_name			=	an-ups01
+#sys::install_manifest::default::ups1_ip				=	10.20.3.1
+#sys::install_manifest::default::ups2_name			=	an-ups02
+#sys::install_manifest::default::ups2_ip				=	10.20.3.2
+
+# This configures the optional automatic power transfer switches.
+#sys::install_manifest::default::pts1_name			=	an-pts01
+#sys::install_manifest::default::pts1_ip				=	10.20.5.1
+#sys::install_manifest::default::pts2_name			=	an-pts02
+#sys::install_manifest::default::pts2_ip				=	10.20.5.2
+
+# This tells the nodes where to find the dashboards.
+#sys::install_manifest::default::dashboard1_name			=	an-striker01
+#sys::install_manifest::default::dashboard1_bcn_ip		=	10.20.4.1
+#sys::install_manifest::default::dashboard1_ifn_ip		=	10.255.4.1
+#sys::install_manifest::default::dashboard2_name			=	an-striker02
+#sys::install_manifest::default::dashboard2_bcn_ip		=	10.20.4.2
+#sys::install_manifest::default::dashboard2_ifn_ip		=	10.255.4.2
+
+# These two sections allow for controlling the default values assigned to 
+# nodes 1 and 2. Of most important note are the pdu outlet definitions. 
+# Generally, these options should not be set so that the web interface is
+# allowed to create sensible defaults.
+# Node 1
+#sys::install_manifest::default::node1_name			=	
+#sys::install_manifest::default::node1_bcn_ip			=	
+#sys::install_manifest::default::node1_ipmi_ip			=	
+#sys::install_manifest::default::node1_sn_ip			=	
+#sys::install_manifest::default::node1_ifn_ip			=	
+#sys::install_manifest::default::node1_pdu1_outlet		=	
+#sys::install_manifest::default::node1_pdu2_outlet		=	
+#sys::install_manifest::default::node1_pdu3_outlet		=	
+#sys::install_manifest::default::node1_pdu4_outlet		=	
+
+# Node 2
+#sys::install_manifest::default::node2_name			=	
+#sys::install_manifest::default::node2_bcn_ip			=	
+#sys::install_manifest::default::node2_ipmi_ip			=	
+#sys::install_manifest::default::node2_sn_ip			=	
+#sys::install_manifest::default::node2_ifn_ip			=	
+#sys::install_manifest::default::node2_pdu1_outlet		=	
+#sys::install_manifest::default::node2_pdu2_outlet		=	
+#sys::install_manifest::default::node2_pdu3_outlet		=	
+#sys::install_manifest::default::node2_pdu4_outlet		=	
+
+### These values control what Install Manifest fields are displayed or hidden.
+# Generally speaking, nothing should be hidden. In some cases though, you may
+# wish to set a default value above and then hide the menu item so that users
+# can't modify it. To disable a field, set the appropriate value to '0'.
+# 
+# Primary configuration fields
+#sys::install_manifest::show::prefix_field			=	1
+#sys::install_manifest::show::sequence_field			=	1
+#sys::install_manifest::show::domain_field			=	1
+#sys::install_manifest::show::password_field			=	1
+#sys::install_manifest::show::bcn_network_fields		=	1
+#sys::install_manifest::show::sn_network_fields			=	1
+#sys::install_manifest::show::ifn_network_fields		=	1
+#sys::install_manifest::show::library_fields			=	1
+#sys::install_manifest::show::pool1_fields			=	0
+#sys::install_manifest::show::repository_field			=	0
+
+# Shared variables
+#sys::install_manifest::show::name_field			=	1
+#sys::install_manifest::show::dns_fields			=	1
+#sys::install_manifest::show::ntp_fields			=	1
+
+# Foundation pack
+#sys::install_manifest::show::switch_fields			=	1
+#sys::install_manifest::show::ups_fields			=	1
+#sys::install_manifest::show::pts_fields			=	1
+#sys::install_manifest::show::pdu_fields			=	1
+#sys::install_manifest::show::dashboard_fields			=	1
+	
+# Nodes 
+#sys::install_manifest::show::nodes_name_field			=	1
+#sys::install_manifest::show::nodes_bcn_field			=	1
+#sys::install_manifest::show::nodes_ipmi_field			=	1
+#sys::install_manifest::show::nodes_sn_field			=	1
+#sys::install_manifest::show::nodes_ifn_field			=	1
+#sys::install_manifest::show::nodes_pdu_fields			=	1
+
+### Runtime stuff
+# When set to '0', the results of checking for an internet connection or 
+# checking RHEL-based nodes against the Red Hat Network are suppressed.
+#sys::install_manifest::show::internet_check			=       0
+#sys::install_manifest::show::rhn_checks			=       0
+
+# Setting this to '1' switches the Install Manifest to 'Expert Mode', 
+# dramatically reducing the amount of help-text displayed beside each form
+# field.
+#sys::expert_ui							=	0
+
+# On air-gapped Anvil! systems, setting this to '1' will disable links to 
+# external sites that can't be reached in any case.
+#sys::disable_links						=	0
+
+# This controls how many (virtual) network interfaces to use for newly 
+# provisioned servers on your Anvil!. Generally, you will not want to set this
+# as '1' is the default and sufficient for most uses.
+#sys::server::nic_count						=	1
+
+# This allows you to specify the qemu network driver to use for virtual 
+# interfaces connected to the IFN, BCN or SN bridges (when they exist). In most
+# cases, only 'ifn_nic_driver' is of use. To learn more about this, see:
+# https://libvirt.org/formatdomain.html#elementsDriverBackendOptions
+#sys::server::bcn_nic_driver					=	
+#sys::server::sn_nic_driver					=	
+#sys::server::ifn_nic_driver					=	qemu
+
+# Setting this to '1' enables the APC UPS watchdog timer on new Anvil! systems.
+# This feature should be enabled carefully! It causes a timer to run on the 
+# UPSes where, if they aren't "kicked" frequently enough, they will cut off
+# all power to the Anvil! for a period of time before restoring power. In
+# remote installs where it is hard or impossible to access an Anvil!, this
+# feature could recover the Anvil! in a case like where a switch stack locks 
+# up, causing all network traffic to fail. With luck, the power cycle will
+# restore function. 
+# 
+# The risk though is that a manual shutdown of the nodes by an unaware 
+# administrator (who fails to manually stop the timer) could cause the rack to
+# lose all power unexpectedly.
+#sys::install_manifest::use_anvil-kick-apc-ups			=	1
+
+# When this is set to '1', an Anvil! node will do some sanity checks when it 
+# boots. If all is well and it can communicate with its peer, it will start
+# the cluster stack and boot server that had been running before the shutdown.
+# 
+# Note that servers set to 'Do Not Start' in Striker, or that were gracefully
+# shut off in striker, will stay off. Servers stopped as part of a Cold 
+# Shutdown and any servers running after a total loss of power or an emergency
+# shutdown will start.
+# 
+# Setting this to '0' will disable this feature in future Install Manifests.
+#sys::install_manifest::use_anvil-safe-start			=	1
+
+
+###############################################################################
+# Anvil! definitions                                                          #
+###############################################################################
+
+# This defines the cluster. If you want to defined multiple clusters for
+# Striker, copy an entry in this section and increment the variable integer.
+# The order and value do not matter. It's simply a differentiator. If only one
+# entry exists, the Dashboard's Anvil! selection screen will not show and the
+# sole entry will be auto-selected.
+
+# Variables are:
+# name:        Must match the name set in the Anvil!'s "cluster.conf" file. 
+# nodes:       A comma-separated list of nodes. On the Striker server, this
+#              must be resolvable to the target machine (ie: via /etc/hosts +
+#              ~/.ssh/config)
+# company:     A free-form field used to show the owner of the Anvil!. 
+#              Particularly useful for resellers and companies with divisions.
+# description: Also a free-form field used to describe the purpose of the
+#              particular Anvil!.
+# url:         If defined, a link to the given URL will be shown beside the
+#              Anvil!'s name in the Dashboard's Anvil! selection screen. Useful
+#              for linking to internal documentation or similar.
+# ricci_pw:    This is the password used by the 'ricci' user on the Anvil!'s
+#              nodes. It must be set accurately in order to add or remove
+#              servers. If a password is needed to log into one of the nodes,
+#              this password will be used. If this doesn't work, you will need
+#              to manually add the dashboard's public key to each node's root
+#              user's 'authorized_keys' file.
+-->
+
 		<!-- LSI related messages -->
 		<key name="lsi_0001">Unmark Physical Disk as Hot-Spare</key>
 		<key name="lsi_0002"><![CDATA[Successfully unmarked the disk <span class="highlight_detail">#!variable!disk!#</span> on adapter <span class="highlight_detail">##!variable!disk!#</span> as a hot-spare.]]></key>

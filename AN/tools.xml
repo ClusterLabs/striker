@@ -119,6 +119,8 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0022">The DB with ID: [#!variable!id!#] is behind.</key>
 		<key name="tools_log_0023">The database: [#!variable!name!#] on: [#!variable!host!#] needs to have the: [#!variable!file!#] SQL schema loaded.</key>
 		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
+		<key name="tools_log_0025"><![CDATA[<!-- Start template: [#!variable!template!#] from file: [#!variable!file!#] -->]]></key>
+		<key name="tools_log_0026"><![CDATA[<!-- End template: [#!variable!template!#] from file: [#!variable!file!#] -->]]></key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -547,12 +549,12 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0059"><![CDATA[The 'AN::Tools::Cman->boot_server()' method was not passed a 'server' name to boot.]]></key>
 		<key name="error_message_0060">Failed to connect to any database, unable to proceed.</key>
 		<key name="error_message_0061">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
-		<key name="error_message_0062">No ID passed to the AN::Tools::DB->load_schema() method.</key>
-		<key name="error_message_0063">No schema file passed to the AN::Tools::DB->load_schema() method.</key>
-		<key name="error_message_0064">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was not found.</key>
-		<key name="error_message_0065">The schema file: [#!variable!file!#] passed to the AN::Tools::DB->load_schema() method was found but could not be read.</key>
+		<key name="error_message_0062"><![CDATA[The 'AN::Tools::DB' module's 'load_schema()' method was called without being passwd a database ID.]]></key>
+		<key name="error_message_0063"><![CDATA[The 'AN::Tools::DB' module's 'load_schema()' method was called without being passed a schema file.]]></key>
+		<key name="error_message_0064"><![CDATA[The 'AN::Tools::DB' module's 'load_schema()' method was passed a schema file that wasn't found.]]></key>
+		<key name="error_message_0065"><![CDATA[The 'AN::Tools::DB' module's 'load_schema()' method was passed a schema file was found but could not be read.]]></key>
 		<key name="error_message_0066">Failed to read the file: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
-		<key name="error_message_0067">No ID passed to the AN::Tools::DB->initialize_db() method.</key>
+		<key name="error_message_0067"><![CDATA[The 'AN::Tools::DB' module's 'initialize_db()' method was called without a DB ID.]]></key>
 		<key name="error_message_0068">
 Failed to send an alert because this host is not yet in the database. This can happen on the very first run of #!string!an_brand_0002!# when the peer is not accessible so the initial attempt to connect to the DB fails and tries to register an alert before this host gets into the DB. If this is the case, this warning can be ignored.
 * Details of the alert:
@@ -562,10 +564,15 @@ Failed to send an alert because this host is not yet in the database. This can h
 - Name:           [#!variable!alert_name!#]
 - Timestamp:      [#!variable!modified_date!#]
 		</key>
-		<key name="error_message_0069">The local machine's UUID was not read properly. It should be stored in: [#!data!sys::host_uuid!#] and contain hexadecimal characters in the format: '012345-6789-abcd-ef01-23456789abcd'. If this file exists and if there is a string in the file, please verify that it is structured correctly. Please do not simply replace it! All sensor data that was read by this host is mapped back to this machine using that UUID. Generating a new UUID will disconnect that historical data from this machine.</key>
+		<key name="error_message_0069"><![CDATA[The 'AN::Tools::Get' method's 'cgi()' method was called without an array reference of variable names to check and read.]]></key>
 		<key name="error_message_0070">Failed to call: [#!variable!shell_call!#]. The error was: [#!variable!error!#].</key>
-		<key name="error_message_0071"><![CDATA[The 'AN::Tools::Cman->stop_server()' method was not passed a 'server' name to shut down.]]></key>
-		<key name="error_message_0072">Asked to do an UPDATE or INSERT using the database with ID: [#!variable!id!#] but the file handle has been closed (or was never opened). The database query was: [#!variable!query!#] on: [#!variable!server!#].</key>
+		<key name="error_message_0071"><![CDATA[The 'AN::Tools::Cman' module's 'stop_server()' method was not passed a 'server' name to shut down.]]></key>
+		<key name="error_message_0072"><![CDATA[The 'AN::Tools::DB' module's 'do_db_write()' method was asked to do an UPDATE or INSERT for the database with ID: [#!variable!id!#] but the file handle has been closed (or was never opened). The database query was: [#!variable!query!#] on: [#!variable!server!#].]]></key>
+		<key name="error_message_0073"><![CDATA[The 'AN::Tools::Get' module's 'template()' method was called without a template file passed.]]></key>
+		<key name="error_message_0074"><![CDATA[The 'AN::Tools::Get' module's 'template()' method was called without a template name passed.]]></key>
+		<key name="error_message_0075"><![CDATA[The 'AN::Tools::Get' module's 'template()' method failed to find the template file: [#!variable!file!#].]]></key>
+		<key name="error_message_0076"><![CDATA[The 'AN::Tools::String' module's private '_process_string_replace()' method hit an infitie loop while replacing "replace" variables in the template file: [#!variable!file!#] in the template: [#!variable!template!#]. If this is triggered erroneously, increase the 'sys::error_limit' value.]]></key>
+		<key name="error_message_0077"><![CDATA[]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

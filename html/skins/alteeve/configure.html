@@ -1,0 +1,60 @@
+<!-- This contains the templates used in the various configuration pages of Striker. -->
+
+<!-- start configure-main-page -->
+<!DOCTYPE html>
+<html lang="#!data!sys::html_lang!#">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>#!string!brand_0001!# - #!string!brand_0002!#</title>
+	<link rel="stylesheet" href="#!data!url::skins!#/#!data!sys::skin!#/common.css" media="screen" />
+	<script type="text/javascript" src="#!data!url::skins!#/#!data!sys::skin!#/jquery-latest.js"></script>
+</head>
+<body>
+<br />
+#!replace!header!#
+
+#!replace!body!#
+
+#!replace!footer!#
+<!-- end configure-main-page -->
+
+
+
+<!-- This contains panels inserted into templates -->
+
+<!-- start configure-header -->
+<table class="hidden_table">
+	<tr>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!back!#
+		</td>
+		<td class="td_hidden">
+			<a href="/cgi-bin/configure"><img class="logo" src="#!data!url::skins!#/#!data!sys::skin!#/images/logo_striker_01.png" alt="#!string!brand_0001!# - #!string!brand_0002!#"></a>
+		</td>
+		<td class="td_hidden" style="width: 50px;">
+			#!replace!refresh!#
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end configure-header -->
+
+<!-- start configure-menu-entry -->
+<table class="hidden_table" width="100%">
+	<tr>
+		<td class="td_hidden">
+			<span class="legal">
+			#!string!legal_0001!#<br />
+			#!string!legal_0002!#<br />
+			#!string!legal_0003!#<br />
+			</span>
+		</td>
+	</tr>
+</table>
+</body>
+<script type="text/javascript" src="#!data!url::skins!#/#!data!sys::skin!#/common.js"></script>
+<script type="text/javascript" src="#!data!url::skins!#/#!data!sys::skin!#/config.js"></script>
+<img src="#!data!url::skins!#/#!data!sys::skin!#/images/t.png" onload="show_on_load();" border="0" />
+<img src="#!data!url::skins!#/#!data!sys::skin!#/images/t.png" onload="hide_on_load();" border="0" />
+</html>
+<!-- end configure-menu-entry -->

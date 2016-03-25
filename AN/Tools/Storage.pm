@@ -232,7 +232,7 @@ sub prep_local_uuid
 	if ($an->data->{sys}{host_uuid} !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
 	{
 		# derp
-		$an->Log->entry({log_level => 0, message_key => "error_message_0069", file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 0, message_key => "error_message_0061", file => $THIS_FILE, line => __LINE__});
 		### TODO: Make this exit 69?
 		exit(7);
 	}

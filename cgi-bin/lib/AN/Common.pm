@@ -1211,7 +1211,7 @@ sub template
 	# Down the road, I may want to have different suffixes depending on the
 	# user's environment. For now, it'll always be ".html".
 	my $current_dir   = get_current_directory($conf);
-	my $template_file = $current_dir."/".$conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file;
+	my $template_file = $conf->{path}{skins}."/".$conf->{sys}{skin}."/".$file;
 	
 	# Make sure the file exists.
 	if (not -e $template_file)

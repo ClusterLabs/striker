@@ -837,9 +837,8 @@ sub _process_string_insert_strings
 	return ($parameter->{string});
 }
 
-# This takes a string with '#!variable!*!#' keys, where '*' is a hash key matching
-# an entry in the passed hash reference and uses the data from the hash to
-# replace the matching '#!variable!*!#' entry.
+# This takes a string with '#!variable!*!#' keys, where '*' is a hash key matching an entry in the passed 
+# hash reference and uses the data from the hash to replace the matching '#!variable!*!#' entry.
 sub _insert_variables_into_string
 {
 	my $self      = shift;
@@ -887,6 +886,50 @@ sub _insert_variables_into_string
 	
 	#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 	return($parameter->{string});
+}
+
+# This is used by the 'template()' function to insert '#!replace!...!#' replacement variables in templates.
+sub _process_string_replace
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $string   = $parameter->{string};
+	my $replace  = $parameter->{replace};
+	my $file     = $parameter->{file};
+	my $template = $parameter->{template};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "string",   value1 => $string, 
+		name2 => "replace",  value2 => $replace, 
+		name3 => "file",     value3 => $file, 
+		name4 => "template", value4 => $template, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_string_replace" }, message_key => "an_variables_0004", message_variables => { 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $i = 0;
+	while ($string =~ /#!replace!(.+?)!#/)
+	{
+		my $key   =  $1;
+		my $value =  defined $replace->{$key} ? $replace->{$key} : "!! Undefined replacement key: [$key] !!\n";
+		$string   =~ s/#!replace!$key!#/$value/;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "string", value1 => $string,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Die if I've looped too many times.
+		if ($i > $an->data->{sys}{error_limit})
+		{
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0076", message_variables => {
+				file     => $file, 
+				template => $template, 
+			}, code => 76, file => "$THIS_FILE", line => __LINE__});
+		}
+		$i++;
+	}
+	
+	return($string);
 }
 
 1;

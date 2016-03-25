@@ -127,7 +127,7 @@ sub do_db_write
 					id     => $id, 
 					query  => $query, 
 					server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
-				}, code => 2, file => "$THIS_FILE", line => __LINE__});
+				}, code => 72, file => "$THIS_FILE", line => __LINE__});
 			}
 			
 			# Just one query.

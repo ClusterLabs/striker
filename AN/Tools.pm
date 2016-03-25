@@ -508,6 +508,7 @@ sub _set_paths
 	$an->data->{path}{initd}           = "/etc/init.d";
 	$an->data->{path}{shared}          = "/shared";
 	$an->data->{path}{shared_files}    = "/shared/files";
+	$an->data->{path}{skins}           = "/var/www/html/skins";
 	
 	# Tools
 	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups",
