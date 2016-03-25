@@ -25,7 +25,7 @@ my $an = AN::Tools->new({data => {
 		'log'		=>	{
 			file		=>	"/var/log/striker.log", 
 			language	=>	"en_CA",
-			level		=>	1,
+			level		=>	2,
 		},
 		path		=>	{
 			striker_config		=>	"/etc/striker/striker.conf",
@@ -35,6 +35,7 @@ my $an = AN::Tools->new({data => {
 			error_limit		=>	1000,
 			language		=>	"en_CA",
 			skin			=>	"alteeve",
+			version			=>	"2.0b",
 		},
 		url		=>	{
 			skins			=>	"/skins",
@@ -44,6 +45,7 @@ my $an = AN::Tools->new({data => {
 });
 
 # Initialize.
+print "Content-type: text/html; charset=utf-8\n\n";
 $an->default_language    ($an->data->{sys}{language});
 $an->default_log_language($an->data->{'log'}{language});
 $an->default_log_file    ($an->data->{'log'}{file});
@@ -79,38 +81,40 @@ sub show_main_menu
 {
 	my ($an) = @_;
 	
-	my $back_image = $an->Get->template({
-			file     => "common.html",
-			template => "image", 
-			replace  => {
-				image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
-				alt_text     => "#!string!button_0001!#",
-				id           => "back_icon",
-			},
-		});
-	my $refresh_image = $an->Get->template({
-			file     => "common.html", 
-			template => "image", 
-			replace  => {
-				image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
-				alt_text     => "#!string!button_0002!#",
-				id           => "refresh_icon",
-			},
-		});
-	my $header = $an->Get->template({
-			file		=>	"configure.html",
-			template	=>	"configure-header",
-			replace		=>	{
-				back		=>	$back_image,
-				refresh		=>	$refresh_image,
-			},
-		});
+	my $back_image = $an->Get->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "back_image", value1 => $back_image,
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $footer = $an->Get->template({
-				file		=>	"configure.html",
-				template	=>	"configure-footer",
-			});
+	my $refresh_image = $an->Get->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "refresh_image", value1 => $refresh_image,
+	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $header = $an->Get->template({file => "configure.html", template => "configure-header", replace => {
+			back		=>	$back_image,
+			refresh		=>	$refresh_image,
+		}});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "header", value1 => $header,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $footer = $an->Get->template({file => "configure.html", template => "configure-footer"});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "footer", value1 => $footer,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "back_image", value1 => $back_image,
+	}, file => $THIS_FILE, line => __LINE__});
 	print $an->Get->template({
 			file		=>	"configure.html",
 			template	=>	"configure-main-page",

@@ -51,17 +51,7 @@ sub force_utf8
 		else
 		{
 			my $an = $self->parent;
-			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0001",
-				message_key	=>	"error_message_0004",
-				message_variables	=>	{
-					set		=>	$set,
-				},
-				code		=>	14,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
-			});
+			$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0004", message_variables => { set => $set }, code => 14, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -99,81 +89,33 @@ sub get
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	my $key;
-	my $hash = $an->data;
-	
-	my $variables;
-	my $language = $an->default_language;
-	
 	# Catch infinite loops
 	my $i     = 0;
 	my $limit = $an->_error_limit;
 	
-	# Now see if the user passed the values in a hash reference or directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$key       = $parameter->{key}       if $parameter->{key};
-		$variables = $parameter->{variables} ?  $parameter->{variables} : "";
-		$language  = $parameter->{language}  if $parameter->{language};
-		$hash      = $parameter->{hash}      if $parameter->{hash};
-	}
-	else
-	{
-		# Values passed directly.
-		$key       = $parameter;
-		$variables = $_[0] if defined $_[0];
-		$language  = $_[1] if defined $_[1];
-		$hash      = $_[2] if defined $_[2];
-	}
-	
 	# Make sure we got a key.
-	if (not $key)
+	if (not $parameter->{key})
 	{
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0001",
-			message_key	=>	"error_message_0001",
-			code		=>	20,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0001", code => 20, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
+	
+	my $key       = $parameter->{key};
+	my $variables = $parameter->{variables} ? $parameter->{variables} : {};
+	my $language  = $parameter->{language}  ? $parameter->{language}  : $an->default_language;
+	my $hash      = $parameter->{hash}      ? $parameter->{hash}      : $an->data;
 	
 	# Make sure that 'hash' is a hash reference
 	if (ref($hash) ne "HASH")
 	{
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0001",
-			message_key	=>	"error_message_0005",
-			message_variables	=>	{
-				hash		=>	$hash,
-			},
-			code	=>	15,
-			file	=>	"$THIS_FILE",
-			line	=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0005", message_variables => { hash => $hash }, code => 15, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 
 	# Make sure that 'variables' is an array reference, if set.
 	if (($variables) && (ref($variables) ne "HASH"))
 	{
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0001",
-			message_key	=>	"error_message_0006",
-			message_variables	=>	{
-				variables	=>	$variables,
-			},
-			code	=>	16,
-			file	=>	"$THIS_FILE",
-			line	=>	__LINE__
-		});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0001", message_key => "error_message_0006", message_variables => { variables => $variables }, code => 16, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -195,18 +137,10 @@ sub get
 	if (not exists $hash->{strings}{lang}{$language}{key}{$key}{content})
 	{
 		print "$THIS_FILE ".__LINE__."; language: [$language], key: [$key], no string key.\n";
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0004",
-			message_key		=>	"error_message_0007",
-			message_variables	=>	{
-				key			=>	$key,
-				language		=>	$language,
-			},
-			code			=>	18,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0004", message_key => "error_message_0007", message_variables => {
+			key		=>	$key,
+			language	=>	$language,
+		}, code => 18, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -231,14 +165,7 @@ sub get
 		{
 			# Other variable key, so this is fatal.
 			print "$THIS_FILE ".__LINE__."; String key: [$key], containing: [$string] has a variable substitution, but no variables were passed in.\n";
-			$an->Alert->error({
-				fatal		=>	1,
-				title_key	=>	"error_title_0005",
-				message_key	=>	"error_message_0008",
-				code		=>	36,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
-			});
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0008", code => 36, file => $THIS_FILE, line => __LINE__});
 			return (undef);
 		}
 	}
@@ -269,7 +196,7 @@ sub get
 sub read_words
 {
 	my $self      = shift;
-	my $parameter = $_[0] ? shift : "";
+	my $parameter = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -278,67 +205,19 @@ sub read_words
 	$an->Alert->_set_error;
 	
 	# Setup my variables.
-	my $file = $self->{CORE_WORDS};
-	my $hash = $an->data;
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$file = $parameter->{file} if $parameter->{file};
-		$hash = $parameter->{hash} if ref($parameter->{hash}) eq "HASH";
-	}
-	else
-	{
-		# Values passed directly.
-		$file = $parameter;
-		$hash = shift if ((defined $_[0]) && (ref($_[0]) eq "HASH"));
-	}
-	#print "$THIS_FILE ".__LINE__."; words file: [$file], hash: [$hash]\n";
-	
-	# This falls back to the CORE_WORDS if the user passed an empty file.
-	$file = $an->Storage->find({
-		file		=>	"$self->{CORE_WORDS}",
-		fatal		=>	1,
-	}) if not $file;
+	my $file = $parameter->{file} ? $parameter->{file} : $an->Storage->find({file => $self->{CORE_WORDS}, fatal => 1});
+	my $hash = $parameter->{hash} ? $parameter->{hash} : $an->data;
 	
 	# Make sure that the 'file' exists and is readable.
 	#print "$THIS_FILE ".__LINE__."; words file: [$file]\n";
 	if (not -e $file)
 	{
-		#print "$THIS_FILE ".__LINE__."; Couldn't find: [$file]\n";
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0006",
-			message_key	=>	"error_message_0009",
-			message_variables	=>	{
-				file		=>	$file,
-			},
-			code		=>	11,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0006", message_key => "error_message_0009", message_variables => { file => $file }, code => 11, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	if (not -r $file)
 	{
-		#print "$THIS_FILE ".__LINE__."; Couldn't read: [$file]\n";
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0007",
-			message_key	=>	"error_message_0010",
-			message_variables	=>	{
-				file		=>	$file,
-			},
-			code		=>	12,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0007", message_key => "error_message_0010", message_variables => { file => $file }, code => 12, file => $THIS_FILE, line => __LINE__});
 		return (undef);
 	}
 	
@@ -353,21 +232,11 @@ sub read_words
 	# Load IO::Handle if needed.
 	$an->_load_io_handle() if not $an->_io_handle_loaded();
 	
+	### TODO: Replace this with XMLin
 	# Read in the XML file with the word strings to load.
 	my $read       = IO::Handle->new;
 	my $shell_call = "<$file";
-	open ($read, $shell_call) || $an->Alert->error({
-		fatal		=>	1,
-		title_key	=>	"error_title_0008",
-		message_key	=>	"error_message_0011",
-		message_variables	=>	{
-			file		=>	$file,
-			error		=>	$!,
-		},
-		code		=>	28,
-		file		=>	"$THIS_FILE",
-		line		=>	__LINE__
-	});
+	open ($read, $shell_call) or $an->Alert->error({fatal => 1, title_key => "error_title_0008", message_key => "error_message_0011", message_variables => { file => $file, error => $! }, code => 28, file => "$THIS_FILE", line => __LINE__});
 	
 	# If I have been asked to read in UTF-8 mode, do so.
 	if ($an->String->force_utf8)
@@ -380,7 +249,6 @@ sub read_words
 	{
 		chomp;
 		my $line = $_;
-		#print "$THIS_FILE ".__LINE__."; line: [$line]\n" if $file =~ /scan-bond/;
 		
 		### Deal with comments.
 		# Look for a clozing stanza if I am (still) in a comment.
@@ -437,14 +305,12 @@ sub read_words
 				my ($key) = ($line =~ /^<(.*?) /);
 				my ($name, $data) = ($line =~ /^<$key name="(.*?)">(.*?)<\/$key>/);
 				$data = $cdata if $cdata;
-				#print "$THIS_FILE ".__LINE__."; key: [$key], name: [$name], data: [$data]\n" if not $cdata;
 				
-				# If I picked up data within a CDATA block,
-				# push it into 'data' proper.
+				# If I picked up data within a CDATA block, push it into 'data' proper.
 				$data = $cdata if $cdata;
 				
-				# No break out the data and push it into the
-				# corresponding keyed hash reference '$hash'.
+				# No break out the data and push it into the corresponding keyed hash 
+				# reference '$hash'.
 				$an->_make_hash_reference($hash, "${key_name}::${key}::${name}::content", $data);
 				
 				next;
@@ -487,8 +353,7 @@ sub read_words
 			{
 				my $key  = $1;
 				my $name = $2;
-				# Don't scope 'data' locally in case it spans
-				# multiple lines.
+				# Don't scope 'data' locally in case it spans multiple lines.
 				   $data = $3;
 				
 				# Parse the data now.
@@ -522,9 +387,8 @@ sub read_words
 		else
 		{
 			### I'm in a multi-line data block.
-			# If this line doesn't close the data block, feed it
-			# wholesale into 'data'. If it does, see how much of
-			# this line, if anything, is pushed into 'data'.
+			# If this line doesn't close the data block, feed it wholesale into 'data'. If it 
+			# does, see how much of this line, if anything, is pushed into 'data'.
 			if ($line !~ /<\/$closing_key>/)
 			{
 				$data .= "$line\n";
@@ -536,9 +400,8 @@ sub read_words
 				$line    =~ s/(.*?)<\/$closing_key>/$1/;
 				$data    .= "$line";
 				
-				# If this line contain new-line control
-				# characters, break the line up into multiple
-				# lines and process them seperately.
+				# If this line contain new-line control characters, break the line up into 
+				# multiple lines and process them seperately.
 				my $save_data = "";
 				my @lines     = split/\n/, $data;
 				
@@ -548,8 +411,7 @@ sub read_words
 				# Loop time.
 				foreach my $line (@lines)
 				{
-					# If I am in a CDATA block, check for
-					# the closing stanza.
+					# If I am in a CDATA block, check for the closing stanza.
 					if (($in_cdata == 1) && ($line =~ /]]>$/))
 					{
 						# CDATA closes here.
@@ -558,10 +420,8 @@ sub read_words
 						$in_cdata  =  0;
 					}
 					
-					# If this line is a self-contained
-					# CDATA block, pull the data out.
-					# Otherwise, check if this line starts
-					# a CDATA block.
+					# If this line is a self-contained CDATA block, pull the data out.
+					# Otherwise, check if this line starts a CDATA block.
 					if (($line =~ /^<\!\[CDATA\[/) && ($line =~ /]]>$/))
 					{
 						# CDATA opens and closes in this line.
@@ -575,8 +435,8 @@ sub read_words
 						$in_cdata =  1;
 					}
 					
-					# If I am in a CDATA block, feed the
-					# (sub)line into 'save_data' wholesale.
+					# If I am in a CDATA block, feed the (sub)line into 'save_data' 
+					# wholesale.
 					if ($in_cdata == 1)
 					{
 						# Don't analyze, just store.
@@ -642,27 +502,27 @@ sub _process_string
 	$parameter->{string} = $an->String->_insert_variables_into_string({
 			string		=>	$parameter->{string},
 			variables	=>	$parameter->{variables},
-	});
+		});
 	
 	while ($parameter->{string} =~ /#!([^\s]+?)!#/)
 	{
 		# Substitute 'word' keys, but without 'variables'. This has to be first! 'protect' will catch
 		# 'word' keys, because no where else are they allowed.
 		$parameter->{string} = $an->String->_process_string_insert_strings({
-			  string	=>	$parameter->{string},
-			  language	=>	$parameter->{language},
-			  hash		=>	$parameter->{hash},
-		});
+				string		=>	$parameter->{string},
+				language	=>	$parameter->{language},
+				hash		=>	$parameter->{hash},
+			});
 		
 		# Protect unmatchable keys.
 		$parameter->{string} = $an->String->_protect({
-			string		=>	$parameter->{string},
-		});
+				string	=>	$parameter->{string},
+			});
 		
 		# Inject any 'data' values.
 		$parameter->{string} = $an->String->_insert_data({
-			string	=>	$parameter->{string},
-		});
+				string	=>	$parameter->{string},
+			});
 		
 		die "$THIS_FILE ".__LINE__."; Infinite loop detected while processing the string: [$parameter->{string}], exiting.\n" if $i > $limit;
 		$i++;
@@ -670,13 +530,13 @@ sub _process_string
 	
 	# Restore and unrecognized substitution values.
 	$parameter->{string} = $an->String->_restore_protected({
-		string		=>	$parameter->{string},
-	});
+			string		=>	$parameter->{string},
+		});
 	
 	# Do any output mode specific formatting.
 	$parameter->{string} = $an->String->_format_mode({
-		string		=>	$parameter->{string},
-	});
+			string		=>	$parameter->{string},
+		});
 	
 	return ($parameter->{string});
 }
@@ -684,18 +544,16 @@ sub _process_string
 # Do any output mode specific formatting.
 sub _format_mode
 {
-	my $self  = shift;
+	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
 	
-	my $an    = $self->parent;
-	
-	# I don't think I need this now as I only wrap the string after it's
-	# been processed by 'print_template'. It may have future use though.
+	# I don't think I need this now as I only wrap the string after it's been processed by 
+	# 'print_template'. It may have future use though.
 	return ($parameter->{string});
 }
 
-# This restores the original key format for keys that were protected by the
-# '_protect' method.
+# This restores the original key format for keys that were protected by the '_protect' method.
 sub _restore_protected
 {
 	my $self      = shift;
@@ -706,9 +564,7 @@ sub _restore_protected
 	my $i = 0;
 	while ($parameter->{string} =~ /!#[^\s]+?#!/)
 	{
-		#print "$THIS_FILE ".__LINE__."; >> string: [$parameter->{string}]\n";
 		$parameter->{string} =~ s/!#([^\s]+?)#!/#!$1!#/g;
-		#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 		
 		if ($i > $an->_error_limit)
 		{
@@ -769,6 +625,44 @@ sub _insert_data
 		$i++;
 	}
 	
+	### TODO: Phase this out. All #!conf!x!# need to be replaced with #!data!x!# in strings and 
+	###       templates.
+	while ($parameter->{string} =~ /#!conf!(.+?)!#/)
+	{
+		my $id = $1;
+		if ($id =~ /::/)
+		{
+			# Multi-dimensional hash.
+			my $value = $an->_get_hash_reference({
+				key	=>	$id,
+			});
+			if (not defined $value)
+			{
+				$parameter->{string} =~ s/#!conf!$id!#/!!a[$id]!!/;
+			}
+			else
+			{
+				$parameter->{string} =~ s/#!conf!$id!#/$value/;
+			}
+		}
+		else
+		{
+			# One dimension
+			if (not defined $an->data->{$id})
+			{
+				$parameter->{string} =~ s/#!conf!$id!#/!!b[$id]!!/;
+			}
+			else
+			{
+				my $value            =  $an->data->{$id};
+				$parameter->{string} =~ s/#!conf!$id!#/$value/;
+			}
+		}
+		
+		die "Infinite loop detected while replacing data keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
+		$i++;
+	}
+	
 	return ($parameter->{string});
 }
 
@@ -782,17 +676,15 @@ sub _protect
 	my $i         = 0;
 	foreach my $check ($parameter->{string} =~ /#!([^\s]+?)!#/)
 	{
-		#print "$THIS_FILE ".__LINE__."; check: [$check]\n";
 		if (($check !~ /^free/) &&
 		    ($check !~ /^replace/) &&
 		    ($check !~ /^data/) &&
+		    ($check !~ /^conf/) &&
 		    ($check !~ /^word/) &&
 		    ($check !~ /^var/))
 		{
 			# Simply invert the '#!...!#' to '!#...#!'.
-			#print "$THIS_FILE ".__LINE__."; >> string: [$parameter->{string}]\n";
 			$parameter->{string} =~ s/#!($check)!#/!#$1#!/g;
-			#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 		}
 		
 		die "Infinite loop detected while protecting replacement keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
@@ -802,9 +694,9 @@ sub _protect
 	return ($parameter->{string});
 }
 
-# This is called to process '#!string!...!#' keys in string. It DOES NOT
-# support substituting '#!variable!x!#' keys found in imported word strings!
-# This is meant to insert simple word strings into template files.
+# This is called to process '#!string!...!#' keys in string. It DOES NOT support substituting 
+# '#!variable!x!#' keys found in imported word strings! This is meant to insert simple word strings into 
+# template files.
 sub _process_string_insert_strings
 {
 	my $self      = shift;
@@ -817,11 +709,11 @@ sub _process_string_insert_strings
 	{
 		my $key      = $1;
 		my $say_word = $an->String->get({
-			  key		=>	$key,
-			  language	=>	$parameter->{language},
-			  hash		=>	$parameter->{hash},
-			  variables	=>	undef,
-		});
+				key		=>	$key,
+				language	=>	$parameter->{language},
+				hash		=>	$parameter->{hash},
+				variables	=>	undef,
+			});
 		if ($say_word)
 		{
 			$parameter->{string} =~ s/#!string!$key!#/$say_word/;
@@ -846,26 +738,22 @@ sub _insert_variables_into_string
 	my $an        = $self->parent;
 	my $i         = 0;
 	
-	#print "$THIS_FILE ".__LINE__."; string: [$parameter->{string}], parameter: [$parameter]\n";
 	while ($parameter->{string} =~ /#!variable!(.+?)!#/s)
 	{
 		my $variable = $1;
 		
-		# Sometimes, #!variable!*!# is used in explaining things to 
-		# users. So we need to escape it. It will be restored later in
-		# '_restore_protected()'.
+		# Sometimes, #!variable!*!# is used in explaining things to users. So we need to escape it. 
+		# It will be restored later in '_restore_protected()'.
 		if ($variable eq "*")
 		{
 			$parameter->{string} =~ s/#!variable!\*!#/!#variable!*#!/;
 			next;
 		}
 		
-		#print "$THIS_FILE ".__LINE__."; variable: [$variable] -> [$parameter->{variables}{$variable}]\n";
 		if (not defined $parameter->{variables}{$variable})
 		{
-			# I can't expect there to always be a defined value in
-			# the variables array at any given position so if it's
-			# blank I blank the key.
+			# I can't expect there to always be a defined value in the variables array at any 
+			# given position so if it's blank I blank the key.
 			$parameter->{string} =~ s/#!variable!$variable!#//;
 		}
 		else
@@ -875,7 +763,6 @@ sub _insert_variables_into_string
 			$parameter->{string} =~ s/#!variable!$variable!#/$value/;
 		}
 		
-		
 		# Die if I've looped too many times.
 		if ($i > $an->_error_limit)
 		{
@@ -884,7 +771,6 @@ sub _insert_variables_into_string
 		$i++;
 	}
 	
-	#print "$THIS_FILE ".__LINE__."; << string: [$parameter->{string}]\n";
 	return($parameter->{string});
 }
 

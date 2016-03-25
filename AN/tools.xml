@@ -119,8 +119,8 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0022">The DB with ID: [#!variable!id!#] is behind.</key>
 		<key name="tools_log_0023">The database: [#!variable!name!#] on: [#!variable!host!#] needs to have the: [#!variable!file!#] SQL schema loaded.</key>
 		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
-		<key name="tools_log_0025"><![CDATA[<!-- Start template: [#!variable!template!#] from file: [#!variable!file!#] -->]]></key>
-		<key name="tools_log_0026"><![CDATA[<!-- End template: [#!variable!template!#] from file: [#!variable!file!#] -->]]></key>
+		<key name="tools_log_0025">Start template: [#!variable!template!#] from file: [#!variable!file!#]</key>
+		<key name="tools_log_0026">End template: [#!variable!template!#] from file: [#!variable!file!#]</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>

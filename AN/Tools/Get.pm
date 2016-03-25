@@ -173,14 +173,14 @@ sub template
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0074", code => 74, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	my $file               = $parameter->{file};
-	my $template           = $parameter->{template};
-	my $replace            = $parameter->{replace}            ? $parameter->{replace}            : {};
-	my $hide_template_name = $parameter->{hide_template_name} ? $parameter->{hide_template_name} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "file",               value1 => $file,
-		name2 => "template",           value2 => $template,
-		name3 => "hide_template_name", value3 => $hide_template_name,
+	my $file       = $parameter->{file};
+	my $template   = $parameter->{template};
+	my $replace    = $parameter->{replace}    ? $parameter->{replace}    : {};
+	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "file",       value1 => $file,
+		name2 => "template",   value2 => $template,
+		name3 => "no_comment", value3 => $no_comment,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my @contents;
@@ -233,13 +233,17 @@ sub template
 	
 	# Now parse the contents for replacement keys.
 	my $page = "";
-	if (not $hide_template_name)
+	if (not $no_comment)
 	{
 		# Add the template opening comment
-		$page .= $an->String->get({key => "tools_log_0025", variables => { 
+		my $comment = $an->String->get({key => "tools_log_0025", variables => { 
 				template => $template, 
 				file     => $file,
-			}})."\n";
+			}});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "comment", value1 => $comment,
+		}, file => $THIS_FILE, line => __LINE__});
+		$page .= "<!-- $comment -->\n";
 	}
 	foreach my $string (@contents)
 	{
@@ -264,13 +268,17 @@ sub template
 
 		$page .= "$string\n";
 	}
-	if (not $hide_template_name)
+	if (not $no_comment)
 	{
 		# Add the closing comment
-		$page .= $an->String->get({key => "tools_log_0026", variables => { 
+		my $comment = $an->String->get({key => "tools_log_0026", variables => { 
 				template => $template, 
 				file     => $file,
-			}})."\n\n";
+			}});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "comment", value1 => $comment,
+		}, file => $THIS_FILE, line => __LINE__});
+		$page .= "<!-- $comment -->\n";
 	}
 	
 	return($page);
