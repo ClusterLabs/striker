@@ -5,6 +5,71 @@ SET client_encoding = 'UTF8';
 CREATE SCHEMA IF NOT EXISTS history;
 
 
+-- This stores infomation for sending email alerts. 
+CREATE TABLE smtp (
+	smtp_uuid		uuid				not null	primary key,	-- 
+	smtp_server		text				not null,			-- example; mail.example.com
+	smtp_port		integer				not null	default 587,
+	smtp_username		text				not null,			-- This is the user name (usually email address) used when authenticating against the mail server.
+	smtp_password		text,								-- This is the password used when authenticating against the mail server
+	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
+	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
+	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE smtp OWNER TO #!variable!user!#;
+
+CREATE TABLE history.smtp (
+	history_id		bigserial,
+	smtp_uuid		uuid,
+	smtp_server		text,
+	smtp_port		integer,
+	smtp_username		text,
+	smtp_password		text,
+	smtp_security		text,
+	smtp_authentication	text,
+	smtp_helo_domain	text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.smtp OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_smtp() RETURNS trigger
+AS $$
+DECLARE
+	history_smtp RECORD;
+BEGIN
+	SELECT INTO history_smtp * FROM smtp WHERE host_uuid = new.host_uuid;
+	INSERT INTO history.smtp
+		(smtp_uuid, 
+		 smtp_server, 
+		 smtp_port, 
+		 smtp_username, 
+		 smtp_password, 
+		 smtp_security, 
+		 smtp_authentication, 
+		 smtp_helo_domain, 
+		 modified_date)
+	VALUES
+		(history_smtp.smtp_uuid, 
+		 history_smtp.smtp_server, 
+		 history_smtp.smtp_port, 
+		 history_smtp.smtp_username, 
+		 history_smtp.smtp_password, 
+		 history_smtp.smtp_security, 
+		 history_smtp.smtp_authentication, 
+		 history_smtp.smtp_helo_domain, 
+		 history_smtp.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_smtp() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_smtp
+	AFTER INSERT OR UPDATE ON smtp
+	FOR EACH ROW EXECUTE PROCEDURE history_smtp();
+
+
 -- This stores information about the company or organization that owns one or more Anvil! systems. 
 CREATE TABLE owners (
 	owner_uuid		uuid				not null	primary key,	-- This is the single most important record in ScanCore. Everything links back to here.
@@ -53,12 +118,16 @@ CREATE TRIGGER trigger_owners
 -- This stores information about Anvil! systems. 
 CREATE TABLE anvils (
 	anvil_uuid		uuid				not null	primary key,	-- 
-	anvil_owner_uuid	uuid				not null,			-- NOTE: Make life easy for users; Auto-generate the 'owner' if they enter one that doesn't exist.
+	anvil_owner_uuid	uuid				not null	not null,	-- NOTE: Make life easy for users; Auto-generate the 'owner' if they enter one that doesn't exist.
+	anvil_smtp_uuid		uuid				not null,			-- This is the mail server to use when sending alerts. It is not required because some users use file-based alerts only.
 	anvil_name		text				not null,
 	anvil_description	text				not null,			-- This is a short, one-line (usually) description of this particular Anvil!. It is displayed in the Anvil! selection list.
 	anvil_note		text,								-- This is a free-form note area for admins to record details about this Anvil!.
 	anvil_password		text				not null,			-- This is the 'ricci' or 'hacluster' user password. It is also used to access nodes that don't have a specific password set.
-	modified_date		timestamp with time zone	not null 
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(anvil_owner_uuid) REFERENCES owners(owner_uuid),
+	FOREIGN KEY(anvil_smtp_uuid) REFERENCES smtp(smtp_uuid)
 );
 ALTER TABLE anvils OWNER TO #!variable!user!#;
 
@@ -66,6 +135,7 @@ CREATE TABLE history.anvils (
 	history_id		bigserial,
 	anvil_uuid		uuid,
 	anvil_owner_uuid	uuid,
+	anvil_smtp_uuid		uuid,
 	anvil_name		text,
 	anvil_description	text,
 	anvil_note		text,
@@ -83,6 +153,7 @@ BEGIN
 	INSERT INTO history.anvils
 		(anvil_uuid, 
 		 anvil_owner_uuid, 
+		 anvil_smtp_uuid, 
 		 anvil_name, 
 		 anvil_description, 
 		 anvil_note, 
@@ -91,6 +162,7 @@ BEGIN
 	VALUES
 		(history_anvils.anvil_uuid, 
 		 history_anvils.anvil_owner_uuid, 
+		 history_anvils.anvil_smtp_uuid, 
 		 history_anvils.anvil_name, 
 		 history_anvils.anvil_description, 
 		 history_anvils.anvil_note, 
@@ -297,6 +369,7 @@ CREATE TABLE email_alerts (
 	email_alert_language	text				not null	default 'en_CA', -- The language to use. Must exist in all .xml language files!
 	email_alert_level	text				not null	default 'warning', -- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
 	email_alert_units	text				not null	default 'metric', -- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
+	email_alert_auto_add	boolean				not null	default TRUE,	-- If TRUE, this recipient will automatically monitor any newly added Anvil! systems and their nodes.
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE email_alerts OWNER TO #!variable!user!#;
@@ -310,6 +383,7 @@ CREATE TABLE history.email_alerts (
 	email_alert_language	text,
 	email_alert_level	text,
 	email_alert_units	text,
+	email_alert_auto_add	boolean,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.email_alerts OWNER TO #!variable!user!#;
@@ -327,6 +401,7 @@ BEGIN
 		 email_alert_language,
 		 email_alert_level,
 		 email_alert_units, 
+		 email_alert_auto_add, 
 		 modified_date)
 	VALUES
 		(history_email_alerts.email_alert_uuid,
@@ -335,6 +410,7 @@ BEGIN
 		 history_email_alerts.email_alert_language,
 		 history_email_alerts.email_alert_level,
 		 history_email_alerts.email_alert_units, 
+		 history_email_alerts.email_alert_auto_add, 
 		 history_email_alerts.modified_date);
 	RETURN NULL;
 END;
@@ -402,71 +478,6 @@ ALTER FUNCTION history_recipients() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_recipients
 	AFTER INSERT OR UPDATE ON recipients
 	FOR EACH ROW EXECUTE PROCEDURE history_recipients();
-
-
--- This stores infomation for sending email alerts. 
-CREATE TABLE smtp (
-	smtp_uuid		uuid				not null	primary key,	-- 
-	smtp_server		text				not null,			-- example; mail.example.com
-	smtp_port		integer				not null	default 587,
-	smtp_username		text				not null,			-- This is the user name (usually email address) used when authenticating against the mail server.
-	smtp_password		text,								-- This is the password used when authenticating against the mail server
-	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
-	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
-	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
-	modified_date		timestamp with time zone	not null
-);
-ALTER TABLE smtp OWNER TO #!variable!user!#;
-
-CREATE TABLE history.smtp (
-	history_id		bigserial,
-	smtp_uuid		uuid,
-	smtp_server		text,
-	smtp_port		integer,
-	smtp_username		text,
-	smtp_password		text,
-	smtp_security		text,
-	smtp_authentication	text,
-	smtp_helo_domain	text,
-	modified_date		timestamp with time zone	not null
-);
-ALTER TABLE history.smtp OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_smtp() RETURNS trigger
-AS $$
-DECLARE
-	history_smtp RECORD;
-BEGIN
-	SELECT INTO history_smtp * FROM smtp WHERE host_uuid = new.host_uuid;
-	INSERT INTO history.smtp
-		(smtp_uuid, 
-		 smtp_server, 
-		 smtp_port, 
-		 smtp_username, 
-		 smtp_password, 
-		 smtp_security, 
-		 smtp_authentication, 
-		 smtp_helo_domain, 
-		 modified_date)
-	VALUES
-		(history_smtp.smtp_uuid, 
-		 history_smtp.smtp_server, 
-		 history_smtp.smtp_port, 
-		 history_smtp.smtp_username, 
-		 history_smtp.smtp_password, 
-		 history_smtp.smtp_security, 
-		 history_smtp.smtp_authentication, 
-		 history_smtp.smtp_helo_domain, 
-		 history_smtp.modified_date);
-	RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
-ALTER FUNCTION history_smtp() OWNER TO #!variable!user!#;
-
-CREATE TRIGGER trigger_smtp
-	AFTER INSERT OR UPDATE ON smtp
-	FOR EACH ROW EXECUTE PROCEDURE history_smtp();
 
 
 -- This stores information about the host machine running this instance of

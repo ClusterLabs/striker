@@ -73,6 +73,11 @@
 		<key name="button_0066">Power Off System</key>
 		<key name="button_0067">Make 'executable'</key>
 		<key name="button_0068">Make 'plain-text'</key>
+		<key name="button_0069">#!string!brand_0003!# Systems</key>
+		<key name="button_0070">Owners</key>
+		<key name="button_0071">Mail Servers</key>
+		<key name="button_0072">Alert Recipients</key>
+		<key name="button_0073">Alert Log Files</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -210,7 +215,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0002">This is a free-form text field where you can put in any description you would like for the #!string!brand_0003!#.</key>
 		<key name="explain_0003">If you have an internal tracking or documentation system, and if you track the given #!string!brand_0003!# there, you can enter the URL for it here.</key>
 		<key name="explain_0004"><![CDATA[This is the name of the company, person or group that owns the specified #!string!brand_0003!#.<br />This is a purely descriptive field and you can set it to whatever you want.]]></key>
-		<key name="explain_0005">...free...</key>
+		<key name="explain_0005">Add a new #!string!brand_0003!#, edit an existing one or delete a retired system.</key>
 		<key name="explain_0006"><![CDATA[This is the password used to log into your #!string!brand_0003!# nodes.<br />If you built your #!string!brand_0003!# manually, this is the password used for the '<span class="highlight_note">ricci</span>' and '<span class="highlight_note">root</span>' users, which must match.]]></key>
 		<key name="explain_0007"><![CDATA[The host names of the nodes. Generally, this is <span class="fixed_width">xx-aYYnZZ</span>.]]></key>
 		<key name="explain_0008"><![CDATA[Generally, if this machine is in the same place as the the #!string!brand_0003!#, the name you set here will resolve to the '#!string!brand_0005!#' of the node.<br />If the nodes are on a remote network, and if you (or the owner's admin) setup port forwarding, you will enter their external IP address for both nodes and use different ports.<br />If you use DNS (or similar) to do name to IP translation, leave this blank.]]></key>
@@ -218,7 +223,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0010"><![CDATA[The dashboard does not send email, but your #!string!brand_0003!# nodes will.<br />The <span class="fixed_width">#!conf!path::config_file!#</span> that this section manages is designed to be copied unchanged to your nodes, so this information is needed to send alert emails later.]]></key>
 		<key name="explain_0011"><![CDATA[This is the mail server that your node will connect to in order to send email.<br />Your Internet service provider will give you this address, often called an "<i>SMTP Server</i>".]]></key>
 		<key name="explain_0012"><![CDATA[When connecting to the mail server address above, a specific "port" number must be specified.<br />Your ISP should mention what this port number along with the address.<br />Typically, this is "25" for unencrypted connections and "587" for encrypted connections.]]></key>
-		<key name="explain_0013">...free...</key>
+		<key name="explain_0013">Edit, add or delete #!string!brand_0003!# owners.</key>
 		<key name="explain_0014"><![CDATA[Some mail server require a user name and password. Usually, the user name will be you email address.<br /> Some ISPs do not require authentication, and in those cases, this can be left blank.<br /> Please check the information given to you by your ISP to see if this is needed and, if so, what user name to user here.]]></key>
 		<key name="explain_0015"><![CDATA[If you entered a user name above, please enter it's password here.]]></key>
 		<key name="explain_0016"><![CDATA[This controls how, if at all, to encrypt the email traffic between you and the mail server.<br />As with the other mail settings, which to use will depends on your Internet service provider.<br />If in doubt, try 'STARTTLS'. If that doesn't work, try 'SSL/TLS'. If that still doesn't work, try 'None'.]]></key>
@@ -228,7 +233,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0020">The physical disks below are not currently a member of any logical disk.</key>
 		<key name="explain_0021">The server is shut off.</key>
 		<key name="explain_0022">I am sorry, but without this information, I can not continue.</key>
-		<key name="explain_0023">...free...</key>
+		<key name="explain_0023">Configure mail server(s) to use when sending alert emails.</key>
 		<key name="explain_0024"><![CDATA[This can be whatever you want, but it must be unique.<br />It's good to keep this short.]]></key>
 		<key name="explain_0025"><![CDATA[This fine-tunes the hypervisor for your operating system.<br />If your OS is not listed, choose the one that is the closest match.]]></key>
 		<key name="explain_0026"><![CDATA[This will open a new window where you can upload new disc images.<br />Once finished, please reload this page to see them.]]></key>
@@ -311,7 +316,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
-		<key name="explain_0105"><![CDATA[..free..]]></key>
+		<key name="explain_0105">Add, edit and remove email alert recipients.</key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
@@ -372,6 +377,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0163"><![CDATA[The IP address of the first power transfer switch.<br />If you don't have a PTS, or your PTS does not have a network card, you can leave this blank.]]></key>
 		<key name="explain_0164"><![CDATA[This is the host name for the second <a href="http://alteeve.ca/w/PTS" target="_new">power transfer switch</a>.]]></key>
 		<key name="explain_0165"><![CDATA[The IP address of the second power transfer switch.<br />If you don't have two PTSes, or your PTSes do not have network cards, you can leave this blank.]]></key>
+		<key name="explain_0166">Add, edit and remove alert log files.</key>
+		<key name="explain_0167">Useful for air-gapped systems with periodic log retrieval.</key>
+		<key name="explain_0168">Create, load or run #!string!brand_0004!# installation manifests.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -753,6 +761,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0013">Partition Size</key>
 		<key name="header_0014"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">1</span>]]></key>
 		<key name="header_0015"><![CDATA[#!string!brand_0002!# <span class="highlight_bad_bold">2</span>]]></key>
+		<key name="header_0016">Manage</key>
+		<key name="header_0017">Description</key>
+		<key name="header_0018"><![CDATA[&nbsp;]]></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -1286,6 +1297,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0188">Fencing the node was aborted!</key>
 		<key name="title_0189">Startup Underway!</key>
 		<key name="title_0190">Warning</key>
+		<key name="title_0191">Configure #!string!brand_0020!# and Managed #!string!brand_0003!# Systems</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>

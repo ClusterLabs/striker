@@ -1,4 +1,6 @@
+<!-- ============================================ -->
 <!-- This contains the templates used in the various configuration pages of Striker. -->
+<!-- ============================================ -->
 
 <!-- start configure-main-page -->
 <!DOCTYPE html>
@@ -19,8 +21,58 @@
 <!-- end configure-main-page -->
 
 
-
+<!-- ============================================ -->
 <!-- This contains panels inserted into templates -->
+<!-- ============================================ -->
+
+<!-- start configure-menu -->
+<table>
+	<tr>
+		<td colspan="3" class="title">
+			#!string!title_0191!#
+		</td>
+	</tr>
+	<tr>
+		<td class="table_header">
+			#!string!header_0016!#
+		</td>
+		<td class="table_header">
+			#!string!header_0017!#
+		</td>
+		<td class="table_header">
+			#!string!header_0018!#
+		</td>
+	</tr>
+#!replace!options!#
+	<tr>
+		<td colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end configure-menu -->
+
+<!-- start configure-menu-entry -->
+	<tr>
+		<td class="button">
+			#!replace!button!#
+		</td>
+		<td style="text-align: left;">
+			#!replace!description!#
+		</td>
+		<td>
+			#!replace!url!#
+		</td>
+	</tr>
+<!-- end configure-menu-entry -->
+
+<!-- start configure-menu-spacer -->
+	<tr>
+		<td colspan="3" height="10">
+		</td>
+	</tr>
+<!-- end configure-menu-spacer -->
 
 <!-- start configure-header -->
 <table class="hidden_table">
@@ -58,6 +110,3 @@
 <img src="#!data!url::skins!#/#!data!sys::skin!#/images/t.png" onload="hide_on_load();" border="0" />
 </html>
 <!-- end configure-footer -->
-
-<!-- start configure-menu-entry -->
-<!-- end configure-menu-entry -->

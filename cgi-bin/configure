@@ -81,46 +81,80 @@ sub show_main_menu
 {
 	my ($an) = @_;
 	
+	# Put together the frame of the page.
 	my $back_image = $an->Get->template({file => "common.html", template => "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
 			alt_text     => "#!string!button_0001!#",
 			id           => "back_icon",
 		}});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "back_image", value1 => $back_image,
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	my $refresh_image = $an->Get->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "refresh_image", value1 => $refresh_image,
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	my $header = $an->Get->template({file => "configure.html", template => "configure-header", replace => {
 			back		=>	$back_image,
 			refresh		=>	$refresh_image,
 		}});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "header", value1 => $header,
-	}, file => $THIS_FILE, line => __LINE__});
-	
 	my $footer = $an->Get->template({file => "configure.html", template => "configure-footer"});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "footer", value1 => $footer,
-	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "back_image", value1 => $back_image,
-	}, file => $THIS_FILE, line => __LINE__});
+	### Build the list of menu items.
+	my $menu_items = "";
+	
+	# Anvil! systems
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=anvil\" alt=\"#!string!button_0069!#\" id=\"task_anvil\">#!string!button_0069!#</a>",
+			description	=>	"#!string!explain_0005!#",
+			url		=>	"",
+		}})."\n";
+	# Owner 
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=owner\" alt=\"#!string!button_0070!#\" id=\"task_owner\">#!string!button_0070!#</a>",
+			description	=>	"#!string!explain_0013!#",
+			url		=>	"",
+		}})."\n";
+	# SMTP 
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=smtp\" alt=\"#!string!button_0071!#\" id=\"task_smtp\">#!string!button_0071!#</a>",
+			description	=>	"#!string!explain_0023!#",
+			url		=>	"",
+		}})."\n";
+	# Alert Recipient
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=email_alerts\" alt=\"#!string!button_0072!#\" id=\"task_email_alerts\">#!string!button_0072!#</a>",
+			description	=>	"#!string!explain_0105!#",
+			url		=>	"",
+		}})."\n";
+	# Alert Files
+	#my $subtle_text =  $an->Get->template({file => "common.html", template => "subtle_text", replace => { string => "#!string!explain_0167!#" }});
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=file_alerts\" alt=\"#!string!button_0073!#\" id=\"task_file_alerts\">#!string!button_0073!#</a>",
+			description	=>	"#!string!explain_0166!#<br />#!string!explain_0167!#",
+			url		=>	"",
+		}})."\n";
+		
+	# Add a divider before the next section
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-spacer"});
+	
+	# Install Manifests
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=manifests\" alt=\"#!string!button_0060!#\" id=\"task_manifests\">#!string!button_0060!#</a>",
+			description	=>	"#!string!explain_0168!#",
+			url		=>	"",
+		}})."\n";
+	
+	# For the Enable/Disable install target, I need to know the current state.
+	
+	
+	# Build the body of the menu.	
+	my $menu = $an->Get->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});
+	
 	print $an->Get->template({
 			file		=>	"configure.html",
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
-				body		=>	"TODO", 
+				body		=>	$menu, 
 				footer		=>	$footer, 
 			},
 		});

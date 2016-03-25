@@ -650,6 +650,7 @@ sub initialize_conf
 				network_scripts		=>	"/etc/sysconfig/network-scripts",
 				ntp_conf		=>	"/etc/ntp.conf",
 				perl_library		=>	"/usr/share/perl5",
+				post_install		=>	"/root/post_install",
 				'anvil-safe-start'	=>	"/sbin/striker/anvil-safe-start",
 				# Used to verify it was enabled properly.
 				'anvil-safe-start_link'	=>	"/etc/rc3.d/S99_anvil-safe-start",

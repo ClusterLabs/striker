@@ -493,6 +493,7 @@ sub _set_paths
 	# Text files
 	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
+	$an->data->{path}{dhcpd_conf}      = "/etc/dhcp/dhcpd.conf",
 	$an->data->{path}{etc_hosts}       = "/etc/hosts";
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";

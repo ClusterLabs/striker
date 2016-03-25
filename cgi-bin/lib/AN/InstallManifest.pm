@@ -853,6 +853,33 @@ fi
 		}
 	}
 	
+	# Now we will run post_install, if it exists. This is a user script so we don't analyze it, we just 
+	# run it.
+	$shell_call .= "
+if [ -e '".$an->data->{path}{nodes}{post_install}."' ];
+then 
+    ".$an->data->{path}{nodes}{post_install}." 
+fi
+";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+		name2 => "node",       value2 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$node,
+		port		=>	$conf->{node}{$node}{port}, 
+		password	=>	$password,
+		ssh_fh		=>	"",
+		'close'		=>	0,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# 0 == No changes made
 	# 1 == Enabled successfully
 	# 2 == Disabled successfully
@@ -2931,7 +2958,7 @@ sub stop_service_on_node
 {
 	my ($conf, $service, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_rgmanager_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "service", value1 => $service, 
 		name2 => "node",    value2 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2976,7 +3003,7 @@ sub start_rgmanager_on_node
 {
 	my ($conf, $node, $password) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
