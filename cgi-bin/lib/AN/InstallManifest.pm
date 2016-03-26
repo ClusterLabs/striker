@@ -362,6 +362,12 @@ sub run_new_install_manifest
 		# Is this Anvil! already in the config file?
 		my ($anvil_configured) = check_config_for_anvil($conf);
 		
+		# If the 'anvil_configured' is 1, run 'configure_ssh_local()'
+		if ($anvil_configured)
+		{
+			AN::Cluster::configure_ssh_local($conf, $conf->{cgi}{anvil_name});
+		}
+		
 		# Do we need to show the link for adding the Anvil! to the config?
 		my $message = AN::Common::get_string($conf, {key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
