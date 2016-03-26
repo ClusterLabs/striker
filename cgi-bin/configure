@@ -55,6 +55,7 @@ $an->String->read_words  ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Get->cgi({variables => [
 	"anvil", 
+	"subtask", 
 	"task", 
 ]});
 
@@ -64,7 +65,15 @@ $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
 	quiet => 1, 
 });
 
-if (not $an->data->{cgi}{task})
+$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
+	name2 => "cgi::subtask", value2 => $an->data->{cgi}{subtask}, 
+}, file => $THIS_FILE, line => __LINE__});
+if ($an->data->{cgi}{task})
+{
+	process_task($an);
+}
+else
 {
 	# Show the main menu
 	show_main_menu($an);
@@ -75,6 +84,16 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This figures out what task the user is asking to perform and loads the appropriate page.
+sub process_task
+{
+	my ($an) = @_;
+	
+	
+	
+	return(0);
+}
 
 # This shows the main Striker configuration menu
 sub show_main_menu
@@ -143,8 +162,45 @@ sub show_main_menu
 			url		=>	"",
 		}})."\n";
 	
-	# For the Enable/Disable install target, I need to know the current state.
+	# Backup
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=backup&subtask=create\" alt=\"#!string!button_0074!#\" id=\"task_backup_create\">#!string!button_0074!#</a>",
+			description	=>	"#!string!explain_0171!#",
+			url		=>	"",
+		}})."\n";
 	
+	# Load
+	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=backup&subtask=load\" alt=\"#!string!button_0075!#\" id=\"task_backup_load\">#!string!button_0075!#</a>",
+			description	=>	"#!string!explain_0172!#",
+			url		=>	"",
+		}})."\n";
+	
+	# For the Enable/Disable install target, I need to know the current state.
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
+	my $dhcpd_state = $an->Get->dhcpd_state();
+	if ($dhcpd_state eq "0")
+	{
+		# Option to disable
+		$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	"<a href=\"?task=install_target&subtask=disable\" alt=\"#!string!button_0058!#\" id=\"task_install_target\">#!string!button_0058!#</a>",
+				description	=>	"#!string!explain_0169!#",
+				url		=>	"",
+			}})."\n";
+	}
+	elsif ($dhcpd_state eq "1")
+	{
+		# Option to enable
+		$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	"<a href=\"?task=install_target&subtask=enable\" alt=\"#!string!button_0057!#\" id=\"task_install_target\">#!string!button_0057!#</a>",
+				description	=>	"#!string!explain_0170!#",
+				url		=>	"",
+			}})."\n";
+	}
 	
 	# Build the body of the menu.	
 	my $menu = $an->Get->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});

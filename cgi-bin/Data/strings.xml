@@ -78,6 +78,8 @@
 		<key name="button_0071">Mail Servers</key>
 		<key name="button_0072">Alert Recipients</key>
 		<key name="button_0073">Alert Log Files</key>
+		<key name="button_0074">Create a Backup</key>
+		<key name="button_0075">Load a Backup</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -380,6 +382,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0166">Add, edit and remove alert log files.</key>
 		<key name="explain_0167">Useful for air-gapped systems with periodic log retrieval.</key>
 		<key name="explain_0168">Create, load or run #!string!brand_0004!# installation manifests.</key>
+		<key name="explain_0169">Disables the ability to build nodes and dashboards.</key>
+		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
+		<key name="explain_0171">Create a backup of this #!string!brand_0020!#.</key>
+		<key name="explain_0172">Load a backup file on to this #!string!brand_0020!#.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>

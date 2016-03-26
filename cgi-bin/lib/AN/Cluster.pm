@@ -11606,7 +11606,7 @@ sub parse_anvil_safe_start
 {
 	my ($conf, $node, $array) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_dmidecode" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_anvil_safe_start" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	

@@ -2833,7 +2833,7 @@ sub pids
 			if ($command =~ /$program_name/)
 			{
 				# If we're calling locally and we see our own PID, skip it.
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "pid",    value1 => $pid,
 					name2 => "my_pid", value2 => $my_pid, 
 					name3 => "target", value3 => $target, 
@@ -2842,9 +2842,13 @@ sub pids
 				{
 					# This is us! :D
 				}
+				elsif (($command =~ /--status/) or ($command =~ /--state/))
+				{
+					# Ignore this, it's someone else also checking the state.
+				}
 				else
 				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "pid", value1 => $pid,
 					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 					push @{$pids}, $pid;
@@ -3353,6 +3357,116 @@ sub striker_peers
 	}
 	
 	return($peers);
+}
+
+### TODO: Make this work on local and remote calls.
+# This checks to see if dhcpd is configured to be an install target target and, if so, see if dhcpd is 
+# running or not.
+sub dhcpd_state
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# First, read the dhcpd.conf file, if it exists, and look for the 'next-server' option.
+	my $dhcpd_state = 2;
+	my $boot_target = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::dhcpd_conf", value1 => $an->data->{path}{dhcpd_conf},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{dhcpd_conf})
+	{
+		$an->Log->entry({log_level => 2, message_key => "log_0011", message_variables => {
+			file => "dhcpd.conf", 
+		}, file => $THIS_FILE, line => __LINE__});
+		my $shell_call = $an->data->{path}{dhcpd_conf};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			   $line =~ s/^\s+//;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
+			{
+				$boot_target = 1;
+				$an->Log->entry({log_level => 2, message_key => "log_0012", file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# DHCP daemon config file not found or not readable. Is '/etc/dhcp' readable by the current UID?
+		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+			file => $an->data->{path}{dhcpd_conf},
+			uid  => $<, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$dhcpd_state = 4;
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "boot_target", value1 => $boot_target,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($boot_target)
+	{
+		# See if dhcpd is running.
+		my $shell_call = $an->data->{path}{initd}."/dhcpd status; ".$an->data->{path}{echo}." rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ /rc:(\d+)/)
+			{
+				my $rc = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "rc", value1 => $rc,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($rc eq "3")
+				{
+					# Stopped
+					$dhcpd_state = 1;
+				}
+				elsif ($rc eq "0")
+				{
+					# Running
+					$dhcpd_state = 0;
+				}
+				else
+				{
+					# Unknown state.
+					$dhcpd_state = 4;
+				}
+			}
+		}
+		close $file_handle;
+	}
+	# 0 == Running
+	# 1 == Not running
+	# 2 == Not a boot target
+	# 3 == In an unknown state.
+	# 4 == No access to /etc/dhcpd
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "dhcpd_state", value1 => $dhcpd_state,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($dhcpd_state);
 }
 
 1;

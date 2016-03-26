@@ -785,7 +785,7 @@ sub _process_string_replace
 	my $replace  = $parameter->{replace};
 	my $file     = $parameter->{file};
 	my $template = $parameter->{template};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "string",   value1 => $string, 
 		name2 => "replace",  value2 => $replace, 
 		name3 => "file",     value3 => $file, 
