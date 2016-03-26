@@ -103,6 +103,7 @@ sub run_new_install_manifest
 		pciutils			=>	0,
 		pcp				=>	0,
 		perl				=>	0,
+		'perl-CGI'			=>	0,
 		'perl-DBD-Pg'			=>	0,
 		'perl-Digest-SHA'		=>	0,
 		'perl-TermReadKey'		=>	0,
