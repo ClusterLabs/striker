@@ -1313,7 +1313,7 @@ sub _avoid_duplicate_delayed_runs
 	
 	# Now do the call, locally or remotely.
 	my $return     = [];
-	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{'anvil-jobs-output'};
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{'anvil-jobs'};
 	if (($target eq "local") or ($target eq $an->hostname) or ($target eq $an->short_hostname))
 	{
 		# Local call.
