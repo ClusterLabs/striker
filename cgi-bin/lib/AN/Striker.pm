@@ -8539,7 +8539,7 @@ sub cold_stop_anvil
 				});
 				
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "Disabling server", value1 => $server,
+					name1 => "server", value1 => $server,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $shell_output = "";
 				my $shell_call   = "$conf->{path}{clusvcadm} -d $server";

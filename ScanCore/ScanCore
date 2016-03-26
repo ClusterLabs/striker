@@ -380,7 +380,7 @@ while(1)
 	# Visual break in the log file
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "scancore::sleep_time",                     value1 => $an->data->{scancore}{sleep_time}, 
-		name2 => "----------------------------------------", value2 => "----------------------------------------"
+		name2 => "----------------------------------------", value2 => "----------------------------------------", 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Did the user disabled ScanCore while the agents were running (or was this a '--one-shot')?
@@ -418,24 +418,44 @@ sub adjust_log_level
 		$an->data->{scancore}{user_set_log_level} = "-v";
 		$an->data->{scancore}{log_level}          = 1;
 		$an->Log->level($an->data->{scancore}{log_level});
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
+			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
+			name3 => "Log->level",                   value3 => $an->Log->level(),
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($an->data->{switches}{vv})
 	{
 		$an->data->{scancore}{user_set_log_level} = "-vv";
 		$an->data->{scancore}{log_level}          = 2;
 		$an->Log->level($an->data->{scancore}{log_level});
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
+			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
+			name3 => "Log->level",                   value3 => $an->Log->level(),
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($an->data->{switches}{vvv})
 	{
 		$an->data->{scancore}{user_set_log_level} = "-vvv";
 		$an->data->{scancore}{log_level}          = 3;
 		$an->Log->level($an->data->{scancore}{log_level});
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
+			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
+			name3 => "Log->level",                   value3 => $an->Log->level(),
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	elsif ($an->data->{switches}{vvvv})
 	{
 		$an->data->{scancore}{user_set_log_level} = "-vvvv";
 		$an->data->{scancore}{log_level}          = 4;
 		$an->Log->level($an->data->{scancore}{log_level});
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
+			name1 => "scancore::user_set_log_level", value1 => $an->data->{scancore}{user_set_log_level}, 
+			name2 => "scancore::log_level",          value2 => $an->data->{scancore}{log_level}, 
+			name3 => "Log->level",                   value3 => $an->Log->level(),
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	return(0);
 }
@@ -798,7 +818,8 @@ SELECT
     host_uuid, 
     host_name, 
     host_emergency_stop, 
-    host_stop_reason 
+    host_stop_reason, 
+    round(extract(epoch from modified_date)) 
 FROM 
     hosts 
 WHERE 
@@ -822,11 +843,13 @@ ORDER BY
 		my $host_name           = $row->[1];
 		my $host_emergency_stop = $row->[2];
 		my $host_stop_reason    = $row->[3] ? $row->[3] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "host_uuid",                value1 => $host_uuid, 
-			name2 => "host_name",                value2 => $host_name, 
-			name3 => "host_emergency_stop",      value3 => $host_emergency_stop, 
-			name4 => "host_stop_reason",         value4 => $host_stop_reason, 
+		my $unix_modified_date  = $row->[4];
+		$an->Log->entry({log_level => 1, message_key => "an_variables_0005", message_variables => {
+			name1 => "host_uuid",           value1 => $host_uuid, 
+			name2 => "host_name",           value2 => $host_name, 
+			name3 => "host_emergency_stop", value3 => $host_emergency_stop, 
+			name4 => "host_stop_reason",    value4 => $host_stop_reason, 
+			name5 => "unix_modified_date",  value5 => $unix_modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Is the node online?
@@ -849,7 +872,8 @@ ORDER BY
 		}
 		
 		# If it's on, clear its 'host_emergency_stop' and 'host_stop_reason', if set. The exception
-		# being when the 'host_stop_reason' is a time stamp. 
+		# being when the 'host_stop_reason' is a time stamp or if it's 'clean' and less than two 
+		# minutes old.
 		if ($state eq "0")
 		{
 			# No need to check if it should be booted.
@@ -858,9 +882,14 @@ ORDER BY
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Check to see if there is a time-type stop reason and, if so, see if it's stale.
-			my $clear = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "host_stop_reason", value1 => $host_stop_reason, 
+			my $clear   = 1;
+			my $time    = time;
+			my $set_age = $time - $unix_modified_date;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "host_stop_reason",   value1 => $host_stop_reason, 
+				name2 => "time",               value2 => $time, 
+				name3 => "unix_modified_date", value3 => $unix_modified_date, 
+				name4 => "set_age",            value4 => $set_age, 
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($host_stop_reason =~ /^\d+$/)
 			{
@@ -871,6 +900,19 @@ ORDER BY
 				if (time <= $host_stop_reason)
 				{
 					# It's active, don't clear it.
+					$clear = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "clear", value1 => $clear, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif ($host_stop_reason eq "clean")
+			{
+				# It's clean off, how long ago was it set? If it's less than two minutes 
+				# old, don't clear it in case it's still shutting down.
+				if ($set_age < 120)
+				{
+					# It's too recent, wait.
 					$clear = 0;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "clear", value1 => $clear, 
@@ -5432,8 +5474,8 @@ WHERE
 	return(0);
 }
 
-# This checks to see if this node is in each database and, if not, adds it. It
-# also will update the hostname if it has changed.
+# This checks to see if this node is in each database and, if not, adds it. It also will update the hostname
+# if it has changed.
 sub add_hostname_to_databases
 {
 	my ($an) = @_;
@@ -5497,9 +5539,8 @@ INSERT INTO
 	}
 	else
 	{
-		# A record exists. Check to see if the 'host_emergency_stop' 
-		# has been set and clear it, if so.
-		my $query = "SELECT host_emergency_stop, host_stop_reason FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
+		# A record exists. Check to see if the 'host_emergency_stop' has been set and clear it, if so.
+		my $query = "SELECT host_emergency_stop, host_stop_reason, modified_date FROM hosts WHERE host_name=".$an->data->{sys}{use_db_fh}->quote($an->hostname).";";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1  => "query", value1 => $query
 		}, file => $THIS_FILE, line => __LINE__});
