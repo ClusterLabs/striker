@@ -365,7 +365,14 @@ sub run_new_install_manifest
 		# If the 'anvil_configured' is 1, run 'configure_ssh_local()'
 		if ($anvil_configured)
 		{
+			# Setup ssh locally
 			AN::Cluster::configure_ssh_local($conf, $conf->{cgi}{anvil_name});
+			
+			# Sync with the peer, if we can.
+			my $peer = AN::Cluster::sync_with_peer($conf);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer", value1 => $peer,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Do we need to show the link for adding the Anvil! to the config?
