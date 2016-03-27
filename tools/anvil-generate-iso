@@ -2071,13 +2071,26 @@ sub setup_build_environment
 	$conf->{path}{iso}{source_directory} = make_directory($conf, $conf->{path}{iso}{working_directory}."/".$conf->{path}{source_path});
 	$conf->{path}{iso}{iso_tools}        = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{tools});
 	$conf->{path}{iso}{iso_kickstart}    = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{kickstart});
-	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{packages});
+	$conf->{path}{iso}{iso_packages}     = make_directory($conf, $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{packages});
 	$conf->{path}{iso}{iso_striker}      = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{striker});
 	$conf->{path}{iso}{iso_fence}        = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fence});
 	
 	# These are only created if the user agreed to them
 	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
 	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
+	if ($conf->{sys}{debug} >= 2)
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path:            [$conf->{path}{source_path}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::working_directory: [$conf->{path}{iso}{working_directory}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory:  [$conf->{path}{iso}{source_directory}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools:         [$conf->{path}{iso}{iso_tools}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart:     [$conf->{path}{iso}{iso_kickstart}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages:      [$conf->{path}{iso}{iso_packages}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker:       [$conf->{path}{iso}{iso_striker}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence:         [$conf->{path}{iso}{iso_fence}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu:       [$conf->{path}{iso}{iso_fujitsu}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago:         [$conf->{path}{iso}{iso_avago}]\n";
+	}
 	
 	# Make sure any old repodata files are removed.
 	wipe_repodata($conf);
@@ -2208,32 +2221,29 @@ sub build_source
 	
 	# Copy!
 	print "- Ready to copy files!\n";
-	if ($conf->{sys}{debug} >= 1)
+	foreach my $package (sort {$a cmp $b} keys %{$conf->{copy}})
 	{
-		foreach my $package (sort {$a cmp $b} keys %{$conf->{copy}})
+		my $iso         = $conf->{copy}{$package}{source};
+		my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
+		if (-e $destination)
 		{
-			my $iso         = $conf->{copy}{$package}{source};
-			my $destination = $conf->{path}{iso}{iso_packages}."/".$conf->{copy}{$package}{file};
-			if (-e $destination)
+			print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+		}
+		else
+		{
+			# Copy it. But how?
+			my $shell_call = "";
+			if ($conf->{source}{$iso}{mount})
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ]- The package: [$destination] already exists, no need to copy it.\n" if $conf->{sys}{debug} >= 2;
+				# copy
+				my $source = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
+				copy_file($conf, $source, $destination, 0);
 			}
 			else
 			{
-				# Copy it. But how?
-				my $shell_call = "";
-				if ($conf->{source}{$iso}{mount})
-				{
-					# copy
-					my $source = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
-					copy_file($conf, $source, $destination, 0);
-				}
-				else
-				{
-					# Use iso-read
-					my $extract_file = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
-					isoread_file($conf, $iso, $extract_file, $destination);
-				}
+				# Use iso-read
+				my $extract_file = $conf->{copy}{$package}{directory}."/".$conf->{copy}{$package}{file};
+				isoread_file($conf, $iso, $extract_file, $destination);
 			}
 		}
 	}

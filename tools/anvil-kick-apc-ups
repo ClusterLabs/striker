@@ -427,7 +427,23 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		}
 		elsif ($current_state_ups eq "7")
 		{
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The UPS is off. There is no reason to proceed, skipping this UPS.");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The UPS is off. The UPS will be turned on and outlet group(s) energized.");
+			
+			### NOTE: Sometimes, after a total discharge and a UPS shuts down, it will NOT come
+			###       back up when the power is restored (despite being configured to do so). 
+			###       This helps by turning the other UPS on, so long as at least one gets power
+			###       again.
+			# Turn on the UPS
+			my ($poweron_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweron_return: [$poweron_return]");
+			
+			# Energize group 1 / Main group
+			my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group1_on_return: [$group1_on_return]");
+			
+			# Energize group2 / group 1
+			my ($group2_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group2}{oid}, $conf->{snmp}{group2}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - group2_on_return: [$group2_on_return]");
 		}
 		elsif ($current_state_ups eq "8")
 		{
@@ -440,8 +456,8 @@ foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 		
 			# Cancel a pending shut-off
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Cancelling any pending power off.");
-			my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]");
+			my ($poweron_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweron_return: [$poweron_return]");
 			
 			# Explicitely call the groups on.
 			my ($group1_on_return) = set_oid_integer($conf, $ups, $conf->{snmp}{group1}{oid}, $conf->{snmp}{group1}{on_integer});
@@ -639,9 +655,9 @@ sub energize_upses
 			if ($power_on_ups)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Powering on: [$conf->{hosts}{by_ip}{$ups}->[0]] ($ups).");
-				my ($poweroff_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweroff_return: [$poweroff_return]");
-				if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+				my ($poweron_return) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - poweron_return: [$poweron_return]");
+				if ($poweron_return ne $conf->{snmp}{power_on}{on_integer})
 				{
 					logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Failed to power on the UPS: [$ups]! Skipping this UPS");
 					$problem = 1;
@@ -833,11 +849,11 @@ sub cancel_countdown
 	my $ok = 1;
 	foreach my $ups (sort {$a cmp $b} @{$conf->{sys}{apc}{ups}{devices}})
 	{
-		my ($poweroff_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
-		if ($poweroff_return ne $conf->{snmp}{power_on}{on_integer})
+		my ($poweron_return, $shell_call) = set_oid_integer($conf, $ups, $conf->{snmp}{power_on}{oid}, $conf->{snmp}{power_on}{on_integer});
+		if ($poweron_return ne $conf->{snmp}{power_on}{on_integer})
 		{
 			logger($conf, $THIS_FILE, __LINE__, "[ Critical ] - Failed to cancel the shutdown sequence on the UPS: [$ups]!");
-			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweroff_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
+			logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - The command to abort pending power-off actions returned: [$poweron_return], expected: [$conf->{snmp}{power_on}{on_integer}].");
 			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Tried to call: [$shell_call]");
 			logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   The UPS may still be running its poweroff-timer!");
 			$ok = 0;
