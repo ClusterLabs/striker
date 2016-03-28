@@ -51,7 +51,7 @@ $an->default_log_language($an->data->{'log'}{language});
 $an->default_log_file    ($an->data->{'log'}{file});
 $an->Log->level          ($an->data->{'log'}{level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
-$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 $an->Get->cgi({variables => [
 	"anvil", 
@@ -64,6 +64,11 @@ $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
 	file  => $THIS_FILE,
 	quiet => 1, 
 });
+if (not $an->data->{sys}{db_connections})
+{
+	$an->Web->no_db_access();
+	exit(1);
+}
 
 $an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 	name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
@@ -101,76 +106,77 @@ sub show_main_menu
 	my ($an) = @_;
 	
 	# Put together the frame of the page.
-	my $back_image = $an->Get->template({file => "common.html", template => "image", no_comment => 1, replace => {
-			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
-			alt_text     => "#!string!button_0001!#",
-			id           => "back_icon",
-		}});
-	my $refresh_image = $an->Get->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+	my $back_image = "";
+# 	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+# 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+# 			alt_text     => "#!string!button_0001!#",
+# 			id           => "back_icon",
+# 		}});
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
-	my $header = $an->Get->template({file => "configure.html", template => "configure-header", replace => {
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
 			back		=>	$back_image,
-			refresh		=>	$refresh_image,
+			refresh		=>	"<a href=\"".$an->data->{sys}{cgi_string}."\">$refresh_image</a>",
 		}});
-	my $footer = $an->Get->template({file => "configure.html", template => "configure-footer"});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
 	### Build the list of menu items.
 	my $menu_items = "";
 	
 	# Anvil! systems
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=anvil\" alt=\"#!string!button_0069!#\" id=\"task_anvil\">#!string!button_0069!#</a>",
 			description	=>	"#!string!explain_0005!#",
 			url		=>	"",
 		}})."\n";
 	# Owner 
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=owner\" alt=\"#!string!button_0070!#\" id=\"task_owner\">#!string!button_0070!#</a>",
 			description	=>	"#!string!explain_0013!#",
 			url		=>	"",
 		}})."\n";
 	# SMTP 
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=smtp\" alt=\"#!string!button_0071!#\" id=\"task_smtp\">#!string!button_0071!#</a>",
 			description	=>	"#!string!explain_0023!#",
 			url		=>	"",
 		}})."\n";
 	# Alert Recipient
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=email_alerts\" alt=\"#!string!button_0072!#\" id=\"task_email_alerts\">#!string!button_0072!#</a>",
 			description	=>	"#!string!explain_0105!#",
 			url		=>	"",
 		}})."\n";
 	# Alert Files
-	#my $subtle_text =  $an->Get->template({file => "common.html", template => "subtle_text", replace => { string => "#!string!explain_0167!#" }});
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	#my $subtle_text =  $an->Web->template({file => "common.html", template => "subtle_text", replace => { string => "#!string!explain_0167!#" }});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=file_alerts\" alt=\"#!string!button_0073!#\" id=\"task_file_alerts\">#!string!button_0073!#</a>",
 			description	=>	"#!string!explain_0166!#<br />#!string!explain_0167!#",
 			url		=>	"",
 		}})."\n";
 		
 	# Add a divider before the next section
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-spacer"});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-spacer"});
 	
 	# Install Manifests
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=manifests\" alt=\"#!string!button_0060!#\" id=\"task_manifests\">#!string!button_0060!#</a>",
 			description	=>	"#!string!explain_0168!#",
 			url		=>	"",
 		}})."\n";
 	
 	# Backup
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=backup&subtask=create\" alt=\"#!string!button_0074!#\" id=\"task_backup_create\">#!string!button_0074!#</a>",
 			description	=>	"#!string!explain_0171!#",
 			url		=>	"",
 		}})."\n";
 	
 	# Load
-	$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 			button		=>	"<a href=\"?task=backup&subtask=load\" alt=\"#!string!button_0075!#\" id=\"task_backup_load\">#!string!button_0075!#</a>",
 			description	=>	"#!string!explain_0172!#",
 			url		=>	"",
@@ -186,7 +192,7 @@ sub show_main_menu
 	if ($dhcpd_state eq "0")
 	{
 		# Option to disable
-		$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 				button		=>	"<a href=\"?task=install_target&subtask=disable\" alt=\"#!string!button_0058!#\" id=\"task_install_target\">#!string!button_0058!#</a>",
 				description	=>	"#!string!explain_0169!#",
 				url		=>	"",
@@ -195,17 +201,24 @@ sub show_main_menu
 	elsif ($dhcpd_state eq "1")
 	{
 		# Option to enable
-		$menu_items .= $an->Get->template({file => "configure.html", template => "configure-menu-entry", replace => {
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 				button		=>	"<a href=\"?task=install_target&subtask=enable\" alt=\"#!string!button_0057!#\" id=\"task_install_target\">#!string!button_0057!#</a>",
 				description	=>	"#!string!explain_0170!#",
 				url		=>	"",
 			}})."\n";
 	}
 	
-	# Build the body of the menu.	
-	my $menu = $an->Get->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});
+	# Configure ScanCore Databases
+	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+			button		=>	"<a href=\"?task=backup&subtask=scancore_dbs\" alt=\"#!string!button_0076!#\" id=\"task_scancore_dbs\">#!string!button_0076!#</a>",
+			description	=>	"#!string!explain_0173!#",
+			url		=>	"",
+		}})."\n";
 	
-	print $an->Get->template({
+	# Build the body of the menu.	
+	my $menu = $an->Web->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});
+	
+	print $an->Web->template({
 			file		=>	"configure.html",
 			template	=>	"configure-main-page",
 			replace		=>	{

@@ -114,7 +114,7 @@ read in by the '$an->Storage->read_conf()' method.
 #!string!...!#
 
   These substitution strings will be drawn from the XML word keys read in by
-the "$an->String->read_words();" method.
+the "$an->Storage->read_words();" method.
 
 #!variable!..!#
 

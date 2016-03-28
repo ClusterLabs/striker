@@ -535,8 +535,8 @@ sub image_and_upload
 	}
 	elsif (exists $conf->{files}{shared}{$name})
 	{
-		# Tell the user a file with that name already exists.
-		# the variables hash ref feeds 'message_0232'.
+		# Tell the user a file with that name already exists. The variables hash ref feeds 
+		# 'message_0232'.
 		print AN::Common::template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
 			name	=>	$name,
 		});

@@ -177,6 +177,7 @@ td {
 }
 
 .highlight_bad {
+	padding: 5px;
 	color: #9a131a;
 	font-style: italic;
 }
@@ -188,17 +189,20 @@ td {
 }
 
 .highlight_bad_bold {
+	padding: 5px;
 	color: #9a131a;
 	font-style: italic;
 	font-weight: bold;
 }
 
 .highlight_dangerous {
+	padding: 5px;
 	color: #FF0033;
 	font-style: italic;
 }
 
 .highlight_dangerous_bold {
+	padding: 5px;
 	color: #FF0033;
 	font-style: italic;
 	font-weight: bold;

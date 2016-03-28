@@ -2572,20 +2572,20 @@ sub validate_source
 		}
 		
 		### TODO: Remove this; Calc all sums!
-		if ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD1.iso")
-		{
-			$conf->{source}{$iso}{sum} = "51f90e8ddd2ea199780065eaf75130ad";
-		}
-		elsif ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD2.iso")
-		{
-			$conf->{source}{$iso}{sum} = "efd54b939787519b350d986329e2c7a3";
-		}
-		elsif ($iso eq "/data1/VMs/files/rhel-server-6.7-x86_64-dvd.iso")
-		{
-			$conf->{source}{$iso}{sum} = "a2bc9de743bfb0bfe1f14676a46a624b";
-		}
-		else
-		{
+# 		if ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD1.iso")
+# 		{
+# 			$conf->{source}{$iso}{sum} = "51f90e8ddd2ea199780065eaf75130ad";
+# 		}
+# 		elsif ($iso eq "/data1/VMs/files/CentOS-6.7-x86_64-bin-DVD2.iso")
+# 		{
+# 			$conf->{source}{$iso}{sum} = "efd54b939787519b350d986329e2c7a3";
+# 		}
+# 		elsif ($iso eq "/data1/VMs/files/rhel-server-6.7-x86_64-dvd.iso")
+# 		{
+# 			$conf->{source}{$iso}{sum} = "a2bc9de743bfb0bfe1f14676a46a624b";
+# 		}
+# 		else
+# 		{
 			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
 			$conf->{source}{$iso}{sum} = "";
 			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
@@ -2604,7 +2604,7 @@ sub validate_source
 				}
 			}
 			close $file_handle;
-		}
+# 		}
 		
 		# If we got a sum, make sure it matches an expected one.
 		if ($conf->{source}{$iso}{sum})

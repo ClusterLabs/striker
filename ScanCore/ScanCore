@@ -176,8 +176,8 @@ $an->Log->level($an->data->{scancore}{log_level});
 $an->Log->db_transactions(1) if $an->data->{scancore}{log_db_transactions};
 
 # Read in strings now.
-$an->String->read_words({file => $an->data->{path}{scancore_strings}});
-$an->String->read_words({file => $an->data->{path}{striker_strings}});
+$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
+$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # See if the user is forcing the issue
 $an->Get->switches();
@@ -299,8 +299,8 @@ while(1)
 	
 	# Re-read the configuration and words files.
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-	$an->String->read_words({file => $an->data->{path}{scancore_strings}});
-	$an->String->read_words({file => $an->data->{path}{striker_strings}});
+	$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
+	$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 	$an->data->{scancore}{enabled} = 1 if $an->data->{switches}{force};
 	load_agent_strings($an);
 
@@ -2199,7 +2199,7 @@ sub load_agent_strings
 		if ((-e $strings) && (-r $strings))
 		{
 			# Read the strings file.
-			$an->String->read_words({file => $strings});
+			$an->Storage->read_words({file => $strings});
 		}
 	}
 	$an->data->{sys}{agents} = [];

@@ -27,9 +27,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -40,16 +39,13 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
-# This is used by scan agents that need to track whether an alert was sent when
-# a sensor dropped below/rose above a set alert threshold. For example, if a
-# sensor alerts at 20°C and clears at 25°C, this will be called when either
-# value is passed. When passing the warning threshold, the alert is registered
-# and sent to the user. Once set, no further warning alerts are sent. When the
-# value passes over the clear threshold, this is checked and if an alert was
-# previously registered, it is removed and an "all clear" message is sent. In
-# this way, multiple alerts will not go out if a sensor floats around the
-# warning threshold and a "cleared" message won't be sent unless a "warning"
-# message was previously sent.
+# This is used by scan agents that need to track whether an alert was sent when a sensor dropped below/rose 
+# above a set alert threshold. For example, if a sensor alerts at 20°C and clears at 25°C, this will be 
+# called when either value is passed. When passing the warning threshold, the alert is registered and sent to
+# the user. Once set, no further warning alerts are sent. When the value passes over the clear threshold, 
+# this is checked and if an alert was previously registered, it is removed and an "all clear" message is 
+# sent. In this way, multiple alerts will not go out if a sensor floats around the warning threshold and a 
+# "cleared" message won't be sent unless a "warning" message was previously sent.
 sub check_alert_sent
 {
 	my $self      = shift;
@@ -62,8 +58,8 @@ sub check_alert_sent
 	# This will get set to '1' if an alert is added or removed.
 	my $set = 0;
 	
-	# If 'type' is 'warning', an entry will be made if it doesn't exist. If
-	# 'clear', an alert will be removed if it exists. 
+	# If 'type' is 'warning', an entry will be made if it doesn't exist. If 'clear', an alert will be 
+	# removed if it exists. 
 	my $type                 = $parameter->{type}                 ? $parameter->{type}                 : ""; # This should error.
 	my $alert_sent_by        = $parameter->{alert_sent_by}        ? $parameter->{alert_sent_by}        : "";
 	my $alert_record_locator = $parameter->{alert_record_locator} ? $parameter->{alert_record_locator} : "";
@@ -101,8 +97,8 @@ AND
 		name2 => "count", value2 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Now, if this is type=warning, register the alert if it doesn't exist.
-	# If it is type=clear, remove the alert if it exists.
+	# Now, if this is type=warning, register the alert if it doesn't exist. If it is type=clear, remove 
+	# the alert if it exists.
 	if (($type eq "warning") && (not $count))
 	{
 		### New alert

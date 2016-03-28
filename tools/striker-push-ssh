@@ -58,7 +58,7 @@ $an->default_log_language($an->data->{sys}{log_language});
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
-$an->String->read_words  ({file => $an->data->{path}{striker_strings}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
 
 if (($an->data->{switches}{h})   or 

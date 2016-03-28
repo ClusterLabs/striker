@@ -80,6 +80,7 @@
 		<key name="button_0073">Alert Log Files</key>
 		<key name="button_0074">Create a Backup</key>
 		<key name="button_0075">Load a Backup</key>
+		<key name="button_0076">#!string!brand_0015!# Databases</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -386,6 +387,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
 		<key name="explain_0171">Create a backup of this #!string!brand_0020!#.</key>
 		<key name="explain_0172">Load a backup file on to this #!string!brand_0020!#.</key>
+		<key name="explain_0173">Add, edit or remove the available #!variable!brand_0015!# databases to synchronize with.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -1304,6 +1306,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0189">Startup Underway!</key>
 		<key name="title_0190">Warning</key>
 		<key name="title_0191">Configure #!string!brand_0020!# and Managed #!string!brand_0003!# Systems</key>
+		<key name="title_0192">Not access to #!string!brand_0015!# databases</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1680,7 +1683,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0355"><![CDATA[One or both of the nodes recently started.<br />The: [<span class="highlight_detail">anvil-safe-start</span>] tool is running, so start-up is underway.<br />Please be patient. Some steps can take up to five minutes to complete.<br />Services should come online shortly.]]></key>
 		<key name="message_0356"><![CDATA[#!string!brand_0002!# takes great care not to change existing configurations, but no program is perfect.<br />If you are replacing a failed node, please be sure you have good backups before continuing!<br />It is strongly advised to replace lost nodes during a maintenance window, just to be extra safe.]]></key>
 		<key name="message_0357"><![CDATA[&lt;Remainder of Space&gt;]]></key>
-		<key name="message_0358">...free...</key>
+		<key name="message_0358"><![CDATA[Unable to connect to any of the #!string!brand_0015!# databases configured in: [<span class="highlight_detail">#!data!path::striker_config!#</span>].]]></key>
 		<key name="message_0359"><![CDATA[I am sorry, but there was a problem with the connection to the: [<span class="fixed_width">#!variable!node!#</span>], so the upload of the file: [<span class="fixed_width">#!variable!file!#</span>] failed.]]></key>
 		<key name="message_0360">...free...</key>
 		<key name="message_0361"><![CDATA[I am sorry, but I could not access one or both nodes. I need access to both nodes in order to setup the #!string!brand_0003!#.<br />Please go back and verify that the <i>current</i> IP addresses and password are entered for each node.]]></key>

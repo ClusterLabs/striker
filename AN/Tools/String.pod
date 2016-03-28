@@ -15,9 +15,9 @@ This module handles all of the "string" functions. In other words, all processin
   # Get a common object handle on all AN::Tools::* modules.
   my $an = AN::Tools->new();
   
-  # Access this module's methods using '$an->String->read_words()' syntax. For
+  # Access this module's methods using '$an->Storage->read_words()' syntax. For
   # example, this is how you would read in an XML words file.
-  $an->String->read_words({file => "/path/to/program/words.xml"});
+  $an->Storage->read_words({file => "/path/to/program/words.xml"});
 
 =head1 DESCRIPTION
 
@@ -37,7 +37,7 @@ Below are the detailed usage instructions for the methods provided by this modul
 
   # Force 'utf8' mode for an XML words file to be read then turn it back off.
   $an->String->force_utf8(1);
-  $an->String->read_words({file => "/path/to/program/words.xml"});
+  $an->Storage->read_words({file => "/path/to/program/words.xml"});
   $an->String->force_utf8(0);
 
 =head3 Details
@@ -87,7 +87,7 @@ If you use this and then see "wide-character in print" warnings, try setting thi
   # Finally, get a word string from another hash reference instead of from
   # $an->data.
   my $test = {};
-  $an->String->read_words("./test.xml", $test)
+  $an->Storage->read_words("./test.xml", $test)
   $an->String->get({key => "ta_0000", variable => {test => "あ"}, language => "jp", hash => $test});
   
   # The same, but in the shorter array-type call:
@@ -114,19 +114,19 @@ This is an optional language to use when reading in the word key. The default is
 
 =head4 C<hash>
 
-This is an optional alternate hash reference to read the requested words key from. The default is to use C<$an->data>. This hash reference must contain data read in from the C<$an->String->read_words> method call.
+This is an optional alternate hash reference to read the requested words key from. The default is to use C<$an->data>. This hash reference must contain data read in from the C<$an->Storage->read_words> method call.
 
 =head2 read_words
 
 =head3 Example
 
   # Read in your program's XML words file into the '$an->data' hash reference.
-  $an->String->read_words({file => "/path/to/program/words.xml"});
+  $an->Storage->read_words({file => "/path/to/program/words.xml"});
   
   # Same, but this time read the XML words file into your own dedicated hash
   # reference.
   my $hash = {};
-  $an->String->read_words({
+  $an->Storage->read_words({
 	file	=>	"/path/to/program/words.xml",
 	hash	=>	$hash
   });

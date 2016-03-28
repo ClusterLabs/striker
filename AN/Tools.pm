@@ -38,6 +38,8 @@ use AN::Tools::Readable;
 use AN::Tools::Remote;
 use AN::Tools::Storage;
 use AN::Tools::String;
+use AN::Tools::Validate;
+use AN::Tools::Web;
 
 # The constructor through which all other module's methods will be accessed.
 sub new
@@ -58,6 +60,8 @@ sub new
 			REMOTE				=>	AN::Tools::Remote->new(),
 			STORAGE				=>	AN::Tools::Storage->new(),
 			STRING				=>	AN::Tools::String->new(),
+			VALIDATE			=>	AN::Tools::Validate->new(),
+			WEB				=>	AN::Tools::Web->new(),
 		},
 		LOADED				=>	{
 			'Math::BigInt'			=>	0,
@@ -103,6 +107,8 @@ sub new
 	$an->Remote->parent($an);
 	$an->Storage->parent($an);
 	$an->String->parent($an);
+	$an->Validate->parent($an);
+	$an->Web->parent($an);
 	
 	# Set some system paths
 	$an->_set_paths;
@@ -117,7 +123,7 @@ sub new
 	$an->Storage->read_conf($an->{DEFAULT}{CONFIG_FILE});
 	
 	# I need to read the initial words early.
-	$an->String->read_words();
+	$an->Storage->read_words();
 	
 	# Set the directory delimiter
 	my $directory_delimiter = $an->_directory_delimiter();
@@ -150,7 +156,7 @@ sub new
 		# Force UTF-8.
 		$an->String->force_utf8		($parameter->{String}{force_utf8}) 	if defined $parameter->{String}{force_utf8};
 		# Read in the user's words.
-		$an->String->read_words({file => $parameter->{String}{read_words}{file}}) if defined $parameter->{String}{read_words}{file};
+		$an->Storage->read_words({file => $parameter->{String}{read_words}{file}}) if defined $parameter->{String}{read_words}{file};
 		
 		### AN::Tools::Get parameters
 		$an->Get->use_24h		($parameter->{'Get'}{use_24h})		if defined $parameter->{'Get'}{use_24h};
@@ -179,7 +185,7 @@ sub new
 		print "Failed to read the core words file: [$an->{DEFAULT}{STRINGS}]\n";
 		exit(255);
 	}
-	$an->String->read_words({file => $an->{DEFAULT}{STRINGS}});
+	$an->Storage->read_words({file => $an->{DEFAULT}{STRINGS}});
 
 	return ($self);
 }
@@ -413,6 +419,22 @@ sub String
 	my $self = shift;
 	
 	return ($self->{HANDLE}{STRING});
+}
+
+# Makes my handle to AN::Tools::Validate clearer when using this module to access it's methods.
+sub Validate
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{VALIDATE});
+}
+
+# Makes my handle to AN::Tools::Web clearer when using this module to access it's methods.
+sub Web
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{WEB});
 }
 
 ### This will be expanded later when the DB module is done. For now, it is not used.

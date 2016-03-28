@@ -76,8 +76,8 @@ $an->default_log_file    ($an->data->{path}{log_file});
 
 # Read my stuff
 $an->Storage->read_conf({file => $an->data->{path}{striker_config}});
-$an->String->read_words({file => $an->data->{path}{scancore_strings}});
-$an->String->read_words({file => $an->data->{path}{striker_strings}});
+$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
+$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
 # Log our startup
 my ($date, $time) = $an->Get->date_and_time();

@@ -59,7 +59,7 @@ is($an->String->get({
 }), "テスト、 整理: [い]/[あ]。", "get(); key and two variables, out of order injection, alternate language.");
 
 my $test = {};	# Alternate hash reference test
-is($an->String->read_words("./test.xml", $test), 1, "read_words(); Read in 'test.xml' into a new hash reference, array type call.");
+is($an->Storage->read_words("./test.xml", $test), 1, "read_words(); Read in 'test.xml' into a new hash reference, array type call.");
 is($an->String->get({
 	key		=>	"ta_0000",
 	variable	=>	{
@@ -68,11 +68,11 @@ is($an->String->get({
 	hash		=>	$test
 }), "Alternate Test: [A].", "get(); key and one variable, alternate words hash.");
 $test = {};	# Blank to test reload.
-is($an->String->read_words({
+is($an->Storage->read_words({
 	file		=>	"./test.xml",
 	hash		=>	$test
 }), 1, "read_words(); Read in 'test.xml' into cleared hash reference for next set of tests, hash reference type call.");
-is($an->String->read_words("./test.xml", $test), 1, "read_words(); Read in 'test.xml' into a new hash reference for next set of tests.");
+is($an->Storage->read_words("./test.xml", $test), 1, "read_words(); Read in 'test.xml' into a new hash reference for next set of tests.");
 is($an->String->get({
 	key		=>	"ta_0000",
 	variable	=>	{
@@ -83,13 +83,13 @@ is($an->String->get({
 }), "代りのテスト: [あ]。", "get(); key and one variable, alternate words hash and alternate language.");
 is($an->String->get("ta_0000",{test => "あ"}, "jp", $test), "代りのテスト: [あ]。", "get(); key and one variable, alternate words hash and alternate language, array-type arguments.");
 is($an->Alert->no_fatal_errors({set => 1}), 1, "Disabled fatal errors for next test.");
-is($an->String->read_words("./t/test.xml", $hash), undef, "read_words(); Test failure when asked to read in a non-existant file.");
+is($an->Storage->read_words("./t/test.xml", $hash), undef, "read_words(); Test failure when asked to read in a non-existant file.");
 like($an->error(), qr/^-=] 11 - .* \[=-/, "error(); Error raised after last test.");
 is($an->error_code(), 11, "error_code(); set to '11' after last error.");
 is($an->String->get("t_0000"), "Test", "get(); Known-good call the check in error is cleared.");
 is($an->error(), "", "error(); Error cleared after last test.");
 is($an->error_code(), 0, "error_code(); Set back to '0' after last error.");
-is($an->String->read_words("./unreadable.xml", $hash), undef, "read_words(); Test unreadable file error. if this test fails, chmod 'unreadable.xml' back to 0200 and try again.");
+is($an->Storage->read_words("./unreadable.xml", $hash), undef, "read_words(); Test unreadable file error. if this test fails, chmod 'unreadable.xml' back to 0200 and try again.");
 like($an->error(), qr/^-=] 12 - .* \[=-/, "error(); Error raised after last test.");
 is($an->error_code(), 12, "error_code(); set to '12' after last error.");
 is($an->String->get({
@@ -125,7 +125,7 @@ is($an->error_code(), 0, "error_code(); Set back to '0' after last error.");
 
 
 ### Failure tests.
-# is($an->String->read_words("./test.xml", $hash), 1, "read_words(); Read in 'test.xml' into a new hash reference for next set of tests.");
+# is($an->Storage->read_words("./test.xml", $hash), 1, "read_words(); Read in 'test.xml' into a new hash reference for next set of tests.");
 
 # my $conf=$an->data()->{strings}{lang}{en_CA}{key}{an_0000}{content};
 # my $confj=$an->data()->{strings}{lang}{jp}{key}{an_0000}{content};
