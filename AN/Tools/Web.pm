@@ -35,6 +35,91 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This reads in data from CGI
+sub get_cgi
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Make sure we have an array reference of variables to read.
+	my $variables = ref($parameter->{variables}) eq "ARRAY" ? $parameter->{variables} : "";
+	if (not $variables)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0069", code => 69, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# Needed to read in passed CGI variables
+	my $cgi = CGI->new();
+	
+	# This will store the string I was passed.
+	$an->data->{sys}{cgi_string} = "?";
+	foreach my $variable (@{$variables})
+	{
+		# A stray comma will cause a loop with no var name
+		next if not $variable;
+		
+		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
+		# to overwrite the empty CGI value. This prevents that.
+		if (($variable eq "anvil") && ($an->data->{cgi}{anvil}))
+		{
+			$an->data->{sys}{cgi_string} .= "$variable=$an->data->{cgi}{$variable}&";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "variable", value1 => $variable, 
+				name2 => "value",    value2 => $an->data->{cgi}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		
+		# Avoid "uninitialized" warning messages.
+		$an->data->{cgi}{$variable} = "";
+		if (defined $cgi->param($variable))
+		{
+			if ($variable eq "file")
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "variable", value1 => $variable,
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $cgi->upload($variable))
+				{
+					# Empty file passed, looks like the user forgot to select a file to upload.
+					$an->Log->entry({log_level => 2, message_key => "log_0016", file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					   $an->data->{cgi_fh}{$variable}       = $cgi->upload($variable);
+					my $file                                = $an->data->{cgi_fh}{$variable};
+					   $an->data->{cgi_mimetype}{$variable} = $cgi->uploadInfo($file)->{'Content-Type'};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "variable",                value1 => $variable,
+						name2 => "cgi_fh::$variable",       value2 => $an->data->{cgi_fh}{$variable},
+						name3 => "cgi_mimetype::$variable", value3 => $an->data->{cgi_mimetype}{$variable},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			$an->data->{cgi}{$variable} = $cgi->param($variable);
+			
+			# Make this UTF8 if it isn't already.
+			if (not Encode::is_utf8($an->data->{cgi}{$variable}))
+			{
+				$an->data->{cgi}{$variable} = Encode::decode_utf8( $an->data->{cgi}{$variable} );
+			}
+			$an->data->{sys}{cgi_string} .= "$variable=$an->data->{cgi}{$variable}&";
+		}
+		if ($an->data->{cgi}{$variable})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "var",       value1 => $variable,
+				name2 => "cgi::$variable", value2 => $an->data->{cgi}{$variable},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->data->{sys}{cgi_string} =~ s/&$//;
+	
+	return(0);
+}
+
 # This is presented when no access to a ScanCore database is available.
 sub no_db_access
 {

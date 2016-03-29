@@ -52,8 +52,7 @@ $an->default_log_file    ($an->data->{'log'}{file});
 $an->Log->level          ($an->data->{'log'}{level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
-$an->Get->switches();
-$an->Get->cgi({variables => [
+$an->Web->get_cgi({variables => [
 	"anvil", 
 	"subtask", 
 	"task", 
