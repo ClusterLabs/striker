@@ -35,6 +35,115 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This builds an HTML select field.
+sub build_select
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Required
+	my $name     = $parameter->{name};
+	my $options  = $parameter->{options};
+	# Optional
+	my $id       = $parameter->{id}       ? $parameter->{id}       : $name;
+	my $sort     = $parameter->{'sort'}   ? $parameter->{'sort'}   : 1;	# Sort the entries?
+	my $width    = $parameter->{width}    ? $parameter->{width}    : 0;	# 0 = let the browser set the width
+	my $blank    = $parameter->{blank}    ? $parameter->{blank}    : 0;	# Add a blank/null entry?
+	my $selected = $parameter->{selected} ? $parameter->{selected} : "";	# Pre-select an option?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "name",     value1 => $name, 
+		name2 => "options",  value2 => $options, 
+		name3 => "sort",     value3 => $sort, 
+		name4 => "width",    value4 => $width, 
+		name5 => "blank",    value5 => $blank, 
+		name6 => "selected", value6 => $selected, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $select = "<select name=\"$name\" id=\"$id\">\n";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "select", value1 => $select,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($width)
+	{
+		$select = "<select name=\"$name\" id=\"$id\" style=\"width: ${width}px;\">\n";
+	}
+	
+	# Insert a blank line.
+	if ($blank)
+	{
+		$select .= "<option value=\"\"></option>\n";
+	}
+	
+	# This needs to be smarter.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sort", value1 => $sort,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($sort)
+	{
+		foreach my $entry (sort {$a cmp $b} @{$options})
+		{
+			next if not $entry;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "entry", value1 => $entry,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($entry =~ /^(.*?)#!#(.*)$/)
+			{
+				my $value       =  $1;
+				my $description =  $2;
+				   $select      .= "<option value=\"$value\">$description</option>\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "value",       value1 => $value,
+					name2 => "description", value2 => $description,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$select .= "<option value=\"$entry\">$entry</option>\n";
+			}
+		}
+	}
+	else
+	{
+		foreach my $entry (@{$options})
+		{
+			next if not $entry;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "entry", value1 => $entry,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($entry =~ /^(.*?)#!#(.*)$/)
+			{
+				my $value       =  $1;
+				my $description =  $2;
+				   $select      .= "<option value=\"$value\">$description</option>\n";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					name1 => "value",       value1 => $value,
+					name2 => "description", value2 => $description,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$select .= "<option value=\"$entry\">$entry</option>\n";
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "selected", value1 => $selected,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($selected)
+	{
+		$select =~ s/value=\"$selected\">/value=\"$selected\" selected>/m;
+	}
+	
+	$select .= "</select>\n";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "select", value1 => $select,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return ($select);
+}
+
 # This reads in data from CGI
 sub get_cgi
 {

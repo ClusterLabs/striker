@@ -54,6 +54,9 @@ $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Web->get_cgi({variables => [
 	"anvil", 
+	"confirm", 
+	"owner_uuid", 
+	"save", 
 	"subtask", 
 	"task", 
 ]});
@@ -93,6 +96,112 @@ exit(0);
 sub process_task
 {
 	my ($an) = @_;
+	
+	if ($an->data->{cgi}{task} eq "anvil")
+	{
+		anvil_menu($an);
+	}
+	elsif ($an->data->{cgi}{task} eq "owner")
+	{
+		
+	}
+	elsif ($an->data->{cgi}{task} eq "smtp")
+	{
+		
+	}
+	elsif ($an->data->{cgi}{task} eq "email_alerts")
+	{
+		
+	}
+	elsif ($an->data->{cgi}{task} eq "file_alerts")
+	{
+		
+	}
+	elsif ($an->data->{cgi}{task} eq "install_manifests")
+	{
+		
+	}
+	elsif ($an->data->{cgi}{task} eq "backup")
+	{
+		if ($an->data->{cgi}{subtask} eq "create")
+		{
+		}
+		elsif ($an->data->{cgi}{subtask} eq "load")
+		{
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "install_target")
+	{
+		if ($an->data->{cgi}{subtask} eq "enable")
+		{
+		}
+		elsif ($an->data->{cgi}{subtask} eq "disable")
+		{
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "scancore_db")
+	{
+		
+	}
+	else
+	{
+		# Catch all/error
+	}
+	
+	return(0);
+}
+
+# This handles the configuration of Anvil! systems (including the ability to create new owners)
+sub anvil_menu
+{
+	my ($an) = @_;
+	
+	# Is the user asking to save changes?
+	if ($an->data->{cgi}{save})
+	{
+		# Save, if something changed.
+	}
+	
+	# Now display...
+	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
+			back		=>	"<a href=\"?\">$back_image</a>",
+			refresh		=>	"<a href=\"".$an->data->{sys}{cgi_string}."\">$refresh_image</a>",
+		}});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
+	
+	### First, the owner. 
+	# If there is one or more, we'll show a selection box and a button to expose the fields for adding a
+	# new owner. If there are no existing owners, we'll show the "new owner" items immediated.
+	my $owners       = $an->ScanCore->get_owners();
+	my $owner_select = "";
+	if (@{$owners} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		my $options = [];
+		foreach my $hash_ref (@{$owners})
+		{
+			my $owner_uuid  = $hash_ref->{owner_uuid};
+			my $owner_name  = $hash_ref->{owner_name};
+			my $this_option = $owner_uuid."#!#".$owner_name;
+			push @{$options}, $this_option;
+		}
+		$owner_select = $an->Web->build_select({
+			name     => "owner_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{owner_uuid};
+		});
+	}
 	
 	
 	
@@ -162,7 +271,7 @@ sub show_main_menu
 	
 	# Install Manifests
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=manifests\" alt=\"#!string!button_0060!#\" id=\"task_manifests\">#!string!button_0060!#</a>",
+			button		=>	"<a href=\"?task=install_manifests\" alt=\"#!string!button_0060!#\" id=\"task_install_manifests\">#!string!button_0060!#</a>",
 			description	=>	"#!string!explain_0168!#",
 			url		=>	"",
 		}})."\n";
@@ -209,7 +318,7 @@ sub show_main_menu
 	
 	# Configure ScanCore Databases
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=backup&subtask=scancore_dbs\" alt=\"#!string!button_0076!#\" id=\"task_scancore_dbs\">#!string!button_0076!#</a>",
+			button		=>	"<a href=\"?task=backup&subtask=scancore_db\" alt=\"#!string!button_0076!#\" id=\"task_scancore_db\">#!string!button_0076!#</a>",
 			description	=>	"#!string!explain_0173!#",
 			url		=>	"",
 		}})."\n";

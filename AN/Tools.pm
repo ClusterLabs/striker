@@ -36,6 +36,7 @@ use AN::Tools::Log;
 use AN::Tools::Math;
 use AN::Tools::Readable;
 use AN::Tools::Remote;
+use AN::Tools::ScanCore;
 use AN::Tools::Storage;
 use AN::Tools::String;
 use AN::Tools::Validate;
@@ -58,6 +59,7 @@ sub new
 			MATH				=>	AN::Tools::Math->new(),
 			READABLE			=>	AN::Tools::Readable->new(),
 			REMOTE				=>	AN::Tools::Remote->new(),
+			SCANCORE			=>	AN::Tools::ScanCore->new(),
 			STORAGE				=>	AN::Tools::Storage->new(),
 			STRING				=>	AN::Tools::String->new(),
 			VALIDATE			=>	AN::Tools::Validate->new(),
@@ -105,6 +107,7 @@ sub new
 	$an->Math->parent($an);
 	$an->Readable->parent($an);
 	$an->Remote->parent($an);
+	$an->ScanCore->parent($an);
 	$an->Storage->parent($an);
 	$an->String->parent($an);
 	$an->Validate->parent($an);
@@ -435,6 +438,14 @@ sub Web
 	my $self = shift;
 	
 	return ($self->{HANDLE}{WEB});
+}
+
+# Makes my handle to AN::Tools::ScanCore clearer when using this module to access it's methods.
+sub ScanCore
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{SCANCORE});
 }
 
 ### This will be expanded later when the DB module is done. For now, it is not used.
