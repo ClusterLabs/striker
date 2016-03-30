@@ -6,6 +6,9 @@ package AN::Tools::Web;
 use strict;
 use warnings;
 use Data::Dumper;
+use CGI;
+use CGI::Carp qw(fatalsToBrowser);
+use Encode;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Web.pm";
@@ -67,12 +70,18 @@ sub build_select
 	if ($width)
 	{
 		$select = "<select name=\"$name\" id=\"$id\" style=\"width: ${width}px;\">\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "select", value1 => $select,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Insert a blank line.
 	if ($blank)
 	{
 		$select .= "<option value=\"\"></option>\n";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "select", value1 => $select,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# This needs to be smarter.
@@ -168,13 +177,16 @@ sub get_cgi
 	{
 		# A stray comma will cause a loop with no var name
 		next if not $variable;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "variable", value1 => $variable, 
+		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
 		# to overwrite the empty CGI value. This prevents that.
 		if (($variable eq "anvil") && ($an->data->{cgi}{anvil}))
 		{
 			$an->data->{sys}{cgi_string} .= "$variable=$an->data->{cgi}{$variable}&";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -185,6 +197,9 @@ sub get_cgi
 		$an->data->{cgi}{$variable} = "";
 		if (defined $cgi->param($variable))
 		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi->param($variable)", value1 => $cgi->param($variable)
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($variable eq "file")
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -208,25 +223,76 @@ sub get_cgi
 				}
 			}
 			$an->data->{cgi}{$variable} = $cgi->param($variable);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::${variable}", value1 => $an->data->{cgi}{$variable}, 
+			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Make this UTF8 if it isn't already.
 			if (not Encode::is_utf8($an->data->{cgi}{$variable}))
 			{
 				$an->data->{cgi}{$variable} = Encode::decode_utf8( $an->data->{cgi}{$variable} );
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::${variable}", value1 => $an->data->{cgi}{$variable}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			$an->data->{sys}{cgi_string} .= "$variable=$an->data->{cgi}{$variable}&";
+			
+			# Add this to the sys::cgi_string
+			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::cgi_string", value1 => $an->data->{cgi}{cgi_string}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
+		
+		# Log the variable, if set
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::${variable}", value1 => $an->data->{cgi}{$variable}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{$variable})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "var",       value1 => $variable,
-				name2 => "cgi::$variable", value2 => $an->data->{cgi}{$variable},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::$variable", value1 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
+	# Clear the final '&' from sys::cgi_string
 	$an->data->{sys}{cgi_string} =~ s/&$//;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::cgi_string", value1 => $an->data->{cgi}{cgi_string}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
+}
+
+# This returns a "More Info" link, *if* 'sys::disable_links' is not set.
+sub more_info_link
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# TODO: Error if this is not set.
+	my $url  = $parameter->{url} ? $parameter->{url} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "url", value1 => $url,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $link = $an->Web->template({file => "web.html", template => "more-info-link", replace => { url => $url }, no_comment => 1});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "link",               value1 => $link,
+		name2 => "sys::disable_links", value2 => $an->data->{sys}{disable_links},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{disable_links})
+	{
+		$link = "&nbsp;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "link", value1 => $link,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "link", value1 => $link,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($link);
 }
 
 # This is presented when no access to a ScanCore database is available.
@@ -289,7 +355,7 @@ sub template
 	my $template   = $parameter->{template};
 	my $replace    = $parameter->{replace}    ? $parameter->{replace}    : {};
 	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "file",       value1 => $file,
 		name2 => "template",   value2 => $template,
 		name3 => "no_comment", value3 => $no_comment,

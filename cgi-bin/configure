@@ -55,6 +55,7 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Web->get_cgi({variables => [
 	"anvil", 
 	"confirm", 
+	"owner_name", 
 	"owner_uuid", 
 	"save", 
 	"subtask", 
@@ -162,7 +163,161 @@ sub anvil_menu
 		# Save, if something changed.
 	}
 	
-	# Now display...
+	### First, we'll show any existing Anvil! systems, owners and smtp servers. If a user selects one of
+	### these, it will pre-fill the form below it.
+	# Show a select box of existing Anvil! systems (if any).
+	my $width         = 200;
+	my $menu_items    = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"#!string!header_0020!#",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	my $anvils        = $an->ScanCore->get_anvils();
+	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $anvil_explain = "#!string!explain_0174!#";
+	if (@{$anvils} > 0)
+	{
+		### TODO: Build JS to make changes
+		my $options = [];
+		foreach my $hash_ref (@{$anvils})
+		{
+			my $anvil_uuid  = $hash_ref->{anvil_uuid};
+			my $anvil_name  = $hash_ref->{anvil_name};
+			my $this_option = $anvil_uuid."#!#".$anvil_name;
+			push @{$options}, $this_option;
+		}
+		$anvil_select = $an->Web->build_select({
+			name     => "anvil_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{anvil_uuid},
+			width    => $width,
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"",
+			column2_class	=>	"input_select",
+			column2		=>	$anvil_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$anvil_explain,
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Get a list of existing owners, if any.
+	my $owners        = $an->ScanCore->get_owners();
+	my $owner_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $owner_explain = "#!string!explain_0175!#";
+	if (@{$owners} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		my $options = [];
+		foreach my $hash_ref (@{$owners})
+		{
+			my $owner_uuid  = $hash_ref->{owner_uuid};
+			my $owner_name  = $hash_ref->{owner_name};
+			my $this_option = $owner_uuid."#!#".$owner_name;
+			push @{$options}, $this_option;
+		}
+		$owner_select = $an->Web->build_select({
+			name     => "owner_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{owner_uuid},
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"&nbsp;",
+			column2_class	=>	"input_select",
+			column2		=>	$owner_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$owner_explain,
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# And now get a list of SMTP mail servers to send alerts through
+	my $smtp         = $an->ScanCore->get_smtp();
+	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $smtp_explain = "#!string!explain_0178!#";
+	if (@{$smtp} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		my $options = [];
+		foreach my $hash_ref (@{$smtp})
+		{
+			my $smtp_uuid  = $hash_ref->{smtp_uuid};
+			my $smtp_name  = $hash_ref->{smtp_name};
+			my $this_option = $smtp_uuid."#!#".$smtp_name;
+			push @{$options}, $this_option;
+		}
+		$smtp_select = $an->Web->build_select({
+			name     => "smtp_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{smtp_uuid},
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"&nbsp;",
+			column2_class	=>	"input_select",
+			column2		=>	$smtp_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$smtp_explain,
+			column4_class	=>	"input_url",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0002!#"}),,
+		}});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"#!string!header_0021!#",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	### From here down, we present fields for the user to enter (or that may be filled out by selecting
+	### one of the entries from select boxes).
+	# Create the text field for the 'owners -> owner_name' (if set, it will create a new Owner entry)
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0023!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"owner_name\" id=\"owner_name\" value=\"".$an->data->{cgi}{owner_name}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0176!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	### Now information on the Anvil! itself.
+	# Name
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0005!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"anvil_name\" id=\"anvil_name\" value=\"".$an->data->{cgi}{anvil_name}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0177!#",
+			column4_class	=>	"input_url",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0001!#"}),
+		}});
+	
+	# Description
+	
+	# Password
+	
+	# Note 
+	
+	# Put the menu template together
+	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
+			title		=>	"#!string!title_0193!#",
+			menu_items	=>	$menu_items,
+		}});
+	# Wrap it in a <form>
+	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
+	
+	# Put together the page's frame...
 	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
 			alt_text     => "#!string!button_0001!#",
@@ -179,31 +334,17 @@ sub anvil_menu
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
-	### First, the owner. 
-	# If there is one or more, we'll show a selection box and a button to expose the fields for adding a
-	# new owner. If there are no existing owners, we'll show the "new owner" items immediated.
-	my $owners       = $an->ScanCore->get_owners();
-	my $owner_select = "";
-	if (@{$owners} > 0)
-	{
-		# Build an array to pass to 'build_select'
-		my $options = [];
-		foreach my $hash_ref (@{$owners})
-		{
-			my $owner_uuid  = $hash_ref->{owner_uuid};
-			my $owner_name  = $hash_ref->{owner_name};
-			my $this_option = $owner_uuid."#!#".$owner_name;
-			push @{$options}, $this_option;
-		}
-		$owner_select = $an->Web->build_select({
-			name     => "owner_uuid", 
-			options  => $options, 
-			blank    => 1,
-			selected => $an->data->{cgi}{owner_uuid};
+	# Print it!
+	print $an->Web->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				body		=>	$menu, 
+				footer		=>	$footer, 
+			},
 		});
-	}
-	
-	
+
 	
 	return(0);
 }

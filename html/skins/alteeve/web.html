@@ -1,0 +1,57 @@
+<!-- This holds common templates used, mainly, by the AN::Tools::Web module -->
+
+<!-- start more-info-link -->
+<a href="#!replace!url!#" target="_new">#!string!button_0003!#</a>
+<!-- end more-info-link -->
+
+<!-- start generic-4column-menu -->
+<table>
+	<tr>
+		<td colspan="4" class="title">
+			#!replace!title!#
+		</td>
+	</tr>
+#!replace!menu_items!#
+	<tr>
+		<td colspan="4">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+<br />
+<!-- end generic-4column-menu -->
+
+<!-- start generic-4column-menu-entry -->
+	<tr>
+		<td class="#!replace!column1_class!#">
+			#!replace!column1!#
+		</td>
+		<td class="#!replace!column2_class!#">
+			#!replace!column2!#
+		</td>
+		<td class="#!replace!column3_class!#" style="text-align: left;">
+			#!replace!column3!#
+		</td>
+		<td class="#!replace!column4_class!#">
+			#!replace!column4!#
+		</td>
+	</tr>
+<!-- end generic-4column-menu-entry -->
+
+<!-- start disabled_input -->
+	<span class="highlight_unavailable">--</span>
+<!-- end disabled_input -->
+
+<!-- start form-wrapper -->
+<form method="post">
+#!replace!body!#
+</form>
+<!-- end form-wrapper -->
+
+<!-- start break-bar -->
+	<tr>
+		<td colspan="#!replace!colspan!#" class="#!replace!class!#">
+			#!replace!message!#
+		</td>
+	</tr>
+<!-- end break-bar -->

@@ -388,6 +388,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0171">Create a backup of this #!string!brand_0020!#.</key>
 		<key name="explain_0172">Load a backup file on to this #!string!brand_0020!#.</key>
 		<key name="explain_0173">Add, edit or remove the available #!variable!brand_0015!# databases to synchronize with.</key>
+		<key name="explain_0174">There are no existing #!string!brand_0003!# systems yet.</key>
+		<key name="explain_0175">There are no existing owners yet.</key>
+		<key name="explain_0176">Enter the name of the company, group or person who owns this #!string!brand_0003!# system.</key>
+		<key name="explain_0177"><![CDATA[The name of this #!string!brand_0003!# system. It must match '#!string!row_0005!#' used in the #!variable!row_0240!# used to build the system.]]></key>
+		<key name="explain_0178">There are no existing sending (smtp) mail servers yet.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -451,6 +456,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="terse_0163"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0164"><![CDATA[&nbsp;]]></key>
 		<key name="terse_0165"><![CDATA[&nbsp;]]></key>
+		
+		<!-- These are URLs used for 'More Info' links -->
+		<key name="url_0001"><![CDATA[https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration]]></key>
+		<key name="url_0002"><![CDATA[https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -772,6 +781,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0016">Manage</key>
 		<key name="header_0017">Description</key>
 		<key name="header_0018"><![CDATA[&nbsp;]]></key>
+		<key name="header_0019">Field</key>
+		<key name="header_0020">Select an existing item to use it again for this #!string!brand_0003!#</key>
+		<key name="header_0021">These fields tell the system where to find, how to access what to do with alerts</key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -1307,6 +1319,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0190">Warning</key>
 		<key name="title_0191">Configure #!string!brand_0020!# and Managed #!string!brand_0003!# Systems</key>
 		<key name="title_0192">Not access to #!string!brand_0015!# databases</key>
+		<key name="title_0193">Add, edit or delete an #!variable!brand_0003!#</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>

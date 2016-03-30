@@ -128,6 +128,16 @@ td {
 	color: #1a9a13;
 }
 
+.breaker_header {
+	text-align: left;
+	color: #13749a;
+}
+
+.highlight_row_bold {
+	color: #13749a;
+	font-weight: bold;
+}
+
 .highlight_good_bold {
 	color: #1a9a13;
 	font-weight: bold;
