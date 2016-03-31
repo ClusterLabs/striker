@@ -9,6 +9,25 @@
 # 
 # Return Codes
 # 0  = Successful run
+# 1  = Not run as 'root'.
+# 2  = The '--iso' and/or '--usb' switches were not used.
+# 3  = The '--iso' passed in wasn't found.
+# 4  = Specifed USB device appears to be /dev/sda or /dev/vda.
+# 5  = The passed in USB path doesn't appear to be valid.
+# 6  = Passed in USB device doesn't exist.
+# 7  = Passed in USB device doesn't appear to actually be a USB device.
+# 8  = The USB device is read-only.
+# 9  = The USB device is 0-byte size; usually a usb device with no media.
+# 10 = Failed to unmount the USB device.
+# 11 = One or more required apps are missing.
+# 12 = Failed to partition the USB device.
+# 13 = Failed to find 'mbr.bin' from syslinux-nonlinux.
+# 14 = Failed to mount the new USB partition.
+# 15 = Failed to mount the source ISO loopback.
+# 16 = One or more files on the source ISO were too large for 'vfat'.
+# 
+# NOTE: We do NOT use preset paths to executables to maximize portability between distros. If a user doesn't
+#       have someting in their PATH, the shell call will fail. Oh well.
 # 
 
 use strict;
@@ -20,44 +39,57 @@ my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
 my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
 if (($running_directory =~ /^\./) && ($ENV{PWD}))
 {
-	        $running_directory =~ s/^\./$ENV{PWD}/;
+	$running_directory =~ s/^\./$ENV{PWD}/;
 }
 
 my $conf = {
-	# Executable programs. We will search for these in PATH if not pre-defined (start with '/...').
-	executable	=>	{
-		createrepo	=>	"createrepo",
-		cp		=>	"cp",
-		curl		=>	"curl",
-		git		=>	"git",
-		isoinfo		=>	"isoinfo",
-		'iso-read'	=>	"iso-read",
-		md5sum		=>	"md5sum",
-		mkisofs		=>	"mkisofs",
-		mount		=>	"mount",
-	},
 	# Paths to files and directories
 	path		=>	{
+		mbr_bin		=>	"",
 	},
 	sys		=>	{
-		debug		=>	0,
+		debug		=>	1,
+		disk_label	=>	"Anvil USB",
 		required	=>	{
-			parted			=>	0,
-			'syslinux-nonlinux'	=>	0, 
+			mkdosfs		=>	"",	# No switch for version, just call it
+			parted		=>	"--version",
+			syslinux	=>	"--version",
+			udevadm		=>	"--version",
 		},
+		source_iso	=>	"",
 		support_url	=>	"https://alteeve.ca/w/Support",
+		usb_device	=>	"",
+		usb_partition	=>	"",
+		usb_mount	=>	"/tmp/anvil_usb",
+		iso_mount	=>	"/tmp/anvil_iso",
 	},
 };
+
+system('clear');
+print "-=] Anvil! USB Installer\n";
 
 get_switches($conf);
 $conf->{sys}{debug} = 1 if $conf->{switches}{debug};
 if (($conf->{switches}{h})    or 
     ($conf->{switches}{'?'})  or 
-    ($conf->{switches}{help}) or 
-    (not $conf->{switches}{source}))
+    ($conf->{switches}{help}))
 {
 	print_usage($conf);
 	exit(0);
+}
+
+# Make sure we're running as 'root'
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	print "[ Error ] - I am sorry, but this must be run as the root user.\n";
+	exit(2);
+}
+
+if ((not $conf->{switches}{iso}) or (not $conf->{switches}{usb}))
+{
+	print "[ Error ] - Both '--iso' and '--usb' are required. Use '--help' for more information.\n";
+	exit(1);
 }
 
 # Enable debugging if the user requested it.
@@ -65,11 +97,673 @@ $conf->{sys}{debug} = 1 if $conf->{switches}{v};
 $conf->{sys}{debug} = 2 if $conf->{switches}{vv};
 $conf->{sys}{debug} = 3 if $conf->{switches}{vvv};
 
+$conf->{sys}{source_iso}    = $conf->{switches}{iso};
+$conf->{sys}{usb_device}    = $conf->{switches}{usb};
+$conf->{sys}{usb_partition} = $conf->{sys}{usb_device}."1";
 
+# Does the ISO exist?
+if (not -e $conf->{sys}{source_iso})
+{
+	print "[ Error ] - The source ISO: [".$conf->{sys}{source_iso}."] wasn't found.\n";
+	exit(3);
+}
+
+# Is the USB device sane and found?
+if ($conf->{sys}{usb_device} =~ /\/dev\/[vs]da/)
+{
+	print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."].\n";
+	print "[ Error ]   To avoid accidental data loss, this device can not be used.\n";
+	exit(4);
+}
+
+# Did the user include a partition number and/or does it look like an actual block device path?
+if (($conf->{sys}{usb_device} !~ /^\/dev\/[vs]d/) or ($conf->{sys}{usb_device} =~ /\d$/))
+{
+	print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."],\n";
+	print "[ Error ]   which does not appear to be a valid block device path. Please\n";
+	print "[ Error ]   use '/dev/sdX' (no ending partition number).\n";
+	exit(5);
+}
+
+# Does the device appear to exist?
+if (not -e $conf->{sys}{usb_device})
+{
+	print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."],\n";
+	print "[ Error ]   which does not appear to exist.\n";
+	exit(6);
+}
+
+# Make sure the apps we'll need are installed
+check_apps($conf);
+
+# Is it a USB device? If so, it will report the detail of the device to the user. If not, it will exit.
+check_if_usb($conf);
+
+# Ask the user to confirm.
+print "=======================================================================\n";
+print "[ WARNING ] - This device will be completely erased! All existing data\n";
+print "[ WARNING ]   will be lost!\n";
+print "=======================================================================\n";
+print "Proceed? [y/N] ";
+my $answer = <STDIN>;
+chomp($answer);
+print "$THIS_FILE ".__LINE__."; [ Debug ] - answer: [".$answer."]\n" if $conf->{sys}{debug} >= 2;
+if ((lc($answer) eq "y") or (lc($answer) eq "yes"))
+{
+	print "- Thank you, Proceeding\n";
+
+	# Make sure we have the 'mbr.bin' file.
+	find_mbr_bin($conf);
+}
+else
+{
+	print "- Exiting!\n";
+	exit(0);
+}
+
+# Still alive? Wee!
+force_unmount($conf);
+
+# Wipe and partition the device.
+prep_device($conf);
+
+# Write to the device:
+write_device($conf);
+
+exit(0);
 
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
+
+# This writes out the data to the USB device (and mounts the USB device and ISO temporarily.
+sub write_device
+{
+	my ($conf) = @_;
+	
+	my $usb_mount = $conf->{sys}{usb_mount};
+	my $iso_mount = $conf->{sys}{iso_mount};
+	if (not -e $usb_mount)
+	{
+		print "- Creating the temporary USB mount point: [$usb_mount]\n";
+	}
+	if (not -e $iso_mount)
+	{
+		print "- Creating the temporary ISO mount point: [$iso_mount]\n";
+	}
+	
+	# Mount the USB device
+	print "- Mounting the USB partition: [".$conf->{sys}{usb_partition}."] on: [".$usb_mount."]\n";
+	my $shell_call = "mount ".$conf->{sys}{usb_partition}." ".$usb_mount;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+# 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	# Mount the ISO source
+	print "- Mounting the source ISO: [".$conf->{sys}{source_iso}."] on: [".$iso_mount."]\n";
+	$shell_call = "mount -o loop ".$conf->{sys}{source_iso}." ".$iso_mount;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	print "- Verifying they mounted.\n";
+	my $usb_found  = 0;
+	my $iso_found  = 0;
+	   $shell_call = "mount";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	
+# 		if ($line =~ /on $usb_mount /)
+# 		{
+# 			$usb_found = 1;
+# 			print "$THIS_FILE ".__LINE__."; [ Debug ] - usb_found: [$usb_found]\n" if $conf->{sys}{debug} >= 1;
+# 		}
+# 		if ($line =~ /on $iso_mount /)
+# 		{
+# 			$iso_found = 1;
+# 			print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_found: [$iso_found]\n" if $conf->{sys}{debug} >= 1;
+# 		}
+# 	}
+# 	close $file_handle;
+	
+	if (not $usb_found)
+	{
+		print "
+[ Error ] - The USB partition: [".$conf->{sys}{usb_partition}."]
+[ Error ]   appears to have not mounted on: [$usb_mount]\n";
+		exit(14);
+	}
+	if (not $iso_found)
+	{
+		print "
+[ Error ] - The source ISO: [".$conf->{sys}{source_iso}."]
+[ Error ]   appears to have not mounted on: [$iso_mount]\n";
+		exit(15);
+	}
+	
+	# Make sure everything in the source is under 4GB
+	print "- Verifying that everything we're about to copy is under 4 GiB for 'vfat'\n";
+	print "  compatibility.\n";
+	my $too_large  = 0;
+	   $shell_call = "find $iso_mount -type f -size +4G -exec ls -lh {} \;";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 		my $file = ($line =~ /($iso_mount\/.*)$/)[0];
+# 		print "[ Error ] - The source file: [$file] is too large to fit on a 'vfat' file\n";
+# 		print "[ Error ]   system (which we have to use). Unable to proceed.\n";
+# 		$too_large  = 1;
+# 	}
+# 	close $file_handle;
+	if ($too_large)
+	{
+		exit(16);
+	}
+	
+	
+	
+	return(0);
+}
+
+# This looks for the master boot record image we'll need.
+sub find_mbr_bin
+{
+	my ($conf) = @_;
+	
+	print "- Searching for 'mbr.bin', this might take a minute.\n";
+	my $shell_call = "find /";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		if ($line =~ /\/mbr\.bin$/)
+		{
+			$conf->{path}{mbr_bin} = $line;
+			print "- Found it: [".$conf->{path}{mbr_bin}."]\n";
+			last;
+		}
+	}
+	close $file_handle;
+	
+	if (not $conf->{path}{mbr_bin})
+	{
+		print "
+[ Error ] - The file 'mbr.bin' was not found. Is the 'syslinux-nonlinux' 
+[ Error ]   package installed?\n";
+		exit(13);
+	}
+	
+	return(0);
+}
+
+# This zero's out the USB device's MDB and repartitions it to be a single partition.
+sub prep_device
+{
+	my ($conf) = @_;
+	
+	print "- Clearing: [".$conf->{sys}{usb_device}."]\n";
+	my $shell_call = "dd if=/dev/zero of=".$conf->{sys}{usb_device}." bs=100M count=1 && sync";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open (my $file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	print "- Creating a new partition.\n";
+	$shell_call = "
+parted ".$conf->{sys}{usb_device}." --script -- mklabel msdos
+parted ".$conf->{sys}{usb_device}." --script -- mkpart primary fat32 4MiB -1s
+parted ".$conf->{sys}{usb_device}." --script -- set 1 boot on
+parted ".$conf->{sys}{usb_device}." --script unit MB print
+";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	# Rescan.
+	print "- Creating a new partition.\n";
+	$shell_call = "partprobe ".$conf->{sys}{usb_device};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	# Make sure the new partition exists.
+	if (not -e $conf->{sys}{usb_partition})
+	{
+		# Failed.
+		print "
+[ Error ] - It appears the format operation failed. The expected partition:
+[ Error ]   [".$conf->{sys}{usb_partition}."] does not exist.\n";
+		exit(12);
+	}
+	
+	# Format it.
+	print "- Formatting the new partition: [".$conf->{sys}{usb_partition}."]\n";
+	$shell_call = "mkfs.vfat ".$conf->{sys}{usb_partition}." -n '".$conf->{sys}{disk_label}."'";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	# Copy the master boot record.
+	print "- Writing out the master boot record to: [".$conf->{sys}{usb_device}."]\n";
+	$shell_call = "dd bs=440 count=1 conv=notrunc if=".$conf->{path}{mbr_bin}." of=".$conf->{sys}{usb_device};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	# Install syslinux
+	print "- Installing syslinux on: [".$conf->{sys}{usb_partition}."]\n";
+	$shell_call = "syslinux --install ".$conf->{sys}{usb_partition};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line = $_;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 	}
+# 	close $file_handle;
+	
+	return(0);
+}
+
+# This checks to make sure the apps we'll need are installed.
+sub check_apps
+{
+	my ($conf) = @_;
+	
+	my $ok = 1;
+	foreach my $app (sort {$a cmp $b} keys %{$conf->{sys}{required}})
+	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - app: [$app]\n" if $conf->{sys}{debug} >= 2;
+		my $switches   = $conf->{sys}{required}{$app};
+		my $shell_call = $app." ".$switches;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /command not found/)
+			{
+				$ok = 0;
+				print "[ Error ] - The application: [$app] does not appear to be installed.\n";
+			}
+		}
+		close $file_handle;
+	}
+	if (not $ok)
+	{
+		print "[ Error ] - Please install the missing app(s) and try again.\n";
+		exit(11);
+	}
+	
+	return(0);
+}
+
+# This unmounts the USB device, if necessary.
+sub force_unmount
+{
+	my ($conf) = @_;
+	
+	# Call 'mount' and see if it is mounted.
+	my $mounted    = [];
+	my $usb_device = $conf->{sys}{usb_device};
+	my $usb_mount  = $conf->{sys}{usb_mount};
+	my $iso_mount  = $conf->{sys}{iso_mount};
+	my $shell_call = "mount";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		
+		if (($line =~ /^($usb_device) /)    or 
+		    ($line =~ /^($usb_device\d+) /) or 
+		    ($line =~ /on $usb_mount /)     or 
+		    ($line =~ /on $iso_mount /))
+		{
+			my $this_mount = $1;
+			push @{$mounted}, $this_mount;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - this_mount: [$this_mount]\n" if $conf->{sys}{debug} >= 2;
+			last;
+		}
+	}
+	close $file_handle;
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - mounted: [".@{$mounted}."]\n" if $conf->{sys}{debug} >= 2;
+	foreach my $device (@{$mounted})
+	{
+		# Unmount it.
+		print "- Unmounting: [$device]\n";
+		my $shell_call = "umount -f $device";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		}
+		close $file_handle;
+		
+		# Verify that it is gone.
+		my $still_mounted = 0;
+		   $shell_call    = "mount";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			
+			if ($line =~ /^$device /)
+			{
+				$still_mounted = 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - still_mounted: [$still_mounted]\n" if $conf->{sys}{debug} >= 1;
+				last;
+			}
+		}
+		close $file_handle;
+		
+		# Still mounted?
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - still_mounted: [$still_mounted]\n" if $conf->{sys}{debug} >= 2;
+		if ($still_mounted)
+		{
+			print "[ Error ] - The USB device is still mounted after trying to unmount it. It is\n";
+			print "[ Error ]   not safe to proceed.\n";
+			exit(10);
+		}
+		else
+		{
+			print "- Success!\n";
+		}
+	}
+	
+	return(0);
+}
+
+# This calls udevadm against the passed in USB device and return '1' if it is a USB device and '0' if it is
+# not.
+sub check_if_usb
+{
+	my ($conf) = @_;
+	
+	my $device     = "";
+	my $is_usb     = 0;
+	my $shell_call = "ls ".$conf->{sys}{usb_device};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $this_device =  $_;
+		next if $device =~ /\d$/;
+		$device = $this_device;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - device: [$device]\n" if $conf->{sys}{debug} >= 2;
+		last;
+	}
+	close $file_handle;
+	
+	# Now see if this is a USB device and, if so, what we know about it.
+	my $this_device   = "";
+	my $this_usb      = "";
+	my $block_device  = ($device =~ /\/dev\/(sd.*)/)[0];
+	my $removable     = 0;
+	my $size          = 0;
+	my $read_only     = 0;
+	my $device_vendor = "Unknown vendor, ";
+	my $device_model  = "Unknown model";
+	
+	$shell_call = "udevadm info --attribute-walk --name $device";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Is 'udevadm' installed? Error was: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+		if ($line =~ /looking at parent device '(.*?)'/)
+		{
+			$this_device = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - this_device: [$this_device].\n" if $conf->{sys}{debug} >= 2;
+			if ((not $this_usb) && ($this_device =~ /usb\d+\/(\d+-\d+)\//))
+			{
+				$is_usb   = 1;
+				$this_usb = $1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - is_usb: [$is_usb], this_usb: [$this_usb] parsed from: [$this_device].\n" if $conf->{sys}{debug} >= 2;
+			}
+			next;
+		}
+		if ($line =~ /ATTR\{removable\}=="(\d+)"/)
+		{
+			$removable = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - removable: [$removable].\n" if $conf->{sys}{debug} >= 2;
+		}
+		if ($line =~ /ATTR\{size\}=="(\d+)"/)
+		{
+			$size = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - size: [$size].\n" if $conf->{sys}{debug} >= 2;
+		}
+		if ($line =~ /ATTR\{ro\}=="(\d+)"/)
+		{
+			$read_only = $1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - read_only: [$read_only].\n" if $conf->{sys}{debug} >= 2;
+		}
+		if ($line =~ /ATTRS\{vendor\}=="(.*)"/)
+		{
+			my $vendor = $1;
+			next if $vendor =~ /^0x/;
+			$device_vendor =  $vendor;
+			$device_vendor =~ s/^\s+//;
+			$device_vendor =~ s/\s+$//;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - device_vendor: [$device_vendor].\n" if $conf->{sys}{debug} >= 2;
+		}
+		if ($line =~ /ATTRS\{model\}=="(.*)"/)
+		{
+			my $model = $1;
+			next if $model =~ /^0x/;
+			$device_model =  $model;
+			$device_model =~ s/^\s+//;
+			$device_model =~ s/\s+$//;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - device_model: [$device_model].\n" if $conf->{sys}{debug} >= 2;
+		}
+	}
+	close $file_handle;
+	
+	my $sector_size = get_sector_size($conf, $block_device);
+	my $size_gib    = 0;
+	my $size_gb     = 0;
+	my $byte_size   = ($sector_size * $size);
+	if ($block_device)
+	{
+		$size_gib = sprintf("%.2f", ($byte_size / (2 ** 30)));
+		$size_gb  = sprintf("%.2f", ($byte_size / (10 ** 9)));
+	}
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - this_usb: [$this_usb], block_device: [$block_device ($device)].\n" if $conf->{sys}{debug} >= 2;
+	
+	if (not $this_usb)
+	{
+		print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."],\n";
+		print "[ Error ]   which does not appear to actuall be a USB device.\n";
+		exit(7);
+	}
+	elsif ($read_only)
+	{
+		print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."],\n";
+		print "[ Error ]   which is read-only and can not be used.\n";
+		exit(8);
+	}
+	elsif (not $size)
+	{
+		print "[ Error ] - The USB device was passed as: [".$conf->{sys}{usb_device}."],\n";
+		print "[ Error ]   which appears to be a device with no media in it.\n";
+		exit(9);
+	}
+	
+	my $yn = ["No", "Yes"];
+	print "- USB device path: ..... [$device]\n";
+	print "- Target make and model: [$device_vendor $device_model]\n";
+	print "- The capacity is: ..... [$size_gib GiB ($size_gb GB)]\n";
+	print "- The source ISO is: ... [".$conf->{sys}{source_iso}."]\n";
+	
+	return(0);
+}
+
+# This reads '/sys/block/${block_device}/queue/hw_sector_size' to get the sector size.
+sub get_sector_size
+{
+	my ($conf, $block_device) = @_;
+	print "$THIS_FILE ".__LINE__."; get_sector_size(); block_device: [$block_device]\n" if $conf->{sys}{debug} >= 2;
+	
+	# Return 0 if the sysfs file doesn't exist;
+	return(0) if not -e "/sys/block/${block_device}/queue/hw_sector_size";
+	
+	my $sector_size = 0;
+	my $shell_call  = "/sys/block/${block_device}/queue/hw_sector_size";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "<$shell_call") or die "Failed to read: [$shell_call]. Error: $!\n";
+	while (<$file_handle>)
+	{
+		chomp;
+		$sector_size = $_;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - sector_size: [$sector_size].\n" if $conf->{sys}{debug} >= 2;
+	}
+	close $file_handle;
+	
+	print "$THIS_FILE ".__LINE__."; sector_size: [$sector_size]\n" if $conf->{sys}{debug} >= 2;
+	return($sector_size);
+}
+
+# This collects the command line switches
+sub get_switches
+{
+	my ($conf) = @_;
+	
+	my $last_argument = "";
+	foreach my $argument (@ARGV)
+	{
+		if ($last_argument eq "raw")
+		{
+			# Don't process anything.
+			$conf->{switches}{raw} .= " $argument";
+		}
+		elsif ($argument =~ /^-/)
+		{
+			# If the argument is just '--', appeand everything after it to 'raw'.
+			$conf->{sys}{switch_count}++;
+			if ($argument eq "--")
+			{
+				$last_argument         = "raw";
+				$conf->{switches}{raw} = "";
+			}
+			else
+			{
+				($last_argument) = ($argument =~ /^-{1,2}(.*)/)[0];
+				if ($last_argument =~ /=/)
+				{
+					# Break up the variable/value.
+					($last_argument, my $value) = (split /=/, $last_argument, 2);
+					$conf->{switches}{$last_argument} = $value;
+				}
+				else
+				{
+					$conf->{switches}{$last_argument} = "#!SET!#";
+				}
+			}
+		}
+		else
+		{
+			if ($last_argument)
+			{
+				$conf->{switches}{$last_argument} = $argument;
+				$last_argument                    = "";
+			}
+			elsif (($argument eq "start") or ($argument eq "stop") or ($argument eq "status"))
+			{
+				$conf->{switches}{$argument} = 1;
+			}
+			else
+			{
+				# Got a value without an argument.
+				$conf->{switches}{error} = 1;
+			}
+		}
+	}
+	# Clean up the initial space added to 'raw'.
+	if ($conf->{switches}{raw})
+	{
+		$conf->{switches}{raw} =~ s/^ //;
+	}
+	
+	# Debug
+	if ($conf->{sys}{debug} >= 3)
+	{
+		foreach my $variable (sort {$a cmp $b} keys %{$conf->{switches}})
+		{
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - Variable: [$variable]\t-> value: [$conf->{switches}{$variable}]\n";
+		}
+	}
+	
+	return(0);
+}
 
 # Print the usage information.
 sub print_usage

@@ -164,17 +164,17 @@ sub check_sd_devices
 				}
 				next;
 			}
-			if ($line =~ /ATTR{removable}=="(\d+)"/)
+			if ($line =~ /ATTR\{removable\}=="(\d+)"/)
 			{
 				$removable = $1;
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - removable: [$removable].");
 			}
-			if ($line =~ /ATTR{size}=="(\d+)"/)
+			if ($line =~ /ATTR\{size\}=="(\d+)"/)
 			{
 				$size = $1;
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - size: [$size].");
 			}
-			if ($line =~ /ATTR{ro}=="(\d+)"/)
+			if ($line =~ /ATTR\{ro\}=="(\d+)"/)
 			{
 				$read_only = $1;
 				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - read_only: [$read_only].");
