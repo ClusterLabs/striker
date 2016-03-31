@@ -235,7 +235,7 @@ sub generate_ks
 	my $dhcp_range     = $number eq "1" ? "10.20.10.200:10.20.10.209" : "10.20.10.210:10.20.10.219";
 	my $keyboard       = $conf->{sys}{keyboard};
 	my $selinux        = $machine eq "striker" ? "permissive" : "enforcing";
-	my $packages       = get_packages($conf, $machine);
+	my $packages       = get_packages($conf, $machine, $distro);
 	my $iso_name       = "Anvil_m2_${say_os}-${say_ver}_alpha.iso";
 	my $background     = $conf->{sys}{background};
 	my $bcn_netmask    = $conf->{sys}{bcn_netmask};
@@ -843,50 +843,117 @@ END
 # This returns the packages for either nodes or dashboards
 sub get_packages
 {
-	my ($conf, $machine) = @_;
+	my ($conf, $machine, $distro) = @_;
 
 	my $striker_name = $conf->{sys}{striker_name};
 	my $packages     = "# This is a very minimal installation. It is just enough to get the nodes ready
 # for the Stage-2 'Install Manifest' run from the $striker_name dashboard.
 \%packages
-\@core
-\@server-policy
+# We clobber the groups XML repodata, so we specify the packages directly.
+# Core - mandatory
+acl
+attr
+audit
+basesystem
+bash
+coreutils
+cpio
+cronie
+dhclient
+e2fsprogs
+filesystem
+glibc
+initscripts
+iproute
+iptables
+iptables-ipv6
+iputils
+kbd
+ncurses
+openssh-server
+passwd
+policycoreutils
+procps
+redhat-support-tool
+rhnsd
+rootfiles
+rpm
+rsyslog
+selinux-policy-targeted
+setup
+shadow-utils
+subscription-manager
+sudo
+util-linux-ng
+vim-minimal
+yum
+yum-rhn-plugin
+
+# Core - Default
+aic94xx-firmware
+atmel-firmware
+b43-openfwwf
+bfa-firmware
+efibootmgr
+grub
+ipw2100-firmware
+ipw2200-firmware
+ivtv-firmware
+iwl100-firmware
+iwl1000-firmware
+iwl3945-firmware
+iwl4965-firmware
+iwl5000-firmware
+iwl5150-firmware
+iwl6000-firmware
+iwl6000g2a-firmware
+iwl6050-firmware
+kernel-firmware
+kexec-tools
+libertas-usb8388-firmware
+postfix
+ql2100-firmware
+ql2200-firmware
+ql23xx-firmware
+ql2400-firmware
+ql2500-firmware
+rt61pci-firmware
+rt73usb-firmware
+xorg-x11-drv-ati-firmware
+zd1211-firmware
+
+# Core - Optional
+dracut-network
+
+# Others - Common to nodes and dashboards
 -kdump
 alteeve-repo
 gpm
 perl
 perl-Crypt-SSLeay
-yum-plugin-priorities
-\%end
 ";
+	if ($distro eq "centos")
+	{
+		$packages .= "yum-plugin-priorities\n";
+	}
+	
 	if ($machine eq "striker")
 	{
-		$packages = "
-# This is a fairly minimal installation. It is enough for 'striker-installer'
-# to run properly later
-\%packages
-\@core
-\@server-policy
--kdump
+		$packages .= "
+# Striker packages needed for 'striker-installer' to run
 acpid
-alteeve-repo
 createrepo
 gcc
 glibc-devel
-gpm
 httpd 
-perl
-perl-Crypt-SSLeay
 perl-libwww-perl
 rsync
 screen 
 syslinux 
 syslinux-tftpboot
 xinetd
-yum-plugin-priorities
 
-### Needed to keep virt-manager from complaining. Will be removed when NoVNC
-### support is completed.
+### Needed to keep virt-manager from complaining.
 augeas-libs
 dnsmasq
 ebtables
@@ -913,9 +980,9 @@ seabios
 sgabios-bin
 spice-server
 vgabios
-\%end
 ";
 	}
+	$packages .= "\%end\n";
 	
 	return($packages);
 }

@@ -28,6 +28,7 @@
 # 10 = Error processing an RPM when running 'createrepo'.
 # 11 = mkisofs failed.
 # 12 = Copied file size is different from the source file size.
+# 13 = Failed to find the XML file needed for createrepo.
 # 
 
 use strict;
@@ -976,44 +977,113 @@ sub get_packages
 	my $packages     = "# This is a very minimal installation. It is just enough to get the nodes ready
 # for the Stage-2 'Install Manifest' run from the $conf->{sys}{ks}{striker_name} dashboard.
 \%packages
-\@core
-\@server-policy
+# Core - mandatory
+# We clobber the groups XML repodata, so we specify the packages directly.
+# Core - mandatory
+acl
+attr
+audit
+basesystem
+bash
+coreutils
+cpio
+cronie
+dhclient
+e2fsprogs
+filesystem
+glibc
+initscripts
+iproute
+iptables
+iptables-ipv6
+iputils
+kbd
+ncurses
+openssh-server
+passwd
+policycoreutils
+procps
+redhat-support-tool
+rhnsd
+rootfiles
+rpm
+rsyslog
+selinux-policy-targeted
+setup
+shadow-utils
+subscription-manager
+sudo
+util-linux-ng
+vim-minimal
+yum
+yum-rhn-plugin
+
+# Core - Default
+aic94xx-firmware
+atmel-firmware
+b43-openfwwf
+bfa-firmware
+efibootmgr
+grub
+ipw2100-firmware
+ipw2200-firmware
+ivtv-firmware
+iwl100-firmware
+iwl1000-firmware
+iwl3945-firmware
+iwl4965-firmware
+iwl5000-firmware
+iwl5150-firmware
+iwl6000-firmware
+iwl6000g2a-firmware
+iwl6050-firmware
+kernel-firmware
+kexec-tools
+libertas-usb8388-firmware
+postfix
+ql2100-firmware
+ql2200-firmware
+ql23xx-firmware
+ql2400-firmware
+ql2500-firmware
+rt61pci-firmware
+rt73usb-firmware
+xorg-x11-drv-ati-firmware
+zd1211-firmware
+
+# Core - Optional
+dracut-network
+
+# Others - Common to nodes and dashboards
 -kdump
 alteeve-repo
 gpm
 perl
 perl-Crypt-SSLeay
-yum-plugin-priorities
-\%end
+vim
 ";
+	if ($conf->{sys}{os_type} eq "centos")
+	{
+		$packages .= "yum-plugin-priorities\n";
+	}
+	
 	if ($machine eq "striker")
 	{
-		$packages = "
-# This is a fairly minimal installation. It is enough for 'striker-installer'
-# to run properly later
-\%packages
-\@core
-\@server-policy
--kdump
+		$packages .= "
+# Striker packages needed for 'striker-installer' to run
 acpid
-alteeve-repo
 createrepo
 gcc
 glibc-devel
-gpm
 httpd 
-perl
-perl-Crypt-SSLeay
 perl-libwww-perl
 rsync
 screen 
 syslinux 
 syslinux-tftpboot
 xinetd
-yum-plugin-priorities
 
-### Needed to keep virt-manager from complaining. Will be removed when NoVNC
-### support is completed.
+### Needed to keep virt-manager from complaining.
 augeas-libs
 dnsmasq
 ebtables
@@ -1040,9 +1110,9 @@ seabios
 sgabios-bin
 spice-server
 vgabios
-\%end
 ";
 	}
+	$packages .= "\%end\n";
 	
 	return($packages);
 }
@@ -1193,11 +1263,11 @@ sub prep_packages_repo
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - disc_id: [$disc_id]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Walk through 'repodata', clear out old files and get the name of the comps.xml file.
-	my $xml_file = get_repodata_xml_file_name($conf);
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+	my ($xml_file1, $xml_file2) = get_repodata_xml_file_name($conf);
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 2;
 	
 	# Build the repository
-	build_repository($conf, $disc_id, $xml_file);
+	build_repository($conf, $disc_id, $xml_file1, $xml_file2);
 	
 	# Finally, create the ISO!
 	build_iso($conf);
@@ -1296,10 +1366,15 @@ $mkisofs_output
 # This builds the repodata for the Packages directory.
 sub build_repository
 {
-	my ($conf, $disc_id, $xml_file) = @_;
+	my ($conf, $disc_id, $xml_file1, $xml_file2) = @_;
 	
-	my $shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file." ".$conf->{path}{iso}{source_directory};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
+	my $shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file1." ".$conf->{path}{iso}{source_directory};
+	if ($xml_file2)
+	{
+		$shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file1." -g ".$xml_file2." ".$conf->{path}{iso}{source_directory};
+	}
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
+	
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
@@ -1328,40 +1403,57 @@ sub get_repodata_xml_file_name
 {
 	my ($conf) = @_;
 	
-	my $xml_file = "";
+	my $xml_file1 = "";
+	my $xml_file2 = "";
 	my $source   = $conf->{path}{iso}{source_directory}."/repodata";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
 	if (-e $source)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 2;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source: [$source]\n" if $conf->{sys}{debug} >= 1;
 		local(*DIR);
 		opendir(DIR, $source) or die __LINE__."; Failed to open the directory: [$source], error was: $!\n";
 		while (my $file = readdir(DIR))
 		{
 			next if (($file eq ".") or ($file eq ".."));
 			my $full_path = $source."/".$file;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - full_path: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 			
 			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
-			if (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+			if ($file =~ /Server\.x86_64\.xml$/)
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+				$xml_file2 = $full_path;
+			}
+			elsif (($file =~ /\.gz$/) or ($file =~ /\.bz2$/) or ($file =~ /\.repomd\.xml$/))
+			{
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Deleting: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 				unlink $full_path or die __LINE__."; [ Error ] - Failed to delete old 'repodata' file: [$full_path]. The error was: $!\n";
 			}
 			elsif ($file =~ /comps\.xml$/)
 			{
-				$xml_file = $full_path;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
+				$xml_file1 = $full_path;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
+			}
+			elsif ($file =~ /repomd\.xml$/)
+			{
+				$xml_file1 = $full_path;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file1]\n" if $conf->{sys}{debug} >= 1;
 			}
 			else
 			{
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 2;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - Ignoring: [$full_path]\n" if $conf->{sys}{debug} >= 1;
 			}
 		}
 		closedir(DIR);
 	}
 	
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file: [$xml_file]\n" if $conf->{sys}{debug} >= 2;
-	return($xml_file);
+	if (not $xml_file1)
+	{
+		print "[ Error ] - Failed to find the XML file used by 'createrepo' on the source ISO.\n";
+		exit(13);
+	}
+	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - xml_file1: [$xml_file1], xml_file2: [$xml_file2]\n" if $conf->{sys}{debug} >= 1;
+	return($xml_file1, $xml_file2);
 }
 
 # This blows away all files in the source's 'repodata' directory.
@@ -1671,9 +1763,9 @@ sub agree_to_terms
 	
 	system('clear');
 	print "-=] Thank you for using the 'Anvil!' Intelligent Availability platform! [=-\n\n";
-	if ($conf->{switches}{'accept-third-part-licenses'})
+	if ($conf->{switches}{'accept-third-party-licenses'})
 	{
-		print "- Third-party licenses agreed via '--accept-third-part-licenses'.\n";
+		print "- Third-party licenses agreed via '--accept-third-party-licenses'.\n";
 		$conf->{sys}{third_party}{Fujitsu}{agreed} = 1;
 		$conf->{sys}{third_party}{Avago}{agreed}   = 1;
 	}
@@ -2587,7 +2679,7 @@ sub validate_source
 # 		else
 # 		{
 			print "- Generating md5sum of the source: [$iso], please wait a moment...\n";
-			$conf->{source}{$iso}{sum} = "";
+			   $conf->{source}{$iso}{sum} = "";
 			my $shell_call                = $conf->{executable}{md5sum}." ".$iso;
 			print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 			open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
@@ -2837,6 +2929,7 @@ sub get_package_list
 		"dosfstools.x86_64",
 		"dracut-kernel.noarch",
 		"dracut.noarch",
+		"dracut-network.noarch", 
 		"e2fsprogs-libs.x86_64",
 		"e2fsprogs.x86_64",
 		"ebtables.x86_64",
@@ -3181,6 +3274,7 @@ sub get_package_list
 		"lvm2.x86_64",
 		"lzo.x86_64",
 		"lzop.x86_64",
+		"m2crypto.x86_64",
 		"m4.x86_64",
 		"madan-fonts.noarch",
 		"mailcap.noarch",
@@ -3344,9 +3438,13 @@ sub get_package_list
 		"pygtk2.x86_64",
 		"pyorbit.x86_64",
 		"python-argparse.noarch",
+		"python-dateutil.noarch", 
 		"python-deltarpm.x86_64",
+		"python-dmidecode.x86_64", 
+		"python-ethtool.x86_64",
 		"python-iniparse.noarch",
 		"python-libs.x86_64",
+		"python-lxml.x86_64",
 		"python-pcp.x86_64",
 		"python-pycurl.x86_64",
 		"python-suds.noarch",
@@ -3462,6 +3560,7 @@ sub get_package_list
 		"vino.x86_64",
 		"virt-manager.x86_64",
 		"virt-viewer.x86_64",
+		"virt-what.x86_64", 
 		"vlgothic-fonts-common.noarch",
 		"vlgothic-fonts.noarch",
 		"vte.x86_64",
@@ -3729,7 +3828,7 @@ Alteeve's Niche!.
 
 SWITCHES
 
---accept-third-part-licenses
+--accept-third-party-licenses
 
 	This switch confirms that you have read and agree to the following 
 	third party agreements.
@@ -3772,11 +3871,11 @@ EXAMPLES
 
 	Build a RHEL-based Anvil! ISO:
 	
-		./anvil_generate_iso --source ./rhel-server-6.7-x86_64-dvd.iso
+		./anvil-generate-iso --source ./rhel-server-6.7-x86_64-dvd.iso
 	
 	Build a CentOS-based Anvil ISO:
 	
-		./anvil_generate_iso --source ./CentOS-6.7-x86_64-bin-DVD1.iso
+		./anvil-generate-iso --source ./CentOS-6.7-x86_64-bin-DVD1.iso
 	
                   
 SUPPORT
