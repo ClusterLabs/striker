@@ -170,17 +170,14 @@ my $conf = {
 			ifn_dns1	=>	"8.8.8.8",
 			ifn_dns2	=>	"8.8.4.4",
 			ifn_gateway	=>	"10.255.255.254",
-			#ifn_gateway	=>	"192.168.122.1",
 			ifn_netmask	=>	"16",
-			#ifn_netmask	=>	"24",
 			keyboard	=>	"us",
 			language	=>	"en_CA.UTF-8",
 			os_version	=>	"6.7",
-			password	=>	"Initial1",	# User and 'root'.
+			password	=>	"Initial1",	# <admin_user> and 'root'.
 			prefix		=>	"an",
 			striker_bcn	=>	"10.20.4",
 			striker_ifn	=>	"10.255.4",
-			#striker_ifn	=>	"192.168.122",
 			striker_name	=>	"Striker",
 			timezone	=>	"America/Toronto",
 		},
@@ -191,7 +188,7 @@ my $conf = {
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
 		ASIX		=>	{
-			ax8817x	=>	{
+			ax8817x		=>	{
 				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/ASIX/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE.zip",
 				mode		=>	0644,
 			},
@@ -1013,20 +1010,16 @@ openssh-server
 passwd
 policycoreutils
 procps
-redhat-support-tool
-rhnsd
 rootfiles
 rpm
 rsyslog
 selinux-policy-targeted
 setup
 shadow-utils
-subscription-manager
 sudo
 util-linux-ng
 vim-minimal
 yum
-yum-rhn-plugin
 
 # Core - Default
 aic94xx-firmware
@@ -1076,6 +1069,16 @@ vim
 	{
 		$packages .= "yum-plugin-priorities\n";
 	}
+	if ($conf->{sys}{os_type} eq "rhel")
+	{
+		$packages .= "
+# RHEL specific core packages
+redhat-support-tool
+rhnsd
+subscription-manager
+yum-rhn-plugin
+";
+	}
 	
 	if ($machine eq "striker")
 	{
@@ -1091,6 +1094,7 @@ rsync
 screen 
 syslinux 
 syslinux-tftpboot
+usbutils
 xinetd
 
 ### Needed to keep virt-manager from complaining.
@@ -1383,8 +1387,7 @@ sub build_repository
 	{
 		$shell_call = $conf->{executable}{createrepo}." -u media://".$disc_id." -g ".$xml_file1." -g ".$xml_file2." ".$conf->{path}{iso}{source_directory};
 	}
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 0;
-	
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - shell_call: [$shell_call]\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die __LINE__."; \n[ Error ] - Failed to call: [$shell_call]. Received error: $!\n\n";
 	while(<$file_handle>)
 	{
@@ -1430,6 +1433,10 @@ sub get_repodata_xml_file_name
 			
 			#rm -f repodata/*.gz repodata/*.*.bz2 repodata/*.repomd.xml
 			if ($file =~ /Server\.x86_64\.xml$/)
+			{
+				$xml_file2 = $full_path;
+			}
+			elsif ($file =~ /c6-x86_64-comps\.xml$/)
 			{
 				$xml_file2 = $full_path;
 			}
@@ -1900,10 +1907,10 @@ sub download_anrepo_tools
 	if ($conf->{sys}{third_party}{ASIX}{agreed})
 	{
 		# ax8817[89] driver
-		my $file_name = ($conf->{url}{ASIC}{ax8817x}{url} =~ /^.*\/(.*)$/)[0];
-		my $source    = $conf->{url}{ASIC}{ax8817x}{url};
+		my $file_name = ($conf->{url}{ASIX}{ax8817x}{url} =~ /^.*\/(.*)$/)[0];
+		my $source    = $conf->{url}{ASIX}{ax8817x}{url};
 		my $target    = $conf->{path}{iso}{iso_asix}."/".$file_name;
-		my $mode      = $conf->{url}{ASIC}{ax8817x}{mode};
+		my $mode      = $conf->{url}{ASIX}{ax8817x}{mode};
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
 		download_file($conf, $source, $target, $mode);
 	}
@@ -2195,7 +2202,7 @@ sub setup_build_environment
 	else
 	{
 		print "- The working directory: [$conf->{path}{iso}{working_directory}] doesn't exist.\n";
-		print "- Can I create it (and needed subdirectories) now? [Y/n]\n";
+		print "- Can I create it (and needed subdirectories) now? [Y/n] ";
 		my $answer = <STDIN>;
 		chomp($answer);
 		if ((not $answer) or ($answer =~ /^y/i))
@@ -3602,6 +3609,7 @@ sub get_package_list
 		"unzip.x86_64",
 		"upstart.x86_64",
 		"usbredir.x86_64",
+		"usbutils.x86_64",
 		"usermode.x86_64",
 		"ustr.x86_64",
 		"util-linux-ng.x86_64",
@@ -3989,3 +3997,45 @@ sub _make_hash_reference
 	}
 	_add_hash_reference($href, $_href);
 }
+
+# Notes for making the ISO configurable later.
+=pod
+--admin-user <name>
+
+	By default, the username used to log into Striker's web interface is
+	'admin'. You can change the admin user with this switch.
+
+--ifn-dns1 <aaa.bbb.ccc.ddd>
+
+--ifn-dns2 <eee.fff.ggg.hhh>
+
+	This sets the default primary and/or secondary DNS servers to use by
+	default. If you want to disable DNS, set these to '0'.
+	
+	The defaults are;
+	
+	* ifn-dns1 is '8.8.8.8'
+	* ifn-dns2 is '8.8.4.4'
+
+--ifn-gateway <aaa.bbb.ccc.ddd>
+
+	This allows you to set the internet-facing network default gateway to
+	use by default when installing a Striker dashboard or Anvil! node. This
+	value can always be overridden at install time.
+	
+	The default is '10.255.255.254'.
+
+--ifn-netmask </x>
+
+	This allows you to set a subnet mask (using CIDR notation, ie: '/16' or
+	'/24'). 
+	
+	The default is '/16' (255.255.0.0).
+
+$conf->{sys}{ks}{admin_user}  = $conf->{switches}{'admin-user'}  if $conf->{switches}{'admin-user'};
+$conf->{sys}{ks}{ifn_dns1}    = $conf->{switches}{'ifn-dns1'}    if $conf->{switches}{'ifn-dns1'};
+$conf->{sys}{ks}{ifn_dns1}    = "" if not $conf->{sys}{ks}{ifn_dns1};
+$conf->{sys}{ks}{ifn_dns2}    = $conf->{switches}{'ifn-dns2'}    if $conf->{switches}{'ifn-dns2'};
+$conf->{sys}{ks}{ifn_dns2}    = "" if not $conf->{sys}{ks}{ifn_dns2};
+$conf->{sys}{ks}{ifn_netmask} = $conf->{switches}{'ifn-netmask'} if $conf->{switches}{'ifn-netmask'};
+=cut
