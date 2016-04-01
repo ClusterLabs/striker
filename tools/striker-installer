@@ -178,6 +178,7 @@ my $conf = {
 		setenforce		=>	"/usr/sbin/setenforce",
 		setsebool		=>	"/usr/sbin/setsebool",
 		scancore		=>	"/sbin/striker/ScanCore/ScanCore",
+		start_udev		=>	"/sbin/start_udev",
 		storcli64		=>	"/opt/MegaRAID/storcli/storcli64",
 		storcli64_link		=>	"/sbin/storcli64",
 		'ssh-keygen'		=>	"/usr/bin/ssh-keygen",
@@ -788,6 +789,9 @@ else
 	logger($conf, $THIS_FILE, __LINE__, "Command line switches appear sane, proceeding.", 3);
 }
 
+# Check for and compile/install network drivers
+compile_network_drivers($conf);
+
 # Check to see if we have an internet connection so that, if not, we can disable external repos.
 verify_internet_access($conf, 0);
 
@@ -813,9 +817,6 @@ if ($conf->{switches}{r})
 {
 	add_repo($conf);
 }
-
-# Check for and compile/install network drivers
-compile_network_drivers($conf);
 
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
@@ -1089,7 +1090,7 @@ sub compile_network_drivers
 				logger($conf, $THIS_FILE, __LINE__, "- Driver extracted, compiling it now.", 1);
 				my $make_ok    = 0;
 				my $shell_call = $conf->{executable}{make}." --directory=".$extract_directory;
-				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 1);
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 				while(<$file_handle>)
 				{
@@ -1144,7 +1145,21 @@ sub compile_network_drivers
 						}
 						close $file_handle;
 						
-						if (not $loaded)
+						if ($loaded)
+						{
+							# Call 'start_udev' to make sure the new NIC is recorded.
+							my $shell_call = $conf->{executable}{start_udev};
+							logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+							open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+							while(<$file_handle>)
+							{
+								chomp;
+								my $line = $_;
+								logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+							}
+							close $file_handle;
+						}
+						else
 						{
 							# Load failed.
 							logger($conf, $THIS_FILE, __LINE__, "- The driver does not appear to have loaded properly.", 1);
