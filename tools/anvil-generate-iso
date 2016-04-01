@@ -93,6 +93,7 @@ my $conf = {
 			fence		=>	"fence",
 			fujitsu		=>	"Fujitsu",
 			avago		=>	"Avago",
+			asix		=>	"ASIX",
 			### NOTE: Entries above here are appended to 'path::iso::tools'.
 			git_iso		=>	"ISO",
 			# These keys are appended to the 'path::'git::<os>' path. The 'target' is where the 
@@ -143,6 +144,10 @@ my $conf = {
 		},
 		# These are the request for permission to download third-party tools.
 		third_party	=>	{
+			ASIX		=>	{
+				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/ASIX/#tc",
+				agreed		=>	0,
+			},
 			Avago		=>	{
 				terms		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Avago/#tc",
 				agreed		=>	0,
@@ -164,19 +169,18 @@ my $conf = {
 			domain		=>	"alteeve.ca",
 			ifn_dns1	=>	"8.8.8.8",
 			ifn_dns2	=>	"8.8.4.4",
-			#ifn_gateway	=>	"10.255.255.254",
-			ifn_gateway	=>	"192.168.122.1",
-			#ifn_netmask	=>	"16",
-			ifn_netmask	=>	"24",
+			ifn_gateway	=>	"10.255.255.254",
+			#ifn_gateway	=>	"192.168.122.1",
+			ifn_netmask	=>	"16",
+			#ifn_netmask	=>	"24",
 			keyboard	=>	"us",
 			language	=>	"en_CA.UTF-8",
 			os_version	=>	"6.7",
-			output_dir	=>	"/data0/ISO/Anvil-m2/",
 			password	=>	"Initial1",	# User and 'root'.
 			prefix		=>	"an",
 			striker_bcn	=>	"10.20.4",
-			#striker_ifn	=>	"10.255.4",
-			striker_ifn	=>	"192.168.122",
+			striker_ifn	=>	"10.255.4",
+			#striker_ifn	=>	"192.168.122",
 			striker_name	=>	"Striker",
 			timezone	=>	"America/Toronto",
 		},
@@ -186,6 +190,12 @@ my $conf = {
 		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
+		ASIX		=>	{
+			ax8817x	=>	{
+				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/ASIX/AX88179_178A_LINUX_DRIVER_v1.14.4_SOURCE.zip",
+				mode		=>	0644,
+			},
+		},
 		Fujitsu		=>	{
 			primecollect	=>	{
 				url		=>	"https://alteeve.ca/an-repo/el6/Third_Party/Fujitsu/PrimeCollect.shar",
@@ -587,7 +597,7 @@ END
 	}
 	else
 	{
-		# Regardless of the install type, 
+		# Configure the Striker dashboard stuff
 		$ks_body .= "
 # First non-chroot steps
 \%post --nochroot --log=/tmp/nochroot-post-install.log
@@ -1767,6 +1777,7 @@ sub agree_to_terms
 	{
 		print "- Third-party licenses agreed via '--accept-third-party-licenses'.\n";
 		$conf->{sys}{third_party}{Fujitsu}{agreed} = 1;
+		$conf->{sys}{third_party}{ASIX}{agreed}   = 1;
 		$conf->{sys}{third_party}{Avago}{agreed}   = 1;
 	}
 	else
@@ -1816,6 +1827,34 @@ Do you agree to Fujitsu's 'Terms of Use'? [y/N]
 		$answer = "";
 		sleep 1;
 
+		# ASIX.
+		print "====
+
+If you are using an ASIX-based USB3 to Ethernet adapters (including Siig 
+JU-NE0211 adapters), and if you agree to ASIX's 'Terms of Use' found here:
+
+$conf->{sys}{third_party}{ASIX}{terms}
+
+Support for the ASIX-based ethernet adapters will be added and automatically
+configured on Striker dashboards.
+
+Do you agree to ASIX's 'Terms of Use'? [y/N]
+";
+		$answer = <STDIN>;
+		chomp($answer);
+		if ($answer =~ /^y/i)
+		{
+			print "- Thank you.\n\n";
+			$conf->{sys}{third_party}{ASIX}{agreed} = 1;
+		}
+		else
+		{
+			print "- Noted. ASIX support will not be added.\n\n";
+		}
+		$answer = "";
+		sleep 1;
+		print "====\n";
+
 		# Avago.
 		print "====
 
@@ -1857,6 +1896,18 @@ sub download_anrepo_tools
 	
 	# Fujitsu stuff
 	print "- Downloading non-RPM third party tools.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::third_party::ASIX::agreed: [$conf->{sys}{third_party}{ASIX}{agreed}].\n" if $conf->{sys}{debug} >= 2;
+	if ($conf->{sys}{third_party}{ASIX}{agreed})
+	{
+		# ax8817[89] driver
+		my $file_name = ($conf->{url}{ASIC}{ax8817x}{url} =~ /^.*\/(.*)$/)[0];
+		my $source    = $conf->{url}{ASIC}{ax8817x}{url};
+		my $target    = $conf->{path}{iso}{iso_asix}."/".$file_name;
+		my $mode      = $conf->{url}{ASIC}{ax8817x}{mode};
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - file_name: [$file_name], source: [$source], target: [$target].\n" if $conf->{sys}{debug} >= 2;
+		download_file($conf, $source, $target, $mode);
+	}
+	
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::third_party::Fujitsu::agreed: [$conf->{sys}{third_party}{Fujitsu}{agreed}].\n" if $conf->{sys}{debug} >= 2;
 	if ($conf->{sys}{third_party}{Fujitsu}{agreed})
 	{
@@ -2169,19 +2220,21 @@ sub setup_build_environment
 	
 	# These are only created if the user agreed to them
 	$conf->{path}{iso}{iso_fujitsu} = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{fujitsu}) if $conf->{sys}{third_party}{Fujitsu}{agreed};
+	$conf->{path}{iso}{iso_asix}    = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{asix})    if $conf->{sys}{third_party}{ASIX}{agreed};
 	$conf->{path}{iso}{iso_avago}   = make_directory($conf, $conf->{path}{iso}{iso_tools}."/".$conf->{path}{iso}{avago})   if $conf->{sys}{third_party}{Avago}{agreed};
 	if ($conf->{sys}{debug} >= 2)
 	{
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path:            [$conf->{path}{source_path}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::source_path: .......... [$conf->{path}{source_path}]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::working_directory: [$conf->{path}{iso}{working_directory}]\n";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::source_directory:  [$conf->{path}{iso}{source_directory}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools:         [$conf->{path}{iso}{iso_tools}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart:     [$conf->{path}{iso}{iso_kickstart}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages:      [$conf->{path}{iso}{iso_packages}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker:       [$conf->{path}{iso}{iso_striker}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence:         [$conf->{path}{iso}{iso_fence}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu:       [$conf->{path}{iso}{iso_fujitsu}]\n";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago:         [$conf->{path}{iso}{iso_avago}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_tools: ....... [$conf->{path}{iso}{iso_tools}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_kickstart: ... [$conf->{path}{iso}{iso_kickstart}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_packages: .... [$conf->{path}{iso}{iso_packages}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_striker: ..... [$conf->{path}{iso}{iso_striker}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fence: ....... [$conf->{path}{iso}{iso_fence}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_fujitsu: ..... [$conf->{path}{iso}{iso_fujitsu}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_asix: ........ [$conf->{path}{iso}{iso_asix}]\n";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - path::iso::iso_avago: ....... [$conf->{path}{iso}{iso_avago}]\n";
 	}
 	
 	# Make sure any old repodata files are removed.
@@ -3835,6 +3888,9 @@ SWITCHES
 	
 	Fujitsu:
 	- $conf->{sys}{third_party}{Fujitsu}{terms}
+	
+	ASIX:
+	- $conf->{sys}{third_party}{ASIX}{terms}
 	
 	Avago:
 	- $conf->{sys}{third_party}{Avago}{terms}

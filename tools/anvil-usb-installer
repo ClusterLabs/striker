@@ -26,6 +26,7 @@
 # 15 = Failed to mount the source ISO loopback.
 # 16 = One or more files on the source ISO were too large for 'vfat'.
 # 17 = Source .c32 syslinux file not found.
+# 18 = vfat label not seen after format was called, bad format likely.
 # 
 # NOTE: We do NOT use preset paths to executables to maximize portability between distros. If a user doesn't
 #       have someting in their PATH, the shell call will fail. Oh well.
@@ -51,7 +52,7 @@ my $conf = {
 	},
 	sys		=>	{
 		debug		=>	1,
-		disk_label	=>	"Anvil USB",
+		disk_label	=>	"Anvil_USB",
 		required	=>	{
 			mkdosfs		=>	"",	# No switch for version, just call it
 			parted		=>	"--version",
@@ -179,8 +180,9 @@ cleanup($conf);
 print "Done!
 
 Plug the USB drive into the machine you wish to make a Striker dashboard. Press
-the key for you system to manually select a boot device (usually <F8> or <F12>)
-and choose this USB drive. Select the appropriate Striker number from the menu.
+the key for you system to manually select a boot device (usually <F10> or 
+<F12>) and choose this USB drive. Select the appropriate Striker number from 
+the menu.
 
 NOTE: The Install performed by this USB drive is fully automated, once started.
       Any data on the target machine will be erased without further warning!
@@ -202,30 +204,33 @@ sub cleanup
 	print "- Cleaning up, please wait while the USB drive is finalized!\n";
 	print "  If the OS cached data being written to the USB, this might take a bit.\n";
 	my $shell_call = "sync";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
 	# Now unmount.
 	foreach my $mount_point ($conf->{sys}{iso_mount}, $conf->{sys}{usb_mount})
 	{
-		print "- Mounting the USB partition: [".$conf->{sys}{usb_partition}."] on: [".$usb_mount."]\n";
+		print "- Unmounting: [$mount_point]\n";
 		my $shell_call = "umount -f $mount_point";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
+		
+		print "- Removing the temporary mount point: [$mount_point]\n";
+		rmdir $mount_point or die "Failed to remove the temporary mount point: [$mount_point]. The error was: $!\n";
 	}
 	
 	return(0);
@@ -241,35 +246,38 @@ sub write_device
 	if (not -e $usb_mount)
 	{
 		print "- Creating the temporary USB mount point: [$usb_mount]\n";
+		mkdir $usb_mount or die "Failed to create the mount point: [$usb_mount], the error was: $?\n";
 	}
 	if (not -e $iso_mount)
 	{
 		print "- Creating the temporary ISO mount point: [$iso_mount]\n";
+		mkdir $iso_mount or die "Failed to create the mount point: [$iso_mount], the error was: $?\n";
 	}
 	
 	# Mount the USB device
 	print "- Mounting the USB partition: [".$conf->{sys}{usb_partition}."] on: [".$usb_mount."]\n";
 	my $shell_call = "mount ".$conf->{sys}{usb_partition}." ".$usb_mount;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
 	# Mount the ISO source
-	print "- Mounting the source ISO: [".$conf->{sys}{source_iso}."] on: [".$iso_mount."]\n";
+	print "- Mounting the source ISO: [".$conf->{sys}{source_iso}."]\n";
+	print "  on: [".$iso_mount."]\n";
 	$shell_call = "mount -o loop ".$conf->{sys}{source_iso}." ".$iso_mount;
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
@@ -277,23 +285,23 @@ sub write_device
 	my $usb_found  = 0;
 	my $iso_found  = 0;
 	   $shell_call = "mount";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	
 		if ($line =~ /on $usb_mount /)
 		{
 			$usb_found = 1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - usb_found: [$usb_found]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - usb_found: [$usb_found]\n" if $conf->{sys}{debug} >= 2;
 		}
 		if ($line =~ /on $iso_mount /)
 		{
 			$iso_found = 1;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_found: [$iso_found]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - iso_found: [$iso_found]\n" if $conf->{sys}{debug} >= 2;
 		}
 	}
 	close $file_handle;
@@ -317,8 +325,8 @@ sub write_device
 	print "- Verifying that everything we're about to copy is under 4 GiB for 'vfat'\n";
 	print "  compatibility.\n";
 	my $too_large  = 0;
-	   $shell_call = "find $iso_mount -type f -size +4G -exec ls -lh {} \;";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	   $shell_call = "find $iso_mount -type f -size +4G -exec ls -lh {} \\;";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
@@ -338,7 +346,7 @@ sub write_device
 	if ($source_iso_byte_size > $max_byte_size)
 	{
 		$too_large = 1;;
-		print "[ Error ] - The source ISO: [$file] is too large to fit on a 'vfat' file\n";
+		print "[ Error ] - The source ISO: [".$conf->{sys}{source_iso}."] is too large to fit on a 'vfat' file\n";
 		print "[ Error ]   system (which we have to use). Unable to proceed.\n";
 	}
 	if ($too_large)
@@ -348,14 +356,14 @@ sub write_device
 	
 	# Copy the source ISO files into place.
 	print "- Copying the source ISO contents to the USB device.\n";
-	$shell_call = "rsync -a --no-o --no-p --no-g --safe-links --modify-window 1 --stats $iso_mount/ $usb_mount/";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	$shell_call = "rsync --archive --no-owner --no-perms --no-group --safe-links --modify-window 1 --stats $iso_mount/ $usb_mount/";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
@@ -363,28 +371,27 @@ sub write_device
 	# remote-usb::luks::force_initialize = 1.
 	print "- Protecting the USB drive in case 'striker-usb-insert' is set to force-initialize.\n";
 	$shell_call = "touch $usb_mount/.protected";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
 	# Copy the ISO to the drive
 	print "- Copying the source ISO to the USB drive. This might take a bit, please be\n";
 	print "  patient!\n";
-	$shell_call = "rsync -av --progress ".$conf->{sys}{source_iso}." $usb_mount/";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	# NOTE: We don't redirect the output here so that the user can monitor the progress
-	open ($file_handle, "$shell_call |") or die "Failed to call: [$shell_call]. Error: $!\n";
+	$shell_call = "rsync --archive --no-owner --no-perms --no-group --safe-links --modify-window 1 --stats ".$conf->{sys}{source_iso}." $usb_mount/";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
 		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 	}
 	close $file_handle;
 	
@@ -398,6 +405,7 @@ sub write_device
 	my $vesamenu_c32_path  = $syslinux_directory."/vesamenu.c32";
 	foreach my $source_file ($ldlinux_c32_path, $libcom32_c32_path, $libutil_c32_path, $vesamenu_c32_path)
 	{
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - source_file: [$source_file].\n" if $conf->{sys}{debug} >= 2;
 		if (not -e $source_file)
 		{
 			print "
@@ -406,14 +414,14 @@ sub write_device
 			exit(17);
 		}
 		
-		my $shell_call = "rsync -av ".$conf->{sys}{source_iso}." $usb_mount/";
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
+		my $shell_call = "rsync --archive --no-owner --no-perms --no-group --safe-links --modify-window 1 --stats $source_file $usb_mount/syslinux/";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 		while (<$file_handle>)
 		{
 			chomp;
 			my $line = $_;
-			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 1;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
 		}
 		close $file_handle;
 	}
@@ -426,30 +434,37 @@ sub find_mbr_bin
 {
 	my ($conf) = @_;
 	
-	print "- Searching for 'mbr.bin', this might take a minute.\n";
-	my $shell_call = "find /";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
-	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
-	while (<$file_handle>)
+	if (-e "/usr/share/syslinux/mbr.bin")
 	{
-		chomp;
-		my $line = $_;
-		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
-		if ($line =~ /\/mbr\.bin$/)
-		{
-			$conf->{path}{mbr_bin} = $line;
-			print "- Found it: [".$conf->{path}{mbr_bin}."]\n";
-			last;
-		}
+		$conf->{path}{mbr_bin} = "/usr/share/syslinux/mbr.bin";
 	}
-	close $file_handle;
-	
-	if (not $conf->{path}{mbr_bin})
+	else
 	{
-		print "
+		print "- Searching for 'mbr.bin', this might take a minute.\n";
+		my $shell_call = "find /";
+		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+		while (<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+			if ($line =~ /\/mbr\.bin$/)
+			{
+				$conf->{path}{mbr_bin} = $line;
+				print "- Found it: [".$conf->{path}{mbr_bin}."]\n";
+				last;
+			}
+		}
+		close $file_handle;
+		
+		if (not $conf->{path}{mbr_bin})
+		{
+			print "
 [ Error ] - The file 'mbr.bin' was not found. Is the 'syslinux-nonlinux' 
 [ Error ]   package installed?\n";
-		exit(13);
+			exit(13);
+		}
 	}
 	
 	return(0);
@@ -460,11 +475,10 @@ sub prep_device
 {
 	my ($conf) = @_;
 	
-	print "- Clearing: [".$conf->{sys}{usb_device}."]\n";
-	my $shell_call = "dd if=/dev/zero of=".$conf->{sys}{usb_device}." bs=100M count=1 && sync";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-die "$THIS_FILE ".__LINE__."; testing\n";
-	open (my $file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	print "- Wiping out existing partition scheme and MBR from: [".$conf->{sys}{usb_device}."]\n";
+	my $shell_call = "dd if=/dev/zero of=".$conf->{sys}{usb_device}." bs=100M count=1 oflag=direct,sync";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -480,8 +494,8 @@ parted ".$conf->{sys}{usb_device}." --script -- mkpart primary fat32 4MiB -1s
 parted ".$conf->{sys}{usb_device}." --script -- set 1 boot on
 parted ".$conf->{sys}{usb_device}." --script unit MB print
 ";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -491,10 +505,10 @@ parted ".$conf->{sys}{usb_device}." --script unit MB print
 	close $file_handle;
 	
 	# Rescan.
-	print "- Creating a new partition.\n";
+	print "- Verifying that the new partition was created successfully.\n";
 	$shell_call = "partprobe ".$conf->{sys}{usb_device};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -515,9 +529,10 @@ parted ".$conf->{sys}{usb_device}." --script unit MB print
 	
 	# Format it.
 	print "- Formatting the new partition: [".$conf->{sys}{usb_partition}."]\n";
-	$shell_call = "mkfs.vfat ".$conf->{sys}{usb_partition}." -n '".$conf->{sys}{disk_label}."'";
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	#$shell_call = "mkfs.vfat -F 32 ".$conf->{sys}{usb_partition}." -n '".$conf->{sys}{disk_label}."'";
+	$shell_call = "mkfs.vfat -F 32 ".$conf->{sys}{usb_partition};
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -526,11 +541,40 @@ parted ".$conf->{sys}{usb_device}." --script unit MB print
 	}
 	close $file_handle;
 	
+	# Verify it formatted.
+# 	my $formatted  = 0;
+# 	   $shell_call = "fatlabel ".$conf->{sys}{usb_partition};
+# 	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+# 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
+# 	while (<$file_handle>)
+# 	{
+# 		chomp;
+# 		my $line =  $_;
+# 		   $line =~ s/^\s+//;
+# 		   $line =~ s/\s+$//;
+# 		print "$THIS_FILE ".__LINE__."; [ Debug ] - line: [$line]\n" if $conf->{sys}{debug} >= 2;
+# 		if ($line eq $conf->{sys}{disk_label})
+# 		{
+# 			$formatted = 1;
+# 			print "$THIS_FILE ".__LINE__."; [ Debug ] - formatted: [$formatted]\n" if $conf->{sys}{debug} >= 2;
+# 		}
+# 	}
+# 	close $file_handle;
+# 	if (not $formatted)
+# 	{
+# 		print "
+# [ Error ] - It appears that the USB partition: [".$conf->{sys}{usb_partition}."]
+# [ Error ]   was not properly formatted. The 'fatlabel' did not return the label
+# [ Error ]   we set: [".$conf->{sys}{disk_label}."]\n";
+# 		exit(18);
+# 	}
+	
+	### TODO: This doesn't create a copy in the backup MBR causing fsck.vfat to complain, fix.
 	# Copy the master boot record.
 	print "- Writing out the master boot record to: [".$conf->{sys}{usb_device}."]\n";
 	$shell_call = "dd bs=440 count=1 conv=notrunc if=".$conf->{path}{mbr_bin}." of=".$conf->{sys}{usb_device};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -542,8 +586,8 @@ parted ".$conf->{sys}{usb_device}." --script unit MB print
 	# Install syslinux
 	print "- Installing syslinux on: [".$conf->{sys}{usb_partition}."]\n";
 	$shell_call = "syslinux --install ".$conf->{sys}{usb_partition};
-	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 1;
-	open ($file_handle, "$shell_call 2>&1 |") or die "[ Error ] - The app: [$app] does not appear to be installed. Please install it and try again.\n";
+	print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
+	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]. Error: $!\n";
 	while (<$file_handle>)
 	{
 		chomp;
@@ -627,6 +671,7 @@ sub force_unmount
 	foreach my $device (@{$mounted})
 	{
 		# Unmount it.
+		next if not $device;
 		print "- Unmounting: [$device]\n";
 		my $shell_call = "umount -f $device";
 		print "$THIS_FILE ".__LINE__."; [ Debug ] - Calling: [$shell_call].\n" if $conf->{sys}{debug} >= 2;
@@ -653,7 +698,7 @@ sub force_unmount
 			if ($line =~ /^$device /)
 			{
 				$still_mounted = 1;
-				print "$THIS_FILE ".__LINE__."; [ Debug ] - still_mounted: [$still_mounted]\n" if $conf->{sys}{debug} >= 1;
+				print "$THIS_FILE ".__LINE__."; [ Debug ] - still_mounted: [$still_mounted]\n" if $conf->{sys}{debug} >= 2;
 				last;
 			}
 		}
