@@ -184,6 +184,7 @@ my $conf = {
 	},
 	url		=>	{
 		striker		=>	"https://github.com/ClusterLabs/striker.git",
+		striker_zip	=>	"https://github.com/ClusterLabs/striker/archive/master.zip",
 		'an-repo'	=>	"https://alteeve.ca/an-repo/el6/RPMS",
 		third_party	=>	"https://alteeve.ca/an-repo/el6/Third_Party",
 		# These are non-RPM packages we want to download for the ISO.
@@ -1562,6 +1563,19 @@ sub get_date
 	$conf->{sys}{date}   = $time{year}."/".$time{pad_mon}."/".$time{pad_mday};
 	$conf->{sys}{'time'} = $time{pad_hour}.":".$time{pad_min}.":".$time{pad_sec};
 	print "$THIS_FILE ".__LINE__."; [ Debug ] - sys::date: [$conf->{sys}{date}], sys::time: [$conf->{sys}{'time'}]\n" if $conf->{sys}{debug} >= 2;
+	
+	return(0);
+}
+
+# This downloads Striker, but using master.zip instead of pulling github
+sub striker_zip
+{
+	my ($conf) = @_;
+	
+	my $out_directory = $conf->{path}{iso}{source_directory}."/".$conf->{path}{iso}{striker};
+	my $download      = $conf->{url}{striker_zip};
+	
+	
 	
 	return(0);
 }

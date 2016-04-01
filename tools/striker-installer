@@ -156,10 +156,14 @@ my $conf = {
 		iptables		=>	"/sbin/iptables",
 		'iptables-save'		=>	"/sbin/iptables-save",
 		ln			=>	"/bin/ln",
+		lsmod			=>	"/sbin/lsmod",
 		lspci			=>	"/sbin/lspci",
+		lsusb			=>	"/usr/sbin/lsusb",
 		'lwp-download'		=>	"/usr/bin/lwp-download",
+		make			=>	"/usr/bin/make",
 		MegaCli64		=>	"/opt/MegaRAID/MegaCli/MegaCli64",
 		MegaCli64_link		=>	"/sbin/MegaCli64",
+		modprobe		=>	"/sbin/modprobe",
 		mount			=>	"/bin/mount",
 		mv			=>	"/bin/mv",
 		passwd			=>	"/usr/bin/passwd",
@@ -167,6 +171,7 @@ my $conf = {
 		restorecon		=>	"/sbin/restorecon",
 		'rhn-channel'		=>	"/usr/sbin/rhn-channel",
 		rhnreg_ks		=>	"/usr/sbin/rhnreg_ks",
+		rm			=>	"/bin/rm",
 		rsync			=>	"/usr/bin/rsync",
 		sed			=>	"/bin/sed",
 		semanage		=>	"/usr/sbin/semanage",
@@ -809,8 +814,8 @@ if ($conf->{switches}{r})
 	add_repo($conf);
 }
 
-# Configure existing repos be skipped if they can't be reached.
-#configure_repos_to_skip_if_unavailable($conf);
+# Check for and compile/install network drivers
+compile_network_drivers($conf);
 
 # Go into the loop that asks the user to unplug cables until they are happy 
 # with their selection. When it exits, we go to work.
@@ -894,7 +899,7 @@ if (($conf->{network}{bcn}{ip} ne "10.20.4.1") && ($conf->{network}{bcn}{ip} ne 
 	logger($conf, $THIS_FILE, __LINE__, "#          This is OK, but the stock kickstart files will need to be updated #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          to point at this (and the peer) dashboards. Please be sure to     #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          update the kickstart files in;                                    #", 0);
-	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{rhel6,centos6}/x86_64/ks/*.ks                    #", 0);
+	logger($conf, $THIS_FILE, __LINE__, "#          - /var/www/html/{".$conf->{pxe}{rhel}{short_name}.",".$conf->{pxe}{centos}{short_name}."}/x86_64/ks/*.ks                    #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#                                                                            #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          You will also need to manually update the PXE server's            #", 0);
 	logger($conf, $THIS_FILE, __LINE__, "#          configuration file's pointers to the kickstart files in;          #", 0);
@@ -927,7 +932,7 @@ if ($conf->{sys}{reboot_needed})
 		{
 			chomp;
 			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		}
 		close $file_handle;
 	}
@@ -939,6 +944,245 @@ exit(0);
 ###############################################################################
 # Here be function!                                                           #
 ###############################################################################
+
+# Check for and compile/install network drivers
+sub compile_network_drivers
+{
+	my ($conf) = @_;
+	
+	### For now, this only supports the AXIS 
+	# First, if we don't have 'lsusb',
+	my $driver_directory = "/var/www/html/".$conf->{pxe}{centos}{short_name}."/x86_64/img/Tools/ASIX";
+	if ($conf->{sys}{is_rhel})
+	{
+		$driver_directory = "/var/www/html/".$conf->{pxe}{rhel}{short_name}."/x86_64/img/Tools/ASIX";
+	}
+	logger($conf, $THIS_FILE, __LINE__, "driver_directory: [$driver_directory]", 3);
+	
+	# Do I have an ASIX AX8817[89] NIC?
+	my $asix_exists = 0;
+	my $shell_call  = $conf->{executable}{lsusb};
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+		if (($line =~ /AX88178/i) or ($line =~ /AX88179/i))
+		{
+			$asix_exists = 1;
+			logger($conf, $THIS_FILE, __LINE__, "An ASIX AX8817{8,9}-based USB3 to Ethernet adapter was found.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- If possible, the driver will be compiled and installed now.", 1);
+		}
+	}
+	close $file_handle;
+	
+	logger($conf, $THIS_FILE, __LINE__, "asix_exists: [$asix_exists]", 3);
+	if ($asix_exists)
+	{
+		# First; Is the driver already loaded?
+		my $driver_loaded = 0;
+		my $shell_call    = $conf->{executable}{lsmod};
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+			if ($line =~ /usbnet.*?ax8817/i)
+			{
+				$driver_loaded = 1;
+				logger($conf, $THIS_FILE, __LINE__, "- The driver is already loaded.", 1);
+			}
+		}
+		close $file_handle;
+		
+		my $driver_file = "";
+		my $driver_path = "";
+		logger($conf, $THIS_FILE, __LINE__, "driver_loaded: [$driver_loaded], driver_directory: [$driver_directory].", 3);
+		if (not $driver_loaded)
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- The driver is not loaded.", 1);
+		}
+		if ((not $driver_loaded) && (-e $driver_directory))
+		{
+			# Do I have a driver?
+			logger($conf, $THIS_FILE, __LINE__, "- The driver directory was found.", 1);
+			local(*DIRECTORY);
+			opendir(DIRECTORY, $driver_directory);
+			while(my $file = readdir(DIRECTORY))
+			{
+				my $full_path = "$driver_directory/$file";
+				logger($conf, $THIS_FILE, __LINE__, "file: [$file], full_path: [$full_path]", 3);
+				next if not -f $full_path;
+				if ($full_path =~ /AX88179_178A_LINUX_DRIVER_v(.*?)_SOURCE\.zip/)
+				{
+					$driver_path = $full_path;
+					$driver_file = $file;
+					logger($conf, $THIS_FILE, __LINE__, "driver_file: [$driver_file], driver_path: [$driver_path]", 3);
+					logger($conf, $THIS_FILE, __LINE__, "- The driver file was found, it will be extracted and compiled.", 1);
+				}
+			}
+			closedir(DIRECTORY);
+			
+			my $extract_directory = "";
+			logger($conf, $THIS_FILE, __LINE__, "driver_path: [$driver_path]", 3);
+			if ($driver_path)
+			{
+				# Remove the existing extract if it exists.
+				my $remove_directory = "";
+				local(*DIRECTORY);
+				opendir(DIRECTORY, "/tmp");
+				while(my $file = readdir(DIRECTORY))
+				{
+					if ($file =~ /^AX88179_178A_LINUX_DRIVER_/)
+					{
+						my $full_path = "/tmp/$file";
+						logger($conf, $THIS_FILE, __LINE__, "file: [$file], full_path: [$full_path]", 3);
+						if (-d $full_path)
+						{
+							$remove_directory = $file;
+							logger($conf, $THIS_FILE, __LINE__, "- The old driver source will be removed: [/tmp/$remove_directory]", 1);
+						}
+					}
+				}
+				closedir(DIRECTORY);
+				
+				# Remove the old driver
+				if ($remove_directory =~ /^AX88/)
+				{
+					my $shell_call = $conf->{executable}{rm}." -rf /tmp/".$remove_directory;
+					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+					}
+				}
+				
+				# Unzip it to /tmp/
+				logger($conf, $THIS_FILE, __LINE__, "- Extracting: [$driver_file].", 3);
+				my $shell_call = $conf->{executable}{unzip}." $driver_path -d /tmp/";
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+					if ($line =~ /creating: (\/.*)\//)
+					{
+						$extract_directory = $1;
+						logger($conf, $THIS_FILE, __LINE__, "extract_directory: [$extract_directory]", 3);
+					}
+				}
+				close $file_handle;
+			}
+			
+			logger($conf, $THIS_FILE, __LINE__, "extract_directory: [$extract_directory]", 3);
+			if ($extract_directory)
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Driver extracted, compiling it now.", 1);
+				my $make_ok    = 0;
+				my $shell_call = $conf->{executable}{make}." --directory=".$extract_directory;
+				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 1);
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+					if ($line =~ /make: Leaving directory/i)
+					{
+						$make_ok = 1;;
+						logger($conf, $THIS_FILE, __LINE__, "make_ok: [$make_ok]", 3);
+					}
+				}
+				close $file_handle;
+				
+				logger($conf, $THIS_FILE, __LINE__, "make_ok: [$make_ok]", 3);
+				if ($make_ok)
+				{
+					my $driver     = "";
+					my $shell_call = $conf->{executable}{make}." install --directory=".$extract_directory;
+					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+					while(<$file_handle>)
+					{
+						chomp;
+						my $line = $_;
+						logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+						if ($line =~ /(ax8817.*?)\.ko/i)
+						{
+							$driver = $1;
+							logger($conf, $THIS_FILE, __LINE__, "driver: [$driver]", 3);
+						}
+					}
+					close $file_handle;
+					
+					logger($conf, $THIS_FILE, __LINE__, "driver: [$driver]", 3);
+					if ($driver)
+					{
+						my $loaded     = 0;
+						my $shell_call = $conf->{executable}{modprobe}." $driver; echo rc:\$?";
+						logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+						open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line = $_;
+							logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
+							if ($line =~ /rc:(\d+)/)
+							{
+								$loaded = 1;
+								logger($conf, $THIS_FILE, __LINE__, "- Successfully loaded the: [$driver] driver!", 3);
+							}
+						}
+						close $file_handle;
+						
+						if (not $loaded)
+						{
+							# Load failed.
+							logger($conf, $THIS_FILE, __LINE__, "- The driver does not appear to have loaded properly.", 1);
+							logger($conf, $THIS_FILE, __LINE__, "- The network mapping operation may fail.", 1);
+						}
+					}
+					else
+					{
+						# The driver didn't install...
+						logger($conf, $THIS_FILE, __LINE__, "- The driver does not appear to have installed properly.", 1);
+						logger($conf, $THIS_FILE, __LINE__, "- The network mapping operation may fail.", 1);
+					}
+				}
+				else
+				{
+					# Something went wrong with the 'make'
+					logger($conf, $THIS_FILE, __LINE__, "- The driver does not appear to have compiled properly.", 1);
+					logger($conf, $THIS_FILE, __LINE__, "- The network mapping operation may fail.", 1);
+				}
+			}
+			else
+			{
+				# Something went wrong with the extraction.
+				logger($conf, $THIS_FILE, __LINE__, "- The driver does not appear to have extracted.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "- The network mapping operation may fail.", 1);
+			}
+		}
+		elsif (not $driver_loaded)
+		{
+			# Warn the user that we don't have the driver.
+			logger($conf, $THIS_FILE, __LINE__, "- The driver was not found.", 1);
+			logger($conf, $THIS_FILE, __LINE__, "- The network mapping operation may fail.", 1);
+		}
+		logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	}
+	
+	return(0);
+}
 
 # Configure Striker to be a ScanCore DB server
 sub configure_scancore
@@ -1422,7 +1666,7 @@ fi";
 	{
 		chomp;
 		my $line = $_;
-		#logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		if ($line =~ /creating empty/i)
 		{
 			logger($conf, $THIS_FILE, __LINE__, "- Creating empty crontab file for 'root'.", 1);
@@ -1529,7 +1773,7 @@ fi";
 		}
 		else
 		{
-			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 		}
 	}
 	close $file_handle;
@@ -1687,7 +1931,7 @@ fi";
 		{
 			chomp;
 			my $line = $_;
-			#logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "line: [$line]", 3);
 			if ($line =~ /exists/i)
 			{
 				logger($conf, $THIS_FILE, __LINE__, "- Already added, skipping.", 1);
@@ -1913,7 +2157,7 @@ sub add_repo
 					# It needs to be installed.
 					logger($conf, $THIS_FILE, __LINE__, "- The module is not installed, attempting to install it now.", 1);
 					my $shell_call = "$conf->{executable}{yum} $conf->{sys}{yum_switches} install perl-Crypt-SSLeay";
-					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+					logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 					logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 					open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 					while(<$file_handle>)
@@ -2092,7 +2336,7 @@ sub setup_striker
 		{
 			# Call 'tools/striker-configure-vmm'.
 			my $shell_call = "/sbin/striker/striker-configure-vmm --enable";
-			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 			while(<$file_handle>)
 			{
@@ -2138,7 +2382,7 @@ sub compile_c_wrappers
 		
 		# Compile
 		my $shell_call = "$conf->{path}{gcc} -o $out_file $c_file";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", );
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -2156,95 +2400,8 @@ sub compile_c_wrappers
 	return(0);
 }
 
-# Make all repos not fail if they're unavailable.
-sub configure_repos_to_skip_if_unavailable
-{
-	my ($conf) = @_;
-	
-	logger($conf, $THIS_FILE, __LINE__, "Configuring yum repositories to be skipped if unavailable.", 1);
-	logger($conf, $THIS_FILE, __LINE__, "- Searching for repositories...", 1);
-	
-	local(*DIRECTORY);
-	opendir(DIRECTORY, $conf->{directory}{yum_repos});
-	while(my $file = readdir(DIRECTORY))
-	{
-		next if $file !~ /\.repo$/;
-		my $full_path = "$conf->{directory}{yum_repos}/$file";
-		next if not -f $full_path;
-		logger($conf, $THIS_FILE, __LINE__, "- Checking: [$full_path]", 1);
-		
-		my $this_repo = "";
-		my $add_skip  = 1;
-		my $rewrite   = 0;
-		my $raw_file  = "";
-		
-		# Open it up
-		my $shell_call = "$full_path";
-		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], the error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - line: [$line].", 3);
-			
-			# Update the apache user entry.
-			if ($line =~ /^\[(.*?)\]/)
-			{
-				$this_repo = $1;
-				logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - this_repo: [$this_repo].", 3);
-			}
-			if ($this_repo)
-			{
-				if ($line =~ /skip_if_unavailable=/)
-				{
-					$add_skip = 0;
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - already configured to skip.", 3);
-				}
-				if ((not $line) or ($line =~ /^\s+$/))
-				{
-					logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - end of repo: [$this_repo], add_skip: [$add_skip].", 3);
-					if ($add_skip)
-					{
-						$raw_file  .= "skip_if_unavailable=1\n";
-						$rewrite   =  1;
-						$this_repo =  "";
-						$add_skip  =  1;
-						logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - Added skip.", 3);
-					}
-				}
-			}
-			$raw_file .= "$line\n";
-		}
-		close $file_handle;
-		
-		# If I exited the file with a repo still active, do a final
-		# check.
-		logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - end of file, last repo: [$this_repo], add_skip: [$add_skip].", 3);
-		if (($this_repo) && ($add_skip))
-		{
-			$raw_file .= "skip_if_unavailable=1\n";
-			$rewrite  =  1;
-		}
-		
-		#print "raw_file:\n========\n$raw_file\n========\n";
-		if (($rewrite) && ($raw_file))
-		{
-			backup_file($conf, $full_path);
-			logger($conf, $THIS_FILE, __LINE__, "- Rewriting: [$full_path].", 1);
-			my $shell_call = "$full_path";
-			open (my $file_handle, ">$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write to: [$shell_call], error was: $!\n";
-			print $file_handle $raw_file;
-			close $file_handle;
-			logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
-		}
-	}
-	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.", 1);
-	
-	return(0);
-}
-
-# This removes the 'priority=1' from our repos so that future attempts by the
-# user to upgrade the OS will work.
+# This removes the 'priority=1' from our repos so that future attempts by the user to upgrade the OS will 
+# work.
 sub remove_yum_priority
 {
 	my ($conf) = @_;
@@ -2295,6 +2452,7 @@ sub remove_yum_priority
 			logger($conf, $THIS_FILE, __LINE__, "- Done.", 1);
 		}
 	}
+	closedir(DIRECTORY);
 	logger($conf, $THIS_FILE, __LINE__, "- Finished processing repositories.\n", 1);
 	
 	return(0);
@@ -4138,11 +4296,11 @@ plymouth-set-default-theme details -R
 
 ";
 	
-	my $os_directory = "centos6";
+	my $os_directory = $conf->{pxe}{centos}{short_name};
 	my $say_os       = "CentOS";
 	if ($os eq "rhel")
 	{
-		$os_directory = "rhel6";
+		$os_directory = $conf->{pxe}{rhel}{short_name};
 		$say_os       = "RHEL";
 	}
 	### NOTE: Striker's Install Manifest should handle adding repos as
@@ -5039,12 +5197,12 @@ sub install_striker_files
 				$striker_config .= "scancore::db::1::password			=	$conf->{sys}{striker_password}\n\n";
 				
 				# If they told us about the peer, add it.
-				logger($conf, $THIS_FILE, __LINE__, "- switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 2);
+				logger($conf, $THIS_FILE, __LINE__, "switches::peer-dashboard: [$conf->{switches}{'peer-dashboard'}]", 3);
 				if ($conf->{switches}{'peer-dashboard'})
 				{
 					my $peer_hostname =  ($conf->{switches}{'peer-dashboard'} =~ /hostname=(.*)$/)[0];
 					   $peer_hostname =~ s/,bcn_ip.*//;
-					logger($conf, $THIS_FILE, __LINE__, "- peer_hostname: [$peer_hostname]", 2);
+					logger($conf, $THIS_FILE, __LINE__, "peer_hostname: [$peer_hostname]", 3);
 					if ($peer_hostname)
 					{
 						$striker_config .= "scancore::db::2::host			=	$peer_hostname\n";
@@ -6701,7 +6859,7 @@ sub update_hosts
 	{
 		logger($conf, $THIS_FILE, __LINE__, "- Adding peer dashboard's hostname: [$peer_hostname]", 1);
 		my $new_line = "$peer_bcn_ip\t$peer_hostname\n";
-		logger($conf, $THIS_FILE, __LINE__, "peer_short_name: [$peer_short_name]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "peer_short_name: [$peer_short_name]", 3);
 		if ($peer_short_name)
 		{
 			$new_line = "$peer_bcn_ip\t$peer_hostname $peer_short_name ${peer_short_name}.bcn\n";
@@ -6749,6 +6907,7 @@ sub update_network_config_files
 			unlink $full_path or die "Unable to delete: [$full_path]. The error was: $!\n";
 		}
 	}
+	closedir(DIRECTORY);
 	logger($conf, $THIS_FILE, __LINE__, "- Writing new network configuration files.", 1);
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
@@ -7915,7 +8074,7 @@ sub remove_an_repo
 	if (-e $conf->{path}{an_repo})
 	{
 		my $shell_call = "$conf->{executable}{yum} remove alteeve-repo";
-		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
 		logger($conf, $THIS_FILE, __LINE__, "==============================================================================", 1);
 		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
 		while(<$file_handle>)
@@ -8423,7 +8582,7 @@ sub select_nics
 		logger($conf, $THIS_FILE, __LINE__, "say_nic: [$say_nic]", 3);
 		if    ($nic =~ /^bcn_link(\d)/) { $say_nic = "Back-Channel Network, Link $1" }
 		elsif ($nic =~ /^ifn_link(\d)/) { $say_nic = "Internet-Facing Network, Link $1" }
-		#logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [$conf->{nic}{name}{$nic}], cache::nic::name::$nic: [$conf->{cache}{nic}{name}{$nic}]", 2);
+		logger($conf, $THIS_FILE, __LINE__, "nic::name::$nic: [$conf->{nic}{name}{$nic}], cache::nic::name::$nic: [$conf->{cache}{nic}{name}{$nic}]", 3);
 		my $this_mac = $conf->{cache}{nic}{name}{$nic} ? $conf->{cache}{nic}{name}{$nic} : $conf->{nic}{name}{$nic};
 		logger($conf, $THIS_FILE, __LINE__, "this_mac: [$this_mac]", 3);
 		if (not $this_mac)
