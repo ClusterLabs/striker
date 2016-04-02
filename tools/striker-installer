@@ -691,6 +691,7 @@ my $conf = {
 		mail_password		=>	"",
 		network_map_cache_read	=>	0,
 		reboot_needed		=>	0,
+		register_with_rhn	=>	0,
 		repositories		=>	"",
 		rhn_user		=>	"",
 		rhn_password		=>	"",
@@ -789,14 +790,20 @@ else
 	logger($conf, $THIS_FILE, __LINE__, "Command line switches appear sane, proceeding.", 3);
 }
 
+# Make sure we're on EL6.x
+verify_os($conf);
+
 # Check for and compile/install network drivers
 compile_network_drivers($conf);
 
 # Check to see if we have an internet connection so that, if not, we can disable external repos.
 verify_internet_access($conf, 0);
 
-# Make sure we're on EL6.x
-verify_os($conf);
+# Register with RHN, if needed.
+if ($conf->{sys}{register_with_rhn})
+{
+	register_with_rhn($conf);
+}
 
 # Get the hostname if the user didn't.
 get_hostname($conf);
@@ -6101,6 +6108,94 @@ sub create_apache_home_directories
 	return(0);
 }
 
+# This does the actual work of registering with RHN.
+sub register_with_rhn
+{
+	my ($conf) = @_;
+	
+	if (not $conf->{sys}{internet_access})
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - RHN credentials given, but no internet access found.", 0);
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration will probably fail.", 0);
+	}
+	### TODO: Escape bash special vars in passwords.
+	logger($conf, $THIS_FILE, __LINE__, "RHN credentials given. Attempting to register now.", 1);
+	logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
+	my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
+	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+	my $registered = 0;
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /rhnreg_ks:(\d+)/)
+		{
+			my $exit_code = $1;
+			if ($exit_code == 0)
+			{
+				$registered = 1;
+				logger($conf, $THIS_FILE, __LINE__, "- Registration was successful.", 1);
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Exit code was: [$exit_code], expected '0'.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
+				logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
+				exit(38);
+			}
+		}
+		else
+		{
+			logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+		}
+	}
+	close $file_handle;
+	if ($registered)
+	{
+		logger($conf, $THIS_FILE, __LINE__, "- Adding 'Optional' channel...", 1);
+		my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
+		logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			if ($line =~ /rhn-channel:(\d+)/)
+			{
+				my $exit_code = $1;
+				if ($exit_code == 0)
+				{
+					$registered = 1;
+					logger($conf, $THIS_FILE, __LINE__, "- 'Optional' channel added successfully.", 1);
+				}
+				else
+				{
+					logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!", 1);
+					logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Exit code was: [$exit_code], expected '0'.", 1);
+				}
+			}
+			else
+			{
+				logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration failed, skipping 'Optional' channel addition.", 1);
+	}
+	logger($conf, $THIS_FILE, __LINE__, "Done.\n", 1);
+	
+	return(0);
+}
+
 # This verifies that this is running on a RHEL 6 (or derivative) OS.
 sub verify_os
 {
@@ -6183,84 +6278,7 @@ sub verify_os
 		}
 		elsif (($conf->{sys}{rhn_user}) && ($conf->{sys}{rhn_password}))
 		{
-			if (not $conf->{sys}{internet_access})
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - RHN credentials given, but no internet access found.", 0);
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration will probably fail.", 0);
-			}
-			### TODO: Escape bash special vars in passwords.
-			logger($conf, $THIS_FILE, __LINE__, "- RHN credentials given. Attempting to register now.", 1);
-			logger($conf, $THIS_FILE, __LINE__, "- [ Note ] Please be patient, this might take a minute...", 1);
-			my $shell_call = "$conf->{executable}{rhnreg_ks} --username '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --force --profilename '$conf->{sys}{hostname}'; echo rhnreg_ks:\$?";
-			logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-			logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
-			logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-			my $registered = 0;
-			open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				if ($line =~ /rhnreg_ks:(\d+)/)
-				{
-					my $exit_code = $1;
-					if ($exit_code == 0)
-					{
-						$registered = 1;
-						logger($conf, $THIS_FILE, __LINE__, "- Registration was successful.", 1);
-					}
-					else
-					{
-						logger($conf, $THIS_FILE, __LINE__, "[ Error ] - Registration with RHN appears to have failed!", 1);
-						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Exit code was: [$exit_code], expected '0'.", 1);
-						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   You can run without the '--rhn' switch to install using local packages.", 1);
-						logger($conf, $THIS_FILE, __LINE__, "[ Error ]   Installation aborted. ", 1);
-						exit(38);
-					}
-				}
-				else
-				{
-					logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
-				}
-			}
-			close $file_handle;
-			if ($registered)
-			{
-				logger($conf, $THIS_FILE, __LINE__, "- Adding 'Optional' channel...", 1);
-				my $shell_call = "$conf->{executable}{'rhn-channel'} --add --user '$conf->{sys}{rhn_user}' --password '$conf->{sys}{rhn_password}' --channel=rhel-x86_64-server-optional-6; echo rhn-channel:\$?";
-				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_password}]", 3);
-				logger($conf, $THIS_FILE, __LINE__, "sys::rhn_user: [$conf->{sys}{rhn_user}]", 3);
-				logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]", 3);
-				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					if ($line =~ /rhn-channel:(\d+)/)
-					{
-						my $exit_code = $1;
-						if ($exit_code == 0)
-						{
-							$registered = 1;
-							logger($conf, $THIS_FILE, __LINE__, "- 'Optional' channel added successfully.", 1);
-						}
-						else
-						{
-							logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Adding the 'Optional' RHN channel appears to have failed!", 1);
-							logger($conf, $THIS_FILE, __LINE__, "[ Warning ]   Exit code was: [$exit_code], expected '0'.", 1);
-						}
-					}
-					else
-					{
-						logger($conf, $THIS_FILE, __LINE__, "- Output: [$line]", 1);
-					}
-				}
-				close $file_handle;
-			}
-			else
-			{
-				logger($conf, $THIS_FILE, __LINE__, "[ Warning ] - Registration failed, skipping 'Optional' channel addition.", 1);
-			}
+			$conf->{sys}{register_with_rhn} = 1;
 		}
 		else
 		{
