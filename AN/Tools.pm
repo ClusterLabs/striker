@@ -480,9 +480,9 @@ sub _set_paths
 	$an->data->{path}{cp}              = "/bin/cp";
 	$an->data->{path}{clustat}         = "/usr/sbin/clustat";
 	$an->data->{path}{clusvcadm}       = "/usr/sbin/clusvcadm";
-	$an->data->{path}{df}              = "/bin/df",
-	$an->data->{path}{drbdadm}         = "/sbin/drbdadm",
-	$an->data->{path}{'drbd-overview'} = "/usr/sbin/drbd-overview",
+	$an->data->{path}{df}              = "/bin/df";
+	$an->data->{path}{drbdadm}         = "/sbin/drbdadm";
+	$an->data->{path}{'drbd-overview'} = "/usr/sbin/drbd-overview";
 	$an->data->{path}{echo}            = "/bin/echo";
 	$an->data->{path}{expect}          = "/usr/bin/expect";
 	$an->data->{path}{'grep'}          = "/bin/grep";
@@ -499,7 +499,7 @@ sub _set_paths
 	$an->data->{path}{mount}           = "/bin/mount";
 	$an->data->{path}{'mkdir'}         = "/bin/mkdir";
 	$an->data->{path}{pg_dump}         = "/usr/bin/pg_dump";
-	$an->data->{path}{'ping'}          = "/bin/ping",
+	$an->data->{path}{'ping'}          = "/bin/ping";
 	$an->data->{path}{pgrep}           = "/usr/bin/pgrep";
 	$an->data->{path}{proc_drbd}       = "/proc/drbd";
 	$an->data->{path}{psql}            = "/usr/bin/psql";
@@ -508,33 +508,34 @@ sub _set_paths
 	$an->data->{path}{pvchange}        = "/sbin/pvchange";
 	$an->data->{path}{pvscan}          = "/sbin/pvscan";
 	$an->data->{path}{pvs}             = "/sbin/pvs";
-	$an->data->{path}{reboot}          = "/sbin/reboot",
-	$an->data->{path}{rm}              = "/bin/rm",
-	$an->data->{path}{rsync}           = "/usr/bin/rsync",
-	$an->data->{path}{sed}             = "/bin/sed",
+	$an->data->{path}{reboot}          = "/sbin/reboot";
+	$an->data->{path}{rm}              = "/bin/rm";
+	$an->data->{path}{rsync}           = "/usr/bin/rsync";
+	$an->data->{path}{sed}             = "/bin/sed";
 	$an->data->{path}{ssh}             = "/usr/bin/ssh";
 	$an->data->{path}{'ssh-keygen'}    = "/usr/bin/ssh-keygen";
 	$an->data->{path}{'ssh-keyscan'}   = "/usr/bin/ssh-keyscan";
-	$an->data->{path}{'ssh-copy-id'}   = "/usr/bin/ssh-copy-id",
+	$an->data->{path}{'ssh-copy-id'}   = "/usr/bin/ssh-copy-id";
+	$an->data->{path}{timeout}         = "/usr/bin/timeout";
 	$an->data->{path}{touch}           = "/bin/touch";
 	$an->data->{path}{vgchange}        = "/sbin/vgchange";
 	$an->data->{path}{vgscan}          = "/sbin/vgscan";
 	$an->data->{path}{vgs}             = "/sbin/vgs";
 	$an->data->{path}{virsh}           = "/usr/bin/virsh";
-	$an->data->{path}{wget}            = "/usr/bin/wget",
+	$an->data->{path}{wget}            = "/usr/bin/wget";
 	
 	# Text files
 	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
-	$an->data->{path}{dhcpd_conf}      = "/etc/dhcp/dhcpd.conf",
+	$an->data->{path}{dhcpd_conf}      = "/etc/dhcp/dhcpd.conf";
 	$an->data->{path}{etc_hosts}       = "/etc/hosts";
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
 	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
-	$an->data->{path}{root_crontab}    = "/var/spool/cron/root",
+	$an->data->{path}{root_crontab}    = "/var/spool/cron/root";
 	
 	# This is a text file with '#!token!#' replaced with a job's UUID token when running Anvil! jobs from 'anvil-run-jobs'
-	$an->data->{path}{'anvil-jobs-output'} = "/tmp/anvil-job.#!token!#.txt",
+	$an->data->{path}{'anvil-jobs-output'} = "/tmp/anvil-job.#!token!#.txt";
 
 	# Directories
 	$an->data->{path}{definitions}     = "/shared/definitions";
@@ -545,8 +546,8 @@ sub _set_paths
 	$an->data->{path}{skins}           = "/var/www/html/skins";
 	
 	# Tools
-	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups",
-	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs",
+	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups";
+	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs";
 	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";

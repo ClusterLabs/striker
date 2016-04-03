@@ -98,6 +98,9 @@ my $an = AN::Tools->new({data =>
 			# Set to '1' to add the footer warning that the email
 			# did not come from alteeve.ca
 			append_email_footer	=>	0,
+			dashboard		=>	{
+				dlm_hung_timeout	=>	0,
+			},
 			disable			=>	{
 				boot_nodes		=>	0,
 				power_shutdown		=>	0,
@@ -766,7 +769,7 @@ sub read_cache_files
 						my $this_ip   = $1;
 						my $this_host = $2;
 						$an->data->{cache}{$node}{host}{$this_host}{ip} = $this_ip;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "cache::${node}::host::${this_host}::ip", value1 => $an->data->{cache}{$node}{host}{$this_host}{ip}
 						}, file => $THIS_FILE, line => __LINE__});
 					}
@@ -797,6 +800,100 @@ sub read_cache_files
 	}
 	
 	return(0);
+}
+
+# This tries to log into each node 
+sub check_for_dlm_hang
+{
+	my ($an, $node) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_dlm_hang" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "node", value1 => $node,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# We'll only act on nodes that we have the ability to fence.
+	my $reboot = 0;
+	### NOTE: This exposes the password.
+	my $power_check_command = $an->data->{cache}{$node}{info}{power_check_command};
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "power_check_command", value1 => $power_check_command, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($power_check_command)
+	{
+		# First, can we access it?
+		my $return   = $an->Get->node_info({node => $node});
+		my $password = $return->{password};
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $access = $an->Check->access({
+			target		=>	$node,
+			password	=>	$password,
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($access)
+		{
+			### TODO: Make this a lot more graceful...
+			# If we're dashboard 2 (or higher), add time to the timeout to make sure we don't try
+			# to kill the node at the exact same time as dashboard 1.
+			if ($an->hostname() =~ /2$/)
+			{
+				$an->data->{scancore}{dashboard}{dlm_hung_timeout} += 10;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::dashboard::dlm_hung_timeout", value1 => $an->data->{scancore}{dashboard}{dlm_hung_timeout},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($an->hostname() =~ /3$/)
+			{
+				$an->data->{scancore}{dashboard}{dlm_hung_timeout} += 20;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::dashboard::dlm_hung_timeout", value1 => $an->data->{scancore}{dashboard}{dlm_hung_timeout},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($an->hostname() =~ /4$/)
+			{
+				$an->data->{scancore}{dashboard}{dlm_hung_timeout} += 30;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "scancore::dashboard::dlm_hung_timeout", value1 => $an->data->{scancore}{dashboard}{dlm_hung_timeout},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# We can log in, so call 'timeout X clustat'
+			my $shell_call = $an->data->{path}{timeout}." ".$an->data->{scancore}{dashboard}{dlm_hung_timeout}." ".$an->data->{path}{ls}." ".$an->data->{path}{shared}." || ".$an->data->{path}{echo}." timeout";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $node,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				password	=>	$password,
+				'close'		=>	1,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line eq "timeout")
+				{
+					# No good... fence it
+					$reboot = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "reboot", value1 => $reboot, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "reboot", value1 => $reboot, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($reboot);
 }
 
 # This will read in all nodes in 'hosts' and for each node it sees, it will reference it's cache to check 
@@ -862,6 +959,7 @@ ORDER BY
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		### TODO: Use the PDUs in case IPMI is hung.
 		# Nothing to do if we can't reach the node
 		if ($state eq "1")
 		{
@@ -876,6 +974,38 @@ ORDER BY
 		# minutes old.
 		if ($state eq "0")
 		{
+			# Before we do anything else, see if the node's DLM is hung, if enabled by the user.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "scancore::dashboard::dlm_hung_timeout", value1 => $an->data->{scancore}{dashboard}{dlm_hung_timeout}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($an->data->{scancore}{dashboard}{dlm_hung_timeout})
+			{
+				# Error of the value is not a digit.
+				if ($an->data->{scancore}{dashboard}{dlm_hung_timeout} =~ /\D/)
+				{
+					$an->Log->entry({log_level => 1, title_key => "tools_title_0002", message_key => "scancore_warning_0025", message_variables => {
+						value => $an->data->{scancore}{dashboard}{dlm_hung_timeout}, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# Timeout value looks good.
+					my $reboot = check_for_dlm_hang($an, $host_name);
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "reboot", value1 => $reboot, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Reboot, if needed
+					if ($reboot)
+					{
+						$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_log_0087", message_variables => {
+							node => $host_name,
+						}, file => $THIS_FILE, line => __LINE__});
+						reboot_node($an, $host_name, $host_uuid);
+					}
+				}
+			}
+			
 			# No need to check if it should be booted.
 			$an->Log->entry({log_level => 1, message_key => "scancore_log_0085", message_variables => {
 				node => $host_name, 
@@ -1047,8 +1177,7 @@ WHERE
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	
-	
+		
 	return(0);
 }
 
@@ -1105,6 +1234,67 @@ sub check_node_power_state
 	return($node_state);
 }
 
+# This reboots a node (ie: that may be hung)
+sub reboot_node
+{
+	my ($an, $host_name, $host_uuid) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_host_name" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "host_name", value1 => $host_name, 
+		name2 => "host_uuid", value2 => $host_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This shouldn't be called unless we confirmed the node is off, so no need to check again, just boot.
+	my $rebooted   = 0;
+	my $shell_call = $an->data->{cache}{$host_name}{info}{power_check_command}." -o reboot; echo rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^rc:(\d+)$/)
+		{
+			my $rc = $1;
+			# 0 if the off portion was successful
+			# 1 if the off portion was unsuccessful.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rc", value1 => $rc, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($rc eq "0")
+			{
+				# Shutdown, at least, worked.
+				$rebooted = 1;
+				$an->Log->entry({log_level => 0, title_key => "tools_title_0002", message_key => "scancore_log_0088", message_variables => {
+					node => $host_name,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	if ($rebooted)
+	{
+		# Make sure it came back up.
+		my $state = check_node_power_state($an, $host_name, $host_uuid);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($state eq "2")
+		{
+			# It didn't come up, try again.
+			boot_node($an, $host_name, $host_uuid);
+		}
+	}
+	
+	return(0);
+}
+
 # This is called when the environment is safe enough to boot a node that was put into emergency-stop. If the
 # cache file gave us the power_check_command and we can reach the node's IPMI, we'll boot it.
 sub boot_node
@@ -1116,11 +1306,11 @@ sub boot_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This shouldn't be called unless we confirmed the node is off, so no need to check again, just boot.
-	my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$? 2>&1 |";
+	my $shell_call = $an->data->{cache}{$node}{info}{power_check_command}." -o on; echo rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;

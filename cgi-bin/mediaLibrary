@@ -130,7 +130,7 @@ if ($conf->{cgi}{cluster})
 			password	=>	$an->data->{sys}{root_password},
 			port		=>	$conf->{node}{$node}{port},
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "access", value1 => $access,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($access)

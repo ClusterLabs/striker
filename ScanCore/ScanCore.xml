@@ -153,6 +153,8 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0084">The current power state node: [#!variable!node!#] is unknown (no cache file or failed to reach the fence device to check it).</key>
 		<key name="scancore_log_0085">The node: [#!variable!node!#] is on, no need to check if it should be booted or not.</key>
 		<key name="scancore_log_0086">Clearing the stop reason and emergency stop values for the now-running node: [#!variable!node!#].</key>
+		<key name="scancore_log_0087">The node: [#!variable!node!#] appears to be hung (likely DLM spinlock), it will be rebooted now.</key>
+		<key name="scancore_log_0088">The node: [#!variable!node!#] was rebooted.</key>
 		
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="scancore_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -206,6 +208,7 @@ Warning: If the peer goes critical, it will not migrate to this node and instead
 		<key name="scancore_warning_0022">Mains power has been lost. Remaining *estimated* hold-up time is: [#!variable!highest_holdup_time!# seconds]. Shutdown will occur when the hold-up time drops below: [#!variable!minimum_ups_runtime!# seconds].</key>
 		<key name="scancore_warning_0023">Failed to read the amount of RAM is being used by: [#!variable!program_name!#]. To be safe, the program will exit at the end of this sweep.</key>
 		<key name="scancore_warning_0024">Exiting because of errors. The reason(s) will be logged above.</key>
+		<key name="scancore_warning_0025">The 'scancore::dashboard::dlm_hung_timeout' variable is set to: [#!variable!value!#] but it appears to contain a non-digit character. Please set this to be a whole number representing the number of seconds #!string!scancore_brand_0001!# on a #!string!brand_0002!# dashboard should wait for 'clustat' to return before giving up and fencing the node.</key>
 		
 		<!-- Cleared warnings. -->
 		<key name="scancore_cleared_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

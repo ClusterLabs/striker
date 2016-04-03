@@ -2898,6 +2898,91 @@ sub remote_anvil_details
 	return ($return);
 }
 
+### TODO: Switch this to pull from ScanCore once the majority of striker.conf is deprecated.
+# This gathers up information on a node, given the passed-in node name
+sub node_info
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If no host name is passed in, use this machine's host name.
+	my $node = $parameter->{node} ? $parameter->{node} : $an->hostname;
+	
+	# First, run through the configured Anvil! systems from the striker.conf file.
+	my $return = {};
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	{
+		my $company         =  $an->data->{cluster}{$id}{company};		#	=	Alteeve's Niche!
+		my $description     =  $an->data->{cluster}{$id}{description};		#	=	Alteeve Development VM Anvil! (CentOS)
+		my $name            =  $an->data->{cluster}{$id}{name};			#	=	an-anvil-03
+		my ($node1, $node2) =  (split/,/, $an->data->{cluster}{$id}{nodes});	#	=	an-a03n01.alteeve.ca, an-a03n02.alteeve.ca
+		my $password        =  $an->data->{cluster}{$id}{root_pw};
+		   $password        =  $an->data->{cluster}{$id}{ricci_pw} if not $password;
+		   $node1           =~ s/^\s+//;
+		   $node1           =~ s/\s+$//;
+		   $node2           =~ s/^\s+//;
+		   $node2           =~ s/\s+$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "company",     value1 => $company, 
+			name2 => "description", value2 => $description, 
+			name3 => "name",        value3 => $name, 
+			name4 => "node1",       value4 => $node1, 
+			name5 => "node2",       value5 => $node2, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($node =~ /$node1/)
+		{
+			$return->{'local'}  = $node1;
+			$return->{peer}     = $node2;
+			$return->{anvil_id} = $id;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "local",    value1 => $return->{'local'}, 
+				name2 => "peer",     value2 => $return->{peer}, 
+				name3 => "anvil_id", value3 => $return->{anvil_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($node =~ /$node2/)
+		{
+			$return->{'local'}  = $node2;
+			$return->{peer}     = $node1;
+			$return->{anvil_id} = $id;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "local",    value1 => $return->{'local'}, 
+				name2 => "peer",     value2 => $return->{peer}, 
+				name3 => "anvil_id", value3 => $return->{anvil_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($return->{anvil_id})
+		{
+			$return->{company}     = $company;
+			$return->{description} = $description;
+			$return->{anvil_name}  = $name;
+			$return->{password}    = $password;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "company",     value1 => $return->{company}, 
+				name2 => "description", value2 => $return->{description}, 
+				name3 => "anvil_name",  value3 => $return->{anvil_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $return->{password}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		last if $return->{anvil_id};
+	}
+	
+	return($return);
+}
+
 # This returns the peer node and anvil! name depending on the passed-in host name. This is called by nodes 
 # in an Anvil!.
 sub local_anvil_details
