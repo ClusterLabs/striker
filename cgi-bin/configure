@@ -52,9 +52,16 @@ $an->default_log_file    ($an->data->{'log'}{file});
 $an->Log->level          ($an->data->{'log'}{level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+
+### TODO: Move this list into AN::Tools.pm, same way we preset paths.
+### TODO: Add all ScanCore column names as variables to check for automatically?
 $an->Web->get_cgi({variables => [
 	"anvil", 
+	"anvil_description", 
+	"anvil_name", 
 	"confirm", 
+	"node1_access",
+	"node2_access",
 	"owner_name", 
 	"owner_uuid", 
 	"save", 
@@ -166,7 +173,7 @@ sub anvil_menu
 	### First, we'll show any existing Anvil! systems, owners and smtp servers. If a user selects one of
 	### these, it will pre-fill the form below it.
 	# Show a select box of existing Anvil! systems (if any).
-	my $width         = 200;
+	my $width         = 300;
 	my $menu_items    = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
 			message	=>	"#!string!header_0020!#",
 			class	=>	"breaker_header",
@@ -291,23 +298,84 @@ sub anvil_menu
 		}});
 	
 	### Now information on the Anvil! itself.
+	# NOTE: We'll get this when we log into the node for the first time.
 	# Name
-	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-			column1_class	=>	"highlight_row_bold",
-			column1		=>	"#!string!row_0005!#",
-			column2_class	=>	"input_select",
-			column2		=>	"<input type=\"text\" name=\"anvil_name\" id=\"anvil_name\" value=\"".$an->data->{cgi}{anvil_name}."\" style=\"width: ${width}px;\">",
-			column3_class	=>	"input_explain",
-			column3		=>	"#!string!explain_0177!#",
-			column4_class	=>	"input_url",
-			column4		=>	$an->Web->more_info_link({url => "#!string!url_0001!#"}),
-		}});
+# 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+# 			column1_class	=>	"highlight_row_bold",
+# 			column1		=>	"#!string!row_0005!#",
+# 			column2_class	=>	"input_select",
+# 			column2		=>	"<input type=\"text\" name=\"anvil_name\" id=\"anvil_name\" value=\"".$an->data->{cgi}{anvil_name}."\" style=\"width: ${width}px;\">",
+# 			column3_class	=>	"input_explain",
+# 			column3		=>	"#!string!explain_0177!#",
+# 			column4_class	=>	"input_url",
+# 			column4		=>	$an->Web->more_info_link({url => "#!string!url_0001!#"}),
+# 		}});
 	
 	# Description
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0021!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"anvil_description\" id=\"anvil_description\" value=\"".$an->data->{cgi}{anvil_description}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0179!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
 	
 	# Password
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0025!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"anvil_password\" id=\"anvil_password\" value=\"".$an->data->{cgi}{anvil_password}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0181!#<br />#!string!explain_0180!#",
+			column4_class	=>	"input_url",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0003!#"}),
+		}});
+	# NOTE: To keep things simple, we'll not show the anvil_note here.
 	
-	# Note 
+	### Node values
+	# TODO: When we get this info, we'll ssh to the node before saving the record. Once ssh'ed in, we'll
+	#       get the various IPs and the host_uuid.
+	
+	### The user can use x:y for ports
+	# Node 1
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	$an->String->get({key => "row_0248", variables => { node => 1 }}),
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"node1_access\" id=\"node1_access\" value=\"".$an->data->{cgi}{node1_access}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0182!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Node 2
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	$an->String->get({key => "row_0248", variables => { node => 2 }}),
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"node2_access\" id=\"node2_access\" value=\"".$an->data->{cgi}{node2_access}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0183!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	### SMTP values
+	if (not $an->data->{cgi}{smtp_helo_domain}) { $an->data->{cgi}{smtp_helo_domain} = $an->domain_name(); }
+=pod
+	smtp_server		text				not null,			-- example; mail.example.com
+	smtp_port		integer				not null	default 587,
+	smtp_username		text				not null,			-- This is the user name (usually email address) used when authenticating against the mail server.
+	smtp_password		text,								-- This is the password used when authenticating against the mail server
+	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
+	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
+	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
+=cut	
 	
 	# Put the menu template together
 	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {

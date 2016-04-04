@@ -393,6 +393,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0176">Enter the name of the company, group or person who owns this #!string!brand_0003!# system.</key>
 		<key name="explain_0177"><![CDATA[The name of this #!string!brand_0003!# system. It must match '#!string!row_0005!#' used in the #!variable!row_0240!# used to build the system.]]></key>
 		<key name="explain_0178">There are no existing sending (smtp) mail servers yet.</key>
+		<key name="explain_0179">A short (one line) description which is shown in the #!string!brand_0003!# selection list.</key>
+		<key name="explain_0180"><![CDATA[<span class="highlight_note_bold">Note</span>: The password here will be displayed back to you.]]></key>
+		<key name="explain_0181">This is the password used to connect to and control the #!string!brand_0003!#.</key>
+		<key name="explain_0182"><![CDATA[The address (name or ip) of node 1. If you need to use a non-standard port, use '<span class="highlight_detail">address:port</span>'.]]></key>
+		<key name="explain_0183"><![CDATA[The same for node 2.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -460,6 +465,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<!-- These are URLs used for 'More Info' links -->
 		<key name="url_0001"><![CDATA[https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration]]></key>
 		<key name="url_0002"><![CDATA[https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol]]></key>
+		<key name="url_0003"><![CDATA[https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci]]></key>
 		
 		<!-- Row names are the short text strings to the left of rows. -->
 		<key name="row_0001">New!</key>
@@ -709,7 +715,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0245">Adding local repository</key>
 		<key name="row_0246">Replicated Storage Partition</key>
 		<key name="row_0247">Rebooting</key>
-		<key name="row_0248">...free...</key>
+		<key name="row_0248">Node #!variable!node!#</key>
 		<key name="row_0249">Storage Meta-data</key>
 		<key name="row_0250">...free...</key>
 		<key name="row_0251">Configuring Clustered LVM</key>
@@ -1794,21 +1800,21 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		
 		<!-- Configuration variable descriptions -->
 		<key name="config_title_0001">Owner Name</key>
-		<key name="config_title_0002">Anvil! Name</key>
-		<key name="config_title_0003">Anvil! Description</key>
-		<key name="config_title_0004">Anvil! Note</key>
-		<key name="config_title_0005">Anvil! Password</key>
+		<key name="config_title_0002">#!string!brand_0003!# Name</key>
+		<key name="config_title_0003">#!string!brand_0003!# Description</key>
+		<key name="config_title_0004">#!string!brand_0003!# Note</key>
+		<key name="config_title_0005">#!string!brand_0003!# Password</key>
 		<key name="config_title_0006"></key>
 		<key name="config_title_0007"></key>
 		<key name="config_title_0008"></key>
 		<key name="config_title_0009"></key>
 		<key name="config_title_0010"></key>
 		
-		<key name="config_explain_0001">This is a free-form name of the company or organization who owns or manages an Anvil! system.</key>
-		<key name="config_explain_0002">This is a free-form name for a specific Anvil! system. This is often the model number or similar identifier.</key>
-		<key name="config_explain_0003">This is a short description of a specific Anvil! system. Typically this indicates the systems's purpose, location or similar.</key>
-		<key name="config_explain_0004">This is a section for notes on a specific Anvil! system. This can record warranty information, system details, support information, installation location, purpose or other information you may find useful.</key>
-		<key name="config_explain_0005"><![CDATA[<span class="highlight_warning_bold">NOTE</span>: This password is stored in plain text and echoed back to you!<br />This is the password used by the dashboard when accessing and controlling the Anvil! system.]]></key>
+		<key name="config_explain_0001">This is a free-form name of the company or organization who owns or manages an #!string!brand_0003!# system.</key>
+		<key name="config_explain_0002">This is a free-form name for a specific #!string!brand_0003!# system. This is often the model number or similar identifier.</key>
+		<key name="config_explain_0003">This is a short description of a specific #!string!brand_0003!# system. Typically this indicates the systems's purpose, location or similar.</key>
+		<key name="config_explain_0004">This is a section for notes on a specific #!string!brand_0003!# system. This can record warranty information, system details, support information, installation location, purpose or other information you may find useful.</key>
+		<key name="config_explain_0005"><![CDATA[<span class="highlight_warning_bold">NOTE</span>: This password is stored in plain text and echoed back to you!<br />This is the password used by the dashboard when accessing and controlling the #!string!brand_0003!# system.]]></key>
 		<key name="config_explain_0006"></key>
 		<key name="config_explain_0007"></key>
 		<key name="config_explain_0008"></key>

@@ -292,6 +292,19 @@ sub hostname
 	return($hostname);
 }
 
+# This returns the domain name portion of this machine's host name (if available)
+sub domain_name
+{
+	my $self = shift;
+	
+	my $an          =  $self;
+	my $domain_name =  $an->hostname;
+	   $domain_name =~ s/^.*?\.//;
+	   $domain_name =  "" if not $domain_name;
+	
+	return($domain_name);
+}
+
 # This returns the short hostname for the machine this is running on. That is to say, the hostname up to the 
 # first '.'.
 sub short_hostname

@@ -861,7 +861,7 @@ sub check_for_dlm_hang
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
-			# We can log in, so call 'timeout X clustat'
+			# We can log in, so call 'timeout X ls /shared'
 			my $shell_call = $an->data->{path}{timeout}." ".$an->data->{scancore}{dashboard}{dlm_hung_timeout}." ".$an->data->{path}{ls}." ".$an->data->{path}{shared}." || ".$an->data->{path}{echo}." timeout";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -959,7 +959,7 @@ ORDER BY
 			name1 => "state", value1 => $state, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		### TODO: Use the PDUs in case IPMI is hung.
+		### TODO: Use the secondary fence method if the primary fence method fails.
 		# Nothing to do if we can't reach the node
 		if ($state eq "1")
 		{
@@ -980,7 +980,7 @@ ORDER BY
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{scancore}{dashboard}{dlm_hung_timeout})
 			{
-				# Error of the value is not a digit.
+				# Error if the value is not a digit.
 				if ($an->data->{scancore}{dashboard}{dlm_hung_timeout} =~ /\D/)
 				{
 					$an->Log->entry({log_level => 1, title_key => "tools_title_0002", message_key => "scancore_warning_0025", message_variables => {
