@@ -235,15 +235,9 @@ sub get_cgi
 					name1 => "cgi::${variable}", value1 => $an->data->{cgi}{$variable}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			
-			# Add this to the sys::cgi_string
-			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "cgi::cgi_string", value1 => $an->data->{cgi}{cgi_string}, 
-			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		# Log the variable, if set
+		# Log the variable and add to cgi_string, if set
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::${variable}", value1 => $an->data->{cgi}{$variable}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -252,12 +246,17 @@ sub get_cgi
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::$variable", value1 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::cgi_string", value1 => $an->data->{sys}{cgi_string}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Clear the final '&' from sys::cgi_string
 	$an->data->{sys}{cgi_string} =~ s/&$//;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::cgi_string", value1 => $an->data->{cgi}{cgi_string}, 
+		name1 => "sys::cgi_string", value1 => $an->data->{sys}{cgi_string}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);

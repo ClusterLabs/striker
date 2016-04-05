@@ -172,6 +172,7 @@ sub process_task
 sub save_anvil
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Some sanity checks before we begin.
 	my $error_messages = [];
@@ -183,6 +184,12 @@ sub save_anvil
 	my $node1_port    = 22;
 	my $node2_address = $an->data->{cgi}{node2_access};
 	my $node2_port    = 22;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node1_address", value1 => $node1_address,
+		name2 => "node1_port",    value2 => $node1_port,
+		name3 => "node2_address", value3 => $node2_address,
+		name4 => "node2_port",    value4 => $node2_port,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{cgi}{node1_access})
 	{
 		my $row = $an->String->get({key => "row_0248", variables => { node => 1 }});
@@ -193,6 +200,10 @@ sub save_anvil
 	{
 		$node1_address = $1;
 		$node1_port    = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_address", value1 => $node1_address,
+			name2 => "node1_port",    value2 => $node1_port,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	if (not $an->data->{cgi}{node2_access})
 	{
@@ -205,6 +216,10 @@ sub save_anvil
 	{
 		$node2_address = $1;
 		$node2_port    = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node2_address", value1 => $node2_address,
+			name2 => "node2_port",    value2 => $node2_port,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Do I have an owner?
@@ -229,7 +244,11 @@ sub save_anvil
 	}
 	
 	# If there were errors, display them and return.
-	if (@{$error_fields} > 0)
+	my $error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($error_count > 0)
 	{
 		# Print the error header.
 		my $error_body = "";
@@ -246,10 +265,13 @@ sub save_anvil
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "error_message", value1 => $error_message,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Try connecting to the nodes, if we're good so far.
-	if (@{$error_fields} < 1)
+	if ($error_count < 1)
 	{
 		# Proceed with attempt to log into the nodes.
 		my $node1_access = $an->Check->access({
@@ -262,6 +284,10 @@ sub save_anvil
 			port		=>	$node2_port,
 			password	=>	$an->data->{cgi}{anvil_password},
 		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_access", value1 => $node1_access,
+			name2 => "node2_access", value2 => $node2_access,
+		}, file => $THIS_FILE, line => __LINE__});
 		if (not $node1_access)
 		{
 			push @{$error_messages}, $an->String->get({key => "message_0371", variables => { node => 1 } });
@@ -276,21 +302,37 @@ sub save_anvil
 		# Gather data from the nodes, if we're still good.
 		if (($node1_access) && ($node2_access))
 		{
-			my $node1_data = $an->Get->target_info({
+			my $node1_data = $an->Get->target_details({
 					target		=>	$node1_address,
 					port		=>	$node1_port,
 					password	=>	$an->data->{cgi}{anvil_password},
 				});
-			my $node2_data = $an->Get->target_info({
+			my $node2_data = $an->Get->target_details({
 					target		=>	$node2_address,
 					port		=>	$node2_port,
 					password	=>	$an->data->{cgi}{anvil_password},
 				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+				name1  => "node1_data->anvil_name",           value1  => $node1_data->{anvil_name}, 
+				name2  => "node1_data->network::bcn_address", value2  => $node1_data->{network}{bcn_address}, 
+				name3  => "node1_data->network::ifn_address", value3  => $node1_data->{network}{ifn_address}, 
+				name4  => "node1_data->network::sn_address",  value4  => $node1_data->{network}{sn_address}, 
+				name5  => "node1_data->uuid",                 value5  => $node1_data->{uuid}, 
+				name6  => "node2_data->anvil_name",           value6  => $node2_data->{anvil_name}, 
+				name7  => "node2_data->network::bcn_address", value7  => $node2_data->{network}{bcn_address}, 
+				name8  => "node2_data->network::ifn_address", value8  => $node2_data->{network}{ifn_address}, 
+				name9  => "node2_data->network::sn_address",  value9  => $node2_data->{network}{sn_address}, 
+				name10 => "node2_data->uuid",                 value10 => $node2_data->{uuid}, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Process errors now, if any.
-	if (@{$error_fields} > 0)
+	$error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($error_count > 0)
 	{
 		# Print the error header.
 		my $error_body = "";
@@ -307,8 +349,14 @@ sub save_anvil
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "error_message", value1 => $error_message,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_message", value1 => $error_message,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($error_message, $error_fields);
 }
 
@@ -316,6 +364,7 @@ sub save_anvil
 sub anvil_menu
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "anvil_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Add an "Advanced" button to expose all the remaining form fields
 	# Is the user asking to save changes?
@@ -325,6 +374,9 @@ sub anvil_menu
 	{
 		# Save, if something changed.
 		($error_message, $error_fields) = save_anvil($an);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "error_message", value1 => $error_message,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	### First, we'll show any existing Anvil! systems, owners and smtp servers. If a user selects one of
@@ -605,6 +657,13 @@ sub anvil_menu
 			column4		=>	"&nbsp;",
 		}});
 	
+	# Hidden fields now  
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	$an->data->{cgi}{task},
+		}});
+	
 	# The 'Save' button
 	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
 			message	=>	"<input type=\"submit\" name=\"save\" value=\"#!string!button_0045!#\" class=\"bold_button\">",
@@ -776,6 +835,7 @@ sub show_main_menu
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
+				errors		=>	"",
 				body		=>	$menu, 
 				footer		=>	$footer, 
 			},

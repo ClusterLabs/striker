@@ -4,7 +4,6 @@ use strict;
 use warnings;
 use IO::Handle;
 use Data::Dumper;
-use CGI;
 
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Get.pm";
@@ -128,7 +127,7 @@ sub server_data
 	my $server_name = $parameter->{server} ? $parameter->{server} : "";
 	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
 	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -153,7 +152,7 @@ sub server_data
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
 		}
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -287,7 +286,7 @@ WHERE
 	$return->{boot_devices} = [];
 	foreach my $device (@{$data->{os}->[0]->{boot}})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "device", value1 => $device->{dev}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return->{boot_devices}}, $device->{dev};
@@ -296,7 +295,7 @@ WHERE
 	# Pull out the RAM.
 	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
 	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "return->current_ram", value1 => $return->{current_ram}, 
 		name2 => "return->maximum_ram", value2 => $return->{maximum_ram}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -311,7 +310,7 @@ WHERE
 	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
 	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
 	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "return->cpu::total",   value1 => $return->{cpu}{total}, 
 		name2 => "return->cpu::cores",   value2 => $return->{cpu}{cores}, 
 		name3 => "return->cpu::sockets", value3 => $return->{cpu}{sockets}, 
@@ -323,14 +322,14 @@ WHERE
 	{
 		# Disk or cdrom?
 		my $device_type = $hash_ref->{device};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "device_type", value1 => $device_type, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# The backing device (LV or path the the source file, usually) and cache policy, if set.
 		my $backing_device = $hash_ref->{source}->[0]->{dev}   ? $hash_ref->{source}->[0]->{dev}   : $hash_ref->{source}->[0]->{file}; 
 		my $cache_policy   = $hash_ref->{driver}->[0]->{cache} ? $hash_ref->{driver}->[0]->{cache} : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "backing_device", value1 => $backing_device, 
 			name2 => "cache_policy",   value2 => $cache_policy, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -338,7 +337,7 @@ WHERE
 		# This is the device presented to the guest OS (vda, hdc, etc) and the bus type (virtio, IDE, etc)
 		my $target_device = $hash_ref->{target}->[0]->{dev};
 		my $target_bus    = $hash_ref->{target}->[0]->{bus};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "target_device", value1 => $target_device, 
 			name2 => "target_bus",    value2 => $target_bus, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -349,7 +348,7 @@ WHERE
 			cache_policy	=>	$cache_policy, 
 			target_bus	=>	$target_bus, 
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "return->storage::${device_type}::target_device::${target_device}::backing_device", value1 => $return->{storage}{$device_type}{target_device}{$target_device}{backing_device}, 
 			name2 => "return->storage::${device_type}::target_device::${target_device}::cache_policy",   value2 => $return->{storage}{$device_type}{target_device}{$target_device}{cache_policy}, 
 			name3 => "return->storage::${device_type}::target_device::${target_device}::target_bus",     value3 => $return->{storage}{$device_type}{target_device}{$target_device}{target_bus}, 
@@ -359,7 +358,7 @@ WHERE
 	# Dig out the graphical connection information (the address is complicated for some reason...)
 	$return->{graphics}{port}    = $data->{devices}->[0]->{graphics}->[0]->{port};
 	$return->{graphics}{type}    = $data->{devices}->[0]->{graphics}->[0]->{type};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "return->graphics::port", value1 => $return->{graphics}{port}, 
 		name2 => "return->graphics::type", value2 => $return->{graphics}{type}, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -370,14 +369,14 @@ WHERE
 		if (ref($item) eq "HASH")
 		{
 			$return->{graphics}{address} = $item->{address};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $return->{graphics}{address})
 		{
 			$return->{graphics}{address} = $item;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -387,7 +386,7 @@ WHERE
 	$return->{on_poweroff} = $data->{on_poweroff}->[0];
 	$return->{on_reboot}   = $data->{on_reboot}->[0];
 	$return->{on_crash}    = $data->{on_crash}->[0];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "return->on_poweroff", value1 => $return->{on_poweroff}, 
 		name2 => "return->on_reboot",   value2 => $return->{on_reboot}, 
 		name3 => "return->on_crash",    value3 => $return->{on_crash}, 
@@ -405,7 +404,7 @@ WHERE
 			model	=>	$model,
 			vnet	=>	$vnet,
 		};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "return->network::mac_address::${mac_address}::bridge", value1 => $return->{network}{mac_address}{$mac_address}{bridge}, 
 			name2 => "return->network::mac_address::${mac_address}::model",  value2 => $return->{network}{mac_address}{$mac_address}{model}, 
 			name3 => "return->network::mac_address::${mac_address}::vnet",   value3 => $return->{network}{mac_address}{$mac_address}{vnet}, 
@@ -1573,7 +1572,7 @@ sub server_uuid
 	my $uuid = "";
 	my $server = $parameter->{server};
 	my $anvil  = $parameter->{anvil};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "anvil",  value2 => $anvil, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1587,7 +1586,7 @@ sub server_uuid
 	if ((not $anvil) && (($an->data->{cgi}{cluster}) or ($an->data->{cgi}{anvil})))
 	{
 		$anvil = $an->data->{cgi}{anvil} ? $an->data->{cgi}{anvil} : $an->data->{cgi}{cluster};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil", value1 => $anvil, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -1958,7 +1957,7 @@ sub users_home
 	my $an        = $self->parent;
 	
 	my $user = $parameter->{user};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "user", value1 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $user)
@@ -2001,7 +2000,7 @@ sub users_home
 		}, code => 34, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "users_home", value1 => $users_home, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($users_home);
@@ -2021,7 +2020,7 @@ sub rsa_public_key
 	}
 	
 	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "user",     value1 => $user, 
 		name2 => "key_size", value2 => $key_size,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2029,7 +2028,7 @@ sub rsa_public_key
 	# Find the public RSA key file for this user.
 	my $users_home = $an->Get->users_home({user => $user});
 	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "rsa_file", value1 => $rsa_file, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2619,7 +2618,7 @@ sub pids
 			if ($command =~ /$program_name/)
 			{
 				# If we're calling locally and we see our own PID, skip it.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "pid",    value1 => $pid,
 					name2 => "my_pid", value2 => $my_pid, 
 					name3 => "target", value3 => $target, 
@@ -2634,7 +2633,7 @@ sub pids
 				}
 				else
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "pid", value1 => $pid,
 					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 					push @{$pids}, $pid;
@@ -2915,7 +2914,15 @@ sub target_details
 	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
 	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	my $return   = {};
+	my $return   = {
+		anvil_name	=>	"",
+		network		=>	{
+			bcn_address	=>	"",
+			ifn_address	=>	"",
+			sn_address	=>	"",
+		},
+		uuid		=>	"",
+	};
 	
 	# Here are the calls we'll make
 	my $uuid_shell_call = $an->data->{path}{cat}." ".$an->data->{path}{host_uuid};
@@ -2969,7 +2976,7 @@ sub target_details
 		# NOTE: I know some of these could have been direct file reads, but it keeps the calls and 
 		#       output processing consistent.
 		# UUID
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid_shell_call", value1 => $uuid_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$uuid_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $uuid_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -2982,7 +2989,7 @@ sub target_details
 		close $file_handle;
 		
 		# IP Info
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ip_shell_call", value1 => $ip_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$ip_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ip_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -3002,13 +3009,13 @@ sub target_details
 	# UUID
 	foreach my $line (@{$uuid_return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/)
 		{
 			$return->{uuid} = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "uuid", value1 => $return->{uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -3017,22 +3024,22 @@ sub target_details
 	my $in_device = "";
 	foreach my $line (@{$ip_return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /^\d+: (.*?):/)
 		{
 			$in_device = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "in_device", value1 => $in_device, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		if ($line =~ /inet ([0-255]\.[0-255]\.[0-255]\.[0-255])\/([0-32])/)
+		if ($line =~ /inet (\d+\.\d+\.\d+\.\d+)\/(\d+) /)
 		{
 			$return->{network}{interface}{$in_device}{ip_address} = $1;
 			$return->{network}{interface}{$in_device}{netmask}    = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "network::interface::${in_device}::ip_address", value1 => $return->{network}{interface}{$in_device}{ip_address}, 
 				name2 => "network::interface::${in_device}::netmask",    value2 => $return->{network}{interface}{$in_device}{netmask}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3040,21 +3047,21 @@ sub target_details
 			if ($in_device =~ /bcn/)
 			{
 				$return->{network}{bcn_address} = $return->{network}{interface}{$in_device}{ip_address};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "network::bcn_address", value1 => $return->{network}{bcn_address}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($in_device =~ /sn/)
 			{
 				$return->{network}{sn_address} = $return->{network}{interface}{$in_device}{ip_address};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "network::sn_address", value1 => $return->{network}{sn_address}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($in_device =~ /ifn/)
 			{
 				$return->{network}{ifn_address} = $return->{network}{interface}{$in_device}{ip_address};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "network::ifn_address", value1 => $return->{network}{ifn_address}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3063,11 +3070,18 @@ sub target_details
 	
 	# Pull out the anvil name from the cluster_name.
 	$return->{anvil_name} = $cluster_conf->{cluster_name} ? $cluster_conf->{cluster_name} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_name", value1 => $return->{anvil_name}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	
+	# Summarize
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "anvil_name",           value1 => $return->{anvil_name}, 
+		name2 => "network::bcn_address", value2 => $return->{network}{bcn_address}, 
+		name3 => "network::ifn_address", value3 => $return->{network}{ifn_address}, 
+		name4 => "network::sn_address",  value4 => $return->{network}{sn_address}, 
+		name5 => "uuid",                 value5 => $return->{uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($return);
 }
 
@@ -3101,7 +3115,7 @@ sub node_info
 		   $node1           =~ s/\s+$//;
 		   $node2           =~ s/^\s+//;
 		   $node2           =~ s/\s+$//;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "company",     value1 => $company, 
 			name2 => "description", value2 => $description, 
 			name3 => "name",        value3 => $name, 
@@ -3116,7 +3130,7 @@ sub node_info
 			$return->{'local'}  = $node1;
 			$return->{peer}     = $node2;
 			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "local",    value1 => $return->{'local'}, 
 				name2 => "peer",     value2 => $return->{peer}, 
 				name3 => "anvil_id", value3 => $return->{anvil_id}, 
@@ -3127,7 +3141,7 @@ sub node_info
 			$return->{'local'}  = $node2;
 			$return->{peer}     = $node1;
 			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "local",    value1 => $return->{'local'}, 
 				name2 => "peer",     value2 => $return->{peer}, 
 				name3 => "anvil_id", value3 => $return->{anvil_id}, 
@@ -3140,7 +3154,7 @@ sub node_info
 			$return->{description} = $description;
 			$return->{anvil_name}  = $name;
 			$return->{password}    = $password;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "company",     value1 => $return->{company}, 
 				name2 => "description", value2 => $return->{description}, 
 				name3 => "anvil_name",  value3 => $return->{anvil_name}, 
@@ -3419,16 +3433,16 @@ sub dhcpd_state
 	# First, read the dhcpd.conf file, if it exists, and look for the 'next-server' option.
 	my $dhcpd_state = 2;
 	my $boot_target = 0;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "path::dhcpd_conf", value1 => $an->data->{path}{dhcpd_conf},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (-e $an->data->{path}{dhcpd_conf})
 	{
-		$an->Log->entry({log_level => 2, message_key => "log_0011", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0011", message_variables => {
 			file => "dhcpd.conf", 
 		}, file => $THIS_FILE, line => __LINE__});
 		my $shell_call = $an->data->{path}{dhcpd_conf};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "<$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
@@ -3443,7 +3457,7 @@ sub dhcpd_state
 			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
 			{
 				$boot_target = 1;
-				$an->Log->entry({log_level => 2, message_key => "log_0012", file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 3, message_key => "log_0012", file => $THIS_FILE, line => __LINE__});
 				last;
 			}
 		}
@@ -3452,20 +3466,20 @@ sub dhcpd_state
 	else
 	{
 		# DHCP daemon config file not found or not readable. Is '/etc/dhcp' readable by the current UID?
-		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0013", message_variables => {
 			file => $an->data->{path}{dhcpd_conf},
 			uid  => $<, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$dhcpd_state = 4;
 	}
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot_target", value1 => $boot_target,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($boot_target)
 	{
 		# See if dhcpd is running.
 		my $shell_call = $an->data->{path}{initd}."/dhcpd status; ".$an->data->{path}{echo}." rc:\$?";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
@@ -3479,7 +3493,7 @@ sub dhcpd_state
 			if ($line =~ /rc:(\d+)/)
 			{
 				my $rc = $1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "rc", value1 => $rc,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "3")
@@ -3506,7 +3520,7 @@ sub dhcpd_state
 	# 2 == Not a boot target
 	# 3 == In an unknown state.
 	# 4 == No access to /etc/dhcpd
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "dhcpd_state", value1 => $dhcpd_state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($dhcpd_state);
