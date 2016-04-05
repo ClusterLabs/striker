@@ -59,12 +59,20 @@ $an->Web->get_cgi({variables => [
 	"anvil", 
 	"anvil_description", 
 	"anvil_name", 
+	"anvil_password", 
 	"confirm", 
 	"node1_access",
 	"node2_access",
 	"owner_name", 
 	"owner_uuid", 
 	"save", 
+	"smtp_authentication", 
+	"smtp_helo_domain", 
+	"smtp_password", 
+	"smtp_port", 
+	"smtp_security", 
+	"smtp_server", 
+	"smtp_username",
 	"subtask", 
 	"task", 
 ]});
@@ -159,15 +167,164 @@ sub process_task
 	return(0);
 }
 
+# This saves the changes to an Anvil! using the minimal of user input. As much data as possible will be 
+# collected from the nodes directly.
+sub save_anvil
+{
+	my ($an) = @_;
+	
+	### Some sanity checks before we begin.
+	my $error_messages = [];
+	my $error_fields   = [];
+	my $error_message  = "";
+	
+	# Sort out the node access
+	my $node1_address = $an->data->{cgi}{node1_access};
+	my $node1_port    = 22;
+	my $node2_address = $an->data->{cgi}{node2_access};
+	my $node2_port    = 22;
+	if (not $an->data->{cgi}{node1_access})
+	{
+		my $row = $an->String->get({key => "row_0248", variables => { node => 1 }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => $row }});
+		push @{$error_fields},   "node1_access";
+	}
+	elsif ($an->data->{cgi}{node1_access} =~ /(.*):(\d+)/)
+	{
+		$node1_address = $1;
+		$node1_port    = $2;
+	}
+	if (not $an->data->{cgi}{node2_access})
+	{
+		# Sorry, this is messy... the 'field' variable is 'Node X'.
+		my $row = $an->String->get({key => "row_0248", variables => { node => 2 }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => $row }});
+		push @{$error_fields},   "node2_access";
+	}
+	elsif ($an->data->{cgi}{node2_access} =~ /(.*):(\d+)/)
+	{
+		$node2_address = $1;
+		$node2_port    = $2;
+	}
+	
+	# Do I have an owner?
+	if (not $an->data->{cgi}{owner_name})
+	{
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => "#!string!row_0023!#" }});
+		push @{$error_fields},   "owner_name";
+	}
+	
+	# What about a password?
+	if (not $an->data->{cgi}{anvil_password})
+	{
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => "#!string!row_0025!#" }});
+		push @{$error_fields},   "anvil_password";
+	}
+	
+	# The SMTP password can only be blank is the password security is 'none'.
+	if ((not $an->data->{cgi}{smtp_password}) && ($an->data->{cgi}{smtp_authentication} ne "none"))
+	{
+		push @{$error_messages}, $an->String->get({key => "message_0361"});
+		push @{$error_fields},   "smtp_password";
+	}
+	
+	# If there were errors, display them and return.
+	if (@{$error_fields} > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $error_messages (@{$error_fields})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_body	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$error_messages,
+				}});
+		}
+		$error_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
+	}
+	
+	# Try connecting to the nodes, if we're good so far.
+	if (@{$error_fields} < 1)
+	{
+		# Proceed with attempt to log into the nodes.
+		my $node1_access = $an->Check->access({
+			target		=>	$node1_address,
+			port		=>	$node1_port,
+			password	=>	$an->data->{cgi}{anvil_password},
+		});
+		my $node2_access = $an->Check->access({
+			target		=>	$node2_address,
+			port		=>	$node2_port,
+			password	=>	$an->data->{cgi}{anvil_password},
+		});
+		if (not $node1_access)
+		{
+			push @{$error_messages}, $an->String->get({key => "message_0371", variables => { node => 1 } });
+			push @{$error_fields},   "node1_access";
+		}
+		if (not $node2_access)
+		{
+			push @{$error_messages}, $an->String->get({key => "message_0371", variables => { node => 2 } });
+			push @{$error_fields},   "node2_access";
+		}
+		
+		# Gather data from the nodes, if we're still good.
+		if (($node1_access) && ($node2_access))
+		{
+			my $node1_data = $an->Get->target_info({
+					target		=>	$node1_address,
+					port		=>	$node1_port,
+					password	=>	$an->data->{cgi}{anvil_password},
+				});
+			my $node2_data = $an->Get->target_info({
+					target		=>	$node2_address,
+					port		=>	$node2_port,
+					password	=>	$an->data->{cgi}{anvil_password},
+				});
+		}
+	}
+	
+	# Process errors now, if any.
+	if (@{$error_fields} > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $error_messages (@{$error_fields})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_body	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$error_messages,
+				}});
+		}
+		$error_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
+	}
+	
+	return($error_message, $error_fields);
+}
+
 # This handles the configuration of Anvil! systems (including the ability to create new owners)
 sub anvil_menu
 {
 	my ($an) = @_;
 	
+	### TODO: Add an "Advanced" button to expose all the remaining form fields
 	# Is the user asking to save changes?
+	my $error_message = "";
+	my $error_fields  = [];
 	if ($an->data->{cgi}{save})
 	{
 		# Save, if something changed.
+		($error_message, $error_fields) = save_anvil($an);
 	}
 	
 	### First, we'll show any existing Anvil! systems, owners and smtp servers. If a user selects one of
@@ -275,7 +432,7 @@ sub anvil_menu
 			column3_class	=>	"input_explain",
 			column3		=>	$smtp_explain,
 			column4_class	=>	"input_url",
-			column4		=>	$an->Web->more_info_link({url => "#!string!url_0002!#"}),,
+			column4		=>	"",
 		}});
 	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
 			message	=>	"#!string!header_0021!#",
@@ -298,19 +455,6 @@ sub anvil_menu
 		}});
 	
 	### Now information on the Anvil! itself.
-	# NOTE: We'll get this when we log into the node for the first time.
-	# Name
-# 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-# 			column1_class	=>	"highlight_row_bold",
-# 			column1		=>	"#!string!row_0005!#",
-# 			column2_class	=>	"input_select",
-# 			column2		=>	"<input type=\"text\" name=\"anvil_name\" id=\"anvil_name\" value=\"".$an->data->{cgi}{anvil_name}."\" style=\"width: ${width}px;\">",
-# 			column3_class	=>	"input_explain",
-# 			column3		=>	"#!string!explain_0177!#",
-# 			column4_class	=>	"input_url",
-# 			column4		=>	$an->Web->more_info_link({url => "#!string!url_0001!#"}),
-# 		}});
-	
 	# Description
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
@@ -334,13 +478,8 @@ sub anvil_menu
 			column4_class	=>	"input_url",
 			column4		=>	$an->Web->more_info_link({url => "#!string!url_0003!#"}),
 		}});
-	# NOTE: To keep things simple, we'll not show the anvil_note here.
 	
-	### Node values
-	# TODO: When we get this info, we'll ssh to the node before saving the record. Once ssh'ed in, we'll
-	#       get the various IPs and the host_uuid.
-	
-	### The user can use x:y for ports
+	### Node access info
 	# Node 1
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
@@ -366,16 +505,112 @@ sub anvil_menu
 		}});
 	
 	### SMTP values
-	if (not $an->data->{cgi}{smtp_helo_domain}) { $an->data->{cgi}{smtp_helo_domain} = $an->domain_name(); }
-=pod
-	smtp_server		text				not null,			-- example; mail.example.com
-	smtp_port		integer				not null	default 587,
-	smtp_username		text				not null,			-- This is the user name (usually email address) used when authenticating against the mail server.
-	smtp_password		text,								-- This is the password used when authenticating against the mail server
-	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
-	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
-	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
-=cut	
+	# Breaker
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"#!string!header_0022!#",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	# Set defaults, if the user didn't try to save (we don't want to put something into a field they 
+	# blanked on purpose).
+	if (not $an->data->{cgi}{save})
+	{
+		if (not $an->data->{cgi}{smtp_server})         { $an->data->{cgi}{smtp_server}         = "mail.".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_username})       { $an->data->{cgi}{smtp_username}       = "admin\@".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_security})       { $an->data->{cgi}{smtp_security}       = "starttls"; }
+		if (not $an->data->{cgi}{smtp_authentication}) { $an->data->{cgi}{smtp_authentication} = "encrypted"; }
+	}
+	
+	# SMTP Server
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0250!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_server\" id=\"smtp_server\" value=\"".$an->data->{cgi}{smtp_server}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0184!#",
+			column4_class	=>	"input_url",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0002!#"}),
+		}});
+	
+	# SMTP user name
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0301!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_username\" id=\"smtp_username\" value=\"".$an->data->{cgi}{smtp_username}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0186!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# SMTP password
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0302!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_password\" id=\"smtp_password\" value=\"".$an->data->{cgi}{smtp_password}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0187!#<br />#!string!explain_0180!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	
+	# Authentication select box.
+	my $authentication_select = $an->Web->build_select({
+		name     => "smtp_authentication", 
+		options  => [
+			"none#!##!string!select_0004!#",
+			"plain_text#!##!string!select_0005!#",
+			"encrypted#!##!string!select_0006!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{smtp_authentication},
+		width    => $width,
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0303!#",
+			column2_class	=>	"input_select",
+			column2		=>	$authentication_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0188!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# SMTP Security selection box.
+	my $security_select = $an->Web->build_select({
+		name     => "smtp_security", 
+		options  => [
+			"none#!##!string!select_0001!#",
+			"tls_ssl#!##!string!select_0002!#",
+			"starttls#!##!string!select_0003!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{smtp_security},
+		width    => $width,
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0304!#",
+			column2_class	=>	"input_select",
+			column2		=>	$security_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0189!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# The 'Save' button
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"<input type=\"submit\" name=\"save\" value=\"#!string!button_0045!#\" class=\"bold_button\">",
+			class	=>	"",
+			colspan	=>	4,
+		}});
 	
 	# Put the menu template together
 	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
@@ -408,6 +643,7 @@ sub anvil_menu
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
+				errors		=>	$error_message,
 				body		=>	$menu, 
 				footer		=>	$footer, 
 			},

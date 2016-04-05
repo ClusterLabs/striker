@@ -485,7 +485,7 @@ sub shared_files
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ls_shell_call", value1 => $ls_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$ls_shell_call 2>&1 |") or die "Failed to call: [$ls_shell_call], error was: $!\n";
+		open (my $file_handle, "$ls_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ls_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -498,7 +498,7 @@ sub shared_files
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "df_shell_call", value1 => $df_shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$df_shell_call 2>&1 |") or die "Failed to call: [$df_shell_call], error was: $!\n";
+		open ($file_handle, "$df_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $df_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -722,7 +722,7 @@ sub drbd_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -738,7 +738,7 @@ sub drbd_data
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -1311,7 +1311,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1325,7 +1325,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1339,7 +1339,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1353,7 +1353,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1367,7 +1367,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1381,7 +1381,7 @@ sub lvm_data
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1858,7 +1858,7 @@ fi
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -1897,7 +1897,7 @@ fi
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 			while(<$file_handle>)
 			{
 				chomp;
@@ -2108,6 +2108,7 @@ sub uuid
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
+	### TODO: Figure out why the heck I did this... Remove it, most likely.
 	# Set the 'uuidgen' path if set by the user.
 	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
 	
@@ -2898,6 +2899,178 @@ sub remote_anvil_details
 	return ($return);
 }
 
+# This directly gathers information about a node or dashboard from the target.
+sub target_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If no host name is passed in, use this machine's host name.
+	my $target   = $parameter->{target}   ? $parameter->{target}   : $an->hostname;
+	my $port     = $parameter->{port}     ? $parameter->{port}     : 22;
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $return   = {};
+	
+	# Here are the calls we'll make
+	my $uuid_shell_call = $an->data->{path}{cat}." ".$an->data->{path}{host_uuid};
+	my $ip_shell_call   = $an->data->{path}{ip}." addr show";
+	
+	# Returned data from the shell calls will be stored in these arrays.
+	my $uuid_return  = [];
+	my $ip_return    = [];
+	my $cluster_conf = "";
+	
+	# Now make the calls.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		# UUID
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "uuid_shell_call", value1 => $uuid_shell_call,
+			name2 => "target",          value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $uuid_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$uuid_shell_call,
+			'close'		=>	0,
+		});
+		
+		# IP info
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "ip_shell_call", value1 => $ip_shell_call,
+			name2 => "target",        value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $ip_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$ip_shell_call,
+			'close'		=>	0,
+		});
+		
+		# Get cluster.conf data
+		$cluster_conf = $an->Cman->cluster_conf_data({
+				target		=>	$target,
+				port		=>	$port,
+				password	=>	$password,
+			});
+	}
+	else
+	{
+		### Local calls
+		# NOTE: I know some of these could have been direct file reads, but it keeps the calls and 
+		#       output processing consistent.
+		# UUID
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid_shell_call", value1 => $uuid_shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$uuid_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $uuid_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$uuid_return}, $line;
+		}
+		close $file_handle;
+		
+		# IP Info
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip_shell_call", value1 => $ip_shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$ip_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ip_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$ip_return}, $line;
+		}
+		close $file_handle;
+		
+		# Get cluster.conf data
+		$cluster_conf = $an->Cman->cluster_conf_data();
+	}
+	
+	### Parse it out!
+	# UUID
+	foreach my $line (@{$uuid_return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/)
+		{
+			$return->{uuid} = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "uuid", value1 => $return->{uuid}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	# IP information (very basic for now)
+	my $in_device = "";
+	foreach my $line (@{$ip_return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^\d+: (.*?):/)
+		{
+			$in_device = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_device", value1 => $in_device, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($line =~ /inet ([0-255]\.[0-255]\.[0-255]\.[0-255])\/([0-32])/)
+		{
+			$return->{network}{interface}{$in_device}{ip_address} = $1;
+			$return->{network}{interface}{$in_device}{netmask}    = $2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "network::interface::${in_device}::ip_address", value1 => $return->{network}{interface}{$in_device}{ip_address}, 
+				name2 => "network::interface::${in_device}::netmask",    value2 => $return->{network}{interface}{$in_device}{netmask}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($in_device =~ /bcn/)
+			{
+				$return->{network}{bcn_address} = $return->{network}{interface}{$in_device}{ip_address};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::bcn_address", value1 => $return->{network}{bcn_address}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($in_device =~ /sn/)
+			{
+				$return->{network}{sn_address} = $return->{network}{interface}{$in_device}{ip_address};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::sn_address", value1 => $return->{network}{sn_address}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($in_device =~ /ifn/)
+			{
+				$return->{network}{ifn_address} = $return->{network}{interface}{$in_device}{ip_address};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "network::ifn_address", value1 => $return->{network}{ifn_address}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Pull out the anvil name from the cluster_name.
+	$return->{anvil_name} = $cluster_conf->{cluster_name} ? $cluster_conf->{cluster_name} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_name", value1 => $return->{anvil_name}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	
+	return($return);
+}
+
 ### TODO: Switch this to pull from ScanCore once the majority of striker.conf is deprecated.
 # This gathers up information on a node, given the passed-in node name
 sub node_info
@@ -3295,7 +3468,7 @@ sub dhcpd_state
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;

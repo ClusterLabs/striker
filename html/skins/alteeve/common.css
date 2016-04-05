@@ -359,6 +359,11 @@ img {
 	text-align: right;
 }
 
+.td_align_right {
+	text-align: right;
+	padding-right: 10px;
+}
+
 /* 
  Tooltip stuff 
  */

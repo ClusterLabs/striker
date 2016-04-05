@@ -501,6 +501,7 @@ sub _set_paths
 	$an->data->{path}{'grep'}          = "/bin/grep";
 	$an->data->{path}{gethostip}       = "/usr/bin/gethostip";
 	$an->data->{path}{hostname}        = "/bin/hostname";
+	$an->data->{path}{ip}              = "/sbin/ip";
 	$an->data->{path}{'less'}          = "/usr/bin/less";
 	$an->data->{path}{ln}              = "/bin/ln";
 	$an->data->{path}{ls}              = "/bin/ls";
