@@ -59,7 +59,11 @@ $an->Web->get_cgi({variables => [
 	"anvil", 
 	"anvil_description", 
 	"anvil_name", 
+	"anvil_note", 
+	"anvil_owner_uuid", 
 	"anvil_password", 
+	"anvil_smtp_uuid", 
+	"anvil_uuid", 
 	"confirm", 
 	"node1_access",
 	"node2_access",
@@ -73,6 +77,7 @@ $an->Web->get_cgi({variables => [
 	"smtp_security", 
 	"smtp_server", 
 	"smtp_username",
+	"smtp_uuid", 
 	"subtask", 
 	"task", 
 ]});
@@ -169,10 +174,10 @@ sub process_task
 
 # This saves the changes to an Anvil! using the minimal of user input. As much data as possible will be 
 # collected from the nodes directly.
-sub save_anvil
+sub save_anvil_form
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Some sanity checks before we begin.
 	my $error_messages = [];
@@ -180,6 +185,8 @@ sub save_anvil
 	my $error_message  = "";
 	
 	# Sort out the node access
+	my $node1_data    = "";
+	my $node2_data    = "";
 	my $node1_address = $an->data->{cgi}{node1_access};
 	my $node1_port    = 22;
 	my $node2_address = $an->data->{cgi}{node2_access};
@@ -302,36 +309,81 @@ sub save_anvil
 		# Gather data from the nodes, if we're still good.
 		if (($node1_access) && ($node2_access))
 		{
-			my $node1_data = $an->Get->target_details({
+			$node1_data = $an->Get->target_details({
 					target		=>	$node1_address,
 					port		=>	$node1_port,
 					password	=>	$an->data->{cgi}{anvil_password},
 				});
-			my $node2_data = $an->Get->target_details({
+			$node2_data = $an->Get->target_details({
 					target		=>	$node2_address,
 					port		=>	$node2_port,
 					password	=>	$an->data->{cgi}{anvil_password},
 				});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
-				name1  => "node1_data->anvil_name",           value1  => $node1_data->{anvil_name}, 
-				name2  => "node1_data->network::bcn_address", value2  => $node1_data->{network}{bcn_address}, 
-				name3  => "node1_data->network::ifn_address", value3  => $node1_data->{network}{ifn_address}, 
-				name4  => "node1_data->network::sn_address",  value4  => $node1_data->{network}{sn_address}, 
-				name5  => "node1_data->uuid",                 value5  => $node1_data->{uuid}, 
-				name6  => "node2_data->anvil_name",           value6  => $node2_data->{anvil_name}, 
-				name7  => "node2_data->network::bcn_address", value7  => $node2_data->{network}{bcn_address}, 
-				name8  => "node2_data->network::ifn_address", value8  => $node2_data->{network}{ifn_address}, 
-				name9  => "node2_data->network::sn_address",  value9  => $node2_data->{network}{sn_address}, 
-				name10 => "node2_data->uuid",                 value10 => $node2_data->{uuid}, 
-			}, file => $THIS_FILE, line => __LINE__});
+			if (not $an->data->{cgi}{anvil_name})
+			{
+				$an->data->{cgi}{anvil_name} = $node1_data->{anvil_name} ? $node1_data->{anvil_name} : $node1_data->{anvi2_name};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::anvil_name", value1 => $an->data->{cgi}{anvil_name},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
-	# Process errors now, if any.
+	# Update the error count.
 	$error_count = @{$error_fields};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "error_count", value1 => $error_count,
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now save, if we're still good, try and save.
+	if ($error_count < 1)
+	{
+		### Gather up the records
+		# SMTP first
+		$an->data->{cgi}{smtp_uuid} = save_smtp($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($an->data->{cgi}{smtp_uuid})
+		{
+			$an->data->{cgi}{owner_uuid} = save_owner($an);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::owner_uuid", value1 => $an->data->{cgi}{owner_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{cgi}{owner_uuid})
+			{
+				$an->data->{cgi}{anvil_uuid} = save_anvil($an);
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# no owner_uuid
+			}
+		}
+		else
+		{
+			# no smtp_uuid
+		}
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			name1  => "node1_data->anvil_name",           value1  => $node1_data->{anvil_name}, 
+			name2  => "node1_data->network::bcn_address", value2  => $node1_data->{network}{bcn_address}, 
+			name3  => "node1_data->network::ifn_address", value3  => $node1_data->{network}{ifn_address}, 
+			name4  => "node1_data->network::sn_address",  value4  => $node1_data->{network}{sn_address}, 
+			name5  => "node1_data->uuid",                 value5  => $node1_data->{uuid}, 
+			name6  => "node2_data->anvil_name",           value6  => $node2_data->{anvil_name}, 
+			name7  => "node2_data->network::bcn_address", value7  => $node2_data->{network}{bcn_address}, 
+			name8  => "node2_data->network::ifn_address", value8  => $node2_data->{network}{ifn_address}, 
+			name9  => "node2_data->network::sn_address",  value9  => $node2_data->{network}{sn_address}, 
+			name10 => "node2_data->uuid",                 value10 => $node2_data->{uuid}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Process errors now, if any.
 	if ($error_count > 0)
 	{
 		# Print the error header.
@@ -360,6 +412,144 @@ sub save_anvil
 	return($error_message, $error_fields);
 }
 
+# This parses the CGI data and calls $an->Web->insert_or_update_anvil();
+sub save_anvil
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# As of now, I set the owner and smtp UUID from CGI... This might be a bad idea.
+	my $anvil_uuid        = $an->data->{cgi}{anvil_uuid};
+	my $anvil_owner_uuid  = $an->data->{cgi}{anvil_owner_uuid} ? $an->data->{cgi}{anvil_owner_uuid} : $an->data->{cgi}{owner_uuid};
+	my $anvil_smtp_uuid   = $an->data->{cgi}{anvil_smtp_uuid}  ? $an->data->{cgi}{anvil_smtp_uuid}  : $an->data->{cgi}{smtp_uuid};
+	my $anvil_name        = $an->data->{cgi}{anvil_name};
+	my $anvil_description = $an->data->{cgi}{anvil_description};
+	my $anvil_note        = $an->data->{cgi}{anvil_note};
+	my $anvil_password    = $an->data->{cgi}{anvil_password};
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching Anvil! name, if 
+	# one exists. If nothing changed, the database will not be updated.
+	$anvil_uuid = $an->Web->insert_or_update_anvils({
+		anvil_uuid		=>	$anvil_uuid,
+		anvil_owner_uuid	=>	$anvil_owner_uuid,
+		anvil_smtp_uuid		=>	$anvil_smtp_uuid,
+		anvil_name		=>	$anvil_name,
+		anvil_description	=>	$anvil_description,
+		anvil_note		=>	$anvil_note,
+		anvil_password		=>	$anvil_password,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($anvil_uuid);
+}
+
+# This parses the CGI data and calls $an->Web->insert_or_update_owner();
+sub save_owner
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $owner_uuid = $an->data->{cgi}{owner_uuid};
+	my $owner_name = $an->data->{cgi}{owner_name};
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching owner name, if 
+	# one exists. If nothing changed, the database will not be updated.
+	$owner_uuid = $an->Web->insert_or_update_owners({
+		owner_uuid	=>	$owner_uuid,
+		owner_name	=>	$owner_name,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "owner_uuid", value1 => $owner_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($owner_uuid);
+}
+
+# This parses the CGI data and calls $an->Web->insert_or_update_smtp();
+sub save_smtp
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $smtp_uuid           = $an->data->{cgi}{smtp_uuid};
+	my $smtp_server         = $an->data->{cgi}{smtp_server};
+	my $smtp_port           = "";
+	my $smtp_username       = $an->data->{cgi}{smtp_username};
+	my $smtp_password       = $an->data->{cgi}{smtp_password};
+	my $smtp_security       = $an->data->{cgi}{smtp_security};
+	my $smtp_authentication = $an->data->{cgi}{smtp_authentication};
+	my $smtp_helo_domain    = $an->data->{cgi}{smtp_helo_domain};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		name1 => "smtp_server",         value1 => $smtp_server,
+		name2 => "smtp_port",           value2 => $smtp_port,
+		name3 => "smtp_username",       value3 => $smtp_username,
+		name4 => "smtp_password",       value4 => $smtp_password,
+		name5 => "smtp_security",       value5 => $smtp_security,
+		name6 => "smtp_authentication", value6 => $smtp_authentication,
+		name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{smtp_server} =~ /(.*):(\d+)/)
+	{
+		$smtp_server = $1;
+		$smtp_port   = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "smtp_server", value1 => $smtp_server,
+			name2 => "smtp_port",   value2 => $smtp_port,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (not $smtp_port)
+	{
+		if ($smtp_security eq "starttls")
+		{
+			$smtp_port = 587;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_port", value1 => $smtp_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($smtp_security eq "tls_ssl")
+		{
+			$smtp_port = 465;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_port", value1 => $smtp_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($smtp_security eq "none")
+		{
+			$smtp_port = 25;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_port", value1 => $smtp_port,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	if (not $smtp_helo_domain)
+	{
+		$smtp_helo_domain = $an->domain_name();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp_helo_domain", value1 => $smtp_helo_domain,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching server name, if 
+	# one exists. If nothing changed, the database will not be updated.
+	$smtp_uuid = $an->Web->insert_or_update_smtp({
+		smtp_uuid		=>	$smtp_uuid,
+		smtp_server		=>	$smtp_server,
+		smtp_port		=>	$smtp_port,
+		smtp_username		=>	$smtp_username,
+		smtp_password		=>	$smtp_password,
+		smtp_security		=>	$smtp_security,
+		smtp_authentication	=>	$smtp_authentication,
+		smtp_helo_domain	=>	$smtp_helo_domain,
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "smtp_uuid", value1 => $smtp_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($smtp_uuid);
+}
+
 # This handles the configuration of Anvil! systems (including the ability to create new owners)
 sub anvil_menu
 {
@@ -373,7 +563,7 @@ sub anvil_menu
 	if ($an->data->{cgi}{save})
 	{
 		# Save, if something changed.
-		($error_message, $error_fields) = save_anvil($an);
+		($error_message, $error_fields) = save_anvil_form($an);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "error_message", value1 => $error_message,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -441,6 +631,7 @@ sub anvil_menu
 			options  => $options, 
 			blank    => 1,
 			selected => $an->data->{cgi}{owner_uuid},
+			width    => $width,
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
@@ -465,7 +656,7 @@ sub anvil_menu
 		foreach my $hash_ref (@{$smtp})
 		{
 			my $smtp_uuid  = $hash_ref->{smtp_uuid};
-			my $smtp_name  = $hash_ref->{smtp_name};
+			my $smtp_name  = $hash_ref->{smtp_server};
 			my $this_option = $smtp_uuid."#!#".$smtp_name;
 			push @{$options}, $this_option;
 		}
@@ -474,6 +665,7 @@ sub anvil_menu
 			options  => $options, 
 			blank    => 1,
 			selected => $an->data->{cgi}{smtp_uuid},
+			width    => $width,
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {

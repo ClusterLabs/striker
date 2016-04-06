@@ -38,7 +38,7 @@ AS $$
 DECLARE
 	history_smtp RECORD;
 BEGIN
-	SELECT INTO history_smtp * FROM smtp WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_smtp * FROM smtp WHERE smtp_uuid = new.smtp_uuid;
 	INSERT INTO history.smtp
 		(smtp_uuid, 
 		 smtp_server, 
@@ -93,7 +93,7 @@ AS $$
 DECLARE
 	history_owners RECORD;
 BEGIN
-	SELECT INTO history_owners * FROM owner WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_owners * FROM owners WHERE owner_uuid = new.owner_uuid;
 	INSERT INTO history.owners
 		(owner_uuid, 
 		 owner_name, 
@@ -149,7 +149,7 @@ AS $$
 DECLARE
 	history_anvils RECORD;
 BEGIN
-	SELECT INTO history_anvils * FROM anvil WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_anvils * FROM anvils WHERE anvil_uuid = new.anvil_uuid;
 	INSERT INTO history.anvils
 		(anvil_uuid, 
 		 anvil_owner_uuid, 
@@ -218,7 +218,7 @@ AS $$
 DECLARE
 	history_nodes RECORD;
 BEGIN
-	SELECT INTO history_nodes * FROM nodes WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_nodes * FROM nodes WHERE nodes_uuid = new.nodes_uuid;
 	INSERT INTO history.nodes
 		(nodes_uuid, 
 		 nodes_anvil_uuid, 
@@ -281,7 +281,7 @@ AS $$
 DECLARE
 	history_variables RECORD;
 BEGIN
-	SELECT INTO history_variables * FROM variable WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_variables * FROM variables WHERE variable_uuid = new.variable_uuid;
 	INSERT INTO history.variables
 		(variable_uuid,
 		 variable_name, 
@@ -335,7 +335,7 @@ AS $$
 DECLARE
 	history_file_alerts RECORD;
 BEGIN
-	SELECT INTO history_file_alerts * FROM file_alert WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_file_alerts * FROM file_alerts WHERE file_alert_uuid = new.file_alert_uuid;
 	INSERT INTO history.file_alerts
 		(file_alert_uuid,
 		 file_alert_file,
@@ -393,7 +393,7 @@ AS $$
 DECLARE
 	history_email_alerts RECORD;
 BEGIN
-	SELECT INTO history_email_alerts * FROM email_alert WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_email_alerts * FROM email_alerts WHERE email_alert_uuid = new.email_alert_uuid;
 	INSERT INTO history.email_alerts
 		(email_alert_uuid,
 		 email_alert_name,
@@ -454,7 +454,7 @@ AS $$
 DECLARE
 	history_recipients RECORD;
 BEGIN
-	SELECT INTO history_recipients * FROM recipient WHERE host_uuid = new.host_uuid;
+	SELECT INTO history_recipients * FROM recipients WHERE recipient_uuid = new.recipient_uuid;
 	INSERT INTO history.recipients
 		(recipient_uuid,
 		 recipient_anvil_uuid, 

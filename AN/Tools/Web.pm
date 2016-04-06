@@ -85,7 +85,7 @@ sub build_select
 	}
 	
 	# This needs to be smarter.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sort", value1 => $sort,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($sort)
@@ -93,7 +93,7 @@ sub build_select
 		foreach my $entry (sort {$a cmp $b} @{$options})
 		{
 			next if not $entry;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "entry", value1 => $entry,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
@@ -101,7 +101,7 @@ sub build_select
 				my $value       =  $1;
 				my $description =  $2;
 				   $select      .= "<option value=\"$value\">$description</option>\n";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value,
 					name2 => "description", value2 => $description,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -109,6 +109,9 @@ sub build_select
 			else
 			{
 				$select .= "<option value=\"$entry\">$entry</option>\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "entry", value1 => $entry,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -117,7 +120,7 @@ sub build_select
 		foreach my $entry (@{$options})
 		{
 			next if not $entry;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "entry", value1 => $entry,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
@@ -125,7 +128,7 @@ sub build_select
 				my $value       =  $1;
 				my $description =  $2;
 				   $select      .= "<option value=\"$value\">$description</option>\n";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value,
 					name2 => "description", value2 => $description,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -133,11 +136,14 @@ sub build_select
 			else
 			{
 				$select .= "<option value=\"$entry\">$entry</option>\n";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "entry", value1 => $entry,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "selected", value1 => $selected,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($selected)
@@ -146,11 +152,455 @@ sub build_select
 	}
 	
 	$select .= "</select>\n";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "select", value1 => $select,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($select);
+}
+
+# This updates (or inserts) a record in the 'anvil' table.
+sub insert_or_update_anvils
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $anvil_uuid        = $parameter->{anvil_uuid}        ? $parameter->{anvil_uuid}        : "";
+	my $anvil_owner_uuid  = $parameter->{anvil_owner_uuid}  ? $parameter->{anvil_owner_uuid}  : "";
+	my $anvil_smtp_uuid   = $parameter->{anvil_smtp_uuid}   ? $parameter->{anvil_smtp_uuid}   : "";
+	my $anvil_name        = $parameter->{anvil_name}        ? $parameter->{anvil_name}        : "";
+	my $anvil_description = $parameter->{anvil_description} ? $parameter->{anvil_description} : "";
+	my $anvil_note        = $parameter->{anvil_note}        ? $parameter->{anvil_note}        : "";
+	my $anvil_password    = $parameter->{anvil_password}    ? $parameter->{anvil_password}    : "";
+	if (not $anvil_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	if (not $anvil_uuid)
+	{
+		my $query = "
+SELECT 
+    anvil_uuid 
+FROM 
+    anvils 
+WHERE 
+    anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$anvil_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an anvil_uuid, we're INSERT'ing .
+	if (not $anvil_uuid)
+	{
+		# INSERT, *if* we have an owner and smtp UUID.
+		if (not $anvil_owner_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => "$THIS_FILE", line => __LINE__});
+		}
+		if (not $anvil_smtp_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => "$THIS_FILE", line => __LINE__});
+		}
+		   $anvil_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    anvils 
+(
+    anvil_uuid,
+    anvil_owner_uuid,
+    anvil_smtp_uuid,
+    anvil_name,
+    anvil_description,
+    anvil_note,
+    anvil_password,
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_description).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    anvil_owner_uuid,
+    anvil_smtp_uuid,
+    anvil_name,
+    anvil_description,
+    anvil_note,
+    anvil_password 
+FROM 
+    anvils 
+WHERE 
+    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_anvil_owner_uuid  = $row->[0];
+			my $old_anvil_smtp_uuid   = $row->[1];
+			my $old_anvil_name        = $row->[2];
+			my $old_anvil_description = $row->[3];
+			my $old_anvil_note        = $row->[4];
+			my $old_anvil_password    = $row->[5];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "old_anvil_owner_uuid",  value1 => $old_anvil_owner_uuid, 
+				name2 => "old_anvil_smtp_uuid",   value2 => $old_anvil_smtp_uuid, 
+				name3 => "old_anvil_name",        value3 => $old_anvil_name, 
+				name4 => "old_anvil_description", value4 => $old_anvil_description, 
+				name5 => "old_anvil_note",        value5 => $old_anvil_note, 
+				name6 => "old_anvil_password",    value6 => $old_anvil_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_anvil_owner_uuid  ne $anvil_owner_uuid)  or 
+			    ($old_anvil_smtp_uuid   ne $anvil_smtp_uuid)   or 
+			    ($old_anvil_name        ne $anvil_name)        or 
+			    ($old_anvil_description ne $anvil_description) or 
+			    ($old_anvil_note        ne $anvil_note)        or 
+			    ($old_anvil_password    ne $anvil_password)) 
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    anvils 
+SET 
+    anvil_owner_uuid  = ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).",
+    anvil_smtp_uuid   = ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).",
+    anvil_name        = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
+    anvil_description = ".$an->data->{sys}{use_db_fh}->quote($anvil_description).",
+    anvil_note        = ".$an->data->{sys}{use_db_fh}->quote($anvil_note).",
+    anvil_password    = ".$an->data->{sys}{use_db_fh}->quote($anvil_password).",
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    anvil_uuid        = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($anvil_uuid);
+}
+
+# This updates (or inserts) a record in the 'owners' table.
+sub insert_or_update_owners
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $owner_uuid = $parameter->{owner_uuid} ? $parameter->{owner_uuid} : "";
+	my $owner_name = $parameter->{owner_name} ? $parameter->{owner_name} : "";
+	if (not $owner_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	if (not $owner_uuid)
+	{
+		my $query = "
+SELECT 
+    owner_uuid 
+FROM 
+    owners 
+WHERE 
+    owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$owner_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "owner_uuid", value1 => $owner_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an owner_uuid, we're INSERT'ing .
+	if (not $owner_uuid)
+	{
+		# INSERT
+		   $owner_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    owners 
+(
+    owner_uuid, 
+    owner_name, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($owner_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    owner_name 
+FROM 
+    owners 
+WHERE 
+    owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_owner_name = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "old_owner_name", value1 => $old_owner_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if ($old_owner_name ne $owner_name)
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    owners 
+SET 
+    owner_name    = ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    owner_uuid    = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($owner_uuid);
+}
+
+# This updates (or inserts) a record in the 'smtp' table.
+sub insert_or_update_smtp
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $smtp_uuid           = $parameter->{smtp_uuid}           ? $parameter->{smtp_uuid}           : "";
+	my $smtp_server         = $parameter->{smtp_server}         ? $parameter->{smtp_server}         : "";
+	my $smtp_port           = $parameter->{smtp_port}           ? $parameter->{smtp_port}           : "";
+	my $smtp_username       = $parameter->{smtp_username}       ? $parameter->{smtp_username}       : "";
+	my $smtp_password       = $parameter->{smtp_password}       ? $parameter->{smtp_password}       : "";
+	my $smtp_security       = $parameter->{smtp_security}       ? $parameter->{smtp_security}       : "";
+	my $smtp_authentication = $parameter->{smtp_authentication} ? $parameter->{smtp_authentication} : "";
+	my $smtp_helo_domain    = $parameter->{smtp_helo_domain}    ? $parameter->{smtp_helo_domain}    : "";
+	if (not $smtp_server)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	if (not $smtp_uuid)
+	{
+		my $query = "
+SELECT 
+    smtp_uuid 
+FROM 
+    smtp 
+WHERE 
+    smtp_server = ".$an->data->{sys}{use_db_fh}->quote($smtp_server)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$smtp_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_uuid", value1 => $smtp_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an smtp_uuid, we're INSERT'ing .
+	if (not $smtp_uuid)
+	{
+		# INSERT
+		   $smtp_uuid = $an->Get->uuid();
+		my $query     = "
+INSERT INTO 
+    smtp 
+(
+    smtp_uuid, 
+    smtp_server, 
+    smtp_port, 
+    smtp_username, 
+    smtp_password, 
+    smtp_security, 
+    smtp_authentication, 
+    smtp_helo_domain, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_server).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_port).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_username).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_security).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    smtp_server, 
+    smtp_port, 
+    smtp_username, 
+    smtp_password, 
+    smtp_security, 
+    smtp_authentication, 
+    smtp_helo_domain 
+FROM 
+    smtp 
+WHERE 
+    smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_smtp_server         = $row->[0];
+			my $old_smtp_port           = $row->[1] ? $row->[1] : "";
+			my $old_smtp_username       = $row->[2] ? $row->[2] : "";
+			my $old_smtp_password       = $row->[3] ? $row->[3] : "";
+			my $old_smtp_security       = $row->[4];
+			my $old_smtp_authentication = $row->[5];
+			my $old_smtp_helo_domain    = $row->[6] ? $row->[6] : "";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "old_smtp_server",         value1 => $old_smtp_server, 
+				name2 => "old_smtp_port",           value2 => $old_smtp_port, 
+				name3 => "old_smtp_username",       value3 => $old_smtp_username, 
+				name4 => "old_smtp_password",       value4 => $old_smtp_password, 
+				name5 => "old_smtp_security",       value5 => $old_smtp_security, 
+				name6 => "old_smtp_authentication", value6 => $old_smtp_authentication, 
+				name7 => "old_smtp_helo_domain",    value7 => $old_smtp_helo_domain, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_smtp_server         ne $smtp_server)         or 
+			    ($old_smtp_port           ne $smtp_port)           or 
+			    ($old_smtp_username       ne $smtp_username)       or 
+			    ($old_smtp_password       ne $smtp_password)       or 
+			    ($old_smtp_security       ne $smtp_security)       or 
+			    ($old_smtp_authentication ne $smtp_authentication) or 
+			    ($old_smtp_helo_domain    ne $smtp_helo_domain))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    smtp 
+SET 
+    smtp_server         = ".$an->data->{sys}{use_db_fh}->quote($smtp_server).", 
+    smtp_port           = ".$an->data->{sys}{use_db_fh}->quote($smtp_port).", 
+    smtp_username       = ".$an->data->{sys}{use_db_fh}->quote($smtp_username).", 
+    smtp_password       = ".$an->data->{sys}{use_db_fh}->quote($smtp_password).", 
+    smtp_security       = ".$an->data->{sys}{use_db_fh}->quote($smtp_security).", 
+    smtp_authentication = ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
+    smtp_helo_domain    = ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    smtp_uuid           = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($smtp_uuid);
 }
 
 # This reads in data from CGI

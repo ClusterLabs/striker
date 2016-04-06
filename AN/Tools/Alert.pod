@@ -546,18 +546,23 @@ The 'AN::Tools::String' module's private '_process_string_replace()' method hit 
 
 =head2 C<77>
 
-
+The 'AN::Tools::Web' module's 'insert_or_update_smtp()' method was called without passing in an SMTP server name.
 
 =head2 C<78>
 
-
+The 'AN::Tools::Web' module's 'insert_or_update_owners()' method was called without passing in an Anvil! owner name.
 
 =head2 C<79>
 
-
+The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method was called without passing in an Anvil! name.
 
 =head2 C<80>
 
+The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no Owner UUID was passed in.
+
+=head2 C<81>
+
+The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no SMTP UUID was passed in.
 
 
 =head1 SEE ALSO
