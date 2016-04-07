@@ -3075,7 +3075,7 @@ sub target_details
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Summarize
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_name",           value1 => $return->{anvil_name}, 
 		name2 => "network::bcn_address", value2 => $return->{network}{bcn_address}, 
 		name3 => "network::ifn_address", value3 => $return->{network}{ifn_address}, 

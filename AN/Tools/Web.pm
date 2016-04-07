@@ -159,7 +159,204 @@ sub build_select
 	return ($select);
 }
 
-# This updates (or inserts) a record in the 'anvil' table.
+# This updates (or inserts) a record in the 'nodes' table.
+sub insert_or_update_nodes
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $node_uuid        = $parameter->{node_uuid}        ? $parameter->{node_uuid}        : "";
+	my $node_anvil_uuid  = $parameter->{node_anvil_uuid}  ? $parameter->{node_anvil_uuid}  : "";
+	my $node_host_uuid   = $parameter->{node_host_uuid}   ? $parameter->{node_host_uuid}   : "";
+	my $node_remote_ip   = $parameter->{node_remote_ip}   ? $parameter->{node_remote_ip}   : "NULL";
+	my $node_remote_port = $parameter->{node_remote_port} ? $parameter->{node_remote_port} : "NULL";
+	my $node_note        = $parameter->{node_note}        ? $parameter->{node_note}        : "NULL";
+	my $node_bcn         = $parameter->{node_bcn}         ? $parameter->{node_bcn}         : "NULL";
+	my $node_sn          = $parameter->{node_sn}          ? $parameter->{node_sn}          : "NULL";
+	my $node_ifn         = $parameter->{node_ifn}         ? $parameter->{node_ifn}         : "NULL";
+	my $node_password    = $parameter->{node_password}    ? $parameter->{node_password}    : "NULL";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		name1 => "node_uuid",        value1 => $node_uuid, 
+		name2 => "node_anvil_uuid",  value2 => $node_anvil_uuid, 
+		name3 => "node_host_uuid",   value3 => $node_host_uuid, 
+		name4 => "node_remote_ip",   value4 => $node_remote_ip, 
+		name5 => "node_remote_port", value5 => $node_remote_port, 
+		name6 => "node_note",        value6 => $node_note, 
+		name7 => "node_bcn",         value7 => $node_bcn, 
+		name8 => "node_sn",          value8 => $node_sn, 
+		name9 => "node_ifn",         value9 => $node_ifn, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_password", value1 => $node_password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If we don't have a UUID, see if we can find one for the given host UUID.
+	if (not $node_uuid)
+	{
+		my $query = "
+SELECT 
+    node_uuid 
+FROM 
+    nodes 
+WHERE 
+    node_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_host_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$node_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_uuid", value1 => $node_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an anvil_uuid, we're INSERT'ing .
+	if (not $node_uuid)
+	{
+		# INSERT, *if* we have an owner and smtp UUID.
+		if (not $node_anvil_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => "$THIS_FILE", line => __LINE__});
+		}
+		if (not $node_host_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+		}
+		   $node_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    nodes 
+(
+    node_uuid,
+    node_anvil_uuid, 
+    node_host_uuid, 
+    node_remote_ip, 
+    node_remote_port, 
+    node_note, 
+    node_bcn, 
+    node_sn, 
+    node_ifn, 
+    node_password,
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($node_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_remote_ip).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_remote_port).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_bcn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_sn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_ifn).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    node_anvil_uuid, 
+    node_host_uuid, 
+    node_remote_ip, 
+    node_remote_port, 
+    node_note, 
+    node_bcn, 
+    node_sn, 
+    node_ifn, 
+    node_password 
+FROM 
+    nodes 
+WHERE 
+    node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_node_anvil_uuid  = $row->[0]; 
+			my $old_node_host_uuid   = $row->[1]; 
+			my $old_node_remote_ip   = $row->[2] ? $row->[2] : "NULL"; 
+			my $old_node_remote_port = $row->[3] ? $row->[3] : "NULL"; 
+			my $old_node_note        = $row->[4] ? $row->[4] : "NULL"; 
+			my $old_node_bcn         = $row->[5] ? $row->[5] : "NULL"; 
+			my $old_node_sn          = $row->[6] ? $row->[6] : "NULL"; 
+			my $old_node_ifn         = $row->[7] ? $row->[7] : "NULL"; 
+			my $old_node_password    = $row->[8] ? $row->[8] : "NULL"; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+				name1 => "old_node_anvil_uuid",  value1 => $old_node_anvil_uuid, 
+				name2 => "old_node_host_uuid",   value2 => $old_node_host_uuid, 
+				name3 => "old_node_remote_ip",   value3 => $old_node_remote_ip, 
+				name4 => "old_node_remote_port", value4 => $old_node_remote_port, 
+				name5 => "old_node_note",        value5 => $old_node_note, 
+				name6 => "old_node_bcn",         value6 => $old_node_bcn, 
+				name7 => "old_node_sn",          value7 => $old_node_sn, 
+				name8 => "old_node_ifn",         value8 => $old_node_ifn, 
+				name9 => "old_node_password",    value9 => $old_node_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_node_anvil_uuid  ne $node_anvil_uuid)  or 
+			    ($old_node_host_uuid   ne $node_host_uuid)   or 
+			    ($old_node_remote_ip   ne $node_remote_ip)   or 
+			    ($old_node_remote_port ne $node_remote_port) or 
+			    ($old_node_note        ne $node_note)        or 
+			    ($old_node_bcn         ne $node_bcn)         or 
+			    ($old_node_sn          ne $node_sn)          or 
+			    ($old_node_ifn         ne $node_ifn)         or 
+			    ($old_node_password    ne $node_password)) 
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    nodes 
+SET 
+    node_anvil_uuid  = ".$an->data->{sys}{use_db_fh}->quote($node_anvil_uuid).",  
+    node_host_uuid   = ".$an->data->{sys}{use_db_fh}->quote($node_host_uuid).",  
+    node_remote_ip   = ".$an->data->{sys}{use_db_fh}->quote($node_remote_ip).",  
+    node_remote_port = ".$an->data->{sys}{use_db_fh}->quote($node_remote_port).",  
+    node_note        = ".$an->data->{sys}{use_db_fh}->quote($node_note).",  
+    node_bcn         = ".$an->data->{sys}{use_db_fh}->quote($node_bcn).",  
+    node_sn          = ".$an->data->{sys}{use_db_fh}->quote($node_sn).",  
+    node_ifn         = ".$an->data->{sys}{use_db_fh}->quote($node_ifn).",  
+    node_password    = ".$an->data->{sys}{use_db_fh}->quote($node_password).", 
+    modified_date    = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    node_uuid        = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($node_uuid);
+}
+
+# This updates (or inserts) a record in the 'anvils' table.
 sub insert_or_update_anvils
 {
 	my $self      = shift;
@@ -179,7 +376,7 @@ sub insert_or_update_anvils
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	# If we don't have a UUID, see if we can find one for the given Anvil! name.
 	if (not $anvil_uuid)
 	{
 		my $query = "

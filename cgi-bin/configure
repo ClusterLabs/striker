@@ -65,9 +65,31 @@ $an->Web->get_cgi({variables => [
 	"anvil_smtp_uuid", 
 	"anvil_uuid", 
 	"confirm", 
-	"node1_access",
-	"node2_access",
+	"load", 
+	"node1_access", 
+	"node1_bcn", 
+	"node1_host_name", 
+	"node1_host_uuid", 
+	"node1_ifn", 
+	"node1_note", 
+	"node1_password", 
+	"node1_sn", 
+	"node1_remote_ip", 
+	"node1_remote_port", 
+	"node1_uuid", 
+	"node2_access", 
+	"node2_bcn", 
+	"node2_host_name", 
+	"node2_host_uuid", 
+	"node2_ifn", 
+	"node2_note", 
+	"node2_password", 
+	"node2_sn", 
+	"node2_remote_ip", 
+	"node2_remote_port", 
+	"node2_uuid", 
 	"owner_name", 
+	"owner_note", 
 	"owner_uuid", 
 	"save", 
 	"smtp_authentication", 
@@ -172,6 +194,225 @@ sub process_task
 	return(0);
 }
 
+# This uses an anvil_uuid to load information about the associated Anvil! system.
+sub load_anvil_form
+{
+	my ($an, $anvils, $owners, $smtp, $nodes) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Errors, if any.
+	my $error_messages = [];
+	my $error_fields   = [];
+	my $error_message  = "";
+	
+	# First, find the Anvil!
+	foreach my $hash_ref (@{$anvils})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hash_ref->anvil_uuid", value1 => $hash_ref->{anvil_uuid},
+			name2 => "cgi::anvil_uuid",      value2 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($hash_ref->{anvil_uuid} eq $an->data->{cgi}{anvil_uuid})
+		{
+			$an->data->{cgi}{anvil_owner_uuid}  = $hash_ref->{anvil_owner_uuid};
+			$an->data->{cgi}{anvil_smtp_uuid}   = $hash_ref->{anvil_smtp_uuid};
+			$an->data->{cgi}{anvil_name}        = $hash_ref->{anvil_name};
+			$an->data->{cgi}{anvil_description} = $hash_ref->{anvil_description};
+			$an->data->{cgi}{anvil_note}        = $hash_ref->{anvil_note};
+			$an->data->{cgi}{anvil_password}    = $hash_ref->{anvil_password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "cgi::anvil_owner_uuid",  value1 => $an->data->{cgi}{anvil_owner_uuid},
+				name2 => "cgi::anvil_smtp_uuid",   value2 => $an->data->{cgi}{anvil_smtp_uuid},
+				name3 => "cgi::anvil_name",        value3 => $an->data->{cgi}{anvil_name},
+				name4 => "cgi::anvil_description", value4 => $an->data->{cgi}{anvil_description},
+				name5 => "cgi::anvil_note",        value5 => $an->data->{cgi}{anvil_note},
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_password", value1 => $an->data->{cgi}{anvil_password},
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	
+	# Now the owner
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_owner_uuid", value1 => $an->data->{cgi}{anvil_owner_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{anvil_owner_uuid})
+	{
+		foreach my $hash_ref (@{$owners})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->owner_uuid",  value1 => $hash_ref->{owner_uuid},
+				name2 => "cgi::anvil_owner_uuid", value2 => $an->data->{cgi}{anvil_owner_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{owner_uuid} eq $an->data->{cgi}{anvil_owner_uuid})
+			{
+				$an->data->{cgi}{owner_uuid} = $hash_ref->{owner_uuid};
+				$an->data->{cgi}{owner_name} = $hash_ref->{owner_name};
+				$an->data->{cgi}{owner_note} = $hash_ref->{owner_note};
+				last;
+			}
+		}
+	}
+	
+	# SMTP info
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_smtp_uuid", value1 => $an->data->{cgi}{anvil_smtp_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{anvil_smtp_uuid})
+	{
+		foreach my $hash_ref (@{$smtp})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->smtp_uuid",  value1 => $hash_ref->{smtp_uuid},
+				name2 => "cgi::anvil_smtp_uuid", value2 => $an->data->{cgi}{anvil_smtp_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{smtp_uuid} eq $an->data->{cgi}{anvil_smtp_uuid})
+			{
+				$an->data->{cgi}{smtp_uuid}           = $hash_ref->{smtp_uuid};
+				$an->data->{cgi}{smtp_authentication} = $hash_ref->{smtp_authentication};
+				$an->data->{cgi}{smtp_helo_domain}    = $hash_ref->{smtp_helo_domain};
+				$an->data->{cgi}{smtp_password}       = $hash_ref->{smtp_password};
+				$an->data->{cgi}{smtp_port}           = $hash_ref->{smtp_port};
+				$an->data->{cgi}{smtp_security}       = $hash_ref->{smtp_security};
+				$an->data->{cgi}{smtp_server}         = $hash_ref->{smtp_server};
+				$an->data->{cgi}{smtp_username}       = $hash_ref->{smtp_username};
+				last;
+			}
+		}
+	}
+	
+	# Finally, nodes. We'll use the node name to determine node 1 and node 2.
+	foreach my $hash_ref (@{$nodes})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "hash_ref->node_anvil_uuid", value1 => $hash_ref->{node_anvil_uuid},
+			name2 => "cgi::anvil_uuid",           value2 => $an->data->{cgi}{anvil_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($hash_ref->{node_anvil_uuid} eq $an->data->{cgi}{anvil_uuid})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "hash_ref->host_name", value1 => $hash_ref->{host_name},
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($hash_ref->{host_name} =~ /n01/) or ($hash_ref->{host_name} =~ /n1/))
+			{
+				$an->data->{cgi}{node1_anvil_uuid}  = $hash_ref->{node_anvil_uuid}; 
+				$an->data->{cgi}{node1_host_uuid}   = $hash_ref->{node_host_uuid}; 
+				$an->data->{cgi}{node1_note}        = $hash_ref->{node_note}; 
+				$an->data->{cgi}{node1_remote_ip}   = $hash_ref->{node_remote_ip}; 
+				$an->data->{cgi}{node1_remote_port} = $hash_ref->{node_remote_port}; 
+				$an->data->{cgi}{node1_uuid}        = $hash_ref->{node_uuid}; 
+				$an->data->{cgi}{node1_bcn}         = $hash_ref->{node_bcn};
+				$an->data->{cgi}{node1_sn}          = $hash_ref->{node_sn};
+				$an->data->{cgi}{node1_ifn}         = $hash_ref->{node_ifn};
+				$an->data->{cgi}{node1_host_name}   = $hash_ref->{node_ifn};
+				$an->data->{cgi}{node1_password}    = $hash_ref->{node_password}; 
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+					name1  => "cgi::node1_anvil_uuid",  value1  => $an->data->{cgi}{node1_anvil_uuid},
+					name2  => "cgi::node1_host_uuid",   value2  => $an->data->{cgi}{node1_host_uuid},
+					name3  => "cgi::node1_note",        value3  => $an->data->{cgi}{node1_note},
+					name4  => "cgi::node1_remote_ip",   value4  => $an->data->{cgi}{node1_remote_ip},
+					name5  => "cgi::node1_remote_port", value5  => $an->data->{cgi}{node1_remote_port},
+					name6  => "cgi::node1_uuid",        value6  => $an->data->{cgi}{node1_uuid},
+					name7  => "cgi::node1_bcn",         value7  => $an->data->{cgi}{node1_bcn},
+					name8  => "cgi::node1_sn",          value8  => $an->data->{cgi}{node1_sn},
+					name9  => "cgi::node1_ifn",         value9  => $an->data->{cgi}{node1_ifn},
+					name10 => "cgi::node1_host_name",   value10 => $an->data->{cgi}{node1_host_name},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::node1_password", value1 => $an->data->{cgi}{node1_password},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The access is a little trickier... We'll use the remote IP and port, if 
+				# set. Otherwise we'll use the BCN IP. If the port is 22, it will be left 
+				# off.
+				if ($an->data->{cgi}{node1_remote_ip})
+				{
+					$an->data->{cgi}{node1_access} = $an->data->{cgi}{node1_remote_ip};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cgi::node1_access", value1 => $an->data->{cgi}{node1_access},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($an->data->{cgi}{node1_remote_port}) && ($an->data->{cgi}{node1_remote_port} ne "22"))
+					{
+						$an->data->{cgi}{node1_access} .= ":".$an->data->{cgi}{node1_remote_port};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cgi::node1_access", value1 => $an->data->{cgi}{node1_access},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					$an->data->{cgi}{node1_access} = $an->data->{cgi}{node1_bcn};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cgi::node1_access", value1 => $an->data->{cgi}{node1_access},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			elsif (($hash_ref->{host_name} =~ /n02/) or ($hash_ref->{host_name} =~ /n2/))
+			{
+				$an->data->{cgi}{node2_anvil_uuid}  = $hash_ref->{node_anvil_uuid}; 
+				$an->data->{cgi}{node2_host_uuid}   = $hash_ref->{node_host_uuid}; 
+				$an->data->{cgi}{node2_note}        = $hash_ref->{node_note}; 
+				$an->data->{cgi}{node2_password}    = $hash_ref->{node_password}; 
+				$an->data->{cgi}{node2_remote_ip}   = $hash_ref->{node_remote_ip}; 
+				$an->data->{cgi}{node2_remote_port} = $hash_ref->{node_remote_port}; 
+				$an->data->{cgi}{node2_uuid}        = $hash_ref->{node_uuid}; 
+				$an->data->{cgi}{node2_bcn}         = $hash_ref->{node_bcn};
+				$an->data->{cgi}{node2_sn}          = $hash_ref->{node_sn};
+				$an->data->{cgi}{node2_ifn}         = $hash_ref->{node_ifn};
+				$an->data->{cgi}{node2_host_name}   = $hash_ref->{node_ifn};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+					name1  => "cgi::node2_anvil_uuid",  value1  => $an->data->{cgi}{node2_anvil_uuid},
+					name2  => "cgi::node2_host_uuid",   value2  => $an->data->{cgi}{node2_host_uuid},
+					name3  => "cgi::node2_note",        value3  => $an->data->{cgi}{node2_note},
+					name4  => "cgi::node2_remote_ip",   value4  => $an->data->{cgi}{node2_remote_ip},
+					name5  => "cgi::node2_remote_port", value5  => $an->data->{cgi}{node2_remote_port},
+					name6  => "cgi::node2_uuid",        value6  => $an->data->{cgi}{node2_uuid},
+					name7  => "cgi::node2_bcn",         value7  => $an->data->{cgi}{node2_bcn},
+					name8  => "cgi::node2_sn",          value8  => $an->data->{cgi}{node2_sn},
+					name9  => "cgi::node2_ifn",         value9  => $an->data->{cgi}{node2_ifn},
+					name10 => "cgi::node2_host_name",   value10 => $an->data->{cgi}{node2_host_name},
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::node2_password", value1 => $an->data->{cgi}{node2_password},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# The access is a little trickier... We'll use the remote IP and port, if 
+				# set. Otherwise we'll use the BCN IP. If the port is 22, it will be left 
+				# off.
+				if ($an->data->{cgi}{node2_remote_ip})
+				{
+					$an->data->{cgi}{node2_access} = $an->data->{cgi}{node2_remote_ip};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cgi::node2_access", value1 => $an->data->{cgi}{node2_access},
+					}, file => $THIS_FILE, line => __LINE__});
+					if (($an->data->{cgi}{node2_remote_port}) && ($an->data->{cgi}{node2_remote_port} ne "22"))
+					{
+						$an->data->{cgi}{node2_access} .= ":".$an->data->{cgi}{node2_remote_port};
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "cgi::node2_access", value1 => $an->data->{cgi}{node2_access},
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+				}
+				else
+				{
+					$an->data->{cgi}{node2_access} = $an->data->{cgi}{node2_bcn};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cgi::node2_access", value1 => $an->data->{cgi}{node2_access},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Illegally named node
+			}
+		}
+	}
+	
+	return($error_message, $error_fields);
+}
+
 # This saves the changes to an Anvil! using the minimal of user input. As much data as possible will be 
 # collected from the nodes directly.
 sub save_anvil_form
@@ -200,7 +441,7 @@ sub save_anvil_form
 	if (not $an->data->{cgi}{node1_access})
 	{
 		my $row = $an->String->get({key => "row_0248", variables => { node => 1 }});
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => $row }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => $row }});
 		push @{$error_fields},   "node1_access";
 	}
 	elsif ($an->data->{cgi}{node1_access} =~ /(.*):(\d+)/)
@@ -216,7 +457,7 @@ sub save_anvil_form
 	{
 		# Sorry, this is messy... the 'field' variable is 'Node X'.
 		my $row = $an->String->get({key => "row_0248", variables => { node => 2 }});
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => $row }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => $row }});
 		push @{$error_fields},   "node2_access";
 	}
 	elsif ($an->data->{cgi}{node2_access} =~ /(.*):(\d+)/)
@@ -232,14 +473,14 @@ sub save_anvil_form
 	# Do I have an owner?
 	if (not $an->data->{cgi}{owner_name})
 	{
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => "#!string!row_0023!#" }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => "#!string!row_0023!#" }});
 		push @{$error_fields},   "owner_name";
 	}
 	
 	# What about a password?
 	if (not $an->data->{cgi}{anvil_password})
 	{
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables { field => "#!string!row_0025!#" }});
+		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => "#!string!row_0025!#" }});
 		push @{$error_fields},   "anvil_password";
 	}
 	
@@ -259,11 +500,11 @@ sub save_anvil_form
 	{
 		# Print the error header.
 		my $error_body = "";
-		foreach my $error_messages (@{$error_fields})
+		foreach my $error_messages (@{$error_messages})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
-					row_body	=>	"#!string!row_0305!#",
+					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$error_messages,
 				}});
@@ -358,6 +599,20 @@ sub save_anvil_form
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($an->data->{cgi}{anvil_uuid})
+				{
+					# Save both nods
+					($an->data->{cgi}{node1_uuid}, $an->data->{cgi}{node2_uuid}) = save_nodes($an, $node1_data, $node2_data);
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "cgi::node1_uuid", value1 => $an->data->{cgi}{node1_uuid},
+						name2 => "cgi::node2_uuid", value2 => $an->data->{cgi}{node2_uuid},
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# no anvil_uuid
+				}
 			}
 			else
 			{
@@ -368,19 +623,6 @@ sub save_anvil_form
 		{
 			# no smtp_uuid
 		}
-		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
-			name1  => "node1_data->anvil_name",           value1  => $node1_data->{anvil_name}, 
-			name2  => "node1_data->network::bcn_address", value2  => $node1_data->{network}{bcn_address}, 
-			name3  => "node1_data->network::ifn_address", value3  => $node1_data->{network}{ifn_address}, 
-			name4  => "node1_data->network::sn_address",  value4  => $node1_data->{network}{sn_address}, 
-			name5  => "node1_data->uuid",                 value5  => $node1_data->{uuid}, 
-			name6  => "node2_data->anvil_name",           value6  => $node2_data->{anvil_name}, 
-			name7  => "node2_data->network::bcn_address", value7  => $node2_data->{network}{bcn_address}, 
-			name8  => "node2_data->network::ifn_address", value8  => $node2_data->{network}{ifn_address}, 
-			name9  => "node2_data->network::sn_address",  value9  => $node2_data->{network}{sn_address}, 
-			name10 => "node2_data->uuid",                 value10 => $node2_data->{uuid}, 
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Process errors now, if any.
@@ -388,11 +630,11 @@ sub save_anvil_form
 	{
 		# Print the error header.
 		my $error_body = "";
-		foreach my $error_messages (@{$error_fields})
+		foreach my $error_messages (@{$error_messages})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
-					row_body	=>	"#!string!row_0305!#",
+					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
 					body_message	=>	$error_messages,
 				}});
@@ -410,6 +652,94 @@ sub save_anvil_form
 		name1 => "error_message", value1 => $error_message,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($error_message, $error_fields);
+}
+
+# This parses the CGI data and calls $an->Web->insert_or_update_nodes() for each node.
+sub save_nodes
+{
+	my ($an, $node1_data, $node2_data) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If either UUID is missing, error.
+	if (not $node1_data->{uuid})
+	{
+		# TODO...
+		die;
+	}
+	if (not $node2_data->{uuid})
+	{
+		# TODO...
+		die;
+	}
+	
+	# If the access info matches one of the BCN/IFN/SN IPs, we'll not set remote to the current access. 
+	# If there is a CGI variable for either though, we'll use that.
+	my $node1_address = $an->data->{cgi}{node1_access};
+	my $node1_port    = 22;
+	if ($an->data->{cgi}{node1_access} =~ /(.*):(\d+)/)
+	{
+		$node1_address = $1;
+		$node1_port    = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_address", value1 => $node1_address,
+			name2 => "node1_port",    value2 => $node1_port,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (($node1_address eq $node1_data->{network}{bcn_address}) or 
+	    ($node1_address eq $node1_data->{network}{ifn_address}) or 
+	    ($node1_address eq $node1_data->{network}{sn_address}))
+	{
+		$node1_address = "";
+		$node1_port    = "";
+	}
+	
+	my $node2_address = $an->data->{cgi}{node2_access};
+	my $node2_port    = 22;
+	if ($an->data->{cgi}{node2_access} =~ /(.*):(\d+)/)
+	{
+		$node2_address = $1;
+		$node2_port    = $2;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node2_address", value1 => $node2_address,
+			name2 => "node2_port",    value2 => $node2_port,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if (($node2_address eq $node2_data->{network}{bcn_address}) or 
+	    ($node2_address eq $node2_data->{network}{ifn_address}) or 
+	    ($node2_address eq $node2_data->{network}{sn_address}))
+	{
+		$node2_address = "";
+		$node2_port    = "";
+	}
+	
+	### NOTE: Don't confuse the 'nodeX_uuid' DB record locator with the node's host UUID. The node's UUID
+	###       and the BCN, SN and IFN IPs are never passed from CGI, they're always pulled from the node.
+	my $node1_uuid = $an->Web->insert_or_update_nodes({
+		node_uuid	=>	$an->data->{cgi}{node1_uuid}, 
+		node_anvil_uuid	=>	$an->data->{cgi}{anvil_uuid}, 
+		node_host_uuid	=>	$node1_data->{uuid}, 
+		node_remote_ip	=>	$an->data->{cgi}{node1_remote_ip}   ? $an->data->{cgi}{node1_remote_ip}   : $node1_address, 
+		node_remote_port =>	$an->data->{cgi}{node1_remote_port} ? $an->data->{cgi}{node1_remote_port} : $node1_port, 
+		node_note	=>	$an->data->{cgi}{node1_note}, 
+		node_bcn	=>	$node1_data->{network}{bcn_address}, 
+		node_sn		=>	$node1_data->{network}{sn_address}, 
+		node_ifn	=>	$node1_data->{network}{ifn_address}, 
+		node_password	=>	$an->data->{cgi}{node1_password} ? $an->data->{cgi}{node1_password} : $an->data->{cgi}{anvil_password},
+	});
+	my $node2_uuid = $an->Web->insert_or_update_nodes({
+		node_uuid	=>	$an->data->{cgi}{node2_uuid}, 
+		node_anvil_uuid	=>	$an->data->{cgi}{anvil_uuid}, 
+		node_host_uuid	=>	$node2_data->{uuid}, 
+		node_remote_ip	=>	$an->data->{cgi}{node2_remote_ip}   ? $an->data->{cgi}{node2_remote_ip}   : $node2_address, 
+		node_remote_port =>	$an->data->{cgi}{node2_remote_port} ? $an->data->{cgi}{node2_remote_port} : $node2_port, 
+		node_note	=>	$an->data->{cgi}{node2_note}, 
+		node_bcn	=>	$node2_data->{network}{bcn_address}, 
+		node_sn		=>	$node2_data->{network}{sn_address}, 
+		node_ifn	=>	$node2_data->{network}{ifn_address}, 
+		node_password	=>	$an->data->{cgi}{node2_password} ? $an->data->{cgi}{node2_password} : $an->data->{cgi}{anvil_password},
+	});
+	
+	return($node1_uuid, $node2_uuid);
 }
 
 # This parses the CGI data and calls $an->Web->insert_or_update_anvil();
@@ -569,6 +899,24 @@ sub anvil_menu
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Load information from the databases, then we'll tease out data if 'load' was set.
+	my $anvils = $an->ScanCore->get_anvils();
+	my $owners = $an->ScanCore->get_owners();
+	my $smtp   = $an->ScanCore->get_smtp();
+	my $nodes  = $an->ScanCore->get_nodes();
+	
+	# Tease out the data for this form if we're loading an anvil_uuid
+	if ($an->data->{cgi}{load})
+	{
+		if ($an->data->{cgi}{anvil_uuid})
+		{
+			($error_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "error_message", value1 => $error_message,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
 	### First, we'll show any existing Anvil! systems, owners and smtp servers. If a user selects one of
 	### these, it will pre-fill the form below it.
 	# Show a select box of existing Anvil! systems (if any).
@@ -578,13 +926,20 @@ sub anvil_menu
 			class	=>	"breaker_header",
 			colspan	=>	4,
 		}});
-	my $anvils        = $an->ScanCore->get_anvils();
 	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $anvil_explain = "#!string!explain_0174!#";
+	my $anvil_row     = "";
 	if (@{$anvils} > 0)
 	{
 		### TODO: Build JS to make changes
-		my $options = [];
+		$anvil_explain = "#!string!explain_0190!#";
+		$anvil_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load",
+			id	=>	"load",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		
+		my $options       = [];
 		foreach my $hash_ref (@{$anvils})
 		{
 			my $anvil_uuid  = $hash_ref->{anvil_uuid};
@@ -602,7 +957,7 @@ sub anvil_menu
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"",
-			column1		=>	"",
+			column1		=>	$anvil_row,
 			column2_class	=>	"input_select",
 			column2		=>	$anvil_select,
 			column3_class	=>	"input_explain",
@@ -612,7 +967,6 @@ sub anvil_menu
 		}});
 	
 	# Get a list of existing owners, if any.
-	my $owners        = $an->ScanCore->get_owners();
 	my $owner_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $owner_explain = "#!string!explain_0175!#";
 	if (@{$owners} > 0)
@@ -646,7 +1000,6 @@ sub anvil_menu
 		}});
 	
 	# And now get a list of SMTP mail servers to send alerts through
-	my $smtp         = $an->ScanCore->get_smtp();
 	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $smtp_explain = "#!string!explain_0178!#";
 	if (@{$smtp} > 0)
@@ -857,8 +1210,13 @@ sub anvil_menu
 		}});
 	
 	# The 'Save' button
+	my $save_button = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+		name	=>	"save",
+		id	=>	"save",
+		value	=>	"#!string!button_0045!#",
+	}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
-			message	=>	"<input type=\"submit\" name=\"save\" value=\"#!string!button_0045!#\" class=\"bold_button\">",
+			message	=>	$save_button,
 			class	=>	"",
 			colspan	=>	4,
 		}});

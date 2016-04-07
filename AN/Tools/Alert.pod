@@ -564,6 +564,14 @@ The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create
 
 The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new Anvil! entry, but no SMTP UUID was passed in.
 
+=head2 C<82>
+
+The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without an Anvil! UUID.
+
+=head2 C<83>
+
+The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without a host UUID.
+
 
 =head1 SEE ALSO
 

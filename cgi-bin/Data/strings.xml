@@ -404,6 +404,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0187"><![CDATA[This is the password to use along with the login name above.<br />Leave it blank if 'Password Security' is set to 'No Password'.]]></key>
 		<key name="explain_0188"><![CDATA[This indicates how the password is presented to the server.]]></key>
 		<key name="explain_0189"><![CDATA[This controls the security used when communicating with the outgoing mail server.]]></key>
+		<key name="explain_0190">Select an existing #!string!brand_0003!# and click on '#!string!button_0048!#' to edit it.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>

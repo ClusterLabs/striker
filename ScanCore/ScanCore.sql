@@ -218,30 +218,30 @@ AS $$
 DECLARE
 	history_nodes RECORD;
 BEGIN
-	SELECT INTO history_nodes * FROM nodes WHERE nodes_uuid = new.nodes_uuid;
+	SELECT INTO history_nodes * FROM nodes WHERE node_uuid = new.node_uuid;
 	INSERT INTO history.nodes
-		(nodes_uuid, 
-		 nodes_anvil_uuid, 
-		 nodes_host_uuid, 
-		 nodes_remote_ip, 
-		 nodes_remote_port, 
-		 nodes_note, 
-		 nodes_bcn, 
-		 nodes_sn, 
-		 nodes_ifn, 
-		 nodes_password, 
+		(node_uuid, 
+		 node_anvil_uuid, 
+		 node_host_uuid, 
+		 node_remote_ip, 
+		 node_remote_port, 
+		 node_note, 
+		 node_bcn, 
+		 node_sn, 
+		 node_ifn, 
+		 node_password, 
 		 modified_date)
 	VALUES
-		(history_nodes.nodes_uuid, 
-		 history_nodes.nodes_anvil_uuid, 
-		 history_nodes.nodes_host_uuid, 
-		 history_nodes.nodes_remote_ip, 
-		 history_nodes.nodes_remote_port, 
-		 history_nodes.nodes_note, 
-		 history_nodes.nodes_bcn, 
-		 history_nodes.nodes_sn, 
-		 history_nodes.nodes_ifn, 
-		 history_nodes.nodes_password, 
+		(history_nodes.node_uuid, 
+		 history_nodes.node_anvil_uuid, 
+		 history_nodes.node_host_uuid, 
+		 history_nodes.node_remote_ip, 
+		 history_nodes.node_remote_port, 
+		 history_nodes.node_note, 
+		 history_nodes.node_bcn, 
+		 history_nodes.node_sn, 
+		 history_nodes.node_ifn, 
+		 history_nodes.node_password, 
 		 history_nodes.modified_date);
 	RETURN NULL;
 END;

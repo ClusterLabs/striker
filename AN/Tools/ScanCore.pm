@@ -36,6 +36,157 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# Get a list of Anvil! hosts as an array of hash references
+sub get_hosts
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    host_uuid, 
+    host_name, 
+    host_type, 
+    host_emergency_stop, 
+    host_stop_reason, 
+    modified_date 
+FROM 
+    hosts
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $host_uuid           = $row->[0];
+		my $host_name           = $row->[1];
+		my $host_type           = $row->[2];
+		my $host_emergency_stop = $row->[3] ? $row->[3] : "";
+		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
+		my $modified_date       = $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "host_uuid",           value1 => $host_uuid, 
+			name2 => "host_name",           value2 => $host_name, 
+			name3 => "host_type",           value3 => $host_type, 
+			name4 => "host_emergency_stop", value4 => $host_emergency_stop, 
+			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
+			name6 => "modified_date",       value6 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			host_uuid		=>	$host_uuid,
+			host_name		=>	$host_name, 
+			host_type		=>	$host_type, 
+			host_emergency_stop	=>	$host_emergency_stop, 
+			host_stop_reason	=>	$host_stop_reason, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! nodes as an array of hash references
+sub get_nodes
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    a.node_uuid, 
+    a.node_anvil_uuid, 
+    a.node_host_uuid, 
+    a.node_remote_ip, 
+    a.node_remote_port, 
+    a.node_note, 
+    a.node_bcn, 
+    a.node_sn, 
+    a.node_ifn, 
+    a.node_password,
+    b.host_name,  
+    a.modified_date 
+FROM 
+    nodes a,
+    hosts b 
+WHERE 
+    a.node_host_uuid = b.host_uuid
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $node_uuid        = $row->[0];
+		my $node_anvil_uuid  = $row->[1];
+		my $node_host_uuid   = $row->[2];
+		my $node_remote_ip   = $row->[3] ? $row->[3] : "";
+		my $node_remote_port = $row->[4] ? $row->[4] : "";
+		my $node_note        = $row->[5] ? $row->[5] : "";
+		my $node_bcn         = $row->[6] ? $row->[6] : "";
+		my $node_sn          = $row->[7] ? $row->[7] : "";
+		my $node_ifn         = $row->[8] ? $row->[8] : "";
+		my $node_password    = $row->[9] ? $row->[9] : "";
+		my $host_name        = $row->[10];
+		my $modified_date    = $row->[11];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "node_uuid",        value1  => $node_uuid, 
+			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
+			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
+			name4  => "node_remote_ip",   value4  => $node_remote_ip, 
+			name5  => "node_remote_port", value5  => $node_remote_port, 
+			name6  => "node_note",        value6  => $node_note, 
+			name7  => "node_bcn",         value7  => $node_bcn, 
+			name8  => "node_sn",          value8  => $node_sn, 
+			name9  => "node_ifn",         value9  => $node_ifn, 
+			name10 => "host_name",        value10 => $host_name, 
+			name11 => "modified_date",    value11 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_password", value1 => $node_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			node_uuid		=>	$node_uuid,
+			node_anvil_uuid		=>	$node_anvil_uuid, 
+			node_host_uuid		=>	$node_host_uuid, 
+			node_remote_ip		=>	$node_remote_ip, 
+			node_remote_port	=>	$node_remote_port, 
+			node_note		=>	$node_note, 
+			node_bcn		=>	$node_bcn, 
+			node_sn			=>	$node_sn, 
+			node_ifn		=>	$node_ifn, 
+			host_name		=>	$host_name, 
+			node_password		=>	$node_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # Get a list of Anvil! systems as an array of hash references
 sub get_anvils
 {
@@ -80,15 +231,17 @@ FROM
 		my $anvil_note        = $row->[5];
 		my $anvil_password    = $row->[6];
 		my $modified_date     = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
 			name4 => "anvil_name",        value4 => $anvil_name, 
 			name5 => "anvil_description", value5 => $anvil_description, 
 			name6 => "anvil_note",        value6 => $anvil_note, 
-			name7 => "anvil_password",    value7 => $anvil_password, 
-			name8 => "modified_date",     value8 => $modified_date, 
+			name7 => "modified_date",     value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_password", value1 => $anvil_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			anvil_uuid		=>	$anvil_uuid,
@@ -151,16 +304,18 @@ FROM
 		my $smtp_authentication = $row->[6];
 		my $smtp_helo_domain    = $row->[7];
 		my $modified_date       = $row->[8];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 			name1 => "smtp_uuid",           value1 => $smtp_uuid, 
 			name2 => "smtp_server",         value2 => $smtp_server, 
 			name3 => "smtp_port",           value3 => $smtp_port, 
 			name4 => "smtp_username",       value4 => $smtp_username, 
-			name5 => "smtp_password",       value5 => $smtp_password, 
-			name6 => "smtp_security",       value6 => $smtp_security, 
-			name7 => "smtp_authentication", value7 => $smtp_authentication, 
-			name8 => "smtp_helo_domain",    value8 => $smtp_helo_domain, 
-			name9 => "modified_date",       value9 => $modified_date, 
+			name5 => "smtp_security",       value5 => $smtp_security, 
+			name6 => "smtp_authentication", value6 => $smtp_authentication, 
+			name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain, 
+			name8 => "modified_date",       value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp_password", value1 => $smtp_password, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			smtp_uuid		=>	$smtp_uuid,
