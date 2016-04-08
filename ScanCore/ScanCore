@@ -1238,7 +1238,7 @@ sub check_node_power_state
 sub reboot_node
 {
 	my ($an, $host_name, $host_uuid) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "boot_host_name" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "reboot_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "host_name", value1 => $host_name, 
 		name2 => "host_uuid", value2 => $host_uuid,
 	}, file => $THIS_FILE, line => __LINE__});

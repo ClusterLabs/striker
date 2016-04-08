@@ -54,7 +54,7 @@ sub build_select
 	my $width    = $parameter->{width}    ? $parameter->{width}    : 0;	# 0 = let the browser set the width
 	my $blank    = $parameter->{blank}    ? $parameter->{blank}    : 0;	# Add a blank/null entry?
 	my $selected = $parameter->{selected} ? $parameter->{selected} : "";	# Pre-select an option?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "name",     value1 => $name, 
 		name2 => "options",  value2 => $options, 
 		name3 => "sort",     value3 => $sort, 
@@ -64,13 +64,13 @@ sub build_select
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $select = "<select name=\"$name\" id=\"$id\">\n";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "select", value1 => $select,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($width)
 	{
 		$select = "<select name=\"$name\" id=\"$id\" style=\"width: ${width}px;\">\n";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "select", value1 => $select,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -79,13 +79,13 @@ sub build_select
 	if ($blank)
 	{
 		$select .= "<option value=\"\"></option>\n";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "select", value1 => $select,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# This needs to be smarter.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sort", value1 => $sort,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($sort)
@@ -93,7 +93,7 @@ sub build_select
 		foreach my $entry (sort {$a cmp $b} @{$options})
 		{
 			next if not $entry;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "entry", value1 => $entry,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
@@ -101,7 +101,7 @@ sub build_select
 				my $value       =  $1;
 				my $description =  $2;
 				   $select      .= "<option value=\"$value\">$description</option>\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value,
 					name2 => "description", value2 => $description,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -109,7 +109,7 @@ sub build_select
 			else
 			{
 				$select .= "<option value=\"$entry\">$entry</option>\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "entry", value1 => $entry,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -120,7 +120,7 @@ sub build_select
 		foreach my $entry (@{$options})
 		{
 			next if not $entry;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "entry", value1 => $entry,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($entry =~ /^(.*?)#!#(.*)$/)
@@ -128,7 +128,7 @@ sub build_select
 				my $value       =  $1;
 				my $description =  $2;
 				   $select      .= "<option value=\"$value\">$description</option>\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "value",       value1 => $value,
 					name2 => "description", value2 => $description,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -136,14 +136,14 @@ sub build_select
 			else
 			{
 				$select .= "<option value=\"$entry\">$entry</option>\n";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "entry", value1 => $entry,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "selected", value1 => $selected,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($selected)
@@ -152,7 +152,7 @@ sub build_select
 	}
 	
 	$select .= "</select>\n";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "select", value1 => $select,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -918,24 +918,24 @@ sub more_info_link
 	
 	# TODO: Error if this is not set.
 	my $url  = $parameter->{url} ? $parameter->{url} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "url", value1 => $url,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $link = $an->Web->template({file => "web.html", template => "more-info-link", replace => { url => $url }, no_comment => 1});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "link",               value1 => $link,
 		name2 => "sys::disable_links", value2 => $an->data->{sys}{disable_links},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{disable_links})
 	{
 		$link = "&nbsp;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "link", value1 => $link,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "link", value1 => $link,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($link);

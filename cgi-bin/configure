@@ -65,6 +65,7 @@ $an->Web->get_cgi({variables => [
 	"anvil_smtp_uuid", 
 	"anvil_uuid", 
 	"confirm", 
+	"delete", 
 	"load", 
 	"node1_access", 
 	"node1_bcn", 
@@ -201,9 +202,9 @@ sub load_anvil_form
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Errors, if any.
-	my $error_messages = [];
+	my $notices        = [];
 	my $error_fields   = [];
-	my $error_message  = "";
+	my $notice_message = "";
 	
 	# First, find the Anvil!
 	foreach my $hash_ref (@{$anvils})
@@ -410,7 +411,7 @@ sub load_anvil_form
 		}
 	}
 	
-	return($error_message, $error_fields);
+	return($notice_message, $error_fields);
 }
 
 # This saves the changes to an Anvil! using the minimal of user input. As much data as possible will be 
@@ -421,9 +422,9 @@ sub save_anvil_form
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Some sanity checks before we begin.
-	my $error_messages = [];
+	my $notices        = [];
 	my $error_fields   = [];
-	my $error_message  = "";
+	my $notice_message = "";
 	
 	# Sort out the node access
 	my $node1_data    = "";
@@ -441,8 +442,8 @@ sub save_anvil_form
 	if (not $an->data->{cgi}{node1_access})
 	{
 		my $row = $an->String->get({key => "row_0248", variables => { node => 1 }});
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => $row }});
-		push @{$error_fields},   "node1_access";
+		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => $row }});
+		push @{$error_fields}, "node1_access";
 	}
 	elsif ($an->data->{cgi}{node1_access} =~ /(.*):(\d+)/)
 	{
@@ -457,8 +458,8 @@ sub save_anvil_form
 	{
 		# Sorry, this is messy... the 'field' variable is 'Node X'.
 		my $row = $an->String->get({key => "row_0248", variables => { node => 2 }});
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => $row }});
-		push @{$error_fields},   "node2_access";
+		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => $row }});
+		push @{$error_fields}, "node2_access";
 	}
 	elsif ($an->data->{cgi}{node2_access} =~ /(.*):(\d+)/)
 	{
@@ -473,22 +474,22 @@ sub save_anvil_form
 	# Do I have an owner?
 	if (not $an->data->{cgi}{owner_name})
 	{
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => "#!string!row_0023!#" }});
-		push @{$error_fields},   "owner_name";
+		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => "#!string!row_0023!#" }});
+		push @{$error_fields}, "owner_name";
 	}
 	
 	# What about a password?
 	if (not $an->data->{cgi}{anvil_password})
 	{
-		push @{$error_messages}, $an->String->get({key => "message_0360", variables => { field => "#!string!row_0025!#" }});
-		push @{$error_fields},   "anvil_password";
+		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => "#!string!row_0025!#" }});
+		push @{$error_fields}, "anvil_password";
 	}
 	
 	# The SMTP password can only be blank is the password security is 'none'.
 	if ((not $an->data->{cgi}{smtp_password}) && ($an->data->{cgi}{smtp_authentication} ne "none"))
 	{
-		push @{$error_messages}, $an->String->get({key => "message_0361"});
-		push @{$error_fields},   "smtp_password";
+		push @{$notices},      $an->String->get({key => "message_0361"});
+		push @{$error_fields}, "smtp_password";
 	}
 	
 	# If there were errors, display them and return.
@@ -500,21 +501,21 @@ sub save_anvil_form
 	{
 		# Print the error header.
 		my $error_body = "";
-		foreach my $error_messages (@{$error_messages})
+		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
-					body_message	=>	$error_messages,
+					body_message	=>	$notice,
 				}});
 		}
-		$error_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "error_message", value1 => $error_message,
+			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -538,13 +539,13 @@ sub save_anvil_form
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $node1_access)
 		{
-			push @{$error_messages}, $an->String->get({key => "message_0371", variables => { node => 1 } });
-			push @{$error_fields},   "node1_access";
+			push @{$notices},      $an->String->get({key => "message_0371", variables => { node => 1 } });
+			push @{$error_fields}, "node1_access";
 		}
 		if (not $node2_access)
 		{
-			push @{$error_messages}, $an->String->get({key => "message_0371", variables => { node => 2 } });
-			push @{$error_fields},   "node2_access";
+			push @{$notices},      $an->String->get({key => "message_0371", variables => { node => 2 } });
+			push @{$error_fields}, "node2_access";
 		}
 		
 		# Gather data from the nodes, if we're still good.
@@ -630,28 +631,28 @@ sub save_anvil_form
 	{
 		# Print the error header.
 		my $error_body = "";
-		foreach my $error_messages (@{$error_messages})
+		foreach my $notice (@{$notices})
 		{
 			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
-					body_message	=>	$error_messages,
+					body_message	=>	$notices,
 				}});
 		}
-		$error_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
 				title	=>	"#!string!title_0194!#",
 				errors	=>	$error_body,
 			}});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "error_message", value1 => $error_message,
+			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "error_message", value1 => $error_message,
+		name1 => "notice_message", value1 => $notice_message,
 	}, file => $THIS_FILE, line => __LINE__});
-	return($error_message, $error_fields);
+	return($notice_message, $error_fields);
 }
 
 # This parses the CGI data and calls $an->Web->insert_or_update_nodes() for each node.
@@ -880,6 +881,160 @@ sub save_smtp
 	return($smtp_uuid);
 }
 
+# This just puts together the "confirm" message for the given action
+sub confirm_action
+{
+	my ($an, $action) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "confirm_action" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "action", value1 => $action,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $notice_message = "";
+	if ($action eq "delete_anvil")
+	{
+		# Get the Anvil!'s name.
+		my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
+		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"confirm",
+			id	=>	"confirm",
+			value	=>	"#!string!button_0004!#",
+			url	=>	"?task=anvil&anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&delete=true&confirm=true",
+		}, no_comment => 1});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_data->anvil_name", value1 => $anvil_data->{anvil_name},
+		}, file => $THIS_FILE, line => __LINE__});
+		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
+				title		=>	"#!string!title_0195!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0306!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0374", variables => { anvil => $anvil_data->{anvil_name} }}),
+				button		=>	$confirm_button,
+			}});
+
+	}
+	
+	return($notice_message);
+}
+
+# This deletes and Anvil! and its associated nodes from ScanCore. It does NOT delete the hosts.
+sub delete_anvil
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    nodes 
+SET 
+    node_note = 'DELETED' 
+WHERE 
+    node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	push @{$queries}, "
+UPDATE 
+    anvils 
+SET 
+    anvil_note = 'DELETED' 
+WHERE 
+    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    nodes 
+WHERE 
+    node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    anvils 
+WHERE 
+    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    nodes 
+WHERE 
+    node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $node_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    anvils 
+WHERE 
+    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $anvil_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_count",  value1 => $node_count, 
+		name2 => "anvil_count", value2 => $anvil_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (($node_count) or ($anvil_count))
+	{
+		# Woops
+		my $error_message = $an->String->get({key => "message_0388", variables => { 
+			name   => $anvil_data->{anvil_name},
+			nodes  => $node_count, 
+			anvils => $anvil_count
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Ba' bye!
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0379", variables => { anvil => $anvil_data->{anvil_name} }}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
 # This handles the configuration of Anvil! systems (including the ability to create new owners)
 sub anvil_menu
 {
@@ -888,14 +1043,29 @@ sub anvil_menu
 	
 	### TODO: Add an "Advanced" button to expose all the remaining form fields
 	# Is the user asking to save changes?
-	my $error_message = "";
-	my $error_fields  = [];
+	my $notice_message = "";
+	my $error_fields   = [];
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{anvil_uuid}))
+	{
+		# Has the user confirmed?
+		if ($an->data->{cgi}{confirm})
+		{
+			# Baleted!
+			$notice_message = delete_anvil($an);
+		}
+		else
+		{
+			# Ask them to confirm
+			$notice_message = confirm_action($an, "delete_anvil");
+		}
+	}
+	
 	if ($an->data->{cgi}{save})
 	{
 		# Save, if something changed.
-		($error_message, $error_fields) = save_anvil_form($an);
+		($notice_message, $error_fields) = save_anvil_form($an);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "error_message", value1 => $error_message,
+			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -910,9 +1080,9 @@ sub anvil_menu
 	{
 		if ($an->data->{cgi}{anvil_uuid})
 		{
-			($error_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
+			($notice_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "error_message", value1 => $error_message,
+				name1 => "notice_message", value1 => $notice_message,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -928,7 +1098,8 @@ sub anvil_menu
 		}});
 	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $anvil_explain = "#!string!explain_0174!#";
-	my $anvil_row     = "";
+	my $anvil_row     = "";	# Actually the 'load' button
+	my $anvil_url     = "";	# Actually the 'delete' button
 	if (@{$anvils} > 0)
 	{
 		### TODO: Build JS to make changes
@@ -937,6 +1108,11 @@ sub anvil_menu
 			name	=>	"load",
 			id	=>	"load",
 			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		$anvil_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"delete",
+			id	=>	"delete",
+			value	=>	"#!string!row_0068!#",
 		}, no_comment => 1});
 		
 		my $options       = [];
@@ -962,8 +1138,8 @@ sub anvil_menu
 			column2		=>	$anvil_select,
 			column3_class	=>	"input_explain",
 			column3		=>	$anvil_explain,
-			column4_class	=>	"input_url",
-			column4		=>	"&nbsp;",
+			column4_class	=>	"",
+			column4		=>	"$anvil_url",
 		}});
 	
 	# Get a list of existing owners, if any.
@@ -972,7 +1148,8 @@ sub anvil_menu
 	if (@{$owners} > 0)
 	{
 		# Build an array to pass to 'build_select'
-		my $options = [];
+		   $owner_explain = "#!string!explain_0191!#";
+		my $options       = [];
 		foreach my $hash_ref (@{$owners})
 		{
 			my $owner_uuid  = $hash_ref->{owner_uuid};
@@ -1005,7 +1182,8 @@ sub anvil_menu
 	if (@{$smtp} > 0)
 	{
 		# Build an array to pass to 'build_select'
-		my $options = [];
+		   $smtp_explain = "#!string!explain_0192!#";
+		my $options      = [];
 		foreach my $hash_ref (@{$smtp})
 		{
 			my $smtp_uuid  = $hash_ref->{smtp_uuid};
@@ -1252,7 +1430,7 @@ sub anvil_menu
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
-				errors		=>	$error_message,
+				notices		=>	$notice_message,
 				body		=>	$menu, 
 				footer		=>	$footer, 
 			},
@@ -1385,7 +1563,7 @@ sub show_main_menu
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
-				errors		=>	"",
+				notices		=>	"",
 				body		=>	$menu, 
 				footer		=>	$footer, 
 			},

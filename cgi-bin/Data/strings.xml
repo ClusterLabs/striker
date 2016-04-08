@@ -405,6 +405,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0188"><![CDATA[This indicates how the password is presented to the server.]]></key>
 		<key name="explain_0189"><![CDATA[This controls the security used when communicating with the outgoing mail server.]]></key>
 		<key name="explain_0190">Select an existing #!string!brand_0003!# and click on '#!string!button_0048!#' to edit it.</key>
+		<key name="explain_0191"><![CDATA[You can select an existing user, or enter a new one below and it will be added to the list.]]></key>
+		<key name="explain_0192"><![CDATA[You can select an sending outgoing (smtp) mail servers or enter a new one below and it<br />will be added to the list.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -789,6 +791,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0303">Password Security</key>
 		<key name="row_0304">Connection Security</key>
 		<key name="row_0305">Form Error</key>
+		<key name="row_0306">Confirm Delete</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1350,6 +1353,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0192">Not access to #!string!brand_0015!# databases</key>
 		<key name="title_0193">Add, edit or delete an #!variable!brand_0003!#</key>
 		<key name="title_0194">There were errors in the submitted form, changes not saved</key>
+		<key name="title_0195">Potentially dangerous action</key>
+		<key name="title_0196">Action completed</key>
+		<key name="title_0197">Action failed</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1742,12 +1748,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0371"><![CDATA[The connection information for node: [<span class="highlight_detail">#!variable!node!#</span>] appears to be incorrect.]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
-		<key name="message_0374">...free...</key>
+		<key name="message_0374"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#.]]></key>
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376"><![CDATA[Updated: [<span class="highlight_detail">#!conf!cgi::run!#</span>]<br />The new MAC address mapping has been recorded.]]></key>
 		<key name="message_0377">Saved.</key>
 		<key name="message_0378"><![CDATA[<span class="highlight_bad_bold">Error</span>: The tool <span class="code">anvil-map-network</span> was not found on the node.<br />Please make sure it is in <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes and.<br />Once fixed, please reload this page.]]></key>
-		<key name="message_0379">...free...</key>
+		<key name="message_0379"><![CDATA[The: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has been deleted.]]></key>
 		<key name="message_0380"><![CDATA[Both nodes need (at least) six network cards. If you have six network cards, then there might be a program problems.<br />(Sorry about that)]]></key>
 		<key name="message_0381"><![CDATA[Failed to download <span class="code">anvil-map-network</span> to the node.<br />Please manually copy it to <span class="code">#!conf!path::anvil-map-network!#</span> on both nodes.<br />(Sorry about that)]]></key>
 		<key name="message_0382"><![CDATA[There was an internal problem SSH'ing to the nodes.<br />(Sorry about that)]]></key>
@@ -1756,7 +1762,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0385">RHN registration not possible. The user name and password must both be passed.</key>
 		<key name="message_0386"><![CDATA[The <span class="code">perl</span> programming language is not available and could not be installed.<br />Without this, the tools needed to configure the nodes won't run.<br />]]></key>
 		<key name="message_0387"><![CDATA[Failed to add the repository listed above.<br />Install will attempt to proceed, but it may fail to install some programs.]]></key>
-		<key name="message_0388">...free...</key>
+		<key name="message_0388"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!name!#</span>] #!string!brand_0003!# failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!anvils!#</span>] system(s) and [<span class="highlight_detail">#!variable!nodes!#</span>] node(s) remained.]]></key>
 		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0391"><![CDATA[I was asked to create a partition, but I had to shrink the partition's end size to make it fit.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], original end: [<span class="fixed_width">#!variable!old_end!#</span>], new end: [<span class="fixed_width">#!variable!new_end!#</span>].]]></key>

@@ -115,6 +115,99 @@ sub local_users
 	return($users);
 }
 
+# This returns data about the given Anvil! (taking either the Anvil! name or it's UUID)
+sub anvil_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return     = {};
+	my $anvil_name = $parameter->{name} ? $parameter->{name} : "";
+	my $anvil_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name, 
+		name2 => "anvil_uuid", value2 => $anvil_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $anvil_name) && (not $anvil_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0084", code => 84, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    anvil_uuid, 
+    anvil_owner_uuid, 
+    anvil_smtp_uuid, 
+    anvil_name, 
+    anvil_description, 
+    anvil_note, 
+    anvil_password, 
+    modified_date 
+FROM 
+    anvils 
+WHERE 
+";
+	if ($anvil_uuid)
+	{
+		$query .= "anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid);
+	}
+	else
+	{
+		$query .= "anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $anvil_uuid        = $row->[0];
+		my $anvil_owner_uuid  = $row->[1];
+		my $anvil_smtp_uuid   = $row->[2];
+		my $anvil_name        = $row->[3];
+		my $anvil_description = $row->[4];
+		my $anvil_note        = $row->[5];
+		my $anvil_password    = $row->[6];
+		my $modified_date     = $row->[7];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
+			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
+			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
+			name4 => "anvil_name",        value4 => $anvil_name, 
+			name5 => "anvil_description", value5 => $anvil_description, 
+			name6 => "anvil_note",        value6 => $anvil_note, 
+			name7 => "modified_date",     value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_password", value1 => $anvil_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			anvil_uuid		=>	$anvil_uuid,
+			anvil_owner_uuid	=>	$anvil_owner_uuid, 
+			anvil_smtp_uuid		=>	$anvil_smtp_uuid, 
+			anvil_name		=>	$anvil_name, 
+			anvil_description	=>	$anvil_description, 
+			anvil_note		=>	$anvil_note, 
+			anvil_password		=>	$anvil_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # This gets the details (except the XML, use '$an->Get->server_xml()' for that) associated with a given 
 # server name,
 sub server_data

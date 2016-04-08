@@ -742,13 +742,13 @@ sub start_the_cluster
 	start_daemons($an, "cman", 1);
 	
 	# Now start drbd manually.
-	#start_drbd($an);
+	start_drbd($an);
 	
 	# Now start clvmd. This also checks that all LVs are ACTIVE and activates any that aren't.
-	#start_clvmd($an);
+	start_clvmd($an);
 	
 	# Now start gfs2 and make sure '/shared' mounts on both nodes.
-	#start_gfs2($an);
+	start_gfs2($an);
 	
 	# Now start rgmanager! I don't need this to be synchronous because the daemon start will exit and 
 	# then start the storage services.

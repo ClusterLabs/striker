@@ -582,6 +582,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0081"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_anvils()' method tried to create a new #!string!an_brand_0003!# entry, but no SMTP UUID was passed in.]]></key>
 		<key name="error_message_0082"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without an #!string!an_brand_0003!# UUID.]]></key>
 		<key name="error_message_0083"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_nodes()' method was called without a host UUID.]]></key>
+		<key name="error_message_0084"><![CDATA[The 'AN::Tools::Get' module's 'anvil_data()' method was called but neither an #!string!an_brand_0003!# name or UUID was passed in.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
