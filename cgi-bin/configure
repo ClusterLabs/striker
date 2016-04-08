@@ -66,7 +66,9 @@ $an->Web->get_cgi({variables => [
 	"anvil_uuid", 
 	"confirm", 
 	"delete", 
-	"load", 
+	"load_anvil", 
+	"load_owner", 
+	"load_smtp", 
 	"node1_access", 
 	"node1_bcn", 
 	"node1_host_name", 
@@ -195,6 +197,81 @@ sub process_task
 	return(0);
 }
 
+# This uses an owner_uuid to load information about the associated Owner.
+sub load_owner_form
+{
+	my ($an, $owners) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_owner_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Errors, if any.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::owner_uuid", value1 => $an->data->{cgi}{owner_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{owner_uuid})
+	{
+		foreach my $hash_ref (@{$owners})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->owner_uuid",  value1 => $hash_ref->{owner_uuid},
+				name2 => "cgi::owner_uuid", value2 => $an->data->{cgi}{owner_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{owner_uuid} eq $an->data->{cgi}{owner_uuid})
+			{
+				$an->data->{cgi}{owner_uuid} = $hash_ref->{owner_uuid};
+				$an->data->{cgi}{owner_name} = $hash_ref->{owner_name};
+				$an->data->{cgi}{owner_note} = $hash_ref->{owner_note};
+				last;
+			}
+		}
+	}
+	
+	return($notice_message, $error_fields);
+}
+
+# This uses an smtp_uuid to load information about the associated SMTP server.
+sub load_smtp_form
+{
+	my ($an, $smtp) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_smtp_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Errors, if any.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{smtp_uuid})
+	{
+		foreach my $hash_ref (@{$smtp})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->smtp_uuid",  value1 => $hash_ref->{smtp_uuid},
+				name2 => "cgi::smtp_uuid", value2 => $an->data->{cgi}{smtp_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{smtp_uuid} eq $an->data->{cgi}{smtp_uuid})
+			{
+				$an->data->{cgi}{smtp_uuid}           = $hash_ref->{smtp_uuid};
+				$an->data->{cgi}{smtp_authentication} = $hash_ref->{smtp_authentication};
+				$an->data->{cgi}{smtp_helo_domain}    = $hash_ref->{smtp_helo_domain};
+				$an->data->{cgi}{smtp_password}       = $hash_ref->{smtp_password};
+				$an->data->{cgi}{smtp_port}           = $hash_ref->{smtp_port};
+				$an->data->{cgi}{smtp_security}       = $hash_ref->{smtp_security};
+				$an->data->{cgi}{smtp_server}         = $hash_ref->{smtp_server};
+				$an->data->{cgi}{smtp_username}       = $hash_ref->{smtp_username};
+				last;
+			}
+		}
+	}
+	
+	return($notice_message, $error_fields);
+}
+
 # This uses an anvil_uuid to load information about the associated Anvil! system.
 sub load_anvil_form
 {
@@ -235,6 +312,7 @@ sub load_anvil_form
 		}
 	}
 	
+	### TODO: Pass the UUID into load_owner_form
 	# Now the owner
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::anvil_owner_uuid", value1 => $an->data->{cgi}{anvil_owner_uuid},
@@ -257,6 +335,7 @@ sub load_anvil_form
 		}
 	}
 	
+	### TODO: Pass the UUID into load_smtp_form
 	# SMTP info
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::anvil_smtp_uuid", value1 => $an->data->{cgi}{anvil_smtp_uuid},
@@ -1045,6 +1124,7 @@ sub anvil_menu
 	# Is the user asking to save changes?
 	my $notice_message = "";
 	my $error_fields   = [];
+	my $refresh_link   = $an->data->{sys}{cgi_string};
 	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{anvil_uuid}))
 	{
 		# Has the user confirmed?
@@ -1058,6 +1138,13 @@ sub anvil_menu
 			# Ask them to confirm
 			$notice_message = confirm_action($an, "delete_anvil");
 		}
+		
+		# Clear the commands from the refresh link.
+		$refresh_link =~ s/confirm=.*?&/&/;
+		$refresh_link =~ s/confirm=.*//;
+		$refresh_link =~ s/delete=.*?&/&/;
+		$refresh_link =~ s/delete=.*//;
+		$refresh_link =~ s/&&+/&/;
 	}
 	
 	if ($an->data->{cgi}{save})
@@ -1067,6 +1154,9 @@ sub anvil_menu
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "notice_message", value1 => $notice_message,
 		}, file => $THIS_FILE, line => __LINE__});
+		$refresh_link =~ s/save=.*?&/&/;
+		$refresh_link =~ s/save=.*//;
+		$refresh_link =~ s/&&+/&/;
 	}
 	
 	# Load information from the databases, then we'll tease out data if 'load' was set.
@@ -1076,11 +1166,31 @@ sub anvil_menu
 	my $nodes  = $an->ScanCore->get_nodes();
 	
 	# Tease out the data for this form if we're loading an anvil_uuid
-	if ($an->data->{cgi}{load})
+	if ($an->data->{cgi}{load_anvil})
 	{
 		if ($an->data->{cgi}{anvil_uuid})
 		{
 			($notice_message, $error_fields) = load_anvil_form($an, $anvils, $owners, $smtp, $nodes);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "notice_message", value1 => $notice_message,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	if ($an->data->{cgi}{load_owner})
+	{
+		if ($an->data->{cgi}{owner_uuid})
+		{
+			($notice_message, $error_fields) = load_owner_form($an, $owners);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "notice_message", value1 => $notice_message,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	if ($an->data->{cgi}{load_smtp})
+	{
+		if ($an->data->{cgi}{smtp_uuid})
+		{
+			($notice_message, $error_fields) = load_smtp_form($an, $smtp);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "notice_message", value1 => $notice_message,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1098,15 +1208,15 @@ sub anvil_menu
 		}});
 	my $anvil_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $anvil_explain = "#!string!explain_0174!#";
-	my $anvil_row     = "";	# Actually the 'load' button
-	my $anvil_url     = "";	# Actually the 'delete' button
+	my $anvil_row     = "&nbsp;";	# Actually the 'load' button
+	my $anvil_url     = "&nbsp;";	# Actually the 'delete' button
 	if (@{$anvils} > 0)
 	{
 		### TODO: Build JS to make changes
 		$anvil_explain = "#!string!explain_0190!#";
 		$anvil_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
-			name	=>	"load",
-			id	=>	"load",
+			name	=>	"load_anvil",
+			id	=>	"load_anvil",
 			value	=>	"#!string!button_0048!#",
 		}, no_comment => 1});
 		$anvil_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
@@ -1145,11 +1255,18 @@ sub anvil_menu
 	# Get a list of existing owners, if any.
 	my $owner_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $owner_explain = "#!string!explain_0175!#";
+	my $owner_row     = "&nbsp;";	# Actually the 'Load' button
 	if (@{$owners} > 0)
 	{
 		# Build an array to pass to 'build_select'
-		   $owner_explain = "#!string!explain_0191!#";
-		my $options       = [];
+		$owner_explain = "#!string!explain_0191!#";
+		$owner_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_owner",
+			id	=>	"load_owner",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		
+		my $options = [];
 		foreach my $hash_ref (@{$owners})
 		{
 			my $owner_uuid  = $hash_ref->{owner_uuid};
@@ -1166,8 +1283,8 @@ sub anvil_menu
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-			column1_class	=>	"highlight_row_bold",
-			column1		=>	"&nbsp;",
+			column1_class	=>	"",
+			column1		=>	"$owner_row",
 			column2_class	=>	"input_select",
 			column2		=>	$owner_select,
 			column3_class	=>	"input_explain",
@@ -1179,11 +1296,18 @@ sub anvil_menu
 	# And now get a list of SMTP mail servers to send alerts through
 	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $smtp_explain = "#!string!explain_0178!#";
+	my $smtp_row     = "&nbsp;";	# Actually the 'Load' button
 	if (@{$smtp} > 0)
 	{
 		# Build an array to pass to 'build_select'
-		   $smtp_explain = "#!string!explain_0192!#";
-		my $options      = [];
+		$smtp_explain = "#!string!explain_0192!#";
+		$smtp_row      = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_smtp",
+			id	=>	"load_smtp",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		
+		my $options = [];
 		foreach my $hash_ref (@{$smtp})
 		{
 			my $smtp_uuid  = $hash_ref->{smtp_uuid};
@@ -1200,8 +1324,8 @@ sub anvil_menu
 		});
 	}
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-			column1_class	=>	"highlight_row_bold",
-			column1		=>	"&nbsp;",
+			column1_class	=>	"",
+			column1		=>	"$smtp_row",
 			column2_class	=>	"input_select",
 			column2		=>	$smtp_select,
 			column3_class	=>	"input_explain",
@@ -1420,7 +1544,7 @@ sub anvil_menu
 		}});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
 			back		=>	"<a href=\"?\">$back_image</a>",
-			refresh		=>	"<a href=\"".$an->data->{sys}{cgi_string}."\">$refresh_image</a>",
+			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
