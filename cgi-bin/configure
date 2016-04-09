@@ -1084,7 +1084,7 @@ sub delete_owner
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
+	my $anvil_data     = $an->Get->owner_data({uuid => $an->data->{cgi}{owner_uuid}});
 	my $notice_message = "";
 	
 	# Send the queries as an array
@@ -1103,6 +1103,7 @@ DELETE FROM
 WHERE 
     owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{owner_uuid})."
 ;";
+	
 	# Log the queries
 	foreach my $query (@{$queries})
 	{
@@ -1291,14 +1292,14 @@ WHERE
 sub owner_menu
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "anvil_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "owner_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Add an "Advanced" button to expose all the remaining form fields
 	# Is the user asking to save changes?
 	my $notice_message = "";
 	my $error_fields   = [];
 	my $refresh_link   = $an->data->{sys}{cgi_string};
-	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{anvil_uuid}))
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{owner_uuid}))
 	{
 		# Has the user confirmed?
 		if ($an->data->{cgi}{confirm})
