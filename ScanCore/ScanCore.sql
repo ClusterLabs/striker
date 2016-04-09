@@ -15,6 +15,7 @@ CREATE TABLE smtp (
 	smtp_security		text				not null,			-- This is the security type used when authenticating against the mail server (STARTTLS, TLS/SSL or NONE)
 	smtp_authentication	text				not null,			-- 'None', 'Plain Text', 'Encrypted' (will add other types later.
 	smtp_helo_domain	text				not null,			-- The domain we identify to the mail server as being from.
+	smtp_note		text,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE smtp OWNER TO #!variable!user!#;
@@ -29,6 +30,7 @@ CREATE TABLE history.smtp (
 	smtp_security		text,
 	smtp_authentication	text,
 	smtp_helo_domain	text,
+	smtp_note		text,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.smtp OWNER TO #!variable!user!#;
@@ -48,6 +50,7 @@ BEGIN
 		 smtp_security, 
 		 smtp_authentication, 
 		 smtp_helo_domain, 
+		 smtp_note, 
 		 modified_date)
 	VALUES
 		(history_smtp.smtp_uuid, 
@@ -58,6 +61,7 @@ BEGIN
 		 history_smtp.smtp_security, 
 		 history_smtp.smtp_authentication, 
 		 history_smtp.smtp_helo_domain, 
+		 history_smtp.smtp_note, 
 		 history_smtp.modified_date);
 	RETURN NULL;
 END;

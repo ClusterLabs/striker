@@ -580,6 +580,10 @@ The 'AN::Tools::Get' module's 'anvil_data()' method was called but neither an An
 
 The 'AN::Tools::Get' module's 'owner_data()' method was called but neither a name or UUID was passed in.
 
+=head2 C<86>
+
+The 'AN::Tools::Get' module's 'smtp_data()' method was called but neither a server or UUID was passed in.
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:

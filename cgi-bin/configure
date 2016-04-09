@@ -97,6 +97,7 @@ $an->Web->get_cgi({variables => [
 	"save", 
 	"smtp_authentication", 
 	"smtp_helo_domain", 
+	"smtp_note", 
 	"smtp_password", 
 	"smtp_port", 
 	"smtp_security", 
@@ -153,7 +154,7 @@ sub process_task
 	}
 	elsif ($an->data->{cgi}{task} eq "smtp")
 	{
-		
+		smtp_menu($an);
 	}
 	elsif ($an->data->{cgi}{task} eq "email_alerts")
 	{
@@ -259,6 +260,7 @@ sub load_smtp_form
 				$an->data->{cgi}{smtp_security}       = $hash_ref->{smtp_security};
 				$an->data->{cgi}{smtp_server}         = $hash_ref->{smtp_server};
 				$an->data->{cgi}{smtp_username}       = $hash_ref->{smtp_username};
+				$an->data->{cgi}{smtp_note}           = $hash_ref->{smtp_note};
 				last;
 			}
 		}
@@ -274,6 +276,7 @@ sub load_smtp_form
 		$an->data->{cgi}{smtp_security}       = "";
 		$an->data->{cgi}{smtp_server}         = "";
 		$an->data->{cgi}{smtp_username}       = "";
+		$an->data->{cgi}{smtp_note}           = "";
 	}
 	
 	return(0);
@@ -496,6 +499,63 @@ sub load_anvil_form
 	load_node_form($an,  $nodes,  $an->data->{cgi}{anvil_uuid});
 	
 	return(0);
+}
+
+# This saves the changes to an SMTP server.
+sub save_smtp_form
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### Some sanity checks before we begin.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	# Do I have an smtp server?
+	if (not $an->data->{cgi}{smtp_server})
+	{
+		push @{$notices},      $an->String->get({key => "message_0360", variables => { field => "#!string!row_0250!#" }});
+		push @{$error_fields}, "smtp_server";
+	}
+	
+	# Save the form (either INSERT or UPDATE if something has changed.
+	$an->data->{cgi}{smtp_uuid} = save_smtp($an);
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Process errors now, if any.
+	my $error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($error_count > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $notice (@{$notices})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$notices,
+				}});
+		}
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "notice_message", value1 => $notice_message,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($notice_message, $error_fields);
 }
 
 # This saves the changes to an Anvil! owner.
@@ -917,6 +977,32 @@ sub save_anvil
 	return($anvil_uuid);
 }
 
+# This parses the CGI data and calls $an->Web->insert_or_update_smtp();
+sub save_smtp
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# This will return the new UUID if INSERTed and the existing UUID for the matching smtp server, if 
+	# one exists. If nothing changed, the database will not be updated.
+	$an->data->{cgi}{smtp_uuid} = $an->Web->insert_or_update_smtp({
+		smtp_uuid		=>	$an->data->{cgi}{smtp_uuid},
+		smtp_server		=>	$an->data->{cgi}{smtp_server}, 
+		smtp_port		=>	$an->data->{cgi}{smtp_port}, 
+		smtp_username		=>	$an->data->{cgi}{smtp_username}, 
+		smtp_password		=>	$an->data->{cgi}{smtp_password}, 
+		smtp_security		=>	$an->data->{cgi}{smtp_security}, 
+		smtp_authentication	=>	$an->data->{cgi}{smtp_authentication}, 
+		smtp_helo_domain	=>	$an->data->{cgi}{smtp_helo_domain}, 
+		smtp_note		=>	$an->data->{cgi}{smtp_note},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($an->data->{cgi}{smtp_uuid});
+}
+
 # This parses the CGI data and calls $an->Web->insert_or_update_owner();
 sub save_owner
 {
@@ -951,7 +1037,8 @@ sub save_smtp
 	my $smtp_security       = $an->data->{cgi}{smtp_security};
 	my $smtp_authentication = $an->data->{cgi}{smtp_authentication};
 	my $smtp_helo_domain    = $an->data->{cgi}{smtp_helo_domain};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+	my $smtp_note           = $an->data->{cgi}{smtp_note};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "smtp_server",         value1 => $smtp_server,
 		name2 => "smtp_port",           value2 => $smtp_port,
 		name3 => "smtp_username",       value3 => $smtp_username,
@@ -959,6 +1046,7 @@ sub save_smtp
 		name5 => "smtp_security",       value5 => $smtp_security,
 		name6 => "smtp_authentication", value6 => $smtp_authentication,
 		name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain,
+		name8 => "smtp_note",           value8 => $smtp_note,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{cgi}{smtp_server} =~ /(.*):(\d+)/)
 	{
@@ -1012,6 +1100,7 @@ sub save_smtp
 		smtp_security		=>	$smtp_security,
 		smtp_authentication	=>	$smtp_authentication,
 		smtp_helo_domain	=>	$smtp_helo_domain,
+		smtp_note		=>	$smtp_note,
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "smtp_uuid", value1 => $smtp_uuid,
@@ -1074,6 +1163,28 @@ sub confirm_action
 				button		=>	$confirm_button,
 			}});
 	}
+	elsif ($action eq "delete_smtp")
+	{
+		# Get the smtp server's name.
+		my $smtp_data      = $an->Get->smtp_data({uuid => $an->data->{cgi}{smtp_uuid}});
+		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"confirm",
+			id	=>	"confirm",
+			value	=>	"#!string!button_0004!#",
+			url	=>	"?task=smtp&smtp_uuid=".$an->data->{cgi}{smtp_uuid}."&delete=true&confirm=true",
+		}, no_comment => 1});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp_data->smtp_server", value1 => $smtp_data->{smtp_server},
+		}, file => $THIS_FILE, line => __LINE__});
+		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
+				title		=>	"#!string!title_0195!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0306!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0396", variables => { smtp => $smtp_data->{smtp_server} }}),
+				button		=>	$confirm_button,
+			}});
+	}
 	
 	return($notice_message);
 }
@@ -1084,7 +1195,7 @@ sub delete_owner
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil_data     = $an->Get->owner_data({uuid => $an->data->{cgi}{owner_uuid}});
+	my $owner_data     = $an->Get->owner_data({uuid => $an->data->{cgi}{owner_uuid}});
 	my $notice_message = "";
 	
 	# Send the queries as an array
@@ -1137,8 +1248,8 @@ WHERE
 	{
 		# Zoot alore!
 		my $error_message = $an->String->get({key => "message_0393", variables => { 
-			name  => $anvil_data->{owner_name},
-			nodes => $owner_count, 
+			name   => $owner_data->{owner_name},
+			owners => $owner_count, 
 		}});
 		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
 					row_class	=>	"highlight_warning",
@@ -1163,7 +1274,99 @@ WHERE
 				row_class	=>	"highlight_good_bold",
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "message_0395", variables => { owner => $anvil_data->{owner_name} }}),
+				message_body	=>	$an->String->get({key => "message_0395", variables => { owner => $owner_data->{owner_name} }}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
+# This deletes an smtp server.
+sub delete_smtp
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $smtp_data      = $an->Get->smtp_data({uuid => $an->data->{cgi}{smtp_uuid}});
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    smtp 
+SET 
+    smtp_note = 'DELETED' 
+WHERE 
+    smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    smtp 
+WHERE 
+    smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
+;";
+	
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    smtp 
+WHERE 
+    smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{smtp_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $smtp_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "smtp_count", value1 => $smtp_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($smtp_count)
+	{
+		# Zoot alore!
+		my $error_message = $an->String->get({key => "message_0441", variables => { 
+			smtp   => $smtp_data->{smtp_server},
+			server => $smtp_count, 
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All gone
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0453", variables => { smtp => $smtp_data->{smtp_server} }}),
 			}});
 	}
 	
@@ -1286,6 +1489,351 @@ WHERE
 	}
 	
 	return($notice_message);
+}
+
+# This handles the configuration of SMTP servers.
+sub smtp_menu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "smtp_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Add an "Advanced" button to expose all the remaining form fields
+	# Is the user asking to save changes?
+	my $notice_message = "";
+	my $error_fields   = [];
+	my $refresh_link   = $an->data->{sys}{cgi_string};
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{smtp_uuid}))
+	{
+		# Has the user confirmed?
+		if ($an->data->{cgi}{confirm})
+		{
+			# Baleted!
+			$notice_message = delete_smtp($an);
+		}
+		else
+		{
+			# Ask them to confirm
+			$notice_message = confirm_action($an, "delete_smtp");
+		}
+		
+		
+		# Clear the commands from the refresh link.
+		$refresh_link =~ s/confirm=.*?&/&/;
+		$refresh_link =~ s/confirm=.*//;
+		$refresh_link =~ s/delete=.*?&/&/;
+		$refresh_link =~ s/delete=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	if ($an->data->{cgi}{save})
+	{
+		# Save, if something changed.
+		($notice_message, $error_fields) = save_smtp_form($an);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+		$refresh_link =~ s/save=.*?&/&/;
+		$refresh_link =~ s/save=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	# Load information from the databases, then we'll tease out data if 'load' was set.
+	my $anvils = $an->ScanCore->get_anvils();
+	my $smtp   = $an->ScanCore->get_smtp();
+	
+	# Load a specific Owner, if requested.
+	if ($an->data->{cgi}{load_smtp})
+	{
+		load_smtp_form($an, $smtp, $an->data->{cgi}{smtp_uuid});
+	}
+	
+	# Create a list of existing smtp.
+	my $width      = 300;
+	my $menu_items = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"&nbsp;",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	# Get a list of existing SMTP servers, if any.
+	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $smtp_explain = "#!string!explain_0178!#";
+	my $smtp_row     = "&nbsp;";	# Actually the 'Load' button
+	my $smtp_url     = "&nbsp;";	# Actually the 'delete' button
+	if (@{$smtp} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		$smtp_explain = "#!string!explain_0192!#";
+		$smtp_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_smtp",
+			id	=>	"load_smtp",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		$smtp_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"delete",
+			id	=>	"delete",
+			value	=>	"#!string!row_0068!#",
+		}, no_comment => 1});
+		
+		# Disable the 'Delete' button if this SMTP server is being used by any Anvil! systems.
+		foreach my $hash_ref (@{$anvils})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->anvil_smtp_uuid", value1 => $hash_ref->{anvil_smtp_uuid},
+				name2 => "cgi::smtp_uuid",            value2 => $an->data->{cgi}{smtp_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{anvil_smtp_uuid} eq $an->data->{cgi}{smtp_uuid})
+			{
+				# Disable it.
+				$smtp_url =~ s/<input (.*?)>/<input $1 disabled>/;
+				$smtp_url =~ s/class="(.*?)"/class="bold_button_disabled"/;
+			}
+		}
+		
+		my $options = [];
+		foreach my $hash_ref (@{$smtp})
+		{
+			my $smtp_uuid   = $hash_ref->{smtp_uuid};
+			my $smtp_server = $hash_ref->{smtp_server};
+			my $this_option = $smtp_uuid."#!#".$smtp_server;
+			push @{$options}, $this_option;
+		}
+		$smtp_select = $an->Web->build_select({
+			name     => "smtp_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{smtp_uuid},
+			width    => ($width + 10),
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$smtp_row",
+			column2_class	=>	"input_select",
+			column2		=>	$smtp_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$smtp_explain,
+			column4_class	=>	"",
+			column4		=>	"$smtp_url",
+		}});
+	
+	# Set defaults, if the user didn't try to save (we don't want to put something into a field they 
+	# blanked on purpose).
+	if (not $an->data->{cgi}{save})
+	{
+		if (not $an->data->{cgi}{smtp_server})         { $an->data->{cgi}{smtp_server}         = "mail.".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_username})       { $an->data->{cgi}{smtp_username}       = "admin\@".$an->domain_name(); }
+		if (not $an->data->{cgi}{smtp_security})       { $an->data->{cgi}{smtp_security}       = "starttls"; }
+		if (not $an->data->{cgi}{smtp_authentication}) { $an->data->{cgi}{smtp_authentication} = "encrypted"; }
+	}
+	
+	# SMTP Server
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0250!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_server\" id=\"smtp_server\" value=\"".$an->data->{cgi}{smtp_server}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0184!#",
+			column4_class	=>	"input_url",
+			column4		=>	$an->Web->more_info_link({url => "#!string!url_0002!#"}),
+		}});
+	
+	# SMTP user name
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0301!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_username\" id=\"smtp_username\" value=\"".$an->data->{cgi}{smtp_username}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0186!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# SMTP password
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0302!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"smtp_password\" id=\"smtp_password\" value=\"".$an->data->{cgi}{smtp_password}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0187!#<br />#!string!explain_0180!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	
+	# Authentication select box.
+	my $authentication_select = $an->Web->build_select({
+		name     => "smtp_authentication", 
+		options  => [
+			"none#!##!string!select_0004!#",
+			"plain_text#!##!string!select_0005!#",
+			"encrypted#!##!string!select_0006!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{smtp_authentication},
+		width    => ($width + 10),
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0303!#",
+			column2_class	=>	"input_select",
+			column2		=>	$authentication_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0188!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# SMTP Security selection box.
+	my $security_select = $an->Web->build_select({
+		name     => "smtp_security", 
+		options  => [
+			"none#!##!string!select_0001!#",
+			"tls_ssl#!##!string!select_0002!#",
+			"starttls#!##!string!select_0003!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{smtp_security},
+		width    => ($width + 10),
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0304!#",
+			column2_class	=>	"input_select",
+			column2		=>	$security_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0189!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Create the text field for the 'smtp -> smtp_note'
+	my $textarea = $an->Web->template({file => "web.html", template => "textarea_input", replace => { 
+		name	=>	"smtp_note",
+		id	=>	"smtp_note",
+		value	=>	$an->data->{cgi}{smtp_note},
+	}, no_comment => 1});; 
+	$menu_items .= $an->Web->template({file => "web.html", template => "textarea-4column-menu-entry", replace => {
+			row_class	=>	"highlight_row_bold",
+			row_body	=>	"#!string!row_0032!#",
+			message_class	=>	"input_select",
+			message_body	=>	"#!string!explain_0195!#",
+			textarea	=>	$textarea,
+			url_class	=>	"",
+			url_body	=>	"",
+		}});
+	
+	# Print the list of currently owned Anvil! systems.
+	if (($an->data->{cgi}{smtp_uuid}) && (@{$anvils} > 0))
+	{
+		my $break_printed = 0;
+		foreach my $hash_ref (@{$anvils})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->anvil_smtp_uuid", value1 => $hash_ref->{anvil_smtp_uuid},
+				name2 => "cgi::smtp_uuid",            value2 => $an->data->{cgi}{smtp_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{anvil_smtp_uuid} eq $an->data->{cgi}{smtp_uuid})
+			{
+				my $anvil_uuid        = $hash_ref->{anvil_uuid};
+				my $anvil_name        = $hash_ref->{anvil_name};
+				my $anvil_description = $hash_ref->{anvil_description};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
+					name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
+					name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (not $break_printed)
+				{
+					$break_printed = 1;
+					$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+							message	=>	"#!string!header_0024!#",
+							class	=>	"breaker_header",
+							colspan	=>	4,
+						}});
+				}
+				my $edit_url = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+						name	=>	"configure_".$anvil_name,
+						id	=>	"configure_".$anvil_name,
+						value	=>	"#!string!button_0077!#",
+						url	=>	"?task=anvil&anvil_uuid=".$anvil_uuid."&load_anvil=true",
+					}, no_comment => 1});
+				
+				$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+						column1_class	=>	"highlight_row_bold",
+						column1		=>	"&nbsp;",
+						column2_class	=>	"highlight_detail",
+						column2		=>	"$anvil_name",
+						column3_class	=>	"input_explain",
+						column3		=>	"$anvil_description",
+						column4_class	=>	"",
+						column4		=>	"$edit_url",
+					}});
+			}
+		}
+	}
+	
+	# Hidden fields now  
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	$an->data->{cgi}{task},
+		}});
+	
+	# The 'Save' button
+	my $save_button = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+		name	=>	"save",
+		id	=>	"save",
+		value	=>	"#!string!button_0045!#",
+	}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	$save_button,
+			class	=>	"",
+			colspan	=>	4,
+		}});
+	
+	# Put the menu template together
+	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
+			title		=>	"#!string!title_0199!#",
+			menu_items	=>	$menu_items,
+		}});
+	# Wrap it in a <form>
+	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
+	
+	# Put together the page's frame...
+	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
+			back		=>	"<a href=\"?\">$back_image</a>",
+			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+		}});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
+	
+	# Print it!
+	print $an->Web->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				notices		=>	$notice_message,
+				body		=>	$menu, 
+				footer		=>	$footer, 
+			},
+		});
+	
+	return(0);
 }
 
 # This handles the configuration of Anvil! owners.
@@ -1753,8 +2301,8 @@ sub anvil_menu
 		foreach my $hash_ref (@{$smtp})
 		{
 			my $smtp_uuid  = $hash_ref->{smtp_uuid};
-			my $smtp_name  = $hash_ref->{smtp_server};
-			my $this_option = $smtp_uuid."#!#".$smtp_name;
+			my $smtp_server  = $hash_ref->{smtp_server};
+			my $this_option = $smtp_uuid."#!#".$smtp_server;
 			push @{$options}, $this_option;
 		}
 		$smtp_select = $an->Web->build_select({

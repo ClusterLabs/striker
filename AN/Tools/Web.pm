@@ -536,7 +536,7 @@ sub insert_or_update_owners
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	# If we don't have a UUID, see if we can find one for the given SMTP server name.
+	# If we don't have a UUID, see if we can find one for the given owner server name.
 	if (not $owner_uuid)
 	{
 		my $query = "
@@ -656,6 +656,7 @@ sub insert_or_update_smtp
 	my $smtp_security       = $parameter->{smtp_security}       ? $parameter->{smtp_security}       : "";
 	my $smtp_authentication = $parameter->{smtp_authentication} ? $parameter->{smtp_authentication} : "";
 	my $smtp_helo_domain    = $parameter->{smtp_helo_domain}    ? $parameter->{smtp_helo_domain}    : "";
+	my $smtp_note           = $parameter->{smtp_note}           ? $parameter->{smtp_note}           : "";
 	if (not $smtp_server)
 	{
 		# Throw an error and exit.
@@ -709,6 +710,7 @@ INSERT INTO
     smtp_security, 
     smtp_authentication, 
     smtp_helo_domain, 
+    smtp_note, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid).", 
@@ -719,6 +721,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($smtp_security).", 
     ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
     ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
+    ".$an->data->{sys}{use_db_fh}->quote($smtp_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
@@ -736,7 +739,8 @@ SELECT
     smtp_password, 
     smtp_security, 
     smtp_authentication, 
-    smtp_helo_domain 
+    smtp_helo_domain, 
+    smtp_note  
 FROM 
     smtp 
 WHERE 
@@ -761,7 +765,8 @@ WHERE
 			my $old_smtp_security       = $row->[4];
 			my $old_smtp_authentication = $row->[5];
 			my $old_smtp_helo_domain    = $row->[6] ? $row->[6] : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			my $old_smtp_note           = $row->[7] ? $row->[7] : "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "old_smtp_server",         value1 => $old_smtp_server, 
 				name2 => "old_smtp_port",           value2 => $old_smtp_port, 
 				name3 => "old_smtp_username",       value3 => $old_smtp_username, 
@@ -769,6 +774,7 @@ WHERE
 				name5 => "old_smtp_security",       value5 => $old_smtp_security, 
 				name6 => "old_smtp_authentication", value6 => $old_smtp_authentication, 
 				name7 => "old_smtp_helo_domain",    value7 => $old_smtp_helo_domain, 
+				name8 => "old_smtp_note",           value8 => $old_smtp_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Anything change?
@@ -778,6 +784,7 @@ WHERE
 			    ($old_smtp_password       ne $smtp_password)       or 
 			    ($old_smtp_security       ne $smtp_security)       or 
 			    ($old_smtp_authentication ne $smtp_authentication) or 
+			    ($old_smtp_note           ne $smtp_note)           or
 			    ($old_smtp_helo_domain    ne $smtp_helo_domain))
 			{
 				# Something changed, save.
@@ -792,6 +799,7 @@ SET
     smtp_security       = ".$an->data->{sys}{use_db_fh}->quote($smtp_security).", 
     smtp_authentication = ".$an->data->{sys}{use_db_fh}->quote($smtp_authentication).", 
     smtp_helo_domain    = ".$an->data->{sys}{use_db_fh}->quote($smtp_helo_domain).", 
+    smtp_note           = ".$an->data->{sys}{use_db_fh}->quote($smtp_note).", 
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     smtp_uuid           = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 

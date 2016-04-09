@@ -410,6 +410,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0192"><![CDATA[You can select an sending outgoing (smtp) mail servers and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to the list.]]></key>
 		<key name="explain_0193">A place for you to keep any notes you wish about this owner.</key>
 		<key name="explain_0194">Enter the name of a company, group or person to to use as an #!string!brand_0003!# owner.</key>
+		<key name="explain_0195">A place for you to keep any notes you wish about this SMTP server.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -821,6 +822,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0021">These fields tell the system where to find, how to access what to do with alerts</key>
 		<key name="header_0022"><![CDATA[These fields tell #!string!brand_0015!# how to send email alerts. This section is very similar to setting up an email client's 'sending' mail server.]]></key>
 		<key name="header_0023"><![CDATA[These #!string!brand_0003!# systems are currently owned by this owner.]]></key>
+		<key name="header_0024"><![CDATA[These #!string!brand_0003!# systems currently using this SMTP server to send alerts.]]></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -1362,6 +1364,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0196">Action completed</key>
 		<key name="title_0197">Action failed</key>
 		<key name="title_0198">Add, edit or delete an #!string!brand_0003!# owner.</key>
+		<key name="title_0199">Add, edit or delete an outgoing (SMTP) mail server used to send #!string!brand_0003!# alerts.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1776,7 +1779,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0393"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!owner!#</span>] owner failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!owners!#</span>] owner(s) remained.]]></key>
 		<key name="message_0394"><![CDATA[I tried to create the DRBD meta-data on node: [<span class="fixed_width">#!variable!node!#</span>]'s partition: [<span class="fixed_width">#!variable!partition!#</span>], but it appears to have failed.]]></key>
 		<key name="message_0395"><![CDATA[The: [<span class="highlight_detail">#!variable!owner!#</span>] owner has been deleted.]]></key>
-		<key name="message_0396">...free...</key>
+		<key name="message_0396"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!smtp!#</span>] outgoing (SMTP) mail server?]]></key>
 		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
 		<key name="message_0398"><![CDATA[Configuration of DRBD (the replicated storage used in the #!string!brand_0003!#) failed.<br />Proceeding would could put existing data at risk!]]></key>
 		<key name="message_0399"><![CDATA[Resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>] is diskless.<br />]]></key>
@@ -1821,7 +1824,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0438"><![CDATA[The provision script: [#!variable!provision_script!#] appears to be incomplete.<br />The error message received when trying to run it was:<br /><span class="highlight_detail">#!variable!error!#</span><br />#!string!brand_0014!#]]></key>
 		<key name="message_0439"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_good_bold">Power will be restored after approximately: [<span class="highlight_detail">#!conf!sys::apc::reboot::sleep_time!# seconds</span>].</span><br /><br />If properly configured, the system should power back up automatically.<br /><br />Is this really what you want to do?]]></key>
 		<key name="message_0440"><![CDATA[The entire: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# will be stopped and powered down!<br />All servers will be gracefully shut down in series, then both nodes will withdraw and power off!<br /><br /><span class="highlight_dangerous_bold">Both UPSes will cease providing power approximately: [<span class="highlight_detail">#!conf!sys::apc::shutdown::power_off_delay!# seconds</span>] after the last node powers down!</span><br /><br /><span class="highlight_warning_bold">Power will remain off until a human restores power!</span><br /><br />Is this really what you want to do?]]></key>
-		<key name="message_0441">...free...</key>
+		<key name="message_0441"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!smtp!#</span>] SMTP server failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!servers!#</span>] server(s) remained.]]></key>
 		<key name="message_0442"><![CDATA[Timed commands are generally commands that do something dramatic, like powering off nodes or servers.<br />To help prevent against accidents caused by reloading an old URL, these risky commands are only valid for: <span class="highlight_detail">#!conf!sys::actime_timeout!#</span>] seconds.<br />Please go back and re-issue the request again, if you still want to perform this action.]]></key>
 		<key name="message_0443"><![CDATA[The request to cold-stop the [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!# has timed out.]]></key>
 		<key name="message_0444"><![CDATA[The request to shut down the [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
@@ -1833,6 +1836,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0450"><![CDATA[There was a problem connecting the resource: [<span class="highlight_detail">#!variable!resource!#</span>] on node: [<span class="highlight_detail">#!variable!node!#</span>].<br />Please check the logs for details on the problem.<br />]]></key>
 		<key name="message_0451"><![CDATA[The #!string!brand_0004!#: [<span class="highlight_detail">#!variable!anvil!#</span>] was deleted.]]></key>
 		<key name="message_0452">seconds after:</key> <!-- This is used between the 'boot delay' and 'boot after' select box. -->
+		<key name="message_0453"><![CDATA[The: [<span class="highlight_detail">#!variable!smtp!#</span>] SMTP server has been deleted.]]></key>
 		
 		<!-- Configuration variable descriptions -->
 		<key name="config_title_0001">Owner Name</key>

@@ -190,6 +190,105 @@ WHERE
 	return($return);
 }
 
+# This returns data about the given SMTP server (taking either the server name or its UUID)
+sub smtp_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return      = {};
+	my $smtp_server = $parameter->{server} ? $parameter->{server} : "";
+	my $smtp_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "smtp_server", value1 => $smtp_server, 
+		name2 => "smtp_uuid",   value2 => $smtp_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $smtp_server) && (not $smtp_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0086", code => 86, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    smtp_uuid, 
+    smtp_server, 
+    smtp_port, 
+    smtp_username, 
+    smtp_password, 
+    smtp_security, 
+    smtp_authentication, 
+    smtp_helo_domain, 
+    smtp_note, 
+    modified_date 
+FROM 
+    smtp 
+WHERE 
+";
+	if ($smtp_uuid)
+	{
+		$query .= "smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid);
+	}
+	else
+	{
+		$query .= "smtp_server = ".$an->data->{sys}{use_db_fh}->quote($smtp_server);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $smtp_uuid           = $row->[0];
+		my $smtp_server         = $row->[1];
+		my $smtp_port           = $row->[2];
+		my $smtp_username       = $row->[3] ? $row->[3] : "NULL";
+		my $smtp_password       = $row->[4] ? $row->[4] : "NULL";
+		my $smtp_security       = $row->[5];
+		my $smtp_authentication = $row->[6];
+		my $smtp_helo_domain    = $row->[7] ? $row->[7] : "NULL";
+		my $smtp_note           = $row->[8] ? $row->[8] : "NULL";
+		my $modified_date       = $row->[9];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
+			name2  => "smtp_server",         value2  => $smtp_server, 
+			name3  => "smtp_port",           value3  => $smtp_port, 
+			name4  => "smtp_username",       value4  => $smtp_username, 
+			name5  => "smtp_password",       value5  => $smtp_password, 
+			name6  => "smtp_security",       value6  => $smtp_security, 
+			name7  => "smtp_authentication", value7  => $smtp_authentication, 
+			name8  => "smtp_helo_domain",    value8  => $smtp_helo_domain, 
+			name9  => "smtp_note",           value9  => $smtp_note, 
+			name10 => "modified_date",       value10 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			smtp_uuid		=>	$smtp_uuid,
+			smtp_server		=>	$smtp_server, 
+			smtp_port		=>	$smtp_port, 
+			smtp_username		=>	$smtp_username, 
+			smtp_password		=>	$smtp_password, 
+			smtp_security		=>	$smtp_security, 
+			smtp_authentication	=>	$smtp_authentication, 
+			smtp_helo_domain	=>	$smtp_helo_domain, 
+			smtp_note		=>	$smtp_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # This returns data about the given Anvil! (taking either the Anvil! name or its UUID)
 sub anvil_data
 {
