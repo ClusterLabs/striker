@@ -115,7 +115,82 @@ sub local_users
 	return($users);
 }
 
-# This returns data about the given Anvil! (taking either the Anvil! name or it's UUID)
+# This returns data about the given Anvil! owner (taking either the owner name or its UUID)
+sub owner_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return     = {};
+	my $owner_name = $parameter->{name} ? $parameter->{name} : "";
+	my $owner_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "owner_name", value1 => $owner_name, 
+		name2 => "owner_uuid", value2 => $owner_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $owner_name) && (not $owner_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0085", code => 85, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    owner_uuid, 
+    owner_name, 
+    owner_note, 
+    modified_date 
+FROM 
+    owners 
+WHERE 
+";
+	if ($owner_uuid)
+	{
+		$query .= "owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid);
+	}
+	else
+	{
+		$query .= "owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $owner_uuid    = $row->[0];
+		my $owner_name    = $row->[1];
+		my $owner_note    = $row->[2] ? $row->[2] : "NULL";
+		my $modified_date = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "owner_uuid",    value1 => $owner_uuid, 
+			name2 => "owner_name",    value2 => $owner_name, 
+			name3 => "owner_note",    value3 => $owner_note, 
+			name4 => "modified_date", value4 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			owner_uuid		=>	$owner_uuid,
+			owner_name		=>	$owner_name, 
+			owner_note		=>	$owner_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# This returns data about the given Anvil! (taking either the Anvil! name or its UUID)
 sub anvil_data
 {
 	my $self      = shift;

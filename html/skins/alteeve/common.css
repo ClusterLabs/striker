@@ -74,6 +74,13 @@ td {
 /* 	border-color: 1px solid red; */
 }
 
+.textarea_large {
+	width: 600px;
+	height: 120px;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
+}
+
 .legal {
 	font-size: 9px;
 	text-align: center;
@@ -130,7 +137,7 @@ td {
 
 .breaker_header {
 	text-align: left;
-	color: #13749a;
+	color: #3333cc;
 }
 
 .highlight_row_bold {
@@ -278,6 +285,16 @@ td {
 	background: transparent;
 	cursor: pointer;
 	color: #7f117f;
+	border: 0px;
+	font-weight: bold;
+}
+
+.bold_button_disabled {
+	font-family: 'Dejavu Sans', Arial, Helvetica, Verdana, Sans-Serif;
+	font-size: 14px;
+	background: transparent;
+	cursor: pointer;
+	color: #7f7f7f;
 	border: 0px;
 	font-weight: bold;
 }

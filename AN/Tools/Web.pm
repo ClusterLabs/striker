@@ -529,6 +529,7 @@ sub insert_or_update_owners
 	
 	my $owner_uuid = $parameter->{owner_uuid} ? $parameter->{owner_uuid} : "";
 	my $owner_name = $parameter->{owner_name} ? $parameter->{owner_name} : "";
+	my $owner_note = $parameter->{owner_note} ? $parameter->{owner_note} : "NULL";
 	if (not $owner_name)
 	{
 		# Throw an error and exit.
@@ -576,10 +577,12 @@ INSERT INTO
 (
     owner_uuid, 
     owner_name, 
+    owner_note, 
     modified_date 
 ) VALUES (
     ".$an->data->{sys}{use_db_fh}->quote($owner_uuid).", 
     ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );
 ";
@@ -591,7 +594,8 @@ INSERT INTO
 		# Query the rest of the values and see if anything changed.
 		my $query = "
 SELECT 
-    owner_name 
+    owner_name, 
+    owner_note 
 FROM 
     owners 
 WHERE 
@@ -623,6 +627,7 @@ UPDATE
     owners 
 SET 
     owner_name    = ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    owner_note    = ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
     modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     owner_uuid    = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 

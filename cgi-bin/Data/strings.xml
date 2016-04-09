@@ -81,6 +81,7 @@
 		<key name="button_0074">Create a Backup</key>
 		<key name="button_0075">Load a Backup</key>
 		<key name="button_0076">#!string!brand_0015!# Databases</key>
+		<key name="button_0077">Edit</key>
 		
 		<!-- Branding strings - Most likely to be changed by a reseller. -->
 		<key name="brand_0001">Alteeve's Niche!</key>
@@ -387,7 +388,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
 		<key name="explain_0171">Create a backup of this #!string!brand_0020!#.</key>
 		<key name="explain_0172">Load a backup file on to this #!string!brand_0020!#.</key>
-		<key name="explain_0173">Add, edit or remove the available #!variable!brand_0015!# databases to synchronize with.</key>
+		<key name="explain_0173">Add, edit or remove the available #!string!brand_0015!# databases to synchronize with.</key>
 		<key name="explain_0174">There are no existing #!string!brand_0003!# systems yet.</key>
 		<key name="explain_0175">There are no existing owners yet.</key>
 		<key name="explain_0176">Enter the name of the company, group or person who owns this #!string!brand_0003!# system.</key>
@@ -396,17 +397,19 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0179">A short (one line) description which is shown in the #!string!brand_0003!# selection list.</key>
 		<key name="explain_0180"><![CDATA[<span class="highlight_note_bold">Note</span>: The password here will be displayed back to you.]]></key>
 		<key name="explain_0181">This is the password used to connect to and control the #!string!brand_0003!#.</key>
-		<key name="explain_0182"><![CDATA[The address (name or ip) of node 1. If you need to use a non-standard port, use '<span class="highlight_detail">address:port</span>'.]]></key>
+		<key name="explain_0182"><![CDATA[The address (name or ip) of node 1.<br />If you need to use a non-standard port, use '<span class="highlight_detail">address:port</span>'.]]></key>
 		<key name="explain_0183"><![CDATA[The same for node 2.]]></key>
-		<key name="explain_0184"><![CDATA[This is the email server that #!variable!brand_0015!# will use to send alerts. If you use a non-standard port,<br />use '<span class="highlight_detail">address:port</span>'. The default port will depend on the connection security being used.<br />The defaults are <span class="highlight_detail">587</span> for '#!string!select_0003!#', <span class="highlight_detail">465</span> for '#!string!select_0002!#' and <span class="highlight_detail">25</span> for '#!string!select_0001!#.<br />]]></key>
+		<key name="explain_0184"><![CDATA[This is the email server that #!string!brand_0015!# will use to send alerts. If you use a non-standard port,<br />use '<span class="highlight_detail">address:port</span>'. The default port will depend on the connection security being<br />used. The defaults are <span class="highlight_detail">587</span> for '#!string!select_0003!#', <span class="highlight_detail">465</span> for '#!string!select_0002!#' and <span class="highlight_detail">25</span> for '#!string!select_0001!#.<br />]]></key>
 		<key name="explain_0185"><![CDATA[This is the "TCP" port number used when connecting to the outgoing mail server.]]></key>
 		<key name="explain_0186"><![CDATA[This is the name to use when logging into your outgoing mail server.<br />It is usually, but not always, your email address.]]></key>
 		<key name="explain_0187"><![CDATA[This is the password to use along with the login name above.<br />Leave it blank if 'Password Security' is set to 'No Password'.]]></key>
 		<key name="explain_0188"><![CDATA[This indicates how the password is presented to the server.]]></key>
 		<key name="explain_0189"><![CDATA[This controls the security used when communicating with the outgoing mail server.]]></key>
-		<key name="explain_0190">Select an existing #!string!brand_0003!# and click on '#!string!button_0048!#' to edit it.</key>
-		<key name="explain_0191"><![CDATA[You can select an existing user, or enter a new one below and it will be added to the list.]]></key>
-		<key name="explain_0192"><![CDATA[You can select an sending outgoing (smtp) mail servers or enter a new one below and it<br />will be added to the list.]]></key>
+		<key name="explain_0190"><![CDATA[Select an existing #!string!brand_0003!# and click on '#!string!button_0048!#' to edit it.<br />Leave it blank to add a new #!string!brand_0003!#. Click on '#!string!row_0068!#' to remove the selected system.]]></key>
+		<key name="explain_0191"><![CDATA[You can select an existing owner and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to this list.]]></key>
+		<key name="explain_0192"><![CDATA[You can select an sending outgoing (smtp) mail servers and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to the list.]]></key>
+		<key name="explain_0193">A place for you to keep any notes you wish about this owner.</key>
+		<key name="explain_0194">Enter the name of a company, group or person to to use as an #!string!brand_0003!# owner.</key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -508,7 +511,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0020">Problems Found</key>
 		<key name="row_0021">Description</key>
 		<key name="row_0022">Tracking URL</key>
-		<key name="row_0023">Owner</key>
+		<key name="row_0023">Owner Name</key>
 		<key name="row_0024">No Change</key>
 		<key name="row_0025">Password</key>
 		<key name="row_0026">Mail Settings</key>
@@ -792,6 +795,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0304">Connection Security</key>
 		<key name="row_0305">Form Error</key>
 		<key name="row_0306">Confirm Delete</key>
+		<key name="row_0307">Owns</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -815,7 +819,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="header_0019">Field</key>
 		<key name="header_0020">Select an existing item to use it again for this #!string!brand_0003!#</key>
 		<key name="header_0021">These fields tell the system where to find, how to access what to do with alerts</key>
-		<key name="header_0022"><![CDATA[These fields tell #!variable!brand_0015!# how to send email alerts. This section is very similar to setting up an email client's 'sending' mail server.]]></key>
+		<key name="header_0022"><![CDATA[These fields tell #!string!brand_0015!# how to send email alerts. This section is very similar to setting up an email client's 'sending' mail server.]]></key>
+		<key name="header_0023"><![CDATA[These #!string!brand_0003!# systems are currently owned by this owner.]]></key>
 		
 		<!-- These are strings used to describe devices -->
 		<key name="device_0001">Hard Drive</key>
@@ -1351,11 +1356,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0190">Warning</key>
 		<key name="title_0191">Configure #!string!brand_0020!# and Managed #!string!brand_0003!# Systems</key>
 		<key name="title_0192">Not access to #!string!brand_0015!# databases</key>
-		<key name="title_0193">Add, edit or delete an #!variable!brand_0003!#</key>
+		<key name="title_0193">Add, edit or delete an #!string!brand_0003!#</key>
 		<key name="title_0194">There were errors in the submitted form, changes not saved</key>
-		<key name="title_0195">Potentially dangerous action</key>
+		<key name="title_0195">Confirmation of deletion request required</key>
 		<key name="title_0196">Action completed</key>
 		<key name="title_0197">Action failed</key>
+		<key name="title_0198">Add, edit or delete an #!string!brand_0003!# owner.</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1748,7 +1754,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0371"><![CDATA[The connection information for node: [<span class="highlight_detail">#!variable!node!#</span>] appears to be incorrect.]]></key>
 		<key name="message_0372"><![CDATA[Installation has failed.]]></key>
 		<key name="message_0373"><![CDATA[Node: [<span class="fixed_width">#!variable!node!#</span>] has port: [<span class="fixed_width">#!variable!port!#</span>] set, which is invalid.]]></key>
-		<key name="message_0374"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#.]]></key>
+		<key name="message_0374"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#?]]></key>
 		<key name="message_0375"><![CDATA[The requested pool 1 size was: [<span class="highlight_detail">#!variable!say_requested_size!#</span>], but only: [<span class="highlight_detail">#!variable!say_new_size!#</span>] is available,<br />which is: [<span class="highlight_detail">#!variable!say_difference!#</span>] less than requested.<br />The pool was reduced to fit and pool 2 <b>not</b> will be created.]]></key>
 		<key name="message_0376"><![CDATA[Updated: [<span class="highlight_detail">#!conf!cgi::run!#</span>]<br />The new MAC address mapping has been recorded.]]></key>
 		<key name="message_0377">Saved.</key>
@@ -1766,10 +1772,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0389"><![CDATA[I was asked to create a partition, but I couldn't determine where the free space started and ended.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], partition size: [<span class="fixed_width">#!variable!size!#</span>], shell call: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0390"><![CDATA[An error was received while trying to create a partition.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], start: [<span class="fixed_width">#!variable!start!#</span>], end: [<span class="fixed_width">#!variable!end!#</span>]<br />Error: [<span class="fixed_width">#!variable!shell_call!#</span>].]]></key>
 		<key name="message_0391"><![CDATA[I was asked to create a partition, but I had to shrink the partition's end size to make it fit.<br />Node: [<span class="fixed_width">#!variable!node!#</span>], disk: [<span class="fixed_width">#!variable!disk!#</span>], partition type: [<span class="fixed_width">#!variable!type!#</span>], original end: [<span class="fixed_width">#!variable!old_end!#</span>], new end: [<span class="fixed_width">#!variable!new_end!#</span>].]]></key>
-		<key name="message_0392">...free...</key>
-		<key name="message_0393">...free...</key>
+		<key name="message_0392"><![CDATA[Are you certain that you want to delete the: [<span class="highlight_detail">#!variable!owner!#</span>] owner?]]></key>
+		<key name="message_0393"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!owner!#</span>] owner failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!owners!#</span>] owner(s) remained.]]></key>
 		<key name="message_0394"><![CDATA[I tried to create the DRBD meta-data on node: [<span class="fixed_width">#!variable!node!#</span>]'s partition: [<span class="fixed_width">#!variable!partition!#</span>], but it appears to have failed.]]></key>
-		<key name="message_0395">...free...</key>
+		<key name="message_0395"><![CDATA[The: [<span class="highlight_detail">#!variable!owner!#</span>] owner has been deleted.]]></key>
 		<key name="message_0396">...free...</key>
 		<key name="message_0397"><![CDATA[There was a problem while trying to plan out the storage pool partitions and neither were detected or planned for.<br />Please check the #!string!brand_0002!# logs for more information.]]></key>
 		<key name="message_0398"><![CDATA[Configuration of DRBD (the replicated storage used in the #!string!brand_0003!#) failed.<br />Proceeding would could put existing data at risk!]]></key>
