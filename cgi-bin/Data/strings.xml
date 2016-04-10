@@ -76,8 +76,8 @@
 		<key name="button_0069">#!string!brand_0003!# Systems</key>
 		<key name="button_0070">Owners</key>
 		<key name="button_0071">Mail Servers</key>
-		<key name="button_0072">Alert Recipients</key>
-		<key name="button_0073">Alert Log Files</key>
+		<key name="button_0072">Notifications</key>
+		<key name="button_0073">...free...</key>
 		<key name="button_0074">Create a Backup</key>
 		<key name="button_0075">Load a Backup</key>
 		<key name="button_0076">#!string!brand_0015!# Databases</key>
@@ -320,7 +320,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0102"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number).]]></key>
 		<key name="explain_0103"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0104"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid IP address.<br />Please enter the value as an <a href="http://en.wikipedia.org/wiki/IPv4" target="_new">IPv4</a> address in the format "<span class="code">a.b.c.d</span>".]]></key>
-		<key name="explain_0105">Add, edit and remove email alert recipients.</key>
+		<key name="explain_0105">Add, edit and remove alert notification targets.</key>
 		<key name="explain_0106"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" value can not be empty.]]></key>
 		<key name="explain_0107"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" does not appear to be a valid <a href="https://en.wikipedia.org/wiki/Domain_name" target="_new">domain name</a>.]]></key>
 		<key name="explain_0108"><![CDATA[<span class="">#!variable!node!#</span>'s "<span class="highlight_good_bold"">#!variable!field!#</span>" must be the number of the outlet that the node's <a href="http://en.wikipedia.org/wiki/Power_supply_unit_%28computer%29" target="_new">PSU</a> is plugged into.]]></key>
@@ -407,10 +407,14 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0189"><![CDATA[This controls the security used when communicating with the outgoing mail server.]]></key>
 		<key name="explain_0190"><![CDATA[Select an existing #!string!brand_0003!# and click on '#!string!button_0048!#' to edit it.<br />Leave it blank to add a new #!string!brand_0003!#. Click on '#!string!row_0068!#' to remove the selected system.]]></key>
 		<key name="explain_0191"><![CDATA[You can select an existing owner and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to this list.]]></key>
-		<key name="explain_0192"><![CDATA[You can select an sending outgoing (smtp) mail servers and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to the list.]]></key>
+		<key name="explain_0192"><![CDATA[You can select an existing outgoing (smtp) mail servers and click '#!string!button_0048!#,<br />or enter a new one below and it will be added to the list.]]></key>
 		<key name="explain_0193">A place for you to keep any notes you wish about this owner.</key>
 		<key name="explain_0194">Enter the name of a company, group or person to to use as an #!string!brand_0003!# owner.</key>
 		<key name="explain_0195">A place for you to keep any notes you wish about this SMTP server.</key>
+		<key name="explain_0196">There are no existing notification recipients to send alerts to yet.</key>
+		<key name="explain_0197"><![CDATA[You can select an existing notification target to send '#!string!button_0048!# alerts to,<br />or enter a new one below and it will be added to the list.]]></key>
+		<key name="explain_0198"><![CDATA[When the name of the notification target. If the target is an email address, this is used in the 'To:' field.]]></key>
+		<key name="explain_0199"><![CDATA[This is the target of the alerts. This can be an email address or a file name.<br />If it is a file name, the alerts will go to <span class="highlight_detail">/var/log/</span>.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -772,7 +776,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0280">Booting Server</key>
 		<key name="row_0281">Adding</key>
 		<key name="row_0282">Boot Order</key>
-		<key name="row_0283">..free..</key>
+		<key name="row_0283">Alert Recipient</key>
 		<key name="row_0284">Host Name/IP</key>
 		<key name="row_0285">Cold-Stop #!string!brand_0003!# and...</key>
 		<key name="row_0286">Configuring #!string!brand_0015!# and #!string!brand_0020!# tools</key>
@@ -797,6 +801,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0305">Form Error</key>
 		<key name="row_0306">Confirm Delete</key>
 		<key name="row_0307">Owns</key>
+		<key name="row_0308">Alert Target</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>

@@ -56,6 +56,14 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 ### TODO: Move this list into AN::Tools.pm, same way we preset paths.
 ### TODO: Add all ScanCore column names as variables to check for automatically?
 $an->Web->get_cgi({variables => [
+	"notify_address",
+	"notify_auto_add", 
+	"notify_language",
+	"notify_level",
+	"notify_name",
+	"notify_note", 
+	"notify_units", 
+	"notify_uuid",
 	"anvil", 
 	"anvil_description", 
 	"anvil_name", 
@@ -67,6 +75,7 @@ $an->Web->get_cgi({variables => [
 	"confirm", 
 	"delete", 
 	"load_anvil", 
+	"load_notify", 
 	"load_owner", 
 	"load_smtp", 
 	"node1_access", 
@@ -91,6 +100,11 @@ $an->Web->get_cgi({variables => [
 	"node2_remote_ip", 
 	"node2_remote_port", 
 	"node2_uuid", 
+	"recipient_uuid",
+	"recipient_anvil_uuid", 
+	"recipient_notify_uuid", 
+	"recipient_log_level", 
+	"recipient_note", 
 	"owner_name", 
 	"owner_note", 
 	"owner_uuid", 
@@ -156,13 +170,9 @@ sub process_task
 	{
 		smtp_menu($an);
 	}
-	elsif ($an->data->{cgi}{task} eq "email_alerts")
+	elsif ($an->data->{cgi}{task} eq "notify")
 	{
-		
-	}
-	elsif ($an->data->{cgi}{task} eq "file_alerts")
-	{
-		
+		notify_menu($an);
 	}
 	elsif ($an->data->{cgi}{task} eq "install_manifests")
 	{
@@ -193,6 +203,52 @@ sub process_task
 	else
 	{
 		# Catch all/error
+	}
+	
+	return(0);
+}
+
+# This uses a notify_uuid to load information about the associated notification target.
+sub load_notify_form
+{
+	my ($an, $notifications, $uuid) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_notify_form" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "uuid", value1 => $uuid,  
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($uuid)
+	{
+		foreach my $hash_ref (@{$notifications})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->notify_uuid", value1 => $hash_ref->{notify_uuid},
+				name2 => "uuid",                  value2 => $uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{notify_uuid} eq $uuid)
+			{
+				$an->data->{cgi}{notify_uuid}     = $hash_ref->{notify_uuid};
+				$an->data->{cgi}{notify_name}     = $hash_ref->{notify_name};
+				$an->data->{cgi}{notify_target}   = $hash_ref->{notify_target};
+				$an->data->{cgi}{notify_language} = $hash_ref->{notify_language};
+				$an->data->{cgi}{notify_level}    = $hash_ref->{notify_level};
+				$an->data->{cgi}{notify_units}    = $hash_ref->{notify_units};
+				$an->data->{cgi}{notify_auto_add} = $hash_ref->{notify_auto_add};
+				$an->data->{cgi}{notify_note}     = $hash_ref->{notify_note};
+				last;
+			}
+		}
+	}
+	else
+	{
+		# Blank the values
+		$an->data->{cgi}{notify_uuid}     = "";
+		$an->data->{cgi}{notify_name}     = "";
+		$an->data->{cgi}{notify_target}   = "";
+		$an->data->{cgi}{notify_language} = "";
+		$an->data->{cgi}{notify_level}    = "";
+		$an->data->{cgi}{notify_units}    = "";
+		$an->data->{cgi}{notify_auto_add} = "";
+		$an->data->{cgi}{notify_note}     = "";
 	}
 	
 	return(0);
@@ -1491,6 +1547,336 @@ WHERE
 	return($notice_message);
 }
 
+# This handles the management of notification recipients and what Anvil! systems they are listening to.
+sub notify_menu
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "notify_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Is the user asking to save changes?
+	my $notice_message = "";
+	my $error_fields   = [];
+	my $refresh_link   = $an->data->{sys}{cgi_string};
+	if (($an->data->{cgi}{'delete'}) && ($an->data->{cgi}{notify_uuid}))
+	{
+		# Has the user confirmed?
+		if ($an->data->{cgi}{confirm})
+		{
+			# Baleted!
+			$notice_message = delete_notify($an);
+		}
+		else
+		{
+			# Ask them to confirm
+			$notice_message = confirm_action($an, "delete_notify");
+		}
+		
+		# Clear the commands from the refresh link.
+		$refresh_link =~ s/confirm=.*?&/&/;
+		$refresh_link =~ s/confirm=.*//;
+		$refresh_link =~ s/delete=.*?&/&/;
+		$refresh_link =~ s/delete=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	if ($an->data->{cgi}{save})
+	{
+		# Save, if something changed.
+		($notice_message, $error_fields) = save_notify_form($an);
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$refresh_link =~ s/save=.*?&/&/;
+		$refresh_link =~ s/save=.*//;
+		$refresh_link =~ s/&&+/&/;
+	}
+	
+	# Load information from the databases, then we'll tease out data if 'load' was set.
+	my $anvils        = $an->ScanCore->get_anvils();
+	my $notifications = $an->ScanCore->get_notifications();
+	
+	# Load a specific notification target, if requested.
+	if ($an->data->{cgi}{load_notify})
+	{
+		load_notify_form($an, $notifications, $an->data->{cgi}{notify_uuid});
+	}
+	
+	# Create a list of existing smtp.
+	my $width      = 300;
+	my $menu_items = $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	"&nbsp;",
+			class	=>	"breaker_header",
+			colspan	=>	4,
+		}});
+	
+	# Get a list of existing notification targets, if any.
+	my $notify_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
+	my $notify_explain = "#!string!explain_0196!#";
+	my $notify_row     = "&nbsp;";	# Actually the 'Load' button
+	my $notify_url     = "&nbsp;";	# Actually the 'delete' button
+	if (@{notifications} > 0)
+	{
+		# Build an array to pass to 'build_select'
+		$notify_explain = "#!string!explain_0197!#";
+		$notify_row     = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"load_notify",
+			id	=>	"load_notify",
+			value	=>	"#!string!button_0048!#",
+		}, no_comment => 1});
+		$notify_url = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+			name	=>	"delete",
+			id	=>	"delete",
+			value	=>	"#!string!row_0068!#",
+		}, no_comment => 1});
+		
+		# NOTE: Deleting a notification target is always allowed because nothing depends on it. We'll
+		#       delete the associated recipients tables as needed.
+		
+		my $options = [];
+		foreach my $hash_ref (@{$notifications})
+		{
+			my $notify_uuid   = $hash_ref->{notify_uuid};
+			my $notify_server = $hash_ref->{notify_server};
+			my $this_option = $notify_uuid."#!#".$notify_server;
+			push @{$options}, $this_option;
+		}
+		$notify_select = $an->Web->build_select({
+			name     => "notify_uuid", 
+			options  => $options, 
+			blank    => 1,
+			selected => $an->data->{cgi}{notify_uuid},
+			width    => ($width + 10),
+		});
+	}
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"",
+			column1		=>	"$notify_row",
+			column2_class	=>	"input_select",
+			column2		=>	$notify_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$notify_explain,
+			column4_class	=>	"",
+			column4		=>	"$notify_url",
+		}});
+	
+	# Alert target (email address or log file)
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0308!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"notify_target\" id=\"notify_target\" value=\"".$an->data->{cgi}{notify_target}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0199!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Alert target name (To: field in email alerts)
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0283!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"notify_name\" id=\"notify_name\" value=\"".$an->data->{cgi}{notify_name}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0198!#",
+			column4_class	=>	"input_url",
+			column4		=>	"",
+		}});
+
+=pod
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_auto_add, 
+    notify_note, 
+=cut
+	
+	# SMTP password
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0302!#",
+			column2_class	=>	"input_select",
+			column2		=>	"<input type=\"text\" name=\"notify_password\" id=\"notify_password\" value=\"".$an->data->{cgi}{notify_password}."\" style=\"width: ${width}px;\">",
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0187!#<br />#!string!explain_0180!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	
+	# Authentication select box.
+	my $authentication_select = $an->Web->build_select({
+		name     => "notify_authentication", 
+		options  => [
+			"none#!##!string!select_0004!#",
+			"plain_text#!##!string!select_0005!#",
+			"encrypted#!##!string!select_0006!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{notify_authentication},
+		width    => ($width + 10),
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0303!#",
+			column2_class	=>	"input_select",
+			column2		=>	$authentication_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0188!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# SMTP Security selection box.
+	my $security_select = $an->Web->build_select({
+		name     => "notify_security", 
+		options  => [
+			"none#!##!string!select_0001!#",
+			"tls_ssl#!##!string!select_0002!#",
+			"starttls#!##!string!select_0003!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{notify_security},
+		width    => ($width + 10),
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0304!#",
+			column2_class	=>	"input_select",
+			column2		=>	$security_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0189!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Create the text field for the 'notify -> notify_note'
+	my $textarea = $an->Web->template({file => "web.html", template => "textarea_input", replace => { 
+		name	=>	"notify_note",
+		id	=>	"notify_note",
+		value	=>	$an->data->{cgi}{notify_note},
+	}, no_comment => 1});; 
+	$menu_items .= $an->Web->template({file => "web.html", template => "textarea-4column-menu-entry", replace => {
+			row_class	=>	"highlight_row_bold",
+			row_body	=>	"#!string!row_0032!#",
+			message_class	=>	"input_select",
+			message_body	=>	"#!string!explain_0195!#",
+			textarea	=>	$textarea,
+			url_class	=>	"",
+			url_body	=>	"",
+		}});
+	
+	# Print the list of currently owned Anvil! systems.
+	if (($an->data->{cgi}{notify_uuid}) && (@{$anvils} > 0))
+	{
+		my $break_printed = 0;
+		foreach my $hash_ref (@{$anvils})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "hash_ref->anvil_notify_uuid", value1 => $hash_ref->{anvil_notify_uuid},
+				name2 => "cgi::notify_uuid",            value2 => $an->data->{cgi}{notify_uuid},
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($hash_ref->{anvil_notify_uuid} eq $an->data->{cgi}{notify_uuid})
+			{
+				my $anvil_uuid        = $hash_ref->{anvil_uuid};
+				my $anvil_name        = $hash_ref->{anvil_name};
+				my $anvil_description = $hash_ref->{anvil_description};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
+					name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
+					name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if (not $break_printed)
+				{
+					$break_printed = 1;
+					$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+							message	=>	"#!string!header_0024!#",
+							class	=>	"breaker_header",
+							colspan	=>	4,
+						}});
+				}
+				my $edit_url = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+						name	=>	"configure_".$anvil_name,
+						id	=>	"configure_".$anvil_name,
+						value	=>	"#!string!button_0077!#",
+						url	=>	"?task=anvil&anvil_uuid=".$anvil_uuid."&load_anvil=true",
+					}, no_comment => 1});
+				
+				$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+						column1_class	=>	"highlight_row_bold",
+						column1		=>	"&nbsp;",
+						column2_class	=>	"highlight_detail",
+						column2		=>	"$anvil_name",
+						column3_class	=>	"input_explain",
+						column3		=>	"$anvil_description",
+						column4_class	=>	"",
+						column4		=>	"$edit_url",
+					}});
+			}
+		}
+	}
+	
+	# Hidden fields now  
+	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
+			name	=>	"task",
+			id	=>	"task",
+			value	=>	$an->data->{cgi}{task},
+		}});
+	
+	# The 'Save' button
+	my $save_button = $an->Web->template({file => "web.html", template => "button_input", replace => { 
+		name	=>	"save",
+		id	=>	"save",
+		value	=>	"#!string!button_0045!#",
+	}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+			message	=>	$save_button,
+			class	=>	"",
+			colspan	=>	4,
+		}});
+	
+	# Put the menu template together
+	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
+			title		=>	"#!string!title_0199!#",
+			menu_items	=>	$menu_items,
+		}});
+	# Wrap it in a <form>
+	$menu = $an->Web->template({file => "web.html", template => "form-wrapper", replace => { body => $menu }});
+	
+	# Put together the page's frame...
+	my $back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+			alt_text     => "#!string!button_0001!#",
+			id           => "back_icon",
+		}});
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
+	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
+			back		=>	"<a href=\"?\">$back_image</a>",
+			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+		}});
+	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
+	
+	# Print it!
+	print $an->Web->template({
+			file		=>	"configure.html",
+			template	=>	"configure-main-page",
+			replace		=>	{
+				header		=>	$header, 
+				notices		=>	$notice_message,
+				body		=>	$menu, 
+				footer		=>	$footer, 
+			},
+		});
+	
+	return(0);
+}
+
 # This handles the configuration of SMTP servers.
 sub smtp_menu
 {
@@ -1541,7 +1927,7 @@ sub smtp_menu
 	my $anvils = $an->ScanCore->get_anvils();
 	my $smtp   = $an->ScanCore->get_smtp();
 	
-	# Load a specific Owner, if requested.
+	# Load a specific SMTP server, if requested.
 	if ($an->data->{cgi}{load_smtp})
 	{
 		load_smtp_form($an, $smtp, $an->data->{cgi}{smtp_uuid});
@@ -2283,7 +2669,7 @@ sub anvil_menu
 			column4		=>	"&nbsp;",
 		}});
 	
-	# And now get a list of SMTP mail servers to send alerts through
+	# And now get a list of SMTP mail servers to send email alerts through
 	my $smtp_select  = $an->Web->template({file => "web.html", template => "disabled_input"});
 	my $smtp_explain = "#!string!explain_0178!#";
 	my $smtp_row     = "&nbsp;";	# Actually the 'Load' button
@@ -2621,20 +3007,13 @@ sub show_main_menu
 			url		=>	"",
 		}})."\n";
 	
-	### TODO: Load a given recipient and present all existing Anvil! systems with a list of the log level
-	###       they want receive alerts at for each system, with an 'Ignore' option to not get alerts at
-	###       all. Have an additional one to auto-set against new Anvil! systems.
+	### TODO: Load a given notification recipients and present all existing Anvil! systems with a list of
+	###       the log level they want receive alerts at for each system, with an 'Ignore' option to not 
+	###       get alerts at all. Have an additional one to auto-set against new Anvil! systems.
 	# Alert Recipient
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=email_alerts\" alt=\"#!string!button_0072!#\" id=\"task_email_alerts\">#!string!button_0072!#</a>",
+			button		=>	"<a href=\"?task=notify\" alt=\"#!string!button_0072!#\" id=\"task_notify\">#!string!button_0072!#</a>",
 			description	=>	"#!string!explain_0105!#",
-			url		=>	"",
-		}})."\n";
-	# Alert Files
-	#my $subtle_text =  $an->Web->template({file => "common.html", template => "subtle_text", replace => { string => "#!string!explain_0167!#" }});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=file_alerts\" alt=\"#!string!button_0073!#\" id=\"task_file_alerts\">#!string!button_0073!#</a>",
-			description	=>	"#!string!explain_0166!#<br />#!string!explain_0167!#",
 			url		=>	"",
 		}})."\n";
 		

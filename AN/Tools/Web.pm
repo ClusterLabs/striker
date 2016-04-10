@@ -520,6 +520,170 @@ WHERE
 	return($anvil_uuid);
 }
 
+# This updates (or inserts) a record in the 'notifications' table.
+sub insert_or_update_notifications
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $notify_uuid     = $parameter->{notify_uuid}     ? $parameter->{notify_uuid}     : "";
+	my $notify_name     = $parameter->{notify_name}     ? $parameter->{notify_name}     : "";
+	my $notify_target   = $parameter->{notify_target}   ? $parameter->{notify_target}   : "";
+	my $notify_language = $parameter->{notify_language} ? $parameter->{notify_language} : "";
+	my $notify_level    = $parameter->{notify_level}    ? $parameter->{notify_level}    : "";
+	my $notify_units    = $parameter->{notify_units}    ? $parameter->{notify_units}    : "";
+	my $notify_auto_add = $parameter->{notify_auto_add} ? $parameter->{notify_auto_add} : "";
+	my $notify_note     = $parameter->{notify_note}     ? $parameter->{notify_note}     : "NULL";
+	if (not $notify_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given notify server name.
+	if (not $notify_uuid)
+	{
+		my $query = "
+SELECT 
+    notify_uuid 
+FROM 
+    notifications 
+WHERE 
+    notify_target = ".$an->data->{sys}{use_db_fh}->quote($notify_target)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$notify_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "notify_uuid", value1 => $notify_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an notify_uuid, we're INSERT'ing .
+	if (not $notify_uuid)
+	{
+		# INSERT
+		   $notify_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    notifications 
+(
+    notify_uuid, 
+    notify_name, 
+    notify_target, 
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_auto_add, 
+    notify_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($notify_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_target).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_language).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_level).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_units).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_auto_add).", 
+    ".$an->data->{sys}{use_db_fh}->quote($notify_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    notify_name, 
+    notify_target, 
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_auto_add, 
+    notify_note 
+FROM 
+    notifications 
+WHERE 
+    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_notify_name     = $row->[0];
+			my $old_notify_target   = $row->[1];
+			my $old_notify_language = $row->[2];
+			my $old_notify_level    = $row->[3];
+			my $old_notify_units    = $row->[4];
+			my $old_notify_auto_add = $row->[5];
+			my $old_notify_note     = $row->[6] ? $row->[6] : "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+				name1 => "old_notify_name",   value1 => $old_notify_name, 
+				name2 => "old_notify_target", value2 => $old_notify_target, 
+				name3 => "notify_language",   value3 => $notify_language, 
+				name4 => "notify_level",      value4 => $notify_level, 
+				name5 => "notify_units",      value5 => $notify_units, 
+				name6 => "notify_auto_add",   value6 => $notify_auto_add, 
+				name7 => "notify_note",       value7 => $notify_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_notify_name     ne $notify_name)     or 
+			    ($old_notify_target   ne $notify_target)   or 
+			    ($old_notify_language ne $notify_language) or 
+			    ($old_notify_level    ne $notify_level)    or 
+			    ($old_notify_units    ne $notify_units)    or 
+			    ($old_notify_auto_add ne $notify_auto_add) or 
+			    ($old_notify_note     ne $notify_note))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    notifications 
+SET 
+    notify_name     = ".$an->data->{sys}{use_db_fh}->quote($notify_name).", 
+    notify_target   = ".$an->data->{sys}{use_db_fh}->quote($notify_target).", 
+    notify_language = ".$an->data->{sys}{use_db_fh}->quote($notify_language).", 
+    notify_level    = ".$an->data->{sys}{use_db_fh}->quote($notify_level).", 
+    notify_units    = ".$an->data->{sys}{use_db_fh}->quote($notify_units).", 
+    notify_auto_add = ".$an->data->{sys}{use_db_fh}->quote($notify_auto_add).", 
+    notify_note     = ".$an->data->{sys}{use_db_fh}->quote($notify_note).", 
+    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    notify_uuid     = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($notify_uuid);
+}
+
 # This updates (or inserts) a record in the 'owners' table.
 sub insert_or_update_owners
 {
@@ -614,12 +778,15 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			my $old_owner_name = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			my $old_owner_note = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "old_owner_name", value1 => $old_owner_name, 
+				name2 => "old_owner_note", value2 => $old_owner_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Anything change?
-			if ($old_owner_name ne $owner_name)
+			if (($old_owner_name ne $owner_name) or 
+			    ($old_owner_note ne $owner_note))
 			{
 				# Something changed, save.
 				my $query = "

@@ -5,7 +5,7 @@ SET client_encoding = 'UTF8';
 CREATE SCHEMA IF NOT EXISTS history;
 
 
--- This stores infomation for sending email alerts. 
+-- This stores infomation for sending email notifications. 
 CREATE TABLE smtp (
 	smtp_uuid		uuid				not null	primary key,	-- 
 	smtp_server		text				not null,			-- example; mail.example.com
@@ -123,7 +123,7 @@ CREATE TRIGGER trigger_owners
 CREATE TABLE anvils (
 	anvil_uuid		uuid				not null	primary key,	-- 
 	anvil_owner_uuid	uuid				not null	not null,	-- NOTE: Make life easy for users; Auto-generate the 'owner' if they enter one that doesn't exist.
-	anvil_smtp_uuid		uuid				not null,			-- This is the mail server to use when sending alerts. It is not required because some users use file-based alerts only.
+	anvil_smtp_uuid		uuid				not null,			-- This is the mail server to use when sending email notifications. It is not required because some users use file-based notifications only.
 	anvil_name		text				not null,
 	anvil_description	text				not null,			-- This is a short, one-line (usually) description of this particular Anvil!. It is displayed in the Anvil! selection list.
 	anvil_note		text,								-- This is a free-form note area for admins to record details about this Anvil!.
@@ -311,134 +311,83 @@ CREATE TRIGGER trigger_variables
 	FOR EACH ROW EXECUTE PROCEDURE history_variables();
 
 
--- This stores information on alerts written to a file
-CREATE TABLE file_alerts (
-	file_alert_uuid		uuid				not null	primary key,	-- 
-	file_alert_file		text				not null,			-- This is the full path and file name to write to.
-	file_alert_language	text				not null	default 'en_CA', -- The language to use. Must exist in all .xml language files!
-	file_alert_level	text				not null	default 'warning', -- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
-	file_alert_units	text				not null	default 'metric', -- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
+-- This stores information on an email alert or file alert notifications
+CREATE TABLE notifications (
+	notify_uuid		uuid				not null	primary key,		
+	notify_name		text				not null,				-- This is the Free-form name of the alart recipient. It is used in the To: field of email notify targets
+	notify_target		text				not null,				-- This is the target of the notify; either an email-address to send the notify to or a file name to write to notify to.
+	notify_language		text				not null	default 'en_CA',	-- The language to use. Must exist in all .xml language files!
+	notify_level		text				not null	default 'warning', 	-- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
+	notify_units		text				not null	default 'metric', 	-- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
+	notify_auto_add		boolean				not null	default TRUE,		-- If TRUE, this recipient will automatically monitor any newly added Anvil! systems and their nodes.
+	notify_note		text,
 	modified_date		timestamp with time zone	not null
 );
-ALTER TABLE file_alerts OWNER TO #!variable!user!#;
+ALTER TABLE notifications OWNER TO #!variable!user!#;
 
--- This stores information on an email alert recipient
-CREATE TABLE history.file_alerts (
+-- This stores information on an email notify recipient
+CREATE TABLE history.notifications (
 	history_id		bigserial,
-	file_alert_uuid		uuid,
-	file_alert_file		text,
-	file_alert_language	text,
-	file_alert_level	text,
-	file_alert_units	text,
+	notify_uuid		uuid,
+	notify_name		text,
+	notify_target		text,
+	notify_language		text,
+	notify_level		text,
+	notify_units		text,
+	notify_auto_add		boolean,
+	notify_note		text,
 	modified_date		timestamp with time zone	not null
 );
-ALTER TABLE history.file_alerts OWNER TO #!variable!user!#;
+ALTER TABLE history.notifications OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_file_alerts() RETURNS trigger
+CREATE FUNCTION history_notifications() RETURNS trigger
 AS $$
 DECLARE
-	history_file_alerts RECORD;
+	history_notifications RECORD;
 BEGIN
-	SELECT INTO history_file_alerts * FROM file_alerts WHERE file_alert_uuid = new.file_alert_uuid;
-	INSERT INTO history.file_alerts
-		(file_alert_uuid,
-		 file_alert_file,
-		 file_alert_language,
-		 file_alert_level,
-		 file_alert_units, 
+	SELECT INTO history_notifications * FROM notifications WHERE notify_uuid = new.notify_uuid;
+	INSERT INTO history.notifications
+		(notify_uuid,
+		 notify_name,
+		 notify_target,
+		 notify_language,
+		 notify_level,
+		 notify_units, 
+		 notify_auto_add, 
+		 notify_note, 
 		 modified_date)
 	VALUES
-		(history_file_alerts.file_alert_uuid,
-		 history_file_alerts.file_alert_file,
-		 history_file_alerts.file_alert_language,
-		 history_file_alerts.file_alert_level,
-		 history_file_alerts.file_alert_units, 
-		 history_file_alerts.modified_date);
+		(history_notifications.notify_uuid,
+		 history_notifications.notify_name,
+		 history_notifications.notify_target,
+		 history_notifications.notify_language,
+		 history_notifications.notify_level,
+		 history_notifications.notify_units, 
+		 history_notifications.notify_auto_add, 
+		 history_notifications.notify_note, 
+		 history_notifications.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_file_alerts() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_notifications() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_file_alerts
-	AFTER INSERT OR UPDATE ON file_alerts
-	FOR EACH ROW EXECUTE PROCEDURE history_file_alerts();
-
-
--- This stores information on an email alert recipient
-CREATE TABLE email_alerts (
-	email_alert_uuid	uuid				not null	primary key,	-- 
-	email_alert_name	text				not null,			-- This is the Free-form name of the alart recipient used in the To: field
-	email_alert_address	text				not null,			-- This is the recipient's email address.
-	email_alert_language	text				not null	default 'en_CA', -- The language to use. Must exist in all .xml language files!
-	email_alert_level	text				not null	default 'warning', -- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
-	email_alert_units	text				not null	default 'metric', -- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
-	email_alert_auto_add	boolean				not null	default TRUE,	-- If TRUE, this recipient will automatically monitor any newly added Anvil! systems and their nodes.
-	modified_date		timestamp with time zone	not null
-);
-ALTER TABLE email_alerts OWNER TO #!variable!user!#;
-
--- This stores information on an email alert recipient
-CREATE TABLE history.email_alerts (
-	history_id		bigserial,
-	email_alert_uuid	uuid,
-	email_alert_name	text,
-	email_alert_address	text,
-	email_alert_language	text,
-	email_alert_level	text,
-	email_alert_units	text,
-	email_alert_auto_add	boolean,
-	modified_date		timestamp with time zone	not null
-);
-ALTER TABLE history.email_alerts OWNER TO #!variable!user!#;
-
-CREATE FUNCTION history_email_alerts() RETURNS trigger
-AS $$
-DECLARE
-	history_email_alerts RECORD;
-BEGIN
-	SELECT INTO history_email_alerts * FROM email_alerts WHERE email_alert_uuid = new.email_alert_uuid;
-	INSERT INTO history.email_alerts
-		(email_alert_uuid,
-		 email_alert_name,
-		 email_alert_address,
-		 email_alert_language,
-		 email_alert_level,
-		 email_alert_units, 
-		 email_alert_auto_add, 
-		 modified_date)
-	VALUES
-		(history_email_alerts.email_alert_uuid,
-		 history_email_alerts.email_alert_name,
-		 history_email_alerts.email_alert_address,
-		 history_email_alerts.email_alert_language,
-		 history_email_alerts.email_alert_level,
-		 history_email_alerts.email_alert_units, 
-		 history_email_alerts.email_alert_auto_add, 
-		 history_email_alerts.modified_date);
-	RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
-ALTER FUNCTION history_email_alerts() OWNER TO #!variable!user!#;
-
-CREATE TRIGGER trigger_email_alerts
-	AFTER INSERT OR UPDATE ON email_alerts
-	FOR EACH ROW EXECUTE PROCEDURE history_email_alerts();
+CREATE TRIGGER trigger_notifications
+	AFTER INSERT OR UPDATE ON notifications
+	FOR EACH ROW EXECUTE PROCEDURE history_notifications();
 
 
--- This links alert recipients to Anvil!'s the recipient wants to hear about
+-- This links notification recipients to Anvil!'s the recipient wants to hear about
 CREATE TABLE recipients (
 	recipient_uuid			uuid				not null	primary key,	-- 
 	recipient_anvil_uuid		uuid				not null,			-- 
-	recipient_file_alert_uuid	uuid,
-	recipient_email_alert_uuid	uuid,
+	recipient_alert_uuid		uuid,
 	recipient_log_level		text,								-- If this is set, this log level will over-ride the level set in the file or email alert recipient table.
+	recipient_note			text, 
 	modified_date			timestamp with time zone	not null, 
 	
-	FOREIGN KEY(recipient_anvil_uuid)       REFERENCES anvils(anvil_uuid), 
-	FOREIGN KEY(recipient_file_alert_uuid)  REFERENCES file_alerts(file_alert_uuid), 
-	FOREIGN KEY(recipient_email_alert_uuid) REFERENCES email_alerts(email_alert_uuid) 
+	FOREIGN KEY(recipient_anvil_uuid) REFERENCES anvils(anvil_uuid), 
+	FOREIGN KEY(recipient_alert_uuid) REFERENCES notifications(alert_uuid) 
 );
 ALTER TABLE recipients OWNER TO #!variable!user!#;
 
@@ -446,9 +395,9 @@ CREATE TABLE history.recipients (
 	history_id			bigserial,
 	recipient_uuid			uuid,
 	recipient_anvil_uuid		uuid,
-	recipient_file_alert_uuid	uuid,
-	recipient_email_alert_uuid	uuid,
+	recipient_alert_uuid		uuid,
 	recipient_log_level		text,
+	recipient_note			text, 
 	modified_date			timestamp with time zone	not null 
 );
 ALTER TABLE history.recipients OWNER TO #!variable!user!#;
@@ -462,16 +411,16 @@ BEGIN
 	INSERT INTO history.recipients
 		(recipient_uuid,
 		 recipient_anvil_uuid, 
-		 recipient_file_alert_uuid, 
-		 recipient_email_alert_uuid, 
+		 recipient_alert_uuid, 
 		 recipient_log_level, 
+		 recipient_note, 
 		 modified_date)
 	VALUES
 		(history_recipients.recipient_uuid,
 		 history_recipients.recipient_anvil_uuid, 
-		 history_recipients.recipient_file_alert_uuid, 
-		 history_recipients.recipient_email_alert_uuid, 
+		 history_recipients.recipient_alert_uuid, 
 		 history_recipients.recipient_log_level, 
+		 history_recipients.recipient_note, 
 		 history_recipients.modified_date);
 	RETURN NULL;
 END;

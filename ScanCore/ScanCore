@@ -3672,8 +3672,7 @@ sub update_db
 		#update_db_nodes($an);
 		#update_db_recipients($an);
 		#update_db_variables($an);
-		#update_db_file_alerts($an);
-		#update_db_email_alerts($an);
+		#update_db_alerts($an);
 		#update_db_smtp($an);
 		
 		# Record the time

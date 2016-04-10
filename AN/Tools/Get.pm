@@ -115,6 +115,101 @@ sub local_users
 	return($users);
 }
 
+# This returns data about the given Anvil! notification target (taking either the alert name or its UUID)
+sub notify_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return        = {};
+	my $notify_target = $parameter->{target} ? $parameter->{target} : "";
+	my $notify_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "notify_target", value1 => $notify_target, 
+		name2 => "notify_uuid",   value2 => $notify_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $notify_target) && (not $notify_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0087", code => 87, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    notify_uuid, 
+    notify_name, 
+    notify_target, 
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_auto_add, 
+    notify_note, 
+    modified_date 
+FROM 
+    notifications 
+WHERE 
+";
+	if ($notify_uuid)
+	{
+		$query .= "notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
+	}
+	else
+	{
+		$query .= "notify_target = ".$an->data->{sys}{use_db_fh}->quote($notify_target);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $notify_uuid     = $row->[0];
+		my $notify_name     = $row->[1];
+		my $notify_target   = $row->[2];
+		my $notify_language = $row->[3];
+		my $notify_level    = $row->[4];
+		my $notify_units    = $row->[5];
+		my $notify_auto_add = $row->[6];
+		my $notify_note     = $row->[7] ? $row->[7] : "NULL";
+		my $modified_date  = $row->[8];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			name1 => "notify_uuid",     value1 => $notify_uuid, 
+			name2 => "notify_name",     value2 => $notify_name, 
+			name3 => "notify_target",   value3 => $notify_target, 
+			name4 => "notify_language", value4 => $notify_language, 
+			name5 => "notify_level",    value5 => $notify_level, 
+			name6 => "notify_units",    value6 => $notify_units, 
+			name7 => "notify_auto_add", value7 => $notify_auto_add, 
+			name8 => "notify_note",     value8 => $notify_note, 
+			name9 => "modified_date",  value9 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			notify_uuid	=>	$notify_uuid,
+			notify_name	=>	$notify_name, 
+			notify_target	=>	$notify_target, 
+			notify_language	=>	$notify_language, 
+			notify_level	=>	$notify_level, 
+			notify_units	=>	$notify_units, 
+			notify_auto_add	=>	$notify_auto_add, 
+			notify_note	=>	$notify_note, 
+			modified_date	=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # This returns data about the given Anvil! owner (taking either the owner name or its UUID)
 sub owner_data
 {

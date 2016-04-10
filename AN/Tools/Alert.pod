@@ -584,6 +584,15 @@ The 'AN::Tools::Get' module's 'owner_data()' method was called but neither a nam
 
 The 'AN::Tools::Get' module's 'smtp_data()' method was called but neither a server or UUID was passed in.
 
+=head2 C<87>
+
+The 'AN::Tools::Get' module's 'alert_data()' method was called but neither a target or UUID was passed in.
+
+=head2 C<88>
+
+The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID
+
+
 =head1 SEE ALSO
 
 Other modules in the AN::Tools suite:
