@@ -61,7 +61,8 @@ $an->Web->get_cgi({variables => [
 	"notify_language",
 	"notify_level",
 	"notify_name",
-	"notify_note", 
+	"notify_note",
+	"notify_target",  
 	"notify_units", 
 	"notify_uuid",
 	"anvil", 
@@ -157,6 +158,7 @@ exit(0);
 sub process_task
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if ($an->data->{cgi}{task} eq "anvil")
 	{
@@ -212,7 +214,7 @@ sub process_task
 sub load_notify_form
 {
 	my ($an, $notifications, $uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_notify_form" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_notify_form" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "uuid", value1 => $uuid,  
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -258,7 +260,7 @@ sub load_notify_form
 sub load_owner_form
 {
 	my ($an, $owners, $uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_owner_form" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_owner_form" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "uuid", value1 => $uuid,  
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -294,7 +296,7 @@ sub load_owner_form
 sub load_smtp_form
 {
 	my ($an, $smtp, $uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_smtp_form" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_smtp_form" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "uuid", value1 => $uuid,  
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -343,7 +345,7 @@ sub load_smtp_form
 sub load_node_form
 {
 	my ($an, $nodes, $uuid) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_node_form" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_node_form" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "uuid", value1 => $uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -561,7 +563,7 @@ sub load_anvil_form
 sub save_smtp_form
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_smtp_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Some sanity checks before we begin.
 	my $notices        = [];
@@ -596,7 +598,7 @@ sub save_smtp_form
 					row_class	=>	"highlight_warning",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
-					body_message	=>	$notices,
+					body_message	=>	$notice,
 				}});
 		}
 		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
@@ -614,11 +616,74 @@ sub save_smtp_form
 	return($notice_message, $error_fields);
 }
 
+# This saves the changes to an Anvil! notify.
+sub save_notify_form
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_notify_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	### Some sanity checks before we begin.
+	my $notices        = [];
+	my $error_fields   = [];
+	my $notice_message = "";
+	
+	# Do I have an notify?
+	if (not $an->data->{cgi}{notify_target})
+	{
+		my $notice = $an->String->get({key => "message_0360", variables => { field => "#!string!row_0308!#" }});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice", value1 => $notice,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		push @{$notices},      $notice;
+		push @{$error_fields}, "notify_target";
+	}
+	
+	my $error_count = @{$error_fields};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "error_count", value1 => $error_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Save the form (either INSERT or UPDATE if something has changed.
+	if (not $error_count)
+	{
+		$an->data->{cgi}{notify_uuid} = save_notify($an);
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::notify_uuid", value1 => $an->data->{cgi}{notify_uuid},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Process errors now, if any.
+	if ($error_count > 0)
+	{
+		# Print the error header.
+		my $error_body = "";
+		foreach my $notice (@{$notices})
+		{
+			$error_body .= $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0305!#",
+					body_class	=>	"",
+					body_message	=>	$notice,
+				}});
+		}
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0194!#",
+				errors	=>	$error_body,
+			}});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "notice_message", value1 => $notice_message,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($notice_message, $error_fields);
+}
+
 # This saves the changes to an Anvil! owner.
 sub save_owner_form
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_anvil_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_owner_form" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### Some sanity checks before we begin.
 	my $notices        = [];
@@ -653,7 +718,7 @@ sub save_owner_form
 					row_class	=>	"highlight_warning",
 					row_message	=>	"#!string!row_0305!#",
 					body_class	=>	"",
-					body_message	=>	$notices,
+					body_message	=>	$notice,
 				}});
 		}
 		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
@@ -1033,30 +1098,30 @@ sub save_anvil
 	return($anvil_uuid);
 }
 
-# This parses the CGI data and calls $an->Web->insert_or_update_smtp();
-sub save_smtp
+
+# This parses the CGI data and calls $an->Web->insert_or_update_notifications();
+sub save_notify
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_notify" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# This will return the new UUID if INSERTed and the existing UUID for the matching smtp server, if 
+	# This will return the new UUID if INSERTed and the existing UUID for the matching notify name, if 
 	# one exists. If nothing changed, the database will not be updated.
-	$an->data->{cgi}{smtp_uuid} = $an->Web->insert_or_update_smtp({
-		smtp_uuid		=>	$an->data->{cgi}{smtp_uuid},
-		smtp_server		=>	$an->data->{cgi}{smtp_server}, 
-		smtp_port		=>	$an->data->{cgi}{smtp_port}, 
-		smtp_username		=>	$an->data->{cgi}{smtp_username}, 
-		smtp_password		=>	$an->data->{cgi}{smtp_password}, 
-		smtp_security		=>	$an->data->{cgi}{smtp_security}, 
-		smtp_authentication	=>	$an->data->{cgi}{smtp_authentication}, 
-		smtp_helo_domain	=>	$an->data->{cgi}{smtp_helo_domain}, 
-		smtp_note		=>	$an->data->{cgi}{smtp_note},
+	$an->data->{cgi}{notify_uuid} = $an->Web->insert_or_update_notifications({
+		notify_uuid	=>	$an->data->{cgi}{notify_uuid},
+		notify_name	=>	$an->data->{cgi}{notify_name},
+		notify_target	=>	$an->data->{cgi}{notify_target},
+		notify_language	=>	$an->data->{cgi}{notify_language},
+		notify_level	=>	$an->data->{cgi}{notify_level},
+		notify_units	=>	$an->data->{cgi}{notify_units},
+		notify_auto_add	=>	$an->data->{cgi}{notify_auto_add},
+		notify_note	=>	$an->data->{cgi}{notify_note},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::smtp_uuid", value1 => $an->data->{cgi}{smtp_uuid},
+		name1 => "cgi::notify_uuid", value1 => $an->data->{cgi}{notify_uuid},
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	return($an->data->{cgi}{smtp_uuid});
+	return($an->data->{cgi}{notify_uuid});
 }
 
 # This parses the CGI data and calls $an->Web->insert_or_update_owner();
@@ -1195,7 +1260,6 @@ sub confirm_action
 				message_body	=>	$an->String->get({key => "message_0374", variables => { anvil => $anvil_data->{anvil_name} }}),
 				button		=>	$confirm_button,
 			}});
-
 	}
 	elsif ($action eq "delete_owner")
 	{
@@ -1238,6 +1302,28 @@ sub confirm_action
 				row_body	=>	"#!string!row_0306!#",
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0396", variables => { smtp => $smtp_data->{smtp_server} }}),
+				button		=>	$confirm_button,
+			}});
+	}
+	elsif ($action eq "delete_notify")
+	{
+		# Get the notification target's name.
+		my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
+		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"confirm",
+			id	=>	"confirm",
+			value	=>	"#!string!button_0004!#",
+			url	=>	"?task=notify&notify_uuid=".$an->data->{cgi}{notify_uuid}."&delete=true&confirm=true",
+		}, no_comment => 1});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notify_data->notify_target", value1 => $notify_data->{notify_target},
+		}, file => $THIS_FILE, line => __LINE__});
+		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
+				title		=>	"#!string!title_0195!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0306!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0454", variables => { target => $notify_data->{notify_target} }}),
 				button		=>	$confirm_button,
 			}});
 	}
@@ -1331,6 +1417,98 @@ WHERE
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0395", variables => { owner => $owner_data->{owner_name} }}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
+# This deletes an Anvil! notify.
+sub delete_notify
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_notify" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    notifications 
+SET 
+    notify_note = 'DELETED' 
+WHERE 
+    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    notifications 
+WHERE 
+    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    notifications 
+WHERE 
+    notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $notify_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "notify_count", value1 => $notify_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($notify_count)
+	{
+		# Zoot alore!
+		my $error_message = $an->String->get({key => "message_0393", variables => { 
+			target  => $notify_data->{notify_target},
+			targets => $notify_count, 
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All gone
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0456", variables => { target => $notify_data->{notify_target} }}),
 			}});
 	}
 	
@@ -1569,6 +1747,8 @@ sub notify_menu
 		{
 			# Ask them to confirm
 			$notice_message = confirm_action($an, "delete_notify");
+			$refresh_link =~ s/notify_uuid=.*?&/&/;
+			$refresh_link =~ s/notify_uuid=.*//;
 		}
 		
 		# Clear the commands from the refresh link.
@@ -1590,6 +1770,20 @@ sub notify_menu
 		$refresh_link =~ s/save=.*?&/&/;
 		$refresh_link =~ s/save=.*//;
 		$refresh_link =~ s/&&+/&/;
+	}
+	else
+	{
+		# Set defaults if not set already.
+		$an->data->{cgi}{notify_language} = "en_CA"   if not $an->data->{cgi}{notify_language};
+		$an->data->{cgi}{notify_level}    = "warning" if not $an->data->{cgi}{notify_level};
+		$an->data->{cgi}{notify_units}    = "metric"  if not $an->data->{cgi}{notify_units};
+		$an->data->{cgi}{notify_auto_add} = "true"    if not $an->data->{cgi}{notify_auto_add};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "cgi::notify_language", value1 => $an->data->{cgi}{notify_language},
+			name2 => "cgi::notify_level",    value2 => $an->data->{cgi}{notify_level},
+			name3 => "cgi::notify_units",    value3 => $an->data->{cgi}{notify_units},
+			name4 => "cgi::notify_auto_add", value4 => $an->data->{cgi}{notify_auto_add},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Load information from the databases, then we'll tease out data if 'load' was set.
@@ -1615,7 +1809,7 @@ sub notify_menu
 	my $notify_explain = "#!string!explain_0196!#";
 	my $notify_row     = "&nbsp;";	# Actually the 'Load' button
 	my $notify_url     = "&nbsp;";	# Actually the 'delete' button
-	if (@{notifications} > 0)
+	if (@{$notifications} > 0)
 	{
 		# Build an array to pass to 'build_select'
 		$notify_explain = "#!string!explain_0197!#";
@@ -1637,8 +1831,8 @@ sub notify_menu
 		foreach my $hash_ref (@{$notifications})
 		{
 			my $notify_uuid   = $hash_ref->{notify_uuid};
-			my $notify_server = $hash_ref->{notify_server};
-			my $this_option = $notify_uuid."#!#".$notify_server;
+			my $notify_target = $hash_ref->{notify_target};
+			my $this_option   = $notify_uuid."#!#".$notify_target;
 			push @{$options}, $this_option;
 		}
 		$notify_select = $an->Web->build_select({
@@ -1684,74 +1878,103 @@ sub notify_menu
 			column4		=>	"",
 		}});
 
-=pod
-    notify_language, 
-    notify_level, 
-    notify_units, 
-    notify_auto_add, 
-    notify_note, 
-=cut
-	
-	# SMTP password
-	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-			column1_class	=>	"highlight_row_bold",
-			column1		=>	"#!string!row_0302!#",
-			column2_class	=>	"input_select",
-			column2		=>	"<input type=\"text\" name=\"notify_password\" id=\"notify_password\" value=\"".$an->data->{cgi}{notify_password}."\" style=\"width: ${width}px;\">",
-			column3_class	=>	"input_explain",
-			column3		=>	"#!string!explain_0187!#<br />#!string!explain_0180!#",
-			column4_class	=>	"input_url",
-			column4		=>	"&nbsp;",
-		}});
-	
-	
-	# Authentication select box.
-	my $authentication_select = $an->Web->build_select({
-		name     => "notify_authentication", 
-		options  => [
-			"none#!##!string!select_0004!#",
-			"plain_text#!##!string!select_0005!#",
-			"encrypted#!##!string!select_0006!#",
-		], 
+	# Build the language selection box.
+	my $language_options = [];
+	foreach my $iso_code (sort {$a cmp $b} keys %{$an->data->{strings}{lang}})
+	{
+		my $name = $an->String->get_language_name({language => $iso_code});
+		push @{$language_options}, "$iso_code#!#$name";
+	}
+	my $language_select = $an->Web->build_select({
+		name     => "notify_language", 
+		options  => $language_options, 
 		blank    => 0,
-		selected => $an->data->{cgi}{notify_authentication},
+		selected => $an->data->{cgi}{notify_language},
 		width    => ($width + 10),
 	});
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
-			column1		=>	"#!string!row_0303!#",
+			column1		=>	"#!string!row_0309!#",
 			column2_class	=>	"input_select",
-			column2		=>	$authentication_select,
+			column2		=>	$language_select,
 			column3_class	=>	"input_explain",
-			column3		=>	"#!string!explain_0188!#",
+			column3		=>	"#!string!explain_0200!#",
 			column4_class	=>	"input_url",
 			column4		=>	"&nbsp;",
 		}});
 	
-	# SMTP Security selection box.
-	my $security_select = $an->Web->build_select({
-		name     => "notify_security", 
+	# Alert level selection
+	my $log_level_select = $an->Web->build_select({
+		name     => "notify_level", 
 		options  => [
-			"none#!##!string!select_0001!#",
-			"tls_ssl#!##!string!select_0002!#",
-			"starttls#!##!string!select_0003!#",
+			"debug#!##!string!alert_level_0001!#",
+			"info#!##!string!alert_level_0002!#",
+			"notice#!##!string!alert_level_0003!#",
+			"warning#!##!string!alert_level_0004!#",
+			"critical#!##!string!alert_level_0005!#",
 		], 
 		blank    => 0,
-		selected => $an->data->{cgi}{notify_security},
+		'sort'   => 0,
+		selected => $an->data->{cgi}{notify_level},
+		width    => ($width + 10),
+	});
+	my $log_level_explanation = $an->Web->template({file => "configure.html", template => "alert-level-explanation"});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0310!#",
+			column2_class	=>	"input_select",
+			column2		=>	$log_level_select,
+			column3_class	=>	"input_explain",
+			column3		=>	$log_level_explanation,
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Metric or imperial
+	my $units_select = $an->Web->build_select({
+		name     => "notify_units", 
+		options  => [
+			"metric#!##!string!select_0007!#",
+			"imperial#!##!string!select_0008!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{notify_units},
 		width    => ($width + 10),
 	});
 	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
 			column1_class	=>	"highlight_row_bold",
-			column1		=>	"#!string!row_0304!#",
+			column1		=>	"#!string!row_0311!#",
 			column2_class	=>	"input_select",
-			column2		=>	$security_select,
+			column2		=>	$units_select,
 			column3_class	=>	"input_explain",
-			column3		=>	"#!string!explain_0189!#",
+			column3		=>	"#!string!explain_0206!#",
 			column4_class	=>	"input_url",
 			column4		=>	"&nbsp;",
 		}});
 	
-	# Create the text field for the 'notify -> notify_note'
+	# Auto-Add to new Anvil! systems
+	my $auto_add_select = $an->Web->build_select({
+		name     => "notify_auto_add", 
+		options  => [
+			"true#!##!string!select_0009!#",
+			"false#!##!string!select_0010!#",
+		], 
+		blank    => 0,
+		selected => $an->data->{cgi}{notify_auto_add},
+		width    => ($width + 10),
+	});
+	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+			column1_class	=>	"highlight_row_bold",
+			column1		=>	"#!string!row_0312!#",
+			column2_class	=>	"input_select",
+			column2		=>	$auto_add_select,
+			column3_class	=>	"input_explain",
+			column3		=>	"#!string!explain_0207!#",
+			column4_class	=>	"input_url",
+			column4		=>	"&nbsp;",
+		}});
+	
+	# Create the text field for the notification target's note
 	my $textarea = $an->Web->template({file => "web.html", template => "textarea_input", replace => { 
 		name	=>	"notify_note",
 		id	=>	"notify_note",
@@ -1761,62 +1984,11 @@ sub notify_menu
 			row_class	=>	"highlight_row_bold",
 			row_body	=>	"#!string!row_0032!#",
 			message_class	=>	"input_select",
-			message_body	=>	"#!string!explain_0195!#",
+			message_body	=>	"#!string!explain_0208!#",
 			textarea	=>	$textarea,
 			url_class	=>	"",
 			url_body	=>	"",
 		}});
-	
-	# Print the list of currently owned Anvil! systems.
-	if (($an->data->{cgi}{notify_uuid}) && (@{$anvils} > 0))
-	{
-		my $break_printed = 0;
-		foreach my $hash_ref (@{$anvils})
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "hash_ref->anvil_notify_uuid", value1 => $hash_ref->{anvil_notify_uuid},
-				name2 => "cgi::notify_uuid",            value2 => $an->data->{cgi}{notify_uuid},
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($hash_ref->{anvil_notify_uuid} eq $an->data->{cgi}{notify_uuid})
-			{
-				my $anvil_uuid        = $hash_ref->{anvil_uuid};
-				my $anvil_name        = $hash_ref->{anvil_name};
-				my $anvil_description = $hash_ref->{anvil_description};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
-					name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
-					name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if (not $break_printed)
-				{
-					$break_printed = 1;
-					$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
-							message	=>	"#!string!header_0024!#",
-							class	=>	"breaker_header",
-							colspan	=>	4,
-						}});
-				}
-				my $edit_url = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-						name	=>	"configure_".$anvil_name,
-						id	=>	"configure_".$anvil_name,
-						value	=>	"#!string!button_0077!#",
-						url	=>	"?task=anvil&anvil_uuid=".$anvil_uuid."&load_anvil=true",
-					}, no_comment => 1});
-				
-				$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-						column1_class	=>	"highlight_row_bold",
-						column1		=>	"&nbsp;",
-						column2_class	=>	"highlight_detail",
-						column2		=>	"$anvil_name",
-						column3_class	=>	"input_explain",
-						column3		=>	"$anvil_description",
-						column4_class	=>	"",
-						column4		=>	"$edit_url",
-					}});
-			}
-		}
-	}
 	
 	# Hidden fields now  
 	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
@@ -1851,6 +2023,7 @@ sub notify_menu
 			alt_text     => "#!string!button_0001!#",
 			id           => "back_icon",
 		}});
+	
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
@@ -1900,6 +2073,8 @@ sub smtp_menu
 		{
 			# Ask them to confirm
 			$notice_message = confirm_action($an, "delete_smtp");
+			$refresh_link =~ s/smtp_uuid=.*?&/&/;
+			$refresh_link =~ s/smtp_uuid=.*//;
 		}
 		
 		
@@ -2196,6 +2371,7 @@ sub smtp_menu
 			alt_text     => "#!string!button_0001!#",
 			id           => "back_icon",
 		}});
+	
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
@@ -2245,6 +2421,8 @@ sub owner_menu
 		{
 			# Ask them to confirm
 			$notice_message = confirm_action($an, "delete_owner");
+			$refresh_link =~ s/owner_uuid=.*?&/&/;
+			$refresh_link =~ s/owner_uuid=.*//;
 		}
 		
 		
@@ -2460,6 +2638,7 @@ sub owner_menu
 			alt_text     => "#!string!button_0001!#",
 			id           => "back_icon",
 		}});
+	
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
@@ -2509,6 +2688,8 @@ sub anvil_menu
 		{
 			# Ask them to confirm
 			$notice_message = confirm_action($an, "delete_anvil");
+			$refresh_link =~ s/anvil_uuid=.*?&/&/;
+			$refresh_link =~ s/anvil_uuid=.*//;
 		}
 		
 		# Clear the commands from the refresh link.
@@ -2941,6 +3122,7 @@ sub anvil_menu
 			alt_text     => "#!string!button_0001!#",
 			id           => "back_icon",
 		}});
+	
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",
@@ -2971,9 +3153,10 @@ sub anvil_menu
 sub show_main_menu
 {
 	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "show_main_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Put together the frame of the page.
-	my $back_image = "";
+	my $back_image    = "";
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
 			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
 			alt_text     => "#!string!button_0002!#",

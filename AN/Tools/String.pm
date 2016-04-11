@@ -230,7 +230,7 @@ sub _process_string
 				string	=>	$parameter->{string},
 			});
 		
-		die "$THIS_FILE ".__LINE__."; Infinite loop detected while processing the string: [$parameter->{string}], exiting.\n" if $i > $limit;
+		die "$THIS_FILE ".__LINE__."; Infinite loop detected while processing the string: [".$parameter->{string}."], exiting.\n" if $i > $limit;
 		$i++;
 	}
 	

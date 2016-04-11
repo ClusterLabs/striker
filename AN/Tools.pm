@@ -74,8 +74,8 @@ sub new
 		ERROR_COUNT			=>	0,
 		ERROR_LIMIT			=>	10000,
 		DEFAULT				=>	{
-			STRINGS				=>	'./AN/tools.xml',
-			CONFIG_FILE			=>	'AN::Tools/an.conf',
+			STRINGS				=>	'AN::tools.xml',
+			CONFIG_FILE			=>	'AN::an.conf',
 			LANGUAGE			=>	'en_CA',
 			LOG_FILE			=>	'',
 			SEARCH_DIR			=>	\@INC,
@@ -94,7 +94,7 @@ sub new
 	
 	# This isn't needed, but it makes the code below more consistent with and portable to other modules.
 	my $an = $self;
-	
+
 	# This gets handles to my other modules that the child modules will use to talk to other sibling 
 	# modules.
 	$an->Alert->parent($an);
@@ -123,10 +123,15 @@ sub new
 	$an->Check->_environment;
 	
 	# Before I do anything, read in values from the 'DEFAULT::CONFIG_FILE' configuration file.
+	$self->{DEFAULT}{CONFIG_FILE} = $an->Storage->find({file => $self->{DEFAULT}{CONFIG_FILE}, fatal => 1});
 	$an->Storage->read_conf($an->{DEFAULT}{CONFIG_FILE});
 	
+	# Setup my '$an->data' hash right away so that I have a place to store the strings hash.
+	$an->data($parameter->{data}) if $parameter->{data};
+	
 	# I need to read the initial words early.
-	$an->Storage->read_words();
+	$self->{DEFAULT}{STRINGS} = $an->Storage->find({file => $self->{DEFAULT}{STRINGS}, fatal => 1});
+	$an->Storage->read_words({file  => $self->{DEFAULT}{STRINGS}});
 	
 	# Set the directory delimiter
 	my $directory_delimiter = $an->_directory_delimiter();
@@ -135,8 +140,6 @@ sub new
 	if (ref($parameter) eq "HASH")
 	{
 		### Local parameters
-		# Set the data hash
-		$an->data			($parameter->{data}) 			if $parameter->{data};
 		# Reset the paths
 		$an->_set_paths;
 		

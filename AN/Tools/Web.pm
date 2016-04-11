@@ -49,11 +49,11 @@ sub build_select
 	my $name     = $parameter->{name};
 	my $options  = $parameter->{options};
 	# Optional
-	my $id       = $parameter->{id}       ? $parameter->{id}       : $name;
-	my $sort     = $parameter->{'sort'}   ? $parameter->{'sort'}   : 1;	# Sort the entries?
-	my $width    = $parameter->{width}    ? $parameter->{width}    : 0;	# 0 = let the browser set the width
-	my $blank    = $parameter->{blank}    ? $parameter->{blank}    : 0;	# Add a blank/null entry?
-	my $selected = $parameter->{selected} ? $parameter->{selected} : "";	# Pre-select an option?
+	my $id       = defined $parameter->{id}       ? $parameter->{id}       : $name;
+	my $sort     = defined $parameter->{'sort'}   ? $parameter->{'sort'}   : 1;	# Sort the entries?
+	my $width    = defined $parameter->{width}    ? $parameter->{width}    : 0;	# 0 = let the browser set the width
+	my $blank    = defined $parameter->{blank}    ? $parameter->{blank}    : 0;	# Add a blank/null entry?
+	my $selected = defined $parameter->{selected} ? $parameter->{selected} : "";	# Pre-select an option?
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "name",     value1 => $name, 
 		name2 => "options",  value2 => $options, 
@@ -535,7 +535,7 @@ sub insert_or_update_notifications
 	my $notify_units    = $parameter->{notify_units}    ? $parameter->{notify_units}    : "";
 	my $notify_auto_add = $parameter->{notify_auto_add} ? $parameter->{notify_auto_add} : "";
 	my $notify_note     = $parameter->{notify_note}     ? $parameter->{notify_note}     : "NULL";
-	if (not $notify_name)
+	if (not $notify_target)
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => "$THIS_FILE", line => __LINE__});
@@ -641,13 +641,13 @@ WHERE
 			my $old_notify_auto_add = $row->[5];
 			my $old_notify_note     = $row->[6] ? $row->[6] : "NULL";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-				name1 => "old_notify_name",   value1 => $old_notify_name, 
-				name2 => "old_notify_target", value2 => $old_notify_target, 
-				name3 => "notify_language",   value3 => $notify_language, 
-				name4 => "notify_level",      value4 => $notify_level, 
-				name5 => "notify_units",      value5 => $notify_units, 
-				name6 => "notify_auto_add",   value6 => $notify_auto_add, 
-				name7 => "notify_note",       value7 => $notify_note, 
+				name1 => "old_notify_name",     value1 => $old_notify_name, 
+				name2 => "old_notify_target",   value2 => $old_notify_target, 
+				name3 => "old_notify_language", value3 => $old_notify_language, 
+				name4 => "old_notify_level",    value4 => $old_notify_level, 
+				name5 => "old_notify_units",    value5 => $old_notify_units, 
+				name6 => "old_notify_auto_add", value6 => $old_notify_auto_add, 
+				name7 => "old_notify_note",     value7 => $old_notify_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Anything change?
@@ -671,7 +671,7 @@ SET
     notify_units    = ".$an->data->{sys}{use_db_fh}->quote($notify_units).", 
     notify_auto_add = ".$an->data->{sys}{use_db_fh}->quote($notify_auto_add).", 
     notify_note     = ".$an->data->{sys}{use_db_fh}->quote($notify_note).", 
-    modified_date  = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+    modified_date   = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     notify_uuid     = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid)." 
 ";

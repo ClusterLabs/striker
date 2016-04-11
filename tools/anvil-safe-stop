@@ -208,7 +208,7 @@ sub print_usage
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
-	print $file_handle $an->String->get({key => "assp_message_0002"})."\n";
+	print $file_handle $an->String->get({key => "assp_message_0001"})."\n";
 	close $file_handle;
 	
 	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");

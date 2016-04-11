@@ -387,7 +387,7 @@ CREATE TABLE recipients (
 	modified_date			timestamp with time zone	not null, 
 	
 	FOREIGN KEY(recipient_anvil_uuid) REFERENCES anvils(anvil_uuid), 
-	FOREIGN KEY(recipient_alert_uuid) REFERENCES notifications(alert_uuid) 
+	FOREIGN KEY(recipient_alert_uuid) REFERENCES notifications(notify_uuid) 
 );
 ALTER TABLE recipients OWNER TO #!variable!user!#;
 

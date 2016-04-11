@@ -51,8 +51,7 @@ sub level
 		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
 			set	=>	$set,
 		}, code => 19, file => "$THIS_FILE", line => __LINE__});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
@@ -93,46 +92,18 @@ sub entry
 	$an->Alert->_set_error;
 	
 	# Setup my variables.
-	my ($string, $log_level, $file, $line, $title_key, $title_variables, $message_key, $message_variables, $language, $log_to, $raw, $debug);
-	
-	# Now see if the user passed the values in a hash reference or directly.
-	#print "$THIS_FILE ".__LINE__."; parameter: [$parameter]\n";
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$log_level         = $parameter->{log_level}                        ? $parameter->{log_level}         : 0;
-		$file              = $parameter->{file}                             ? $parameter->{file}              : "";
-		$line              = $parameter->{line}                             ? $parameter->{line}              : "";
-		$title_key         = $parameter->{title_key}                        ? $parameter->{title_key}         : "tools_default_0001";
-		$title_variables   = ref($parameter->{title_variables}) eq "HASH"   ? $parameter->{title_variables}   : "";
-		$message_key       = $parameter->{message_key}                      ? $parameter->{message_key}       : "";
-		$message_variables = ref($parameter->{message_variables}) eq "HASH" ? $parameter->{message_variables} : "";
-		$language          = $parameter->{language}                         ? $parameter->{language}          : $an->default_log_language;
-		$raw               = $parameter->{raw}                              ? $parameter->{raw}               : "";
-		$log_to            = $parameter->{log_to}                           ? $parameter->{log_to}            : $an->default_log_file;
-		$debug             = $parameter->{debug}                            ? $parameter->{debug}             : 0;
-		print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to], debug: [$debug]\n" if $debug;
-	}
-	else
-	{
-		# Values passed directly.
-		$log_level         = defined $parameter ? $parameter : 0;
-		$file              = defined $_[0] ? $_[0] : "";
-		$line              = defined $_[1] ? $_[1] : "";
-		$title_key         = defined $_[2] ? $_[2] : "tools_default_0001";
-		$title_variables   = defined $_[3] ? $_[3] : "";
-		$message_key       = defined $_[4] ? $_[4] : "";
-		$message_variables = defined $_[5] ? $_[5] : "";
-		$language          = defined $_[6] ? $_[6] : $an->default_language;
-		$log_to            = defined $_[7] ? $_[7] : "";
-		$raw               = defined $_[8] ? $_[8] : $an->default_log_file;
-		print "$THIS_FILE ".__LINE__."; log_level: [$log_level (".$an->Log->level.")], file: [$file], line: [$line], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], language: [$language], raw: [$raw], log_to: [$log_to]\n" if $debug;
-		#if ($message_variables)
-		#{
-		#	use Data::Dumper;
-		#	print Dumper $message_variables;
-		#}
-	}
+	my $string            = "";
+	my $log_level         = $parameter->{log_level}                        ? $parameter->{log_level}         : 0;
+	my $file              = $parameter->{file}                             ? $parameter->{file}              : "";
+	my $line              = $parameter->{line}                             ? $parameter->{line}              : "";
+	my $title_key         = $parameter->{title_key}                        ? $parameter->{title_key}         : "tools_default_0001";
+	my $title_variables   = ref($parameter->{title_variables}) eq "HASH"   ? $parameter->{title_variables}   : "";
+	my $message_key       = $parameter->{message_key}                      ? $parameter->{message_key}       : "";
+	my $message_variables = ref($parameter->{message_variables}) eq "HASH" ? $parameter->{message_variables} : "";
+	my $language          = $parameter->{language}                         ? $parameter->{language}          : $an->default_log_language;
+	my $raw               = $parameter->{raw}                              ? $parameter->{raw}               : "";
+	my $log_to            = $parameter->{log_to}                           ? $parameter->{log_to}            : $an->default_log_file;
+	my $debug             = $parameter->{debug}                            ? $parameter->{debug}             : 0;
 	
 	# Return if the log level of the message is less than the current system log level.
 	return(1) if $log_level > $an->Log->level;

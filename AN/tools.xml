@@ -400,6 +400,13 @@ Variables:
 		<key name="an_alert_subject_0004">Information</key>
 		<key name="an_alert_subject_0005">Debug</key>
 		
+		<!-- This is used to translate a log level to a name -->
+		<key name="alert_level_0001">Debug</key>
+		<key name="alert_level_0002">Information</key>
+		<key name="alert_level_0003">Notice</key>
+		<key name="alert_level_0004">Warning</key>
+		<key name="alert_level_0005">Critical</key>
+		
 		<!-- Warning titles -->
 		<key name="warning_title_0001">Unknown OS</key>
 		<key name="warning_title_0002">Unknown Environment</key>
@@ -587,6 +594,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0086"><![CDATA[The 'AN::Tools::Get' module's 'smtp_data()' method was called but neither a server or UUID was passed in.]]></key>
 		<key name="error_message_0087"><![CDATA[The 'AN::Tools::Get' module's 'alert_data()' method was called but neither a target or UUID was passed in.]]></key>
 		<key name="error_message_0088"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID.]]></key>
+		<key name="error_message_0089"><![CDATA[The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

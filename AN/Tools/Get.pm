@@ -115,7 +115,7 @@ sub local_users
 	return($users);
 }
 
-# This returns data about the given Anvil! notification target (taking either the alert name or its UUID)
+# This returns data about the given Anvil! notification target (taking either the target or its UUID)
 sub notify_data
 {
 	my $self      = shift;
@@ -182,7 +182,7 @@ WHERE
 		my $notify_units    = $row->[5];
 		my $notify_auto_add = $row->[6];
 		my $notify_note     = $row->[7] ? $row->[7] : "NULL";
-		my $modified_date  = $row->[8];
+		my $modified_date   = $row->[8];
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "notify_uuid",     value1 => $notify_uuid, 
 			name2 => "notify_name",     value2 => $notify_name, 
@@ -192,8 +192,12 @@ WHERE
 			name6 => "notify_units",    value6 => $notify_units, 
 			name7 => "notify_auto_add", value7 => $notify_auto_add, 
 			name8 => "notify_note",     value8 => $notify_note, 
-			name9 => "modified_date",  value9 => $modified_date, 
+			name9 => "modified_date",   value9 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Be a lot smarter about this one Validate.pm is up
+		# If the target is an email address, we'll set 'notify_is_email' to 1.
+		my $notify_is_email = $notify_target =~ /\@/ ? 1 : 0;
 		$return = {
 			notify_uuid	=>	$notify_uuid,
 			notify_name	=>	$notify_name, 
@@ -203,6 +207,7 @@ WHERE
 			notify_units	=>	$notify_units, 
 			notify_auto_add	=>	$notify_auto_add, 
 			notify_note	=>	$notify_note, 
+			notify_is_email =>	$notify_is_email,
 			modified_date	=>	$modified_date, 
 		};
 	}

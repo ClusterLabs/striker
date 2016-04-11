@@ -366,7 +366,6 @@ sub rsync
 	return($failed);
 }
 
-### TODO: Move this to AN::Storage
 # This takes the path/name of an XML file containing AN::Tools type words and reads them into a hash 
 # reference.
 sub read_words
@@ -668,91 +667,65 @@ sub find
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an    = $self->parent;
+	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
 	# Setup default values
-	#print "$THIS_FILE ".__LINE__."; ENV{PWD}: [$ENV{PWD}]<br />\n";
+	#print "$THIS_FILE ".__LINE__."; ENV{PWD}: [$ENV{PWD}]\n";
 	my $file  = "";
 	my $dirs  = $an->Storage->search_dirs;
-	#print "$THIS_FILE ".__LINE__."; dirs: [$dirs]<br />\n";
-	#if (ref($dirs) eq "ARRAY") { foreach my $dir (@{$dirs}) { print "$THIS_FILE ".__LINE__."; - dir: [$dir]<br />\n"; } }
+	#print "$THIS_FILE ".__LINE__."; dirs: [$dirs]\n";
+	#if (ref($dirs) eq "ARRAY") { foreach my $dir (@{$dirs}) { print "$THIS_FILE ".__LINE__."; - dir: [$dir]\n"; } }
 	my $fatal = 0;
 	push @{$dirs}, $ENV{PWD} if $ENV{PWD};
 	
-	# See if I am getting parameters is a hash reference or directly as
-	# element arrays.
-	if (ref($parameter))
-	{
-		# Called via a hash ref, good.
-		$fatal = $parameter->{fatal} if $parameter->{fatal};
-		$file  = $parameter->{file}  if $parameter->{file};
-		$dirs  = $parameter->{dirs}  if $parameter->{dirs};
-	}
-	else
-	{
-		# Called directly.
-		$file  = $parameter;
-		# I don't want to overwrite the defaults if undef or a blank
-		# value was passed.
-		$dirs  = $_[0] if $_[0];
-		$fatal = $_[1] if $_[1];
-	}
-	#print "$THIS_FILE ".__LINE__."; file: [$file], dirs: [$dirs], fatal: [$fatal]<br />\n";
+	$fatal = $parameter->{fatal} if $parameter->{fatal};
+	$file  = $parameter->{file}  if $parameter->{file};
+	$dirs  = $parameter->{dirs}  if $parameter->{dirs};
+	#print "$THIS_FILE ".__LINE__."; file: [$file], dirs: [$dirs], fatal: [$fatal]\n";
 	
-	# This is the underlying operating system's directory delimiter as set
-	# by the parent method.
+	# This is the underlying operating system's directory delimiter as set by the parent method.
 	my $delimiter = $an->_directory_delimiter;
-# 	if ($file =~ /::/)
-# 	{
-# 		$file =~ s/::/$delimiter/g;
-# 		print "$THIS_FILE ".__LINE__."; file: [$file]<br />\n";
-# 	}
+	#print "$THIS_FILE ".__LINE__."; delimiter: [$delimiter]\n";
+	if ($file =~ /::/)
+	{
+		$file =~ s/::/$delimiter/g;
+		#print "$THIS_FILE ".__LINE__."; file: [$file]\n";
+	}
 	
 	# Each full path and file name will be stored here before the test.
 	my $full_file = "";
 	foreach my $dir (@{$dirs})
 	{
 		# If "dir" is ".", expand it.
-		$dir       =  $ENV{PWD} if (($dir eq ".") && ($ENV{PWD}));
-		#print "$THIS_FILE ".__LINE__."; dir: [$dir], delimiter: [$delimiter], file: [$file]<br />\n";
+		$dir =  $ENV{PWD} if (($dir eq ".") && ($ENV{PWD}));
+		#print "$THIS_FILE ".__LINE__."; dir: [$dir], delimiter: [$delimiter], file: [$file]\n";
 		
 		# Put together the initial path
 		$full_file =  $dir.$delimiter.$file;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]<br />\n";
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
 
 		# Convert double-colons to the OS' directory delimiter
 		$full_file =~ s/::/$delimiter/g;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]<br />\n";
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
 
 		# Clear double-delimiters.
 		$full_file =~ s/$delimiter$delimiter/$delimiter/g;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]<br />\n";
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
 		
-		#print "$THIS_FILE ".__LINE__."; Searching for: [$full_file] ([$dir] / [$file])<br />\n";
+		#print "$THIS_FILE ".__LINE__."; Searching for: [$full_file] ([$dir] / [$file])\n";
 		if (-f $full_file)
 		{
 			# Found it, return.
-			#print "$THIS_FILE ".__LINE__."; Found it!<br />\n";
+			#print "$THIS_FILE ".__LINE__."; Found it!\n";
 			return ($full_file);
 		}
 	}
 	
 	if ($fatal)
 	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0002",
-			message_key		=>	"error_message_0002",
-			message_variables	=>	{
-				file			=>	$file,
-			},
-			code			=>	44,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
+		print "$THIS_FILE ".__LINE__."; Failed to find: [$file]\n";
+		$an->Alert->error({fatal => 1, title_key => "error_title_0002", message_key => "error_message_0002", message_variables => { file => $file }, code => 44, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If I am here, I failed but fatal errors are disabled.
@@ -1061,16 +1034,15 @@ sub read_xml_file
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
 	# If the user didn't give us a file name to read, exit.
 	my $file = $parameter->{file} if $parameter->{file};
-	#print "$THIS_FILE ".__LINE__."; Reading file: [$file]\n";
+	my $hash = $parameter->{hash} ?  $parameter->{hash} : "";
+	
 	if ($file)
 	{
 		# Can I read it?
@@ -1078,6 +1050,7 @@ sub read_xml_file
 		{
 			# Nope :(
 			$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0042", message_variables => { file => $file }, code => 39, file => "$THIS_FILE", line => __LINE__});
+			
 			# Return nothing in case the user is blocking fatal errors.
 			return (undef);
 		}
@@ -1086,31 +1059,28 @@ sub read_xml_file
 	{
 		# What file?
 		$an->Alert->error({fatal => 1, title_key => "error_title_0023", message_key => "error_message_0043", code => 40, file => "$THIS_FILE", line => __LINE__});
+		
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
-	my $hash = $parameter->{hash};
 	if (not $hash)
 	{
 		# Use the file name.
-		$hash = {};
+		$hash              = {};
 		$an->data->{$file} = $hash;
-		#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 	}
 	elsif (ref($hash) ne "HASH")
 	{
 		# The user passed ... something.
 		$an->Alert->error({fatal => 1, title_key => "error_title_0024", message_key => "error_message_0044", message_variables => { hash => $hash }, code => 41, file => "$THIS_FILE", line => __LINE__});
-		#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 		return (undef);
 	}
-	#print "$THIS_FILE ".__LINE__."; hash: [$hash]\n";
 	
 	# Still alive? Good!
-	my $xml  = XML::Simple->new();
-	my $data = $xml->XMLin($file, ForceArray => 1);
-	$hash->{data} = $data;
+	my $xml          = XML::Simple->new();
+	my $data         = $xml->XMLin($file, ForceArray => 1);
+	   $hash->{data} = $data;
 	
 	return($hash);
 }
