@@ -115,6 +115,95 @@ sub local_users
 	return($users);
 }
 
+# This returns data about a given recipient linkage (taking either the anvil_uuid or notify_uuid)
+sub recipient_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return         = {};
+	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
+	my $notify_uuid    = $parameter->{notify_uuid} ? $parameter->{notify_uuid} : "";
+	my $recipient_uuid = $parameter->{uuid}        ? $parameter->{uuid}        : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "anvil_uuid",     value1 => $anvil_uuid, 
+		name2 => "notify_uuid",    value2 => $notify_uuid, 
+		name3 => "recipient_uuid", value3 => $recipient_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $anvil_uuid) && (not $notify_uuid) && (not $recipient_uuid))
+	{
+		# Oh come on, you had *three* options!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0090", code => 90, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    recipient_uuid, 
+    recipient_anvil_uuid, 
+    recipient_notify_uuid, 
+    recipient_log_level, 
+    recipient_note, 
+    modified_date 
+FROM 
+    recipients 
+WHERE 
+";
+	if ($recipient_uuid)
+	{
+		$query .= "recipient_uuid = ".$an->data->{sys}{use_db_fh}->quote($recipient_uuid);
+	}
+	elsif ($anvil_uuid)
+	{
+		$query .= "recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid);
+	}
+	else
+	{
+		$query .= "recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $recipient_uuid        = $row->[0];
+		my $recipient_anvil_uuid  = $row->[1];
+		my $recipient_notify_uuid = $row->[2];
+		my $recipient_log_level   = $row->[3] ? $row->[3] : "NULL";
+		my $recipient_note        = $row->[4] ? $row->[4] : "NULL";
+		my $modified_date         = $row->[5];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			name1 => "recipient_uuid",        value1 => $recipient_uuid, 
+			name2 => "recipient_anvil_uuid",  value2 => $recipient_anvil_uuid, 
+			name3 => "recipient_notify_uuid", value3 => $recipient_notify_uuid, 
+			name4 => "recipient_log_level",   value4 => $recipient_log_level, 
+			name5 => "recipient_note",        value5 => $recipient_note, 
+			name6 => "modified_date",         value6 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			recipient_uuid		=>	$recipient_uuid,
+			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
+			recipient_notify_uuid	=>	$recipient_notify_uuid, 
+			recipient_log_level	=>	$recipient_log_level, 
+			recipient_note		=>	$recipient_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
 # This returns data about the given Anvil! notification target (taking either the target or its UUID)
 sub notify_data
 {
@@ -145,7 +234,6 @@ SELECT
     notify_language, 
     notify_level, 
     notify_units, 
-    notify_auto_add, 
     notify_note, 
     modified_date 
 FROM 
@@ -180,19 +268,17 @@ WHERE
 		my $notify_language = $row->[3];
 		my $notify_level    = $row->[4];
 		my $notify_units    = $row->[5];
-		my $notify_auto_add = $row->[6];
-		my $notify_note     = $row->[7] ? $row->[7] : "NULL";
-		my $modified_date   = $row->[8];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+		my $notify_note     = $row->[6] ? $row->[6] : "NULL";
+		my $modified_date   = $row->[7];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "notify_uuid",     value1 => $notify_uuid, 
 			name2 => "notify_name",     value2 => $notify_name, 
 			name3 => "notify_target",   value3 => $notify_target, 
 			name4 => "notify_language", value4 => $notify_language, 
 			name5 => "notify_level",    value5 => $notify_level, 
 			name6 => "notify_units",    value6 => $notify_units, 
-			name7 => "notify_auto_add", value7 => $notify_auto_add, 
-			name8 => "notify_note",     value8 => $notify_note, 
-			name9 => "modified_date",   value9 => $modified_date, 
+			name7 => "notify_note",     value7 => $notify_note, 
+			name8 => "modified_date",   value8 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### TODO: Be a lot smarter about this one Validate.pm is up
@@ -205,7 +291,6 @@ WHERE
 			notify_language	=>	$notify_language, 
 			notify_level	=>	$notify_level, 
 			notify_units	=>	$notify_units, 
-			notify_auto_add	=>	$notify_auto_add, 
 			notify_note	=>	$notify_note, 
 			notify_is_email =>	$notify_is_email,
 			modified_date	=>	$modified_date, 
@@ -273,7 +358,7 @@ WHERE
 		my $owner_name    = $row->[1];
 		my $owner_note    = $row->[2] ? $row->[2] : "NULL";
 		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "owner_uuid",    value1 => $owner_uuid, 
 			name2 => "owner_name",    value2 => $owner_name, 
 			name3 => "owner_note",    value3 => $owner_note, 
@@ -360,7 +445,7 @@ WHERE
 		my $smtp_helo_domain    = $row->[7] ? $row->[7] : "NULL";
 		my $smtp_note           = $row->[8] ? $row->[8] : "NULL";
 		my $modified_date       = $row->[9];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
 			name2  => "smtp_server",         value2  => $smtp_server, 
 			name3  => "smtp_port",           value3  => $smtp_port, 
@@ -455,7 +540,7 @@ WHERE
 		my $anvil_note        = $row->[5];
 		my $anvil_password    = $row->[6];
 		my $modified_date     = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
@@ -513,11 +598,22 @@ sub server_data
 			server => $server_name, 
 			anvil  => $anvil, 
 		});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_uuid", value1 => $server_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
 		{
 			# Bad or no UUID returned.
 			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
 		}
+	}
+	else
+	{
+		# Call this anyway as it will ensure we've got the definition XML file.
+		$an->Get->server_uuid({
+			server => $server_name, 
+			anvil  => $anvil, 
+		});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid,
@@ -634,15 +730,37 @@ WHERE
 					name15 => "modified_date",            value15 => $return->{modified_date}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
+			
+			# If there were no results, fall back to the XML we got earlier.
+			if (not $return->{modified_date})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_name", value1 => $server_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				$server_name =~ s/^vm://;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_name", value1 => $server_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "return->definition", value1 => $return->{definition},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
 		}
 	}
 	
-	### TODO: This doesn't handle no XML well. Before calling XML::Simple, validate that 'defition' 
-	###       contains XML.
 	# Now dig out the storage and network details.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return->definition", value1 => $return->{definition}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	if (not $return->{definition})
+	{
+		# Get the XML data from the definition file on the host directly.
+		
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0092", code => 92, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
 	my $xml  = XML::Simple->new();
 	my $data = $xml->XMLin($return->{definition}, KeyAttr => {}, ForceArray => 1);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2074,8 +2192,13 @@ WHERE
 		}
 		
 		# Store the XML in a system variable.
+		$server =~ s/^vm://;
 		$an->data->{server}{$server}{uuid} = $uuid if not $an->data->{server}{$server}{uuid};
 		$an->data->{server}{$server}{xml}  = $xml  if not $an->data->{server}{$server}{xml};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "server::${server}::uuid", value1 => $an->data->{server}{$server}{uuid}, 
+			name2 => "server::${server}::xml",  value2 => $an->data->{server}{$server}{xml}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2096,6 +2219,7 @@ sub server_xml
 	my $node     = $parameter->{node};
 	my $server   = $parameter->{server};
 	my $password = $parameter->{password};
+	   $node =~ s/\s//g;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "remote", value1 => $remote, 
 		name2 => "node",   value2 => $node, 
@@ -2170,6 +2294,7 @@ sub server_xml
 			});
 			foreach my $line (@{$return})
 			{
+				next if not $line;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2190,7 +2315,9 @@ sub server_xml
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $xml)
 		{
-			my $definitions_file = $an->data->{path}{definitions}."/${server}.xml";
+			my $say_server       =  $server;
+			   $say_server       =~ s/^vm://;
+			my $definitions_file = $an->data->{path}{definitions}."/${say_server}.xml";
 			my $shell_call = "
 if [ -e $definitions_file ];
 then
@@ -2211,6 +2338,7 @@ fi
 			});
 			foreach my $line (@{$return})
 			{
+				next if not $line;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2259,7 +2387,9 @@ fi
 		if ($server_found)
 		{
 			# Found it here, read in it's XML.
-			my $shell_call = "virsh dumpxml $server";
+			my $say_server =  $server;
+			   $say_server =~ s/^vm://;
+			my $shell_call =  "virsh dumpxml $say_server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2268,9 +2398,7 @@ fi
 			{
 				chomp;
 				my $line =  $_;
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
+				next if not $line;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2313,6 +2441,9 @@ fi
 		}
 	}
 	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "xml", value1 => $xml, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($xml);
 }
 
@@ -3250,7 +3381,9 @@ sub remote_anvil_details
 		{
 			# Got it.
 			($return->{node1}, $return->{node2}) = (split/,/, $an->data->{cluster}{$this_id}{nodes});
-			$return->{anvil_password}            = $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
+			$return->{node1}          =~ s/\s+//g;
+			$return->{node2}          =~ s/\s+//g;
+			$return->{anvil_password} =  $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
 		}
 	}
 	
@@ -3442,7 +3575,7 @@ sub target_details
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Summarize
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_name",           value1 => $return->{anvil_name}, 
 		name2 => "network::bcn_address", value2 => $return->{network}{bcn_address}, 
 		name3 => "network::ifn_address", value3 => $return->{network}{ifn_address}, 
@@ -3581,14 +3714,16 @@ sub local_anvil_details
 		    ($hostname_short eq $node_name) or 
 		    ($hostname_short eq $alt_name))
 		{
-			$return->{local_node} = $node_name;
+			$return->{local_node} =  $node_name;
+			$return->{local_node} =~ s/\s//g;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "local_node", value1 => $return->{local_node}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			$return->{peer_node} = $node_name;
+			$return->{peer_node} =  $node_name;
+			$return->{peer_node} =~ s/\s//g;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "peer_node", value1 => $return->{peer_node}, 
 			}, file => $THIS_FILE, line => __LINE__});

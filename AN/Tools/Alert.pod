@@ -596,6 +596,18 @@ The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was call
 
 The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.
 
+=head2 C<90>
+
+The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipient, anvil or notification target UUID was passed in.
+
+=head2 C<91>
+
+The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an Anvil! and/or notification UUID.
+
+=head2 C<92>
+
+The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.
+
 
 =head1 SEE ALSO
 

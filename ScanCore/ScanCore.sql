@@ -319,7 +319,6 @@ CREATE TABLE notifications (
 	notify_language		text				not null	default 'en_CA',	-- The language to use. Must exist in all .xml language files!
 	notify_level		text				not null	default 'warning', 	-- The level of log messages this user wants to receive (stated level plus higher-level); levels are; 'debug', 'info', 'notice', 'warning' and 'critical'.
 	notify_units		text				not null	default 'metric', 	-- Can be 'metric' or 'imperial'. All internal values are metric, imperial units are calculated when the email is generated.
-	notify_auto_add		boolean				not null	default TRUE,		-- If TRUE, this recipient will automatically monitor any newly added Anvil! systems and their nodes.
 	notify_note		text,
 	modified_date		timestamp with time zone	not null
 );
@@ -334,7 +333,6 @@ CREATE TABLE history.notifications (
 	notify_language		text,
 	notify_level		text,
 	notify_units		text,
-	notify_auto_add		boolean,
 	notify_note		text,
 	modified_date		timestamp with time zone	not null
 );
@@ -353,7 +351,6 @@ BEGIN
 		 notify_language,
 		 notify_level,
 		 notify_units, 
-		 notify_auto_add, 
 		 notify_note, 
 		 modified_date)
 	VALUES
@@ -363,7 +360,6 @@ BEGIN
 		 history_notifications.notify_language,
 		 history_notifications.notify_level,
 		 history_notifications.notify_units, 
-		 history_notifications.notify_auto_add, 
 		 history_notifications.notify_note, 
 		 history_notifications.modified_date);
 	RETURN NULL;
@@ -381,13 +377,13 @@ CREATE TRIGGER trigger_notifications
 CREATE TABLE recipients (
 	recipient_uuid			uuid				not null	primary key,	-- 
 	recipient_anvil_uuid		uuid				not null,			-- 
-	recipient_alert_uuid		uuid,
-	recipient_log_level		text,								-- If this is set, this log level will over-ride the level set in the file or email alert recipient table.
+	recipient_notify_uuid		uuid,
+	recipient_notify_level		text,								-- If this is set, this log level will over-ride the level set in the file or email alert recipient table.
 	recipient_note			text, 
 	modified_date			timestamp with time zone	not null, 
 	
 	FOREIGN KEY(recipient_anvil_uuid) REFERENCES anvils(anvil_uuid), 
-	FOREIGN KEY(recipient_alert_uuid) REFERENCES notifications(notify_uuid) 
+	FOREIGN KEY(recipient_notify_uuid) REFERENCES notifications(notify_uuid) 
 );
 ALTER TABLE recipients OWNER TO #!variable!user!#;
 
@@ -395,8 +391,8 @@ CREATE TABLE history.recipients (
 	history_id			bigserial,
 	recipient_uuid			uuid,
 	recipient_anvil_uuid		uuid,
-	recipient_alert_uuid		uuid,
-	recipient_log_level		text,
+	recipient_notify_uuid		uuid,
+	recipient_notify_level		text,
 	recipient_note			text, 
 	modified_date			timestamp with time zone	not null 
 );
@@ -411,15 +407,15 @@ BEGIN
 	INSERT INTO history.recipients
 		(recipient_uuid,
 		 recipient_anvil_uuid, 
-		 recipient_alert_uuid, 
-		 recipient_log_level, 
+		 recipient_notify_uuid, 
+		 recipient_notify_level, 
 		 recipient_note, 
 		 modified_date)
 	VALUES
 		(history_recipients.recipient_uuid,
 		 history_recipients.recipient_anvil_uuid, 
-		 history_recipients.recipient_alert_uuid, 
-		 history_recipients.recipient_log_level, 
+		 history_recipients.recipient_notify_uuid, 
+		 history_recipients.recipient_notify_level, 
 		 history_recipients.recipient_note, 
 		 history_recipients.modified_date);
 	RETURN NULL;

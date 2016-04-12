@@ -57,7 +57,6 @@ $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 ### TODO: Add all ScanCore column names as variables to check for automatically?
 $an->Web->get_cgi({variables => [
 	"notify_address",
-	"notify_auto_add", 
 	"notify_language",
 	"notify_level",
 	"notify_name",
@@ -234,7 +233,6 @@ sub load_notify_form
 				$an->data->{cgi}{notify_language} = $hash_ref->{notify_language};
 				$an->data->{cgi}{notify_level}    = $hash_ref->{notify_level};
 				$an->data->{cgi}{notify_units}    = $hash_ref->{notify_units};
-				$an->data->{cgi}{notify_auto_add} = $hash_ref->{notify_auto_add};
 				$an->data->{cgi}{notify_note}     = $hash_ref->{notify_note};
 				last;
 			}
@@ -249,7 +247,6 @@ sub load_notify_form
 		$an->data->{cgi}{notify_language} = "";
 		$an->data->{cgi}{notify_level}    = "";
 		$an->data->{cgi}{notify_units}    = "";
-		$an->data->{cgi}{notify_auto_add} = "";
 		$an->data->{cgi}{notify_note}     = "";
 	}
 	
@@ -977,7 +974,7 @@ sub save_anvil_form
 	return($notice_message, $error_fields);
 }
 
-# This parses the CGI data and calls $an->Web->insert_or_update_nodes() for each node.
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_nodes() for each node.
 sub save_nodes
 {
 	my ($an, $node1_data, $node2_data) = @_;
@@ -1037,7 +1034,7 @@ sub save_nodes
 	
 	### NOTE: Don't confuse the 'nodeX_uuid' DB record locator with the node's host UUID. The node's UUID
 	###       and the BCN, SN and IFN IPs are never passed from CGI, they're always pulled from the node.
-	my $node1_uuid = $an->Web->insert_or_update_nodes({
+	my $node1_uuid = $an->ScanCore->insert_or_update_nodes({
 		node_uuid	=>	$an->data->{cgi}{node1_uuid}, 
 		node_anvil_uuid	=>	$an->data->{cgi}{anvil_uuid}, 
 		node_host_uuid	=>	$node1_data->{uuid}, 
@@ -1049,7 +1046,7 @@ sub save_nodes
 		node_ifn	=>	$node1_data->{network}{ifn_address}, 
 		node_password	=>	$an->data->{cgi}{node1_password} ? $an->data->{cgi}{node1_password} : $an->data->{cgi}{anvil_password},
 	});
-	my $node2_uuid = $an->Web->insert_or_update_nodes({
+	my $node2_uuid = $an->ScanCore->insert_or_update_nodes({
 		node_uuid	=>	$an->data->{cgi}{node2_uuid}, 
 		node_anvil_uuid	=>	$an->data->{cgi}{anvil_uuid}, 
 		node_host_uuid	=>	$node2_data->{uuid}, 
@@ -1065,7 +1062,7 @@ sub save_nodes
 	return($node1_uuid, $node2_uuid);
 }
 
-# This parses the CGI data and calls $an->Web->insert_or_update_anvil();
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_anvil();
 sub save_anvil
 {
 	my ($an) = @_;
@@ -1082,7 +1079,7 @@ sub save_anvil
 	
 	# This will return the new UUID if INSERTed and the existing UUID for the matching Anvil! name, if 
 	# one exists. If nothing changed, the database will not be updated.
-	$anvil_uuid = $an->Web->insert_or_update_anvils({
+	$anvil_uuid = $an->ScanCore->insert_or_update_anvils({
 		anvil_uuid		=>	$anvil_uuid,
 		anvil_owner_uuid	=>	$anvil_owner_uuid,
 		anvil_smtp_uuid		=>	$anvil_smtp_uuid,
@@ -1099,7 +1096,7 @@ sub save_anvil
 }
 
 
-# This parses the CGI data and calls $an->Web->insert_or_update_notifications();
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_notifications();
 sub save_notify
 {
 	my ($an) = @_;
@@ -1107,24 +1104,44 @@ sub save_notify
 	
 	# This will return the new UUID if INSERTed and the existing UUID for the matching notify name, if 
 	# one exists. If nothing changed, the database will not be updated.
-	$an->data->{cgi}{notify_uuid} = $an->Web->insert_or_update_notifications({
+	$an->data->{cgi}{notify_uuid} = $an->ScanCore->insert_or_update_notifications({
 		notify_uuid	=>	$an->data->{cgi}{notify_uuid},
 		notify_name	=>	$an->data->{cgi}{notify_name},
 		notify_target	=>	$an->data->{cgi}{notify_target},
 		notify_language	=>	$an->data->{cgi}{notify_language},
 		notify_level	=>	$an->data->{cgi}{notify_level},
 		notify_units	=>	$an->data->{cgi}{notify_units},
-		notify_auto_add	=>	$an->data->{cgi}{notify_auto_add},
 		notify_note	=>	$an->data->{cgi}{notify_note},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::notify_uuid", value1 => $an->data->{cgi}{notify_uuid},
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Loop through the Anvil! systems now.
+	my $anvils = $an->ScanCore->get_anvils();
+	foreach my $hash_ref (@{$anvils})
+	{
+		my $anvil_uuid = $hash_ref->{anvil_uuid};
+		my $notify_key = "notify_anvil_".$anvil_uuid;
+		$an->Web->get_cgi({variables => [$notify_key] });
+		if ($an->data->{cgi}{$notify_key})
+		{
+			# For now, the only reason 'note' is used is to mark a recipient being deleted.
+			my $recipient_uuid = $an->ScanCore->insert_or_update_recipients({
+				recipient_anvil_uuid	=>	$anvil_uuid,
+				recipient_notify_uuid	=>	$an->data->{cgi}{notify_uuid}, 
+				recipient_notify_level	=>	$an->data->{cgi}{$notify_key},
+			});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "recipient_uuid", value1 => $recipient_uuid,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
 	return($an->data->{cgi}{notify_uuid});
 }
 
-# This parses the CGI data and calls $an->Web->insert_or_update_owner();
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_owner();
 sub save_owner
 {
 	my ($an) = @_;
@@ -1132,7 +1149,7 @@ sub save_owner
 	
 	# This will return the new UUID if INSERTed and the existing UUID for the matching owner name, if 
 	# one exists. If nothing changed, the database will not be updated.
-	$an->data->{cgi}{owner_uuid} = $an->Web->insert_or_update_owners({
+	$an->data->{cgi}{owner_uuid} = $an->ScanCore->insert_or_update_owners({
 		owner_uuid	=>	$an->data->{cgi}{owner_uuid},
 		owner_name	=>	$an->data->{cgi}{owner_name},
 		owner_note	=>	$an->data->{cgi}{owner_note},
@@ -1144,7 +1161,7 @@ sub save_owner
 	return($an->data->{cgi}{owner_uuid});
 }
 
-# This parses the CGI data and calls $an->Web->insert_or_update_smtp();
+# This parses the CGI data and calls $an->ScanCore->insert_or_update_smtp();
 sub save_smtp
 {
 	my ($an) = @_;
@@ -1212,7 +1229,7 @@ sub save_smtp
 	
 	# This will return the new UUID if INSERTed and the existing UUID for the matching server name, if 
 	# one exists. If nothing changed, the database will not be updated.
-	$smtp_uuid = $an->Web->insert_or_update_smtp({
+	$smtp_uuid = $an->ScanCore->insert_or_update_smtp({
 		smtp_uuid		=>	$smtp_uuid,
 		smtp_server		=>	$smtp_server,
 		smtp_port		=>	$smtp_port,
@@ -1777,18 +1794,17 @@ sub notify_menu
 		$an->data->{cgi}{notify_language} = "en_CA"   if not $an->data->{cgi}{notify_language};
 		$an->data->{cgi}{notify_level}    = "warning" if not $an->data->{cgi}{notify_level};
 		$an->data->{cgi}{notify_units}    = "metric"  if not $an->data->{cgi}{notify_units};
-		$an->data->{cgi}{notify_auto_add} = "true"    if not $an->data->{cgi}{notify_auto_add};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "cgi::notify_language", value1 => $an->data->{cgi}{notify_language},
 			name2 => "cgi::notify_level",    value2 => $an->data->{cgi}{notify_level},
 			name3 => "cgi::notify_units",    value3 => $an->data->{cgi}{notify_units},
-			name4 => "cgi::notify_auto_add", value4 => $an->data->{cgi}{notify_auto_add},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Load information from the databases, then we'll tease out data if 'load' was set.
 	my $anvils        = $an->ScanCore->get_anvils();
 	my $notifications = $an->ScanCore->get_notifications();
+	my $recipients    = $an->ScanCore->get_recipients();
 	
 	# Load a specific notification target, if requested.
 	if ($an->data->{cgi}{load_notify})
@@ -1907,6 +1923,7 @@ sub notify_menu
 	my $log_level_select = $an->Web->build_select({
 		name     => "notify_level", 
 		options  => [
+			"ignore#!##!string!alert_level_0006!#",
 			"debug#!##!string!alert_level_0001!#",
 			"info#!##!string!alert_level_0002!#",
 			"notice#!##!string!alert_level_0003!#",
@@ -1952,28 +1969,6 @@ sub notify_menu
 			column4		=>	"&nbsp;",
 		}});
 	
-	# Auto-Add to new Anvil! systems
-	my $auto_add_select = $an->Web->build_select({
-		name     => "notify_auto_add", 
-		options  => [
-			"true#!##!string!select_0009!#",
-			"false#!##!string!select_0010!#",
-		], 
-		blank    => 0,
-		selected => $an->data->{cgi}{notify_auto_add},
-		width    => ($width + 10),
-	});
-	$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
-			column1_class	=>	"highlight_row_bold",
-			column1		=>	"#!string!row_0312!#",
-			column2_class	=>	"input_select",
-			column2		=>	$auto_add_select,
-			column3_class	=>	"input_explain",
-			column3		=>	"#!string!explain_0207!#",
-			column4_class	=>	"input_url",
-			column4		=>	"&nbsp;",
-		}});
-	
 	# Create the text field for the notification target's note
 	my $textarea = $an->Web->template({file => "web.html", template => "textarea_input", replace => { 
 		name	=>	"notify_note",
@@ -1989,6 +1984,68 @@ sub notify_menu
 			url_class	=>	"",
 			url_body	=>	"",
 		}});
+	
+	# Print the list of Anvil! systems, if any. For each, where there is an entry in 
+	if (@{$anvils} > 0)
+	{
+		my $break_printed = 0;
+		# Loop through each Anvil!
+		foreach my $hash_ref (@{$anvils})
+		{
+			my $anvil_uuid        = $hash_ref->{anvil_uuid};
+			my $anvil_name        = $hash_ref->{anvil_name};
+			my $anvil_description = $hash_ref->{anvil_description};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "cgi::anvil_uuid",        value1 => $an->data->{cgi}{anvil_uuid},
+				name1 => "cgi::anvil_name",        value1 => $an->data->{cgi}{anvil_name},
+				name2 => "cgi::anvil_description", value2 => $an->data->{cgi}{anvil_description},
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if (not $break_printed)
+			{
+				$break_printed = 1;
+				$menu_items .= $an->Web->template({file => "web.html", template => "break-bar", replace => { 
+						message	=>	"#!string!header_0025!#",
+						class	=>	"breaker_header",
+						colspan	=>	4,
+					}});
+			}
+			my $edit_url = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+					name	=>	"configure_".$anvil_name,
+					id	=>	"configure_".$anvil_name,
+					value	=>	"#!string!button_0077!#",
+					url	=>	"?task=anvil&anvil_uuid=".$anvil_uuid."&load_anvil=true",
+				}, no_comment => 1});
+			
+			# Build the select for the notification level (with a "don't notify") option.
+			my $notify_level_select = $an->Web->build_select({
+				name     => "notify_anvil_".$anvil_uuid, 
+				options  => [
+					"ignore#!##!string!alert_level_0006!#",
+					"debug#!##!string!alert_level_0001!#",
+					"info#!##!string!alert_level_0002!#",
+					"notice#!##!string!alert_level_0003!#",
+					"warning#!##!string!alert_level_0004!#",
+					"critical#!##!string!alert_level_0005!#",
+				], 
+				blank    => 0,
+				'sort'   => 0,
+				selected => $an->data->{cgi}{notify_level},
+				width    => ($width + 10),
+			});
+			
+			$menu_items .= $an->Web->template({file => "web.html", template => "generic-4column-menu-entry", replace => {
+					column1_class	=>	"highlight_row_bold",
+					column1		=>	"&nbsp;",
+					column2_class	=>	"highlight_detail",
+					column2		=>	$notify_level_select,
+					column3_class	=>	"input_explain",
+					column3		=>	"<span class=\"highlight_detail\">$anvil_name</span> - $anvil_description",
+					column4_class	=>	"",
+					column4		=>	"$edit_url",
+				}});
+		}
+	}
 	
 	# Hidden fields now  
 	$menu_items .= $an->Web->template({file => "web.html", template => "hidden_input", replace => { 
@@ -2287,7 +2344,7 @@ sub smtp_menu
 			url_body	=>	"",
 		}});
 	
-	# Print the list of currently owned Anvil! systems.
+	# Print the list of Anvil! systems currently using this SMTP server.
 	if (($an->data->{cgi}{smtp_uuid}) && (@{$anvils} > 0))
 	{
 		my $break_printed = 0;

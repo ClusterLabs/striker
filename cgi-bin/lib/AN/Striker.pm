@@ -4089,7 +4089,7 @@ sub manage_vm
 	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
 	# UUID.
 	my $boot_select = "<select name=\"boot_device\" style=\"width: 165px;\">";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
 	   $conf->{vm}{$vm}{current_boot_device}    = "";
@@ -4110,7 +4110,7 @@ sub manage_vm
 		if ($line =~ /<uuid>([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})<\/uuid>/)
 		{
 			$server_uuid = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "server_uuid", value1 => $server_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -4130,14 +4130,13 @@ sub manage_vm
 				}
 				else
 				{
-					# I didn't see a CD-ROM boot option, so
-					# keep looking.
+					# I didn't see a CD-ROM boot option, so keep looking.
 					$in_os = 2;
 				}
 			}
 			elsif ($line =~ /<boot dev='(.*?)'/)
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "vm",   value1 => $vm,
 					name2 => "line", value2 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -4163,7 +4162,7 @@ sub manage_vm
 				}
 				
 				$boot_select .= "<option value=\"$device\" $selected>$say_device</option>";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "boot select", value1 => $boot_select,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -4184,7 +4183,7 @@ sub manage_vm
 	}
 	$boot_select .= "</select>";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "boot select", value1 => $boot_select,
+		name1 => "boot_select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# See if I have access to ScanCore and, if so, check for a note, the start after, start delay, 
@@ -4211,8 +4210,9 @@ sub manage_vm
 		
 		# Get the current DB data.
 		my $results = $an->Get->server_data({
-			uuid  => $server_uuid, 
-			anvil => $cluster, 
+			uuid   => $server_uuid, 
+			server => $vm,
+			anvil  => $cluster, 
 		});
 		$server_note                     = $results->{note};
 		$server_start_after              = $results->{start_after};
@@ -4223,7 +4223,7 @@ sub manage_vm
 		$server_post_migration_script    = $results->{post_migration_script};
 		$server_post_migration_arguments = $results->{post_migration_arguments};
 		$modified_date                   = $results->{modified_date};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 			name1  => "show_db_options",                 value1  => $show_db_options, 
 			name2  => "server_note",                     value2  => $server_note, 
 			name3  => "server_start_after",              value3  => $server_start_after, 
@@ -4235,8 +4235,17 @@ sub manage_vm
 			name9  => "server_post_migration_arguments", value9  => $server_post_migration_arguments, 
 			name10 => "modified_date",                   value10 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
+		
+		# If the database is up, but we didn't get a result, the modified_date won't be set.
+		if (not $modified_date)
+		{
+			$show_db_options = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "show_db_options", value1 => $show_db_options, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_db_options", value1 => $show_db_options
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4574,12 +4583,14 @@ sub manage_vm
 	}
 	
 	# If we can show the note, do so
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "show_db_options", value1 => $show_db_options,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $note_form = "";
 	if ($show_db_options)
 	{
+		### TODO: If there is only one server, present an option to "Always Boot", "Never Boot" and 
+		###       "Last State" to inform anvil-safe-start as to what to do when it runs.
 		my $return = $an->Get->server_data({
 			server => $say_vm, 
 			anvil  => $cluster, 
@@ -4701,8 +4712,8 @@ ORDER BY
 		# Migration type
 		$say_migration_type_select = AN::Cluster::build_select($conf, "server_migration_type", 0, 0, 150, $conf->{cgi}{server_migration_type}, ["live#!##!string!state_0126!#", "cold#!##!string!state_0127!#"]);;
 		
-		# Get a list of files from /shared/files that are not ISOs and have their
-		# 'executable' bit set.
+		# Get a list of files from /shared/files that are not ISOs and have their 'executable' bit 
+		# set.
 		my $password = $conf->{sys}{root_password};
 		my $node     = $conf->{sys}{use_node};
 		my $port     = $conf->{node}{$node}{port};
