@@ -1460,10 +1460,24 @@ WHERE
     notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
 ;";
 	push @{$queries}, "
+UPDATE 
+    recipients 
+SET 
+    recipient_note = 'DELETED' 
+WHERE 
+    recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	push @{$queries}, "
 DELETE FROM  
     notifications 
 WHERE 
     notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    recipients 
+WHERE 
+    recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{notify_uuid})."
 ;";
 	
 	# Log the queries
@@ -1645,6 +1659,14 @@ WHERE
 ;";
 	push @{$queries}, "
 UPDATE 
+    recipients  
+SET 
+    recipient_note = 'DELETED' 
+WHERE 
+    recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	push @{$queries}, "
+UPDATE 
     anvils 
 SET 
     anvil_note = 'DELETED' 
@@ -1656,6 +1678,12 @@ DELETE FROM
     nodes 
 WHERE 
     node_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    recipients 
+WHERE 
+    recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{anvil_uuid})."
 ;";
 	push @{$queries}, "
 DELETE FROM  

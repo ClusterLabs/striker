@@ -3671,6 +3671,7 @@ sub update_db
 		#update_db_anvils($an);
 		#update_db_nodes($an);
 		#update_db_recipients($an);
+		#update_db_manifests($an);
 		#update_db_variables($an);
 		#update_db_alerts($an);
 		#update_db_smtp($an);

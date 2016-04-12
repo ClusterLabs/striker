@@ -429,6 +429,51 @@ CREATE TRIGGER trigger_recipients
 	FOR EACH ROW EXECUTE PROCEDURE history_recipients();
 
 
+-- This stores install manifests
+CREATE TABLE manifests (
+	manifest_uuid		uuid				not null	primary key,	-- 
+	manifest_data		text				not null,			-- This is the XML body
+	manifest_note		text, 
+	modified_date		timestamp with time zone	not null 
+);
+ALTER TABLE manifests OWNER TO #!variable!user!#;
+
+CREATE TABLE history.manifests (
+	history_id		bigserial,
+	manifest_uuid		uuid,
+	manifest_data		text, 
+	manifest_note		text, 
+	modified_date		timestamp with time zone	not null 
+);
+ALTER TABLE history.manifests OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_manifests() RETURNS trigger
+AS $$
+DECLARE
+	history_manifests RECORD;
+BEGIN
+	SELECT INTO history_manifests * FROM manifests WHERE manifest_uuid = new.manifest_uuid;
+	INSERT INTO history.manifests
+		(manifest_uuid,
+		 manifest_data, 
+		 manifest_note, 
+		 modified_date)
+	VALUES
+		(history_manifests.manifest_uuid,
+		 history_manifests.manifest_data, 
+		 history_manifests.manifest_note, 
+		 history_manifests.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_manifests() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_manifests
+	AFTER INSERT OR UPDATE ON manifests
+	FOR EACH ROW EXECUTE PROCEDURE history_manifests();
+
+
 -- This stores information about the host machine running this instance of
 -- ScanCore. All agents will reference this table.
 CREATE TABLE hosts (

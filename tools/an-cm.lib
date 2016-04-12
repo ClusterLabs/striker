@@ -6805,7 +6805,7 @@ sub compare_new_and_old
 			my $new_volts  = $1;
 			my $old_volts  = ($old_value =~ /^(\d+\.*\d*) Volts/i)[0];
 			my $base_volts = ($var =~ /.*_(\d+\.*\d*)v/)[0];
-			   $base_volts if not defined $base_volts;
+			   $base_volts = "" if not defined $base_volts;
 			#record($conf, "$THIS_FILE ".__LINE__."; Checking the current voltages for \"$say_translation\"; base: [$base_volts ($var)], old: [$old_state, $old_value ($new_volts)], new: [$new_state, $new_value ($new_volts)]\n");
 			
 			my $new_mv  =  $new_volts * 1000;
@@ -8013,6 +8013,7 @@ sub check_mail_config
 	if (-e $conf->{path}{postfix_relay_file})
 	{
 		record($conf, "$THIS_FILE ".__LINE__."; It exists, reading it.\n");
+		my $alt_server_found = 0;
 		open (my $file_handle, "<", "$conf->{path}{postfix_relay_file}") or die "Failed to read: [./version], the error was: $!\n";
 		while(<$file_handle>)
 		{
@@ -8024,18 +8025,35 @@ sub check_mail_config
 				my $port     = $2;
 				my $username = $3;
 				my $password = $4;
-				
-				if (($domain   ne $conf->{smtp}{server}) ||
-				    ($port     ne $conf->{smtp}{port}) ||
-				    ($username ne $conf->{smtp}{username}) ||
+				if (($domain   ne $conf->{smtp}{server})   or 
+				    ($port     ne $conf->{smtp}{port})     or 
+				    ($username ne $conf->{smtp}{username}) or 
 				    ($password ne $conf->{smtp}{password}))
 				{
 					record($conf, "$THIS_FILE ".__LINE__."; The email details have changed, rewriting the relay file.\n");
 					$write_relay_file = 1;
 				}
 			}
+			if ($line =~ /^smtp_fallback_relay = \[(.*?)\]:(\d+)/)
+			{
+				my $alt_domain = $1;
+				my $alt_port   = $2;
+				my $port       = $conf->{smtp}{alt_port}   ? $conf->{smtp}{alt_port}   : $conf->{smtp}{port};
+				my $alt_server = $conf->{smtp}{alt_server} ? $conf->{smtp}{alt_server} : "";
+				
+				if (($alt_domain ne $alt_server) or ($port ne $alt_port))
+				{
+					$write_relay_file = 1;
+				}
+				$alt_server_found = 1;
+			}
 		}
 		close $file_handle;
+		
+		if (($conf->{smtp}{alt_server}) && (not $alt_server_found))
+		{
+			$write_relay_file = 1;
+		}
 	}
 	else
 	{
@@ -8106,6 +8124,8 @@ sub check_mail_config
 			next if $line =~ /^smtp_sasl_password_maps =/;
 			next if $line =~ /^smtp_sasl_security_options =/;
 			next if $line =~ /^smtp_tls_CAfile =/;
+			next if $line =~ /^smtp_fallback_relay =/;
+			next if $line =~ /^smtp_helo_name =/;
 			
 			if ($line =~ /#relayhost = \[an.ip.add.ress\]/)
 			{
@@ -8117,6 +8137,12 @@ sub check_mail_config
 				#       the relay file.
 				$postfix_main .= "$line\n";
 				$postfix_main .= "relayhost = [$conf->{smtp}{server}]:$conf->{smtp}{port}\n";
+				if ($conf->{smtp}{alt_server})
+				{
+					my $port = $conf->{smtp}{alt_port} ? $conf->{smtp}{alt_port} : $conf->{smtp}{port};
+					$postfix_main .= "smtp_fallback_relay = [$conf->{smtp}{alt_server}]:$port\n";
+					$postfix_main .= "smtp_helo_name = $conf->{smtp}{helo_domain}\n";
+				}
 				$postfix_main .= "smtp_use_tls = yes\n";
 				$postfix_main .= "smtp_sasl_auth_enable = yes\n";
 				$postfix_main .= "smtp_sasl_password_maps = hash:$conf->{path}{postfix_relay_file}\n";
