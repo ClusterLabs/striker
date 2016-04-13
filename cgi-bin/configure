@@ -175,27 +175,18 @@ sub process_task
 	{
 		notify_menu($an);
 	}
-	elsif ($an->data->{cgi}{task} eq "install_manifests")
+	elsif ($an->data->{cgi}{task} eq "manifests")
 	{
 		
 	}
 	elsif ($an->data->{cgi}{task} eq "backup")
 	{
-		if ($an->data->{cgi}{subtask} eq "create")
-		{
-		}
-		elsif ($an->data->{cgi}{subtask} eq "load")
-		{
-		}
 	}
 	elsif ($an->data->{cgi}{task} eq "install_target")
 	{
-		if ($an->data->{cgi}{subtask} eq "enable")
-		{
-		}
-		elsif ($an->data->{cgi}{subtask} eq "disable")
-		{
-		}
+		# This task doesn't have a menu, it only uses notices at the top of the page, so it will be 
+		# dealt with in the main menu.
+		show_main_menu($an);
 	}
 	elsif ($an->data->{cgi}{task} eq "scancore_db")
 	{
@@ -1260,7 +1251,7 @@ sub confirm_action
 	{
 		# Get the Anvil!'s name.
 		my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
-		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",
 			id	=>	"confirm",
 			value	=>	"#!string!button_0004!#",
@@ -1282,7 +1273,7 @@ sub confirm_action
 	{
 		# Get the owner's name.
 		my $owner_data     = $an->Get->owner_data({uuid => $an->data->{cgi}{owner_uuid}});
-		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",
 			id	=>	"confirm",
 			value	=>	"#!string!button_0004!#",
@@ -1304,7 +1295,7 @@ sub confirm_action
 	{
 		# Get the smtp server's name.
 		my $smtp_data      = $an->Get->smtp_data({uuid => $an->data->{cgi}{smtp_uuid}});
-		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",
 			id	=>	"confirm",
 			value	=>	"#!string!button_0004!#",
@@ -1326,7 +1317,7 @@ sub confirm_action
 	{
 		# Get the notification target's name.
 		my $notify_data     = $an->Get->notify_data({uuid => $an->data->{cgi}{notify_uuid}});
-		my $confirm_button = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",
 			id	=>	"confirm",
 			value	=>	"#!string!button_0004!#",
@@ -1341,6 +1332,24 @@ sub confirm_action
 				row_body	=>	"#!string!row_0306!#",
 				message_class	=>	"",
 				message_body	=>	$an->String->get({key => "message_0454", variables => { target => $notify_data->{notify_target} }}),
+				button		=>	$confirm_button,
+			}});
+	}
+	elsif ($action eq "enable_install_target")
+	{
+		# Warn the user about DHCP server conflict possibilities.
+		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
+			name	=>	"confirm",
+			id	=>	"confirm",
+			value	=>	"#!string!button_0004!#",
+			url	=>	"?task=install_target&subtask=enable&confirm=true",
+		}, no_comment => 1});
+		$notice_message = $an->Web->template({file => "web.html", template => "confirm-message", replace => {
+				title		=>	"#!string!title_0200!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0312!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0457"}),
 				button		=>	$confirm_button,
 			}});
 	}
@@ -2114,9 +2123,23 @@ sub notify_menu
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-			back		=>	"<a href=\"?\">$back_image</a>",
-			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
@@ -2462,9 +2485,23 @@ sub smtp_menu
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-			back		=>	"<a href=\"?\">$back_image</a>",
-			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
@@ -2729,9 +2766,23 @@ sub owner_menu
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-			back		=>	"<a href=\"?\">$back_image</a>",
-			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
@@ -3213,9 +3264,23 @@ sub anvil_menu
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-			back		=>	"<a href=\"?\">$back_image</a>",
-			refresh		=>	"<a href=\"".$refresh_link."\">$refresh_image</a>",
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
@@ -3240,6 +3305,34 @@ sub show_main_menu
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "show_main_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# For some tasks, like enabling and disabling install targets, there is no dedicated menu but just a
+	# notice header. Deal with those now, if appropriate.
+	my $notice_message = "";
+	my $refresh_link   = $an->data->{sys}{cgi_string};
+	if ($an->data->{cgi}{task} eq "install_target")
+	{
+		if ($an->data->{cgi}{subtask} eq "enable")
+		{
+			# Confirmed?
+			if ($an->data->{cgi}{confirm})
+			{
+				# Baleted!
+				$notice_message = enable_install_target($an);
+			}
+			else
+			{
+				# Ask them to confirm
+				$notice_message = confirm_action($an, "enable_install_target");
+				$refresh_link =~ s/notify_uuid=.*?&/&/;
+				$refresh_link =~ s/notify_uuid=.*//;
+			}
+		}
+		elsif ($an->data->{cgi}{subtask} eq "disable")
+		{
+			# No confirmation needed.
+		}
+	}
+	
 	# Put together the frame of the page.
 	my $back_image    = "";
 	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
@@ -3247,9 +3340,23 @@ sub show_main_menu
 			alt_text     => "#!string!button_0002!#",
 			id           => "refresh_icon",
 		}});
+	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"back",
+			id	=>	"back",
+			alt	=>	"#!string!button_0001!#",
+			value	=>	$back_image,
+			url	=>	"?",
+		}, no_comment => 1});
+	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"refresh",
+			id	=>	"refresh",
+			alt	=>	"#!string!button_0002!#",
+			value	=>	$refresh_image,
+			url	=>	$refresh_link,
+		}, no_comment => 1});
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
-			back		=>	$back_image,
-			refresh		=>	"<a href=\"".$an->data->{sys}{cgi_string}."\">$refresh_image</a>",
+			back	=>	$back_anchor,
+			refresh	=>	$refresh_anchor,
 		}});
 	my $footer = $an->Web->template({file => "configure.html", template => "configure-footer"});
 	
@@ -3257,31 +3364,72 @@ sub show_main_menu
 	my $menu_items = "";
 	
 	# Anvil! systems
+	my $task_anvil_url = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_anvil",
+			id	=>	"task_anvil",
+			alt	=>	"#!string!button_0069!#",
+			value	=>	"#!string!button_0069!#",
+			url	=>	"?task=anvil",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=anvil\" alt=\"#!string!button_0069!#\" id=\"task_anvil\">#!string!button_0069!#</a>",
+			button		=>	$task_anvil_url,
 			description	=>	"#!string!explain_0005!#",
 			url		=>	"",
 		}})."\n";
+		
 	# Owner 
+	my $task_owner_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_owner",
+			id	=>	"task_owner",
+			alt	=>	"#!string!button_0070!#",
+			value	=>	"#!string!button_0070!#",
+			url	=>	"?task=owner",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=owner\" alt=\"#!string!button_0070!#\" id=\"task_owner\">#!string!button_0070!#</a>",
+			button		=>	$task_owner_anchor,
 			description	=>	"#!string!explain_0013!#",
 			url		=>	"",
 		}})."\n";
+		
 	# SMTP 
+	my $task_smtp_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_smtp",
+			id	=>	"task_smtp",
+			alt	=>	"#!string!button_0071!#",
+			value	=>	"#!string!button_0071!#",
+			url	=>	"?task=smtp",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=smtp\" alt=\"#!string!button_0071!#\" id=\"task_smtp\">#!string!button_0071!#</a>",
+			button		=>	$task_smtp_anchor,
 			description	=>	"#!string!explain_0023!#",
 			url		=>	"",
 		}})."\n";
 	
-	### TODO: Load a given notification recipients and present all existing Anvil! systems with a list of
-	###       the log level they want receive alerts at for each system, with an 'Ignore' option to not 
-	###       get alerts at all. Have an additional one to auto-set against new Anvil! systems.
-	# Alert Recipient
+	# Notification Recipients
+	my $task_notify_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_notify",
+			id	=>	"task_notify",
+			alt	=>	"#!string!button_0072!#",
+			value	=>	"#!string!button_0072!#",
+			url	=>	"?task=notify",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=notify\" alt=\"#!string!button_0072!#\" id=\"task_notify\">#!string!button_0072!#</a>",
+			button		=>	$task_notify_anchor,
 			description	=>	"#!string!explain_0105!#",
+			url		=>	"",
+		}})."\n";
+	
+	# Advanced Configuration
+	my $task_advanced_options_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_advanced_options",
+			id	=>	"task_advanced_options",
+			alt	=>	"#!string!button_0073!#",
+			value	=>	"#!string!button_0073!#",
+			url	=>	"?task=advanced_options",
+		}, no_comment => 1});
+	$menu_items .= $an->Web->template({file => "configure.html", template => "optionsure-menu-entry", replace => {
+			button		=>	$task_advanced_options_anchor,
+			description	=>	"#!string!explain_0172!#",
 			url		=>	"",
 		}})."\n";
 		
@@ -3289,23 +3437,30 @@ sub show_main_menu
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-spacer"});
 	
 	# Install Manifests
+	my $task_manifest_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_manifest",
+			id	=>	"task_manifest",
+			alt	=>	"#!string!button_0060!#",
+			value	=>	"#!string!button_0060!#",
+			url	=>	"?task=manifest",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=install_manifests\" alt=\"#!string!button_0060!#\" id=\"task_install_manifests\">#!string!button_0060!#</a>",
+			button		=>	$task_manifest_anchor,
 			description	=>	"#!string!explain_0168!#",
 			url		=>	"",
 		}})."\n";
 	
-	# Backup
+	# Backup and restore
+	my $task_backup_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_backup",
+			id	=>	"task_backup",
+			alt	=>	"#!string!button_0074!#",
+			value	=>	"#!string!button_0074!#",
+			url	=>	"?task=backup",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=backup&subtask=create\" alt=\"#!string!button_0074!#\" id=\"task_backup_create\">#!string!button_0074!#</a>",
+			button		=>	$task_backup_anchor,
 			description	=>	"#!string!explain_0171!#",
-			url		=>	"",
-		}})."\n";
-	
-	# Load
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=backup&subtask=load\" alt=\"#!string!button_0075!#\" id=\"task_backup_load\">#!string!button_0075!#</a>",
-			description	=>	"#!string!explain_0172!#",
 			url		=>	"",
 		}})."\n";
 	
@@ -3319,8 +3474,15 @@ sub show_main_menu
 	if ($dhcpd_state eq "0")
 	{
 		# Option to disable
+		my $task_install_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"task_install_target",
+				id	=>	"task_install_target",
+				alt	=>	"#!string!button_0058!#",
+				value	=>	"#!string!button_0058!#",
+				url	=>	"?task=install_target&subtask=disable",
+			}, no_comment => 1});
 		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-				button		=>	"<a href=\"?task=install_target&subtask=disable\" alt=\"#!string!button_0058!#\" id=\"task_install_target\">#!string!button_0058!#</a>",
+				button		=>	$task_install_target_anchor,
 				description	=>	"#!string!explain_0169!#",
 				url		=>	"",
 			}})."\n";
@@ -3328,16 +3490,30 @@ sub show_main_menu
 	elsif ($dhcpd_state eq "1")
 	{
 		# Option to enable
+		my $task_install_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"task_install_target",
+				id	=>	"task_install_target",
+				alt	=>	"#!string!button_0057!#",
+				value	=>	"#!string!button_0057!#",
+				url	=>	"?task=install_target&subtask=enable",
+			}, no_comment => 1});
 		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-				button		=>	"<a href=\"?task=install_target&subtask=enable\" alt=\"#!string!button_0057!#\" id=\"task_install_target\">#!string!button_0057!#</a>",
+				button		=>	$task_install_target_anchor,
 				description	=>	"#!string!explain_0170!#",
 				url		=>	"",
 			}})."\n";
 	}
 	
 	# Configure ScanCore Databases
+	my $task_scancore_db_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"scancore_db",
+			id	=>	"scancore_db",
+			alt	=>	"#!string!button_0076!#",
+			value	=>	"#!string!button_0076!#",
+			url	=>	"?task=scancore_db",
+		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	"<a href=\"?task=backup&subtask=scancore_db\" alt=\"#!string!button_0076!#\" id=\"task_scancore_db\">#!string!button_0076!#</a>",
+			button		=>	$task_scancore_db_anchor,
 			description	=>	"#!string!explain_0173!#",
 			url		=>	"",
 		}})."\n";
@@ -3350,7 +3526,7 @@ sub show_main_menu
 			template	=>	"configure-main-page",
 			replace		=>	{
 				header		=>	$header, 
-				notices		=>	"",
+				notices		=>	$notice_message,
 				body		=>	$menu, 
 				footer		=>	$footer, 
 			},

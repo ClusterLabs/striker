@@ -77,9 +77,9 @@
 		<key name="button_0070">Owners</key>
 		<key name="button_0071">Mail Servers</key>
 		<key name="button_0072">Notifications</key>
-		<key name="button_0073">...free...</key>
-		<key name="button_0074">Create a Backup</key>
-		<key name="button_0075">Load a Backup</key>
+		<key name="button_0073">Advanced Options</key>
+		<key name="button_0074">Backup and Restore</key>
+		<key name="button_0075">...free...</key>
 		<key name="button_0076">#!string!brand_0015!# Databases</key>
 		<key name="button_0077">Edit</key>
 		
@@ -280,14 +280,14 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0062"><![CDATA[This is the company or department domain name. It will be appended to all host names.]]></key>
 		<key name="explain_0063"><![CDATA[This is a sequence number for this #!string!brand_0003!#.<br />It is combined with the prefix above and, combined, must be unique across your network(s).<br /><span class="highlight_note_bold">Note</span>: Auto-generating IPs only works up to '<span class="code">25</span>. Beyond that, you need to manually specify the node IPs.]]></key>
 		<key name="explain_0064"><![CDATA[Fill out the rest of the form using default values combined with the "<i>#!string!title_0150!#</i>" answers above.]]></key>
-		<key name="explain_0065"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.20.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
-		<key name="explain_0066"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.10.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
-		<key name="explain_0067"><![CDATA[This is the IP address block and subnet for the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.255.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
+		<key name="explain_0065"><![CDATA[This is the IP address block and subnet for the <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.20.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
+		<key name="explain_0066"><![CDATA[This is the IP address block and subnet for the <a href="#!string!url_0006!#" target="_new">#!string!brand_0007!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.10.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
+		<key name="explain_0067"><![CDATA[This is the IP address block and subnet for the <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a>.<br />The left field is the <a href="http://en.wikipedia.org/wiki/IPv4_subnetting_reference" target="_new">network block</a>, ie: <span class="code">10.255.0.0</span>, and the right field is the <a href="http://en.wikipedia.org/wiki/Subnetwork#Binary_subnet_masks" target="_new">subnet mask</a>, ie: <span class="code">255.255.0.0</span>.]]></key>
 		<key name="explain_0068"><![CDATA[This is the host name for the first #!string!brand_0003!# node.]]></key>
 		<key name="explain_0069"><![CDATA[This is the host name for the second #!string!brand_0003!# node.]]></key>
-		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.]]></key>
-		<key name="explain_0071"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0007!#</a> interface.<br />This is the network that all storage data is replicated over.]]></key>
-		<key name="explain_0072"><![CDATA[This is the IP address and the subnet of the node's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />This is the network all the traffic to and from your servers will travel over.]]></key>
+		<key name="explain_0070"><![CDATA[This is the IP address and the subnet of the node's <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a> interface.<br />This is the network that will be used for cluster communication, management, fencing and live-migration traffic.]]></key>
+		<key name="explain_0071"><![CDATA[This is the IP address and the subnet of the node's <a href="#!string!url_0006!#" target="_new">#!string!brand_0007!#</a> interface.<br />This is the network that all storage data is replicated over.]]></key>
+		<key name="explain_0072"><![CDATA[This is the IP address and the subnet of the node's <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a> interface.<br />This is the network all the traffic to and from your servers will travel over.]]></key>
 		<key name="explain_0073"><![CDATA[The IP address of the node's <a href="https://alteeve.ca/w/IPMI" target="_new">IPMI</a> Interface.<br />It may be called by other names, like "iRMC", "iLO", "iDRAC", "RSA" or so on, depending on your hardware vendor.<br />This will be the node's primary fence method.]]></key>
 		<key name="explain_0074"><![CDATA[This is the host name for the first <a href="http://alteeve.ca/w/UPS" target="_new">UPS</a>.]]></key>
 		<key name="explain_0075"><![CDATA[The IP address of the first UPS.<br />If you don't have a UPS, or your UPS does not have a network card, you can leave this blank.]]></key>
@@ -302,12 +302,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0084"><![CDATA[This is the host name for the second network switch.<br />It may only be useful if you break the switch stack, and can often be safely omitted.]]></key>
 		<key name="explain_0085"><![CDATA[The IP address of the second network switch.<br />This isn't very important and can safely be left blank, particularly in stacked switch environments.<br />It is helpful in that it will add an entry to each node's '<span class="code">/etc/hosts</span> making it easier to connect to it using it's host name.]]></key>
 		<key name="explain_0086"><![CDATA[This is the host name for the first <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
-		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.]]></key>
-		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.]]></key>
+		<key name="explain_0087"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a> connection.]]></key>
+		<key name="explain_0088"><![CDATA[This is the IP address for the first #!string!brand_0002!# dashboard's <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a> connection.]]></key>
 		<key name="explain_0089"><![CDATA[This is the host name for the second <a href="https://alteeve.ca/w/Striker" target="_new">#!string!brand_0002!#</a> dashboard, if you have one.<br />This name, along with the IP addresses below, is used to populate each node's "<span class="code">/etc/hosts</span>" file.<br />It serves no other purpose and can be left blank if you prefer not to set it.]]></key>
-		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a> connection.]]></key>
-		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> connection.]]></key>
-		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">default gateway</a> used to access the Internet on the <a href="https://alteeve.ca/w/IFN" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
+		<key name="explain_0090"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a> connection.]]></key>
+		<key name="explain_0091"><![CDATA[This is the IP address for the second #!string!brand_0002!# dashboard's <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a> connection.]]></key>
+		<key name="explain_0092"><![CDATA[This is the <a href="http://en.wikipedia.org/wiki/Default_gateway" target="_new">default gateway</a> used to access the Internet on the <a href="#!string!url_0007!#" target="_new">#!string!brand_0009!#</a> interface.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0093"><![CDATA[This is the primary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.8.8</span> is one of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0094"><![CDATA[This is the secondary domain name server used to resolve hostnames to IP address when the given host name was not found in <span class="code">/etc/hosts</span>.<br />The default IP address of <span class="code">8.8.4.4</span> is the other of <a href="http://en.wikipedia.org/wiki/Google_Public_DNS" target="_new">Google's open DNS</a> servers.<br />If your nodes will not have access to the Internet, you can leave this blank.]]></key>
 		<key name="explain_0095"><![CDATA[This is the name of this #!string!brand_0003!# in the HA cluster stack's <span class="code">/etc/cluster/cluster.conf</span> file. It must be 15 <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters or less.<br />Generally it will be in the format "<span class="code">&lt;prefix&gt;-#!string!brand_0013!#-&lt;sequence&gt;</span>".]]></key>
@@ -386,8 +386,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0168">Create, load or run #!string!brand_0004!# installation manifests.</key>
 		<key name="explain_0169">Disables the ability to build nodes and dashboards.</key>
 		<key name="explain_0170">Enables the ability to network-boot and build nodes and dashboards.</key>
-		<key name="explain_0171">Create a backup of this #!string!brand_0020!#.</key>
-		<key name="explain_0172">Load a backup file on to this #!string!brand_0020!#.</key>
+		<key name="explain_0171">Create a backup of this #!string!brand_0020!# or restore from an old backup.</key>
+		<key name="explain_0172"><![CDATA[#!string!brand_0020!# and #!string!brand_0015!# have many configuration options.<br />Advanced users can tune these in this menu.]]></key>
 		<key name="explain_0173">Add, edit or remove the available #!string!brand_0015!# databases to synchronize with.</key>
 		<key name="explain_0174">There are no existing #!string!brand_0003!# systems yet.</key>
 		<key name="explain_0175">There are no existing owners yet.</key>
@@ -494,6 +494,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="url_0002"><![CDATA[https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol]]></key>
 		<key name="url_0003"><![CDATA[https://alteeve.ca/w/AN!Cluster_Tutorial_2#Setting_up_ricci]]></key>
 		<key name="url_0004"><![CDATA[https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers]]></key>
+		<key name="url_0005"><![CDATA[https://alteeve.ca/w/BCN]]></key>
+		<key name="url_0006"><![CDATA[https://alteeve.ca/w/SN]]></key>
+		<key name="url_0007"><![CDATA[https://alteeve.ca/w/IFN]]></key>
 		
 		<!-- Fields used in <select ...> blocks. -->
 		<key name="select_0001">No Security</key>
@@ -819,7 +822,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0309">Language</key>
 		<key name="row_0310">Alert Level</key>
 		<key name="row_0311">Measurements</key>
-		<key name="row_0312">...free...</key>
+		<key name="row_0312">Potential Conflict</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1135,14 +1138,14 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0074">Failed to update the root passowrd</key>
 		<key name="state_0075">Missing MAC address</key>
 		<key name="state_0076"><![CDATA[The written [<span class="highlight_detail">#!conf!path::nodes::cluster_conf!#</span>] file failed to validate. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
-		<key name="state_0077"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0006!#</a>]]></key>
+		<key name="state_0077"><![CDATA[Can't ping peer on <a href="#!string!url_0005!#" target="_new">#!string!brand_0006!#</a>]]></key>
 		<key name="state_0078">Already running</key>
 		<key name="state_0079">Failed to read or generate RSA key</key>
 		<key name="state_0080"><![CDATA[Failed to populate: <span class="highlight_detail">known_hosts</span>]]></key>
 		<key name="state_0081"><![CDATA[Failed to populate: <span class="highlight_detail">authorized_keys</span>]]></key>
 		<key name="state_0082"><![CDATA[Testing <a href="https://alteeve.ca/w/AN!Cluster_Tutorial_2#Concept.3B_Fencing" target="_new">fencing</span> failed! The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote><br />Please check your fence device(s) to ensure they've been configured properly.]]></key>
 		<key name="state_0083"><![CDATA[Failed to '<span class="highlight_detail">attach</span>' a resource. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
-		<key name="state_0084"><![CDATA[Can't ping peer on <a href="https://alteeve.ca/w/SN" target="_new">#!string!brand_0008!#</a>]]></key>
+		<key name="state_0084"><![CDATA[Can't ping peer on <a href="#!string!url_0006!#" target="_new">#!string!brand_0008!#</a>]]></key>
 		<key name="state_0085"><![CDATA[Failed to enter '<span class="highlight_detail">connect</span>' state. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
 		<key name="state_0086"><![CDATA[Entered connecting state but failed to connect<br />Is the network's <a href="https://en.wikipedia.org/wiki/Maximum_transmission_unit" target="_new">MTU</a> set too high?]]></key>
 		<key name="state_0087"><![CDATA[Failed to promote to '<span class="highlight_detail">Primary</span>'. The error was:<br /><blockquote class="quoted_text">#!variable!message!#</blockquote>]]></key>
@@ -1389,6 +1392,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0197">Action failed</key>
 		<key name="title_0198">Add, edit or delete an #!string!brand_0003!# owner.</key>
 		<key name="title_0199">Add, edit or delete an outgoing (SMTP) mail server used to send #!string!brand_0003!# alerts.</key>
+		<key name="title_0200">Confirmation of potential conflict required</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1419,7 +1423,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0026"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>.<br />The network is not reachable. Is this machine hosting this program on the same subnet?]]></key>
 		<key name="message_0027"><![CDATA[I could not log into: <span class="fixed_width">#!variable!node!#</span>. It appears that the node's operating system has changed! If this node failed and was replaced, be sure to remove the old key from <span class="fixed_width">#!conf!sys::username!#</span>'s <span class="fixed_width">~/.ssh/known_hosts</span> file. If the node has not been replaced, then someone might be trying to trick you into logging into it.]]></key>
 		<key name="message_0028"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.]]></key>
-		<key name="message_0029"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.<br />There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />In either case, please manually power on the nodes when you are ready to use them.<br />If they are on and you are seeing this message, then there might be a network problem.<br />Is this machine on the #!string!brand_0003!#'s <a href="https://alteeve.ca/w/BCN" target="_new">#!string!brand_0005!#</a>?]]></key>
+		<key name="message_0029"><![CDATA[I could not reach either node in this #!string!brand_0003!#.<br />There may be useful information in the message above.<br />There is no cache file for this system, so either it was deleted or this is the first time you have tried to connect.<br />In either case, please manually power on the nodes when you are ready to use them.<br />If they are on and you are seeing this message, then there might be a network problem.<br />Is this machine on the #!string!brand_0003!#'s <a href="#!string!url_0005!#" target="_new">#!string!brand_0005!#</a>?]]></key>
 		<key name="message_0030"><![CDATA[The number <span class="fixed_width">#!variable!number!#</span> passed into the 'comma()' function contains a non-digit character or too many decimals.]]></key>
 		<key name="message_0031"><![CDATA[The passed byte size <span class="fixed_width">#!variable!size!#</span> contains an illegal value. Byte sizes can only be signed integers. It may also have commas in it which will be removed automatically.]]></key>
 		<key name="message_0032"><![CDATA[The passed byte size <span class="fixed_width">#!variable!size!#</span> in the string: [sign: <span class="fixed_width">#!variable!sign!#</span>, size: <span class="fixed_width">#!variable!size!#</span>, type: <span class="fixed_width">#!variable!type!#</span>] contains an illegal value.<br />Sizes can only be integers or real numbers. It may also have commas in it which will be removed automatically.<br />This is probably a program error (<span class="fixed_width">#!variable!file!#</span>, line <span class="fixed_width">#!variable!line!#</span>)]]></key>
@@ -1864,6 +1868,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0454"><![CDATA[Are you certain that you want to delete: [<span class="highlight_detail">#!variable!target!#</span>] notification target?]]></key>
 		<key name="message_0455"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!target!#</span>] notification target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!targets!#</span>] target(s) remained.]]></key>
 		<key name="message_0456"><![CDATA[The: [<span class="highlight_detail">#!variable!target!#</span>] notification target has been deleted.]]></key>
+		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
 		
 		<!-- Configuration variable descriptions -->
 		<key name="config_title_0001">Owner Name</key>
