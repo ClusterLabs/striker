@@ -569,6 +569,10 @@ sub _set_paths
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
 	
+	# setuid tools
+	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";
+	
+	
 	# Lock files
 	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";
 	

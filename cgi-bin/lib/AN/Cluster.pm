@@ -8591,8 +8591,7 @@ sub control_install_target
 		name1 => "action", value1 => $action, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Track what was running and start back up things we turned off
-	###       only.
+	### TODO: Track what was running and start back up things we turned off only.
 	###       Check the 'start' and 'stop' calls for rc:4 (bad setuid)
 	# If the user installed libvirtd for some reason, and if it is running,
 	# it will block dhcpd from starting.
@@ -9046,7 +9045,7 @@ sub show_anvil_selection_and_striker_options
 			# 5 == dhcpd running
 			# 6 == dhcpd failed to start
 			
-			# DHCP message; Default message is 'not instaled'
+			# DHCP message; Default message is 'not installed'
 			my $row     = "#!string!row_0133!#";
 			my $message = "#!string!message_0410!#";
 			my $class   = "highlight_warning_bold";

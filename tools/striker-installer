@@ -432,6 +432,10 @@ my $conf = {
 			c_file			=>	"/sbin/striker/call_striker-delete-anvil.c",
 			out_file		=>	"/sbin/striker/call_striker-delete-anvil",
 		},
+		'striker-manage-install-target'	=>	{
+			c_file			=>	"/sbin/striker/call_striker-manage-install-target.c",
+			out_file		=>	"/sbin/striker/call_striker-manage-install-target",
+		},
 		'striker-merge-dashboards'	=>	{
 			c_file			=>	"/sbin/striker/call_striker-merge-dashboards.c",
 			out_file		=>	"/sbin/striker/call_striker-merge-dashboards",

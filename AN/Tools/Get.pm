@@ -3919,9 +3919,8 @@ sub striker_peers
 }
 
 ### TODO: Make this work on local and remote calls.
-# This checks to see if dhcpd is configured to be an install target target and, if so, see if dhcpd is 
-# running or not.
-sub dhcpd_state
+# This checks to see if the 'install target' feature is enabled or disabled.
+sub install_target_state
 {
 	my $self      = shift;
 	my $parameter = shift;
@@ -3932,55 +3931,14 @@ sub dhcpd_state
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# First, read the dhcpd.conf file, if it exists, and look for the 'next-server' option.
-	my $dhcpd_state = 2;
-	my $boot_target = 0;
+	# If the control program exists, call it with '--status'
+	my $install_target_state = 2;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::dhcpd_conf", value1 => $an->data->{path}{dhcpd_conf},
+		name1 => "path::call_striker-manage-install-target", value1 => $an->data->{path}{'call_striker-manage-install-target'},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $an->data->{path}{dhcpd_conf})
+	if (-e $an->data->{path}{'call_striker-manage-install-target'})
 	{
-		$an->Log->entry({log_level => 3, message_key => "log_0011", message_variables => {
-			file => "dhcpd.conf", 
-		}, file => $THIS_FILE, line => __LINE__});
-		my $shell_call = $an->data->{path}{dhcpd_conf};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") || die "Failed to read: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line =  $_;
-			   $line =~ s/^\s+//;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /next-server \d+\.\d+\.\d+\.\d+;/)
-			{
-				$boot_target = 1;
-				$an->Log->entry({log_level => 3, message_key => "log_0012", file => $THIS_FILE, line => __LINE__});
-				last;
-			}
-		}
-		close $file_handle;
-	}
-	else
-	{
-		# DHCP daemon config file not found or not readable. Is '/etc/dhcp' readable by the current UID?
-		$an->Log->entry({log_level => 3, message_key => "log_0013", message_variables => {
-			file => $an->data->{path}{dhcpd_conf},
-			uid  => $<, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$dhcpd_state = 4;
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "boot_target", value1 => $boot_target,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($boot_target)
-	{
-		# See if dhcpd is running.
-		my $shell_call = $an->data->{path}{initd}."/dhcpd status; ".$an->data->{path}{echo}." rc:\$?";
+		my $shell_call = $an->data->{path}{'call_striker-manage-install-target'}." --status";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3989,43 +3947,51 @@ sub dhcpd_state
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /rc:(\d+)/)
+			
+			if ($line =~ /state:(\d+)/)
 			{
-				my $rc = $1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "rc", value1 => $rc,
+				my $state = $1;
+				# 0 = stopped
+				# 1 = running
+				# 2 = unknown
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state,
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($rc eq "3")
+				if ($state eq "0")
 				{
-					# Stopped
-					$dhcpd_state = 1;
+					$install_target_state = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
-				elsif ($rc eq "0")
+				elsif ($state eq "1")
 				{
-					# Running
-					$dhcpd_state = 0;
-				}
-				else
-				{
-					# Unknown state.
-					$dhcpd_state = 4;
+					$install_target_state = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
 		close $file_handle;
 	}
-	# 0 == Running
-	# 1 == Not running
-	# 2 == Not a boot target
-	# 3 == In an unknown state.
-	# 4 == No access to /etc/dhcpd
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "dhcpd_state", value1 => $dhcpd_state,
+	else
+	{
+		# The install target control setuid script wasn't found
+		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+			file => $an->data->{path}{install_target_conf},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	# 0 == Stopped
+	# 1 == Running
+	# 2 == Unknown
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "install_target_state", value1 => $install_target_state,
 	}, file => $THIS_FILE, line => __LINE__});
-	return($dhcpd_state);
+	return($install_target_state);
 }
 
 1;

@@ -1,0 +1,569 @@
+#!/usr/bin/perl
+# 
+# This enables or disables the Install Target feature on the current Striker dashboard.
+# 
+# Return codes:
+# 0  = Normal exit.
+# 1  = Not running as root.
+# 2  = Not called with a valid command.
+# 3  = Tried to either set an unknown daemon or tried to set an unexpected state. Only 'libvirtd', 
+#      'shorewall' and 'iptables' can be controlled and they may only be set to 'start' or 'stop'.
+# 4  = Failed to stop iptables.
+# 5  = Failed to start shorewall.
+# 6  = Failed to start dhcpd.
+# 7  = Failed to stop dhcpd.
+# 8  = Failed to stop shorewall.
+# 9  = Failed to start iptables.
+# 
+
+use strict; 
+use warnings;
+use IO::Handle;
+use AN::Tools;
+
+# Turn off buffering.
+$| = 1;
+
+# Strip the 'PATH' variable down so that it doesn't cause problems when called via a setuid wrapper.
+$ENV{'PATH'} = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin";
+
+# Prevent a discrepency between UID/GID and EUID/EGID from throwing an error.
+$< = $>;
+$( = $);
+
+# Figure out who and where I am.
+my $THIS_FILE           =  ($0 =~ /^.*\/(.*)$/)[0];
+my $running_directory   =  ($0 =~ /^(.*?)\/$THIS_FILE$/)[0];
+if (($running_directory =~ /^\./) && ($ENV{PWD}))
+{
+	        $running_directory =~ s/^\./$ENV{PWD}/;
+}
+
+my $an = AN::Tools->new({data => {
+		# daemons states are;
+		# 0 = stopped
+		# 1 = running
+		# 2 = unknown/not installed
+		# 3 = disabled
+		daemons		=>	{
+			dhcpd		=>	2,
+			iptables	=>	2,
+			shorewall	=>	2,
+		},
+		path		=>	{
+			log_file	=>	"/var/log/striker.log",
+			striker_config	=>	"/etc/striker/striker.conf",
+			striker_strings	=>	"/sbin/striker/Data/strings.xml",
+		},
+		switches	=>	{},
+		sys		=>	{
+			language	=>	"en_CA",
+			log_language	=>	"en_CA",
+			log_level	=>	2,
+		},
+	},
+});
+
+# Initialize.
+$an->default_language    ($an->data->{sys}{language});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
+$an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
+$an->Get->switches();
+
+# Print the usage, if requested.
+if (($an->data->{switches}{h})   || 
+    ($an->data->{switches}{'?'}) ||
+    ($an->data->{switches}{help}))
+{
+	print_usage($an);
+	my $return_code = 0;
+	exit($return_code);
+}
+
+# Log our startup
+$an->Log->entry({log_level => 2, message_key => "smit_log_0001", message_variables => {
+	this_file	=>	$THIS_FILE, 
+}, file => $THIS_FILE, line => __LINE__});
+
+# Fail if we're not running as root.
+# $< == real UID, $> == effective UID
+if (($< != 0) && ($> != 0))
+{
+	$an->Log->entry({log_level => 2, message_key => "smit_error_0001", file => $THIS_FILE, line => __LINE__});
+	my $return_code = 1;
+	print "rc:$return_code\n";
+	exit($return_code);
+}
+
+# First, see if it's currently enabled or disabled.
+# 0 == stopped
+# 1 == running
+# 2 == unknown/not installed
+my $current_state = check_status($an);
+
+# If I was asked for the state / status, report it now.
+if (($an->data->{switches}{'state'}) or ($an->data->{switches}{status}))
+{
+	# Note: The 'state:X' is designed to be machine-parsable, so don't translate it!
+	if ($current_state eq "0")
+	{
+		# Stopped
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0003", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0003"})."\n";
+		print "state:0\n";
+	}
+	elsif ($current_state eq "1")
+	{
+		# Running
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0002", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0002"})."\n";
+		print "state:1\n";
+	}
+	elsif ($current_state eq "2")
+	{
+		# Unknown
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0004", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0004"})."\n";
+		print "state:2\n";
+	}
+	my $return_code = 0;
+	exit($return_code);
+}
+
+# Now, enable or disable as requested.
+if ($an->data->{switches}{enable})
+{
+	if ($current_state eq "1")
+	{
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0002", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0002"})."\n";
+		print "state:1\n";
+	}
+	else
+	{
+		# This will exit if anything goes wrong.
+		enable_install_target($an);
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0004", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0005"})."\n";
+		print "state:1\n";
+	}
+}
+elsif ($an->data->{switches}{disable})
+{
+	if ($current_state eq "0")
+	{
+		# Stopped
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0003", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0003"})."\n";
+		print "state:0\n";
+	}
+	else
+	{
+		# This will exit if anything goes wrong.
+		disable_install_target($an);
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0004", file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_message_0006"})."\n";
+		print "state:0\n";
+	}
+}
+else
+{
+	# ??
+	print_usage($an);
+	my $return_code = 2;
+	print "rc:$return_code\n";
+	exit($return_code);
+}
+
+exit(0);
+
+#############################################################################################################
+# Functions                                                                                                 #
+#############################################################################################################
+
+# Disables the install target feature.
+sub disable_install_target
+{
+	my ($an) = @_;
+	
+	# Stop dhcpd
+	$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "stop");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{daemons}{dhcpd} eq "3")
+	{
+		# dhcpd Stopped.
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+		
+		# Stop shorewall
+		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($an->data->{daemons}{shorewall} eq "3") or ($an->data->{daemons}{shorewall} eq "4"))
+		{
+			# Shorewall stopped
+			$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+			
+			# Start iptables
+			$an->data->{daemons}{shorewall} = set_daemon($an, "iptables", "start");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "daemons::start", value1 => $an->data->{daemons}{start}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{daemons}{iptables} eq "0")
+			{
+				# Success!
+				$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# iptables failed to start.
+				$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "iptables" })."\n";
+				
+				# Roll back...
+				$an->data->{daemons}{dhcpd}     = set_daemon($an, "iptables",  "stop");
+				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
+				$an->data->{daemons}{iptables}  = set_daemon($an, "dhcpd",     "start");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
+					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
+					name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Exit
+				my $return_code = 9;
+				print "rc:$return_code\n";
+				exit($return_code);
+			}
+		}
+		else
+		{
+			# Failed to stop shorewall
+			$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
+			
+			# Call a 'start' to try and restore
+			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
+			$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd", "start");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+				name2 => "daemons::dhcpd",    value2 => $an->data->{daemons}{dhcpd}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Exit
+			my $return_code = 8;
+			print "rc:$return_code\n";
+			exit($return_code);
+			
+		}
+	}
+	else
+	{
+		# dhcpd failed to stop.
+		$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "dhcpd" })."\n";
+		
+		# Roll back...
+		$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Exit
+		my $return_code = 7;
+		print "rc:$return_code\n";
+		exit($return_code);
+	}
+	
+	return(0);
+}
+
+# Enables the install target feature.
+sub enable_install_target
+{
+	my ($an) = @_;
+	
+	### NOTE: We used to disable libvirtd, but there is no reason to do that now that 'striker-installer'
+	###       disables the NAT'ed bridge.
+	
+	# Stop iptables
+	$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "stop");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{daemons}{iptables} eq "3")
+	{
+		# iptables stopped.
+		$an->Log->entry({log_level => 1, message_key => "smit_message_0008", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+		
+		# Now start shorewall
+		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($an->data->{daemons}{shorewall} eq "0")
+		{
+			# Shorewall started
+			$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+			
+			# now start dhcpd
+			$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($an->data->{daemons}{dhcpd} eq "0")
+			{
+				# Success!
+				$an->Log->entry({log_level => 1, message_key => "smit_message_0007", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# dhcpd failed to start.
+				$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "dhcpd" }, file => $THIS_FILE, line => __LINE__});
+				print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "dhcpd" })."\n";
+				
+				# Roll back...
+				$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd",     "stop");
+				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
+				$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "daemons::dhcpd",     value1 => $an->data->{daemons}{dhcpd}, 
+					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
+					name3 => "daemons::iptables",  value3 => $an->data->{daemons}{iptables}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Exit
+				my $return_code = 6;
+				print "rc:$return_code\n";
+				exit($return_code);
+			}
+		}
+		else
+		{
+			# Failed to start shorewall.
+			$an->Log->entry({log_level => 0, message_key => "smit_error_0003", message_variables => { daemon => "shorewall" }, file => $THIS_FILE, line => __LINE__});
+			print $an->String->get({key => "smit_error_0003"}, message_variables => { daemon => "shorewall" })."\n";
+			
+			# Call a 'stop' on shorewall and restart iptables.
+			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
+			$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
+				name2 => "daemons::iptables",  value2 => $an->data->{daemons}{iptables}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Exit
+			my $return_code = 5;
+			print "rc:$return_code\n";
+			exit($return_code);
+		}
+	}
+	else
+	{
+		# iptables failed to stop. 
+		$an->Log->entry({log_level => 0, message_key => "smit_error_0004", message_variables => { daemon => "iptables" }, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_error_0004"}, message_variables => { daemon => "iptables" })."\n";
+		
+		# Call a 'start' to try and restore
+		$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "start");
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Exit
+		my $return_code = 4;
+		print "rc:$return_code\n";
+		exit($return_code);
+	}
+	
+	return(0);
+}
+
+# This checks to see if the install target is currently enabled or disabled.
+sub check_status
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	
+	### Daemons;
+	# all - 127 == not found
+	# iptables  - 0 == running, 3 == stopped  (will return '0' when shorewall is running, so check shorewall and set to '0' when shorewall is on)
+	# dhcpd     - 0 == running, 3 == stopped
+	# shorewall - 0 == running, 3 == stopped, 4 == stopped (hasn't run)
+	$an->data->{daemons}{iptables}  = check_daemon($an, "iptables");
+	$an->data->{daemons}{shorewall} = check_daemon($an, "shorewall");
+	$an->data->{daemons}{dhcpd}     = check_daemon($an, "dhcpd");
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
+		name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
+		name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If shorewall is enabled (rc:0), set iptables to '3')
+	if ($an->data->{daemons}{shorewall})
+	{
+		$an->data->{daemons}{iptables} = 3;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# For now, the only thing I care about is 'dhcpd' status for reporting running/not running.
+	my $status = 2;
+	if ($an->data->{daemons}{dhcpd} eq "0")
+	{
+		$status = 1;
+	}
+	elsif ($an->data->{daemons}{dhcpd} eq "3")
+	{
+		$status = 0;
+	}
+	
+	# 0 == stopped
+	# 1 == running
+	# 2 == unknown/not installed
+	# 3 == disabled
+	return($status);
+}
+
+# This calls 'stop/start', then calls 'check_daemon' and returns the 'check_daemon' return code.
+sub set_daemon
+{
+	my ($an, $daemon, $set) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_daemon" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "daemon", value1 => $daemon, 
+		name2 => "set",    value2 => $set, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Because we're running as root, make sure we're only working on a known daemon and that the 
+	# requested 'set' is 'start' or 'stop'.
+	my $daemon_ok = 0;
+	my $set_ok    = 0;
+	foreach my $this_daemon (sort {$a cmp $b} keys %{$an->data->{daemons}})
+	{
+		if ($this_daemon eq $daemon)
+		{
+			$daemon_ok = 1;
+			last;
+		}
+	}
+	if (($set eq "start") or ($set eq "stop"))
+	{
+		$set_ok = 1;
+	}
+	if ((not $daemon_ok) or (not $set_ok))
+	{
+		$an->Log->entry({log_level => 0, message_key => "smit_error_0002", message_variables => {
+			daemon => $daemon, 
+			set    => $set,
+		}, file => $THIS_FILE, line => __LINE__});
+		print $an->String->get({key => "smit_error_0002"}, message_variables => {
+			daemon => $daemon, 
+			set    => $set,
+		})."\n";
+		
+		# Local
+		my $return_code = 3;
+		print "rc:$return_code\n";
+		exit($return_code);
+	}
+	
+	my $shell_call  = $an->data->{path}{initd}."/$daemon $set; echo rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/\n//g;
+		$line =~ s/\r//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^rc:(\d+)$/)
+		{
+			# Local
+			my $return_code = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# Now check the state. This is the return_code we care about
+	my $return_code = check_daemon($an, $daemon);
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
+# This returns the status of a given daemon (via it's return code).
+sub check_daemon
+{
+	my ($an, $daemon) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_daemon" }, message_key => "an_variables_0001", message_variables => { 
+		name1 => "daemon", value1 => $daemon, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = "";
+	my $shell_call  = $an->data->{path}{initd}."/$daemon status; echo rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$line =~ s/\n//g;
+		$line =~ s/\r//g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^rc:(\d+)$/)
+		{
+			$return_code = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code);
+}
+
+# This prints the usage instructions and then exits
+sub print_usage
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "print_usage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	open (my $file_handle, ">", "/tmp/${THIS_FILE}.help") or die "Couldn't write help to /tmp/, error was: $!\n";
+	print $file_handle $an->String->get({key => "smit_message_0001"})."\n";
+	close $file_handle;
+	
+	system($an->data->{path}{'less'}." /tmp/${THIS_FILE}.help");
+	
+	exit(0);
+}

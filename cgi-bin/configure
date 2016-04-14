@@ -1238,6 +1238,111 @@ sub save_smtp
 	return($smtp_uuid);
 }
 
+# This either enables or disables the Install Target feature.
+sub manage_install_target
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_smtp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If the control program exists, call it with '--status'
+	my $install_target_state = 2;
+	my $task                 = $an->data->{cgi}{subtask} eq "enable" ? "--enable" : "--disable";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "task",                                     value1 => $task,
+		name2 => "path::call_striker-manage-install-target", value2 => $an->data->{path}{'call_striker-manage-install-target'},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{'call_striker-manage-install-target'})
+	{
+		my $shell_call = $an->data->{path}{'call_striker-manage-install-target'}." $task";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /state:(\d+)/)
+			{
+				my $state = $1;
+				# 0 = stopped
+				# 1 = running
+				# 2 = unknown
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($state eq "0")
+				{
+					$install_target_state = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($state eq "1")
+				{
+					$install_target_state = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# The install target control setuid script wasn't found
+		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+			file => $an->data->{path}{install_target_conf},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	# 0 == Stopped
+	# 1 == Running
+	# 2 == Unknown
+	my $notice_message = "";
+	if ($install_target_state eq "0")
+	{
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0459"}),
+			}});
+	}
+	elsif ($install_target_state eq "1")
+	{
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0458"}),
+			}});
+	}
+	else
+	{
+		my $message_key = "warning_0002";
+		if ($an->data->{cgi}{subtask} eq "enable")
+		{
+			$message_key = "warning_0001";
+		}
+		$notice_message = $an->Web->template({file => "web.html", template => "failure-message", replace => {
+				title		=>	"#!string!title_0197!#",
+				row_class	=>	"highlight_warning_bold",
+				row_body	=>	"#!string!row_0090!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => $message_key}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
 # This just puts together the "confirm" message for the given action
 sub confirm_action
 {
@@ -3307,8 +3412,15 @@ sub show_main_menu
 	
 	# For some tasks, like enabling and disabling install targets, there is no dedicated menu but just a
 	# notice header. Deal with those now, if appropriate.
-	my $notice_message = "";
-	my $refresh_link   = $an->data->{sys}{cgi_string};
+	my $notice_message =  "";
+	my $refresh_link   =  $an->data->{sys}{cgi_string};
+	   $refresh_link   =~ s/confirm=.*?&/&/;
+	   $refresh_link   =~ s/confirm=.*//;
+	   $refresh_link   =~ s/subtask=.*?&/&/;
+	   $refresh_link   =~ s/subtask=.*//;
+	   $refresh_link   =~ s/task=.*?&/&/;
+	   $refresh_link   =~ s/task=.*//;
+	   $refresh_link   =~ s/\?&/?/;
 	if ($an->data->{cgi}{task} eq "install_target")
 	{
 		if ($an->data->{cgi}{subtask} eq "enable")
@@ -3317,19 +3429,18 @@ sub show_main_menu
 			if ($an->data->{cgi}{confirm})
 			{
 				# Baleted!
-				$notice_message = enable_install_target($an);
+				$notice_message = manage_install_target($an);
 			}
 			else
 			{
 				# Ask them to confirm
 				$notice_message = confirm_action($an, "enable_install_target");
-				$refresh_link =~ s/notify_uuid=.*?&/&/;
-				$refresh_link =~ s/notify_uuid=.*//;
 			}
 		}
 		elsif ($an->data->{cgi}{subtask} eq "disable")
 		{
 			# No confirmation needed.
+			$notice_message = manage_install_target($an);
 		}
 	}
 	
@@ -3465,29 +3576,11 @@ sub show_main_menu
 		}})."\n";
 	
 	# For the Enable/Disable install target, I need to know the current state.
-	# 0 == Running
-	# 1 == Not running
-	# 2 == Not a boot target
-	# 3 == In an unknown state.
-	# 4 == No access to /etc/dhcpd
-	my $dhcpd_state = $an->Get->dhcpd_state();
-	if ($dhcpd_state eq "0")
-	{
-		# Option to disable
-		my $task_install_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-				name	=>	"task_install_target",
-				id	=>	"task_install_target",
-				alt	=>	"#!string!button_0058!#",
-				value	=>	"#!string!button_0058!#",
-				url	=>	"?task=install_target&subtask=disable",
-			}, no_comment => 1});
-		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-				button		=>	$task_install_target_anchor,
-				description	=>	"#!string!explain_0169!#",
-				url		=>	"",
-			}})."\n";
-	}
-	elsif ($dhcpd_state eq "1")
+	# 0 == Stopped
+	# 1 == Running
+	# 2 == Unknown (if this is returned, the meny entry simply won't exist)
+	my $install_target_state = $an->Get->install_target_state();
+	if ($install_target_state eq "0")
 	{
 		# Option to enable
 		my $task_install_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
@@ -3500,6 +3593,22 @@ sub show_main_menu
 		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
 				button		=>	$task_install_target_anchor,
 				description	=>	"#!string!explain_0170!#",
+				url		=>	"",
+			}})."\n";
+	}
+	elsif ($install_target_state eq "1")
+	{
+		# Option to disable
+		my $task_install_target_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"task_install_target",
+				id	=>	"task_install_target",
+				alt	=>	"#!string!button_0058!#",
+				value	=>	"#!string!button_0058!#",
+				url	=>	"?task=install_target&subtask=disable",
+			}, no_comment => 1});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+				button		=>	$task_install_target_anchor,
+				description	=>	"#!string!explain_0169!#",
 				url		=>	"",
 			}})."\n";
 	}

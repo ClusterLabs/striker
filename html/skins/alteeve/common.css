@@ -146,6 +146,7 @@ td {
 }
 
 .highlight_good_bold {
+	padding: 5px;
 	color: #1a9a13;
 	font-weight: bold;
 }

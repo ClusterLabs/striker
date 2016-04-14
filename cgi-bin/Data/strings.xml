@@ -1869,6 +1869,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0455"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!target!#</span>] notification target failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!targets!#</span>] target(s) remained.]]></key>
 		<key name="message_0456"><![CDATA[The: [<span class="highlight_detail">#!variable!target!#</span>] notification target has been deleted.]]></key>
 		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
+		<key name="message_0458"><![CDATA[The install target function has been enabled successfully.]]></key>
+		<key name="message_0459"><![CDATA[The install target function has been disabled successfully.]]></key>
+		
+		<!-- warnings -->
+		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
+		<key name="warning_0002"><![CDATA[The install target function failed to be disabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
 		
 		<!-- Configuration variable descriptions -->
 		<key name="config_title_0001">Owner Name</key>
@@ -1953,7 +1959,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="log_0010">Install Manifest: [#!variable!file!#], Node: [#!variable!node!#], interface: [#!variable!name!#] has a malformed MAC address: [#!variable!mac!#], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.</key>
 		<key name="log_0011">Parsing: [#!variable!file!#]</key>
 		<key name="log_0012">We're an install target!</key>
-		<key name="log_0013">DHCP daemon config file: [#!variable!file!#] not found or not readable. Is '/etc/dhcp' readable by UID: [#!variable!uid!#]?</key>
+		<key name="log_0013">Install target control script: [#!variable!file!#] not found or not readable.</key>
 		<key name="log_0014">Use refresh</key>
 		<key name="log_0015">Do not use refresh.</key>
 		<key name="log_0016">Empty file passed, looks like the user forgot to select a file to upload.</key>
@@ -3051,6 +3057,75 @@ SUPPORT
                                                           #!string!brand_0001!#
 ]]>
 		</key>
+		
+		
+		<!-- Striker Manager Install Target -->
+		
+		<!-- logs -->
+		<key name="smit_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- errors -->
+		<key name="smit_error_0001">Not running as 'root', unable to control system daemons.</key>
+		<key name="smit_error_0002">Asked to set a daemon: [#variable!daemon!#] to: [#!variable!state!#]. Either the daemon is not recognized or the state is not allowed.</key>
+		<key name="smit_error_0003">Failed to start: [#!variable!daemon!#], rolling back.</key>
+		<key name="smit_error_0004">Failed to stop: [#!variable!daemon!#], rolling back.</key>
+		
+		<!-- messages -->
+		<key name="smit_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program enables and disables the 'Install Target' feature. It does this
+primarily by turning dhcpd on and off, and adjusting the firewall as needed.
+
+
+SWITCHES
+
+ --disable
+
+	Disable the install target feature. If it is already disabled, it does
+	nothing and exits with a success.
+
+ --enable
+
+	Enable the install target feature. If it is already enabled, it does 
+	nothing and exits with a success.
+
+ --state, --status
+
+	Shows whether the install target feature is currently enabled or not.
+	
+	Note: Regardless of the language used, the state/status will always
+	      print 'state:X' which callers can parse. 
+	      
+	      0 = Stopped
+	      1 = Running
+	      2 = Unknown state (error)
+	
+	Note: If the program hits an error, it will exit with 'rc:X'. Consult
+	      the program header to determine what error codes mean. A message
+	      relating to the fault will be logged and printed to STDOUT.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
+		<key name="smit_message_0002">Install target is currently enabled.</key>
+		<key name="smit_message_0003">Install target is currently disabled.</key>
+		<key name="smit_message_0004">Install target is currently unknown.</key>
+		<key name="smit_message_0005">Install target is now enabled.</key>
+		<key name="smit_message_0006">Install target is now disabled.</key>
+		<key name="smit_message_0007">Successfully started: [#!variable!daemon!#].</key>
+		<key name="smit_message_0008">Successfully stopped: [#!variable!daemon!#].</key>
 	</lang>
 
 	<!-- Japanese -->
