@@ -2964,7 +2964,7 @@ sub check_email_configuration
 					name1 => "username",       value1 => $username, 
 					name2 => "smtp::username", value2 => $an->data->{smtp}{username},
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 					name1 => "password",       value1 => $password, 
 					name2 => "smtp::password", value2 => $an->data->{smtp}{password},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -3007,9 +3007,11 @@ sub check_email_configuration
 		
 		my $shell_call   = $an->data->{path}{postfix_relay_file};
 		my $postfix_line = "[".$an->data->{smtp}{server}."]:".$an->data->{smtp}{port}." ".$an->data->{smtp}{username}.":".$an->data->{smtp}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call",   value1 => $shell_call, 
-			name2 => "postfix_line", value2 => $postfix_line,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "postfix_line", value1 => $postfix_line,
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 		print $file_handle "$postfix_line\n";
@@ -3738,16 +3740,18 @@ FROM
 			my $smtp_note           = $row->[8];
 			my $modified_date       = $row->[9];
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
-				name1  => "smtp_uuid",           value1  => $smtp_uuid, 
-				name2  => "smtp_server",         value2  => $smtp_server,
-				name3  => "smtp_port",           value3  => $smtp_port,
-				name4  => "smtp_username",       value4  => $smtp_username,
-				name5  => "smtp_password",       value5  => $smtp_password,
-				name6  => "smtp_security",       value6  => $smtp_security,
-				name7  => "smtp_authentication", value7  => $smtp_authentication,
-				name8  => "smtp_helo_domain",    value8  => $smtp_helo_domain,
-				name9  => "smtp_note",           value9  => $smtp_note, 
-				name10 => "modified_date",       value10 => $modified_date
+				name1 => "smtp_uuid",           value1 => $smtp_uuid, 
+				name2 => "smtp_server",         value2 => $smtp_server,
+				name3 => "smtp_port",           value3 => $smtp_port,
+				name4 => "smtp_username",       value4 => $smtp_username,
+				name5 => "smtp_security",       value5 => $smtp_security,
+				name6 => "smtp_authentication", value6 => $smtp_authentication,
+				name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain,
+				name8 => "smtp_note",           value8 => $smtp_note, 
+				name9 => "modified_date",       value9 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_password", value1 => $smtp_password,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
@@ -3786,18 +3790,26 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $smtp_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}})
 		{
-			my $smtp_name = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_name}; 
-			my $smtp_note = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00009", message_variables => {
-				name1 => "smtp_uuid",           value1 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_uuid}, 
-				name2 => "smtp_server",         value2 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_server},
-				name3 => "smtp_port",           value3 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_port},
-				name4 => "smtp_username",       value4 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_username},
-				name5 => "smtp_password",       value5 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_password},
-				name6 => "smtp_security",       value6 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_security},
-				name7 => "smtp_authentication", value7 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_authentication},
-				name8 => "smtp_helo_domain",    value8 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_helo_domain},
-				name9 => "smtp_note",           value9 => $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_note}, 
+			my $smtp_server         = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_server}; 
+			my $smtp_port           = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_port}; 
+			my $smtp_password       = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_password}; 
+			my $smtp_username       = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_username}; 
+			my $smtp_security       = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_security}; 
+			my $smtp_authentication = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_authentication}; 
+			my $smtp_helo_domain    = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_helo_domain}; 
+			my $smtp_note           = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_note};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				name1 => "smtp_uuid",           value1 => $smtp_uuid, 
+				name2 => "smtp_server",         value2 => $smtp_server,
+				name3 => "smtp_port",           value3 => $smtp_port,
+				name4 => "smtp_username",       value4 => $smtp_username,
+				name5 => "smtp_security",       value5 => $smtp_security,
+				name6 => "smtp_authentication", value6 => $smtp_authentication,
+				name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain,
+				name8 => "smtp_note",           value8 => $smtp_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "smtp_password", value1 => $smtp_password,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4028,12 +4040,12 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $manifest_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}})
 		{
-			my $manifest_name = $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_name}; 
+			my $manifest_data = $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_data}; 
 			my $manifest_note = $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00003", message_variables => {
-				name1 => "manifest_uuid", value1 => $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_uuid}, 
-				name2 => "manifest_data", value2 => $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_data},
-				name3 => "manifest_note", value3 => $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_note}, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "manifest_uuid", value1 => $manifest_uuid, 
+				name2 => "manifest_data", value2 => $manifest_data,
+				name3 => "manifest_note", value3 => $manifest_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4244,14 +4256,16 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $recipient_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}})
 		{
-			my $recipient_name = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_name}; 
-			my $recipient_note = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00005", message_variables => {
-				name1 => "recipient_uuid",         value1 => $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_uuid}, 
-				name2 => "recipient_anvil_uuid",   value2 => $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_anvil_uuid},
-				name3 => "recipient_notify_uuid",  value3 => $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_notify_uuid},
-				name4 => "recipient_notify_level", value4 => $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_notify_uuid},
-				name5 => "recipient_note",         value5 => $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_note}, 
+			my $recipient_anvil_uuid   = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_anvil_uuid}; 
+			my $recipient_notify_uuid  = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_notify_uuid}; 
+			my $recipient_notify_level = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_notify_level}; 
+			my $recipient_note         = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_note};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+				name1 => "recipient_uuid",         value1 => $recipient_uuid, 
+				name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid,
+				name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid,
+				name4 => "recipient_notify_level", value4 => $recipient_notify_uuid,
+				name5 => "recipient_note",         value5 => $recipient_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4497,19 +4511,29 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $node_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}})
 		{
-			my $node_name = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_name}; 
-			my $node_note = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00010", message_variables => {
-				name1  => "node_uuid",        value1  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_uuid}, 
-				name2  => "node_anvil_uuid",  value2  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_anvil_uuid}, 
-				name3  => "node_host_uuid",   value3  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_host_uuid}, 
-				name4  => "node_remote_ip",   value4  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_remote_ip},
-				name5  => "node_remote_port", value5  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_remote_port},
-				name6  => "node_note",        value6  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_note}, 
-				name7  => "node_bcn",         value7  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_bcn},
-				name8  => "node_sn",          value8  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_sn},
-				name9  => "node_ifn",         value9  => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_ifn},
-				name10 => "node_password",    value10 => $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_password}, 
+			my $node_name        = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_name}; 
+			my $node_anvil_uuid  = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_anvil_uuid}; 
+			my $node_host_uuid   = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_host_uuid}; 
+			my $node_remote_ip   = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_remote_ip};
+			my $node_remote_port = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_remote_port};
+			my $node_note        = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_note};
+			my $node_bcn         = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_bcn};
+			my $node_sn          = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_sn};
+			my $node_ifn         = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_ifn};
+			my $node_password    = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_password};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+				name1 => "node_uuid",        value1 => $node_uuid, 
+				name2 => "node_anvil_uuid",  value2 => $node_anvil_uuid, 
+				name3 => "node_host_uuid",   value3 => $node_host_uuid, 
+				name4 => "node_remote_ip",   value4 => $node_remote_ip,
+				name5 => "node_remote_port", value5 => $node_remote_port,
+				name6 => "node_note",        value6 => $node_note, 
+				name7 => "node_bcn",         value7 => $node_bcn,
+				name8 => "node_sn",          value8 => $node_sn,
+				name9 => "node_ifn",         value9 => $node_ifn,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_password", value1 => $node_password, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4722,15 +4746,17 @@ FROM
 			my $anvil_note        = $row->[5];
 			my $anvil_password    = $row->[6];
 			my $modified_date     = $row->[7];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 				name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 				name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
 				name4 => "anvil_name",        value4 => $anvil_name, 
 				name5 => "anvil_description", value5 => $anvil_description, 
 				name6 => "anvil_note",        value6 => $anvil_note, 
-				name7 => "anvil_password",    value7 => $anvil_password, 
-				name8 => "modified_date",     value8 => $modified_date
+				name7 => "modified_date",     value7 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_password", value1 => $anvil_password, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Record this in the unified and local hashes.
@@ -4765,16 +4791,22 @@ FROM
 		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $anvil_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}})
 		{
-			my $anvil_name = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_name}; 
-			my $anvil_note = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00003", message_variables => {
-				name1 => "anvil_uuid",        value1 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_uuid}, 
-				name2 => "anvil_owner_uuid",  value1 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_owner_uuid}, 
-				name3 => "anvil_smtp_uuid",   value1 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_smtp_uuid}, 
-				name4 => "anvil_name",        value2 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_name}, 
-				name5 => "anvil_description", value1 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_description}, 
-				name6 => "anvil_note",        value3 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_note}, 
-				name7 => "anvil_password",    value1 => $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_password}, 
+			my $anvil_owner_uuid  = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_owner_uuid}, 
+			my $anvil_smtp_uuid   = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_smtp_uuid}, 
+			my $anvil_name        = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_name}; 
+			my $anvil_description = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_description}, 
+			my $anvil_note        = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_note};
+			my $anvil_password    = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_password}, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+				name1 => "anvil_uuid",        value1 => $anvil_uuid, 
+				name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
+				name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
+				name4 => "anvil_name",        value4 => $anvil_name, 
+				name5 => "anvil_description", value5 => $anvil_description, 
+				name6 => "anvil_note",        value6 => $anvil_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_password", value1 => $anvil_password, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -4997,10 +5029,10 @@ FROM
 		{
 			my $owner_name = $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_name}; 
 			my $owner_note = $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_note};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_00003", message_variables => {
-				name1 => "owner_uuid", value1 => $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_uuid}, 
-				name2 => "owner_name", value2 => $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_name}, 
-				name3 => "owner_note", value3 => $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_note}, 
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "owner_uuid", value1 => $owner_uuid, 
+				name2 => "owner_name", value2 => $owner_name, 
+				name3 => "owner_note", value3 => $owner_note, 
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{
@@ -5740,26 +5772,26 @@ FROM
 			my $server_definition               = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition};
 			my $server_host                     = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host};
 			my $server_state                    = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_state};
-			my $server_migration_type           = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_migration_type},
-			my $server_pre_migration_script     = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_script},
-			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments},
-			my $server_post_migration_script    = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script},
-			my $server_post_migration_arguments = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments},
+			my $server_migration_type           = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_migration_type};
+			my $server_pre_migration_script     = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_script};
+			my $server_pre_migration_arguments  = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments};
+			my $server_post_migration_script    = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script};
+			my $server_post_migration_arguments = $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_00014", message_variables => {
-				name1  => "server_uuid",                     value1  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_uuid}, 
-				name2  => "server_name",                     value2  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}, 
-				name3  => "server_stop_reason",              value3  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason}, 
-				name4  => "server_start_after",              value4  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_after}, 
-				name5  => "server_start_delay",              value5  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_start_delay}, 
-				name6  => "server_note",                     value6  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_note}, 
-				name7  => "server_definition",               value7  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_definition}, 
-				name8  => "server_host",                     value8  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_host}, 
-				name9  => "server_state",                    value9  => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_state}, 
-				name10 => "server_migration_type",           value10 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_migration_type},
-				name11 => "server_pre_migration_script",     value11 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_script},
-				name12 => "server_pre_migration_arguments",  value12 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_pre_migration_arguments},
-				name13 => "server_post_migration_script",    value13 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_script},
-				name14 => "server_post_migration_arguments", value14 => $an->data->{db_data}{unified}{server}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_post_migration_arguments},
+				name1  => "server_uuid",                     value1  => $server_uuid, 
+				name2  => "server_name",                     value2  => $server_name, 
+				name3  => "server_stop_reason",              value3  => $server_stop_reason, 
+				name4  => "server_start_after",              value4  => $server_start_after, 
+				name5  => "server_start_delay",              value5  => $server_start_delay, 
+				name6  => "server_note",                     value6  => $server_note, 
+				name7  => "server_definition",               value7  => $server_definition, 
+				name8  => "server_host",                     value8  => $server_host, 
+				name9  => "server_state",                    value9  => $server_state, 
+				name10 => "server_migration_type",           value10 => $server_migration_type,
+				name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script,
+				name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments,
+				name13 => "server_post_migration_script",    value13 => $server_post_migration_script,
+				name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments,
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 			{

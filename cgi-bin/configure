@@ -3547,34 +3547,6 @@ sub show_main_menu
 	# Add a divider before the next section
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-spacer"});
 	
-	# Install Manifests
-	my $task_manifest_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"task_manifest",
-			id	=>	"task_manifest",
-			alt	=>	"#!string!button_0060!#",
-			value	=>	"#!string!button_0060!#",
-			url	=>	"?task=manifest",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_manifest_anchor,
-			description	=>	"#!string!explain_0168!#",
-			url		=>	"",
-		}})."\n";
-	
-	# Backup and restore
-	my $task_backup_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"task_backup",
-			id	=>	"task_backup",
-			alt	=>	"#!string!button_0074!#",
-			value	=>	"#!string!button_0074!#",
-			url	=>	"?task=backup",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_backup_anchor,
-			description	=>	"#!string!explain_0171!#",
-			url		=>	"",
-		}})."\n";
-	
 	# For the Enable/Disable install target, I need to know the current state.
 	# 0 == Stopped
 	# 1 == Running
@@ -3613,19 +3585,50 @@ sub show_main_menu
 			}})."\n";
 	}
 	
-	# Configure ScanCore Databases
-	my $task_scancore_db_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"scancore_db",
-			id	=>	"scancore_db",
-			alt	=>	"#!string!button_0076!#",
-			value	=>	"#!string!button_0076!#",
-			url	=>	"?task=scancore_db",
+	### TODO: Move this over to 'configure'
+	# Install Manifests
+	my $task_manifest_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+			name	=>	"task_manifest",
+			id	=>	"task_manifest",
+			alt	=>	"#!string!button_0060!#",
+			value	=>	"#!string!button_0060!#",
+			#url	=>	"?task=manifest",
+			url	=>	"/cgi-bin/striker?config=true&task=create-install-manifest",
 		}, no_comment => 1});
 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
-			button		=>	$task_scancore_db_anchor,
-			description	=>	"#!string!explain_0173!#",
+			button		=>	$task_manifest_anchor,
+			description	=>	"#!string!explain_0168!#",
 			url		=>	"",
 		}})."\n";
+	
+	### TODO: Setup these later.
+	# Backup and restore
+# 	my $task_backup_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+# 			name	=>	"task_backup",
+# 			id	=>	"task_backup",
+# 			alt	=>	"#!string!button_0074!#",
+# 			value	=>	"#!string!button_0074!#",
+# 			url	=>	"?task=backup",
+# 		}, no_comment => 1});
+# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+# 			button		=>	$task_backup_anchor,
+# 			description	=>	"#!string!explain_0171!#",
+# 			url		=>	"",
+# 		}})."\n";
+	
+	# Configure ScanCore Databases
+# 	my $task_scancore_db_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+# 			name	=>	"scancore_db",
+# 			id	=>	"scancore_db",
+# 			alt	=>	"#!string!button_0076!#",
+# 			value	=>	"#!string!button_0076!#",
+# 			url	=>	"?task=scancore_db",
+# 		}, no_comment => 1});
+# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+# 			button		=>	$task_scancore_db_anchor,
+# 			description	=>	"#!string!explain_0173!#",
+# 			url		=>	"",
+# 		}})."\n";
 	
 	# Build the body of the menu.	
 	my $menu = $an->Web->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});

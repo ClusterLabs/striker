@@ -5845,6 +5845,17 @@ sub show_existing_install_manifests
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	
+	
+}
+
+# This looks for existing install manifest files and displays those it finds.
+sub show_existing_install_manifests_old
+{
+	my ($conf) = @_;
+	my $an = $conf->{handle}{an};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests_old" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
 	my $header_printed = 0;
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
@@ -9499,10 +9510,10 @@ sub header
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
 				my $link =  $conf->{sys}{cgi_string};
-					$link =~ s/generate=true//;
-					$link =~ s/anvil_password=.*?&//;
-					$link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
-					$link =~ s/&&/&/g;
+				   $link =~ s/generate=true//;
+				   $link =~ s/anvil_password=.*?&//;
+				   $link =~ s/anvil_password=.*?$//;	# Catch the password if it's the last variable in the URL
+				   $link =~ s/&&+/&/g;
 				if ($conf->{cgi}{confirm})
 				{
 					if ($conf->{cgi}{run})
@@ -9582,6 +9593,11 @@ sub header
 				}
 				else
 				{
+					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
+						button_link	=>	"/cgi-bin/configure",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}, "", 1);
 					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 						button_link	=>	"?config=true&task=create-install-manifest",
 						button_text	=>	"$refresh_image",
