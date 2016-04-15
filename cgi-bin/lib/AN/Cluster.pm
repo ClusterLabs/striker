@@ -5857,6 +5857,20 @@ sub show_existing_install_manifests_old
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests_old" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $header_printed = 0;
+	my $manifest_data  = $an->ScanCore->get_manifests($an);
+	foreach my $hash_ref (keys %{$manifest_data})
+	{
+		my $manifest_uuid = $hash_ref->{manifest_uuid};
+		my $manifest_data = $hash_ref->{manifest_data};
+		my $manifest_note = $hash_ref->{manifest_note};
+		my $modified_date = $hash_ref->{modified_date};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "manifest_uuid", value1 => $manifest_uuid,
+			name2 => "manifest_data", value2 => $manifest_data,
+			name3 => "manifest_note", value3 => $manifest_note,
+			name4 => "modified_date", value4 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
 	while (my $file = readdir(DIR))

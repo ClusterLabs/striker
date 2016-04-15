@@ -608,6 +608,14 @@ The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called 
 
 The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.
 
+=head2 C<93>
+
+The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest UUID to parse.
+
+=head2 C<93>
+
+The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the given UUID.
+
 
 =head1 SEE ALSO
 

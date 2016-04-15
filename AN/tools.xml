@@ -124,7 +124,10 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0024">Setting mode to: [#!variable!directory_mode!#].</key>
 		<key name="tools_log_0025">Start template: [#!variable!template!#] from file: [#!variable!file!#]</key>
 		<key name="tools_log_0026">End template: [#!variable!template!#] from file: [#!variable!file!#]</key>
-		
+		<key name="tools_log_0027">The Install Manifest with UUID: [#!variable!uuid!#] has a node: [#!variable!node!#] with an interface: [#!variable!name!#] with a malformed MAC address: [#!variable!mac!#], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.</key>
+		<key name="tools_log_0028">The Install Manifest with UUID: [#!variable!uuid!#] has a node: [#!variable!node!#] with an extra element: [#!variable!element!#].</key>
+		<key name="tools_log_0029">The Install Manifest with UUID: [#!variable!uuid!#] has an extra element: [#!variable!element!#] with the value: [#!variable!value!#].</key>
+	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
 		<key name="an_variables_0002">#!variable!name1!#: [#!variable!value1!#], #!variable!name2!#: [#!variable!value2!#]</key>
@@ -599,6 +602,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0090"><![CDATA[The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipient, anvil or notification target UUID was passed in.]]></key>
 		<key name="error_message_0091"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an Anvil! and/or notification UUID.]]></key>
 		<key name="error_message_0092"><![CDATA[The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.]]></key>
+		<key name="error_message_0093"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest (XML format) to parse.]]></key>
+		<key name="error_message_0094"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the manifest UUID: [#!variable!uuid!#].]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
