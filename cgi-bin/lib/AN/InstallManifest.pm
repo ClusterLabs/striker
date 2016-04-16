@@ -144,24 +144,10 @@ sub run_new_install_manifest
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($conf->{cgi}{update_manifest})
 		{
-			# Write the updated manifest and switch to using it.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "cgi::run", value1 => $conf->{cgi}{run},
-			}, file => $THIS_FILE, line => __LINE__});
-			my ($target_url, $xml_file) = AN::Cluster::generate_install_manifest($conf);
-			print AN::Common::template($conf, "install-manifest.html", "manifest-created", {
-				message	=>	AN::Common::get_string($conf, {
-					key => "explain_0136", variables => {
-						url		=>	"$target_url",
-						file		=>	"$xml_file",
-						old_manifest	=>	$conf->{cgi}{run},
-					}
-				}),
-			});
-			$conf->{cgi}{run} = $xml_file;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "cgi::run", value1 => $conf->{cgi}{run},
-			}, file => $THIS_FILE, line => __LINE__});
+			# Write the updated manifest and reload it.
+			$an->ScanCore->save_install_manifest();
+			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+			print AN::Common::template($conf, "install-manifest.html", "manifest-created", { message => AN::Common::get_string($conf, {key => "message_0464"}) });
 		}
 	}
 	
@@ -1979,32 +1965,15 @@ sub update_install_manifest
 	{
 		### TODO: Make a backup directory and save a pre-modified
 		###       backup to it.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "raw_file", value1 => $raw_file,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 2, message_key => "log_0039", message_variables => {
-			file => $conf->{cgi}{run}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, ">", "$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to write: [$shell_call], error was: $!\n";
-		print $file_handle $raw_file;
-		close $file_handle;
+		$an->ScanCore->save_install_manifest();
+		$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
 		
 		# Tell the user.
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
 			row	=>	"#!string!title_0157!#",
 			class	=>	"body",
-			message	=>	"#!string!message_0376!#",
+			message	=>	"#!string!message_0464!#",
 		});
-		
-		# Sync with the peer
-		my $peer = AN::Cluster::sync_with_peer($conf);
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "peer", value1 => $peer,
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);

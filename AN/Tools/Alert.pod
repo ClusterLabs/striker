@@ -612,9 +612,13 @@ The 'AN::Tools::Get' module's 'server_data()' method failed to find the requeste
 
 The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest UUID to parse.
 
-=head2 C<93>
+=head2 C<94>
 
 The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the given UUID.
+
+=head2 C<95>
+
+The 'AN::Tools::ScanCore' module's 'netmask_from_ip()' method was called without passing in an IP address.
 
 
 =head1 SEE ALSO

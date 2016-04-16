@@ -177,6 +177,7 @@ sub read_in_cgi_variables
 		"mail_data__to",
 		"mail_data__sending_domain",
 		"make_disk_good",
+		"manifest_uuid", 
 		"max_cores",
 		"max_ram",
 		"max_storage",

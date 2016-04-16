@@ -1871,6 +1871,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
 		<key name="message_0458"><![CDATA[The install target function has been enabled successfully.]]></key>
 		<key name="message_0459"><![CDATA[The install target function has been disabled successfully.]]></key>
+		<key name="message_0460"><![CDATA[#!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>], created on: [<span class="highlight_detail">#!variable!date!#</span>].]]></key>
+		<key name="message_0461"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!anvil!#</span>] install manifest failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!manifests!#</span>] manifest(s) remained.]]></key>
+		<key name="message_0462"><![CDATA[Successfully deleted the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
+		<key name="message_0463"><![CDATA[Are you sure you want to delete the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
+		<key name="message_0464"><![CDATA[The install manifest has been updated to record the MAC addresses.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

@@ -604,6 +604,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0092"><![CDATA[The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.]]></key>
 		<key name="error_message_0093"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest (XML format) to parse.]]></key>
 		<key name="error_message_0094"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the manifest UUID: [#!variable!uuid!#].]]></key>
+		<key name="error_message_0095"><![CDATA[The 'AN::Tools::ScanCore' module's 'netmask_from_ip()' method was called without passing in an IP address.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

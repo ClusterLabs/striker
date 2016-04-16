@@ -1462,6 +1462,101 @@ sub confirm_action
 	return($notice_message);
 }
 
+# This deletes the given install manifest
+sub delete_manifest
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "delete_owner" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Get the Anvil! name from the manifest before we delete it.
+	my $return     = $an->Get->manifest_data({uuid => $an->data->{cgi}{manifest_uuid}});
+	my $anvil_name = $an->data->{cgi}{anvil_name};
+	
+	my $notice_message = "";
+	
+	# Send the queries as an array
+	my $queries = [];
+	push @{$queries}, "
+UPDATE 
+    manifests 
+SET 
+    manifest_note = 'DELETED' 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    manifests 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+;";
+	
+	# Log the queries
+	foreach my $query (@{$queries})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1  => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Pass the array in.
+	$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+	
+	# Make sure they're gone.
+	my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    manifests 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1  => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $manifest_count = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "manifest_count", value1 => $manifest_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($manifest_count)
+	{
+		# What is this!?
+		my $error_message = $an->String->get({key => "message_0461", variables => { 
+			anvil     => $anvil_name,
+			manifests => $manifest_count, 
+		}});
+		my $error_body = $an->Web->template({file => "web.html", template => "error-entry", replace => {
+					row_class	=>	"highlight_warning",
+					row_message	=>	"#!string!row_0133!#",
+					body_class	=>	"",
+					body_message	=>	$error_message,
+				}});
+		
+		$notice_message = $an->Web->template({file => "web.html", template => "error-messages", replace => {
+				title	=>	"#!string!title_0197!#",
+				errors	=>	$error_body,
+			}});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "notice_message", value1 => $notice_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# All gone
+		$notice_message = $an->Web->template({file => "web.html", template => "success-message", replace => {
+				title		=>	"#!string!title_0196!#",
+				row_class	=>	"highlight_good_bold",
+				row_body	=>	"#!string!row_0083!#",
+				message_class	=>	"",
+				message_body	=>	$an->String->get({key => "message_0395", variables => { manifest => $manifest_data->{manifest_name} }}),
+			}});
+	}
+	
+	return($notice_message);
+}
+
 # This deletes an Anvil! owner.
 sub delete_owner
 {

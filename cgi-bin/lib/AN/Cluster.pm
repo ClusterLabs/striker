@@ -2704,40 +2704,51 @@ sub create_install_manifest
 	# Delete it, if requested
 	if ($conf->{cgi}{'delete'})
 	{
+		my $return     = $an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+		my $anvil_name = $an->data->{cgi}{anvil_name};
 		if ($conf->{cgi}{confirm})
 		{
+			### TODO: Switch to configure->delete_manifest
 			# Make sure that the file exists and that it is in the manifests directory.
-			my $file = $conf->{path}{apache_manifests_dir}."/".$conf->{cgi}{'delete'};
-			if (-e $file)
+			my $queries = [];
+			push @{$queries}, "
+UPDATE 
+    manifests 
+SET 
+    manifest_note = 'DELETED' 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+;";
+	push @{$queries}, "
+DELETE FROM  
+    manifests 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})."
+;";
+			# Log the queries
+			foreach my $query (@{$queries})
 			{
-				# OK to proceed.
-				unlink $file or die "Failed to delete: [$conf->{cgi}{'delete'}], error was: $!\n";
-				my $message = AN::Common::get_string($conf, { key => "message_0349", variables => {
-					file	=>	$file,
-				}});
-				print AN::Common::template($conf, "config.html", "delete-manifest-success", {
-					message	=>	$message,
-				});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1  => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
-			else
-			{
-				# File is gone...
-				my $message = AN::Common::get_string($conf, { key => "message_0348", variables => {
-					file		=>	$conf->{cgi}{'delete'},
-					manifest_dir	=>	$conf->{path}{apache_manifests_dir},
-				}});
-				print AN::Common::template($conf, "config.html", "delete-manifest-failure", {
-					message	=>	$message,
-				});
-			}
+			
+			# Pass the array in.
+			$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
+			my $message = AN::Common::get_string($conf, { key => "message_0462", variables => {
+				anvil	=>	$anvil_name,
+			}});
+			print AN::Common::template($conf, "config.html", "delete-manifest-success", {
+				message	=>	$message,
+			});
 		}
 		else
 		{
 			$show_form = 0;
-			my $message = AN::Common::get_string($conf, { key => "message_0347", variables => { file => $conf->{cgi}{'delete'} }});
+			my $message = AN::Common::get_string($conf, { key => "message_0463", variables => { anvil => $anvil_name }});
 			print AN::Common::template($conf, "config.html", "manifest-confirm-delete", {
 				message	=>	$message,
-				confirm	=>	"?config=true&task=create-install-manifest&delete=$conf->{cgi}{'delete'}&confirm=true",
+				confirm	=>	"?config=true&task=create-install-manifest&delete=true&manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&confirm=true",
 			});
 		}
 	}
@@ -2757,39 +2768,27 @@ sub create_install_manifest
 			else
 			{
 				# The form will redisplay after this.
-				my ($target_url, $xml_file) = generate_install_manifest($conf);
+				my $manifest_uuid = $an->ScanCore->save_install_manifest();
+				
+				#my ($target_url, $xml_file) = generate_install_manifest($conf);
 				print AN::Common::template($conf, "config.html", "manifest-created", {
 					message	=>	AN::Common::get_string($conf, {
 						key => "explain_0124", variables => {
-							url	=>	"$target_url",
-							file	=>	"$xml_file",
+							#url	=>	"$target_url",
+							#file	=>	"$xml_file",
+							uuid	=>	$manifest_uuid,
 						}
 					}),
 				});
-				
-				# Sync with our peer. If 'peer' is empty, the sync didn't run. If it's set to
-				# '#!error!#', then something went wrong. Otherwise the peer's hostname is 
-				# returned.
-				my $peer = sync_with_peer($conf);
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "peer", value1 => $peer,
-				}, file => $THIS_FILE, line => __LINE__});
-				if (($peer) && ($peer ne "#!error!#"))
-				{
-					# Tell the user
-					my $message  = AN::Common::get_string($conf, {key => "message_0449", variables => { peer => $peer }});
-					print AN::Common::template($conf, "config.html", "general-table-row-good", {
-						row	=>	"#!string!row_0292!#",
-						message	=>	$message,
-					});
-				}
 			}
 		}
 	}
 	elsif ($conf->{cgi}{run})
 	{
 		# Read in the install manifest.
-		load_install_manifest($conf, $conf->{cgi}{run});
+		my $return     = $an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+		my $anvil_name = $an->data->{cgi}{anvil_name};
+		#load_install_manifest($conf, $conf->{cgi}{run});
 		if ($conf->{cgi}{confirm})
 		{
 			# Do it.
@@ -2812,29 +2811,19 @@ sub create_install_manifest
 						try_again_button	=>	$button,
 					},
 				});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
-					name2 => "cgi::anvil_node1_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
-					name2 => "cgi::anvil_node1_sn_link2_mac", value2 => $conf->{cgi}{anvil_node1_sn_link2_mac},
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
-					name2 => "cgi::anvil_node1_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
-					name2 => "cgi::anvil_node2_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
-					name2 => "cgi::anvil_node2_sn_link2_mac", value2 => $conf->{cgi}{anvil_node2_sn_link2_mac},
-				}, file => $THIS_FILE, line => __LINE__});
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
-					name2 => "cgi::anvil_node2_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+					name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $conf->{cgi}{anvil_node1_bcn_link1_mac},
+					name2  => "cgi::anvil_node1_bcn_link2_mac", value2  => $conf->{cgi}{anvil_node1_bcn_link2_mac},
+					name3  => "cgi::anvil_node1_sn_link1_mac",  value3  => $conf->{cgi}{anvil_node1_sn_link1_mac},
+					name4  => "cgi::anvil_node1_sn_link2_mac",  value4  => $conf->{cgi}{anvil_node1_sn_link2_mac},
+					name5  => "cgi::anvil_node1_ifn_link1_mac", value5  => $conf->{cgi}{anvil_node1_ifn_link1_mac},
+					name6  => "cgi::anvil_node1_ifn_link2_mac", value6  => $conf->{cgi}{anvil_node1_ifn_link2_mac},
+					name7  => "cgi::anvil_node2_bcn_link1_mac", value7  => $conf->{cgi}{anvil_node2_bcn_link1_mac},
+					name8  => "cgi::anvil_node2_bcn_link2_mac", value8  => $conf->{cgi}{anvil_node2_bcn_link2_mac},
+					name9  => "cgi::anvil_node2_sn_link1_mac",  value9  => $conf->{cgi}{anvil_node2_sn_link1_mac},
+					name10 => "cgi::anvil_node2_sn_link2_mac",  value10 => $conf->{cgi}{anvil_node2_sn_link2_mac},
+					name11 => "cgi::anvil_node2_ifn_link1_mac", value11 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
+					name12 => "cgi::anvil_node2_ifn_link2_mac", value12 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
 				my $restart_html = AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
 					form_file			=>	"/cgi-bin/striker",
@@ -2890,33 +2879,38 @@ sub create_install_manifest
 			name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		if (not $an->data->{cgi}{manifest_uuid})
+		{
+			# Blank out all anvil CGI variables that might have been set when we parsed the 
+			# existing manifests.
+			foreach my $key (sort {$a cmp $b} keys %{$an->data->{cgi}})
+			{
+				next if $key !~ /^anvil_/;
+				$an->data->{cgi}{$key} = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "cgi::$key", value1 => $an->data->{cgi}{$key},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
 		# Set some default values if 'save' isn't set.
 		if ($conf->{cgi}{load})
 		{
-			load_install_manifest($conf, $conf->{cgi}{load});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
-				name2 => "cgi::anvil_node1_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
-				name2 => "cgi::anvil_node1_sn_link2_mac", value2 => $conf->{cgi}{anvil_node1_sn_link2_mac},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
-				name2 => "cgi::anvil_node1_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
-				name2 => "cgi::anvil_node2_bcn_link2_mac", value2 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
-				name2 => "cgi::anvil_node2_sn_link2_mac", value2 => $conf->{cgi}{anvil_node2_sn_link2_mac},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
-				name2 => "cgi::anvil_node2_ifn_link2_mac", value2 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
+			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
+			#load_install_manifest($conf, $conf->{cgi}{load});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+				name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $conf->{cgi}{anvil_node1_bcn_link1_mac},
+				name2  => "cgi::anvil_node1_bcn_link2_mac", value2  => $conf->{cgi}{anvil_node1_bcn_link2_mac},
+				name3  => "cgi::anvil_node1_sn_link1_mac",  value3  => $conf->{cgi}{anvil_node1_sn_link1_mac},
+				name4  => "cgi::anvil_node1_sn_link2_mac",  value4  => $conf->{cgi}{anvil_node1_sn_link2_mac},
+				name5  => "cgi::anvil_node1_ifn_link1_mac", value5  => $conf->{cgi}{anvil_node1_ifn_link1_mac},
+				name6  => "cgi::anvil_node1_ifn_link2_mac", value6  => $conf->{cgi}{anvil_node1_ifn_link2_mac},
+				name7  => "cgi::anvil_node2_bcn_link1_mac", value7  => $conf->{cgi}{anvil_node2_bcn_link1_mac},
+				name8  => "cgi::anvil_node2_bcn_link2_mac", value8  => $conf->{cgi}{anvil_node2_bcn_link2_mac},
+				name9  => "cgi::anvil_node2_sn_link1_mac",  value9  => $conf->{cgi}{anvil_node2_sn_link1_mac},
+				name10 => "cgi::anvil_node2_sn_link2_mac",  value10 => $conf->{cgi}{anvil_node2_sn_link2_mac},
+				name11 => "cgi::anvil_node2_ifn_link1_mac", value11 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
+				name12 => "cgi::anvil_node2_ifn_link2_mac", value12 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif (not $conf->{cgi}{generate})
@@ -5845,8 +5839,58 @@ sub show_existing_install_manifests
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $header_printed = 0;
+	my $return         = $an->ScanCore->get_manifests($an);
+	foreach my $hash_ref (@{$return})
+	{
+		my $manifest_uuid = $hash_ref->{manifest_uuid};
+		my $manifest_data = $hash_ref->{manifest_data};
+		my $manifest_note = $hash_ref->{manifest_note};
+		my $modified_date = $hash_ref->{modified_date};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "manifest_uuid", value1 => $manifest_uuid,
+			name2 => "manifest_data", value2 => $manifest_data,
+			name3 => "manifest_note", value3 => $manifest_note,
+			name4 => "modified_date", value4 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Parse this and pull out the details
+		$an->ScanCore->parse_install_manifest({uuid => $manifest_uuid});
+		
+		my $anvil_name =  $an->data->{cgi}{anvil_name};
+		my $edit_date  =  $modified_date;
+		   $edit_date  =~ s/(:\d\d)\..*/$1/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "anvil_name", value1 => $anvil_name,
+			name2 => "edit_date",  value2 => $edit_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		$conf->{manifest_file}{$manifest_uuid}{anvil} = AN::Common::get_string($conf, { key => "message_0460", variables => {
+				anvil	=>	$anvil_name,
+				date	=>	$edit_date,
+			}});
+		
+		if (not $header_printed)
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-header");
+			$header_printed = 1;
+		}
+	}
 	
+	foreach my $manifest_uuid (sort {$b cmp $a} keys %{$conf->{manifest_file}})
+	{
+		print AN::Common::template($conf, "config.html", "install-manifest-entry", {
+			description	=>	$conf->{manifest_file}{$manifest_uuid}{anvil},
+			load		=>	"?config=true&task=create-install-manifest&load=true&manifest_uuid=$manifest_uuid",
+			run		=>	"?config=true&task=create-install-manifest&run=true&manifest_uuid=$manifest_uuid",
+			'delete'	=>	"?config=true&task=create-install-manifest&delete=true&manifest_uuid=$manifest_uuid",
+		});
+	}
+	if ($header_printed)
+	{
+		print AN::Common::template($conf, "config.html", "install-manifest-footer");
+	}
 	
+	return(0);
 }
 
 # This looks for existing install manifest files and displays those it finds.
@@ -5857,20 +5901,6 @@ sub show_existing_install_manifests_old
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests_old" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $header_printed = 0;
-	my $manifest_data  = $an->ScanCore->get_manifests($an);
-	foreach my $hash_ref (keys %{$manifest_data})
-	{
-		my $manifest_uuid = $hash_ref->{manifest_uuid};
-		my $manifest_data = $hash_ref->{manifest_data};
-		my $manifest_note = $hash_ref->{manifest_note};
-		my $modified_date = $hash_ref->{modified_date};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "manifest_uuid", value1 => $manifest_uuid,
-			name2 => "manifest_data", value2 => $manifest_data,
-			name3 => "manifest_note", value3 => $manifest_note,
-			name4 => "modified_date", value4 => $modified_date,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
 	local(*DIR);
 	opendir(DIR, $conf->{path}{apache_manifests_dir}) or die "Failed to open the directory: [$conf->{path}{apache_manifests_dir}], error was: $!\n";
 	while (my $file = readdir(DIR))

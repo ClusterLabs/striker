@@ -3924,9 +3924,7 @@ sub install_target_state
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -3992,6 +3990,108 @@ sub install_target_state
 		name1 => "install_target_state", value1 => $install_target_state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($install_target_state);
+}
+
+# This takes an IP, compares it to the BCN, SN and IFN networks and returns the
+# netmask from the matched network.
+sub netmask_from_ip
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	if (not $parameter->{ip})
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0095", code => 95, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	my $ip = $parameter->{ip};
+	
+	### TODO: Make this support all possible subnet masks.
+	my $netmask = "";
+	
+	# Create short versions of the three networks that I can use in the
+	# regex.
+	my $short_bcn = "";
+	my $short_sn = "";
+	my $short_ifn = "";
+	
+	# BCN
+	if ($an->data->{cgi}{anvil_bcn_subnet} eq "255.0.0.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.0.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.255.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# SN
+	if ($an->data->{cgi}{anvil_sn_subnet} eq "255.0.0.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.0.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.255.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# IFN 
+	if ($an->data->{cgi}{anvil_ifn_subnet} eq "255.0.0.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.0.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.255.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "short_bcn", value1 => $short_bcn,
+		name2 => "short_sn",  value2 => $short_sn,
+		name3 => "short_ifn", value3 => $short_ifn,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($ip =~ /^$short_bcn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_bcn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($ip =~ /^$short_sn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_sn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($ip =~ /^$short_ifn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_ifn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "netmask", value1 => $netmask,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($netmask);
 }
 
 1;
