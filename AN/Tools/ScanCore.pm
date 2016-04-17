@@ -55,7 +55,7 @@ SELECT
 FROM 
     manifests
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -1531,92 +1531,107 @@ sub save_install_manifest
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Break up hostsnames
-	my ($node1_short_name)    = ($an->data->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
-	my ($node2_short_name)    = ($an->data->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
-	my ($switch1_short_name)  = ($an->data->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
-	my ($switch2_short_name)  = ($an->data->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
-	my ($pdu1_short_name)     = ($an->data->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
-	my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
-	my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
-	my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
-	my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
-	my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
-	my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
-	my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
-	my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-	my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-	my ($now_date, $now_time) = $an->Get->date_and_time();
-	my $date                  = "$now_date, $now_time";
-	
-	# Note yet supported but will be later.
-	$an->data->{cgi}{anvil_node1_ipmi_password} = $an->data->{cgi}{anvil_node1_ipmi_password} ? $an->data->{cgi}{anvil_node1_ipmi_password} : $an->data->{cgi}{anvil_password};
-	$an->data->{cgi}{anvil_node1_ipmi_user}     = $an->data->{cgi}{anvil_node1_ipmi_user}     ? $an->data->{cgi}{anvil_node1_ipmi_user}     : "admin";
-	$an->data->{cgi}{anvil_node2_ipmi_password} = $an->data->{cgi}{anvil_node2_ipmi_password} ? $an->data->{cgi}{anvil_node2_ipmi_password} : $an->data->{cgi}{anvil_password};
-	$an->data->{cgi}{anvil_node2_ipmi_user}     = $an->data->{cgi}{anvil_node2_ipmi_user}     ? $an->data->{cgi}{anvil_node2_ipmi_user}     : "admin";
-	
-	# Generate UUIDs if needed.
-	$an->data->{cgi}{anvil_node1_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node1_uuid};
-	$an->data->{cgi}{anvil_node2_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node2_uuid};
-	
-	### TODO: This isn't set for some reason, fix
-	$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
-	
-	# Set the MTU.
-	$an->data->{cgi}{anvil_mtu_size} = $an->data->{sys}{install_manifest}{'default'}{mtu_size} if not $an->data->{cgi}{anvil_mtu_size};
-	
-	# Use the subnet mask of the IPMI devices by comparing their IP to that
-	# of the BCN and IFN, and use the netmask of the matching network.
-	my $node1_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node1_ipmi_ip}});
-	my $node2_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node2_ipmi_ip}});
-	
-	### Setup the DRBD lines.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-		name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-		name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-		name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-		name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-		name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-		name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-		name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+	# If 'raw' is set, just straight update the manifest_data.
+	my $xml;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::raw",           value1 => $an->data->{cgi}{raw}, 
+		name2 => "cgi::manifest_data", value2 => $an->data->{cgi}{manifest_data}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Standardize
-	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'});
-	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
-	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/0/false/;
-	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-flushes'});
-	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/no/false/;
-	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/0/false/;
-	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =  lc($an->data->{cgi}{'anvil_drbd_disk_md-flushes'});
-	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/no/false/;
-	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/0/false/;
-	
-	# Convert
-	$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} eq "false" ? "no" : "yes";
-	$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} eq "false" ? "no" : "yes";
-	$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   eq "false" ? "no" : "yes";
-	$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   ? $an->data->{cgi}{'anvil_drbd_options_cpu-mask'} : "";
-	$an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = $an->data->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $an->data->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
-	$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
-	$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-		name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-		name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-		name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-		name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-		name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-		name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-		name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO: Get the node and dashboard UUIDs if not yet set.
-	
-	### KVM-based fencing is supported but not documented. Sample entries
-	### are here for those who might ask for it when building test Anvil!
-	### systems later.
-	# Many things are currently static but might be made configurable later.
-	my $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+	if (($an->data->{cgi}{raw}) && ($an->data->{cgi}{manifest_data}))
+	{
+		$xml = $an->data->{cgi}{manifest_data};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "xml", value1 => $xml, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Break up hostsnames
+		my ($node1_short_name)    = ($an->data->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
+		my ($node2_short_name)    = ($an->data->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
+		my ($switch1_short_name)  = ($an->data->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
+		my ($switch2_short_name)  = ($an->data->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
+		my ($pdu1_short_name)     = ($an->data->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
+		my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+		my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
+		my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
+		my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
+		my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
+		my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
+		my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
+		my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+		my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+		my ($now_date, $now_time) = $an->Get->date_and_time();
+		my $date                  = "$now_date, $now_time";
+		
+		# Note yet supported but will be later.
+		$an->data->{cgi}{anvil_node1_ipmi_password} = $an->data->{cgi}{anvil_node1_ipmi_password} ? $an->data->{cgi}{anvil_node1_ipmi_password} : $an->data->{cgi}{anvil_password};
+		$an->data->{cgi}{anvil_node1_ipmi_user}     = $an->data->{cgi}{anvil_node1_ipmi_user}     ? $an->data->{cgi}{anvil_node1_ipmi_user}     : "admin";
+		$an->data->{cgi}{anvil_node2_ipmi_password} = $an->data->{cgi}{anvil_node2_ipmi_password} ? $an->data->{cgi}{anvil_node2_ipmi_password} : $an->data->{cgi}{anvil_password};
+		$an->data->{cgi}{anvil_node2_ipmi_user}     = $an->data->{cgi}{anvil_node2_ipmi_user}     ? $an->data->{cgi}{anvil_node2_ipmi_user}     : "admin";
+		
+		# Generate UUIDs if needed.
+		$an->data->{cgi}{anvil_node1_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node1_uuid};
+		$an->data->{cgi}{anvil_node2_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node2_uuid};
+		
+		### TODO: This isn't set for some reason, fix
+		$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
+		
+		# Set the MTU.
+		$an->data->{cgi}{anvil_mtu_size} = $an->data->{sys}{install_manifest}{'default'}{mtu_size} if not $an->data->{cgi}{anvil_mtu_size};
+		
+		# Use the subnet mask of the IPMI devices by comparing their IP to that
+		# of the BCN and IFN, and use the netmask of the matching network.
+		my $node1_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node1_ipmi_ip}});
+		my $node2_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node2_ipmi_ip}});
+		
+		### Setup the DRBD lines.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Standardize
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'});
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/0/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-flushes'});
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/0/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =  lc($an->data->{cgi}{'anvil_drbd_disk_md-flushes'});
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/0/false/;
+		
+		# Convert
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   ? $an->data->{cgi}{'anvil_drbd_options_cpu-mask'} : "";
+		$an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = $an->data->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $an->data->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
+		$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
+		$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Get the node and dashboard UUIDs if not yet set.
+		
+		### KVM-based fencing is supported but not documented. Sample entries
+		### are here for those who might ask for it when building test Anvil!
+		### systems later.
+		# Many things are currently static but might be made configurable later.
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 
 <!--
 Generated on:    ".$date."
@@ -1712,59 +1727,59 @@ Striker Version: ".$an->data->{sys}{version}."
 			<switch name=\"".$an->data->{cgi}{anvil_switch1_name}."\" ip=\"".$an->data->{cgi}{anvil_switch1_ip}."\" />
 ";
 
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::anvil_switch2_name", value1 => $an->data->{cgi}{anvil_switch2_name},
-	}, file => $THIS_FILE, line => __LINE__});
-	if (($an->data->{cgi}{anvil_switch2_name}) && ($an->data->{cgi}{anvil_switch2_name} ne "--"))
-	{
-		$xml .= "\t\t\t<switch name=\"".$an->data->{cgi}{anvil_switch2_name}."\" ip=\"".$an->data->{cgi}{anvil_switch2_ip}."\" />";
-	}
-	$xml .= "
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_switch2_name", value1 => $an->data->{cgi}{anvil_switch2_name},
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{cgi}{anvil_switch2_name}) && ($an->data->{cgi}{anvil_switch2_name} ne "--"))
+		{
+			$xml .= "\t\t\t<switch name=\"".$an->data->{cgi}{anvil_switch2_name}."\" ip=\"".$an->data->{cgi}{anvil_switch2_ip}."\" />";
+		}
+		$xml .= "
 		</switch>
 		<ups>
-			<ups name=\"$an->data->{cgi}{anvil_ups1_name}\" type=\"apc\" port=\"3551\" ip=\"$an->data->{cgi}{anvil_ups1_ip}\" />
-			<ups name=\"$an->data->{cgi}{anvil_ups2_name}\" type=\"apc\" port=\"3552\" ip=\"$an->data->{cgi}{anvil_ups2_ip}\" />
+			<ups name=\"".$an->data->{cgi}{anvil_ups1_name}."\" type=\"apc\" port=\"3551\" ip=\"".$an->data->{cgi}{anvil_ups1_ip}."\" />
+			<ups name=\"".$an->data->{cgi}{anvil_ups2_name}."\" type=\"apc\" port=\"3552\" ip=\"".$an->data->{cgi}{anvil_ups2_ip}."\" />
 		</ups>
 		<pts>
-			<pts name=\"$an->data->{cgi}{anvil_pts1_name}\" type=\"raritan\" port=\"161\" ip=\"$an->data->{cgi}{anvil_pts1_ip}\" />
-			<pts name=\"$an->data->{cgi}{anvil_pts2_name}\" type=\"raritan\" port=\"161\" ip=\"$an->data->{cgi}{anvil_pts2_ip}\" />
+			<pts name=\"".$an->data->{cgi}{anvil_pts1_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts1_ip}."\" />
+			<pts name=\"".$an->data->{cgi}{anvil_pts2_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts2_ip}."\" />
 		</pts>
 		<pdu>";
-	# PDU 1 and 2 always exist.
-	my $pdu1_agent = $an->data->{cgi}{anvil_pdu1_agent} ? $an->data->{cgi}{anvil_pdu1_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-	$xml .= "
+		# PDU 1 and 2 always exist.
+		my $pdu1_agent = $an->data->{cgi}{anvil_pdu1_agent} ? $an->data->{cgi}{anvil_pdu1_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+		$xml .= "
 			<pdu reference=\"pdu01\" name=\"".$an->data->{cgi}{anvil_pdu1_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu1_ip}."\" agent=\"$pdu1_agent\" />";
-	my $pdu2_agent = $an->data->{cgi}{anvil_pdu2_agent} ? $an->data->{cgi}{anvil_pdu2_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-	$xml .= "
+		my $pdu2_agent = $an->data->{cgi}{anvil_pdu2_agent} ? $an->data->{cgi}{anvil_pdu2_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+		$xml .= "
 			<pdu reference=\"pdu02\" name=\"".$an->data->{cgi}{anvil_pdu2_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu2_ip}."\" agent=\"$pdu2_agent\" />";
-	if ($an->data->{cgi}{anvil_pdu3_name})
-	{
-		my $pdu3_agent = $an->data->{cgi}{anvil_pdu3_agent} ? $an->data->{cgi}{anvil_pdu3_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-		$xml .= "
+		if ($an->data->{cgi}{anvil_pdu3_name})
+		{
+			my $pdu3_agent = $an->data->{cgi}{anvil_pdu3_agent} ? $an->data->{cgi}{anvil_pdu3_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+			$xml .= "
 			<pdu reference=\"pdu03\" name=\"".$an->data->{cgi}{anvil_pdu3_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu3_ip}."\" agent=\"$pdu3_agent\" />";
-	}
-	if ($an->data->{cgi}{anvil_pdu4_name})
-	{
-		my $pdu4_agent = $an->data->{cgi}{anvil_pdu4_agent} ? $an->data->{cgi}{anvil_pdu4_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-		$xml .= "
+		}
+		if ($an->data->{cgi}{anvil_pdu4_name})
+		{
+			my $pdu4_agent = $an->data->{cgi}{anvil_pdu4_agent} ? $an->data->{cgi}{anvil_pdu4_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+			$xml .= "
 			<pdu reference=\"pdu04\" name=\"".$an->data->{cgi}{anvil_pdu4_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu4_ip}."\" agent=\"$pdu4_agent\" />";
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
-		name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
-		name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
-	}, file => $THIS_FILE, line => __LINE__});
-	my $say_use_anvil_kick_apc_ups = $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
-	my $say_use_anvil_safe_start   = $an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   ? "true" : "false";
-	my $say_use_scancore           = $an->data->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
-		name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil_safe_start,
-		name3 => "say_use_scancore",           value3 => $say_use_scancore,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$xml .= "
+		}
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
+			name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
+			name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
+		}, file => $THIS_FILE, line => __LINE__});
+		my $say_use_anvil_kick_apc_ups = $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
+		my $say_use_anvil_safe_start   = $an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   ? "true" : "false";
+		my $say_use_scancore           = $an->data->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
+			name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil_safe_start,
+			name3 => "say_use_scancore",           value3 => $say_use_scancore,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$xml .= "
 		</pdu>
 		<ipmi>
 			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />
@@ -1774,18 +1789,6 @@ Striker Version: ".$an->data->{sys}{version}."
 			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password=\"\" password_script=\"\" agent=\"fence_virsh\" />
 		</kvm>
 		<striker>
-			<!-- 
-			The user and password are, primarily, for the ScanCore
-			database user and passowrd, but should be the same as
-			the user and password set via:
-			striker-installer -u <user:password>
-			These should be left unset in most cases. When unset,
-			these will take the values from:
-			<anvil password=\"<secret>\" striker_user=\"<user>\" />
-			striker_user, if unset, defaults to 'admin'. There is
-			no default password!
-			TODO: Make the TCP port configurable
-			-->
 			<striker name=\"".$an->data->{cgi}{anvil_striker1_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker1_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker1_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
 			<striker name=\"".$an->data->{cgi}{anvil_striker2_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker2_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker2_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
 		</striker>
@@ -1802,7 +1805,8 @@ Striker Version: ".$an->data->{sys}{version}."
 		</tools>
 	</common>
 </config>
-";
+		";
+	}
 	
 	# Record it to the database.
 	if (not $an->data->{cgi}{manifest_uuid})

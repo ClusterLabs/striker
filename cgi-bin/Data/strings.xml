@@ -339,7 +339,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0121"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" must be an integer (whole number) or a floating point (number with a decimal) value.]]></key>
 		<key name="explain_0122"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" can not be longer than 15 characters.]]></key>
 		<key name="explain_0123"><![CDATA[The "<span class="highlight_good_bold"">#!variable!field!#</span>" value can only contain <a href="https://alteeve.ca/w/Alphanumeric" target="_new">alphanumeric</a> characters and dashes (<span class="code">-</span>).]]></key>
-		<key name="explain_0124"><![CDATA[The install manifest has been generated successfully.]]></key>
+		<key name="explain_0124"><![CDATA[The install manifest has been saved successfully.]]></key>
 		<key name="explain_0125"><![CDATA[Have you reviewed the values that will be set carefully?<br /><br />If you are happy, enter the current IP address and the current <span class="code">root</span> user's password for both nodes.]]></key>
 		<key name="explain_0126"><![CDATA[This is a new install, so storage will be initialized and any existing data will be lost!]]></key>
 		<key name="explain_0127"><![CDATA[During the install process, the nodes may be rebooted to load a new kernel, if updated, or to reconfigure the network, if needed.<br /><br />If, for some reason, this #!string!brand_0002!# dashboard can not access the nodes after they reboot, manual intervention will be required.<br /><br />This installation process might take quite some time to complete, depending on multiple factors like your network speed, machine speed, etc.<br /><br />Please be patient while the process runs and do not interrupt the process once it has started.]]></key>
@@ -425,6 +425,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="explain_0207"><![CDATA[All alerts from the #!string!brand_0003!# will be ignored.]]></key>
 		<key name="explain_0208">A place for you to keep any notes you wish about this alert recipient.</key>
 		<key name="explain_0209"><![CDATA[<span class="highlight_detail">Note</span>: This sets the default alert level and can be overridden for a given #!string!brand_0003!# system.]]></key>
+		<key name="explain_0210"><![CDATA[Below is the raw Install Manifest data. You can customize it as you wish.<br /><span class="highlight_detail">Note</span>: Please be careful that you maintain valid XML format.]]></key>
 		
 		<!-- These are short versions if 'explain_xxxx' for use when the user has requested an "Expert UI". The 'terse_XXXX' corresponds to the 'explain_XXXX' it is terse of. -->
 		<key name="terse_0061"><![CDATA[Optional short identifying prefix.]]></key>
@@ -823,6 +824,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="row_0310">Alert Level</key>
 		<key name="row_0311">Measurements</key>
 		<key name="row_0312">Potential Conflict</key>
+		<key name="row_0313">Manifest</key>
 		
 		<!-- Table headers -->
 		<key name="header_0001"><![CDATA[Node <span class="highlight_bad_bold">1</span>]]></key>
@@ -1393,6 +1395,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0198">Add, edit or delete an #!string!brand_0003!# owner.</key>
 		<key name="title_0199">Add, edit or delete an outgoing (SMTP) mail server used to send #!string!brand_0003!# alerts.</key>
 		<key name="title_0200">Confirmation of potential conflict required</key>
+		<key name="title_0201">Edit Raw Install Manifest</key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1871,7 +1874,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0457"><![CDATA[Enabling the install target feature means that this #!string!brand_0020!# will start offering IP addresses.<br />These IP addresses will be on the <a href="#!string!url_0005!#" target="_new" class="highlight_detail">#!string!brand_0005!#</a>, which should be isolated and cause no issues.<br />If your network doesn't isolate the #!string!brand_0006!#, this might cause a conflict with devices requesting a network address.<br /> Are you ready to enable this feature?]]></key>
 		<key name="message_0458"><![CDATA[The install target function has been enabled successfully.]]></key>
 		<key name="message_0459"><![CDATA[The install target function has been disabled successfully.]]></key>
-		<key name="message_0460"><![CDATA[#!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>], created on: [<span class="highlight_detail">#!variable!date!#</span>].]]></key>
+		<key name="message_0460"><![CDATA[#!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>], created on: [<a href="#!variable!raw!#"><span class="highlight_detail">#!variable!date!#</span></a>].]]></key>
 		<key name="message_0461"><![CDATA[It would appear that deleting the: [<span class="highlight_detail">#!variable!anvil!#</span>] install manifest failed.<br />After sending the delete command, [<span class="highlight_detail">#!variable!manifests!#</span>] manifest(s) remained.]]></key>
 		<key name="message_0462"><![CDATA[Successfully deleted the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
 		<key name="message_0463"><![CDATA[Are you sure you want to delete the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>

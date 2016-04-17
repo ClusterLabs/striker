@@ -1550,7 +1550,7 @@ WHERE
 				row_class	=>	"highlight_good_bold",
 				row_body	=>	"#!string!row_0083!#",
 				message_class	=>	"",
-				message_body	=>	$an->String->get({key => "message_0395", variables => { manifest => $manifest_data->{manifest_name} }}),
+				message_body	=>	$an->String->get({key => "message_0395", variables => { manifest => $return->{manifest_name} }}),
 			}});
 	}
 	

@@ -81,6 +81,13 @@ td {
 	font-size: 12px;
 }
 
+.textarea_huge {
+	width: 1500px;
+	height: 2100px;
+	font-family: 'Dejavu Sans Mono', 'Courier 10 pitch', monospace, Courier;
+	font-size: 12px;
+}
+
 .legal {
 	font-size: 9px;
 	text-align: center;

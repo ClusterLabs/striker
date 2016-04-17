@@ -1374,9 +1374,9 @@ sub save_dashboard_configure
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_dashboard_configure" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "save_dashboard_configure" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($save)  = sanity_check_striker_conf($conf, $conf->{cgi}{section});
+	my ($save) = sanity_check_striker_conf($conf, $conf->{cgi}{section});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "save", value1 => $save,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2610,7 +2610,7 @@ sub create_install_manifest
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $show_form = 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2749,6 +2749,60 @@ WHERE
 			print AN::Common::template($conf, "config.html", "manifest-confirm-delete", {
 				message	=>	$message,
 				confirm	=>	"?config=true&task=create-install-manifest&delete=true&manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&confirm=true",
+			});
+		}
+	}
+	
+	# If the 'raw' was passed, present a form with the XML definition shown raw.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::raw", value1 => $an->data->{cgi}{raw},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{raw})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::save", value1 => $an->data->{cgi}{save},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{cgi}{save})
+		{
+			my $manifest_uuid = $an->ScanCore->save_install_manifest();
+			
+			#my ($target_url, $xml_file) = generate_install_manifest($conf);
+			print AN::Common::template($conf, "config.html", "manifest-created", {
+				message	=>	AN::Common::get_string($conf, {
+					key => "explain_0124", variables => {
+						#url	=>	"$target_url",
+						#file	=>	"$xml_file",
+						uuid	=>	$manifest_uuid,
+					}
+				}),
+			});
+			$show_form = 1;
+		}
+		else
+		{
+			   $show_form = 0;
+			my $return    = $an->ScanCore->get_manifests();
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return", value1 => $return,
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $hash_ref (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "hash_ref->manifest_uuid", value1 => $hash_ref->{manifest_uuid}, 
+					name2 => "cgi::manifest_uuid",      value2 => $an->data->{cgi}{manifest_uuid}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($hash_ref->{manifest_uuid} eq $an->data->{cgi}{manifest_uuid})
+				{
+					$an->data->{cgi}{manifest_data} = $hash_ref->{manifest_data};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cgi::manifest_data", value1 => $an->data->{cgi}{manifest_uuid}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					last;
+				}
+			}
+			print AN::Common::template($conf, "config.html", "manifest-raw-edit", {
+				manifest_uuid	=>	$an->data->{cgi}{manifest_uuid},
+				manifest_data	=>	$an->data->{cgi}{manifest_data},
 			});
 		}
 	}
@@ -3016,6 +3070,16 @@ WHERE
 		print AN::Common::template($conf, "config.html", "install-manifest-form-header", {
 			form_file	=>	"/cgi-bin/striker",
 		});
+		
+		# Record the manifest_uuid, if set.
+		if ($conf->{cgi}{manifest_uuid})
+		{
+			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				name		=>	"manifest_uuid",
+				id		=>	"manifest_uuid",
+				value		=>	$conf->{cgi}{manifest_uuid},
+			});
+		}
 		
 		# Anvil! prefix
 		if (not $conf->{sys}{install_manifest}{show}{prefix_field})
@@ -5867,6 +5931,7 @@ sub show_existing_install_manifests
 		$conf->{manifest_file}{$manifest_uuid}{anvil} = AN::Common::get_string($conf, { key => "message_0460", variables => {
 				anvil	=>	$anvil_name,
 				date	=>	$edit_date,
+				raw	=>	"?config=true&task=create-install-manifest&raw=true&manifest_uuid=$manifest_uuid",
 			}});
 		
 		if (not $header_printed)
@@ -6976,6 +7041,7 @@ sub show_summary_manifest
 		'anvil_drbd_net_max-buffers'	=>	$conf->{cgi}{'anvil_drbd_net_max-buffers'},
 		'anvil_drbd_net_sndbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
 		'anvil_drbd_net_rcvbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		manifest_uuid			=>	$an->data->{cgi}{manifest_uuid},
 	});
 	
 	return(0);
@@ -8321,19 +8387,27 @@ sub configure_dashboard
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	read_hosts($conf);
 	read_ssh_config($conf);
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::save", value1 => $conf->{cgi}{save},
 		name2 => "cgi::task", value2 => $conf->{cgi}{task},
 	}, file => $THIS_FILE, line => __LINE__});
 	my $show_global = 1;
 	if ($conf->{cgi}{save})
 	{
-		save_dashboard_configure($conf);
+		if ($conf->{cgi}{task} eq "create-install-manifest")
+		{
+			create_install_manifest($conf);
+			return(0);
+		}
+		else
+		{
+			save_dashboard_configure($conf);
+		}
 	}
 	elsif ($conf->{cgi}{task} eq "push")
 	{
@@ -9956,7 +10030,14 @@ sub get_cgi_vars
 			{
 				$conf->{cgi}{$var} = Encode::decode_utf8( $conf->{cgi}{$var} );
 			}
-			$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			if ($var eq "manifest_data")
+			{
+				$conf->{cgi}{$var} =~ s/\r//g;
+			}
+			else
+			{
+				$conf->{sys}{cgi_string} .= "$var=$conf->{cgi}{$var}&";
+			}
 		}
 		if ($conf->{cgi}{$var})
 		{

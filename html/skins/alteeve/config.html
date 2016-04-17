@@ -1011,6 +1011,7 @@
 						<input type="hidden" name="anvil_drbd_net_max-buffers"   id="anvil_drbd_net_max-buffers"   value="#!replace!anvil_drbd_net_max-buffers!#" />
 						<input type="hidden" name="anvil_drbd_net_sndbuf-size"   id="anvil_drbd_net_sndbuf-size"   value="#!replace!anvil_drbd_net_sndbuf-size!#" />
 						<input type="hidden" name="anvil_drbd_net_rcvbuf-size"   id="anvil_drbd_net_rcvbuf-size"   value="#!replace!anvil_drbd_net_rcvbuf-size!#" />
+						<input type="hidden" name="manifest_uuid"                id="manifest_uuid"                value="#!replace!manifest_uuid!#" />
 						<input type="hidden" name="config"                       id="config"                       value="true" />
 						<input type="hidden" name="generate"                     id="generate"                     value="true" />
 						<input type="hidden" name="confirm"                      id="confirm"                      value="true" />
@@ -1159,6 +1160,34 @@
 </table>
 <br />
 <!-- end manifest-confirm-delete -->
+
+<!-- start manifest-raw-edit -->
+<form method="post" enctype="multipart/form-data">
+<table>
+	<tr>
+		<td class="highlight_ready_bold">
+			#!string!title_0201!#
+		</td>
+	</tr>
+	<tr>
+		<td>
+			#!string!explain_0210!#<br />
+			<textarea name="manifest_data" id="manifest_data" class="textarea_huge">#!replace!manifest_data!#</textarea>
+			<input type="hidden" name="manifest_uuid" id="manifest_uuid" value="#!replace!manifest_uuid!#">
+			<input type="hidden" name="raw" id="raw" value="true">
+			<input type="hidden" name="task" id="task" value="create-install-manifest">
+			<input type="hidden" name="config" id="config" value="true">
+		</td>
+	</tr>
+	<tr>
+		<td >
+			<input type="submit" name="save" id="save" value="#!string!button_0045!#" class="bold_button">
+		</td>
+	</tr>
+</table>
+</form>
+<br />
+<!-- end manifest-raw-edit -->
 
 <!-- start install-manifest-header -->
 <table>
