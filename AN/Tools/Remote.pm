@@ -1383,4 +1383,78 @@ sub _avoid_duplicate_delayed_runs
 	return($token);
 }
 
+# This will wait for a bit, then check to see if node 1 is running the passed-in program. If it is, it will 
+# keep waiting until it exits. If it isn't, it will run without further delay.
+sub wait_on_peer
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	if (not $parameter->{program})
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => "$THIS_FILE", line => __LINE__});
+	}
+	if (not $parameter->{target})
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
+	}
+	my $program  = $parameter->{program};
+	my $target   = $parameter->{target};
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+
+	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
+	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
+	sleep 30;
+	my $pids = $an->Get->pids({
+		program_name	=>	$program, 
+		target		=>	$target, 
+		password	=>	$password,
+		port		=>	$port,
+	});
+	my $count = @{$pids};
+	if (not $count)
+	{
+		# It still isn't running, so we probably booted while the peer didn't.
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0030", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Wait for it to finish.
+		my $wait = 1;
+		while ($wait)
+		{
+			my $pids = $an->Get->pids({
+				program_name	=>	$an->data->{sys}{program_name}, 
+				target		=>	$an->data->{sys}{peer_node}, 
+				password	=>	$an->data->{sys}{anvil_password},
+				port		=>	"",
+			});
+			my $count = @{$pids};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "count", value1 => $count, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($count)
+			{
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0031", message_variables => { 
+					program => $program,
+					peer    => $peer,
+				}, file => $THIS_FILE, line => __LINE__});
+				sleep 10;
+			}
+			else
+			{
+				# We're done waiting.
+				$wait = 0;
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0032", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return(0);
+}
+
 1;

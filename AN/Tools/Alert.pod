@@ -620,6 +620,14 @@ The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to f
 
 The 'AN::Tools::ScanCore' module's 'netmask_from_ip()' method was called without passing in an IP address.
 
+=head2 C<96>
+
+The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in program name.
+
+=head2 C<97>
+
+The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in a target address.
+
 
 =head1 SEE ALSO
 

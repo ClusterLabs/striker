@@ -127,6 +127,9 @@ Connecting to Database with configuration ID: [#!variable!id!#]
 		<key name="tools_log_0027">The Install Manifest with UUID: [#!variable!uuid!#] has a node: [#!variable!node!#] with an interface: [#!variable!name!#] with a malformed MAC address: [#!variable!mac!#], ignored. Format must be 'xx:xx:xx:xx:xx:xx'.</key>
 		<key name="tools_log_0028">The Install Manifest with UUID: [#!variable!uuid!#] has a node: [#!variable!node!#] with an extra element: [#!variable!element!#].</key>
 		<key name="tools_log_0029">The Install Manifest with UUID: [#!variable!uuid!#] has an extra element: [#!variable!element!#] with the value: [#!variable!value!#].</key>
+		<key name="tools_log_0030">The peer does not appear to be running: [#!variable!program!#], so we are done waiting.</key>
+		<key name="tools_log_0031">Watching the peer: [#!variable!peer!#] and waiting for it to finish running its instance of: [#!variable!program!#].</key>
+		<key name="tools_log_0032">The peer no longer appears to be running: [#!variable!program!#], so we're done waiting.</key>
 	
 		<!-- These are used to display variable = value pairs in log entries. -->
 		<key name="an_variables_0001">#!variable!name1!#: [#!variable!value1!#]</key>
@@ -605,6 +608,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0093"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest (XML format) to parse.]]></key>
 		<key name="error_message_0094"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the manifest UUID: [#!variable!uuid!#].]]></key>
 		<key name="error_message_0095"><![CDATA[The 'AN::Tools::ScanCore' module's 'netmask_from_ip()' method was called without passing in an IP address.]]></key>
+		<key name="error_message_0096"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in program name.]]></key>
+		<key name="error_message_0097"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in a target address.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

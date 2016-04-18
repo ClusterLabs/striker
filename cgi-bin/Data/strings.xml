@@ -498,6 +498,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="url_0005"><![CDATA[https://alteeve.ca/w/BCN]]></key>
 		<key name="url_0006"><![CDATA[https://alteeve.ca/w/SN]]></key>
 		<key name="url_0007"><![CDATA[https://alteeve.ca/w/IFN]]></key>
+		<key name="url_0008"><![CDATA[https://www.drbd.org/en/doc/users-guide-84/s-configure-sync-rate]]></key>
 		
 		<!-- Fields used in <select ...> blocks. -->
 		<key name="select_0001">No Security</key>
@@ -2705,6 +2706,11 @@ SUPPORT
 		<!-- anvil-safe-stop -->
 		<!-- log entries -->
 		<key name="assp_log_0001">#!variable!this_file!# has started.</key>
+		
+		<!-- errors -->
+		<key name="assp_error_0001">Please use '--local' to shut down this node or '--shed-load'.</key>
+		<key name="assp_error_0002">Unable to access the peer: [#!variable!peer!#], peer may be offline, load shedding aborted.</key>
+		<key name="assp_error_0003">Both nodes have at least on replicated storage device that is 'SyncSource'. Neither node can safely shut down. You can manually boost sync rate if required. Please see: [#!string!url_0008!#]</key>
 		
 		<!-- messages -->
 		<key name="assp_message_0001"><![CDATA[
