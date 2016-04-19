@@ -114,18 +114,18 @@ if (not -e $an->data->{path}{cluster_conf})
 	nice_exit($an, 1);
 }
 
+# I'll need to loop through the DBs and ensure our schema is loaded for each one.
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({ log_level => 2, message_key => "notice_message_0013", message_variables => {
+	connections	=>	$connections,
+}, file => $THIS_FILE, line => __LINE__});
+
 # If 'libvirtd' isn't running (locally or on the peer, if we can connect to it), exit.
 if (not scan_servers($an))
 {
 	# libvirtd not found, exit.
 	nice_exit($an, 1);
 }
-
-# I'll need to loop through the DBs and ensure our schema is loaded for each one.
-my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
-$an->Log->entry({ log_level => 3, message_key => "notice_message_0013", message_variables => {
-	connections	=>	$connections,
-}, file => $THIS_FILE, line => __LINE__});
 
 # Make sure this host's UUID is in the 'hosts' table. If the user is running this directly without first
 # running ScanCore, it won't be.
@@ -582,7 +582,7 @@ sub find_changes
 				}
 				my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_name       = ".$an->data->{sys}{use_db_fh}->quote($new_server_name).", 
     server_host       = ".$an->data->{sys}{use_db_fh}->quote($new_server_host).", 
@@ -651,7 +651,7 @@ WHERE
 					{
 						my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_stop_reason = '', 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
@@ -715,7 +715,7 @@ WHERE
 			
 			my $query = "
 INSERT INTO 
-    server 
+    servers 
 (
     server_uuid, 
     server_name, 
@@ -825,7 +825,7 @@ SELECT
     server_host, 
     server_state 
 FROM 
-    server 
+    servers 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";

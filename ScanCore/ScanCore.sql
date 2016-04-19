@@ -849,7 +849,7 @@ CREATE TRIGGER trigger_shared
 -- ------------------------------------------------------------------------------------------------------- --
 
 -- This stores information about the server.
-CREATE TABLE server (
+CREATE TABLE servers (
 	server_uuid			uuid				not null	primary key,	-- This comes from the server's XML definition file.
 	server_name			text				not null,
 	server_stop_reason		text,								-- Set by Striker to 'clean' when stopped via the webui. This prevents anvil-safe-start from starting it on node boot.
@@ -866,9 +866,9 @@ CREATE TABLE server (
 	server_post_migration_arguments	text,								-- These are arguments to pass to the post-migration script
 	modified_date			timestamp with time zone	not null
 );
-ALTER TABLE server OWNER TO #!variable!user!#;
+ALTER TABLE servers OWNER TO #!variable!user!#;
 
-CREATE TABLE history.server (
+CREATE TABLE history.servers (
 	history_id			bigserial,
 	server_uuid			uuid,
 	server_name			text,
@@ -886,15 +886,15 @@ CREATE TABLE history.server (
 	server_post_migration_arguments	text,
 	modified_date			timestamp with time zone	not null
 );
-ALTER TABLE history.server OWNER TO #!variable!user!#;
+ALTER TABLE history.servers OWNER TO #!variable!user!#;
 
-CREATE FUNCTION history_server() RETURNS trigger
+CREATE FUNCTION history_servers() RETURNS trigger
 AS $$
 DECLARE
-	history_server RECORD;
+	history_servers RECORD;
 BEGIN
-	SELECT INTO history_server * FROM server WHERE server_uuid = new.server_uuid;
-	INSERT INTO history.server
+	SELECT INTO history_servers * FROM servers WHERE server_uuid = new.server_uuid;
+	INSERT INTO history.servers
 		(server_uuid,
 		 server_name, 
 		 server_stop_reason, 
@@ -911,30 +911,30 @@ BEGIN
 		 server_post_migration_arguments, 
 		 modified_date)
 	VALUES
-		(history_server.server_uuid, 
-		 history_server.server_name, 
-		 history_server.server_stop_reason, 
-		 history_server.server_start_after, 
-		 history_server.server_start_delay, 
-		 history_server.server_note, 
-		 history_server.server_definition, 
-		 history_server.server_host, 
-		 history_server.server_state, 
-		 history_server.server_migration_type, 
-		 history_server.server_pre_migration_script, 
-		 history_server.server_pre_migration_arguments, 
-		 history_server.server_post_migration_script, 
-		 history_server.server_post_migration_arguments, 
-		 history_server.modified_date);
+		(history_servers.server_uuid, 
+		 history_servers.server_name, 
+		 history_servers.server_stop_reason, 
+		 history_servers.server_start_after, 
+		 history_servers.server_start_delay, 
+		 history_servers.server_note, 
+		 history_servers.server_definition, 
+		 history_servers.server_host, 
+		 history_servers.server_state, 
+		 history_servers.server_migration_type, 
+		 history_servers.server_pre_migration_script, 
+		 history_servers.server_pre_migration_arguments, 
+		 history_servers.server_post_migration_script, 
+		 history_servers.server_post_migration_arguments, 
+		 history_servers.modified_date);
 	RETURN NULL;
 END;
 $$
 LANGUAGE plpgsql;
-ALTER FUNCTION history_server() OWNER TO #!variable!user!#;
+ALTER FUNCTION history_servers() OWNER TO #!variable!user!#;
 
-CREATE TRIGGER trigger_server
-	AFTER INSERT OR UPDATE ON server
-	FOR EACH ROW EXECUTE PROCEDURE history_server();
+CREATE TRIGGER trigger_servers
+	AFTER INSERT OR UPDATE ON servers
+	FOR EACH ROW EXECUTE PROCEDURE history_servers();
 
 
 -- ------------------------------------------------------------------------------------------------------- --

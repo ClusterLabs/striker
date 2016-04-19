@@ -166,6 +166,14 @@ sub do_db_query
 		name1 => "parameter->{id}", value1 => $parameter->{id}, 
 	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
 	my $id     = $parameter->{id}     ? $parameter->{id}     : $an->data->{sys}{read_db_id};
+	
+	if (not $id)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0098", code => 98, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
 	my $source = $parameter->{source} ? $parameter->{source} : "";
 	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
 	my $query  = $parameter->{query}  ? $parameter->{query}  : "";	# This should throw an error
@@ -182,7 +190,7 @@ sub do_db_query
 	{
 		# Can't proceed on an undefined connection...
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
-			server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
+			server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 		}, code => 4, file => "$THIS_FILE", line => __LINE__});
 	}
 	if ($an->Log->db_transactions())
@@ -237,7 +245,7 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file  = $parameter->{file};
 	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
@@ -306,7 +314,7 @@ sub connect_to_databases
 		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "db_connect_string", value1 => $db_connect_string
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -425,7 +433,7 @@ sub connect_to_databases
 			$connections++;
 			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
-			$an->Log->entry({log_level => 3, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
+			$an->Log->entry({log_level => 2, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
 				host		=>	$host,
 				port		=>	$port,
 				name		=>	$name,
@@ -458,6 +466,7 @@ sub connect_to_databases
 			# Set the first ID to be the one I read from later.
 			if (not $an->data->{sys}{read_db_id})
 			{
+				# TODO: Make this prefer the local DB instead of the first ID we see.
 				$an->data->{sys}{read_db_id} = $id;
 				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
 				

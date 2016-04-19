@@ -369,115 +369,6 @@ sub get_storage_hp
 	}
 	$fh->close();
 
-=pod
-	my $reading    = "";
-	my $read       = IO::Handle->new();
-	my $shell_call = "$conf->{path}{hpacucli} ctrl all show config 2>&1 |";
-	#print "Calling: [$shell_call]\n";
-	open ($read, $shell_call) || die "Failed to call: [$shell_call], error: $!\n";
-	while (<$read>)
-	{
-		chomp;
-		my $line=$_;
-		if ($line =~ /hpacucli is running/)
-		{
-			# There is another instance running... 
-			send_email($conf, "Problem with: [$conf->{path}{hpacucli}]", "The: [$conf->{path}{hpacucli}] is reporting that another instance is running. Exiting.", 1);
-			exit (1);
-		}
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		next if not $line;
-		$conf->{misc}{storage_data}.=$line."\n";
-	}
-	$read->close();
-	
-	my $array="";
-	my $slot="x";
-	foreach my $line (split/\n/, $conf->{misc}{storage_data})
-	{
-		#print __LINE__."; line: [$line]\n";
-		if ($line=~/in Slot (.*?)\s+/)
-		{
-			$slot=$1;
-		}
-		if ($line=~/Smart Array (.*?) in Slot $slot\s+\(sn: (.*?)\)/)
-		{
-			$conf->{hp}{hba}{slot}{$slot}{model}=$1;
-			$conf->{hp}{hba}{slot}{$slot}{serial}=$2;
-		}
-		if ($line=~/array (.*?) \((.*?), Unused Space: (.*?)\)/)
-		{
-			$array=$1;
-			$conf->{hp}{hba}{slot}{$slot}{array}{$array}{interface}=$2;
-			$conf->{hp}{hba}{slot}{$slot}{array}{$array}{free_space}=$3;
-		}
-		if ($line=~/SEP \(Vendor ID (.*?), Model\s+(.*?)\) (.*?) \(WWID: (.*?)\)/)
-		{
-			# I have no idea what this is...
-			# SEP \(Vendor ID PMCSIERA, Model  SRC 8x6G\) 250 \(WWID: 500143801465928F\)
-		}
-		if ($array)
-		{
-# 			print "line: [$line]\n";
-			if ($line=~/logicaldrive (.*?) \((.*?), RAID (.*?), (.*?)\)/)
-			{
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive}=$1;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity}=$2;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level}=$3;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status}=$4;
-				print __LINE__."; parsed; logical_drive: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive}], capacity: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity}], RAID level: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level}], status: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status}]\n";
-			}
-			if ($line=~/physicaldrive .*? \(port (.*?):box (.*?):bay (.*?), (.*?), (.*?), (.*?)\)/)
-			{
-				my $port=$1;
-				my $box=$2;
-				my $bay=$3;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface}=$4;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity}=$5;
-				$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status}=$6;
-				print __LINE__."; Parsed; port: [$port], box: [$box], bay: [$bay], interface: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface}], capacity: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity}], status: [$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status}]\n";
-			}
-		}
-	}
-	
-	# Record the results.
-	foreach my $slot (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}})
-	{
-		foreach my $array (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}})
-		{
-			# Cleanliness.
-			my $logical_drive=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{logical_drive};
-			my $capacity=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{capacity};
-			my $raid_level=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{raid_level};
-			my $status=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{status};
-# 			print __LINE__."; Array; Slot: [$slot], Array: [$array] -> logical drive: [$logical_drive], capacity: [$capacity], RAID level: [$raid_level], status: [$status]\n";
-# 			$conf->{misc}{storage_data}.="Array; Slot: [$slot], Array: [$array] -> logical drive: [$logical_drive], capacity: [$capacity], RAID level: [$raid_level], status: [$status]\n";
-			$conf->{array}{"$slot:$array"}{new}{logical_drive}=$logical_drive;
-			$conf->{array}{"$slot:$array"}{new}{capacity}=$capacity;
-			$conf->{array}{"$slot:$array"}{new}{raid_level}=$raid_level;
-			$conf->{array}{"$slot:$array"}{new}{status}=$status;
-			foreach my $port (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}})
-			{
-				foreach my $box (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}})
-				{
-					foreach my $bay (sort {$a cmp $b} keys %{$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}})
-					{
-# 						my $interface=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{interface};
-						my $capacity=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{capacity};
-						my $status=$conf->{hp}{hba}{slot}{$slot}{array}{$array}{port}{$port}{box}{$box}{bay}{$bay}{status};
-# 						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{interface}=$interface;
-						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{capacity}=$capacity;
-						$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{status}=$status;
-# 						print __LINE__."; array::${slot}:${array}::new::disk::${port}:${box}:${bay}::capacity: [".$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{capacity}."]\n";
-# 						print __LINE__."; array::${slot}:${array}::new::disk::${port}:${box}:${bay}::status:   [".$conf->{array}{"$slot:$array"}{new}{disk}{"$port:$box:$bay"}{status}."]\n";
-					}
-				}
-			}
-		}
-	}
-=cut
-
 	return(0);
 }
 
@@ -4735,12 +4626,6 @@ sub initial_report
 	
 	# Send the email.
 	send_email($conf);
-	
-	# This is uncommented to test debug email function only.
-# 	sleep 2;
-# 	$conf->{mail_data}{debug_subject} =  "Test debug message";
-# 	$conf->{mail_data}{debug_body} =  "I don't really have anything to say.\n";
-# 	send_debug_email($conf);
 	
 	#record($conf, "$THIS_FILE ".__LINE__."; Initial copy of new to old\n");
 	copy_hash($conf, "new", "old");

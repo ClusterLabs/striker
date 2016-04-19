@@ -3180,7 +3180,7 @@ sub change_vm
 		{
 			my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_note                     = ".$an->data->{sys}{use_db_fh}->quote($new_server_note).", 
     server_start_after              = ".$an->data->{sys}{use_db_fh}->quote($new_server_start_after).", 
@@ -4615,7 +4615,7 @@ SELECT
     server_name, 
     server_uuid 
 FROM 
-    server 
+    servers 
 WHERE 
     server_uuid !=  ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 AND 
@@ -7281,7 +7281,7 @@ sub start_vm
 			
 			my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_stop_reason = '', 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
@@ -7531,7 +7531,7 @@ sub stop_vm
 		
 		my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_stop_reason = 'clean', 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
@@ -8127,7 +8127,7 @@ sub delete_vm
 				my $server_uuid = $return->{uuid};
 				my $query       = "
 UPDATE 
-    server
+    servers 
 SET 
     server_name = 'DELETED' 
 WHERE 

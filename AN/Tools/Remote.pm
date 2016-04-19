@@ -1428,10 +1428,10 @@ sub wait_on_peer
 		while ($wait)
 		{
 			my $pids = $an->Get->pids({
-				program_name	=>	$an->data->{sys}{program_name}, 
-				target		=>	$an->data->{sys}{peer_node}, 
-				password	=>	$an->data->{sys}{anvil_password},
-				port		=>	"",
+				program_name	=>	$program, 
+				target		=>	$target, 
+				password	=>	$password,
+				port		=>	$port,
 			});
 			my $count = @{$pids};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1441,7 +1441,7 @@ sub wait_on_peer
 			{
 				$an->Log->entry({log_level => 1, message_key => "tools_log_0031", message_variables => { 
 					program => $program,
-					peer    => $peer,
+					peer    => $target,
 				}, file => $THIS_FILE, line => __LINE__});
 				sleep 10;
 			}

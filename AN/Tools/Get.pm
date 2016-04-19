@@ -3730,41 +3730,54 @@ sub local_anvil_details
 		}
 	}
 	
-	# Now see if this Anvil! was read in from striker.conf.
+	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_name", value1 => $return->{anvil_name}, 
 		name2 => "cluster",    value2 => ref($an->data->{cluster}), 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($return->{anvil_name}) && (ref($an->data->{cluster}) eq "HASH"))
+	if ($return->{anvil_name})
 	{
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+		my $anvil_data = $an->ScanCore->get_anvils();
+		foreach my $hash_ref (@{$anvil_data})
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "id",                   value1 => $id, 
-				name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
-				name3 => "anvil_name",           value3 => $return->{anvil_name}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
+			if ($hash_ref->{anvil_name} eq $return->{anvil_name})
 			{
-				$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-					name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
-					name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
+				# Found it.
+				$return->{anvil_password} = $hash_ref->{anvil_password};
+				
+			}
+		}
+		if (ref($an->data->{cluster}) eq "HASH")
+		{
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "id",                   value1 => $id, 
+					name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
+					name3 => "anvil_name",           value3 => $return->{anvil_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{cluster}{$id}{root_pw})
+				if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
 				{
-					$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-						name1 => "anvil_password", value1 => $return->{anvil_password}, 
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+						name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
+						name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
 					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{cluster}{$id}{root_pw})
+					{
+						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => "anvil_password", value1 => $return->{anvil_password}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($an->data->{cluster}{$id}{ricci_pw})
+					{
+						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => "anvil_password", value1 => $return->{anvil_password}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					last;
 				}
-				elsif ($an->data->{cluster}{$id}{ricci_pw})
-				{
-					$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-						name1 => "anvil_password", value1 => $return->{anvil_password}, 
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				last;
 			}
 		}
 	}
