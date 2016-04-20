@@ -245,7 +245,7 @@ sub connect_to_databases
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "connect_to_databases" }, file => $THIS_FILE, line => __LINE__});
 	
 	my $file  = $parameter->{file};
 	my $quiet = $parameter->{quiet} ? $parameter->{quiet} : 0;
@@ -294,7 +294,7 @@ sub connect_to_databases
 		### NOTE: This slows things down a lot when a dashboard is offline, so I am disabling it.
 		### TODO: Note that it's possible some time in the future, a server might be available but 
 		###       not pingable. Add a switch to ignore pings.
-		# Before I try to connect, very I can ping.
+		# Before I try to connect, verify that I can ping.
 # 		my $ping_rc = $an->Check->ping({target => $host, count => 3});
 # 		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 # 			name1 => "ping_rc", value1 => $ping_rc
@@ -314,7 +314,7 @@ sub connect_to_databases
 		
 		# Assemble my connection string
 		my $db_connect_string = "$driver:dbname=$name;host=$host;port=$port";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "db_connect_string", value1 => $db_connect_string
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -434,12 +434,10 @@ sub connect_to_databases
 			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
 			$an->Log->entry({log_level => 2, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
-				host		=>	$host,
-				port		=>	$port,
-				name		=>	$name,
-				id		=>	$id,
-				dbh		=>	$dbh,
-				data_dbh	=>	$an->data->{dbh}{$id},
+				host => $host,
+				port => $port,
+				name => $name,
+				id   => $id,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Now that I have connected, see if my 'hosts' table exists.

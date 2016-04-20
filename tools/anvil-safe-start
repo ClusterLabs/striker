@@ -58,6 +58,7 @@ my $an = AN::Tools->new({data => {
 				max_wait_time	=>	300,
 				resync_delay	=>	15,
 			},
+			log_db_transactions	=>	0,
 		},
 		path		=>	{
 			cluster_conf		=>	"/etc/cluster/cluster.conf", 
@@ -112,6 +113,7 @@ $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{'anvil-safe-start'}{log_db_transactions};
 $an->Readable->base2(1);
 
 if (($an->data->{switches}{h})   or 
@@ -354,7 +356,7 @@ SELECT
     server_start_after, 
     server_start_delay 
 FROM 
-    server;
+    servers
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query

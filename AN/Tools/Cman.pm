@@ -868,9 +868,19 @@ sub get_clustat_data
 			# If the service isn't starting, started or stopping, the host is useless.
 			if (($status !~ /start/) && ($status !~ /stopping/))
 			{
-				$status = "--";
+				$host = "";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "status", value1 => $status, 
+					name1 => "host", value1 => $host, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# If the host is bracketed, it's not running and it is showing where it last ran. 
+			# This doesn't matter to us.
+			if ($host =~ /^\(.*\)$/)
+			{
+				$host = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
@@ -899,9 +909,19 @@ sub get_clustat_data
 			# If the server isn't starting, started or stopping, the host is useless.
 			if (($status !~ /start/) && ($status !~ /stopping/))
 			{
-				$status = "--";
+				$host = "";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "status", value1 => $status, 
+					name1 => "host", value1 => $host, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# If the host is bracketed, it's not running and it is showing where it last ran. 
+			# This doesn't matter to us.
+			if ($host =~ /^\(.*\)$/)
+			{
+				$host = "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			

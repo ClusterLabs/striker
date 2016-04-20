@@ -36,6 +36,9 @@ if (($running_directory =~ /^\./) && ($ENV{PWD}))
 my $time = time;
 
 my $an = AN::Tools->new({data => {
+		'anvil-safe-stop' =>	{
+			log_db_transactions	=>	0,
+		},
 		path		=>	{
 			cluster_conf		=>	"/etc/cluster/cluster.conf", 
 			log_file		=>	"/var/log/striker.log",
@@ -85,6 +88,7 @@ $an->Log->level          ($an->data->{sys}{log_level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
 $an->Get->switches();
+$an->Log->db_transactions(1) if $an->data->{'anvil-safe-stop'}{log_db_transactions};
 $an->Readable->base2(1);
 
 if (($an->data->{switches}{h})   or 
@@ -265,9 +269,106 @@ sub shed_load
 	}
 	
 	# If I still don't have a shutdown target, sum the RAM used by servers on each node.
+	my $local_server_ram = 0;
+	my $peer_server_ram  = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $an->data->{sys}{shutdown_target})
 	{
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+		{
+			my $state = $an->data->{server}{$server}{'state'};
+			my $host  = $an->data->{server}{$server}{host};
+			my $ram   = $an->data->{server}{$server}{ram};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				name1 => "server", value1 => $server, 
+				name2 => "state",  value2 => $state, 
+				name3 => "host",   value3 => $host, 
+				name4 => "ram",    value4 => $ram, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($state !~ /start/)
+			{
+				# Ignore it
+				next;
+			}
+			if (not $ram)
+			{
+				# What? Probably a program error...
+				$an->Log->entry({log_level => 0, message_key => "assp_warning_0001", message_variables => {
+					server  => $server, 
+					'state' => $state, 
+				}, file => $THIS_FILE, line => __LINE__});
+				next;
+			}
+			if ($host eq $an->data->{sys}{local_node})
+			{
+				$local_server_ram += $ram;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_server_ram", value1 => $local_server_ram, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				$peer_server_ram += $ram;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_server_ram", value1 => $peer_server_ram, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 		
+		# 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local_server_ram", value1 => $local_server_ram, 
+			name2 => "peer_server_ram",  value2 => $peer_server_ram, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $local_server_ram) && (not $peer_server_ram))
+		{
+			# Neither node has any servers, so that's no help...
+			$an->Log->entry({log_level => 0, message_key => "assp_log_0004", file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($local_server_ram eq $peer_server_ram)
+		{
+			# Both have the same total amount of allocated RAM.
+			$an->Log->entry({log_level => 0, message_key => "assp_log_0005", file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($local_server_ram > $peer_server_ram)
+		{
+			# Local has more RAM in use by servers, so we'll shut down the peer.
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If we still haven't chosen a victim, choose node 2.
+	if (not $an->data->{sys}{shutdown_target})
+	{
+		if ($an->data->{sys}{i_am_node2})
+		{
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	return(0);
@@ -340,6 +441,20 @@ sub find_myself
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	# Record the server(s) running on the nodes and record their RAM.
+	foreach my $server (sort {$a cmp $b} keys %{$return->{server}})
+	{
+		my $server_data = $an->Get->server_data({server => $server});
+		$an->data->{server}{$server}{'state'} = $return->{server}{$server}{'state'};
+		$an->data->{server}{$server}{host}    = $return->{server}{$server}{host};
+		$an->data->{server}{$server}{ram}     = $server_data->{current_ram};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "server::${server}::state", value1 => $an->data->{server}{$server}{'state'}, 
+			name2 => "server::${server}::host",  value2 => $an->data->{server}{$server}{host}, 
+			name3 => "server::${server}::ram",   value3 => $an->data->{server}{$server}{ram}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	# Figure out what my peer's BCN, SN and IFN names are
 	$an->data->{peer}{short_name} =  $an->data->{sys}{peer_node};
 	$an->data->{peer}{short_name} =~ s/\..*$//;
@@ -355,7 +470,7 @@ sub find_myself
 	
 	$an->data->{sys}{local_health} = $return->{health}{'local'};
 	$an->data->{sys}{peer_health}  = $return->{health}{peer};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::local_health", value1 => $an->data->{sys}{local_health}, 
 		name2 => "sys::peer_health",  value2 => $an->data->{sys}{peer_health}, 
 	}, file => $THIS_FILE, line => __LINE__});

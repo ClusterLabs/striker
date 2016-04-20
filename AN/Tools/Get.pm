@@ -649,7 +649,7 @@ SELECT
     server_post_migration_arguments, 
     modified_date
 FROM 
-    server 
+    servers 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
 ;";
@@ -787,11 +787,6 @@ WHERE
 	
 	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
 	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
-# Example:
-#  <vcpu>4</vcpu>
-#  <cpu>
-#      <topology sockets='1' cores='4' threads='1'/>
-#  </cpu>
 	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
 	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
 	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
@@ -2081,20 +2076,17 @@ sub server_uuid
 	# Now check to see if the server is running on one of the nodes.
 	my $node1           = "";
 	my $node2           = "";
-	my $node1_is_remote = 0;
 	my $anvil_password  = "";
 	if ($anvil)
 	{
 		# Assume this machine is a striker dashboard.
-		my $return          = $an->Get->remote_anvil_details({anvil => $anvil});
-		   $node1           = $return->{node1};
-		   $node2           = $return->{node2};
-		   $node1_is_remote = 1;
-		   $anvil_password  = $return->{anvil_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node1",           value1 => $node1, 
-			name2 => "node2",           value2 => $node2, 
-			name3 => "node1_is_remote", value3 => $node1_is_remote, 
+		my $return         = $an->Get->remote_anvil_details({anvil => $anvil});
+		   $node1          = $return->{node1};
+		   $node2          = $return->{node2};
+		   $anvil_password = $return->{anvil_password};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1", value1 => $node1, 
+			name2 => "node2", value2 => $node2, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
@@ -2108,16 +2100,14 @@ sub server_uuid
 			hostname_short	=>	$an->short_hostname,
 			config_file	=>	$an->data->{path}{cman_config},
 		});
-		   $node1           = $return->{local_node};
-		   $node2           = $return->{peer_node};
-		   $node1_is_remote = 0;
-		   $anvil           = $return->{anvil_name};
-		   $anvil_password  = $return->{anvil_password};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "node1",           value1 => $node1, 
-			name2 => "node2",           value2 => $node2, 
-			name3 => "node1_is_remote", value3 => $node1_is_remote, 
-			name4 => "anvil",           value4 => $anvil, 
+		   $node1          = $return->{local_node};
+		   $node2          = $return->{peer_node};
+		   $anvil          = $return->{anvil_name};
+		   $anvil_password = $return->{anvil_password};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "node1", value1 => $node1, 
+			name2 => "node2", value2 => $node2, 
+			name3 => "anvil", value3 => $anvil, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
@@ -2132,9 +2122,8 @@ sub server_uuid
 	# Try node 1. This will check for a running server first and, if it's not found, check 
 	# /server/definitions/${server}.xml.
 	my $xml = $an->Get->server_xml({
-		remote   => $node1_is_remote, 
 		server   => $server, 
-		node     => $node1, 
+		target   => $node1, 
 		password => $anvil_password, 
 	});
 	
@@ -2142,9 +2131,8 @@ sub server_uuid
 	if (not $xml)
 	{
 		$xml = $an->Get->server_xml({
-			remote   => 1, 
 			server   => $server, 
-			node     => $node2, 
+			target   => $node2, 
 			password => $anvil_password, 
 		});
 	}
@@ -2160,7 +2148,7 @@ sub server_uuid
 SELECT 
     server_definition 
 FROM 
-    server 
+    servers 
 WHERE 
     server_name = ".$an->data->{sys}{use_db_fh}->quote($server)." 
 ;";
@@ -2215,15 +2203,12 @@ sub server_xml
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $remote   = $parameter->{remote};
-	my $node     = $parameter->{node};
+	my $target   = $parameter->{remote};
 	my $server   = $parameter->{server};
 	my $password = $parameter->{password};
-	   $node =~ s/\s//g;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "remote", value1 => $remote, 
-		name2 => "node",   value2 => $node, 
-		name3 => "server", value3 => $server, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "server", value2 => $server, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -2232,16 +2217,15 @@ sub server_xml
 	my $server_found = 0;
 	my $xml          = "";
 	my $shell_call   = $an->data->{path}{virsh}." list --all";
-	if ($remote)
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		# It is remote. Note that the node might not be accessible.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $node,
+			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$node,
-			port		=>	$an->data->{node}{$node}{port}, 
+			target		=>	$target,
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -2282,11 +2266,10 @@ sub server_xml
 			my $shell_call = "virsh dumpxml $server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
-				name2 => "target",     value2 => $node,
+				name2 => "target",     value2 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
-				port		=>	$an->data->{node}{$node}{port}, 
+				target		=>	$target,
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -2326,11 +2309,10 @@ fi
 ";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
-				name2 => "target",     value2 => $node,
+				name2 => "target",     value2 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
-				port		=>	$an->data->{node}{$node}{port}, 
+				target		=>	$target,
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3705,14 +3687,14 @@ sub local_anvil_details
 		anvil_name	=>	$data->{name},
 		anvil_password	=>	"",
 	};
-	foreach my $a (@{$data->{clusternodes}->[0]->{clusternode}})
+	foreach my $hash_ref (@{$data->{clusternodes}->[0]->{clusternode}})
 	{
-		my $node_name = $a->{name};
-		my $alt_name  = $a->{altname}->[0]->{name} ? $a->{altname}->[0]->{name} : "";
+		my $node_name = $hash_ref->{name};
+		my $hash_reflt_name  = $hash_ref->{altname}->[0]->{name} ? $hash_ref->{altname}->[0]->{name} : "";
 		if (($hostname_full  eq $node_name) or 
-		    ($hostname_full  eq $alt_name)  or 
+		    ($hostname_full  eq $hash_reflt_name)  or 
 		    ($hostname_short eq $node_name) or 
-		    ($hostname_short eq $alt_name))
+		    ($hostname_short eq $hash_reflt_name))
 		{
 			$return->{local_node} =  $node_name;
 			$return->{local_node} =~ s/\s//g;
@@ -3728,6 +3710,18 @@ sub local_anvil_details
 				name1 => "peer_node", value1 => $return->{peer_node}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
+	}
+	
+	# Find the servers running locally and store their details.
+	my $clustat_data = $an->Cman->get_clustat_data();
+	foreach my $server (sort {$a cmp $b} keys %{$clustat_data->{server}})
+	{
+		$return->{server}{$server}{'state'} = $clustat_data->{server}{$server}{status};
+		$return->{server}{$server}{host}    = $clustat_data->{server}{$server}{host};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "server::${server}::state", value1 => $return->{server}{$server}{'state'}, 
+			name2 => "server::${server}::host",  value2 => $return->{server}{$server}{host}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.
@@ -3875,9 +3869,7 @@ sub striker_peers
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;

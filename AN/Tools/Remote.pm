@@ -1058,7 +1058,7 @@ sub remote_call
 				{
 					# We're in! Record the file handle for this target.
 					$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
-					$an->Log->entry({log_level => 2, message_key => "notice_message_0014", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "notice_message_0014", message_variables => {
 						target => $target, 
 					}, file => $THIS_FILE, line => __LINE__});
 				}
