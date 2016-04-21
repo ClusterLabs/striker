@@ -513,9 +513,7 @@ sub cluster_conf_data
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
 	# This will store the LVM data returned to the caller.
@@ -523,10 +521,12 @@ sub cluster_conf_data
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "target",   value1 => $target, 
-		name2 => "port",     value2 => $port, 
-		name3 => "password", value3 => $password, 
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# These will store the output from the 'drbdadm' call and /proc/drbd data.
@@ -764,18 +764,57 @@ sub cluster_conf_data
 sub get_clustat_data
 {
 	my $self      = shift;
+	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $details    = {};
-	my $shell_call = $an->data->{path}{clustat};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $shell_call = $an->data->{path}{clustat};
+	my $return     = [];
+	my $details    = {};
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
-		chomp;
-		my $line =  $_;
+		### Remote calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
 		   $line =~ s/^\s+//;
 		   $line =~ s/\s+$//;
 		   $line =~ s/\s+/ /g;
@@ -830,7 +869,7 @@ sub get_clustat_data
 					cman      => $cman,
 					rgmanager => $rgmanager
 				},
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::local::name",      value1 => $details->{node}{'local'}{name}, 
 					name2 => "details->node::local::id",        value2 => $details->{node}{'local'}{id}, 
 					name3 => "details->node::local::cman",      value3 => $details->{node}{'local'}{cman}, 
@@ -937,7 +976,6 @@ sub get_clustat_data
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	close $file_handle;
 	
 	return($details);
 }
@@ -1172,7 +1210,7 @@ sub stop_server
 	{
 		my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($reason).", 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
@@ -1646,7 +1684,7 @@ sub _do_server_boot
 			{
 				my $query = "
 UPDATE 
-    server 
+    servers 
 SET 
     server_stop_reason = NULL, 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 

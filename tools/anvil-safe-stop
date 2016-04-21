@@ -193,62 +193,114 @@ sub shed_load
 	}
 	
 	# See if one of the nods is in the cluster and if the other is not.
-	### TODO: ^
-	
-	# Get the DRBD info and see if a node is SyncTarget.
-	my $i_am_synctarget    = 0;
-	my $peer_is_synctarget = 0;
-	my $drbd_data          = $an->Get->drbd_data();
-	foreach my $resource (sort {$a cmp $b} keys %{$drbd_data->{resource}})
-	{
-		my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
-		my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "local_disk_state", value1 => $local_disk_state, 
-			name2 => "peer_disk_state",  value2 => $peer_disk_state, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($local_disk_state =~ /SyncTarget/i)
-		{
-			$i_am_synctarget = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "i_am_synctarget", value1 => $i_am_synctarget, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		if ($peer_disk_state =~ /SyncTarget/i)
-		{
-			$peer_is_synctarget = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "peer_is_synctarget", value1 => $peer_is_synctarget, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# If both are SyncTarget (on different resources), abort.
+	my $local_clustat_data = $an->Cman->get_clustat_data({
+		target   => $an->data->{sys}{local_node}, 
+		password => $an->data->{sys}{anvil_password}, 
+	});
+	my $peer_clustat_data = $an->Cman->get_clustat_data({
+		target   => $an->data->{sys}{peer_node}, 
+		password => $an->data->{sys}{anvil_password}, 
+	});
+	my $local_rgmanager_state = $local_clustat_data->{node}{'local'}{rgmanager} ? $local_clustat_data->{node}{'local'}{rgmanager} : "";
+	my $peer_rgmanager_state  = $peer_clustat_data->{node}{'local'}{rgmanager}  ? $peer_clustat_data->{node}{'local'}{rgmanager}  : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "i_am_synctarget",    value1 => $i_am_synctarget, 
-		name2 => "peer_is_synctarget", value2 => $peer_is_synctarget, 
+		name1 => "local_rgmanager_state", value1 => $local_rgmanager_state, 
+		name2 => "peer_rgmanager_state",  value2 => $peer_rgmanager_state, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($i_am_synctarget) && ($peer_is_synctarget))
+	if ((not $local_rgmanager_state) && (not $peer_rgmanager_state))
 	{
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
-		exit(4);
+		# Neither node is in the cluster, so shut down node 2.
+		if ($an->data->{sys}{i_am_node2})
+		{
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Peer has more RAM in use by servers, so we'll shut down the local system.
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
-	
-	# By default, we'll shutdown node 2, unless the peer is a sync target.
-	if ($peer_is_synctarget)
+	elsif (not $local_rgmanager_state)
 	{
+		# I'm not in the cluster, so I will shut down.
+		$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif (not $peer_rgmanager_state)
+	{
+		# The peer is not in the cluster, so I will shut it down.
 		$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($i_am_synctarget)
+	
+	# Check DRBD if I don't have a shutdown target yet.
+	if ($an->data->{sys}{shutdown_target})
 	{
-		$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+		# Get the DRBD info and see if a node is SyncTarget.
+		my $i_am_synctarget    = 0;
+		my $peer_is_synctarget = 0;
+		my $drbd_data          = $an->Get->drbd_data();
+		foreach my $resource (sort {$a cmp $b} keys %{$drbd_data->{resource}})
+		{
+			my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
+			my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "local_disk_state", value1 => $local_disk_state, 
+				name2 => "peer_disk_state",  value2 => $peer_disk_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($local_disk_state =~ /SyncTarget/i)
+			{
+				$i_am_synctarget = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "i_am_synctarget", value1 => $i_am_synctarget, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($peer_disk_state =~ /SyncTarget/i)
+			{
+				$peer_is_synctarget = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "peer_is_synctarget", value1 => $peer_is_synctarget, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# If both are SyncTarget (on different resources), abort.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "i_am_synctarget",    value1 => $i_am_synctarget, 
+			name2 => "peer_is_synctarget", value2 => $peer_is_synctarget, 
 		}, file => $THIS_FILE, line => __LINE__});
+		if (($i_am_synctarget) && ($peer_is_synctarget))
+		{
+			$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
+			exit(4);
+		}
+		
+		# By default, we'll shutdown node 2, unless the peer is a sync target.
+		if ($peer_is_synctarget)
+		{
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{peer_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($i_am_synctarget)
+		{
+			$an->data->{sys}{shutdown_target} = $an->data->{sys}{local_node};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::shutdown_target", value1 => $an->data->{sys}{shutdown_target}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
 	# If I don't have a shutdown target yet, check the health of each node.

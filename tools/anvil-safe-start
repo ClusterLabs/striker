@@ -198,6 +198,9 @@ $an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variabl
 # Disable myself in /etc/striker/striker.conf to block further runs.
 update_striker_conf($an, "disable");
 
+# Now wait for access to a ScanCore database.
+wait_for_scancore_database($an);
+
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
 
@@ -207,9 +210,6 @@ wait_for_access($an);
 
 # If I am node 2, sleep for five minutes.
 wait_if_node2($an);
-
-# Now wait for access to a ScanCore database.
-wait_for_scancore_database($an);
 
 # Start the cluster
 start_the_cluster($an);
