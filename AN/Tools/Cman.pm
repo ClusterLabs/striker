@@ -17,6 +17,8 @@ my $THIS_FILE = "Cman.pm";
 # peer_hostname
 # peer_short_hostname
 # cluster_name
+# stop_server
+# withdraw_node
 # _do_server_boot
 # _read_cluster_conf
 
@@ -1085,21 +1087,22 @@ sub stop_server
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
-	# This will store the LVM data returned to the caller.
+	# This will store the shutdown output and return it to the caller.
+	my $output   = "";
 	my $return   = [];
 	my $server   = $parameter->{server}   ? $parameter->{server}   : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clear";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
+		name4 => "reason", value4 => $reason, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -1109,6 +1112,7 @@ sub stop_server
 	if (not $server)
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0071", code => 71, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
@@ -1151,6 +1155,7 @@ sub stop_server
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
+		$output .= "$line\n";
 	}
 	
 	# TODO: Handle stop failures
@@ -1169,7 +1174,7 @@ sub stop_server
 UPDATE 
     server 
 SET 
-    server_stop_reason = 'clean', 
+    server_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($reason).", 
     modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
@@ -1180,7 +1185,413 @@ WHERE
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
-	return($return);
+	return($output);
+}
+
+# Withdraw a node from the cluster, using a delayed run that stops gfs2 and clvmd in case rgmanager gets stuck.
+sub withdraw_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This will report back what happened.
+	# 0 == success
+	# 1 == failed, restart succeeded.
+	# 2 == failed, restart also failed.
+	my $return_code = 0;
+	my $output      = "";
+	
+	# Sometimes rgmanager gets stuck waiting for gfs2 and/or clvmd2 to stop. So to help with these cases,
+	# we'll call '$an->Remote->delayed_run()' for at least 60 seconds in the future. This usually gives 
+	# rgmanager the kick it needs to actually stop.
+	my ($token, $delayed_run_output, $problem) = $an->Remote->delayed_run({
+		command  => $an->data->{path}{initd}."/gfs2 stop && ".$an->data->{path}{initd}."/clvmd stop",
+		delay    => 60,
+		target   => $target,
+		password => $password,
+		port     => $port,
+	});
+	
+	# First, stop rgmanager.
+	my $rgmanager_stop = 1;
+	my $shell_call     = $an->data->{path}{initd}."/rgmanager stop";
+	my $return         = [];
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		# Stop rgmanager
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$output .= "$line\n";
+		$line   =~ s/^\s+//;
+		$line   =~ s/\s+$//;
+		$line   =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /fail/i)
+		{
+			$rgmanager_stop = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "rgmanager_stop", value1 => $rgmanager_stop,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Now clear the delayed run, if rgmanager stopped, then stop cman.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "rgmanager_stop", value1 => $rgmanager_stop, 
+		name2 => "token",          value2 => $token, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($rgmanager_stop)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "token", value1 => $token,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($token)
+		{
+			my $shell_call = $an->data->{path}{'anvil-run-jobs'}." --abort $token";
+			my $return     = [];
+			
+			if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+			{
+				### Remote calls
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "target",     value2 => $target,
+				}, file => $THIS_FILE, line => __LINE__});
+				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+			}
+			else
+			{
+				### Local calls
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					push @{$return}, $line;
+				}
+				close $file_handle;
+			}
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Now stop 'cman'
+		my $cman_stop  = 1;
+		my $shell_call = $an->data->{path}{initd}."/cman stop";
+		my $return     = [];
+		if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+		{
+			### Remote calls
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "shell_call", value1 => $shell_call,
+				name2 => "target",     value2 => $target,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			### Local calls
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line =  $_;
+				push @{$return}, $line;
+			}
+			close $file_handle;
+		}
+		foreach my $line (@{$return})
+		{
+			$output .= "$line\n";
+			$line   =~ s/^\s+//;
+			$line   =~ s/\s+$//;
+			$line   =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /fail/i)
+			{
+				$cman_stop = 0;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cman_stop", value1 => $cman_stop, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		if ($cman_stop)
+		{
+			# cman stopped, we're good.
+		}
+		else
+		{
+			# stopping cman failed... Restart it
+			   $return_code = 1;
+			my $cman_start  = 1;
+			my $shell_call  = $an->data->{path}{initd}."/cman start";
+			my $return      = [];
+			if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+			{
+				### Remote calls
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "target",     value2 => $target,
+				}, file => $THIS_FILE, line => __LINE__});
+				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+			}
+			else
+			{
+				### Local calls
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line =  $_;
+					push @{$return}, $line;
+				}
+				close $file_handle;
+			}
+			foreach my $line (@{$return})
+			{
+				$output .= "$line\n";
+				$line   =~ s/^\s+//;
+				$line   =~ s/\s+$//;
+				$line   =~ s/\s+/ /g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /fail/i)
+				{
+					$cman_start = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "cman_start", value1 => $cman_start,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			if ($cman_start)
+			{
+				my ($recover, $recover_output) = $an->Cman->_recover_rgmanager({
+					target   => $target, 
+					port     => $port, 
+					password => $password,
+				});
+				$output .= $recover_output;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "recover", value1 => $recover,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($recover)
+				{
+					# Failed to restart rgmanager...
+					$return_code = 2;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "return_code", value1 => $return_code,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				# Failed to restart cman...
+				$return_code = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	else
+	{
+		# rgmanager failed to stop... Restart it
+		$return_code = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "return_code", value1 => $return_code,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my ($recover, $recover_output) = $an->Cman->_recover_rgmanager({
+			target   => $target, 
+			port     => $port, 
+			password => $password,
+		});
+		$output .= $recover_output;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "recover", value1 => $recover,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($recover)
+		{
+			# Failed to restart rgmanager...
+			$return_code = 2;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+
+	# 0 == success
+	# 1 == failed, restart succeeded.
+	# 2 == failed, restart also failed.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($return_code, $output);
+}
+
+### NOTE: This was originally based on Striker.pm's 'recover_rgmanager()' function which checked/recovered
+###       storage. This was not ported because storage is now monitored/fixed elsewhere.
+# This performs a recovery of rgmanager after a failed stop (either because rgmanager itself failed to stop 
+# or because cman failed to stop and we had to restart cman then rgmanager)
+sub _recover_rgmanager
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 0;
+	my $shell_call  = $an->data->{path}{initd}."/rgmanager start";
+	my $return      = [];
+	my $output      = "";
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$output .= "$line\n";
+		$line   =~ s/^\s+//;
+		$line   =~ s/\s+$//;
+		$line   =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /fail/i)
+		{
+			$return_code = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+
+	# 0 == success
+	# 1 == failed
+	return($return_code, $output);
 }
 
 # This performs the actual boot on the server after sanity checks are done. This should not be called directly!

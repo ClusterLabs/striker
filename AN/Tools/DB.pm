@@ -1,4 +1,7 @@
 package AN::Tools::DB;
+# 
+# This module contains methods used to access and manage ScanCore databases.
+# 
 
 # TODO: Move the ScanCore stuff into another Module and make this more generic.
 

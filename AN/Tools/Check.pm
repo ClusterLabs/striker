@@ -1,4 +1,7 @@
 package AN::Tools::Check;
+# 
+# This module contains methods used to check things, like ssh access to remote machines.
+# 
 
 use strict;
 use warnings;

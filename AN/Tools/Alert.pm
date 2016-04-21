@@ -1,4 +1,7 @@
 package AN::Tools::Alert;
+# 
+# This module contains methods used to handle alerts and errors.
+# 
 
 use strict;
 use warnings;
@@ -9,7 +12,6 @@ my $THIS_FILE = "Alert.pm";
 
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Alert->new()\n";
 	my $class = shift;
 	
 	my $self = {

@@ -1,4 +1,7 @@
 package AN::Tools::String;
+# 
+# This module contains methods used to process strings in given languages
+# 
 
 use strict;
 use warnings;
@@ -10,7 +13,6 @@ my $THIS_FILE = "String.pm";
 
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Storage->new()\n";
 	my $class = shift;
 	
 	my $self  = {

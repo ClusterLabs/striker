@@ -611,6 +611,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0096"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in program name.]]></key>
 		<key name="error_message_0097"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in a target address.]]></key>
 		<key name="error_message_0098"><![CDATA[The 'AN::Tools::DB' module's 'do_db_query()' couldn't sort out a Striker database ID to use.]]></key>
+		<key name="error_message_0099"><![CDATA[]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

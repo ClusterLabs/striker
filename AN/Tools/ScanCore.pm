@@ -1,6 +1,6 @@
 package AN::Tools::ScanCore;
 # 
-# This module contains methods use to get data from the ScanCore database.
+# This module contains methods used to get data from the ScanCore database.
 # 
 
 use strict;
@@ -16,8 +16,7 @@ sub new
 	#print "$THIS_FILE ".__LINE__."; In AN::Storage->new()\n";
 	my $class = shift;
 	
-	my $self  = {
-	};
+	my $self  = {};
 	
 	bless $self, $class;
 	

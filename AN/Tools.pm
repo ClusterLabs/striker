@@ -39,6 +39,7 @@ use AN::Tools::Remote;
 use AN::Tools::ScanCore;
 use AN::Tools::Storage;
 use AN::Tools::String;
+use AN::Tools::System;
 use AN::Tools::Validate;
 use AN::Tools::Web;
 
@@ -62,6 +63,7 @@ sub new
 			SCANCORE			=>	AN::Tools::ScanCore->new(),
 			STORAGE				=>	AN::Tools::Storage->new(),
 			STRING				=>	AN::Tools::String->new(),
+			SYSTEM				=>	AN::Tools::System->new(),
 			VALIDATE			=>	AN::Tools::Validate->new(),
 			WEB				=>	AN::Tools::Web->new(),
 		},
@@ -110,6 +112,7 @@ sub new
 	$an->ScanCore->parent($an);
 	$an->Storage->parent($an);
 	$an->String->parent($an);
+	$an->System->parent($an);
 	$an->Validate->parent($an);
 	$an->Web->parent($an);
 	
@@ -464,6 +467,14 @@ sub ScanCore
 	return ($self->{HANDLE}{SCANCORE});
 }
 
+# Makes my handle to AN::Tools::System clearer when using this module to access it's methods.
+sub System
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{SYSTEM});
+}
+
 ### This will be expanded later when the DB module is done. For now, it is not used.
 sub nice_exit
 {
@@ -521,6 +532,7 @@ sub _set_paths
 	$an->data->{path}{proc_drbd}       = "/proc/drbd";
 	$an->data->{path}{psql}            = "/usr/bin/psql";
 	$an->data->{path}{pmap}            = "/usr/bin/pmap";
+	$an->data->{path}{poweroff}        = "/sbin/poweroff",
 	$an->data->{path}{ps}              = "/bin/ps";
 	$an->data->{path}{pvchange}        = "/sbin/pvchange";
 	$an->data->{path}{pvscan}          = "/sbin/pvscan";

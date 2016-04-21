@@ -1,4 +1,7 @@
 package AN::Tools::Storage;
+# 
+# This module contains methods used to handle storage related tasks
+# 
 
 use strict;
 use warnings;

@@ -1,4 +1,7 @@
 package AN::Tools::Log;
+# 
+# This module contains methods used to handle logging events.
+# 
 
 use strict;
 use warnings;
@@ -82,8 +85,7 @@ sub db_transactions
 	return ($self->{LOG_DB_TRANSACTIONS});
 }
 
-# This does all the work of recording an entry in the log file when
-# appropriate.
+# This does all the work of recording an entry in the log file when appropriate.
 sub entry
 {
 	my $self      = shift;

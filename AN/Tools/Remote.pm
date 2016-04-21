@@ -1,4 +1,7 @@
 package AN::Tools::Remote;
+# 
+# This module contains methods used to handle accessing remote systems over SSH.
+# 
 
 use strict;
 use warnings;

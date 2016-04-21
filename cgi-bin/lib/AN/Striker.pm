@@ -7492,7 +7492,7 @@ sub stop_vm
 		port		=>	$conf->{node}{$node}{port}, 
 		password	=>	$conf->{sys}{root_password},
 	});
-	foreach my $line (@{$return})
+	foreach my $line (split/\n/, $return)
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
@@ -9661,6 +9661,7 @@ sub fence_node
 	return(0);
 }
 
+### TODO: Switch this to '$an->Cman->withdraw_node()' and process the returned output in one go.
 # This does a final check of the target node then withdraws it from the cluster.
 sub withdraw_node
 {

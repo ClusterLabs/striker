@@ -2713,6 +2713,7 @@ SUPPORT
 		
 		<!-- warnings -->
 		<key name="assp_warning_0001">The server: [#!variable!server!#] state is: [#!variable!state!#], but no RAM was found in use by it. Possibly a program error.</key>
+		<key name="assp_warning_0002">The --reason value: [#!variable!reason!#] contains non-alphanumeric characters and has thus been ignored.</key>
 		
 		<!-- errors -->
 		<key name="assp_error_0001">Please use '--local' to shut down this node or '--shed-load'.</key>
@@ -2768,6 +2769,13 @@ SWITCHES
  --local
 
 	Shut this machine down.
+
+ --reason X
+
+	If set, the string passed in will be set in the stop reason column for
+	servers that are shut down. The reason can not contain spaces or 
+	non-alpha-numeric characters. The default stop reason is 'clean', or
+	'load_shed' if '--shed-load' was used.
 
  --shed-load
 

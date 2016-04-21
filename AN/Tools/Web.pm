@@ -18,8 +18,7 @@ sub new
 {
 	my $class = shift;
 	
-	my $self  = {
-	};
+	my $self  = {};
 	
 	bless $self, $class;
 	

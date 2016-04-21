@@ -118,6 +118,10 @@ sub migrate_server
 {
 	my ($an) = @_;
 	
+	### TODO: Drop a file in /shared/status/ indicating that the server is migrating so that we can 
+	###       disable the migration button on Striker and help anvil-safe-stop make smarter decisions
+	###       about what to do.
+	
 	# Read in the info for the server.
 	my $migration_type           = $an->data->{server_data}{migration_type};
 	my $migration_target         = $an->data->{sys}{migration_target};
@@ -181,7 +185,7 @@ sub migrate_server
 		### Two-step
 		# Off
 		my $return = $an->Cman->stop_server({server => $an->data->{switches}{server}});
-		foreach my $line (@{$return})
+		foreach my $line (split/\n/, $return)
 		{
 			print "$line\n";
 		}

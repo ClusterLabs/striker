@@ -1,4 +1,7 @@
 package AN::Tools::Get;
+# 
+# This module contains methods used to get commonly required data
+# 
 
 use strict;
 use warnings;

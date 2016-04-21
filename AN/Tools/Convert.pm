@@ -1,4 +1,7 @@
 package AN::Tools::Convert;
+# 
+# This module contains methods used to convert units (metric to imperial, etc)
+# 
 
 use strict;
 use warnings;
@@ -9,20 +12,17 @@ my $THIS_FILE = "Convert.pm";
 
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Convert->new()\n";
 	my $class = shift;
 	
-	my $self  = {
-	};
+	my $self  = {};
 	
 	bless $self, $class;
 	
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;

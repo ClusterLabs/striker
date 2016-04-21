@@ -1,4 +1,8 @@
 package AN::Tools::Readable;
+# 
+# This module contains methods used to process values in ways that make it easier for humans to understand 
+# (or from human-readable formats into computer-friendly values).
+# 
 
 use strict;
 use warnings;

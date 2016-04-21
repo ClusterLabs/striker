@@ -1,4 +1,8 @@
 package AN::Tools::Math;
+# 
+# This module contains methods used to handle math things, like financially accurate rounding of real 
+# numbers.
+# 
 
 use strict;
 use warnings;
@@ -10,7 +14,6 @@ my $THIS_FILE = "Math.pm";
 # The constructor
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Math->new()\n";
 	my $class = shift;
 	
 	my $self  = {};
@@ -20,9 +23,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -35,7 +37,7 @@ sub parent
 
 # This takes a number and rounds it to a given number of places after the
 # decimal (defaulting to an even integer). This does financial-type rounding.
-### MADI: Does this handle "x.95" type rounding properly?
+### TODO: Does this handle "x.95" type rounding properly?
 sub round
 {
 	my $self  = shift;
