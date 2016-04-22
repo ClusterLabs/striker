@@ -10,6 +10,24 @@ use Data::Dumper;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "String.pm";
 
+### Methods;
+# force_utf8
+# get
+# get_language_name
+# _format_mode
+# _insert_data
+# _insert_variables_into_string
+# _process_string
+# _process_string_insert_strings
+# _process_string_replace
+# _protect
+# _restore_protected
+# 
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -37,6 +55,11 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
+
 # This forces UTF8 mode when reading a words file. This should not be used normally as the words file should
 # already be UTF8 encoded.
 sub force_utf8
@@ -58,25 +81,6 @@ sub force_utf8
 	}
 	
 	return ($self->{FORCE_UTF8});
-}
-
-# This returns the long language name for a given ISO language code (as available in the read-in words).
-sub get_language_name
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	my $language  = $parameter->{language} if $parameter->{language};
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	die "$THIS_FILE ".__LINE__."; [ Error ] - No language code passed into AN::String::get_language_name().\n" if not $language;
-	
-	my $hash = $an->data;
-	my $language_name = $hash->{strings}{lang}{$language}{lang}{long_name};
-	
-	return($language_name);
 }
 
 # This takes a word key and, optionally, a hash reference, a language and/or an variables array reference. It
@@ -192,62 +196,29 @@ sub get
 	return ($string);
 }
 
-# This takes a string and substitutes out the various replacement keys as needed until the string is ready 
-# for display. The only thing it doesn't handle is substituting '#!variable!x!#' keys into a string. For 
-# that, call the 'get' method with it's given variable array reference and store the results in a string. 
-# This is requried because there is currently no way for any of the called methods within here to know which
-# string the variables in the array reference belong in.
-sub _process_string
+# This returns the long language name for a given ISO language code (as available in the read-in words).
+sub get_language_name
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
+	my $language  = $parameter->{language} if $parameter->{language};
 	
-	# Start looping through the passed string until all the replacement keys are gone.
-	my $i     = 0;
-	my $limit = $an->_error_limit;
-	   
-	$parameter->{string} = $an->String->_insert_variables_into_string({
-			string		=>	$parameter->{string},
-			variables	=>	$parameter->{variables},
-		});
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
 	
-	while ($parameter->{string} =~ /#!([^\s]+?)!#/)
-	{
-		# Substitute 'word' keys, but without 'variables'. This has to be first! 'protect' will catch
-		# 'word' keys, because no where else are they allowed.
-		$parameter->{string} = $an->String->_process_string_insert_strings({
-				string		=>	$parameter->{string},
-				language	=>	$parameter->{language},
-				hash		=>	$parameter->{hash},
-			});
-		
-		# Protect unmatchable keys.
-		$parameter->{string} = $an->String->_protect({
-				string	=>	$parameter->{string},
-			});
-		
-		# Inject any 'data' values.
-		$parameter->{string} = $an->String->_insert_data({
-				string	=>	$parameter->{string},
-			});
-		
-		die "$THIS_FILE ".__LINE__."; Infinite loop detected while processing the string: [".$parameter->{string}."], exiting.\n" if $i > $limit;
-		$i++;
-	}
+	die "$THIS_FILE ".__LINE__."; [ Error ] - No language code passed into AN::String::get_language_name().\n" if not $language;
 	
-	# Restore and unrecognized substitution values.
-	$parameter->{string} = $an->String->_restore_protected({
-			string		=>	$parameter->{string},
-		});
+	my $hash = $an->data;
+	my $language_name = $hash->{strings}{lang}{$language}{lang}{long_name};
 	
-	# Do any output mode specific formatting.
-	$parameter->{string} = $an->String->_format_mode({
-			string		=>	$parameter->{string},
-		});
-	
-	return ($parameter->{string});
+	return($language_name);
 }
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 # Do any output mode specific formatting.
 sub _format_mode
@@ -258,33 +229,6 @@ sub _format_mode
 	
 	# I don't think I need this now as I only wrap the string after it's been processed by 
 	# 'print_template'. It may have future use though.
-	return ($parameter->{string});
-}
-
-# This restores the original key format for keys that were protected by the '_protect' method.
-sub _restore_protected
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Restore and unrecognized substitution values.
-	my $i = 0;
-	while ($parameter->{string} =~ /!#[^\s]+?#!/)
-	{
-		$parameter->{string} =~ s/!#([^\s]+?)#!/#!$1!#/g;
-		
-		if ($i > $an->_error_limit)
-		{
-			print "$THIS_FILE ".__LINE__."; Infinite loop detected while restoring protected replacement keys in the string:\n";
-			print "----------\n";
-			print "$parameter->{string}\n";
-			print "----------\n";
-			die "exiting.\n";
-		}
-		$i++;
-	}
-	
 	return ($parameter->{string});
 }
 
@@ -374,69 +318,6 @@ sub _insert_data
 	return ($parameter->{string});
 }
 
-# Protect unrecognized or unused replacement keys. I do this to protect strings
-# possibly set or created by a user.
-sub _protect
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	my $i         = 0;
-	foreach my $check ($parameter->{string} =~ /#!([^\s]+?)!#/)
-	{
-		if (($check !~ /^free/) &&
-		    ($check !~ /^replace/) &&
-		    ($check !~ /^data/) &&
-		    ($check !~ /^conf/) &&
-		    ($check !~ /^word/) &&
-		    ($check !~ /^var/))
-		{
-			# Simply invert the '#!...!#' to '!#...#!'.
-			$parameter->{string} =~ s/#!($check)!#/!#$1#!/g;
-		}
-		
-		die "Infinite loop detected while protecting replacement keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
-		$i++;
-	}
-	
-	return ($parameter->{string});
-}
-
-# This is called to process '#!string!...!#' keys in string. It DOES NOT support substituting 
-# '#!variable!x!#' keys found in imported word strings! This is meant to insert simple word strings into 
-# template files.
-sub _process_string_insert_strings
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Loop through the string until all '#!string!...!#' keys are gone.
-	my $i     = 0;
-	while ($parameter->{string} =~ /#!string!(.+?)!#/)
-	{
-		my $key      = $1;
-		my $say_word = $an->String->get({
-				key		=>	$key,
-				language	=>	$parameter->{language},
-				hash		=>	$parameter->{hash},
-				variables	=>	undef,
-			});
-		if ($say_word)
-		{
-			$parameter->{string} =~ s/#!string!$key!#/$say_word/;
-		}
-		else
-		{
-			$parameter->{string} =~ s/#!string!$key!#/!!e[$key]!!/;
-		}
-		
-		die "Infinite loop detected while replacing #!string!...!# keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
-		$i++;
-	}
-	return ($parameter->{string});
-}
-
 # This takes a string with '#!variable!*!#' keys, where '*' is a hash key matching an entry in the passed 
 # hash reference and uses the data from the hash to replace the matching '#!variable!*!#' entry.
 sub _insert_variables_into_string
@@ -482,6 +363,63 @@ sub _insert_variables_into_string
 	return($parameter->{string});
 }
 
+# This takes a string and substitutes out the various replacement keys as needed until the string is ready 
+# for display. The only thing it doesn't handle is substituting '#!variable!x!#' keys into a string. For 
+# that, call the 'get' method with it's given variable array reference and store the results in a string. 
+# This is requried because there is currently no way for any of the called methods within here to know which
+# string the variables in the array reference belong in.
+sub _process_string
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Start looping through the passed string until all the replacement keys are gone.
+	my $i     = 0;
+	my $limit = $an->_error_limit;
+	   
+	$parameter->{string} = $an->String->_insert_variables_into_string({
+			string		=>	$parameter->{string},
+			variables	=>	$parameter->{variables},
+		});
+	
+	while ($parameter->{string} =~ /#!([^\s]+?)!#/)
+	{
+		# Substitute 'word' keys, but without 'variables'. This has to be first! 'protect' will catch
+		# 'word' keys, because no where else are they allowed.
+		$parameter->{string} = $an->String->_process_string_insert_strings({
+				string		=>	$parameter->{string},
+				language	=>	$parameter->{language},
+				hash		=>	$parameter->{hash},
+			});
+		
+		# Protect unmatchable keys.
+		$parameter->{string} = $an->String->_protect({
+				string	=>	$parameter->{string},
+			});
+		
+		# Inject any 'data' values.
+		$parameter->{string} = $an->String->_insert_data({
+				string	=>	$parameter->{string},
+			});
+		
+		die "$THIS_FILE ".__LINE__."; Infinite loop detected while processing the string: [".$parameter->{string}."], exiting.\n" if $i > $limit;
+		$i++;
+	}
+	
+	# Restore and unrecognized substitution values.
+	$parameter->{string} = $an->String->_restore_protected({
+			string		=>	$parameter->{string},
+		});
+	
+	# Do any output mode specific formatting.
+	$parameter->{string} = $an->String->_format_mode({
+			string		=>	$parameter->{string},
+		});
+	
+	return ($parameter->{string});
+}
+
 # This is used by the 'template()' function to insert '#!replace!...!#' replacement variables in templates.
 sub _process_string_replace
 {
@@ -524,6 +462,96 @@ sub _process_string_replace
 	}
 	
 	return($string);
+}
+
+# This is called to process '#!string!...!#' keys in string. It DOES NOT support substituting 
+# '#!variable!x!#' keys found in imported word strings! This is meant to insert simple word strings into 
+# template files.
+sub _process_string_insert_strings
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Loop through the string until all '#!string!...!#' keys are gone.
+	my $i     = 0;
+	while ($parameter->{string} =~ /#!string!(.+?)!#/)
+	{
+		my $key      = $1;
+		my $say_word = $an->String->get({
+				key		=>	$key,
+				language	=>	$parameter->{language},
+				hash		=>	$parameter->{hash},
+				variables	=>	undef,
+			});
+		if ($say_word)
+		{
+			$parameter->{string} =~ s/#!string!$key!#/$say_word/;
+		}
+		else
+		{
+			$parameter->{string} =~ s/#!string!$key!#/!!e[$key]!!/;
+		}
+		
+		die "Infinite loop detected while replacing #!string!...!# keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
+		$i++;
+	}
+	return ($parameter->{string});
+}
+
+# Protect unrecognized or unused replacement keys. I do this to protect strings
+# possibly set or created by a user.
+sub _protect
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	my $i         = 0;
+	foreach my $check ($parameter->{string} =~ /#!([^\s]+?)!#/)
+	{
+		if (($check !~ /^free/) &&
+		    ($check !~ /^replace/) &&
+		    ($check !~ /^data/) &&
+		    ($check !~ /^conf/) &&
+		    ($check !~ /^word/) &&
+		    ($check !~ /^var/))
+		{
+			# Simply invert the '#!...!#' to '!#...#!'.
+			$parameter->{string} =~ s/#!($check)!#/!#$1#!/g;
+		}
+		
+		die "Infinite loop detected while protecting replacement keys in the string: [$parameter->{string}], exiting.\n" if $i > $an->_error_limit;
+		$i++;
+	}
+	
+	return ($parameter->{string});
+}
+
+# This restores the original key format for keys that were protected by the '_protect' method.
+sub _restore_protected
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Restore and unrecognized substitution values.
+	my $i = 0;
+	while ($parameter->{string} =~ /!#[^\s]+?#!/)
+	{
+		$parameter->{string} =~ s/!#([^\s]+?)#!/#!$1!#/g;
+		
+		if ($i > $an->_error_limit)
+		{
+			print "$THIS_FILE ".__LINE__."; Infinite loop detected while restoring protected replacement keys in the string:\n";
+			print "----------\n";
+			print "$parameter->{string}\n";
+			print "----------\n";
+			die "exiting.\n";
+		}
+		$i++;
+	}
+	
+	return ($parameter->{string});
 }
 
 1;

@@ -120,7 +120,7 @@ Updating DB with ID: [#!variable!id!#].
 		<key name="scancore_log_0051">One of the 'alerts::recipient::X::...' entries in the configuration file appears to be malformed and was ignored.</key>
 		<key name="scancore_log_0052">*** There were no alerts from this scan. ***</key>
 		<key name="scancore_log_0053">*** One or more alerts were sent this scan. ***</key>
-		<key name="scancore_log_0054">Unable to update the health file: [#!variable!health_file!#]. Is the node out of the cluster? This will not matter if so because the node won't be a migration target anyway.</key>
+		<key name="scancore_log_0054">...free...</key>
 		<key name="scancore_log_0055">The email directory: [#!variable!email_directory!#] exists already.</key>
 		<key name="scancore_log_0056">There are no nodes in emergency-stop, so no recovery is needed.</key>
 		<key name="scancore_log_0057">There are no cache files on this machine, so it is not possible to boot the emergency-stop nodes.</key>

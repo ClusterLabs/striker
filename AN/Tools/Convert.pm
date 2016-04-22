@@ -9,6 +9,15 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Convert.pm";
 
+### Methods;
+# convert_format_mmddyy_to_yymmdd
+# convert_to_celsius
+# convert_to_fahrenheit
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
+
 
 sub new
 {
@@ -31,6 +40,39 @@ sub parent
 	$self->{HANDLE}{TOOLS} = $parent if $parent;
 	
 	return ($self->{HANDLE}{TOOLS});
+}
+
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
+
+# This converts a mm/dd/yy or mm/dd/yyyy string into the more sensible yy/mm/dd or yyyy/mm/dd string.
+sub convert_format_mmddyy_to_yymmdd
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	
+	my $date = $parameter->{date};
+	return("#!null!#") if not $date;
+	
+	# Split off the value from the suffix, if any.
+	if ($date =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)/)
+	{
+		$date = "$3/$1/$2";
+	}
+	elsif ($date =~ /^(\d\d)\/(\d\d)\/(\d\d)/)
+	{
+		$date = "$3/$1/$2";
+	}
+	
+	# Return if the temperature wasn't found.
+	return("#!invalid!#") if $date !~ /^\d/;
+	
+	return($date);
 }
 
 # This takes value and converts it from fahrenheit to celsius.
@@ -95,33 +137,9 @@ sub convert_to_fahrenheit
 	return($new_temperature);
 }
 
-# This converts a mm/dd/yy or mm/dd/yyyy string into the more sensible yy/mm/dd
-# or yyyy/mm/dd string.
-sub convert_to_mmddyy_to_yymmdd
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	
-	my $date = $parameter->{date};
-	return("#!null!#") if not $date;
-	
-	# Split off the value from the suffix, if any.
-	if ($date =~ /^(\d\d)\/(\d\d)\/(\d\d\d\d)/)
-	{
-		$date = "$3/$1/$2";
-	}
-	elsif ($date =~ /^(\d\d)\/(\d\d)\/(\d\d)/)
-	{
-		$date = "$3/$1/$2";
-	}
-	
-	# Return if the temperature wasn't found.
-	return("#!invalid!#") if $date !~ /^\d/;
-	
-	return($date);
-}
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

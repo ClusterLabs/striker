@@ -9,6 +9,15 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Log.pm";
 
+### Methods;
+# db_transactions
+# entry
+# level
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -27,9 +36,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -40,28 +48,10 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
-# This sets or returns the log level.
-sub level
-{
-	my $self = shift;
-	my $set  = shift if defined $_[0];
-	
-	my $an   = $self->parent;
-	$an->Alert->_set_error;
-	
-	if ((defined $set) && ($set =~ /\D/))
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
-			set	=>	$set,
-		}, code => 19, file => "$THIS_FILE", line => __LINE__});
-		# Return nothing in case the user is blocking fatal errors.
-		return (undef);
-	}
-	
-	$self->{LOG_LEVEL} = $set if defined $set;
-	
-	return ($self->{LOG_LEVEL});
-}
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # This, when set, causes DB transactions to be logged.
 sub db_transactions
@@ -193,5 +183,33 @@ sub entry
 	# This returns the exact string written to the log, if any.
 	return($string);
 }
+
+# This sets or returns the log level.
+sub level
+{
+	my $self = shift;
+	my $set  = shift if defined $_[0];
+	
+	my $an   = $self->parent;
+	$an->Alert->_set_error;
+	
+	if ((defined $set) && ($set =~ /\D/))
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0012", message_variables => {
+			set	=>	$set,
+		}, code => 19, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
+	$self->{LOG_LEVEL} = $set if defined $set;
+	
+	return ($self->{LOG_LEVEL});
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

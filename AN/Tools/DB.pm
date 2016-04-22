@@ -13,6 +13,24 @@ use Data::Dumper;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "DB.pm";
 
+### Methods;
+# check_hostname
+# connect_to_databases
+# disconnect_from_databases
+# do_db_query
+# do_db_write
+# find_behind_databases
+# get_sql_schema
+# initialize_db
+# load_schema
+# update_time
+# verify_host_uuid
+# 
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -25,9 +43,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -38,204 +55,22 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
-# This records data to one or all of the databases. If an ID is passed, the query is written to one database only. Otherwise, it will be written to all DBs.
-sub do_db_write
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Setup my variables.
-	my $id     = $parameter->{id}     ? $parameter->{id}     : "";
-	my $source = $parameter->{source} ? $parameter->{source} : "";
-	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
-	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "id",     value1 => $id, 
-		name2 => "source", value2 => $source, 
-		name3 => "line",   value3 => $line, 
-		name4 => "query",  value4 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If I don't have a query, die.
-	if (not $query)
-	{
-		print $an->String->get({ key => "tools_log_0021", variables => {
-			title	=>	$an->String->get({key => "tools_title_0003"}),
-			message	=>	$an->String->get({key => "error_title_0026"}),
-		}})."\n";
-		exit(1);
-	}
-	
-	# This array will hold either just the passed DB ID or all of them, if no ID was specified.
-	my @db_ids;
-	if ($id)
-	{
-		push @db_ids, $id;
-	}
-	else
-	{
-		#foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
-		{
-			push @db_ids, $id;
-		}
-	}
-	
-	# Sort out if I have one or many queries.
-	my $is_array = 0;
-	my @query;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	if (ref($query) eq "ARRAY")
-	{
-		# Multiple things to enter.
-		$is_array = 1;
-		foreach my $this_query (@{$query})
-		{
-			push @query, $this_query;
-		}
-	}
-	else
-	{
-		push @query, $query;
-	}
-	foreach my $id (@db_ids)
-	{
-		# Do the actual query(ies)
-		if ($is_array)
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "is_array", value1 => $is_array
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{dbh}{$id}->begin_work;
-		}
-		foreach my $query (@query)
-		{
-			# Record the query
-			if ($an->Log->db_transactions())
-			{
-				$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
-					name1 => "query",  value1 => $query, 
-					name2 => "id",     value2 => $id,
-					name3 => "source", value3 => $source, 
-					name4 => "line",   value4 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			
-			if (not $an->data->{dbh}{$id})
-			{
-				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
-					id     => $id, 
-					query  => $query, 
-					server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
-				}, code => 72, file => "$THIS_FILE", line => __LINE__});
-			}
-			
-			# Just one query.
-			#print "id: [$id], query:\n============\n$query\n============\n";
-			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
-								query    => $query, 
-								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
-								db_error => $DBI::errstr
-							}, code => 2, file => "$THIS_FILE", line => __LINE__});
-			#print "Done ===============\n\n";
-		}
-		
-		# Commit the changes.
-		if ($is_array)
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "is_array", value1 => $is_array
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{dbh}{$id}->commit();
-		}
-	}
-	
-	return(0);
-}
 
-# This does a database query and returns the resulting array. It must be passed the ID of the database to 
-# connect to.
-sub do_db_query
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Where we given a specific ID to use?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "parameter->{id}", value1 => $parameter->{id}, 
-	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
-	my $id     = $parameter->{id}     ? $parameter->{id}     : $an->data->{sys}{read_db_id};
-	
-	if (not $id)
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0098", code => 98, file => "$THIS_FILE", line => __LINE__});
-		# Return nothing in case the user is blocking fatal errors.
-		return (undef);
-	}
-	
-	my $source = $parameter->{source} ? $parameter->{source} : "";
-	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
-	my $query  = $parameter->{query}  ? $parameter->{query}  : "";	# This should throw an error
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-		name1 => "id",       value1 => $id, 
-		name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}, 
-		name3 => "query",    value3 => $query, 
-		name4 => "source",   value4 => $source, 
-		name5 => "line",     value5 => $line, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Prepare the query
-	if (not defined $an->data->{dbh}{$id})
-	{
-		# Can't proceed on an undefined connection...
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
-			server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
-		}, code => 4, file => "$THIS_FILE", line => __LINE__});
-	}
-	if ($an->Log->db_transactions())
-	{
-		$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
-			name1 => "query",  value1 => $query, 
-			name2 => "id",     value2 => $id,
-			name3 => "source", value3 => $source, 
-			name4 => "line",   value4 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
-	
-	# Execute on the query
-	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
-					query    => $query, 
-					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
-					db_error => $DBI::errstr
-				}, code => 3, file => "$THIS_FILE", line => __LINE__});
-	
-	# Return the array
-	return($DBreq->fetchall_arrayref());
-}
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
-# This cleanly closes any open file handles.
-sub disconnect_from_databases
+### TODO: This isn't done...
+# This checks to see if the hostname changed and, if so, update the hosts table so that we don't accidentally
+# create a separate entry for this host.
+sub check_hostname
 {
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
+	my $self = shift;
+	my $an   = $self->parent;
 	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id} =~ /^DBI::db=HASH/;
-		delete $an->data->{dbh}{$id};
-	}
-	
-	# Delete the stored DB-related values.
-	delete $an->data->{sys}{db_timestamp};
-	delete $an->data->{sys}{use_db_fh};
-	delete $an->data->{sys}{read_db_id};
+	#$an->hostname();
 	
 	return(0);
 }
@@ -652,67 +487,120 @@ sub connect_to_databases
 	return($connections);
 }
 
-# This looks up the hosts -> host_uuid for a given hostname.
-sub get_host_uuid
+# This cleanly closes any open file handles.
+sub disconnect_from_databases
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
 	
-	# What's the query?
-	my $id       = $parameter->{id}       ? $parameter->{id}       : $an->data->{sys}{read_db_id};
-	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : $an->hostname;
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		$an->data->{dbh}{$id}->disconnect if $an->data->{dbh}{$id} =~ /^DBI::db=HASH/;
+		delete $an->data->{dbh}{$id};
+	}
 	
-	my $query = "SELECT host_uuid, round(extract(epoch from modified_date)) FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($hostname).";";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1  => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results",       value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# I need to see if 'results' is an array reference. If no records were
-	# found, 'results' will be an empty string, in which case we'll set 
-	# '0' for the two values.
-	my ($host_uuid, $modified_time) = ref($results) eq "ARRAY" ? @{$results} : (0, 0);
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "host_uuid",       value1 => $host_uuid, 
-		name2 => "modified_time", value2 => $modified_time
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return($host_uuid, $modified_time);
-}
-
-# This checks to see if the hostname changed and, if so, update the hosts table
-# so that we don't accidentally create a separate entry for this host.
-sub check_hostname
-{
-	my $self = shift;
-	my $an   = $self->parent;
-	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_hostname", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	#$an->hostname();
+	# Delete the stored DB-related values.
+	delete $an->data->{sys}{db_timestamp};
+	delete $an->data->{sys}{use_db_fh};
+	delete $an->data->{sys}{read_db_id};
 	
 	return(0);
 }
 
-# This simply updates the 'updated' table with the current time.
-sub update_time
+# This does a database query and returns the resulting array. It must be passed the ID of the database to 
+# connect to.
+sub do_db_query
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $id   = $parameter->{id};
-	my $file = $parameter->{file};
+	# Where we given a specific ID to use?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "parameter->{id}", value1 => $parameter->{id}, 
+	}, file => $THIS_FILE, line => __LINE__}) if $parameter->{id};
+	my $id     = $parameter->{id}     ? $parameter->{id}     : $an->data->{sys}{read_db_id};
 	
-	# If I wasn't passed a specific ID, update all DBs.
+	if (not $id)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0098", code => 98, file => "$THIS_FILE", line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
+	my $source = $parameter->{source} ? $parameter->{source} : "";
+	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
+	my $query  = $parameter->{query}  ? $parameter->{query}  : "";	# This should throw an error
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+		name1 => "id",       value1 => $id, 
+		name2 => "dbh::$id", value2 => $an->data->{dbh}{$id}, 
+		name3 => "query",    value3 => $query, 
+		name4 => "source",   value4 => $source, 
+		name5 => "line",     value5 => $line, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Prepare the query
+	if (not defined $an->data->{dbh}{$id})
+	{
+		# Can't proceed on an undefined connection...
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0028", message_variables => {
+			server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
+		}, code => 4, file => "$THIS_FILE", line => __LINE__});
+	}
+	if ($an->Log->db_transactions())
+	{
+		$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
+			name1 => "query",  value1 => $query, 
+			name2 => "id",     value2 => $id,
+			name3 => "source", value3 => $source, 
+			name4 => "line",   value4 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
+	
+	# Execute on the query
+	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
+					query    => $query, 
+					server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
+					db_error => $DBI::errstr
+				}, code => 3, file => "$THIS_FILE", line => __LINE__});
+	
+	# Return the array
+	return($DBreq->fetchall_arrayref());
+}
+
+# This records data to one or all of the databases. If an ID is passed, the query is written to one database only. Otherwise, it will be written to all DBs.
+sub do_db_write
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Setup my variables.
+	my $id     = $parameter->{id}     ? $parameter->{id}     : "";
+	my $source = $parameter->{source} ? $parameter->{source} : "";
+	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
+	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "id",     value1 => $id, 
+		name2 => "source", value2 => $source, 
+		name3 => "line",   value3 => $line, 
+		name4 => "query",  value4 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I don't have a query, die.
+	if (not $query)
+	{
+		print $an->String->get({ key => "tools_log_0021", variables => {
+			title	=>	$an->String->get({key => "tools_title_0003"}),
+			message	=>	$an->String->get({key => "error_title_0026"}),
+		}})."\n";
+		exit(1);
+	}
+	
+	# This array will hold either just the passed DB ID or all of them, if no ID was specified.
 	my @db_ids;
 	if ($id)
 	{
@@ -720,72 +608,89 @@ sub update_time
 	}
 	else
 	{
-		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		#foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
 		{
 			push @db_ids, $id;
 		}
 	}
 	
+	# Sort out if I have one or many queries.
+	my $is_array = 0;
+	my @query;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	if (ref($query) eq "ARRAY")
+	{
+		# Multiple things to enter.
+		$is_array = 1;
+		foreach my $this_query (@{$query})
+		{
+			push @query, $this_query;
+		}
+	}
+	else
+	{
+		push @query, $query;
+	}
 	foreach my $id (@db_ids)
 	{
-		# Check to see if there is a time record yet.
-		my $query = "
-SELECT 
-    COUNT(*) 
-FROM 
-    updated 
-WHERE 
-    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-AND
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
-
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1  => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__ });
-		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "count", value1 => $count
-		}, file => $THIS_FILE, line => __LINE__ });
-		if (not $count)
+		# Do the actual query(ies)
+		if ($is_array)
 		{
-			# Add this agent to the DB
-			my $query = "
-INSERT INTO 
-    updated 
-(
-    updated_host_uuid, 
-    updated_by, 
-    modified_date
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($file).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);
-";
-			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "is_array", value1 => $is_array
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{dbh}{$id}->begin_work;
 		}
-		else
+		foreach my $query (@query)
 		{
-			# It exists and the value has changed.
-			my $query = "
-UPDATE 
-    updated 
-SET
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
-AND
-    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
-";
-			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+			# Record the query
+			if ($an->Log->db_transactions())
+			{
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0004", message_variables => {
+					name1 => "query",  value1 => $query, 
+					name2 => "id",     value2 => $id,
+					name3 => "source", value3 => $source, 
+					name4 => "line",   value4 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			if (not $an->data->{dbh}{$id})
+			{
+				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
+					id     => $id, 
+					query  => $query, 
+					server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+				}, code => 72, file => "$THIS_FILE", line => __LINE__});
+			}
+			
+			# Just one query.
+			#print "id: [$id], query:\n============\n$query\n============\n";
+			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
+								query    => $query, 
+								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+								db_error => $DBI::errstr
+							}, code => 2, file => "$THIS_FILE", line => __LINE__});
+			#print "Done ===============\n\n";
+		}
+		
+		# Commit the changes.
+		if ($is_array)
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "is_array", value1 => $is_array
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->data->{dbh}{$id}->commit();
 		}
 	}
 	
 	return(0);
 }
 
-# This returns the most up to date database ID, the time it was last updated
-# and an array or DB IDs that are behind.
+# This returns the most up to date database ID, the time it was last updated and an array or DB IDs that are 
+# behind.
 sub find_behind_databases
 {
 	my $self      = shift;
@@ -895,6 +800,7 @@ AND
 	return(0);
 }
 
+### TODO: Finishe this someday
 # This uses the '$an->data->{scancore}{sql}{source_db_id}' to call 'pg_dump' and get the database schema. 
 # This is parsed and then used to add tables that are missing to other DBs.
 sub get_sql_schema
@@ -1203,54 +1109,83 @@ sub get_sql_schema
 	return($dump_ok);
 }
 
-# This returns '1' if the host UUID is in 'hosts' and '0' if not.
-sub verify_host_uuid
+# This will initialize the database using the data in the ScanCore.sql file.
+sub initialize_db
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
-	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Get->uuid({get => "host_uuid"});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "sys::host_uuid",  value1 => $an->data->{sys}{host_uuid}, 
-		name2 => "path::host_uuid", value2 => $an->data->{path}{host_uuid}, 
-	}, file => $THIS_FILE, line => __LINE__});
+	my $id = $parameter->{id} ? $parameter->{id} : "";
 	
-	my $ok = 0;
-	my $query = "
-SELECT 
-    host_name 
-FROM 
-    hosts 
-WHERE
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Do the query against the source DB and loop through the results.
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "results", value1 => $results
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
+	# If I don't have an ID, die.
+	if (not $id)
 	{
-		my $server_name = $row->[0];
-		   $ok          = 1;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "server_name", value1 => $server_name, 
-			name2 => "ok",          value2 => $ok, 
-		}, file => $THIS_FILE, line => __LINE__});
+		# what DB?
+		print $an->String->get({key => "tools_log_0021", variables => {
+			title		=>	$an->String->get({key => "tools_title_0003"}),
+			message		=>	$an->String->get({key => "error_message_0067"}),
+		}})."\n";
+		exit(67);
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ok", value1 => $ok
+		name1 => "id", value1 => $id
 	}, file => $THIS_FILE, line => __LINE__});
-	return($ok);
-}
+	
+	# Tell the user we need to initialize
+	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
+	
+	my $success = 1;
+	
+	# Read in the SQL file and replace #!variable!name!# with the database owner name.
+	my $user = $an->data->{scancore}{db}{$id}{user};
+	my $sql  = "";
+	
+	if (not $an->data->{path}{scancore_sql})
+	{
+		# This is likely caused by running an agent directly on a system where ScanCore has never run
+		# before.
+		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0048", code => 48, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# Create the read shell call.
+	my $shell_call = $an->data->{path}{scancore_sql};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line
+		}, file => $THIS_FILE, line => __LINE__});
+		$line =~ s/#!variable!user!#/$user/g;
+		$line =~ s/--.*//g;
+		$line =~ s/\t/ /g;
+		$line =~ s/\s+/ /g;
+		$line =~ s/^\s+//g;
+		$line =~ s/\s+$//g;
+		next if not $line;
+		$sql .= "$line\n";
+	}
+	close $file_handle;
+	
+	# Now we should be ready.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "sql", value1 => $sql
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now that I am ready, disable autocommit, write and commit.
+	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
+	$an->data->{sys}{db_initialized}{$id} = 1;
+	
+	return($success);
+};
 
 # This loads a SQL schema into the specified DB.
 sub load_schema
@@ -1375,82 +1310,142 @@ sub load_schema
 	return(0);
 }
 
-# This will initialize the database using the data in the ScanCore.sql file.
-sub initialize_db
+# This simply updates the 'updated' table with the current time.
+sub update_time
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_time", }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $id = $parameter->{id} ? $parameter->{id} : "";
+	my $id   = $parameter->{id};
+	my $file = $parameter->{file};
 	
-	# If I don't have an ID, die.
-	if (not $id)
+	# If I wasn't passed a specific ID, update all DBs.
+	my @db_ids;
+	if ($id)
 	{
-		# what DB?
-		print $an->String->get({key => "tools_log_0021", variables => {
-			title		=>	$an->String->get({key => "tools_title_0003"}),
-			message		=>	$an->String->get({key => "error_message_0067"}),
-		}})."\n";
-		exit(67);
+		push @db_ids, $id;
+	}
+	else
+	{
+		foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+		{
+			push @db_ids, $id;
+		}
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "tools_log_0001", message_variables => {function => "initialize_db"}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "id", value1 => $id
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Tell the user we need to initialize
-	$an->Log->entry({log_level => 1, title_key => "tools_title_0005", message_key => "tools_log_0020", message_variables => {name => $an->data->{scancore}{db}{$id}{name}, host => $an->data->{scancore}{db}{$id}{host}}, file => $THIS_FILE, line => __LINE__});
-	
-	my $success = 1;
-	
-	# Read in the SQL file and replace #!variable!name!# with the database owner name.
-	my $user = $an->data->{scancore}{db}{$id}{user};
-	my $sql  = "";
-	
-	if (not $an->data->{path}{scancore_sql})
+	foreach my $id (@db_ids)
 	{
-		# This is likely caused by running an agent directly on a system where ScanCore has never run
-		# before.
-		$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_message_0048", code => 48, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	# Create the read shell call.
-	my $shell_call = $an->data->{path}{scancore_sql};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0066", message_variables => { shell_call => $shell_call, error => $! }, code => 3, file => "$THIS_FILE", line => __LINE__});
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
+		# Check to see if there is a time record yet.
+		my $query = "
+SELECT 
+    COUNT(*) 
+FROM 
+    updated 
+WHERE 
+    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+AND
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file).";"; 
+
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line
-		}, file => $THIS_FILE, line => __LINE__});
-		$line =~ s/#!variable!user!#/$user/g;
-		$line =~ s/--.*//g;
-		$line =~ s/\t/ /g;
-		$line =~ s/\s+/ /g;
-		$line =~ s/^\s+//g;
-		$line =~ s/\s+$//g;
-		next if not $line;
-		$sql .= "$line\n";
+			name1  => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__ });
+		my $count = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];	# (->[row]->[column])
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "count", value1 => $count
+		}, file => $THIS_FILE, line => __LINE__ });
+		if (not $count)
+		{
+			# Add this agent to the DB
+			my $query = "
+INSERT INTO 
+    updated 
+(
+    updated_host_uuid, 
+    updated_by, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($file).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# It exists and the value has changed.
+			my $query = "
+UPDATE 
+    updated 
+SET
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    updated_by = ".$an->data->{sys}{use_db_fh}->quote($file)." 
+AND
+    updated_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).";
+";
+			$an->DB->do_db_write({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		}
 	}
-	close $file_handle;
 	
-	# Now we should be ready.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "sql", value1 => $sql
+	return(0);
+}
+
+# This returns '1' if the host UUID is in 'hosts' and '0' if not.
+sub verify_host_uuid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "verify_host_uuid" }, file => $THIS_FILE, line => __LINE__});
+	
+	$an->Get->uuid({get => "host_uuid"});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::host_uuid",  value1 => $an->data->{sys}{host_uuid}, 
+		name2 => "path::host_uuid", value2 => $an->data->{path}{host_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Now that I am ready, disable autocommit, write and commit.
-	$an->DB->do_db_write({id => $id, query => $sql, source => $THIS_FILE, line => __LINE__});
-	$an->data->{sys}{db_initialized}{$id} = 1;
+	my $ok = 0;
+	my $query = "
+SELECT 
+    host_name 
+FROM 
+    hosts 
+WHERE
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	return($success);
-};
+	# Do the query against the source DB and loop through the results.
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "results", value1 => $results
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $server_name = $row->[0];
+		   $ok          = 1;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "server_name", value1 => $server_name, 
+			name2 => "ok",          value2 => $ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok
+	}, file => $THIS_FILE, line => __LINE__});
+	return($ok);
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

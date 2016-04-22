@@ -10,6 +10,14 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Math.pm";
 
+### Methods;
+# round
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
+
 
 # The constructor
 sub new
@@ -35,9 +43,14 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
+
+
+### TODO: Does this handle "x.95" type rounding properly?
 # This takes a number and rounds it to a given number of places after the
 # decimal (defaulting to an even integer). This does financial-type rounding.
-### TODO: Does this handle "x.95" type rounding properly?
 sub round
 {
 	my $self  = shift;
@@ -175,5 +188,9 @@ sub round
 	# Return the number.
 	return ($rounded_num);
 }
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

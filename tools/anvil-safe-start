@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 # 
-# This tool tries to safely start an Anvil! when a node boots. It will replace 'safe_anvil_start' once 
-# finished.
+# This tool tries to safely start an Anvil! when a node boots. 
 # 
 # Exit Codes;
 # 0  = OK

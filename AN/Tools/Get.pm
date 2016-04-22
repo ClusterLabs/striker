@@ -12,30 +12,45 @@ our $VERSION  = "0.1.001";
 my $THIS_FILE = "Get.pm";
 
 ### Methods;
-# local_users
+# anvil_data
+# date_and_time
+# date_seperator
 # drbd_data
+# install_target_state
+# ip
+# local_anvil_details
+# local_users
 # lvm_data
+# recipient_data
+# netmask_from_ip
+# node_info
+# notify_data
+# owner_data
+# pids				- Move to System.pm
+# ram_used_by_pid		- Move to System.pm
+# ram_used_by_program		- Move to System.pm
+# remote_anvil_details
+# rsa_public_key		- Move to System.pm
+# say_am
+# say_pm
 # server_data
 # server_uuid
 # server_xml
-# users_home
-# rsa_public_key
-# uuid
-# say_am
-# say_pm
-# date_seperator
-# time_seperator
-# use_24h
-# date_and_time
-# pids
-# ram_used_by_program
-# get_ram_used_by_pid
+# shared_files
 # switches
-# ip
-# remote_anvil_details
-# local_anvil_details
+# smtp_data
 # striker_peers
+# target_details
+# time_seperator
+# users_home
+# use_24h
+# uuid
+# 
 
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -71,411 +86,10 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
-# This returns an array of local users on the system. Specifically, users with home directories under 
-# '/home'. So not 'root' or system users accounts.
-sub local_users
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $users = [];
-	my $shell_call = "/etc/passwd";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		my ($user, $users_home) = (split/:/, $line)[0,5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "user",       value1 => $user, 
-			name2 => "users_home", value2 => $users_home, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($users_home =~ /^\/home\//)
-		{
-			push @{$users}, $user;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "user", value1 => $user, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	close $file_handle;
-	
-	# record how many users we read into the array.
-	my $users_count = @{$users};
-	my $message_key = $users_count == 1 ? "tools_log_0006" : "tools_log_0005";
-	$an->Log->entry({log_level => 3, message_key => $message_key, message_variables => {
-		array	=>	"users",
-		count	=>	$users_count,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return($users);
-}
 
-# This returns data about a given recipient linkage (taking either the anvil_uuid or notify_uuid)
-sub recipient_data
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $return         = {};
-	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
-	my $notify_uuid    = $parameter->{notify_uuid} ? $parameter->{notify_uuid} : "";
-	my $recipient_uuid = $parameter->{uuid}        ? $parameter->{uuid}        : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil_uuid",     value1 => $anvil_uuid, 
-		name2 => "notify_uuid",    value2 => $notify_uuid, 
-		name3 => "recipient_uuid", value3 => $recipient_uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $anvil_uuid) && (not $notify_uuid) && (not $recipient_uuid))
-	{
-		# Oh come on, you had *three* options!
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0090", code => 90, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Which query we use will depend on what data we got.
-	my $query = "
-SELECT 
-    recipient_uuid, 
-    recipient_anvil_uuid, 
-    recipient_notify_uuid, 
-    recipient_log_level, 
-    recipient_note, 
-    modified_date 
-FROM 
-    recipients 
-WHERE 
-";
-	if ($recipient_uuid)
-	{
-		$query .= "recipient_uuid = ".$an->data->{sys}{use_db_fh}->quote($recipient_uuid);
-	}
-	elsif ($anvil_uuid)
-	{
-		$query .= "recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid);
-	}
-	else
-	{
-		$query .= "recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
-	}
-	$query .= "
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $recipient_uuid        = $row->[0];
-		my $recipient_anvil_uuid  = $row->[1];
-		my $recipient_notify_uuid = $row->[2];
-		my $recipient_log_level   = $row->[3] ? $row->[3] : "NULL";
-		my $recipient_note        = $row->[4] ? $row->[4] : "NULL";
-		my $modified_date         = $row->[5];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-			name1 => "recipient_uuid",        value1 => $recipient_uuid, 
-			name2 => "recipient_anvil_uuid",  value2 => $recipient_anvil_uuid, 
-			name3 => "recipient_notify_uuid", value3 => $recipient_notify_uuid, 
-			name4 => "recipient_log_level",   value4 => $recipient_log_level, 
-			name5 => "recipient_note",        value5 => $recipient_note, 
-			name6 => "modified_date",         value6 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$return = {
-			recipient_uuid		=>	$recipient_uuid,
-			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
-			recipient_notify_uuid	=>	$recipient_notify_uuid, 
-			recipient_log_level	=>	$recipient_log_level, 
-			recipient_note		=>	$recipient_note, 
-			modified_date		=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# This returns data about the given Anvil! notification target (taking either the target or its UUID)
-sub notify_data
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $return        = {};
-	my $notify_target = $parameter->{target} ? $parameter->{target} : "";
-	my $notify_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "notify_target", value1 => $notify_target, 
-		name2 => "notify_uuid",   value2 => $notify_uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $notify_target) && (not $notify_uuid))
-	{
-		# What is my purpose?
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0087", code => 87, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Which query we use will depend on what data we got.
-	my $query = "
-SELECT 
-    notify_uuid, 
-    notify_name, 
-    notify_target, 
-    notify_language, 
-    notify_level, 
-    notify_units, 
-    notify_note, 
-    modified_date 
-FROM 
-    notifications 
-WHERE 
-";
-	if ($notify_uuid)
-	{
-		$query .= "notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
-	}
-	else
-	{
-		$query .= "notify_target = ".$an->data->{sys}{use_db_fh}->quote($notify_target);
-	}
-	$query .= "
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $notify_uuid     = $row->[0];
-		my $notify_name     = $row->[1];
-		my $notify_target   = $row->[2];
-		my $notify_language = $row->[3];
-		my $notify_level    = $row->[4];
-		my $notify_units    = $row->[5];
-		my $notify_note     = $row->[6] ? $row->[6] : "NULL";
-		my $modified_date   = $row->[7];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
-			name1 => "notify_uuid",     value1 => $notify_uuid, 
-			name2 => "notify_name",     value2 => $notify_name, 
-			name3 => "notify_target",   value3 => $notify_target, 
-			name4 => "notify_language", value4 => $notify_language, 
-			name5 => "notify_level",    value5 => $notify_level, 
-			name6 => "notify_units",    value6 => $notify_units, 
-			name7 => "notify_note",     value7 => $notify_note, 
-			name8 => "modified_date",   value8 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		### TODO: Be a lot smarter about this one Validate.pm is up
-		# If the target is an email address, we'll set 'notify_is_email' to 1.
-		my $notify_is_email = $notify_target =~ /\@/ ? 1 : 0;
-		$return = {
-			notify_uuid	=>	$notify_uuid,
-			notify_name	=>	$notify_name, 
-			notify_target	=>	$notify_target, 
-			notify_language	=>	$notify_language, 
-			notify_level	=>	$notify_level, 
-			notify_units	=>	$notify_units, 
-			notify_note	=>	$notify_note, 
-			notify_is_email =>	$notify_is_email,
-			modified_date	=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# This returns data about the given Anvil! owner (taking either the owner name or its UUID)
-sub owner_data
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $return     = {};
-	my $owner_name = $parameter->{name} ? $parameter->{name} : "";
-	my $owner_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "owner_name", value1 => $owner_name, 
-		name2 => "owner_uuid", value2 => $owner_uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $owner_name) && (not $owner_uuid))
-	{
-		# What is my purpose?
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0085", code => 85, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Which query we use will depend on what data we got.
-	my $query = "
-SELECT 
-    owner_uuid, 
-    owner_name, 
-    owner_note, 
-    modified_date 
-FROM 
-    owners 
-WHERE 
-";
-	if ($owner_uuid)
-	{
-		$query .= "owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid);
-	}
-	else
-	{
-		$query .= "owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name);
-	}
-	$query .= "
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $owner_uuid    = $row->[0];
-		my $owner_name    = $row->[1];
-		my $owner_note    = $row->[2] ? $row->[2] : "NULL";
-		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "owner_uuid",    value1 => $owner_uuid, 
-			name2 => "owner_name",    value2 => $owner_name, 
-			name3 => "owner_note",    value3 => $owner_note, 
-			name4 => "modified_date", value4 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$return = {
-			owner_uuid		=>	$owner_uuid,
-			owner_name		=>	$owner_name, 
-			owner_note		=>	$owner_note, 
-			modified_date		=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# This returns data about the given SMTP server (taking either the server name or its UUID)
-sub smtp_data
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $return      = {};
-	my $smtp_server = $parameter->{server} ? $parameter->{server} : "";
-	my $smtp_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "smtp_server", value1 => $smtp_server, 
-		name2 => "smtp_uuid",   value2 => $smtp_uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $smtp_server) && (not $smtp_uuid))
-	{
-		# What is my purpose?
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0086", code => 86, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Which query we use will depend on what data we got.
-	my $query = "
-SELECT 
-    smtp_uuid, 
-    smtp_server, 
-    smtp_port, 
-    smtp_username, 
-    smtp_password, 
-    smtp_security, 
-    smtp_authentication, 
-    smtp_helo_domain, 
-    smtp_note, 
-    modified_date 
-FROM 
-    smtp 
-WHERE 
-";
-	if ($smtp_uuid)
-	{
-		$query .= "smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid);
-	}
-	else
-	{
-		$query .= "smtp_server = ".$an->data->{sys}{use_db_fh}->quote($smtp_server);
-	}
-	$query .= "
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $smtp_uuid           = $row->[0];
-		my $smtp_server         = $row->[1];
-		my $smtp_port           = $row->[2];
-		my $smtp_username       = $row->[3] ? $row->[3] : "NULL";
-		my $smtp_password       = $row->[4] ? $row->[4] : "NULL";
-		my $smtp_security       = $row->[5];
-		my $smtp_authentication = $row->[6];
-		my $smtp_helo_domain    = $row->[7] ? $row->[7] : "NULL";
-		my $smtp_note           = $row->[8] ? $row->[8] : "NULL";
-		my $modified_date       = $row->[9];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
-			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
-			name2  => "smtp_server",         value2  => $smtp_server, 
-			name3  => "smtp_port",           value3  => $smtp_port, 
-			name4  => "smtp_username",       value4  => $smtp_username, 
-			name5  => "smtp_password",       value5  => $smtp_password, 
-			name6  => "smtp_security",       value6  => $smtp_security, 
-			name7  => "smtp_authentication", value7  => $smtp_authentication, 
-			name8  => "smtp_helo_domain",    value8  => $smtp_helo_domain, 
-			name9  => "smtp_note",           value9  => $smtp_note, 
-			name10 => "modified_date",       value10 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$return = {
-			smtp_uuid		=>	$smtp_uuid,
-			smtp_server		=>	$smtp_server, 
-			smtp_port		=>	$smtp_port, 
-			smtp_username		=>	$smtp_username, 
-			smtp_password		=>	$smtp_password, 
-			smtp_security		=>	$smtp_security, 
-			smtp_authentication	=>	$smtp_authentication, 
-			smtp_helo_domain	=>	$smtp_helo_domain, 
-			smtp_note		=>	$smtp_note, 
-			modified_date		=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # This returns data about the given Anvil! (taking either the Anvil! name or its UUID)
 sub anvil_data
@@ -570,550 +184,260 @@ WHERE
 	return($return);
 }
 
-# This gets the details (except the XML, use '$an->Get->server_xml()' for that) associated with a given 
-# server name,
-sub server_data
+# This returns the date and time based on the given unix-time.
+sub date_and_time
 {
 	my $self      = shift;
 	my $parameter = shift;
-	my $an        = $self->parent;
 	
-	my $return = {};
-	my $server_name = $parameter->{server} ? $parameter->{server} : "";
-	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
-	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "server_name", value1 => $server_name, 
-		name2 => "server_uuid", value2 => $server_uuid, 
-		name3 => "anvil",       value3 => $anvil, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $server_name) && (not $server_uuid))
-	{
-		# No server? pur quois?!
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0051", code => 51, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
+	# This just makes the code more consistent.
+	my $an = $self->parent;
 	
-	# Get the server's UUID.
-	if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# Set default values then check for passed parameters to over-write
+	# them with.
+	my ($offset, $use_time, $require_weekday, $skip_weekends);
+	
+	# Now see if the user passed the values in a hash reference or
+	# directly.
+	if (ref($parameter) eq "HASH")
 	{
-		$server_uuid = $an->Get->server_uuid({
-			server => $server_name, 
-			anvil  => $anvil, 
-		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "server_uuid", value1 => $server_uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
-		{
-			# Bad or no UUID returned.
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
-		}
+		# Values passed in a hash, good.
+		$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
+		$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
+		$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
+		$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
 	}
 	else
 	{
-		# Call this anyway as it will ensure we've got the definition XML file.
-		$an->Get->server_uuid({
-			server => $server_name, 
-			anvil  => $anvil, 
-		});
+		# Values passed directly.
+		$offset		 = defined $parameter ? $parameter : 0;
+		$use_time	 = defined $_[0] ? $_[0] : time;
+		$require_weekday = defined $_[1] ? $_[1] : "";
+		$skip_weekends	 = defined $_[2] ? $_[2] : "";
 	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "server_uuid", value1 => $server_uuid,
-	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Check the server table now (if we have a database connection).
-	if ($server_uuid)
+	# Do my initial calculation.
+	my %time          = ();
+	my $adjusted_time = $use_time+$offset;
+	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+
+	# If I am set to skip weekends and I land on a weekend, simply add 48
+	# hours. This is useful when you need to move X-weekdays.
+	if (($skip_weekends) && ($offset))
 	{
-		if (not $an->data->{sys}{read_db_id})
+		# First thing I need to know is how many weekends pass between
+		# now and the requested date. So to start, how many days are we
+		# talking about?
+		my $difference   = 0;			# Hold the accumulated days in seconds.
+		my $local_offset = $offset;		# Local offset I can mess with.
+		my $day          = 24 * 60 * 60;	# For clarity.
+		my $week         = $day * 7;		# For clarity.
+		
+		# As I proceed, 'local_time' will be subtracted as I account
+		# for time and 'difference' will increase to account for known
+		# weekend days.
+		if ($local_offset =~ /^-/)
 		{
-			# Pick up the XML read by $an->Get->server_uuid()
-			$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "return->definition", value1 => $return->{definition},
-			}, file => $THIS_FILE, line => __LINE__});
+			### Go back in time...
+			$local_offset =~ s/^-//;
+			
+			# First, how many seconds have passed today?
+			my $seconds_passed_today = $time{sec} + ($time{min}*60) + ($time{hour}*60*60);
+			
+			# Now, get the number of seconds in the offset beyond
+			# an even day. This is compared to the seconds passed
+			# in this day. If greater, I count an extra day.
+			my $local_offset_second_over_day =  $local_offset % $day;
+			$local_offset                    -= $local_offset_second_over_day;
+			my $local_offset_days            =  $local_offset / $day;
+			$local_offset_days++ if $local_offset_second_over_day > $seconds_passed_today;
+			
+			# If the number of days is greater than one week, add
+			# two days to the 'difference' for every seven days and
+			# reduce 'local_offset_days' to the number of days
+			# beyond the given number of weeks.
+			my $local_offset_remaining_days = $local_offset_days;
+			if ($local_offset_days > 7)
+			{
+				# Greater than a week, do the math.
+				$local_offset_remaining_days =  $local_offset_days % 7;
+				$local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed             =  $local_offset_days / 7;
+				$difference                  += ($weeks_passed * (2 * $day));
+			}
+			
+			# If I am currently in a weekend, add two days.
+			if (($time{wday} == 6) || ($time{wday} == 0))
+			{
+				$difference += (2 * $day);
+			}
+			else
+			{
+				# Compare 'local_offset_remaining_days' to
+				# today's day. If greater, I've passed a
+				# weekend and need to add two days to
+				# 'difference'.
+				my $today_day = (localtime())[6];
+				if ($local_offset_remaining_days > $today_day)
+				{
+					$difference+=(2 * $day);
+				}
+			}
+			
+			# If I have a difference, recalculate the offset date.
+			if ($difference)
+			{
+				my $new_offset = ($offset - $difference);
+				$adjusted_time = ($use_time + $new_offset);
+				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+			}
 		}
 		else
 		{
-			my $query = "
-SELECT 
-    server_name, 
-    server_stop_reason, 
-    server_start_after, 
-    server_start_delay, 
-    server_note, 
-    server_host, 
-    server_state, 
-    server_definition, 
-    server_migration_type, 
-    server_pre_migration_script, 
-    server_pre_migration_arguments, 
-    server_post_migration_script, 
-    server_post_migration_arguments, 
-    modified_date
-FROM 
-    servers 
-WHERE 
-    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
-;";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "query", value1 => $query, 
-			}, file => $THIS_FILE, line => __LINE__});
+			### Go forward in time...
+			# First, how many seconds are left in today?
+			my $left_hours            = 23 - $time{hour};
+			my $left_minutes          = 59 - $time{min};
+			my $left_seconds          = 59 - $time{sec};
+			my $seconds_left_in_today = $left_seconds + ($left_minutes*60) + ($left_hours*60*60);
 			
-			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-			my $count   = @{$results};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "results", value1 => $results, 
-				name2 => "count",   value2 => $count
-			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $row (@{$results})
+			# Now, get the number of seconds in the offset beyond
+			# an even day. This is compared to the seconds left in
+			# this day. If greater, I count an extra day.
+			my $local_offset_second_over_day =  $local_offset % $day;
+			$local_offset                    -= $local_offset_second_over_day;
+			my $local_offset_days            =  $local_offset / $day;
+			$local_offset_days++ if $local_offset_second_over_day > $seconds_left_in_today;
+			
+			# If the number of days is greater than one week, add
+			# two days to the 'difference' for every seven days and
+			# reduce 'local_offset_days' to the number of days
+			# beyond the given number of weeks.
+			my $local_offset_remaining_days = $local_offset_days;
+			if ($local_offset_days > 7)
 			{
-				my $server_name                     = $row->[0];
-				my $server_stop_reason              = $row->[1]  ? $row->[1]  : "";
-				my $server_start_after              = $row->[2]  ? $row->[2]  : "";
-				my $server_start_delay              = $row->[3];
-				my $server_note                     = $row->[4]  ? $row->[4]  : "";
-				my $server_host                     = $row->[5]  ? $row->[5]  : "";
-				my $server_state                    = $row->[6]  ? $row->[6]  : "";
-				my $server_definition               = $row->[7]  ? $row->[7]  : "";
-				my $server_migration_type           = $row->[8];
-				my $server_pre_migration_script     = $row->[9];
-				my $server_pre_migration_arguments  = $row->[10] ? $row->[10] : "";
-				my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
-				my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
-				my $modified_date                   = $row->[13] ? $row->[13] : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
-					name1  => "server_name",                     value1  => $server_name, 
-					name2  => "server_stop_reason",              value2  => $server_stop_reason, 
-					name3  => "server_start_after",              value3  => $server_start_after, 
-					name4  => "server_start_delay",              value4  => $server_start_delay, 
-					name5  => "server_note",                     value5  => $server_note, 
-					name6  => "server_host",                     value6  => $server_host, 
-					name7  => "server_state",                    value7  => $server_state, 
-					name8  => "server_definition",               value8  => $server_definition, 
-					name9  => "server_migration_type",           value9  => $server_migration_type, 
-					name10 => "server_pre_migration_script",     value10 => $server_pre_migration_script, 
-					name11 => "server_pre_migration_arguments",  value11 => $server_pre_migration_arguments, 
-					name12 => "server_post_migration_script",    value12 => $server_post_migration_script, 
-					name13 => "server_post_migration_arguments", value13 => $server_post_migration_arguments, 
-					name14 => "modified_date",                   value14 => $modified_date, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# Push the values into the 'return' hash reference.
-				$return->{uuid}                     = $server_uuid;
-				$return->{name}                     = $server_name;
-				$return->{stop_reason}              = $server_stop_reason;
-				$return->{start_after}              = $server_start_after;
-				$return->{start_delay}              = $server_start_delay;
-				$return->{note}                     = $server_note;
-				$return->{host}                     = $server_host;
-				$return->{'state'}                  = $server_state;
-				$return->{definition}               = $server_definition;
-				$return->{migration_type}           = $server_migration_type;
-				$return->{pre_migration_script}     = $server_pre_migration_script;
-				$return->{pre_migration_arguments}  = $server_pre_migration_arguments;
-				$return->{post_migration_script}    = $server_post_migration_script;
-				$return->{post_migration_arguments} = $server_post_migration_arguments;
-				$return->{modified_date}            = $modified_date;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
-					name1  => "uuid",                     value1  => $return->{uuid}, 
-					name2  => "name",                     value2  => $return->{name}, 
-					name3  => "stop_reason",              value3  => $return->{stop_reason}, 
-					name4  => "start_after",              value4  => $return->{start_after}, 
-					name5  => "start_delay",              value5  => $return->{start_delay}, 
-					name6  => "note",                     value6  => $return->{note}, 
-					name7  => "host",                     value7  => $return->{host}, 
-					name8  => "state",                    value8  => $return->{'state'}, 
-					name9  => "definition",               value9  => $return->{definition}, 
-					name10 => "migration_type",           value10 => $return->{migration_type}, 
-					name11 => "pre_migration_script",     value11 => $return->{pre_migration_script}, 
-					name12 => "pre_migration_arguments",  value12 => $return->{pre_migration_arguments}, 
-					name13 => "post_migration_script",    value13 => $return->{post_migration_script}, 
-					name14 => "post_migration_arguments", value14 => $return->{post_migration_arguments}, 
-					name15 => "modified_date",            value15 => $return->{modified_date}, 
-				}, file => $THIS_FILE, line => __LINE__});
+				# Greater than a week, do the math.
+				$local_offset_remaining_days =  $local_offset_days % 7;
+				$local_offset_days           -= $local_offset_remaining_days;
+				my $weeks_passed             =  $local_offset_days / 7;
+				$difference                  += ($weeks_passed * (2 * $day));
 			}
 			
-			# If there were no results, fall back to the XML we got earlier.
-			if (not $return->{modified_date})
+			# If I am currently in a weekend, add two days.
+			if (($time{wday} == 6) || ($time{wday} == 0))
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "server_name", value1 => $server_name,
-				}, file => $THIS_FILE, line => __LINE__});
-				$server_name =~ s/^vm://;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "server_name", value1 => $server_name,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "return->definition", value1 => $return->{definition},
-				}, file => $THIS_FILE, line => __LINE__});
+				$difference += (2 * $day);
+			}
+			else
+			{
+				# Compare 'local_offset_remaining_days' to
+				# 5 minus today's day to get the number of days
+				# until the weekend. If greater, I've crossed a
+				# weekend and need to add two days to
+				# 'difference'.
+				my $today_day=(localtime())[6];
+				my $days_to_weekend=5 - $today_day;
+				if ($local_offset_remaining_days > $days_to_weekend)
+				{
+					$difference+=(2 * $day);
+				}
+			}
+			
+			# If I have a difference, recalculate the offset date.
+			if ($difference)
+			{
+				my $new_offset = ($offset + $difference);
+				$adjusted_time = ($use_time + $new_offset);
+				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 			}
 		}
 	}
-	
-	# Now dig out the storage and network details.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "return->definition", value1 => $return->{definition}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $return->{definition})
-	{
-		# Get the XML data from the definition file on the host directly.
-		
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0092", code => 92, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	my $xml  = XML::Simple->new();
-	my $data = $xml->XMLin($return->{definition}, KeyAttr => {}, ForceArray => 1);
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "data", value1 => $data, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# This array will store the boot devices in their boot priority.
-	$return->{boot_devices} = [];
-	foreach my $device (@{$data->{os}->[0]->{boot}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "device", value1 => $device->{dev}, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return->{boot_devices}}, $device->{dev};
-	}
-	
-	# Pull out the RAM.
-	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
-	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "return->current_ram", value1 => $return->{current_ram}, 
-		name2 => "return->maximum_ram", value2 => $return->{maximum_ram}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
-	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
-	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
-	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
-	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "return->cpu::total",   value1 => $return->{cpu}{total}, 
-		name2 => "return->cpu::cores",   value2 => $return->{cpu}{cores}, 
-		name3 => "return->cpu::sockets", value3 => $return->{cpu}{sockets}, 
-		name4 => "return->cpu::threads", value4 => $return->{cpu}{threads}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Pull out the optical disks.
-	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
-	{
-		# Disk or cdrom?
-		my $device_type = $hash_ref->{device};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "device_type", value1 => $device_type, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# The backing device (LV or path the the source file, usually) and cache policy, if set.
-		my $backing_device = $hash_ref->{source}->[0]->{dev}   ? $hash_ref->{source}->[0]->{dev}   : $hash_ref->{source}->[0]->{file}; 
-		my $cache_policy   = $hash_ref->{driver}->[0]->{cache} ? $hash_ref->{driver}->[0]->{cache} : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "backing_device", value1 => $backing_device, 
-			name2 => "cache_policy",   value2 => $cache_policy, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# This is the device presented to the guest OS (vda, hdc, etc) and the bus type (virtio, IDE, etc)
-		my $target_device = $hash_ref->{target}->[0]->{dev};
-		my $target_bus    = $hash_ref->{target}->[0]->{bus};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "target_device", value1 => $target_device, 
-			name2 => "target_bus",    value2 => $target_bus, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Store it all
-		$return->{storage}{$device_type}{target_device}{$target_device} = {
-			backing_device	=>	$backing_device, 
-			cache_policy	=>	$cache_policy, 
-			target_bus	=>	$target_bus, 
-		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "return->storage::${device_type}::target_device::${target_device}::backing_device", value1 => $return->{storage}{$device_type}{target_device}{$target_device}{backing_device}, 
-			name2 => "return->storage::${device_type}::target_device::${target_device}::cache_policy",   value2 => $return->{storage}{$device_type}{target_device}{$target_device}{cache_policy}, 
-			name3 => "return->storage::${device_type}::target_device::${target_device}::target_bus",     value3 => $return->{storage}{$device_type}{target_device}{$target_device}{target_bus}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Dig out the graphical connection information (the address is complicated for some reason...)
-	$return->{graphics}{port}    = $data->{devices}->[0]->{graphics}->[0]->{port};
-	$return->{graphics}{type}    = $data->{devices}->[0]->{graphics}->[0]->{type};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "return->graphics::port", value1 => $return->{graphics}{port}, 
-		name2 => "return->graphics::type", value2 => $return->{graphics}{type}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$return->{graphics}{address} = "";
-	foreach my $item (@{$data->{devices}->[0]->{graphics}->[0]->{'listen'}})
-	{
-		if (ref($item) eq "HASH")
-		{
-			$return->{graphics}{address} = $item->{address};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif (not $return->{graphics}{address})
-		{
-			$return->{graphics}{address} = $item;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# Record what happens in given shutdown events.
-	$return->{on_poweroff} = $data->{on_poweroff}->[0];
-	$return->{on_reboot}   = $data->{on_reboot}->[0];
-	$return->{on_crash}    = $data->{on_crash}->[0];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "return->on_poweroff", value1 => $return->{on_poweroff}, 
-		name2 => "return->on_reboot",   value2 => $return->{on_reboot}, 
-		name3 => "return->on_crash",    value3 => $return->{on_crash}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Dig out the network details.
-	foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
-	{
-		my $bridge      = $hash_ref->{source}->[0]->{bridge};
-		my $vnet        = $hash_ref->{target}->[0]->{dev};
-		my $model       = $hash_ref->{model}->[0]->{type};
-		my $mac_address = $hash_ref->{mac}->[0]->{address};
-		$return->{network}{mac_address}{$mac_address} = {
-			bridge	=>	$bridge,
-			model	=>	$model,
-			vnet	=>	$vnet,
-		};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "return->network::mac_address::${mac_address}::bridge", value1 => $return->{network}{mac_address}{$mac_address}{bridge}, 
-			name2 => "return->network::mac_address::${mac_address}::model",  value2 => $return->{network}{mac_address}{$mac_address}{model}, 
-			name3 => "return->network::mac_address::${mac_address}::vnet",   value3 => $return->{network}{mac_address}{$mac_address}{vnet}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return($return);
-}
 
-# This gets a list of shared files for the named anvil.
-sub shared_files
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$an->Alert->_set_error;
-	
-	# Pick up our parameters
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "target",   value1 => $target, 
-		name2 => "port",     value2 => $port, 
-		name3 => "password", value3 => $password, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# We use '-l' because we can't do normal file tests like checking for executable bits remotely and
-	# it's a waste to parse the output in two different ways.
-	my $ls_shell_call = $an->data->{path}{ls}." -l ".$an->data->{path}{shared_files};
-	my $df_shell_call = $an->data->{path}{df}." -P";
-	
-	# This will store the list of files and the output of our 'ls' call that we'll parse to feed it.
-	my $files     = {};
-	my $partition = {};
-	my $ls_return = [];
-	my $df_return = [];
-	
-	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
-	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or
+	# 6 (Saturday), set or increase the offset by 24 or 48 hours.
+	if (($require_weekday) && (( $time{wday} == 0 ) || ( $time{wday} == 6 )))
 	{
-		### Remote call
-		# ls
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "ls_shell_call", value1 => $ls_shell_call,
-			name2 => "target",        value2 => $target,
-		}, file => $THIS_FILE, line => __LINE__});
-		(my $error, my $ssh_fh, $ls_return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
-			shell_call	=>	$ls_shell_call,
-		});
+		# The resulting day is a weekend and the require weekday was
+		# set.
+		$adjusted_time = $use_time + ($offset + (24 * 60 * 60));
+		($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 		
-		# df
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "df_shell_call", value1 => $df_shell_call,
-			name2 => "target",     value2 => $target,
-		}, file => $THIS_FILE, line => __LINE__});
-		($error, $ssh_fh, $df_return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
-			shell_call	=>	$df_shell_call,
-		});
+		# I don't check for the date and adjust automatically because I
+		# don't know if I am going forward or backwards in the calander.
+		if (( $time{wday} == 0 ) || ( $time{wday} == 6 ))
+		{
+			# Am I still ending on a weekday?
+			$adjusted_time = $use_time + ($offset + (48 * 60 * 60));
+			($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
+		}
+	}
+
+	# Increment the month by one.
+	$time{mon}++;
+	
+	# Parse the 12/24h time components.
+	if ($self->use_24h)
+	{
+		# 24h time.
+		$time{pad_hour} = sprintf("%02d", $time{hour});
+		$time{suffix}   = "";
 	}
 	else
 	{
-		### Local call
-		# ls
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "ls_shell_call", value1 => $ls_shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$ls_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ls_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
+		# 12h am/pm time.
+		if ( $time{hour} == 0 )
 		{
-			chomp;
-			my $line =  $_;
-			push @{$ls_return}, $line;
+			$time{pad_hour} = 12;
+			$time{suffix}   = " ".$self->say_am;
 		}
-		close $file_handle;
-		
-		# df
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "df_shell_call", value1 => $df_shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open ($file_handle, "$df_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $df_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
+		elsif ( $time{hour} < 12 )
 		{
-			chomp;
-			my $line =  $_;
-			push @{$df_return}, $line;
+			$time{pad_hour} = $time{hour};
+			$time{suffix}   = " ".$self->say_am;
 		}
-		close $file_handle;
+		else
+		{
+			$time{pad_hour} = ($time{hour}-12);
+			$time{suffix}   = " ".$self->say_pm;
+		}
+		$time{pad_hour} = sprintf("%02d", $time{pad_hour});
 	}
 	
-	### Now parse out the data.
-	# ls
-	foreach my $line (@{$ls_return})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
-		{
-			my $type   = $1;
-			my $mode   = $2;
-			my $user   = $3;
-			my $group  = $4;
-			my $size   = $5;
-			my $month  = $6;
-			my $day    = $7;
-			my $time   = $8; # might be a year, look for '\d+:\d+'.
-			my $file   = $9;
-			my $target = "";
-			if ($type eq "l")
-			{
-				# It's a symlink, strip off the destination.
-				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
-			}
-			# These are so crude...
-			my $is_iso = 0;
-			if ($file =~ /\.iso/i)
-			{
-				$is_iso = 1;
-			}
-			my $is_executable = 0;
-			if (($mode =~ /x/) or ($mode =~ /s/))
-			{
-				$is_executable = 1;
-			}
-			my $year = "";
-			if ($time !~ /:/)
-			{
-				$year = $time;
-				$time = "";
-			}
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
-				name1  => "type",          value1  => $type, 
-				name2  => "mode",          value2  => $mode, 
-				name3  => "user",          value3  => $user, 
-				name4  => "group",         value4  => $group, 
-				name5  => "size",          value5  => $size, 
-				name6  => "month",         value6  => $month, 
-				name7  => "day",           value7  => $day, 
-				name8  => "time",          value8  => $time, 
-				name9  => "year",          value9  => $year, 
-				name10 => "file",          value10 => $file, 
-				name11 => "target",        value11 => $target, 
-				name12 => "is_iso",        value12 => $is_iso, 
-				name13 => "is_executable", value13 => $is_executable, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$files->{$file}	= {
-				type       => $type, 
-				mode       => $mode, 
-				user       => $user, 
-				group      => $group, 
-				size       => $size, 
-				month      => $month, 
-				day        => $day, 
-				'time'     => $time,
-				year       => $year,
-				target     => $target, 
-				optical    => $is_iso,
-				executable => $is_executable,
-			};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
-				name1  => "file",                value1  => $file,
-				name2  => "${file}::type",       value2  => $files->{$file}{type},
-				name3  => "${file}::mode",       value3  => $files->{$file}{mode},
-				name4  => "${file}::owner",      value4  => $files->{$file}{user},
-				name5  => "${file}::group",      value5  => $files->{$file}{group},
-				name6  => "${file}::size",       value6  => $files->{$file}{size},
-				name7  => "${file}::modified",   value7  => $files->{$file}{month},
-				name8  => "${file}::day",        value8  => $files->{$file}{day},
-				name9  => "${file}::time",       value9  => $files->{$file}{'time'},
-				name10 => "${file}::year",       value10 => $files->{$file}{year},
-				name11 => "${file}::target",     value11 => $files->{$file}{target},
-				name12 => "${file}::optical",    value12 => $files->{$file}{optical},
-				name13 => "${file}::executable", value13 => $files->{$file}{executable},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
+	# Now parse the global components.
+	$time{pad_min}  = sprintf("%02d", $time{min});
+	$time{pad_sec}  = sprintf("%02d", $time{sec});
+	$time{year}     = ($time{year} + 1900);
+	$time{pad_mon}  = sprintf("%02d", $time{mon});
+	$time{pad_mday} = sprintf("%02d", $time{mday});
+	$time{mon}++;
 	
-	# df
-	foreach my $line (@{$df_return})
-	{
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
+	my $date = $time{year}.$self->date_seperator.$time{pad_mon}.$self->date_seperator.$time{pad_mday};
+	my $time = $time{pad_hour}.$self->time_seperator.$time{pad_min}.$self->time_seperator.$time{pad_sec}.$time{suffix};
 	
-		if ($line =~ /\s(\d+)-blocks\s/)
-		{
-			$partition->{block_size} = $1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "block_size", value1 => $partition->{block_size},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
+	return ($date, $time);
+}
 
-		if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
-		{
-			$partition->{total_space}  = $1;
-			$partition->{used_space}   = $2;
-			$partition->{free_space}   = $3;
-			$partition->{used_percent} = $4;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "total_space",  value1 => $partition->{total_space},
-				name2 => "used_space",   value2 => $partition->{used_space},
-				name3 => "used_percent", value3 => $partition->{free_space},
-				name4 => "free_space",   value4 => $partition->{used_percent},
-			}, file => $THIS_FILE, line => __LINE__});
-			next;
-		}
+# Sets/returns the date separator.
+sub date_seperator
+{
+	my $self=shift;
+	my $symbol=shift;
+	
+	# This just makes the code more consistent.
+	my $an=$self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	if ( defined $symbol )
+	{
+		$self->{SEPERATOR}->{DATE}=$symbol;
 	}
 	
-	return($files, $partition);
+	return $self->{SEPERATOR}->{DATE};
 }
 
 # This gathers DRBD data
@@ -1659,6 +983,310 @@ sub drbd_data
 	return($return);
 }
 
+### TODO: Make this work on local and remote calls.
+# This checks to see if the 'install target' feature is enabled or disabled.
+sub install_target_state
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If the control program exists, call it with '--status'
+	my $install_target_state = 2;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "path::call_striker-manage-install-target", value1 => $an->data->{path}{'call_striker-manage-install-target'},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (-e $an->data->{path}{'call_striker-manage-install-target'})
+	{
+		my $shell_call = $an->data->{path}{'call_striker-manage-install-target'}." --status";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /state:(\d+)/)
+			{
+				my $state = $1;
+				# 0 = stopped
+				# 1 = running
+				# 2 = unknown
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state,
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($state eq "0")
+				{
+					$install_target_state = 0;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($state eq "1")
+				{
+					$install_target_state = 1;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "install_target_state", value1 => $install_target_state,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# The install target control setuid script wasn't found
+		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+			file => $an->data->{path}{install_target_conf},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	# 0 == Stopped
+	# 1 == Running
+	# 2 == Unknown
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "install_target_state", value1 => $install_target_state,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($install_target_state);
+}
+
+# This returns the dotted-decimal IP address for the passed-in host name.
+sub ip
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What PID?
+	my $host = $parameter->{host};
+	
+	# Error if not host given.
+	if (not $host)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0047", code => 47, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $ip         = "";
+	my $shell_call = $an->data->{path}{gethostip}." -d $host";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		$ip = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip", value1 => $ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+		last;
+	}
+	close $file_handle;
+	
+	return ($ip);
+}
+
+# This returns the peer node and anvil! name depending on the passed-in host name. This is called by nodes 
+# in an Anvil!.
+sub local_anvil_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If no host name is passed in, use this machine's host name.
+	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
+	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
+	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cman_config};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "hostname_full",  value1 => $hostname_full, 
+		name2 => "hostname_short", value2 => $hostname_short, 
+		name3 => "config_file",    value3 => $config_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	### TODO: Error if no config file is passed in.
+	# Read in cluster.conf.
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($config_file, KeyAttr => {node => 'name'}, ForceArray => 1);
+	
+	### TODO: Detect whether this is reading in cluster.conf or cibadmin
+	my $return = {
+		local_node	=>	"",
+		peer_node	=>	"",
+		anvil_name	=>	$data->{name},
+		anvil_password	=>	"",
+	};
+	foreach my $hash_ref (@{$data->{clusternodes}->[0]->{clusternode}})
+	{
+		my $node_name = $hash_ref->{name};
+		my $hash_reflt_name  = $hash_ref->{altname}->[0]->{name} ? $hash_ref->{altname}->[0]->{name} : "";
+		if (($hostname_full  eq $node_name) or 
+		    ($hostname_full  eq $hash_reflt_name)  or 
+		    ($hostname_short eq $node_name) or 
+		    ($hostname_short eq $hash_reflt_name))
+		{
+			$return->{local_node} =  $node_name;
+			$return->{local_node} =~ s/\s//g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_node", value1 => $return->{local_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			$return->{peer_node} =  $node_name;
+			$return->{peer_node} =~ s/\s//g;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_node", value1 => $return->{peer_node}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Find the servers running locally and store their details.
+	my $clustat_data = $an->Cman->get_clustat_data();
+	foreach my $server (sort {$a cmp $b} keys %{$clustat_data->{server}})
+	{
+		$return->{server}{$server}{'state'} = $clustat_data->{server}{$server}{status};
+		$return->{server}{$server}{host}    = $clustat_data->{server}{$server}{host};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "server::${server}::state", value1 => $return->{server}{$server}{'state'}, 
+			name2 => "server::${server}::host",  value2 => $return->{server}{$server}{host}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $return->{anvil_name}, 
+		name2 => "cluster",    value2 => ref($an->data->{cluster}), 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($return->{anvil_name})
+	{
+		my $anvil_data = $an->ScanCore->get_anvils();
+		foreach my $hash_ref (@{$anvil_data})
+		{
+			if ($hash_ref->{anvil_name} eq $return->{anvil_name})
+			{
+				# Found it.
+				$return->{anvil_password} = $hash_ref->{anvil_password};
+				
+			}
+		}
+		if (ref($an->data->{cluster}) eq "HASH")
+		{
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "id",                   value1 => $id, 
+					name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
+					name3 => "anvil_name",           value3 => $return->{anvil_name}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
+				{
+					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+						name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
+						name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{cluster}{$id}{root_pw})
+					{
+						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => "anvil_password", value1 => $return->{anvil_password}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					elsif ($an->data->{cluster}{$id}{ricci_pw})
+					{
+						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
+						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+							name1 => "anvil_password", value1 => $return->{anvil_password}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					last;
+				}
+			}
+		}
+	}
+	
+	# Read in the node health files, if I can access them.
+	$return->{health}{'local'} = $an->ScanCore->host_state();
+	$return->{health}{peer}    = $an->ScanCore->host_state({target => $an->Cman->peer_hostname});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "local_node",    value1 => $return->{local_node}, 
+		name2 => "peer_node",     value2 => $return->{peer_node}, 
+		name3 => "anvil_name",    value3 => $return->{anvil_name}, 
+		name4 => "health::local", value4 => $return->{health}{'local'}, 
+		name5 => "health::peer",  value5 => $return->{health}{peer}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_password", value1 => $return->{anvil_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return ($return);
+}
+
+# This returns an array of local users on the system. Specifically, users with home directories under 
+# '/home'. So not 'root' or system users accounts.
+sub local_users
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $users = [];
+	my $shell_call = "/etc/passwd";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($user, $users_home) = (split/:/, $line)[0,5];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "user",       value1 => $user, 
+			name2 => "users_home", value2 => $users_home, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($users_home =~ /^\/home\//)
+		{
+			push @{$users}, $user;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "user", value1 => $user, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# record how many users we read into the array.
+	my $users_count = @{$users};
+	my $message_key = $users_count == 1 ? "tools_log_0006" : "tools_log_0005";
+	$an->Log->entry({log_level => 3, message_key => $message_key, message_variables => {
+		array	=>	"users",
+		count	=>	$users_count,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($users);
+}
+
 # This gathers the LVM data for a machine (local if no 'target' is defined).
 sub lvm_data
 {
@@ -2042,6 +1670,1189 @@ sub lvm_data
 	}
 	
 	return($data);
+}
+
+# This takes an IP, compares it to the BCN, SN and IFN networks and returns the netmask from the matched 
+# network.
+sub netmask_from_ip
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	if (not $parameter->{ip})
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0095", code => 95, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	my $ip = $parameter->{ip};
+	
+	### TODO: Make this support all possible subnet masks.
+	my $netmask = "";
+	
+	# Create short versions of the three networks that I can use in the
+	# regex.
+	my $short_bcn = "";
+	my $short_sn = "";
+	my $short_ifn = "";
+	
+	# BCN
+	if ($an->data->{cgi}{anvil_bcn_subnet} eq "255.0.0.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.0.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.255.0")
+	{
+		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# SN
+	if ($an->data->{cgi}{anvil_sn_subnet} eq "255.0.0.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.0.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.255.0")
+	{
+		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	
+	# IFN 
+	if ($an->data->{cgi}{anvil_ifn_subnet} eq "255.0.0.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.0.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.)/)[0];
+	}
+	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.255.0")
+	{
+		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "short_bcn", value1 => $short_bcn,
+		name2 => "short_sn",  value2 => $short_sn,
+		name3 => "short_ifn", value3 => $short_ifn,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($ip =~ /^$short_bcn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_bcn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($ip =~ /^$short_sn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_sn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($ip =~ /^$short_ifn/)
+	{
+		$netmask = $an->data->{cgi}{anvil_ifn_subnet};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "netmask", value1 => $netmask,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "netmask", value1 => $netmask,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($netmask);
+}
+
+### TODO: Switch this to pull from ScanCore once the majority of striker.conf is deprecated.
+# This gathers up information on a node, given the passed-in node name
+sub node_info
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# If no host name is passed in, use this machine's host name.
+	my $node = $parameter->{node} ? $parameter->{node} : $an->hostname;
+	
+	# First, run through the configured Anvil! systems from the striker.conf file.
+	my $return = {};
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	{
+		my $company         =  $an->data->{cluster}{$id}{company};		#	=	Alteeve's Niche!
+		my $description     =  $an->data->{cluster}{$id}{description};		#	=	Alteeve Development VM Anvil! (CentOS)
+		my $name            =  $an->data->{cluster}{$id}{name};			#	=	an-anvil-03
+		my ($node1, $node2) =  (split/,/, $an->data->{cluster}{$id}{nodes});	#	=	an-a03n01.alteeve.ca, an-a03n02.alteeve.ca
+		my $password        =  $an->data->{cluster}{$id}{root_pw};
+		   $password        =  $an->data->{cluster}{$id}{ricci_pw} if not $password;
+		   $node1           =~ s/^\s+//;
+		   $node1           =~ s/\s+$//;
+		   $node2           =~ s/^\s+//;
+		   $node2           =~ s/\s+$//;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "company",     value1 => $company, 
+			name2 => "description", value2 => $description, 
+			name3 => "name",        value3 => $name, 
+			name4 => "node1",       value4 => $node1, 
+			name5 => "node2",       value5 => $node2, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($node =~ /$node1/)
+		{
+			$return->{'local'}  = $node1;
+			$return->{peer}     = $node2;
+			$return->{anvil_id} = $id;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "local",    value1 => $return->{'local'}, 
+				name2 => "peer",     value2 => $return->{peer}, 
+				name3 => "anvil_id", value3 => $return->{anvil_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($node =~ /$node2/)
+		{
+			$return->{'local'}  = $node2;
+			$return->{peer}     = $node1;
+			$return->{anvil_id} = $id;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "local",    value1 => $return->{'local'}, 
+				name2 => "peer",     value2 => $return->{peer}, 
+				name3 => "anvil_id", value3 => $return->{anvil_id}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		if ($return->{anvil_id})
+		{
+			$return->{company}     = $company;
+			$return->{description} = $description;
+			$return->{anvil_name}  = $name;
+			$return->{password}    = $password;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "company",     value1 => $return->{company}, 
+				name2 => "description", value2 => $return->{description}, 
+				name3 => "anvil_name",  value3 => $return->{anvil_name}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $return->{password}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		last if $return->{anvil_id};
+	}
+	
+	return($return);
+}
+
+# This returns data about the given Anvil! notification target (taking either the target or its UUID)
+sub notify_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return        = {};
+	my $notify_target = $parameter->{target} ? $parameter->{target} : "";
+	my $notify_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "notify_target", value1 => $notify_target, 
+		name2 => "notify_uuid",   value2 => $notify_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $notify_target) && (not $notify_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0087", code => 87, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    notify_uuid, 
+    notify_name, 
+    notify_target, 
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_note, 
+    modified_date 
+FROM 
+    notifications 
+WHERE 
+";
+	if ($notify_uuid)
+	{
+		$query .= "notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
+	}
+	else
+	{
+		$query .= "notify_target = ".$an->data->{sys}{use_db_fh}->quote($notify_target);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $notify_uuid     = $row->[0];
+		my $notify_name     = $row->[1];
+		my $notify_target   = $row->[2];
+		my $notify_language = $row->[3];
+		my $notify_level    = $row->[4];
+		my $notify_units    = $row->[5];
+		my $notify_note     = $row->[6] ? $row->[6] : "NULL";
+		my $modified_date   = $row->[7];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+			name1 => "notify_uuid",     value1 => $notify_uuid, 
+			name2 => "notify_name",     value2 => $notify_name, 
+			name3 => "notify_target",   value3 => $notify_target, 
+			name4 => "notify_language", value4 => $notify_language, 
+			name5 => "notify_level",    value5 => $notify_level, 
+			name6 => "notify_units",    value6 => $notify_units, 
+			name7 => "notify_note",     value7 => $notify_note, 
+			name8 => "modified_date",   value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Be a lot smarter about this one Validate.pm is up
+		# If the target is an email address, we'll set 'notify_is_email' to 1.
+		my $notify_is_email = $notify_target =~ /\@/ ? 1 : 0;
+		$return = {
+			notify_uuid	=>	$notify_uuid,
+			notify_name	=>	$notify_name, 
+			notify_target	=>	$notify_target, 
+			notify_language	=>	$notify_language, 
+			notify_level	=>	$notify_level, 
+			notify_units	=>	$notify_units, 
+			notify_note	=>	$notify_note, 
+			notify_is_email =>	$notify_is_email,
+			modified_date	=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# This returns data about the given Anvil! owner (taking either the owner name or its UUID)
+sub owner_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return     = {};
+	my $owner_name = $parameter->{name} ? $parameter->{name} : "";
+	my $owner_uuid = $parameter->{uuid} ? $parameter->{uuid} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "owner_name", value1 => $owner_name, 
+		name2 => "owner_uuid", value2 => $owner_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $owner_name) && (not $owner_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0085", code => 85, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    owner_uuid, 
+    owner_name, 
+    owner_note, 
+    modified_date 
+FROM 
+    owners 
+WHERE 
+";
+	if ($owner_uuid)
+	{
+		$query .= "owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid);
+	}
+	else
+	{
+		$query .= "owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $owner_uuid    = $row->[0];
+		my $owner_name    = $row->[1];
+		my $owner_note    = $row->[2] ? $row->[2] : "NULL";
+		my $modified_date = $row->[3];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "owner_uuid",    value1 => $owner_uuid, 
+			name2 => "owner_name",    value2 => $owner_name, 
+			name3 => "owner_note",    value3 => $owner_note, 
+			name4 => "modified_date", value4 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			owner_uuid		=>	$owner_uuid,
+			owner_name		=>	$owner_name, 
+			owner_note		=>	$owner_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# This returns the PIDs found in 'ps' for a given program name.
+sub pids
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What program?
+	if (not $parameter->{program_name})
+	{
+		return(-1);
+	}
+	
+	my $my_pid       = $$;
+	my $program_name = $parameter->{program_name};
+	my $target       = $parameter->{target}       ? $parameter->{target}   : "";
+	my $port         = $parameter->{port}         ? $parameter->{port}     : "";
+	my $password     = $parameter->{password}     ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "my_pid",       value1 => $my_pid,
+		name2 => "program_name", value2 => $program_name, 
+		name3 => "target",       value3 => $target, 
+		name4 => "port",         value4 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If there is a target passed, we're checking a remote machine.
+	my $pids       = [];
+	my $return     = [];
+	my $shell_call = $an->data->{path}{ps}." aux";
+	if ($target)
+	{
+		# Remote call.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		# Local call
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		if ($line =~ /^\S+ \d+ /)
+		{
+			my ($user, $pid, $cpu, $memory, $virtual_memory_size, $resident_set_size, $control_terminal, $state_codes, $start_time, $time, $command) = ($line =~ /^(\S+) (\d+) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*)$/);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
+				name1  => "user",                value1  => $user,
+				name2  => "pid",                 value2  => $pid,
+				name3  => "cpu",                 value3  => $cpu,
+				name4  => "memory",              value4  => $memory,
+				name5  => "virtual_memory_size", value5  => $virtual_memory_size,
+				name6  => "resident_set_size",   value6  => $resident_set_size,
+				name7  => "control_terminal",    value7  => $control_terminal,
+				name8  => "state_codes",         value8  => $state_codes,
+				name9  => "start_time",          value9  => $start_time,
+				name10 => "time",                value10 => $time,
+				name11 => "command",             value11 => $command,
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "command",      value1 => $command,
+				name2 => "program_name", value2 => $program_name, 
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			if ($command =~ /$program_name/)
+			{
+				# If we're calling locally and we see our own PID, skip it.
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+					name1 => "pid",    value1 => $pid,
+					name2 => "my_pid", value2 => $my_pid, 
+					name3 => "target", value3 => $target, 
+				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				if (($pid eq $my_pid) && (not $target))
+				{
+					# This is us! :D
+				}
+				elsif (($command =~ /--status/) or ($command =~ /--state/))
+				{
+					# Ignore this, it's someone else also checking the state.
+				}
+				else
+				{
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "pid", value1 => $pid,
+					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+					push @{$pids}, $pid;
+				}
+			}
+		}
+	}
+	
+	return($pids);
+}
+
+# This returns the RAM used by the passed in PID. If not PID was passed, it returns the RAM used by the 
+# parent process.
+sub ram_used_by_pid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What PID?
+	my $pid = $parameter->{pid} ? $parameter->{pid} : $$;
+	
+	my $total_bytes = 0;
+	my $shell_call  = $an->data->{path}{pmap}." $pid 2>&1 |";
+	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => ">> line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		
+		next if $line !~ /total/;
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		
+		# Dig out the PID
+		my $kilobytes   =  ($line =~ /total (\d+)K/i)[0];
+		my $bytes       =  ($kilobytes * 1024);
+		   $total_bytes += $bytes;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "kilobytes",   value1 => "$kilobytes", 
+			name2 => "bytes",       value2 => "$bytes", 
+			name3 => "total_bytes", value3 => "$total_bytes"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	}
+	close $file_handle;
+	
+	return($total_bytes);
+}
+
+# This uses 'anvil-report-memory' to get the amount of RAM used by a given program name.
+sub ram_used_by_program
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# What program?
+	if (not $parameter->{program_name})
+	{
+		return(-1);
+	}
+	
+	my $total_bytes = 0;
+	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $parameter->{program_name}";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => "$shell_call"
+	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => "$line"
+		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		
+		if ($line =~ /^$parameter->{program_name} = (\d+)/)
+		{
+			$total_bytes = $1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "total_bytes", value1 => $total_bytes
+			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+		}
+	}
+	close $file_handle;
+	
+	return($total_bytes);
+}
+
+# This returns data about a given recipient linkage (taking either the anvil_uuid or notify_uuid)
+sub recipient_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return         = {};
+	my $anvil_uuid     = $parameter->{anvil_uuid}  ? $parameter->{anvil_uuid}  : "";
+	my $notify_uuid    = $parameter->{notify_uuid} ? $parameter->{notify_uuid} : "";
+	my $recipient_uuid = $parameter->{uuid}        ? $parameter->{uuid}        : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "anvil_uuid",     value1 => $anvil_uuid, 
+		name2 => "notify_uuid",    value2 => $notify_uuid, 
+		name3 => "recipient_uuid", value3 => $recipient_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $anvil_uuid) && (not $notify_uuid) && (not $recipient_uuid))
+	{
+		# Oh come on, you had *three* options!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0090", code => 90, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    recipient_uuid, 
+    recipient_anvil_uuid, 
+    recipient_notify_uuid, 
+    recipient_log_level, 
+    recipient_note, 
+    modified_date 
+FROM 
+    recipients 
+WHERE 
+";
+	if ($recipient_uuid)
+	{
+		$query .= "recipient_uuid = ".$an->data->{sys}{use_db_fh}->quote($recipient_uuid);
+	}
+	elsif ($anvil_uuid)
+	{
+		$query .= "recipient_anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid);
+	}
+	else
+	{
+		$query .= "recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $recipient_uuid        = $row->[0];
+		my $recipient_anvil_uuid  = $row->[1];
+		my $recipient_notify_uuid = $row->[2];
+		my $recipient_log_level   = $row->[3] ? $row->[3] : "NULL";
+		my $recipient_note        = $row->[4] ? $row->[4] : "NULL";
+		my $modified_date         = $row->[5];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			name1 => "recipient_uuid",        value1 => $recipient_uuid, 
+			name2 => "recipient_anvil_uuid",  value2 => $recipient_anvil_uuid, 
+			name3 => "recipient_notify_uuid", value3 => $recipient_notify_uuid, 
+			name4 => "recipient_log_level",   value4 => $recipient_log_level, 
+			name5 => "recipient_note",        value5 => $recipient_note, 
+			name6 => "modified_date",         value6 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			recipient_uuid		=>	$recipient_uuid,
+			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
+			recipient_notify_uuid	=>	$recipient_notify_uuid, 
+			recipient_log_level	=>	$recipient_log_level, 
+			recipient_note		=>	$recipient_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# This returns the nodes and anvil password for a (remote) Anvil! as defined in the local striker.conf file.
+sub remote_anvil_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+
+	my $anvil = $parameter->{anvil};
+	if (not $anvil)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0050", code => 50, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Look for the nodes that belong to this Anvil! and query them.
+	my $return = {
+		node1		=>	"",
+		node2		=>	"",
+		anvil_password	=>	"",
+	};
+	my $id = "";
+	foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	{
+		if ($an->data->{cluster}{$this_id}{name} eq $anvil)
+		{
+			# Got it.
+			($return->{node1}, $return->{node2}) = (split/,/, $an->data->{cluster}{$this_id}{nodes});
+			$return->{node1}          =~ s/\s+//g;
+			$return->{node2}          =~ s/\s+//g;
+			$return->{anvil_password} =  $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
+		}
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1", value1 => $return->{node1}, 
+		name2 => "node2", value2 => $return->{node2}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_password", value1 => $return->{anvil_password}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return ($return);
+}
+
+# Get the local user's RSA public key.
+sub rsa_public_key
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $user = $parameter->{user};
+	if (not $user)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0039", code => 33, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "user",     value1 => $user, 
+		name2 => "key_size", value2 => $key_size,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Find the public RSA key file for this user.
+	my $users_home = $an->Get->users_home({user => $user});
+	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "rsa_file", value1 => $rsa_file, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	#If it doesn't exit, create it,
+	if (not -e $rsa_file)
+	{
+		# Generate it.
+		my $ok = $an->Remote->generate_rsa_public_key({user => $user, key_size => $key_size});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "ok", value1 => $ok, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $ok)
+		{
+			# Failed, return.
+			return("", "");
+		}
+	}
+	
+	# Read it!
+	my $key_owner  = "";
+	my $key_string = "";
+	my $shell_call = $rsa_file;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /^ssh-rsa (.*?) (.*?\@.*)$/)
+		{
+			$key_string = $1;
+			$key_owner  = $2;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "key_owner",  value1 => $key_owner, 
+				name2 => "key_string", value2 => $key_string, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	# If I failed to read the key, exit.
+	if ((not $key_owner) or (not $key_string))
+	{
+		# Foo. Warn the user and return.
+		$an->Alert->warning({message_key => "warning_title_0006", message_variables => {
+			user	=>	$user,
+			file	=>	$rsa_file,
+		}, file => $THIS_FILE, line => __LINE__});
+		return("", "");
+	}
+	else
+	{
+		# We're good!
+		$an->Log->entry({log_level => 3, message_key => "notice_message_0008", message_variables => {
+			owner	=>	$key_owner, 
+			key	=>	$key_string, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "key_owner",  value1 => $key_owner, 
+		name2 => "key_string", value2 => $key_string, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($key_owner, $key_string);
+}
+
+# Sets/returns the "am" suffix.
+sub say_am
+{
+	my $self = shift;
+	my $say  = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	if ( defined $say )
+	{
+		$self->{SAY}->{AM} = $say;
+	}
+	
+	return $self->{SAY}->{AM};
+}
+
+# Sets/returns the "pm" suffix.
+sub say_pm
+{
+	my $self = shift;
+	my $say  = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	if ( defined $say )
+	{
+		$self->{SAY}->{PM} = $say;
+	}
+	
+	return $self->{SAY}->{PM};
+}
+
+# This gets the details (except the XML, use '$an->Get->server_xml()' for that) associated with a given 
+# server name,
+sub server_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $return = {};
+	my $server_name = $parameter->{server} ? $parameter->{server} : "";
+	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "server_name", value1 => $server_name, 
+		name2 => "server_uuid", value2 => $server_uuid, 
+		name3 => "anvil",       value3 => $anvil, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $server_name) && (not $server_uuid))
+	{
+		# No server? pur quois?!
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0051", code => 51, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Get the server's UUID.
+	if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
+	{
+		$server_uuid = $an->Get->server_uuid({
+			server => $server_name, 
+			anvil  => $anvil, 
+		});
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server_uuid", value1 => $server_uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
+		{
+			# Bad or no UUID returned.
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0058", message_variables => { uuid => $server_uuid }, code => 58, file => "$THIS_FILE", line => __LINE__});
+		}
+	}
+	else
+	{
+		# Call this anyway as it will ensure we've got the definition XML file.
+		$an->Get->server_uuid({
+			server => $server_name, 
+			anvil  => $anvil, 
+		});
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_uuid", value1 => $server_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Check the server table now (if we have a database connection).
+	if ($server_uuid)
+	{
+		if (not $an->data->{sys}{read_db_id})
+		{
+			# Pick up the XML read by $an->Get->server_uuid()
+			$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return->definition", value1 => $return->{definition},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			my $query = "
+SELECT 
+    server_name, 
+    server_stop_reason, 
+    server_start_after, 
+    server_start_delay, 
+    server_note, 
+    server_host, 
+    server_state, 
+    server_definition, 
+    server_migration_type, 
+    server_pre_migration_script, 
+    server_pre_migration_arguments, 
+    server_post_migration_script, 
+    server_post_migration_arguments, 
+    modified_date
+FROM 
+    servers 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)." 
+;";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+			my $count   = @{$results};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "results", value1 => $results, 
+				name2 => "count",   value2 => $count
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $row (@{$results})
+			{
+				my $server_name                     = $row->[0];
+				my $server_stop_reason              = $row->[1]  ? $row->[1]  : "";
+				my $server_start_after              = $row->[2]  ? $row->[2]  : "";
+				my $server_start_delay              = $row->[3];
+				my $server_note                     = $row->[4]  ? $row->[4]  : "";
+				my $server_host                     = $row->[5]  ? $row->[5]  : "";
+				my $server_state                    = $row->[6]  ? $row->[6]  : "";
+				my $server_definition               = $row->[7]  ? $row->[7]  : "";
+				my $server_migration_type           = $row->[8];
+				my $server_pre_migration_script     = $row->[9];
+				my $server_pre_migration_arguments  = $row->[10] ? $row->[10] : "";
+				my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
+				my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
+				my $modified_date                   = $row->[13] ? $row->[13] : "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+					name1  => "server_name",                     value1  => $server_name, 
+					name2  => "server_stop_reason",              value2  => $server_stop_reason, 
+					name3  => "server_start_after",              value3  => $server_start_after, 
+					name4  => "server_start_delay",              value4  => $server_start_delay, 
+					name5  => "server_note",                     value5  => $server_note, 
+					name6  => "server_host",                     value6  => $server_host, 
+					name7  => "server_state",                    value7  => $server_state, 
+					name8  => "server_definition",               value8  => $server_definition, 
+					name9  => "server_migration_type",           value9  => $server_migration_type, 
+					name10 => "server_pre_migration_script",     value10 => $server_pre_migration_script, 
+					name11 => "server_pre_migration_arguments",  value11 => $server_pre_migration_arguments, 
+					name12 => "server_post_migration_script",    value12 => $server_post_migration_script, 
+					name13 => "server_post_migration_arguments", value13 => $server_post_migration_arguments, 
+					name14 => "modified_date",                   value14 => $modified_date, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				# Push the values into the 'return' hash reference.
+				$return->{uuid}                     = $server_uuid;
+				$return->{name}                     = $server_name;
+				$return->{stop_reason}              = $server_stop_reason;
+				$return->{start_after}              = $server_start_after;
+				$return->{start_delay}              = $server_start_delay;
+				$return->{note}                     = $server_note;
+				$return->{host}                     = $server_host;
+				$return->{'state'}                  = $server_state;
+				$return->{definition}               = $server_definition;
+				$return->{migration_type}           = $server_migration_type;
+				$return->{pre_migration_script}     = $server_pre_migration_script;
+				$return->{pre_migration_arguments}  = $server_pre_migration_arguments;
+				$return->{post_migration_script}    = $server_post_migration_script;
+				$return->{post_migration_arguments} = $server_post_migration_arguments;
+				$return->{modified_date}            = $modified_date;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0015", message_variables => {
+					name1  => "uuid",                     value1  => $return->{uuid}, 
+					name2  => "name",                     value2  => $return->{name}, 
+					name3  => "stop_reason",              value3  => $return->{stop_reason}, 
+					name4  => "start_after",              value4  => $return->{start_after}, 
+					name5  => "start_delay",              value5  => $return->{start_delay}, 
+					name6  => "note",                     value6  => $return->{note}, 
+					name7  => "host",                     value7  => $return->{host}, 
+					name8  => "state",                    value8  => $return->{'state'}, 
+					name9  => "definition",               value9  => $return->{definition}, 
+					name10 => "migration_type",           value10 => $return->{migration_type}, 
+					name11 => "pre_migration_script",     value11 => $return->{pre_migration_script}, 
+					name12 => "pre_migration_arguments",  value12 => $return->{pre_migration_arguments}, 
+					name13 => "post_migration_script",    value13 => $return->{post_migration_script}, 
+					name14 => "post_migration_arguments", value14 => $return->{post_migration_arguments}, 
+					name15 => "modified_date",            value15 => $return->{modified_date}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			# If there were no results, fall back to the XML we got earlier.
+			if (not $return->{modified_date})
+			{
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_name", value1 => $server_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				$server_name =~ s/^vm://;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "server_name", value1 => $server_name,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$return->{definition} = $an->data->{server}{$server_name}{xml} ? $an->data->{server}{$server_name}{xml} : "";
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "return->definition", value1 => $return->{definition},
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Now dig out the storage and network details.
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "return->definition", value1 => $return->{definition}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $return->{definition})
+	{
+		# Get the XML data from the definition file on the host directly.
+		
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0092", code => 92, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	my $xml  = XML::Simple->new();
+	my $data = $xml->XMLin($return->{definition}, KeyAttr => {}, ForceArray => 1);
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "data", value1 => $data, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This array will store the boot devices in their boot priority.
+	$return->{boot_devices} = [];
+	foreach my $device (@{$data->{os}->[0]->{boot}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "device", value1 => $device->{dev}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return->{boot_devices}}, $device->{dev};
+	}
+	
+	# Pull out the RAM.
+	$return->{current_ram} = $an->Readable->hr_to_bytes({size => $data->{currentMemory}->[0]->{content}, type => $data->{currentMemory}->[0]->{unit}});
+	$return->{maximum_ram} = $an->Readable->hr_to_bytes({size => $data->{memory}->[0]->{content}, type => $data->{memory}->[0]->{unit}});
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "return->current_ram", value1 => $return->{current_ram}, 
+		name2 => "return->maximum_ram", value2 => $return->{maximum_ram}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Pull out the CPU info. The topology may not be set, in which case we return '0'.
+	$return->{cpu}{total}   = $data->{vcpu}->[0]->{content};
+	$return->{cpu}{cores}   = $data->{cpu}->[0]->{cores}   ? $data->{cpu}->[0]->{cores}   : 0;
+	$return->{cpu}{sockets} = $data->{cpu}->[0]->{sockets} ? $data->{cpu}->[0]->{sockets} : 0;
+	$return->{cpu}{threads} = $data->{cpu}->[0]->{threads} ? $data->{cpu}->[0]->{threads} : 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "return->cpu::total",   value1 => $return->{cpu}{total}, 
+		name2 => "return->cpu::cores",   value2 => $return->{cpu}{cores}, 
+		name3 => "return->cpu::sockets", value3 => $return->{cpu}{sockets}, 
+		name4 => "return->cpu::threads", value4 => $return->{cpu}{threads}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Pull out the optical disks.
+	foreach my $hash_ref (@{$data->{devices}->[0]->{disk}})
+	{
+		# Disk or cdrom?
+		my $device_type = $hash_ref->{device};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "device_type", value1 => $device_type, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# The backing device (LV or path the the source file, usually) and cache policy, if set.
+		my $backing_device = $hash_ref->{source}->[0]->{dev}   ? $hash_ref->{source}->[0]->{dev}   : $hash_ref->{source}->[0]->{file}; 
+		my $cache_policy   = $hash_ref->{driver}->[0]->{cache} ? $hash_ref->{driver}->[0]->{cache} : "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "backing_device", value1 => $backing_device, 
+			name2 => "cache_policy",   value2 => $cache_policy, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# This is the device presented to the guest OS (vda, hdc, etc) and the bus type (virtio, IDE, etc)
+		my $target_device = $hash_ref->{target}->[0]->{dev};
+		my $target_bus    = $hash_ref->{target}->[0]->{bus};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "target_device", value1 => $target_device, 
+			name2 => "target_bus",    value2 => $target_bus, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Store it all
+		$return->{storage}{$device_type}{target_device}{$target_device} = {
+			backing_device	=>	$backing_device, 
+			cache_policy	=>	$cache_policy, 
+			target_bus	=>	$target_bus, 
+		};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "return->storage::${device_type}::target_device::${target_device}::backing_device", value1 => $return->{storage}{$device_type}{target_device}{$target_device}{backing_device}, 
+			name2 => "return->storage::${device_type}::target_device::${target_device}::cache_policy",   value2 => $return->{storage}{$device_type}{target_device}{$target_device}{cache_policy}, 
+			name3 => "return->storage::${device_type}::target_device::${target_device}::target_bus",     value3 => $return->{storage}{$device_type}{target_device}{$target_device}{target_bus}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Dig out the graphical connection information (the address is complicated for some reason...)
+	$return->{graphics}{port}    = $data->{devices}->[0]->{graphics}->[0]->{port};
+	$return->{graphics}{type}    = $data->{devices}->[0]->{graphics}->[0]->{type};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "return->graphics::port", value1 => $return->{graphics}{port}, 
+		name2 => "return->graphics::type", value2 => $return->{graphics}{type}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$return->{graphics}{address} = "";
+	foreach my $item (@{$data->{devices}->[0]->{graphics}->[0]->{'listen'}})
+	{
+		if (ref($item) eq "HASH")
+		{
+			$return->{graphics}{address} = $item->{address};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $return->{graphics}{address})
+		{
+			$return->{graphics}{address} = $item;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "return->graphics::address", value1 => $return->{graphics}{address}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# Record what happens in given shutdown events.
+	$return->{on_poweroff} = $data->{on_poweroff}->[0];
+	$return->{on_reboot}   = $data->{on_reboot}->[0];
+	$return->{on_crash}    = $data->{on_crash}->[0];
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "return->on_poweroff", value1 => $return->{on_poweroff}, 
+		name2 => "return->on_reboot",   value2 => $return->{on_reboot}, 
+		name3 => "return->on_crash",    value3 => $return->{on_crash}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Dig out the network details.
+	foreach my $hash_ref (@{$data->{devices}->[0]->{interface}})
+	{
+		my $bridge      = $hash_ref->{source}->[0]->{bridge};
+		my $vnet        = $hash_ref->{target}->[0]->{dev};
+		my $model       = $hash_ref->{model}->[0]->{type};
+		my $mac_address = $hash_ref->{mac}->[0]->{address};
+		$return->{network}{mac_address}{$mac_address} = {
+			bridge	=>	$bridge,
+			model	=>	$model,
+			vnet	=>	$vnet,
+		};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "return->network::mac_address::${mac_address}::bridge", value1 => $return->{network}{mac_address}{$mac_address}{bridge}, 
+			name2 => "return->network::mac_address::${mac_address}::model",  value2 => $return->{network}{mac_address}{$mac_address}{model}, 
+			name3 => "return->network::mac_address::${mac_address}::vnet",   value3 => $return->{network}{mac_address}{$mac_address}{vnet}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	return($return);
 }
 
 # This looks for a server by name on both nodes. If it is not found on either, it looks for the server in
@@ -2432,810 +3243,382 @@ fi
 	return($xml);
 }
 
-# This reads /etc/passwd to figure out the requested user's home directory.
-sub users_home
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $user = $parameter->{user};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "user", value1 => $user, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $user)
-	{
-		# No user? No bueno...
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0041", message_variables => {
-			user => $user, 
-		}, code => 38, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	my $users_home = "";
-	my $shell_call = $an->data->{path}{etc_passwd};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /$user:/)
-		{
-			$users_home = (split/:/, $line)[5];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "users_home", value1 => $users_home, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	close $file_handle;
-	
-	# Do I have the a user's $HOME now?
-	if (not $users_home)
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0040", message_variables => {
-			user => $user, 
-		}, code => 34, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "users_home", value1 => $users_home, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($users_home);
-}
-
-# Get the local user's RSA public key.
-sub rsa_public_key
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $user = $parameter->{user};
-	if (not $user)
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0039", code => 33, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	my $key_size = $parameter->{key_size} ? $parameter->{key_size} : 8191;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_rsa_public_key" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "user",     value1 => $user, 
-		name2 => "key_size", value2 => $key_size,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Find the public RSA key file for this user.
-	my $users_home = $an->Get->users_home({user => $user});
-	my $rsa_file   = "$users_home/.ssh/id_rsa.pub";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "rsa_file", value1 => $rsa_file, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	#If it doesn't exit, create it,
-	if (not -e $rsa_file)
-	{
-		# Generate it.
-		my $ok = $an->Remote->generate_rsa_public_key({user => $user, key_size => $key_size});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "ok", value1 => $ok, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if (not $ok)
-		{
-			# Failed, return.
-			return("", "");
-		}
-	}
-	
-	# Read it!
-	my $key_owner  = "";
-	my $key_string = "";
-	my $shell_call = $rsa_file;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /^ssh-rsa (.*?) (.*?\@.*)$/)
-		{
-			$key_string = $1;
-			$key_owner  = $2;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "key_owner",  value1 => $key_owner, 
-				name2 => "key_string", value2 => $key_string, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	close $file_handle;
-	
-	# If I failed to read the key, exit.
-	if ((not $key_owner) or (not $key_string))
-	{
-		# Foo. Warn the user and return.
-		$an->Alert->warning({message_key => "warning_title_0006", message_variables => {
-			user	=>	$user,
-			file	=>	$rsa_file,
-		}, file => $THIS_FILE, line => __LINE__});
-		return("", "");
-	}
-	else
-	{
-		# We're good!
-		$an->Log->entry({log_level => 3, message_key => "notice_message_0008", message_variables => {
-			owner	=>	$key_owner, 
-			key	=>	$key_string, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "key_owner",  value1 => $key_owner, 
-		name2 => "key_string", value2 => $key_string, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($key_owner, $key_string);
-}
-
-# Gets a UUID, either generates a new one or, if 'get' is set, the UUID of the target (with 'host_uuid' 
-# returning the actual host_uuid of the local machine)
-sub uuid
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	### TODO: Figure out why the heck I did this... Remove it, most likely.
-	# Set the 'uuidgen' path if set by the user.
-	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
-	my $get = $parameter->{get} ? $parameter->{get} : "";
-	
-	# If the user asked for the host UUID, read it in.
-	my $uuid = "";
-	if ($get eq "host_uuid")
-	{
-		my $shell_call = $an->data->{path}{host_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			$uuid = lc($_);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "uuid", value1 => $uuid, 
-			}, file => $THIS_FILE, line => __LINE__});
-			last;
-		}
-		close $file_handle;
-	}
-	elsif ($get)
-	{
-		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
-		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-		$uuid = "" if not $uuid;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "uuid", value1 => $uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		my $shell_call = $an->_uuidgen_path." -r";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			$uuid = lc($_);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "uuid", value1 => $uuid, 
-			}, file => $THIS_FILE, line => __LINE__});
-			last;
-		}
-		close $file_handle;
-	}
-	
-	# Did we get a sane value?
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "uuid", value1 => $uuid, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
-	{
-		# Yup. Set the host UUID if that's what we read.
-		$an->data->{sys}{host_uuid} = $uuid if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"));
-	}
-	else
-	{
-		# derp
-		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => {
-			bad_uuid => $uuid, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$uuid = "";
-	}
-	
-	return($uuid);
-}
-
-# Sets/returns the "am" suffix.
-sub say_am
-{
-	my $self = shift;
-	my $say  = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if ( defined $say )
-	{
-		$self->{SAY}->{AM} = $say;
-	}
-	
-	return $self->{SAY}->{AM};
-}
-
-# Sets/returns the "pm" suffix.
-sub say_pm
-{
-	my $self = shift;
-	my $say  = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if ( defined $say )
-	{
-		$self->{SAY}->{PM} = $say;
-	}
-	
-	return $self->{SAY}->{PM};
-}
-
-# Sets/returns the date separator.
-sub date_seperator
-{
-	my $self=shift;
-	my $symbol=shift;
-	
-	# This just makes the code more consistent.
-	my $an=$self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if ( defined $symbol )
-	{
-		$self->{SEPERATOR}->{DATE}=$symbol;
-	}
-	
-	return $self->{SEPERATOR}->{DATE};
-}
-
-# Sets/returns the time separator.
-sub time_seperator
-{
-	my $self   = shift;
-	my $symbol = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if ( defined $symbol )
-	{
-		$self->{SEPERATOR}->{TIME} = $symbol;
-	}
-	
-	return $self->{SEPERATOR}->{TIME};
-}
-
-# This sets/returns whether to use 24-hour or 12-hour, am/pm notation.
-sub use_24h
-{
-	my $self    = shift;
-	my $use_24h = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if (defined $use_24h)
-	{
-		if (( $use_24h == 0 ) || ( $use_24h == 1 ))
-		{
-			$self->{USE_24H} = $use_24h;
-		}
-		else
-		{
-			die "The 'use_24h' method must be passed a '0' or '1' value only.\n";
-		}
-	}
-	
-	return $self->{USE_24H};
-}
-
-# This returns the date and time based on the given unix-time.
-sub date_and_time
+# This gets a list of shared files for the named anvil.
+sub shared_files
 {
 	my $self      = shift;
 	my $parameter = shift;
 	
-	# This just makes the code more consistent.
+	# Clear any prior errors.
 	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# Set default values then check for passed parameters to over-write
-	# them with.
-	my ($offset, $use_time, $require_weekday, $skip_weekends);
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
-		$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
-		$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
-		$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$offset		 = defined $parameter ? $parameter : 0;
-		$use_time	 = defined $_[0] ? $_[0] : time;
-		$require_weekday = defined $_[1] ? $_[1] : "";
-		$skip_weekends	 = defined $_[2] ? $_[2] : "";
-	}
-	
-	# Do my initial calculation.
-	my %time          = ();
-	my $adjusted_time = $use_time+$offset;
-	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
-
-	# If I am set to skip weekends and I land on a weekend, simply add 48
-	# hours. This is useful when you need to move X-weekdays.
-	if (($skip_weekends) && ($offset))
-	{
-		# First thing I need to know is how many weekends pass between
-		# now and the requested date. So to start, how many days are we
-		# talking about?
-		my $difference   = 0;			# Hold the accumulated days in seconds.
-		my $local_offset = $offset;		# Local offset I can mess with.
-		my $day          = 24 * 60 * 60;	# For clarity.
-		my $week         = $day * 7;		# For clarity.
-		
-		# As I proceed, 'local_time' will be subtracted as I account
-		# for time and 'difference' will increase to account for known
-		# weekend days.
-		if ($local_offset =~ /^-/)
-		{
-			### Go back in time...
-			$local_offset =~ s/^-//;
-			
-			# First, how many seconds have passed today?
-			my $seconds_passed_today = $time{sec} + ($time{min}*60) + ($time{hour}*60*60);
-			
-			# Now, get the number of seconds in the offset beyond
-			# an even day. This is compared to the seconds passed
-			# in this day. If greater, I count an extra day.
-			my $local_offset_second_over_day =  $local_offset % $day;
-			$local_offset                    -= $local_offset_second_over_day;
-			my $local_offset_days            =  $local_offset / $day;
-			$local_offset_days++ if $local_offset_second_over_day > $seconds_passed_today;
-			
-			# If the number of days is greater than one week, add
-			# two days to the 'difference' for every seven days and
-			# reduce 'local_offset_days' to the number of days
-			# beyond the given number of weeks.
-			my $local_offset_remaining_days = $local_offset_days;
-			if ($local_offset_days > 7)
-			{
-				# Greater than a week, do the math.
-				$local_offset_remaining_days =  $local_offset_days % 7;
-				$local_offset_days           -= $local_offset_remaining_days;
-				my $weeks_passed             =  $local_offset_days / 7;
-				$difference                  += ($weeks_passed * (2 * $day));
-			}
-			
-			# If I am currently in a weekend, add two days.
-			if (($time{wday} == 6) || ($time{wday} == 0))
-			{
-				$difference += (2 * $day);
-			}
-			else
-			{
-				# Compare 'local_offset_remaining_days' to
-				# today's day. If greater, I've passed a
-				# weekend and need to add two days to
-				# 'difference'.
-				my $today_day = (localtime())[6];
-				if ($local_offset_remaining_days > $today_day)
-				{
-					$difference+=(2 * $day);
-				}
-			}
-			
-			# If I have a difference, recalculate the offset date.
-			if ($difference)
-			{
-				my $new_offset = ($offset - $difference);
-				$adjusted_time = ($use_time + $new_offset);
-				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
-			}
-		}
-		else
-		{
-			### Go forward in time...
-			# First, how many seconds are left in today?
-			my $left_hours            = 23 - $time{hour};
-			my $left_minutes          = 59 - $time{min};
-			my $left_seconds          = 59 - $time{sec};
-			my $seconds_left_in_today = $left_seconds + ($left_minutes*60) + ($left_hours*60*60);
-			
-			# Now, get the number of seconds in the offset beyond
-			# an even day. This is compared to the seconds left in
-			# this day. If greater, I count an extra day.
-			my $local_offset_second_over_day =  $local_offset % $day;
-			$local_offset                    -= $local_offset_second_over_day;
-			my $local_offset_days            =  $local_offset / $day;
-			$local_offset_days++ if $local_offset_second_over_day > $seconds_left_in_today;
-			
-			# If the number of days is greater than one week, add
-			# two days to the 'difference' for every seven days and
-			# reduce 'local_offset_days' to the number of days
-			# beyond the given number of weeks.
-			my $local_offset_remaining_days = $local_offset_days;
-			if ($local_offset_days > 7)
-			{
-				# Greater than a week, do the math.
-				$local_offset_remaining_days =  $local_offset_days % 7;
-				$local_offset_days           -= $local_offset_remaining_days;
-				my $weeks_passed             =  $local_offset_days / 7;
-				$difference                  += ($weeks_passed * (2 * $day));
-			}
-			
-			# If I am currently in a weekend, add two days.
-			if (($time{wday} == 6) || ($time{wday} == 0))
-			{
-				$difference += (2 * $day);
-			}
-			else
-			{
-				# Compare 'local_offset_remaining_days' to
-				# 5 minus today's day to get the number of days
-				# until the weekend. If greater, I've crossed a
-				# weekend and need to add two days to
-				# 'difference'.
-				my $today_day=(localtime())[6];
-				my $days_to_weekend=5 - $today_day;
-				if ($local_offset_remaining_days > $days_to_weekend)
-				{
-					$difference+=(2 * $day);
-				}
-			}
-			
-			# If I have a difference, recalculate the offset date.
-			if ($difference)
-			{
-				my $new_offset = ($offset + $difference);
-				$adjusted_time = ($use_time + $new_offset);
-				($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
-			}
-		}
-	}
-
-	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or
-	# 6 (Saturday), set or increase the offset by 24 or 48 hours.
-	if (($require_weekday) && (( $time{wday} == 0 ) || ( $time{wday} == 6 )))
-	{
-		# The resulting day is a weekend and the require weekday was
-		# set.
-		$adjusted_time = $use_time + ($offset + (24 * 60 * 60));
-		($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
-		
-		# I don't check for the date and adjust automatically because I
-		# don't know if I am going forward or backwards in the calander.
-		if (( $time{wday} == 0 ) || ( $time{wday} == 6 ))
-		{
-			# Am I still ending on a weekday?
-			$adjusted_time = $use_time + ($offset + (48 * 60 * 60));
-			($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
-		}
-	}
-
-	# Increment the month by one.
-	$time{mon}++;
-	
-	# Parse the 12/24h time components.
-	if ($self->use_24h)
-	{
-		# 24h time.
-		$time{pad_hour} = sprintf("%02d", $time{hour});
-		$time{suffix}   = "";
-	}
-	else
-	{
-		# 12h am/pm time.
-		if ( $time{hour} == 0 )
-		{
-			$time{pad_hour} = 12;
-			$time{suffix}   = " ".$self->say_am;
-		}
-		elsif ( $time{hour} < 12 )
-		{
-			$time{pad_hour} = $time{hour};
-			$time{suffix}   = " ".$self->say_am;
-		}
-		else
-		{
-			$time{pad_hour} = ($time{hour}-12);
-			$time{suffix}   = " ".$self->say_pm;
-		}
-		$time{pad_hour} = sprintf("%02d", $time{pad_hour});
-	}
-	
-	# Now parse the global components.
-	$time{pad_min}  = sprintf("%02d", $time{min});
-	$time{pad_sec}  = sprintf("%02d", $time{sec});
-	$time{year}     = ($time{year} + 1900);
-	$time{pad_mon}  = sprintf("%02d", $time{mon});
-	$time{pad_mday} = sprintf("%02d", $time{mday});
-	$time{mon}++;
-	
-	my $date = $time{year}.$self->date_seperator.$time{pad_mon}.$self->date_seperator.$time{pad_mday};
-	my $time = $time{pad_hour}.$self->time_seperator.$time{pad_min}.$self->time_seperator.$time{pad_sec}.$time{suffix};
-	
-	return ($date, $time);
-}
-
-# This returns the PIDs found in 'ps' for a given program name.
-sub pids
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# What program?
-	if (not $parameter->{program_name})
-	{
-		return(-1);
-	}
-	
-	my $my_pid       = $$;
-	my $program_name = $parameter->{program_name};
-	my $target       = $parameter->{target}       ? $parameter->{target}   : "";
-	my $port         = $parameter->{port}         ? $parameter->{port}     : "";
-	my $password     = $parameter->{password}     ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "my_pid",       value1 => $my_pid,
-		name2 => "program_name", value2 => $program_name, 
-		name3 => "target",       value3 => $target, 
-		name4 => "port",         value4 => $port, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
-		name1 => "password", value1 => $password, 
+	# Pick up our parameters
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		name1 => "target",   value1 => $target, 
+		name2 => "port",     value2 => $port, 
+		name3 => "password", value3 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# If there is a target passed, we're checking a remote machine.
-	my $pids       = [];
-	my $return     = [];
-	my $shell_call = $an->data->{path}{ps}." aux";
-	if ($target)
+	# We use '-l' because we can't do normal file tests like checking for executable bits remotely and
+	# it's a waste to parse the output in two different ways.
+	my $ls_shell_call = $an->data->{path}{ls}." -l ".$an->data->{path}{shared_files};
+	my $df_shell_call = $an->data->{path}{df}." -P";
+	
+	# This will store the list of files and the output of our 'ls' call that we'll parse to feed it.
+	my $files     = {};
+	my $partition = {};
+	my $ls_return = [];
+	my $df_return = [];
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
-		# Remote call.
+		### Remote call
+		# ls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "ls_shell_call", value1 => $ls_shell_call,
+			name2 => "target",        value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
-		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+		(my $error, my $ssh_fh, $ls_return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
-			shell_call	=>	$shell_call,
+			shell_call	=>	$ls_shell_call,
+		});
+		
+		# df
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "df_shell_call", value1 => $df_shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		($error, $ssh_fh, $df_return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			ssh_fh		=>	"",
+			'close'		=>	0,
+			shell_call	=>	$df_shell_call,
 		});
 	}
 	else
 	{
-		# Local call
+		### Local call
+		# ls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
+			name1 => "ls_shell_call", value1 => $ls_shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$ls_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $ls_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
 			my $line =  $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-			
-			push @{$return}, $line;
+			push @{$ls_return}, $line;
+		}
+		close $file_handle;
+		
+		# df
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "df_shell_call", value1 => $df_shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open ($file_handle, "$df_shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $df_shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$df_return}, $line;
 		}
 		close $file_handle;
 	}
-	foreach my $line (@{$return})
+	
+	### Now parse out the data.
+	# ls
+	foreach my $line (@{$ls_return})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
+		{
+			my $type   = $1;
+			my $mode   = $2;
+			my $user   = $3;
+			my $group  = $4;
+			my $size   = $5;
+			my $month  = $6;
+			my $day    = $7;
+			my $time   = $8; # might be a year, look for '\d+:\d+'.
+			my $file   = $9;
+			my $target = "";
+			if ($type eq "l")
+			{
+				# It's a symlink, strip off the destination.
+				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
+			}
+			# These are so crude...
+			my $is_iso = 0;
+			if ($file =~ /\.iso/i)
+			{
+				$is_iso = 1;
+			}
+			my $is_executable = 0;
+			if (($mode =~ /x/) or ($mode =~ /s/))
+			{
+				$is_executable = 1;
+			}
+			my $year = "";
+			if ($time !~ /:/)
+			{
+				$year = $time;
+				$time = "";
+			}
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "type",          value1  => $type, 
+				name2  => "mode",          value2  => $mode, 
+				name3  => "user",          value3  => $user, 
+				name4  => "group",         value4  => $group, 
+				name5  => "size",          value5  => $size, 
+				name6  => "month",         value6  => $month, 
+				name7  => "day",           value7  => $day, 
+				name8  => "time",          value8  => $time, 
+				name9  => "year",          value9  => $year, 
+				name10 => "file",          value10 => $file, 
+				name11 => "target",        value11 => $target, 
+				name12 => "is_iso",        value12 => $is_iso, 
+				name13 => "is_executable", value13 => $is_executable, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$files->{$file}	= {
+				type       => $type, 
+				mode       => $mode, 
+				user       => $user, 
+				group      => $group, 
+				size       => $size, 
+				month      => $month, 
+				day        => $day, 
+				'time'     => $time,
+				year       => $year,
+				target     => $target, 
+				optical    => $is_iso,
+				executable => $is_executable,
+			};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
+				name1  => "file",                value1  => $file,
+				name2  => "${file}::type",       value2  => $files->{$file}{type},
+				name3  => "${file}::mode",       value3  => $files->{$file}{mode},
+				name4  => "${file}::owner",      value4  => $files->{$file}{user},
+				name5  => "${file}::group",      value5  => $files->{$file}{group},
+				name6  => "${file}::size",       value6  => $files->{$file}{size},
+				name7  => "${file}::modified",   value7  => $files->{$file}{month},
+				name8  => "${file}::day",        value8  => $files->{$file}{day},
+				name9  => "${file}::time",       value9  => $files->{$file}{'time'},
+				name10 => "${file}::year",       value10 => $files->{$file}{year},
+				name11 => "${file}::target",     value11 => $files->{$file}{target},
+				name12 => "${file}::optical",    value12 => $files->{$file}{optical},
+				name13 => "${file}::executable", value13 => $files->{$file}{executable},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# df
+	foreach my $line (@{$df_return})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		if ($line =~ /^\S+ \d+ /)
+		}, file => $THIS_FILE, line => __LINE__});
+	
+		if ($line =~ /\s(\d+)-blocks\s/)
 		{
-			my ($user, $pid, $cpu, $memory, $virtual_memory_size, $resident_set_size, $control_terminal, $state_codes, $start_time, $time, $command) = ($line =~ /^(\S+) (\d+) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*?) (.*)$/);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
-				name1  => "user",                value1  => $user,
-				name2  => "pid",                 value2  => $pid,
-				name3  => "cpu",                 value3  => $cpu,
-				name4  => "memory",              value4  => $memory,
-				name5  => "virtual_memory_size", value5  => $virtual_memory_size,
-				name6  => "resident_set_size",   value6  => $resident_set_size,
-				name7  => "control_terminal",    value7  => $control_terminal,
-				name8  => "state_codes",         value8  => $state_codes,
-				name9  => "start_time",          value9  => $start_time,
-				name10 => "time",                value10 => $time,
-				name11 => "command",             value11 => $command,
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "command",      value1 => $command,
-				name2 => "program_name", value2 => $program_name, 
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-			if ($command =~ /$program_name/)
-			{
-				# If we're calling locally and we see our own PID, skip it.
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "pid",    value1 => $pid,
-					name2 => "my_pid", value2 => $my_pid, 
-					name3 => "target", value3 => $target, 
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-				if (($pid eq $my_pid) && (not $target))
-				{
-					# This is us! :D
-				}
-				elsif (($command =~ /--status/) or ($command =~ /--state/))
-				{
-					# Ignore this, it's someone else also checking the state.
-				}
-				else
-				{
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "pid", value1 => $pid,
-					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-					push @{$pids}, $pid;
-				}
-			}
-		}
-	}
-	
-	return($pids);
-}
-
-# This uses 'anvil-report-memory' to get the amount of RAM used by a given program name.
-sub ram_used_by_program
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# What program?
-	if (not $parameter->{program_name})
-	{
-		return(-1);
-	}
-	
-	my $total_bytes = 0;
-	my $shell_call  = $an->data->{path}{'anvil-report-memory'}." --program $parameter->{program_name}";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => "$shell_call"
-	}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		
-		if ($line =~ /^$parameter->{program_name} = (\d+)/)
-		{
-			$total_bytes = $1;
+			$partition->{block_size} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "total_bytes", value1 => $total_bytes
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				name1 => "block_size", value1 => $partition->{block_size},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+
+		if ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
+		{
+			$partition->{total_space}  = $1;
+			$partition->{used_space}   = $2;
+			$partition->{free_space}   = $3;
+			$partition->{used_percent} = $4;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+				name1 => "total_space",  value1 => $partition->{total_space},
+				name2 => "used_space",   value2 => $partition->{used_space},
+				name3 => "used_percent", value3 => $partition->{free_space},
+				name4 => "free_space",   value4 => $partition->{used_percent},
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
 		}
 	}
-	close $file_handle;
 	
-	return($total_bytes);
+	return($files, $partition);
 }
 
-# This returns the RAM used by the passed in PID. If not PID was passed, it returns the RAM used by the 
-# parent process.
-sub get_ram_used_by_pid
+# This returns data about the given SMTP server (taking either the server name or its UUID)
+sub smtp_data
 {
 	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
 	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $return      = {};
+	my $smtp_server = $parameter->{server} ? $parameter->{server} : "";
+	my $smtp_uuid   = $parameter->{uuid}   ? $parameter->{uuid}   : "";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "smtp_server", value1 => $smtp_server, 
+		name2 => "smtp_uuid",   value2 => $smtp_uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $smtp_server) && (not $smtp_uuid))
+	{
+		# What is my purpose?
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0086", code => 86, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Which query we use will depend on what data we got.
+	my $query = "
+SELECT 
+    smtp_uuid, 
+    smtp_server, 
+    smtp_port, 
+    smtp_username, 
+    smtp_password, 
+    smtp_security, 
+    smtp_authentication, 
+    smtp_helo_domain, 
+    smtp_note, 
+    modified_date 
+FROM 
+    smtp 
+WHERE 
+";
+	if ($smtp_uuid)
+	{
+		$query .= "smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid);
+	}
+	else
+	{
+		$query .= "smtp_server = ".$an->data->{sys}{use_db_fh}->quote($smtp_server);
+	}
+	$query .= "
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $smtp_uuid           = $row->[0];
+		my $smtp_server         = $row->[1];
+		my $smtp_port           = $row->[2];
+		my $smtp_username       = $row->[3] ? $row->[3] : "NULL";
+		my $smtp_password       = $row->[4] ? $row->[4] : "NULL";
+		my $smtp_security       = $row->[5];
+		my $smtp_authentication = $row->[6];
+		my $smtp_helo_domain    = $row->[7] ? $row->[7] : "NULL";
+		my $smtp_note           = $row->[8] ? $row->[8] : "NULL";
+		my $modified_date       = $row->[9];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			name1  => "smtp_uuid",           value1  => $smtp_uuid, 
+			name2  => "smtp_server",         value2  => $smtp_server, 
+			name3  => "smtp_port",           value3  => $smtp_port, 
+			name4  => "smtp_username",       value4  => $smtp_username, 
+			name5  => "smtp_password",       value5  => $smtp_password, 
+			name6  => "smtp_security",       value6  => $smtp_security, 
+			name7  => "smtp_authentication", value7  => $smtp_authentication, 
+			name8  => "smtp_helo_domain",    value8  => $smtp_helo_domain, 
+			name9  => "smtp_note",           value9  => $smtp_note, 
+			name10 => "modified_date",       value10 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$return = {
+			smtp_uuid		=>	$smtp_uuid,
+			smtp_server		=>	$smtp_server, 
+			smtp_port		=>	$smtp_port, 
+			smtp_username		=>	$smtp_username, 
+			smtp_password		=>	$smtp_password, 
+			smtp_security		=>	$smtp_security, 
+			smtp_authentication	=>	$smtp_authentication, 
+			smtp_helo_domain	=>	$smtp_helo_domain, 
+			smtp_note		=>	$smtp_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# This returns an array of hash references, each hash reference storing a peer node name and the scancore 
+# password.
+sub striker_peers
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# What PID?
-	my $pid = $parameter->{pid} ? $parameter->{pid} : $$;
+	# This array will store the hashes for the peer host names and their passwords.
+	my $peers = [];
 	
-	my $total_bytes = 0;
-	my $shell_call  = $an->data->{path}{pmap}." $pid 2>&1 |";
-	open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__ });
-	while(<$file_handle>)
+	my $i_am_long  = $an->hostname();
+	my $i_am_short = $an->short_hostname();
+	my $local_id   = "";
+	my $db_count   = 0;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "i_am_long",  value1 => $i_am_long, 
+		name2 => "i_am_short", value2 => $i_am_short, 
+		name3 => "local_id",   value3 => $local_id, 
+		name4 => "db_count",   value4 => $db_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		
-		next if $line !~ /total/;
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => "$line"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
-		
-		# Dig out the PID
-		my $kilobytes   =  ($line =~ /total (\d+)K/i)[0];
-		my $bytes       =  ($kilobytes * 1024);
-		   $total_bytes += $bytes;
+		   $db_count++;
+		my $this_host = $an->data->{scancore}{db}{$id}{host};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "kilobytes",   value1 => "$kilobytes", 
-			name2 => "bytes",       value2 => "$bytes", 
-			name3 => "total_bytes", value3 => "$total_bytes"
-		}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			name1 => "this_host", value1 => $this_host, 
+			name2 => "db_count",  value2 => $db_count, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
+		{
+			$local_id = $id;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_id", value1 => $local_id, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
-	close $file_handle;
 	
-	return($total_bytes);
+	# Now I know who I am, find the peer.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
+	{
+		if ($id ne $local_id)
+		{
+			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
+			my $peer_password = $an->data->{scancore}{db}{$id}{password};
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "peer_name",     value1 => $peer_name, 
+				name2 => "peer_password", value2 => $peer_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			push @{$peers}, {name => $peer_name, password => $peer_password};
+		}
+	}
+	
+	return($peers);
 }
 
 # This reads in command line switches.
@@ -3306,96 +3689,6 @@ sub switches
 	}
 	
 	return(0);
-}
-
-# This returns the dotted-decimal IP address for the passed-in host name.
-sub ip
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# What PID?
-	my $host = $parameter->{host};
-	
-	# Error if not host given.
-	if (not $host)
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0047", code => 47, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	my $ip         = "";
-	my $shell_call = $an->data->{path}{gethostip}." -d $host";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		$ip = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "ip", value1 => $ip, 
-		}, file => $THIS_FILE, line => __LINE__});
-		last;
-	}
-	close $file_handle;
-	
-	return ($ip);
-}
-
-# This returns the nodes and anvil password for a (remote) Anvil! as defined in the local striker.conf file.
-sub remote_anvil_details
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-
-	my $anvil = $parameter->{anvil};
-	if (not $anvil)
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0050", code => 50, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Look for the nodes that belong to this Anvil! and query them.
-	my $return = {
-		node1		=>	"",
-		node2		=>	"",
-		anvil_password	=>	"",
-	};
-	my $id = "";
-	foreach my $this_id (sort {$a cmp $b} keys %{$an->data->{cluster}})
-	{
-		if ($an->data->{cluster}{$this_id}{name} eq $anvil)
-		{
-			# Got it.
-			($return->{node1}, $return->{node2}) = (split/,/, $an->data->{cluster}{$this_id}{nodes});
-			$return->{node1}          =~ s/\s+//g;
-			$return->{node2}          =~ s/\s+//g;
-			$return->{anvil_password} =  $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
-		}
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node1", value1 => $return->{node1}, 
-		name2 => "node2", value2 => $return->{node2}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "anvil_password", value1 => $return->{anvil_password}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return ($return);
 }
 
 # This directly gathers information about a node or dashboard from the target.
@@ -3585,12 +3878,11 @@ sub target_details
 	return($return);
 }
 
-### TODO: Switch this to pull from ScanCore once the majority of striker.conf is deprecated.
-# This gathers up information on a node, given the passed-in node name
-sub node_info
+# Sets/returns the time separator.
+sub time_seperator
 {
-	my $self      = shift;
-	my $parameter = shift;
+	my $self   = shift;
+	my $symbol = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -3598,84 +3890,19 @@ sub node_info
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# If no host name is passed in, use this machine's host name.
-	my $node = $parameter->{node} ? $parameter->{node} : $an->hostname;
-	
-	# First, run through the configured Anvil! systems from the striker.conf file.
-	my $return = {};
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	if ( defined $symbol )
 	{
-		my $company         =  $an->data->{cluster}{$id}{company};		#	=	Alteeve's Niche!
-		my $description     =  $an->data->{cluster}{$id}{description};		#	=	Alteeve Development VM Anvil! (CentOS)
-		my $name            =  $an->data->{cluster}{$id}{name};			#	=	an-anvil-03
-		my ($node1, $node2) =  (split/,/, $an->data->{cluster}{$id}{nodes});	#	=	an-a03n01.alteeve.ca, an-a03n02.alteeve.ca
-		my $password        =  $an->data->{cluster}{$id}{root_pw};
-		   $password        =  $an->data->{cluster}{$id}{ricci_pw} if not $password;
-		   $node1           =~ s/^\s+//;
-		   $node1           =~ s/\s+$//;
-		   $node2           =~ s/^\s+//;
-		   $node2           =~ s/\s+$//;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "company",     value1 => $company, 
-			name2 => "description", value2 => $description, 
-			name3 => "name",        value3 => $name, 
-			name4 => "node1",       value4 => $node1, 
-			name5 => "node2",       value5 => $node2, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "password", value1 => $password, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($node =~ /$node1/)
-		{
-			$return->{'local'}  = $node1;
-			$return->{peer}     = $node2;
-			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "local",    value1 => $return->{'local'}, 
-				name2 => "peer",     value2 => $return->{peer}, 
-				name3 => "anvil_id", value3 => $return->{anvil_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($node =~ /$node2/)
-		{
-			$return->{'local'}  = $node2;
-			$return->{peer}     = $node1;
-			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "local",    value1 => $return->{'local'}, 
-				name2 => "peer",     value2 => $return->{peer}, 
-				name3 => "anvil_id", value3 => $return->{anvil_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		if ($return->{anvil_id})
-		{
-			$return->{company}     = $company;
-			$return->{description} = $description;
-			$return->{anvil_name}  = $name;
-			$return->{password}    = $password;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "company",     value1 => $return->{company}, 
-				name2 => "description", value2 => $return->{description}, 
-				name3 => "anvil_name",  value3 => $return->{anvil_name}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $return->{password}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		last if $return->{anvil_id};
+		$self->{SEPERATOR}->{TIME} = $symbol;
 	}
 	
-	return($return);
+	return $self->{SEPERATOR}->{TIME};
 }
 
-# This returns the peer node and anvil! name depending on the passed-in host name. This is called by nodes 
-# in an Anvil!.
-sub local_anvil_details
+# This sets/returns whether to use 24-hour or 12-hour, am/pm notation.
+sub use_24h
 {
-	my $self      = shift;
-	my $parameter = shift;
+	my $self    = shift;
+	my $use_24h = shift;
 	
 	# This just makes the code more consistent.
 	my $an = $self->parent;
@@ -3683,438 +3910,167 @@ sub local_anvil_details
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# If no host name is passed in, use this machine's host name.
-	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
-	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
-	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cman_config};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "hostname_full",  value1 => $hostname_full, 
-		name2 => "hostname_short", value2 => $hostname_short, 
-		name3 => "config_file",    value3 => $config_file, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	### TODO: Error if no config file is passed in.
-	# Read in cluster.conf.
-	my $xml  = XML::Simple->new();
-	my $data = $xml->XMLin($config_file, KeyAttr => {node => 'name'}, ForceArray => 1);
-	
-	### TODO: Detect whether this is reading in cluster.conf or cibadmin
-	my $return = {
-		local_node	=>	"",
-		peer_node	=>	"",
-		anvil_name	=>	$data->{name},
-		anvil_password	=>	"",
-	};
-	foreach my $hash_ref (@{$data->{clusternodes}->[0]->{clusternode}})
+	if (defined $use_24h)
 	{
-		my $node_name = $hash_ref->{name};
-		my $hash_reflt_name  = $hash_ref->{altname}->[0]->{name} ? $hash_ref->{altname}->[0]->{name} : "";
-		if (($hostname_full  eq $node_name) or 
-		    ($hostname_full  eq $hash_reflt_name)  or 
-		    ($hostname_short eq $node_name) or 
-		    ($hostname_short eq $hash_reflt_name))
+		if (( $use_24h == 0 ) || ( $use_24h == 1 ))
 		{
-			$return->{local_node} =  $node_name;
-			$return->{local_node} =~ s/\s//g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "local_node", value1 => $return->{local_node}, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$self->{USE_24H} = $use_24h;
 		}
 		else
 		{
-			$return->{peer_node} =  $node_name;
-			$return->{peer_node} =~ s/\s//g;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "peer_node", value1 => $return->{peer_node}, 
-			}, file => $THIS_FILE, line => __LINE__});
+			die "The 'use_24h' method must be passed a '0' or '1' value only.\n";
 		}
 	}
 	
-	# Find the servers running locally and store their details.
-	my $clustat_data = $an->Cman->get_clustat_data();
-	foreach my $server (sort {$a cmp $b} keys %{$clustat_data->{server}})
-	{
-		$return->{server}{$server}{'state'} = $clustat_data->{server}{$server}{status};
-		$return->{server}{$server}{host}    = $clustat_data->{server}{$server}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "server::${server}::state", value1 => $return->{server}{$server}{'state'}, 
-			name2 => "server::${server}::host",  value2 => $return->{server}{$server}{host}, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# Now see if this Anvil! is in the database or, failing that, if it was read in from striker.conf.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "anvil_name", value1 => $return->{anvil_name}, 
-		name2 => "cluster",    value2 => ref($an->data->{cluster}), 
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($return->{anvil_name})
-	{
-		my $anvil_data = $an->ScanCore->get_anvils();
-		foreach my $hash_ref (@{$anvil_data})
-		{
-			if ($hash_ref->{anvil_name} eq $return->{anvil_name})
-			{
-				# Found it.
-				$return->{anvil_password} = $hash_ref->{anvil_password};
-				
-			}
-		}
-		if (ref($an->data->{cluster}) eq "HASH")
-		{
-			foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "id",                   value1 => $id, 
-					name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
-					name3 => "anvil_name",           value3 => $return->{anvil_name}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
-				{
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-						name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
-						name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{cluster}{$id}{root_pw})
-					{
-						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-							name1 => "anvil_password", value1 => $return->{anvil_password}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					elsif ($an->data->{cluster}{$id}{ricci_pw})
-					{
-						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-							name1 => "anvil_password", value1 => $return->{anvil_password}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					last;
-				}
-			}
-		}
-	}
-	
-	# Read in the node health files, if I can access them.
-	my $local_health_file = $an->data->{path}{status}."/.".$an->short_hostname;
-	my $peer_health_file  = $an->data->{path}{status}."/.".$an->Cman->peer_short_hostname;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "local_health_file", value1 => $local_health_file, 
-		name2 => "peer_health_file",  value2 => $peer_health_file, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$return->{health}{'local'} = "--";
-	$return->{health}{peer}    = "--";
-	if (-e $local_health_file)
-	{
-		my $shell_call = $local_health_file;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /health = (.*)$/)
-			{
-				$return->{health}{'local'} = $1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "return->health::local", value1 => $return->{health}{'local'}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		close $file_handle;
-	}
-	else
-	{
-		# Local health file doesn't exist.
-		$an->Log->entry({log_level => 3, message_key => "tools_log_0018", message_variables => {
-			file => $local_health_file, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	if (-e $peer_health_file)
-	{
-		my $shell_call = $peer_health_file;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($line =~ /health = (.*)$/)
-			{
-				$return->{health}{peer} = $1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "return->health::peer", value1 => $return->{health}{peer}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-		close $file_handle;
-	}
-	else
-	{
-		# Peer's health file doesn't exist.
-		$an->Log->entry({log_level => 3, message_key => "tools_log_0018", message_variables => {
-			file => $peer_health_file, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-		name1 => "local_node",    value1 => $return->{local_node}, 
-		name2 => "peer_node",     value2 => $return->{peer_node}, 
-		name3 => "anvil_name",    value3 => $return->{anvil_name}, 
-		name4 => "health::local", value4 => $return->{health}{'local'}, 
-		name5 => "health::peer",  value5 => $return->{health}{peer}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "anvil_password", value1 => $return->{anvil_password}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return ($return);
+	return $self->{USE_24H};
 }
 
-# This returns an array of hash references, each hash reference storing a peer node name and the scancore 
-# password.
-sub striker_peers
+# This reads /etc/passwd to figure out the requested user's home directory.
+sub users_home
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# This array will store the hashes for the peer host names and their passwords.
-	my $peers = [];
-	
-	my $i_am_long  = $an->hostname();
-	my $i_am_short = $an->short_hostname();
-	my $local_id   = "";
-	my $db_count   = 0;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "i_am_long",  value1 => $i_am_long, 
-		name2 => "i_am_short", value2 => $i_am_short, 
-		name3 => "local_id",   value3 => $local_id, 
-		name4 => "db_count",   value4 => $db_count, 
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		   $db_count++;
-		my $this_host = $an->data->{scancore}{db}{$id}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "this_host", value1 => $this_host, 
-			name2 => "db_count",  value2 => $db_count, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if (($this_host eq $i_am_long) or ($this_host eq $i_am_short))
-		{
-			$local_id = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "local_id", value1 => $local_id, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# Now I know who I am, find the peer.
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
-	{
-		if ($id ne $local_id)
-		{
-			my $peer_name     = $an->data->{scancore}{db}{$id}{host};
-			my $peer_password = $an->data->{scancore}{db}{$id}{password};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "peer_name",     value1 => $peer_name, 
-				name2 => "peer_password", value2 => $peer_password, 
-			}, file => $THIS_FILE, line => __LINE__});
-			push @{$peers}, {name => $peer_name, password => $peer_password};
-		}
-	}
-	
-	return($peers);
-}
-
-### TODO: Make this work on local and remote calls.
-# This checks to see if the 'install target' feature is enabled or disabled.
-sub install_target_state
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# If the control program exists, call it with '--status'
-	my $install_target_state = 2;
+	my $user = $parameter->{user};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::call_striker-manage-install-target", value1 => $an->data->{path}{'call_striker-manage-install-target'},
+		name1 => "user", value1 => $user, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $an->data->{path}{'call_striker-manage-install-target'})
+	if (not $user)
 	{
-		my $shell_call = $an->data->{path}{'call_striker-manage-install-target'}." --status";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($line =~ /state:(\d+)/)
-			{
-				my $state = $1;
-				# 0 = stopped
-				# 1 = running
-				# 2 = unknown
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "state", value1 => $state,
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($state eq "0")
-				{
-					$install_target_state = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "install_target_state", value1 => $install_target_state,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				elsif ($state eq "1")
-				{
-					$install_target_state = 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "install_target_state", value1 => $install_target_state,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-		}
-		close $file_handle;
-	}
-	else
-	{
-		# The install target control setuid script wasn't found
-		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
-			file => $an->data->{path}{install_target_conf},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	# 0 == Stopped
-	# 1 == Running
-	# 2 == Unknown
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "install_target_state", value1 => $install_target_state,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($install_target_state);
-}
-
-# This takes an IP, compares it to the BCN, SN and IFN networks and returns the
-# netmask from the matched network.
-sub netmask_from_ip
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	if (not $parameter->{ip})
-	{
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0095", code => 95, file => "$THIS_FILE", line => __LINE__});
+		# No user? No bueno...
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0041", message_variables => {
+			user => $user, 
+		}, code => 38, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
-	my $ip = $parameter->{ip};
 	
-	### TODO: Make this support all possible subnet masks.
-	my $netmask = "";
-	
-	# Create short versions of the three networks that I can use in the
-	# regex.
-	my $short_bcn = "";
-	my $short_sn = "";
-	my $short_ifn = "";
-	
-	# BCN
-	if ($an->data->{cgi}{anvil_bcn_subnet} eq "255.0.0.0")
-	{
-		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.0.0")
-	{
-		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_bcn_subnet} eq "255.255.255.0")
-	{
-		$short_bcn = ($an->data->{cgi}{anvil_bcn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
-	}
-	
-	# SN
-	if ($an->data->{cgi}{anvil_sn_subnet} eq "255.0.0.0")
-	{
-		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.0.0")
-	{
-		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_sn_subnet} eq "255.255.255.0")
-	{
-		$short_sn = ($an->data->{cgi}{anvil_sn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
-	}
-	
-	# IFN 
-	if ($an->data->{cgi}{anvil_ifn_subnet} eq "255.0.0.0")
-	{
-		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.0.0")
-	{
-		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.)/)[0];
-	}
-	elsif ($an->data->{cgi}{anvil_ifn_subnet} eq "255.255.255.0")
-	{
-		$short_ifn = ($an->data->{cgi}{anvil_ifn_network} =~ /^(\d+\.\d+\.\d+\.)/)[0];
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "short_bcn", value1 => $short_bcn,
-		name2 => "short_sn",  value2 => $short_sn,
-		name3 => "short_ifn", value3 => $short_ifn,
+	my $users_home = "";
+	my $shell_call = $an->data->{path}{etc_passwd};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /$user:/)
+		{
+			$users_home = (split/:/, $line)[5];
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "users_home", value1 => $users_home, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
 	
-	if ($ip =~ /^$short_bcn/)
+	# Do I have the a user's $HOME now?
+	if (not $users_home)
 	{
-		$netmask = $an->data->{cgi}{anvil_bcn_subnet};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "netmask", value1 => $netmask,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($ip =~ /^$short_sn/)
-	{
-		$netmask = $an->data->{cgi}{anvil_sn_subnet};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "netmask", value1 => $netmask,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($ip =~ /^$short_ifn/)
-	{
-		$netmask = $an->data->{cgi}{anvil_ifn_subnet};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "netmask", value1 => $netmask,
-		}, file => $THIS_FILE, line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0040", message_variables => {
+			user => $user, 
+		}, code => 34, file => "$THIS_FILE", line => __LINE__});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "netmask", value1 => $netmask,
+		name1 => "users_home", value1 => $users_home, 
 	}, file => $THIS_FILE, line => __LINE__});
-	return($netmask);
+	return($users_home);
 }
+
+# Gets a UUID, either generates a new one or, if 'get' is set, the UUID of the target (with 'host_uuid' 
+# returning the actual host_uuid of the local machine)
+sub uuid
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	### TODO: Figure out why the heck I did this... Remove it, most likely.
+	# Set the 'uuidgen' path if set by the user.
+	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
+	my $get = $parameter->{get} ? $parameter->{get} : "";
+	
+	# If the user asked for the host UUID, read it in.
+	my $uuid = "";
+	if ($get eq "host_uuid")
+	{
+		my $shell_call = $an->data->{path}{host_uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			$uuid = lc($_);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "uuid", value1 => $uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		close $file_handle;
+	}
+	elsif ($get)
+	{
+		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
+		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$uuid = "" if not $uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid", value1 => $uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		my $shell_call = $an->_uuidgen_path." -r";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			$uuid = lc($_);
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "uuid", value1 => $uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		close $file_handle;
+	}
+	
+	# Did we get a sane value?
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "uuid", value1 => $uuid, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/)
+	{
+		# Yup. Set the host UUID if that's what we read.
+		$an->data->{sys}{host_uuid} = $uuid if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"));
+	}
+	else
+	{
+		# derp
+		$an->Log->entry({log_level => 0, message_key => "error_message_0023", message_variables => {
+			bad_uuid => $uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$uuid = "";
+	}
+	
+	return($uuid);
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

@@ -9,18 +9,23 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Storage.pm";
 
-### Methods
+### Methods;
 # cleanup_gfs2
-# prep_local_uuid
-# rsync
 # find
+# prep_local_uuid
 # read_conf
-# search_dirs
-# read_ssh_config
 # read_hosts
+# read_ssh_config
+# read_words
 # read_xml_file
+# rsync
+# search_dirs
 # _create_rsync_wrapper
 
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 # The constructor
 sub new
@@ -47,6 +52,11 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # This cleans up stale gfs2 lock files.
 sub cleanup_gfs2
@@ -165,6 +175,78 @@ sub cleanup_gfs2
 	
 	return(0);
 }
+### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
+###       directories can be added to it after reading a config file. Make this method take an array 
+###       reference to work on.
+# This method searches the storage device for a give file or directory.
+sub find
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Setup default values
+	#print "$THIS_FILE ".__LINE__."; ENV{PWD}: [$ENV{PWD}]\n";
+	my $file  = "";
+	my $dirs  = $an->Storage->search_dirs;
+	#print "$THIS_FILE ".__LINE__."; dirs: [$dirs]\n";
+	#if (ref($dirs) eq "ARRAY") { foreach my $dir (@{$dirs}) { print "$THIS_FILE ".__LINE__."; - dir: [$dir]\n"; } }
+	my $fatal = 0;
+	push @{$dirs}, $ENV{PWD} if $ENV{PWD};
+	
+	$fatal = $parameter->{fatal} if $parameter->{fatal};
+	$file  = $parameter->{file}  if $parameter->{file};
+	$dirs  = $parameter->{dirs}  if $parameter->{dirs};
+	#print "$THIS_FILE ".__LINE__."; file: [$file], dirs: [$dirs], fatal: [$fatal]\n";
+	
+	# This is the underlying operating system's directory delimiter as set by the parent method.
+	my $delimiter = $an->_directory_delimiter;
+	#print "$THIS_FILE ".__LINE__."; delimiter: [$delimiter]\n";
+	if ($file =~ /::/)
+	{
+		$file =~ s/::/$delimiter/g;
+		#print "$THIS_FILE ".__LINE__."; file: [$file]\n";
+	}
+	
+	# Each full path and file name will be stored here before the test.
+	my $full_file = "";
+	foreach my $dir (@{$dirs})
+	{
+		# If "dir" is ".", expand it.
+		$dir =  $ENV{PWD} if (($dir eq ".") && ($ENV{PWD}));
+		#print "$THIS_FILE ".__LINE__."; dir: [$dir], delimiter: [$delimiter], file: [$file]\n";
+		
+		# Put together the initial path
+		$full_file =  $dir.$delimiter.$file;
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
+
+		# Convert double-colons to the OS' directory delimiter
+		$full_file =~ s/::/$delimiter/g;
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
+
+		# Clear double-delimiters.
+		$full_file =~ s/$delimiter$delimiter/$delimiter/g;
+		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
+		
+		#print "$THIS_FILE ".__LINE__."; Searching for: [$full_file] ([$dir] / [$file])\n";
+		if (-f $full_file)
+		{
+			# Found it, return.
+			#print "$THIS_FILE ".__LINE__."; Found it!\n";
+			return ($full_file);
+		}
+	}
+	
+	if ($fatal)
+	{
+		print "$THIS_FILE ".__LINE__."; Failed to find: [$file]\n";
+		$an->Alert->error({fatal => 1, title_key => "error_title_0002", message_key => "error_message_0002", message_variables => { file => $file }, code => 44, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I am here, I failed but fatal errors are disabled.
+	return (0);
+}
 
 # Get (create if needed) my UUID.
 sub prep_local_uuid
@@ -245,128 +327,246 @@ sub prep_local_uuid
 	return($an->data->{sys}{host_uuid});
 }
 
-# This creates an 'expect' wrapper and then calls rsync to copy data between this machine and a remote 
-# system.
-sub rsync
+# This reads in a configuration file and stores it in either the passed hash reference else in $an->data else
+# in a new anonymous hash.
+sub read_conf
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an    = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $file;
+	my $hash = $an->data;
+	
+	# This is/was for testing.
+	if (0)
+	{
+		foreach my $key (sort {$a cmp $b} keys %ENV) { print "ENV key: [$key]\t=\t[$ENV{$key}]\n"; }
+		foreach my $key (sort {$a cmp $b} keys %INC) { print "INC key: [$key]\t=\t[$INC{$key}]\n"; }
+		exit;
+	}
+	
+	# Now see if the user passed the values in a hash reference or directly.
+	if (ref($parameter) eq "HASH")
+	{
+		# Values passed in a hash, good.
+		$file = $parameter->{file} if $parameter->{file};
+		$hash = $parameter->{hash} if $parameter->{hash};
+	}
+	else
+	{
+		# Values passed directly.
+		$file = $parameter;
+		$hash = $_[0] if defined $_[0];
+	}
+	
+	# Make sure I have a sane file name.
+	if ($file)
+	{
+		# Find it relative to the AN::Tools root directory.
+		if ($file =~ /^AN::Tools/)
+		{
+			my $dir =  $INC{'AN/Tools.pm'};
+			$dir    =~ s/Tools.pm//;
+			$file   =~ s/AN::Tools\//$dir/;
+			$file   =~ s/\/\//\//g;
+		}
+		
+		# I have a file. Is it relative to the install dir or fully qualified?
+		if (($file =~ /^\.\//) || ($file !~ /^\//))
+		{
+			# It's in or relative to this directory.
+			if ($ENV{PWD})
+			{
+				# Can expand using the environment variable.
+				$file =~ s/^\./$ENV{PWD}/;
+			}
+			else
+			{
+				# No environmnet variable, search the array of directories.
+				$file = $an->Storage->find({fatal=>1, file=>$file});
+			}
+		}
+	}
+	else
+	{
+		# No file at all...
+		die "$THIS_FILE ".__LINE__."; [ Error ] - No file was passed in to read.\n";
+	}
+	
+	# Now that I have a file, read it.
+	$an->_load_io_handle() if not $an->_io_handle_loaded();
+	my $read = IO::Handle->new();
+	
+	# Is it too early to use "$an->error"?
+	my $short_hostname = $an->short_hostname;
+	my $hostname       = $an->hostname;
+	open ($read, "<$file") or die "Can't read: [$file], error was: $!\n";
+	while (<$read>)
+	{
+		chomp;
+		my $line  =  $_;
+		   $line  =~ s/^\s+//;
+		   $line  =~ s/\s+$//;
+		next if ((not $line) or ($line =~ /^#/));
+		next if $line !~ /=/;
+		my ($variable, $value) = split/=/, $line, 2;
+		$variable =~ s/\s+$//;
+		$value    =~ s/^\s+//;
+		next if not $variable;
+		
+		# If the variable has '#!hostname!#' or '#!short_hostname!#', convert it now.
+		$value =~ s/#!hostname!#/$hostname/g;
+		$value =~ s/#!short_hostname!#/$short_hostname/g;
+		
+		$an->_make_hash_reference($hash, $variable, $value);
+	}
+	$read->close();
+	
+	### MADI: Make this a more intelligent method that can go a variable
+	###       number of sub-keys deep and does a search/replace of
+	###       variables based on a given key match.
+	# Some keys store directories. Below, I convert the ones I know about
+	# to the current operating system's directory delimiter where '::' is
+	# found.
+	my $directory_delimiter = $an->_directory_delimiter();
+	foreach my $key (keys %{$an->data->{dir}})
+	{
+		if (not ref($an->data->{dir}{$key}))
+		{
+			$an->data->{dir}{$key} =~ s/::/$directory_delimiter/g;
+		}
+	}
+	
+	return ($hash);
+}
+
+# This reads in the /etc/hosts file so that entries for the deleted nodes can be removed.
+sub read_hosts
 {
 	my $self      = shift;
 	my $parameter = shift;
 	
-	# Clear any prior errors.
+	# This just makes the code more consistent.
 	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# Check my parameters.
-	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
-	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
-	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
-	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
-	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "target",      value1 => $target, 
-		name2 => "source",      value2 => $source, 
-		name3 => "destination", value3 => $destination, 
-		name4 => "switches",    value4 => $switches, 
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
+		file => $an->data->{path}{etc_hosts}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password, 
-	}, file => $THIS_FILE, line => __LINE__});
+	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
 	
-	# Make sure I have everything I need.
-	my $failed = 0;
-	if (not $source)
-	{
-		# No source
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => "$THIS_FILE", line => __LINE__});
-		$failed = 1;
-	}
-	if (not $destination)
-	{
-		# No destination
-		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => "$THIS_FILE", line => __LINE__});
-		$failed = 1;
-	}
+	# This will hold the raw contents of the file.
+	$hash->{raw}{etc_hosts} = "";
 	
-	# If either the source or destination is remote, we need to make sure we have the remote machine in
-	# the current user's ~/.ssh/known_hosts file.
-	my $remote_user    = "";
-	my $remote_machine = "";
-	if ($source =~ /^(.*?)@(.*?):/)
+	# Now read in the file
+	my $shell_call = $an->data->{path}{etc_hosts};
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
 	{
-		$remote_user    = $1;
-		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "remote_user",    value1 => $remote_user, 
-			name2 => "remote_machine", value2 => $remote_machine, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	elsif ($destination =~ /^(.*?)@(.*?):/)
-	{
-		$remote_user    = $1;
-		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "remote_user",    value1 => $remote_user, 
-			name2 => "remote_machine", value2 => $remote_machine, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	if ($remote_machine)
-	{
-		# Make sure we know the fingerprint of the remote machine
-		$an->Remote->add_target_to_known_hosts({target => $remote_machine});
-		
-		# Make sure we have a target and password for the remote machine.
-		if (not $target)
-		{
-			# No target, set the 'remote_machine' as the target.
-			$target = $remote_machine;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "target", value1 => $target, 
-			}, file => $THIS_FILE, line => __LINE__});
-			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
-			$failed = 1;
-		}
-		if (not $password)
-		{
-			# No password
-			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
-			$failed = 1;
-		}
-	}
-	
-	# If local, call rsync directly. If remote, setup the rsync wrapper
-	my $shell_call = $an->data->{path}{rsync}." $switches $source $destination";
-	if ($remote_machine)
-	{
-		# Remote target, wrapper needed.
-		my $wrapper = $an->Storage->_create_rsync_wrapper({
-			target   => $target,
-			password => $password, 
-		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "wrapper", value1 => $wrapper, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# And make the shell call
-		$shell_call = "$wrapper $switches $source $destination";
-	}
-	# Now make the call
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		# There should never be any output, but just in case...
 		chomp;
-		my $line = $_;
-		   $line =~ s/\r//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
+		my $line                   =  $_;
+		   $hash->{raw}{etc_hosts} .= "$line\n";
+		   $line                   =~ s/^\s+//;
+		   $line                   =~ s/#.*$//;
+		   $line                   =~ s/\s+$//;
+		next if not $line;
+		
+		my $this_ip     = "";
+		my $these_hosts = "";
+		### NOTE: We don't support IPv6 yet
+		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
+		{
+			$this_ip     = $1;
+			$these_hosts = $2;
+			foreach my $this_host (split/ /, $these_hosts)
+			{
+				$hash->{hosts}{$this_host}{ip} = $this_ip;
+				if (not exists $hash->{hosts}{by_ip}{$this_ip})
+				{
+					$hash->{hosts}{by_ip}{$this_ip} = [];
+				}
+				push @{$hash->{hosts}{by_ip}{$this_ip}}, $this_host;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_host", value1 => $this_host, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	close $file_handle;
 	
-	return($failed);
+	# Debug
+	foreach my $this_ip (sort {$a cmp $b} keys %{$hash->{hosts}{by_ip}})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "this_ip", value1 => $this_ip, 
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $this_host (sort {$a cmp $b} @{$hash->{hosts}{by_ip}{$this_ip}})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "this_host", value1 => $this_host, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
+}
+
+# This reads /etc/ssh/ssh_config and later will try to match host names to port forwards.
+sub read_ssh_config
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
+		file	=>	$an->data->{path}{ssh_config}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
+	
+	# This will hold the raw contents of the file.
+	$hash->{raw}{ssh_config} = "";
+	
+	# Now read in the file
+	my $this_host  = "";
+	my $shell_call = $an->data->{path}{ssh_config};
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while (<$file_handle>)
+	{
+		chomp;
+		my $line                    =  $_;
+		   $hash->{raw}{ssh_config} .= "$line\n";
+		   $line                    =~ s/#.*$//;
+		   $line                    =~ s/\s+$//;
+		next if not $line;
+		
+		if ($line =~ /^host (.*)/i)
+		{
+			$this_host = $1;
+			next;
+		}
+		next if not $this_host;
+		if ($line =~ /port (\d+)/i)
+		{
+			my $port = $1;
+			$hash->{hosts}{$this_host}{port} = $port;
+		}
+	}
+	close $file_handle;
+	
+	return($hash);
 }
 
 # This takes the path/name of an XML file containing AN::Tools type words and reads them into a hash 
@@ -662,376 +862,6 @@ sub read_words
 	return (1);
 }
 
-### TODO: Add a function to create a list of searchable directories that starts with @INC so that a CSV of 
-###       directories can be added to it after reading a config file. Make this method take an array 
-###       reference to work on.
-# This method searches the storage device for a give file or directory.
-sub find
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	$an->Alert->_set_error;
-	
-	# Setup default values
-	#print "$THIS_FILE ".__LINE__."; ENV{PWD}: [$ENV{PWD}]\n";
-	my $file  = "";
-	my $dirs  = $an->Storage->search_dirs;
-	#print "$THIS_FILE ".__LINE__."; dirs: [$dirs]\n";
-	#if (ref($dirs) eq "ARRAY") { foreach my $dir (@{$dirs}) { print "$THIS_FILE ".__LINE__."; - dir: [$dir]\n"; } }
-	my $fatal = 0;
-	push @{$dirs}, $ENV{PWD} if $ENV{PWD};
-	
-	$fatal = $parameter->{fatal} if $parameter->{fatal};
-	$file  = $parameter->{file}  if $parameter->{file};
-	$dirs  = $parameter->{dirs}  if $parameter->{dirs};
-	#print "$THIS_FILE ".__LINE__."; file: [$file], dirs: [$dirs], fatal: [$fatal]\n";
-	
-	# This is the underlying operating system's directory delimiter as set by the parent method.
-	my $delimiter = $an->_directory_delimiter;
-	#print "$THIS_FILE ".__LINE__."; delimiter: [$delimiter]\n";
-	if ($file =~ /::/)
-	{
-		$file =~ s/::/$delimiter/g;
-		#print "$THIS_FILE ".__LINE__."; file: [$file]\n";
-	}
-	
-	# Each full path and file name will be stored here before the test.
-	my $full_file = "";
-	foreach my $dir (@{$dirs})
-	{
-		# If "dir" is ".", expand it.
-		$dir =  $ENV{PWD} if (($dir eq ".") && ($ENV{PWD}));
-		#print "$THIS_FILE ".__LINE__."; dir: [$dir], delimiter: [$delimiter], file: [$file]\n";
-		
-		# Put together the initial path
-		$full_file =  $dir.$delimiter.$file;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
-
-		# Convert double-colons to the OS' directory delimiter
-		$full_file =~ s/::/$delimiter/g;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
-
-		# Clear double-delimiters.
-		$full_file =~ s/$delimiter$delimiter/$delimiter/g;
-		#print "$THIS_FILE ".__LINE__."; full file: [$full_file]\n";
-		
-		#print "$THIS_FILE ".__LINE__."; Searching for: [$full_file] ([$dir] / [$file])\n";
-		if (-f $full_file)
-		{
-			# Found it, return.
-			#print "$THIS_FILE ".__LINE__."; Found it!\n";
-			return ($full_file);
-		}
-	}
-	
-	if ($fatal)
-	{
-		print "$THIS_FILE ".__LINE__."; Failed to find: [$file]\n";
-		$an->Alert->error({fatal => 1, title_key => "error_title_0002", message_key => "error_message_0002", message_variables => { file => $file }, code => 44, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	# If I am here, I failed but fatal errors are disabled.
-	return (0);
-}
-
-# This reads in a configuration file and stores it in either the passed hash reference else in $an->data else
-# in a new anonymous hash.
-sub read_conf
-{
-	my $self  = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an    = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $file;
-	my $hash = $an->data;
-	
-	# This is/was for testing.
-	if (0)
-	{
-		foreach my $key (sort {$a cmp $b} keys %ENV) { print "ENV key: [$key]\t=\t[$ENV{$key}]\n"; }
-		foreach my $key (sort {$a cmp $b} keys %INC) { print "INC key: [$key]\t=\t[$INC{$key}]\n"; }
-		exit;
-	}
-	
-	# Now see if the user passed the values in a hash reference or directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$file = $parameter->{file} if $parameter->{file};
-		$hash = $parameter->{hash} if $parameter->{hash};
-	}
-	else
-	{
-		# Values passed directly.
-		$file = $parameter;
-		$hash = $_[0] if defined $_[0];
-	}
-	
-	# Make sure I have a sane file name.
-	if ($file)
-	{
-		# Find it relative to the AN::Tools root directory.
-		if ($file =~ /^AN::Tools/)
-		{
-			my $dir =  $INC{'AN/Tools.pm'};
-			$dir    =~ s/Tools.pm//;
-			$file   =~ s/AN::Tools\//$dir/;
-			$file   =~ s/\/\//\//g;
-		}
-		
-		# I have a file. Is it relative to the install dir or fully qualified?
-		if (($file =~ /^\.\//) || ($file !~ /^\//))
-		{
-			# It's in or relative to this directory.
-			if ($ENV{PWD})
-			{
-				# Can expand using the environment variable.
-				$file =~ s/^\./$ENV{PWD}/;
-			}
-			else
-			{
-				# No environmnet variable, search the array of directories.
-				$file = $an->Storage->find({fatal=>1, file=>$file});
-			}
-		}
-	}
-	else
-	{
-		# No file at all...
-		die "$THIS_FILE ".__LINE__."; [ Error ] - No file was passed in to read.\n";
-	}
-	
-	# Now that I have a file, read it.
-	$an->_load_io_handle() if not $an->_io_handle_loaded();
-	my $read = IO::Handle->new();
-	
-	# Is it too early to use "$an->error"?
-	my $short_hostname = $an->short_hostname;
-	my $hostname       = $an->hostname;
-	open ($read, "<$file") or die "Can't read: [$file], error was: $!\n";
-	while (<$read>)
-	{
-		chomp;
-		my $line  =  $_;
-		   $line  =~ s/^\s+//;
-		   $line  =~ s/\s+$//;
-		next if ((not $line) or ($line =~ /^#/));
-		next if $line !~ /=/;
-		my ($variable, $value) = split/=/, $line, 2;
-		$variable =~ s/\s+$//;
-		$value    =~ s/^\s+//;
-		next if not $variable;
-		
-		# If the variable has '#!hostname!#' or '#!short_hostname!#', convert it now.
-		$value =~ s/#!hostname!#/$hostname/g;
-		$value =~ s/#!short_hostname!#/$short_hostname/g;
-		
-		$an->_make_hash_reference($hash, $variable, $value);
-	}
-	$read->close();
-	
-	### MADI: Make this a more intelligent method that can go a variable
-	###       number of sub-keys deep and does a search/replace of
-	###       variables based on a given key match.
-	# Some keys store directories. Below, I convert the ones I know about
-	# to the current operating system's directory delimiter where '::' is
-	# found.
-	my $directory_delimiter = $an->_directory_delimiter();
-	foreach my $key (keys %{$an->data->{dir}})
-	{
-		if (not ref($an->data->{dir}{$key}))
-		{
-			$an->data->{dir}{$key} =~ s/::/$directory_delimiter/g;
-		}
-	}
-	
-	return ($hash);
-}
-
-# This method returns an array reference of directories to search within for
-# files and directories.
-sub search_dirs
-{
-	my $self  = shift;
-	my $array = shift;
-	
-	# This just makes the code more consistent.
-	my $an    = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# Set a default if nothing was passed.
-	$array = $an->_defaut_search_dirs() if not $array;
-	
-	# If the array is a CSV of directories, convert it now.
-	if ($array =~ /,/)
-	{
-		# CSV, convert to an array.
-		my @new_array = split/,/, $array;
-		$array        = \@new_array;
-	}
-	elsif (ref($array) ne "ARRAY")
-	{
-		# Unless changed, this should return a reference to the @INC
-		# array.
-		if ($array)
-		{
-			# Something non-sensical was passed.
-			$an->Alert->error({
-				fatal			=>	1,
-				title_key		=>	"error_title_0003",
-				message_key		=>	"error_message_0003",
-				message_variables	=>	{
-					array			=>	$array,
-				},
-				code		=>	45,
-				file		=>	"$THIS_FILE",
-				line		=>	__LINE__
-			});
-			
-		}
-	}
-	
-	# MADI: Delete before release.
-	if (0)
-	{
-		print "Returning an array containing:\n";
-		foreach my $dir (@{$array}) { print "\t- [$dir]\n"; }
-	}
-	
-	return ($array);
-}
-
-# This reads /etc/ssh/ssh_config and later will try to match host names to port forwards.
-sub read_ssh_config
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
-		file	=>	$an->data->{path}{ssh_config}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
-	
-	# This will hold the raw contents of the file.
-	$hash->{raw}{ssh_config} = "";
-	
-	# Now read in the file
-	my $this_host  = "";
-	my $shell_call = $an->data->{path}{ssh_config};
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line                    =  $_;
-		   $hash->{raw}{ssh_config} .= "$line\n";
-		   $line                    =~ s/#.*$//;
-		   $line                    =~ s/\s+$//;
-		next if not $line;
-		
-		if ($line =~ /^host (.*)/i)
-		{
-			$this_host = $1;
-			next;
-		}
-		next if not $this_host;
-		if ($line =~ /port (\d+)/i)
-		{
-			my $port = $1;
-			$hash->{hosts}{$this_host}{port} = $port;
-		}
-	}
-	close $file_handle;
-	
-	return($hash);
-}
-
-# This reads in the /etc/hosts file so that entries for the deleted nodes can be removed.
-sub read_hosts
-{
-	my $self      = shift;
-	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	$an->Log->entry({log_level => 3, message_key => "notice_message_0003", message_variables => {
-		file => $an->data->{path}{etc_hosts}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my $hash = ref($parameter->{hash}) eq "HASH" ? $parameter->{hash} : $an->data;
-	
-	# This will hold the raw contents of the file.
-	$hash->{raw}{etc_hosts} = "";
-	
-	# Now read in the file
-	my $shell_call = $an->data->{path}{etc_hosts};
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line                   =  $_;
-		   $hash->{raw}{etc_hosts} .= "$line\n";
-		   $line                   =~ s/^\s+//;
-		   $line                   =~ s/#.*$//;
-		   $line                   =~ s/\s+$//;
-		next if not $line;
-		
-		my $this_ip     = "";
-		my $these_hosts = "";
-		### NOTE: We don't support IPv6 yet
-		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
-		{
-			$this_ip     = $1;
-			$these_hosts = $2;
-			foreach my $this_host (split/ /, $these_hosts)
-			{
-				$hash->{hosts}{$this_host}{ip} = $this_ip;
-				if (not exists $hash->{hosts}{by_ip}{$this_ip})
-				{
-					$hash->{hosts}{by_ip}{$this_ip} = [];
-				}
-				push @{$hash->{hosts}{by_ip}{$this_ip}}, $this_host;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "this_host", value1 => $this_host, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	close $file_handle;
-	
-	# Debug
-	foreach my $this_ip (sort {$a cmp $b} keys %{$hash->{hosts}{by_ip}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "this_ip", value1 => $this_ip, 
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $this_host (sort {$a cmp $b} @{$hash->{hosts}{by_ip}{$this_ip}})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "this_host", value1 => $this_host, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	return(0);
-}
-
 # This reads an XML file into the requested hash reference.
 sub read_xml_file
 {
@@ -1087,6 +917,189 @@ sub read_xml_file
 	
 	return($hash);
 }
+
+# This creates an 'expect' wrapper and then calls rsync to copy data between this machine and a remote 
+# system.
+sub rsync
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	my $an = $self->parent;
+	$an->Alert->_set_error;
+	
+	# Check my parameters.
+	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
+	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
+	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
+	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
+	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "target",      value1 => $target, 
+		name2 => "source",      value2 => $source, 
+		name3 => "destination", value3 => $destination, 
+		name4 => "switches",    value4 => $switches, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure I have everything I need.
+	my $failed = 0;
+	if (not $source)
+	{
+		# No source
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0037", code => 27, file => "$THIS_FILE", line => __LINE__});
+		$failed = 1;
+	}
+	if (not $destination)
+	{
+		# No destination
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0038", code => 32, file => "$THIS_FILE", line => __LINE__});
+		$failed = 1;
+	}
+	
+	# If either the source or destination is remote, we need to make sure we have the remote machine in
+	# the current user's ~/.ssh/known_hosts file.
+	my $remote_user    = "";
+	my $remote_machine = "";
+	if ($source =~ /^(.*?)@(.*?):/)
+	{
+		$remote_user    = $1;
+		$remote_machine = $2;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "remote_user",    value1 => $remote_user, 
+			name2 => "remote_machine", value2 => $remote_machine, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($destination =~ /^(.*?)@(.*?):/)
+	{
+		$remote_user    = $1;
+		$remote_machine = $2;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "remote_user",    value1 => $remote_user, 
+			name2 => "remote_machine", value2 => $remote_machine, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	if ($remote_machine)
+	{
+		# Make sure we know the fingerprint of the remote machine
+		$an->Remote->add_target_to_known_hosts({target => $remote_machine});
+		
+		# Make sure we have a target and password for the remote machine.
+		if (not $target)
+		{
+			# No target, set the 'remote_machine' as the target.
+			$target = $remote_machine;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "target", value1 => $target, 
+			}, file => $THIS_FILE, line => __LINE__});
+			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
+			$failed = 1;
+		}
+		if (not $password)
+		{
+			# No password
+			$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0036", code => 23, file => "$THIS_FILE", line => __LINE__});
+			$failed = 1;
+		}
+	}
+	
+	# If local, call rsync directly. If remote, setup the rsync wrapper
+	my $shell_call = $an->data->{path}{rsync}." $switches $source $destination";
+	if ($remote_machine)
+	{
+		# Remote target, wrapper needed.
+		my $wrapper = $an->Storage->_create_rsync_wrapper({
+			target   => $target,
+			password => $password, 
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "wrapper", value1 => $wrapper, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# And make the shell call
+		$shell_call = "$wrapper $switches $source $destination";
+	}
+	# Now make the call
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		# There should never be any output, but just in case...
+		chomp;
+		my $line = $_;
+		   $line =~ s/\r//g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	close $file_handle;
+	
+	return($failed);
+}
+
+# This method returns an array reference of directories to search within for files and directories.
+sub search_dirs
+{
+	my $self  = shift;
+	my $array = shift;
+	
+	# This just makes the code more consistent.
+	my $an    = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# Set a default if nothing was passed.
+	$array = $an->_defaut_search_dirs() if not $array;
+	
+	# If the array is a CSV of directories, convert it now.
+	if ($array =~ /,/)
+	{
+		# CSV, convert to an array.
+		my @new_array = split/,/, $array;
+		$array        = \@new_array;
+	}
+	elsif (ref($array) ne "ARRAY")
+	{
+		# Unless changed, this should return a reference to the @INC
+		# array.
+		if ($array)
+		{
+			# Something non-sensical was passed.
+			$an->Alert->error({
+				fatal			=>	1,
+				title_key		=>	"error_title_0003",
+				message_key		=>	"error_message_0003",
+				message_variables	=>	{
+					array			=>	$array,
+				},
+				code		=>	45,
+				file		=>	"$THIS_FILE",
+				line		=>	__LINE__
+			});
+			
+		}
+	}
+	
+	# MADI: Delete before release.
+	if (0)
+	{
+		print "Returning an array containing:\n";
+		foreach my $dir (@{$array}) { print "\t- [$dir]\n"; }
+	}
+	
+	return ($array);
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 # This does the actual work of creating the 'expect' wrapper script and returns the path to that wrapper.
 sub _create_rsync_wrapper

@@ -9,6 +9,25 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Alert.pm";
 
+### Methods;
+# check_alert_sent
+# convert_level_name_to_number
+# convert_level_number_to_name
+# error
+# no_fatal_errors
+# register_alert
+# silence_warnings
+# warning
+# _error_code
+# _error_string
+# _nice_exit
+# _set_error
+# _set_error_code
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -40,6 +59,10 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # This is used by scan agents that need to track whether an alert was sent when a sensor dropped below/rose 
 # above a set alert threshold. For example, if a sensor alerts at 20°C and clears at 25°C, this will be 
@@ -273,6 +296,160 @@ sub convert_level_number_to_name
 	return ($level);
 }
 
+# Later, this will support all the translation and logging methods. For now, just print the error and exit.
+sub error
+{
+	my $self      = shift;
+	my $parameter = shift;
+	
+	# Clear any prior errors.
+	$self->_set_error;
+	my $an = $self->parent;
+	
+	# Setup default values
+	my ($fatal, $title_key, $title_variables, $message_key, $message_variables, $code, $file, $line);
+	
+	# See if I am getting parameters is a hash reference or directly as
+	# element arrays.
+	if (ref($parameter))
+	{
+		# Called via a hash ref, good.
+		$fatal             = $parameter->{fatal}             ? $parameter->{fatal}             : 1;
+		$title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : $an->String->get({key => "an_0004"});
+		$title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
+		$message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : $an->String->get({key => "an_0005"});
+		$message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
+		$code              = $parameter->{code}              ? $parameter->{code}              : 1;
+		$file              = $parameter->{file}              ? $parameter->{file}              : $an->String->get({key => "an_0006"});
+		$line              = $parameter->{line}              ? $parameter->{line}              : "";
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
+	}
+	else
+	{
+		# Called directly.
+		$fatal			= $parameter ? $parameter : 1;
+		$title_key		= shift;
+		$title_variables	= shift;
+		$message_key		= shift;
+		$message_variables	= shift;
+		$code			= shift;
+		$file			= shift;
+		$line			= shift;
+		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
+	}
+	
+	# It is possible for this to become a run-away call, so this helps
+	# catch when that happens.
+	$an->_error_count($an->_error_count + 1);
+	if ($an->_error_count > $an->_error_limit)
+	{
+		print "Infinite loop detected while trying to print an error:\n";
+		print "- fatal:             [$fatal]\n";
+		print "- title_key:         [$title_key]\n";
+		print "- title_variables:   [$title_variables]\n";
+		print "- message_key:       [$message_key]\n";
+		print "- message_variables: [$title_variables]\n";
+		print "- code:              [$code]\n";
+		print "- file:              [$file]\n";
+		print "- line:              [$line]\n";
+		die "Infinite loop detected while trying to print an error, exiting.\n";
+	}
+	
+	# If the 'code' is empty and 'message' is "error_\d+", strip that code
+	# off and use it as the error code.
+	#print "$THIS_FILE ".__LINE__."; code: [$code], message_key: [$message_key]\n";
+	if ((not $code) && ($message_key =~ /error_(\d+)/))
+	{
+		$code = $1;
+		#print "$THIS_FILE ".__LINE__."; code: [$code], message_key: [$message_key]\n";
+	}
+	
+	# If the title is a key, translate it.
+	#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
+	if ($title_key =~ /\w+_\d+$/)
+	{
+		$title_key = $an->String->get({
+			key		=>	$title_key,
+			variables	=>	$title_variables,
+		});
+		#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
+	}
+	
+	# If the message is a key, translate it.
+	#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
+	if ($message_key =~ /\w+_\d+$/)
+	{
+		$message_key = $an->String->get({
+			key		=>	$message_key,
+			variables	=>	$message_variables,
+		});
+		#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
+	}
+	
+	# Set my error string
+	my $fatal_heading = $fatal ? $an->String->get({key => "an_0002"}) : $an->String->get({key => "an_0003"});
+	#print "$THIS_FILE ".__LINE__."; fatal_heading: [$fatal_heading]\n";
+	
+	my $readable_line = $an->Readable->comma($line);
+	#print "$THIS_FILE ".__LINE__."; readable_line: [$readable_line]\n";
+	
+	### TODO: Copy this to 'warning'.
+	# At this point, the title and message keys are the actual messages.
+	my $error = "\n".$an->String->get({
+		key		=>	"an_0007",
+		variables	=>	{
+			code		=>	$code,
+			heading		=>	$fatal_heading,
+			file		=>	$file,
+			line		=>	$readable_line,
+			title		=>	$title_key,
+			message		=>	$message_key,
+		},
+	})."\n\n";
+	#print "$THIS_FILE ".__LINE__."; error: [$error]\n";
+	
+	# Set the internal error flags
+	$self->_set_error($error);
+	$self->_set_error_code($code);
+	
+	# Append "exiting" to the error string if it is fatal.
+	if ($fatal)
+	{
+		# Don't append this unless I really am exiting.
+		$error .= $an->String->get({key => "an_0008"})."\n";
+	}
+	
+	# Write a copy of the error to the log.
+	$an->Log->entry({file => $THIS_FILE, level => 0, raw => $error});
+	
+	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
+	# in the tests).
+	#if (($fatal) && (not $self->no_fatal_errors))
+	if ($fatal)
+	{
+		#$error =~ s/\n/<br \/>\n/g;
+		print "$error\n" if not $self->no_fatal_errors;
+		$self->_nice_exit($code);
+	}
+	
+	return ($code);
+}
+
+# This un/sets the prevention of errors being fatal.
+sub no_fatal_errors
+{
+	my $self  = shift;
+	my $parameter = shift;
+	
+	# Have to check if defined because '0' is valid.
+	if (defined $parameter->{set})
+	{
+		$self->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
+	}
+	
+	return ($self->{NO_FATAL_ERRORS});
+}
+
 # This registers an alert with ScanCore
 sub register_alert
 {
@@ -418,144 +595,20 @@ INSERT INTO
 	return(0);
 }
 
-# Later, this will support all the translation and logging methods. For now,
-# just print the error and exit;
-sub error
+# This stops the 'warning' method from printing to STDOUT. It will still print to the log though (once that's
+# implemented).
+sub silence_warnings
 {
-	my $self      = shift;
+	my $self  = shift;
 	my $parameter = shift;
 	
-	# Clear any prior errors.
-	$self->_set_error;
-	my $an = $self->parent;
-	
-	# Setup default values
-	my ($fatal, $title_key, $title_variables, $message_key, $message_variables, $code, $file, $line);
-	
-	# See if I am getting parameters is a hash reference or directly as
-	# element arrays.
-	if (ref($parameter))
+	# Have to check if defined because '0' is valid.
+	if (defined $parameter->{set})
 	{
-		# Called via a hash ref, good.
-		$fatal             = $parameter->{fatal}             ? $parameter->{fatal}             : 1;
-		$title_key         = $parameter->{title_key}         ? $parameter->{title_key}         : $an->String->get({key => "an_0004"});
-		$title_variables   = $parameter->{title_variables}   ? $parameter->{title_variables}   : "";
-		$message_key       = $parameter->{message_key}       ? $parameter->{message_key}       : $an->String->get({key => "an_0005"});
-		$message_variables = $parameter->{message_variables} ? $parameter->{message_variables} : "";
-		$code              = $parameter->{code}              ? $parameter->{code}              : 1;
-		$file              = $parameter->{file}              ? $parameter->{file}              : $an->String->get({key => "an_0006"});
-		$line              = $parameter->{line}              ? $parameter->{line}              : "";
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
-	}
-	else
-	{
-		# Called directly.
-		$fatal			= $parameter ? $parameter : 1;
-		$title_key		= shift;
-		$title_variables	= shift;
-		$message_key		= shift;
-		$message_variables	= shift;
-		$code			= shift;
-		$file			= shift;
-		$line			= shift;
-		#print "$THIS_FILE ".__LINE__."; fatal: [$fatal], title_key: [$title_key], title_variables: [$title_variables], message_key: [$message_key], message_variables: [$message_variables], code: [$code], file: [$file], line: [$line]\n";
+		$self->{SILENCE_WARNINGS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
 	}
 	
-	# It is possible for this to become a run-away call, so this helps
-	# catch when that happens.
-	$an->_error_count($an->_error_count + 1);
-	if ($an->_error_count > $an->_error_limit)
-	{
-		print "Infinite loop detected while trying to print an error:\n";
-		print "- fatal:             [$fatal]\n";
-		print "- title_key:         [$title_key]\n";
-		print "- title_variables:   [$title_variables]\n";
-		print "- message_key:       [$message_key]\n";
-		print "- message_variables: [$title_variables]\n";
-		print "- code:              [$code]\n";
-		print "- file:              [$file]\n";
-		print "- line:              [$line]\n";
-		die "Infinite loop detected while trying to print an error, exiting.\n";
-	}
-	
-	# If the 'code' is empty and 'message' is "error_\d+", strip that code
-	# off and use it as the error code.
-	#print "$THIS_FILE ".__LINE__."; code: [$code], message_key: [$message_key]\n";
-	if ((not $code) && ($message_key =~ /error_(\d+)/))
-	{
-		$code = $1;
-		#print "$THIS_FILE ".__LINE__."; code: [$code], message_key: [$message_key]\n";
-	}
-	
-	# If the title is a key, translate it.
-	#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
-	if ($title_key =~ /\w+_\d+$/)
-	{
-		$title_key = $an->String->get({
-			key		=>	$title_key,
-			variables	=>	$title_variables,
-		});
-		#print "$THIS_FILE ".__LINE__."; title_key: [$title_key]\n";
-	}
-	
-	# If the message is a key, translate it.
-	#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
-	if ($message_key =~ /\w+_\d+$/)
-	{
-		$message_key = $an->String->get({
-			key		=>	$message_key,
-			variables	=>	$message_variables,
-		});
-		#print "$THIS_FILE ".__LINE__."; message_key: [$message_key]\n";
-	}
-	
-	# Set my error string
-	my $fatal_heading = $fatal ? $an->String->get({key => "an_0002"}) : $an->String->get({key => "an_0003"});
-	#print "$THIS_FILE ".__LINE__."; fatal_heading: [$fatal_heading]\n";
-	
-	my $readable_line = $an->Readable->comma($line);
-	#print "$THIS_FILE ".__LINE__."; readable_line: [$readable_line]\n";
-	
-	### TODO: Copy this to 'warning'.
-	# At this point, the title and message keys are the actual messages.
-	my $error = "\n".$an->String->get({
-		key		=>	"an_0007",
-		variables	=>	{
-			code		=>	$code,
-			heading		=>	$fatal_heading,
-			file		=>	$file,
-			line		=>	$readable_line,
-			title		=>	$title_key,
-			message		=>	$message_key,
-		},
-	})."\n\n";
-	#print "$THIS_FILE ".__LINE__."; error: [$error]\n";
-	
-	# Set the internal error flags
-	$self->_set_error($error);
-	$self->_set_error_code($code);
-	
-	# Append "exiting" to the error string if it is fatal.
-	if ($fatal)
-	{
-		# Don't append this unless I really am exiting.
-		$error .= $an->String->get({key => "an_0008"})."\n";
-	}
-	
-	# Write a copy of the error to the log.
-	$an->Log->entry({file => $THIS_FILE, level => 0, raw => $error});
-	
-	# Don't actually die, but do print the error, if fatal errors have been globally disabled (as is done
-	# in the tests).
-	#if (($fatal) && (not $self->no_fatal_errors))
-	if ($fatal)
-	{
-		#$error =~ s/\n/<br \/>\n/g;
-		print "$error\n" if not $self->no_fatal_errors;
-		$self->_nice_exit($code);
-	}
-	
-	return ($code);
+	return ($self->{SILENCE_WARNINGS});
 }
 
 # Later, this will support all the translation and logging methods. For now, just print the warning and 
@@ -681,35 +734,16 @@ sub warning
 	return (1);
 }
 
-# This stops the 'warning' method from printing to STDOUT. It will still print
-# to the log though (once that's implemented).
-sub silence_warnings
-{
-	my $self  = shift;
-	my $parameter = shift;
-	
-	# Have to check if defined because '0' is valid.
-	if (defined $parameter->{set})
-	{
-		$self->{SILENCE_WARNINGS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
-	}
-	
-	return ($self->{SILENCE_WARNINGS});
-}
 
-# This un/sets the prevention of errors being fatal.
-sub no_fatal_errors
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
+
+# This returns an error code if one is set.
+sub _error_code
 {
-	my $self  = shift;
-	my $parameter = shift;
-	
-	# Have to check if defined because '0' is valid.
-	if (defined $parameter->{set})
-	{
-		$self->{NO_FATAL_ERRORS} = $parameter->{set} if (($parameter->{set} == 0) || ($parameter->{set} == 1));
-	}
-	
-	return ($self->{NO_FATAL_ERRORS});
+	my $self = shift;
+	return $self->{ERROR_CODE};
 }
 
 # This returns an error message if one is set.
@@ -719,11 +753,13 @@ sub _error_string
 	return $self->{ERROR_STRING};
 }
 
-# This returns an error code if one is set.
-sub _error_code
+# This will handle cleanup prior to exit.
+sub _nice_exit
 {
-	my $self = shift;
-	return $self->{ERROR_CODE};
+	my $self       = shift;
+	my $error_code = $_[0] ? shift : 1;
+	
+	exit ($error_code);
 }
 
 # This simply sets the error string method. Calling this method with an empty
@@ -758,15 +794,6 @@ sub _set_error_code
 	$self->{ERROR_CODE} = $error ? $error : "";
 	
 	return $self->{ERROR_CODE};
-}
-
-# This will handle cleanup prior to exit.
-sub _nice_exit
-{
-	my $self       = shift;
-	my $error_code = $_[0] ? shift : 1;
-	
-	exit ($error_code);
 }
 
 1;

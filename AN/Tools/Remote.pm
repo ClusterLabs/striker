@@ -11,16 +11,23 @@ our $VERSION    = "0.1.001";
 my $THIS_FILE   = "Remote.pm";
 my $THIS_MODULE = "AN::Tools::Remote";
 
-### Methods:
+### Methods;
 # add_rsa_key_to_target
-# generate_rsa_public_key
 # add_target_to_known_hosts
+# delayed_run
 # dual_command_run
-# synchronous_command_run
+# generate_rsa_public_key
 # remote_call
-# _check_known_hosts_for_target
+# synchronous_command_run
+# wait_on_peer
+# _avoid_duplicate_delayed_runs
 # _call_ssh_keyscan
+# _check_known_hosts_for_target
 
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -33,9 +40,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more 
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -45,6 +51,11 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # This adds the given RSA key to the target machine and target user's authorized_keys file.
 sub add_rsa_key_to_target
@@ -175,77 +186,6 @@ sub add_rsa_key_to_target
 	return($return_code);
 }
 
-# This generates an RSA key for the user.
-sub generate_rsa_public_key
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# We don't try to divine the user, so we need to called to tell us who we're dealing with.
-	my $user             = $parameter->{user};
-	my $key_size         = $parameter->{key_size} ? $parameter->{key_size} : 8191;
-	my $home             = $an->Get->users_home({user => $user});
-	my $rsa_private_file = "${home}/.ssh/id_rsa";
-	my $rsa_public_file  = "${rsa_private_file}.pub";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "user",             value1 => $user, 
-		name2 => "home",             value2 => $home,
-		name3 => "key_size",         value3 => $key_size,
-		name4 => "rsa_private_file", value4 => $rsa_private_file,
-		name5 => "rsa_public_file",  value5 => $rsa_public_file,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Log that this can take time and then make the call.
-	$an->Log->entry({log_level => 3, message_key => "notice_message_0006", file => $THIS_FILE, line => __LINE__});
-	my $shell_call  = "
-".$an->data->{path}{'ssh-keygen'}." -t rsa -N \"\" -b $key_size -f $rsa_private_file
-".$an->data->{path}{'chown'}." $user:$user $rsa_private_file
-".$an->data->{path}{'chown'}." $user:$user $rsa_public_file
-".$an->data->{path}{'chmod'}." 600 $rsa_private_file
-".$an->data->{path}{'chown'}." 644 $rsa_public_file
-";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "rsa_private_file", value1 => $rsa_private_file, 
-		name2 => "rsa_public_file",  value2 => $rsa_public_file,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Did it work?
-	my $ok = 0;
-	if (-e $rsa_private_file)
-	{
-		# Yup!
-		$ok = 1;
-		$an->Log->entry({log_level => 3, message_key => "notice_message_0007", message_variables => {
-			user => $user, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Failed, tell the user.
-		$an->Alert->warning({message_key => "warning_title_0005", message_variables => {
-			user	=>	$user,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "ok", value1 => $ok, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($ok);
-}
-
 # This checks the current user's 'known_hosts' file for the presence of a given host and, if not found, uses
 # 'ssh-keyscan' to add the host.
 sub add_target_to_known_hosts
@@ -323,95 +263,6 @@ sub add_target_to_known_hosts
 	}
 	
 	return(0);
-}
-
-# This runs a command on both nodes (or local and remote), but it does it in serial not synchronously.
-sub dual_command_run
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Get the target
-	my $command  = $parameter->{command};
-	my $node1    = $parameter->{node1};
-	my $node2    = $parameter->{node2};
-	my $delay    = $parameter->{delay} ? $parameter->{delay} : 30;
-	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "command",        value1 => $command, 
-		name2 => "node1",          value2 => $node1, 
-		name3 => "node2",          value3 => $node2, 
-		name4 => "delay",          value4 => $delay, 
-		name5 => "hostname",       value5 => $an->hostname,
-		name6 => "short_hostname", value6 => $an->short_hostname, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Well store the output of both machines here.
-	my $output     = {};
-	my $shell_call = $command;
-	foreach my $node (sort {$a cmp $b} ($node1, $node2))
-	{
-		# This will contain the output seen for both nodes
-		   $output->{$node} = "";
-		my $return          = [];
-		
-		# If the node name is 'local', we'll run locally.
-		if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
-		{
-			# Local call.
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
-			}, file => $THIS_FILE, line => __LINE__});
-			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				push @{$return}, $line;
-			}
-			close $file_handle;
-		}
-		else
-		{
-			# Remote call
-			my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "node",       value1 => $node,
-				name2 => "port",       value2 => $port,
-				name3 => "shell_call", value3 => $shell_call,
-			}, file => $THIS_FILE, line => __LINE__});
-			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
-				port		=>	$port, 
-				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-		}
-		foreach my $line (@{$return})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$output->{$node} .= "$line\n";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# Return the hash reference of output from both nodes.
-	return($output);
 }
 
 # This uses 'anvil-run-jobs' to run a job in the future
@@ -542,9 +393,8 @@ sub delayed_run
 	return($token, $output, $problem);
 }
 
-# This uses 'anvil-run-jobs' to run a command on both nodes at the same time (or at least within a minute of
-# each other).
-sub synchronous_command_run
+# This runs a command on both nodes (or local and remote), but it does it in serial not synchronously.
+sub dual_command_run
 {
 	my $self      = shift;
 	my $parameter = shift;
@@ -554,9 +404,9 @@ sub synchronous_command_run
 	my $command  = $parameter->{command};
 	my $node1    = $parameter->{node1};
 	my $node2    = $parameter->{node2};
-	my $delay    = $parameter->{delay} ? $parameter->{delay} : 0;
+	my $delay    = $parameter->{delay} ? $parameter->{delay} : 30;
 	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "command",        value1 => $command, 
 		name2 => "node1",          value2 => $node1, 
 		name3 => "node2",          value3 => $node2, 
@@ -568,314 +418,139 @@ sub synchronous_command_run
 		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### NOTE: This now uses 'anvil-run-jobs' in order to start cman on both nodes at the same time
-	###       without the need to fork(). This is done because it's not reliable enough. It's too easy
-	###       for a non-thread-safe bit of code to sneak in and clobber file handles.
-	my $waiting = 1;
-	my $output  = {};
-	
-	# Add the command to each node's anvil-run-jobs queue and then wait in a loop for both to have run
-	# (or time out).
+	# Well store the output of both machines here.
+	my $output     = {};
+	my $shell_call = $command;
 	foreach my $node (sort {$a cmp $b} ($node1, $node2))
 	{
-		# Before we start, see if there is a job like this in the queue already. If so, take it's 
-		# token and don't add a new entry.
-		my $port    = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-		my ($token) = $an->Remote->_avoid_duplicate_delayed_runs({
-			command  => $command,
-			target   => $node, 
-			port     => $port,
-			password => $password, 
-		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "token", value1 => $token, 
-		}, file => $THIS_FILE, line => __LINE__});
+		# This will contain the output seen for both nodes
+		   $output->{$node} = "";
+		my $return          = [];
 		
-		$output->{$node} = "";
-		if ($token)
+		# If the node name is 'local', we'll run locally.
+		if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 		{
-			$an->data->{node}{$node}{token}  = $token;
-			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
-			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
-				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
+			# Local call.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
+			open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$return}, $line;
+			}
+			close $file_handle;
 		}
 		else
 		{
-			# This will contain the output seen for both nodes
-			$token                           = $an->Get->uuid();
-			$an->data->{node}{$node}{token}  = $token;
-			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
-			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
-				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Setup the job line
-			my $time     =  time;
-			my $run_time =  $time + $delay;
-			my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
-			   $job_line =~ s/'/\'/g;
+			# Remote call
+			my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "time",     value1 => $time, 
-				name2 => "run_time", value2 => $run_time, 
-				name3 => "job_line", value3 => $job_line, 
+				name1 => "node",       value1 => $node,
+				name2 => "port",       value2 => $port,
+				name3 => "shell_call", value3 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$node,
+				port		=>	$port, 
+				password	=>	$password,
+				ssh_fh		=>	"",
+				'close'		=>	0,
+				shell_call	=>	$shell_call,
+			});
+		}
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# We use a delay of 30 seconds to ensure that we don't have one node trigger a minute before
-			# the other in cases where this is invoked near the end of a minute.
-			my $shell_call = $an->data->{path}{echo}." '$job_line' >> ".$an->data->{path}{'anvil-jobs'};
-			my $return     = [];
-			
-			# If the node name is 'local', we'll run locally.
-			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
-			{
-				# Local call.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call, 
-				}, file => $THIS_FILE, line => __LINE__});
-				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					push @{$return}, $line;
-				}
-				close $file_handle;
-			}
-			else
-			{
-				# Remote call
-				my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "node",       value1 => $node,
-					name2 => "port",       value2 => $port,
-					name3 => "shell_call", value3 => $shell_call,
-				}, file => $THIS_FILE, line => __LINE__});
-				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$node,
-					port		=>	$port, 
-					password	=>	$password,
-					ssh_fh		=>	"",
-					'close'		=>	0,
-					shell_call	=>	$shell_call,
-				});
-			}
-			foreach my $line (@{$return})
-			{
-				next if not $line;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	# Make sure we didn't hit an error
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
-		name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $an->data->{node}{$node1}{output}) or (not $an->data->{node}{$node2}{output}))
-	{
-		$waiting = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "waiting", value1 => $waiting,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Now sit back and wait for the call to run.
-		$an->Log->entry({log_level => 1, message_key => "log_0264", file => $THIS_FILE, line => __LINE__});
-	}
-	
-	my $current_time = time;
-	my $timeout      = $current_time + $delay + 120;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "current_time", value1 => $current_time,
-		name2 => "timeout",      value2 => $timeout,
-		name3 => "waiting",      value3 => $waiting,
-	}, file => $THIS_FILE, line => __LINE__});
-	while ($waiting)
-	{
-		# This will get set back to '1' if we're still waiting on either node's output.
-		foreach my $node (sort {$a cmp $b} ($node1, $node2))
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node",                  value1 => $node,
-				name2 => "node::${node}::output", value2 => $an->data->{node}{$node}{output}
-			}, file => $THIS_FILE, line => __LINE__});
-
-			#next if not $an->data->{node}{$node}{token};
-			next if not $an->data->{node}{$node}{output};
-			
-			my $call_output = "";
-			my $return      = [];
-			my $password    = $an->data->{cgi}{anvil_node1_current_password};
-			my $port        = $an->data->{node}{$node}{port};
-			my $shell_call  = "
-if [ -e \"".$an->data->{node}{$node}{output}."\" ];
-then
-    ".$an->data->{path}{cat}." ".$an->data->{node}{$node}{output}."
-else
-    ".$an->data->{path}{echo}." \"No output yet\"
-fi
-";
-	
-			# If the node name is 'local', we'll run locally.
-			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
-			{
-				# Local call.
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call, 
-				}, file => $THIS_FILE, line => __LINE__});
-				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-				while(<$file_handle>)
-				{
-					chomp;
-					my $line = $_;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					push @{$return}, $line;
-				}
-				close $file_handle;
-			}
-			else
-			{
-				# Remote call
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node",       value1 => $node,
-					name2 => "shell_call", value2 => $shell_call,
-				}, file => $THIS_FILE, line => __LINE__});
-				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$node,
-					port		=>	$port, 
-					password	=>	$password,
-					ssh_fh		=>	"",
-					'close'		=>	0,
-					shell_call	=>	$shell_call,
-				});
-			}
-			foreach my $line (@{$return})
-			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $node,
-					name2 => "line", value2 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				if ($line =~ /No output yet/)
-				{
-					# We have to wait more.
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "node",    value1 => $node,
-						name2 => "waiting", value2 => $waiting,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				elsif ($line =~ /arj-rc:(\d+)/)
-				{
-					# We're done!
-					my $return_code = $1;
-					my $shell_call = "/bin/rm -f ".$an->data->{node}{$node}{output};
-					if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
-					{
-						# Local call.
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "shell_call", value1 => $shell_call, 
-						}, file => $THIS_FILE, line => __LINE__});
-						open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-						while(<$file_handle>)
-						{
-							chomp;
-							my $line = $_;
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-								name1 => "line", value1 => $line, 
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-						close $file_handle;
-					}
-					else
-					{
-						# Remote call
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-							name1 => "node",       value1 => $node,
-							name2 => "shell_call", value2 => $shell_call,
-						}, file => $THIS_FILE, line => __LINE__});
-						my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-							target		=>	$node,
-							port		=>	$port, 
-							password	=>	$password,
-							ssh_fh		=>	"",
-							'close'		=>	0,
-							shell_call	=>	$shell_call,
-						});
-						foreach my $line (@{$return})
-						{
-							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-								name1 => "node", value1 => $node,
-								name2 => "line", value2 => $line, 
-							}, file => $THIS_FILE, line => __LINE__});
-						}
-					}
-					
-					# I don't bother examining the output. If it fails, the file will be
-					# wiped in the next reboot anyway.
-					$an->data->{node}{$node}{output} = "";
-					$an->data->{node}{$node}{token}  = "";
-					
-					# Only record the last loop of output, otherwise partial output will
-					# stack on top of the final contents of the output file.
-					$output->{$node} = $call_output;
-				}
-				else
-				{
-					# This is output from the call.
-					$call_output .= "$line\n";
-				}
-			}
-		}
-		
-		# See if I still have an output file. If not, we're done.
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
-			name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
-			name3 => "waiting",                value3 => $waiting,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $an->data->{node}{$node1}{output}) && (not $an->data->{node}{$node2}{output}))
-		{
-			$waiting = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "waiting", value1 => $waiting,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		# Abort if we've waited too long, otherwise sleep.
-		if (($waiting) && (time > $timeout))
-		{
-			# Timeout, exit.
-			$waiting = 0;
-			$an->Log->entry({log_level => 1, message_key => "log_0265", file => $THIS_FILE, line => __LINE__});
-		}
-		if ($waiting)
-		{
-			sleep 10;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "time",    value1 => time,
-				name2 => "timeout", value2 => $timeout,
+			$output->{$node} .= "$line\n";
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Return the hash reference of output from both nodes.
 	return($output);
+}
+
+# This generates an RSA key for the user.
+sub generate_rsa_public_key
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# We don't try to divine the user, so we need to called to tell us who we're dealing with.
+	my $user             = $parameter->{user};
+	my $key_size         = $parameter->{key_size} ? $parameter->{key_size} : 8191;
+	my $home             = $an->Get->users_home({user => $user});
+	my $rsa_private_file = "${home}/.ssh/id_rsa";
+	my $rsa_public_file  = "${rsa_private_file}.pub";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		name1 => "user",             value1 => $user, 
+		name2 => "home",             value2 => $home,
+		name3 => "key_size",         value3 => $key_size,
+		name4 => "rsa_private_file", value4 => $rsa_private_file,
+		name5 => "rsa_public_file",  value5 => $rsa_public_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Log that this can take time and then make the call.
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0006", file => $THIS_FILE, line => __LINE__});
+	my $shell_call  = "
+".$an->data->{path}{'ssh-keygen'}." -t rsa -N \"\" -b $key_size -f $rsa_private_file
+".$an->data->{path}{'chown'}." $user:$user $rsa_private_file
+".$an->data->{path}{'chown'}." $user:$user $rsa_public_file
+".$an->data->{path}{'chmod'}." 600 $rsa_private_file
+".$an->data->{path}{'chown'}." 644 $rsa_public_file
+";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "rsa_private_file", value1 => $rsa_private_file, 
+		name2 => "rsa_public_file",  value2 => $rsa_public_file,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Did it work?
+	my $ok = 0;
+	if (-e $rsa_private_file)
+	{
+		# Yup!
+		$ok = 1;
+		$an->Log->entry({log_level => 3, message_key => "notice_message_0007", message_variables => {
+			user => $user, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Failed, tell the user.
+		$an->Alert->warning({message_key => "warning_title_0005", message_variables => {
+			user	=>	$user,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($ok);
 }
 
 # This does a remote call over SSH. The connection is held open and the file handle for the target is cached
@@ -1217,87 +892,420 @@ sub remote_call
 	return($error, $ssh_fh, $output);
 };
 
-# This checks to see if a given target machine is in the user's known_hosts file.
-sub _check_known_hosts_for_target
+# This uses 'anvil-run-jobs' to run a command on both nodes at the same time (or at least within a minute of
+# each other).
+sub synchronous_command_run
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $target      = $parameter->{target};
-	my $known_hosts = $parameter->{known_hosts};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "target",      value1 => $target,
-		name2 => "known_hosts", value2 => $known_hosts,
+	# Get the target
+	my $command  = $parameter->{command};
+	my $node1    = $parameter->{node1};
+	my $node2    = $parameter->{node2};
+	my $delay    = $parameter->{delay} ? $parameter->{delay} : 0;
+	my $password = $parameter->{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "command",        value1 => $command, 
+		name2 => "node1",          value2 => $node1, 
+		name3 => "node2",          value3 => $node2, 
+		name4 => "delay",          value4 => $delay, 
+		name5 => "hostname",       value5 => $an->hostname,
+		name6 => "short_hostname", value6 => $an->short_hostname, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# read it in and search.
-	my $known_machine = 0;
-	my $shell_call    = $known_hosts;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	### NOTE: This now uses 'anvil-run-jobs' in order to start cman on both nodes at the same time
+	###       without the need to fork(). This is done because it's not reliable enough. It's too easy
+	###       for a non-thread-safe bit of code to sneak in and clobber file handles.
+	my $waiting = 1;
+	my $output  = {};
+	
+	# Add the command to each node's anvil-run-jobs queue and then wait in a loop for both to have run
+	# (or time out).
+	foreach my $node (sort {$a cmp $b} ($node1, $node2))
 	{
-		chomp;
-		my $line = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
+		# Before we start, see if there is a job like this in the queue already. If so, take it's 
+		# token and don't add a new entry.
+		my $port    = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
+		my ($token) = $an->Remote->_avoid_duplicate_delayed_runs({
+			command  => $command,
+			target   => $node, 
+			port     => $port,
+			password => $password, 
+		});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "token", value1 => $token, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($line =~ /$target ssh-rsa /)
+		
+		$output->{$node} = "";
+		if ($token)
 		{
-			# We already know this machine (or rather, we already have a fingerprint for
-			# this machine).
-			$known_machine = 1;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "known_machine", value1 => $known_machine, 
+			$an->data->{node}{$node}{token}  = $token;
+			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
+			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
+				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# This will contain the output seen for both nodes
+			$token                           = $an->Get->uuid();
+			$an->data->{node}{$node}{token}  = $token;
+			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
+			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
+				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Setup the job line
+			my $time     =  time;
+			my $run_time =  $time + $delay;
+			my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
+			   $job_line =~ s/'/\'/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "time",     value1 => $time, 
+				name2 => "run_time", value2 => $run_time, 
+				name3 => "job_line", value3 => $job_line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# We use a delay of 30 seconds to ensure that we don't have one node trigger a minute before
+			# the other in cases where this is invoked near the end of a minute.
+			my $shell_call = $an->data->{path}{echo}." '$job_line' >> ".$an->data->{path}{'anvil-jobs'};
+			my $return     = [];
+			
+			# If the node name is 'local', we'll run locally.
+			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
+			{
+				# Local call.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					push @{$return}, $line;
+				}
+				close $file_handle;
+			}
+			else
+			{
+				# Remote call
+				my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+					name1 => "node",       value1 => $node,
+					name2 => "port",       value2 => $port,
+					name3 => "shell_call", value3 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$port, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+			}
+			foreach my $line (@{$return})
+			{
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# Make sure we didn't hit an error
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
+		name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((not $an->data->{node}{$node1}{output}) or (not $an->data->{node}{$node2}{output}))
+	{
+		$waiting = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "waiting", value1 => $waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Now sit back and wait for the call to run.
+		$an->Log->entry({log_level => 1, message_key => "log_0264", file => $THIS_FILE, line => __LINE__});
+	}
+	
+	my $current_time = time;
+	my $timeout      = $current_time + $delay + 120;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "current_time", value1 => $current_time,
+		name2 => "timeout",      value2 => $timeout,
+		name3 => "waiting",      value3 => $waiting,
+	}, file => $THIS_FILE, line => __LINE__});
+	while ($waiting)
+	{
+		# This will get set back to '1' if we're still waiting on either node's output.
+		foreach my $node (sort {$a cmp $b} ($node1, $node2))
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node",                  value1 => $node,
+				name2 => "node::${node}::output", value2 => $an->data->{node}{$node}{output}
+			}, file => $THIS_FILE, line => __LINE__});
+
+			#next if not $an->data->{node}{$node}{token};
+			next if not $an->data->{node}{$node}{output};
+			
+			my $call_output = "";
+			my $return      = [];
+			my $password    = $an->data->{cgi}{anvil_node1_current_password};
+			my $port        = $an->data->{node}{$node}{port};
+			my $shell_call  = "
+if [ -e \"".$an->data->{node}{$node}{output}."\" ];
+then
+    ".$an->data->{path}{cat}." ".$an->data->{node}{$node}{output}."
+else
+    ".$an->data->{path}{echo}." \"No output yet\"
+fi
+";
+	
+			# If the node name is 'local', we'll run locally.
+			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
+			{
+				# Local call.
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call, 
+				}, file => $THIS_FILE, line => __LINE__});
+				open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+				while(<$file_handle>)
+				{
+					chomp;
+					my $line = $_;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					push @{$return}, $line;
+				}
+				close $file_handle;
+			}
+			else
+			{
+				# Remote call
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node",       value1 => $node,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$port, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+			}
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "line", value2 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /No output yet/)
+				{
+					# We have to wait more.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "node",    value1 => $node,
+						name2 => "waiting", value2 => $waiting,
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+				elsif ($line =~ /arj-rc:(\d+)/)
+				{
+					# We're done!
+					my $return_code = $1;
+					my $shell_call = "/bin/rm -f ".$an->data->{node}{$node}{output};
+					if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
+					{
+						# Local call.
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "shell_call", value1 => $shell_call, 
+						}, file => $THIS_FILE, line => __LINE__});
+						open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+						while(<$file_handle>)
+						{
+							chomp;
+							my $line = $_;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "line", value1 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+						close $file_handle;
+					}
+					else
+					{
+						# Remote call
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "node",       value1 => $node,
+							name2 => "shell_call", value2 => $shell_call,
+						}, file => $THIS_FILE, line => __LINE__});
+						my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+							target		=>	$node,
+							port		=>	$port, 
+							password	=>	$password,
+							ssh_fh		=>	"",
+							'close'		=>	0,
+							shell_call	=>	$shell_call,
+						});
+						foreach my $line (@{$return})
+						{
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "node", value1 => $node,
+								name2 => "line", value2 => $line, 
+							}, file => $THIS_FILE, line => __LINE__});
+						}
+					}
+					
+					# I don't bother examining the output. If it fails, the file will be
+					# wiped in the next reboot anyway.
+					$an->data->{node}{$node}{output} = "";
+					$an->data->{node}{$node}{token}  = "";
+					
+					# Only record the last loop of output, otherwise partial output will
+					# stack on top of the final contents of the output file.
+					$output->{$node} = $call_output;
+				}
+				else
+				{
+					# This is output from the call.
+					$call_output .= "$line\n";
+				}
+			}
+		}
+		
+		# See if I still have an output file. If not, we're done.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
+			name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
+			name3 => "waiting",                value3 => $waiting,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ((not $an->data->{node}{$node1}{output}) && (not $an->data->{node}{$node2}{output}))
+		{
+			$waiting = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "waiting", value1 => $waiting,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Abort if we've waited too long, otherwise sleep.
+		if (($waiting) && (time > $timeout))
+		{
+			# Timeout, exit.
+			$waiting = 0;
+			$an->Log->entry({log_level => 1, message_key => "log_0265", file => $THIS_FILE, line => __LINE__});
+		}
+		if ($waiting)
+		{
+			sleep 10;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "time",    value1 => time,
+				name2 => "timeout", value2 => $timeout,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	close $file_handle;
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "known_machine", value1 => $known_machine, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($known_machine);
+	# Return the hash reference of output from both nodes.
+	return($output);
 }
 
-# This calls 'ssh-keyscan' to add a remote machine's fingerprint to the local user's list of known_hosts.
-sub _call_ssh_keyscan
+# This will wait for a bit, then check to see if node 1 is running the passed-in program. If it is, it will 
+# keep waiting until it exits. If it isn't, it will run without further delay.
+sub wait_on_peer
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $user        = $parameter->{user}; 
-	my $target      = $parameter->{target};
-	my $known_hosts = $parameter->{known_hosts};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_call_ssh_keyscan" }, message_key => "an_variables_0003", message_variables => { 
-		name1 => "user",        value1 => $user,
-		name2 => "target",      value2 => $target,
-		name3 => "known_hosts", value3 => $known_hosts,
-	}, file => $THIS_FILE, line => __LINE__});
-
-	$an->Log->entry({log_level => 3, message_key => "notice_message_0010", message_variables => {
-		target => $target, 
-		user   => $user, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my $shell_call = $an->data->{path}{'ssh-keyscan'}." $target >> $known_hosts && ";
-		$shell_call .= $an->data->{path}{'chown'}." $user:$user $known_hosts";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
+	if (not $parameter->{program})
 	{
-		chomp;
-		my $line = $_;
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => "$THIS_FILE", line => __LINE__});
 	}
-	close $file_handle;
+	if (not $parameter->{target})
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
+	}
+	my $program  = $parameter->{program};
+	my $target   = $parameter->{target};
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+
+	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
+	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
+	sleep 30;
+	my $pids = $an->Get->pids({
+		program_name	=>	$program, 
+		target		=>	$target, 
+		password	=>	$password,
+		port		=>	$port,
+	});
+	my $count = @{$pids};
+	if (not $count)
+	{
+		# It still isn't running, so we probably booted while the peer didn't.
+		$an->Log->entry({log_level => 1, message_key => "tools_log_0030", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Wait for it to finish.
+		my $wait = 1;
+		while ($wait)
+		{
+			my $pids = $an->Get->pids({
+				program_name	=>	$program, 
+				target		=>	$target, 
+				password	=>	$password,
+				port		=>	$port,
+			});
+			my $count = @{$pids};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "count", value1 => $count, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($count)
+			{
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0031", message_variables => { 
+					program => $program,
+					peer    => $target,
+				}, file => $THIS_FILE, line => __LINE__});
+				sleep 10;
+			}
+			else
+			{
+				# We're done waiting.
+				$wait = 0;
+				$an->Log->entry({log_level => 1, message_key => "tools_log_0032", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
 	
 	return(0);
 }
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 # This returns the token from the target target if the command is found already in the target's 
 # 'anvil-run-jobs' queue.
@@ -1386,78 +1394,86 @@ sub _avoid_duplicate_delayed_runs
 	return($token);
 }
 
-# This will wait for a bit, then check to see if node 1 is running the passed-in program. If it is, it will 
-# keep waiting until it exits. If it isn't, it will run without further delay.
-sub wait_on_peer
+# This calls 'ssh-keyscan' to add a remote machine's fingerprint to the local user's list of known_hosts.
+sub _call_ssh_keyscan
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	if (not $parameter->{program})
-	{
-		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0096", code => 96, file => "$THIS_FILE", line => __LINE__});
-	}
-	if (not $parameter->{target})
-	{
-		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
-	}
-	my $program  = $parameter->{program};
-	my $target   = $parameter->{target};
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $user        = $parameter->{user}; 
+	my $target      = $parameter->{target};
+	my $known_hosts = $parameter->{known_hosts};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_call_ssh_keyscan" }, message_key => "an_variables_0003", message_variables => { 
+		name1 => "user",        value1 => $user,
+		name2 => "target",      value2 => $target,
+		name3 => "known_hosts", value3 => $known_hosts,
+	}, file => $THIS_FILE, line => __LINE__});
 
-	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
-	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
-	sleep 30;
-	my $pids = $an->Get->pids({
-		program_name	=>	$program, 
-		target		=>	$target, 
-		password	=>	$password,
-		port		=>	$port,
-	});
-	my $count = @{$pids};
-	if (not $count)
+	$an->Log->entry({log_level => 3, message_key => "notice_message_0010", message_variables => {
+		target => $target, 
+		user   => $user, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $shell_call = $an->data->{path}{'ssh-keyscan'}." $target >> $known_hosts && ";
+		$shell_call .= $an->data->{path}{'chown'}." $user:$user $known_hosts";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
 	{
-		# It still isn't running, so we probably booted while the peer didn't.
-		$an->Log->entry({log_level => 1, message_key => "tools_log_0030", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
+		chomp;
+		my $line = $_;
 	}
-	else
-	{
-		# Wait for it to finish.
-		my $wait = 1;
-		while ($wait)
-		{
-			my $pids = $an->Get->pids({
-				program_name	=>	$program, 
-				target		=>	$target, 
-				password	=>	$password,
-				port		=>	$port,
-			});
-			my $count = @{$pids};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "count", value1 => $count, 
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($count)
-			{
-				$an->Log->entry({log_level => 1, message_key => "tools_log_0031", message_variables => { 
-					program => $program,
-					peer    => $target,
-				}, file => $THIS_FILE, line => __LINE__});
-				sleep 10;
-			}
-			else
-			{
-				# We're done waiting.
-				$wait = 0;
-				$an->Log->entry({log_level => 1, message_key => "tools_log_0032", message_variables => { program => $program }, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
+	close $file_handle;
 	
 	return(0);
+}
+
+# This checks to see if a given target machine is in the user's known_hosts file.
+sub _check_known_hosts_for_target
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $target      = $parameter->{target};
+	my $known_hosts = $parameter->{known_hosts};
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_known_hosts_for_target" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "target",      value1 => $target,
+		name2 => "known_hosts", value2 => $known_hosts,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# read it in and search.
+	my $known_machine = 0;
+	my $shell_call    = $known_hosts;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /$target ssh-rsa /)
+		{
+			# We already know this machine (or rather, we already have a fingerprint for
+			# this machine).
+			$known_machine = 1;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "known_machine", value1 => $known_machine, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "known_machine", value1 => $known_machine, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($known_machine);
 }
 
 1;

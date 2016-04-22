@@ -10,10 +10,34 @@ use Data::Dumper;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "ScanCore.pm";
 
+### Methods;
+# get_anvils
+# get_hosts
+# get_manifests
+# get_migration_target
+# get_nodes
+# get_notifications
+# get_owners
+# get_recipients
+# get_servers
+# get_smtp
+# host_state
+# insert_or_update_anvils
+# insert_or_update_nodes
+# insert_or_update_notifications
+# insert_or_update_owners
+# insert_or_update_recipients
+# insert_or_update_smtp
+# parse_install_manifest
+# save_install_manifest
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
-	#print "$THIS_FILE ".__LINE__."; In AN::Storage->new()\n";
 	my $class = shift;
 	
 	my $self  = {};
@@ -33,6 +57,198 @@ sub parent
 	$self->{HANDLE}{TOOLS} = $parent if $parent;
 	
 	return ($self->{HANDLE}{TOOLS});
+}
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
+
+# Get a list of Anvil! systems as an array of hash references
+sub get_anvils
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    anvil_uuid, 
+    anvil_owner_uuid, 
+    anvil_smtp_uuid, 
+    anvil_name, 
+    anvil_description, 
+    anvil_note, 
+    anvil_password, 
+    modified_date 
+FROM 
+    anvils
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $anvil_uuid        = $row->[0];
+		my $anvil_owner_uuid  = $row->[1];
+		my $anvil_smtp_uuid   = $row->[2];
+		my $anvil_name        = $row->[3];
+		my $anvil_description = $row->[4];
+		my $anvil_note        = $row->[5];
+		my $anvil_password    = $row->[6];
+		my $modified_date     = $row->[7];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
+			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
+			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
+			name4 => "anvil_name",        value4 => $anvil_name, 
+			name5 => "anvil_description", value5 => $anvil_description, 
+			name6 => "anvil_note",        value6 => $anvil_note, 
+			name7 => "modified_date",     value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvil_password", value1 => $anvil_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			anvil_uuid		=>	$anvil_uuid,
+			anvil_owner_uuid	=>	$anvil_owner_uuid, 
+			anvil_smtp_uuid		=>	$anvil_smtp_uuid, 
+			anvil_name		=>	$anvil_name, 
+			anvil_description	=>	$anvil_description, 
+			anvil_note		=>	$anvil_note, 
+			anvil_password		=>	$anvil_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! hosts as an array of hash references
+sub get_hosts
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    host_uuid, 
+    host_name, 
+    host_type, 
+    host_emergency_stop, 
+    host_stop_reason, 
+    host_health, 
+    modified_date 
+FROM 
+    hosts
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $host_uuid           = $row->[0];
+		my $host_name           = $row->[1];
+		my $host_type           = $row->[2];
+		my $host_emergency_stop = $row->[3] ? $row->[3] : "";
+		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
+		my $host_health         = $row->[5] ? $row->[5] : "";
+		my $modified_date       = $row->[6];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+			name1 => "host_uuid",           value1 => $host_uuid, 
+			name2 => "host_name",           value2 => $host_name, 
+			name3 => "host_type",           value3 => $host_type, 
+			name4 => "host_emergency_stop", value4 => $host_emergency_stop, 
+			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
+			name6 => "host_health",         value6 => $host_health, 
+			name7 => "modified_date",       value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			host_uuid		=>	$host_uuid,
+			host_name		=>	$host_name, 
+			host_type		=>	$host_type, 
+			host_emergency_stop	=>	$host_emergency_stop, 
+			host_stop_reason	=>	$host_stop_reason, 
+			host_health		=>	$host_health, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! Install Manifests as an array of hash references
+sub get_manifests
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    manifest_uuid, 
+    manifest_data, 
+    manifest_note, 
+    modified_date 
+FROM 
+    manifests
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $manifest_uuid = $row->[0];
+		my $manifest_data = $row->[1];
+		my $manifest_note = $row->[2] ? $row->[2] : "NULL";
+		my $modified_date = $row->[3];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+			name1 => "manifest_uuid", value1 => $manifest_uuid, 
+			name2 => "manifest_data", value2 => $manifest_data, 
+			name3 => "manifest_note", value3 => $manifest_note, 
+			name4 => "modified_date", value4 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			manifest_uuid	=>	$manifest_uuid,
+			manifest_data	=>	$manifest_data, 
+			manifest_note	=>	$manifest_note, 
+			modified_date	=>	$modified_date, 
+		};
+	}
+	
+	return($return);
 }
 
 # This returns the migration target of a given server, if it is being migrated.
@@ -75,6 +291,451 @@ AND
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return($target);
+}
+
+# Get a list of Anvil! nodes as an array of hash references
+sub get_nodes
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    a.node_uuid, 
+    a.node_anvil_uuid, 
+    a.node_host_uuid, 
+    a.node_remote_ip, 
+    a.node_remote_port, 
+    a.node_note, 
+    a.node_bcn, 
+    a.node_sn, 
+    a.node_ifn, 
+    a.node_password,
+    b.host_name,  
+    a.modified_date 
+FROM 
+    nodes a,
+    hosts b 
+WHERE 
+    a.node_host_uuid = b.host_uuid
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $node_uuid        = $row->[0];
+		my $node_anvil_uuid  = $row->[1];
+		my $node_host_uuid   = $row->[2];
+		my $node_remote_ip   = $row->[3] ? $row->[3] : "";
+		my $node_remote_port = $row->[4] ? $row->[4] : "";
+		my $node_note        = $row->[5] ? $row->[5] : "";
+		my $node_bcn         = $row->[6] ? $row->[6] : "";
+		my $node_sn          = $row->[7] ? $row->[7] : "";
+		my $node_ifn         = $row->[8] ? $row->[8] : "";
+		my $node_password    = $row->[9] ? $row->[9] : "";
+		my $host_name        = $row->[10];
+		my $modified_date    = $row->[11];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+			name1  => "node_uuid",        value1  => $node_uuid, 
+			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
+			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
+			name4  => "node_remote_ip",   value4  => $node_remote_ip, 
+			name5  => "node_remote_port", value5  => $node_remote_port, 
+			name6  => "node_note",        value6  => $node_note, 
+			name7  => "node_bcn",         value7  => $node_bcn, 
+			name8  => "node_sn",          value8  => $node_sn, 
+			name9  => "node_ifn",         value9  => $node_ifn, 
+			name10 => "host_name",        value10 => $host_name, 
+			name11 => "modified_date",    value11 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_password", value1 => $node_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			node_uuid		=>	$node_uuid,
+			node_anvil_uuid		=>	$node_anvil_uuid, 
+			node_host_uuid		=>	$node_host_uuid, 
+			node_remote_ip		=>	$node_remote_ip, 
+			node_remote_port	=>	$node_remote_port, 
+			node_note		=>	$node_note, 
+			node_bcn		=>	$node_bcn, 
+			node_sn			=>	$node_sn, 
+			node_ifn		=>	$node_ifn, 
+			host_name		=>	$host_name, 
+			node_password		=>	$node_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! Owners as an array of hash references
+sub get_notifications
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    notify_uuid, 
+    notify_name, 
+    notify_target, 
+    notify_language, 
+    notify_level, 
+    notify_units, 
+    notify_note, 
+    modified_date 
+FROM 
+    notifications
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $notify_uuid     = $row->[0];
+		my $notify_name     = $row->[1];
+		my $notify_target   = $row->[2];
+		my $notify_language = $row->[3];
+		my $notify_level    = $row->[4];
+		my $notify_units    = $row->[5];
+		my $notify_note     = $row->[6] ? $row->[6] : "";
+		my $modified_date   = $row->[7];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "notify_uuid",     value1 => $notify_uuid, 
+			name2 => "notify_name",     value2 => $notify_name, 
+			name3 => "notify_target",   value3 => $notify_target, 
+			name4 => "notify_language", value4 => $notify_language, 
+			name5 => "notify_level",    value5 => $notify_level, 
+			name6 => "notify_units",    value6 => $notify_units, 
+			name7 => "notify_note",     value7 => $notify_note, 
+			name8 => "modified_date",   value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			notify_uuid	=>	$notify_uuid,
+			notify_name	=>	$notify_name, 
+			notify_target	=>	$notify_target, 
+			notify_language	=>	$notify_language, 
+			notify_level	=>	$notify_level, 
+			notify_units	=>	$notify_units, 
+			notify_note	=>	$notify_note, 
+			modified_date	=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! Owners as an array of hash references
+sub get_owners
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    owner_uuid, 
+    owner_name, 
+    owner_note, 
+    modified_date 
+FROM 
+    owners
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $owner_uuid    = $row->[0];
+		my $owner_name    = $row->[1];
+		my $owner_note    = $row->[2] ? $row->[2] : "";
+		my $modified_date = $row->[3];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "owner_uuid",    value1 => $owner_uuid, 
+			name2 => "owner_name",    value2 => $owner_name, 
+			name3 => "owner_note",    value3 => $owner_note, 
+			name4 => "modified_date", value4 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			owner_uuid	=>	$owner_uuid,
+			owner_name	=>	$owner_name, 
+			owner_note	=>	$owner_note, 
+			modified_date	=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of recipients (links between Anvil! systems and who receives alert notifications from it).
+sub get_recipients
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    recipient_uuid, 
+    recipient_anvil_uuid, 
+    recipient_notify_uuid, 
+    recipient_notify_level, 
+    recipient_note, 
+    modified_date 
+FROM 
+    recipients
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $recipient_uuid         = $row->[0];
+		my $recipient_anvil_uuid   = $row->[1];
+		my $recipient_notify_uuid  = $row->[2];
+		my $recipient_notify_level = $row->[3];
+		my $recipient_note         = $row->[4] ? $row->[4] : "";
+		my $modified_date          = $row->[5];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
+			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
+			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
+			name4 => "recipient_notify_level", value4 => $recipient_notify_level, 
+			name5 => "recipient_note",         value5 => $recipient_note, 
+			name6 => "modified_date",          value6 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			recipient_uuid		=>	$recipient_uuid,
+			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
+			recipient_notify_uuid	=>	$recipient_notify_uuid, 
+			recipient_notify_level	=>	$recipient_notify_level, 
+			recipient_note		=>	$recipient_note, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! servers as an array of hash references
+sub get_servers
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    server_uuid, 
+    server_name, 
+    server_stop_reason, 
+    server_start_after, 
+    server_start_delay, 
+    server_note, 
+    server_definition, 
+    server_host, 
+    server_state, 
+    server_migration_type, 
+    server_pre_migration_script, 
+    server_pre_migration_arguments, 
+    server_post_migration_script, 
+    server_post_migration_arguments, 
+    modified_date 
+FROM 
+    servers
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $server_uuid                     = $row->[0];
+		my $server_name                     = $row->[1];
+		my $server_stop_reason              = $row->[2];
+		my $server_start_after              = $row->[3];
+		my $server_start_delay              = $row->[4];
+		my $server_note                     = $row->[5] ? $row->[5] : "";
+		my $server_definition               = $row->[6];
+		my $server_host                     = $row->[7];
+		my $server_state                    = $row->[8];
+		my $server_migration_type           = $row->[9];
+		my $server_pre_migration_script     = $row->[10];
+		my $server_pre_migration_arguments  = $row->[11];
+		my $server_post_migration_script    = $row->[12];
+		my $server_post_migration_arguments = $row->[13];
+		my $modified_date                   = $row->[14];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+			name1  => "server_uuid",                     value1  => $server_uuid, 
+			name2  => "server_name",                     value2  => $server_name, 
+			name3  => "server_stop_reason",              value3  => $server_stop_reason, 
+			name4  => "server_start_after",              value4  => $server_start_after, 
+			name5  => "server_start_delay",              value5  => $server_start_delay, 
+			name6  => "server_note",                     value6  => $server_note, 
+			name7  => "server_definition",               value7  => $server_definition, 
+			name8  => "server_host",                     value8  => $server_host, 
+			name9  => "server_state",                    value9  => $server_state, 
+			name10 => "server_migration_type",           value10 => $server_migration_type, 
+			name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script, 
+			name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments, 
+			name13 => "server_post_migration_script",    value13 => $server_post_migration_script, 
+			name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments, 
+			name15 => "modified_date",                   value15 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			server_uuid			=>	$server_uuid,
+			server_name			=>	$server_name, 
+			server_stop_reason		=>	$server_stop_reason, 
+			server_start_after		=>	$server_start_after, 
+			server_start_delay		=>	$server_start_delay, 
+			server_note			=>	$server_note, 
+			server_definition		=>	$server_definition, 
+			server_host			=>	$server_host, 
+			server_state			=>	$server_state, 
+			server_migration_type		=>	$server_migration_type, 
+			server_pre_migration_script	=>	$server_pre_migration_script, 
+			server_pre_migration_arguments	=>	$server_pre_migration_arguments, 
+			server_post_migration_script	=>	$server_post_migration_script, 
+			server_post_migration_arguments	=>	$server_post_migration_arguments, 
+			modified_date			=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of Anvil! SMTP mail servers as an array of hash references
+sub get_smtp
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $query = "
+SELECT 
+    smtp_uuid, 
+    smtp_server, 
+    smtp_port, 
+    smtp_username, 
+    smtp_password, 
+    smtp_security, 
+    smtp_authentication, 
+    smtp_helo_domain,
+    modified_date 
+FROM 
+    smtp
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $smtp_uuid           = $row->[0];
+		my $smtp_server         = $row->[1];
+		my $smtp_port           = $row->[2];
+		my $smtp_username       = $row->[3];
+		my $smtp_password       = $row->[4];
+		my $smtp_security       = $row->[5];
+		my $smtp_authentication = $row->[6];
+		my $smtp_helo_domain    = $row->[7];
+		my $modified_date       = $row->[8];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "smtp_uuid",           value1 => $smtp_uuid, 
+			name2 => "smtp_server",         value2 => $smtp_server, 
+			name3 => "smtp_port",           value3 => $smtp_port, 
+			name4 => "smtp_username",       value4 => $smtp_username, 
+			name5 => "smtp_security",       value5 => $smtp_security, 
+			name6 => "smtp_authentication", value6 => $smtp_authentication, 
+			name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain, 
+			name8 => "modified_date",       value8 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp_password", value1 => $smtp_password, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			smtp_uuid		=>	$smtp_uuid,
+			smtp_server		=>	$smtp_server, 
+			smtp_port		=>	$smtp_port, 
+			smtp_username		=>	$smtp_username, 
+			smtp_password		=>	$smtp_password, 
+			smtp_security		=>	$smtp_security, 
+			smtp_authentication	=>	$smtp_authentication, 
+			smtp_helo_domain	=>	$smtp_helo_domain, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
 }
 
 # Returns (and sets, if requested) the health of the target.
@@ -193,638 +854,168 @@ WHERE
 	return($current_health);
 }
 
-# Get a list of Anvil! Install Manifests as an array of hash references
-sub get_manifests
+# This updates (or inserts) a record in the 'anvils' table.
+sub insert_or_update_anvils
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    manifest_uuid, 
-    manifest_data, 
-    manifest_note, 
-    modified_date 
-FROM 
-    manifests
-;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
+	my $anvil_uuid        = $parameter->{anvil_uuid}        ? $parameter->{anvil_uuid}        : "";
+	my $anvil_owner_uuid  = $parameter->{anvil_owner_uuid}  ? $parameter->{anvil_owner_uuid}  : "";
+	my $anvil_smtp_uuid   = $parameter->{anvil_smtp_uuid}   ? $parameter->{anvil_smtp_uuid}   : "";
+	my $anvil_name        = $parameter->{anvil_name}        ? $parameter->{anvil_name}        : "";
+	my $anvil_description = $parameter->{anvil_description} ? $parameter->{anvil_description} : "";
+	my $anvil_note        = $parameter->{anvil_note}        ? $parameter->{anvil_note}        : "";
+	my $anvil_password    = $parameter->{anvil_password}    ? $parameter->{anvil_password}    : "";
+	if (not $anvil_name)
 	{
-		my $manifest_uuid = $row->[0];
-		my $manifest_data = $row->[1];
-		my $manifest_note = $row->[2] ? $row->[2] : "NULL";
-		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "manifest_uuid", value1 => $manifest_uuid, 
-			name2 => "manifest_data", value2 => $manifest_data, 
-			name3 => "manifest_note", value3 => $manifest_note, 
-			name4 => "modified_date", value4 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			manifest_uuid	=>	$manifest_uuid,
-			manifest_data	=>	$manifest_data, 
-			manifest_note	=>	$manifest_note, 
-			modified_date	=>	$modified_date, 
-		};
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
 	}
 	
-	return($return);
-}
-
-# Get a list of Anvil! hosts as an array of hash references
-sub get_hosts
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    host_uuid, 
-    host_name, 
-    host_type, 
-    host_emergency_stop, 
-    host_stop_reason, 
-    host_health, 
-    modified_date 
-FROM 
-    hosts
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
+	# If we don't have a UUID, see if we can find one for the given Anvil! name.
+	if (not $anvil_uuid)
 	{
-		my $host_uuid           = $row->[0];
-		my $host_name           = $row->[1];
-		my $host_type           = $row->[2];
-		my $host_emergency_stop = $row->[3] ? $row->[3] : "";
-		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
-		my $host_health         = $row->[5] ? $row->[5] : "";
-		my $modified_date       = $row->[6];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "host_uuid",           value1 => $host_uuid, 
-			name2 => "host_name",           value2 => $host_name, 
-			name3 => "host_type",           value3 => $host_type, 
-			name4 => "host_emergency_stop", value4 => $host_emergency_stop, 
-			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
-			name6 => "host_health",         value6 => $host_health, 
-			name7 => "modified_date",       value7 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			host_uuid		=>	$host_uuid,
-			host_name		=>	$host_name, 
-			host_type		=>	$host_type, 
-			host_emergency_stop	=>	$host_emergency_stop, 
-			host_stop_reason	=>	$host_stop_reason, 
-			host_health		=>	$host_health, 
-			modified_date		=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# Get a list of Anvil! nodes as an array of hash references
-sub get_nodes
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
+		my $query = "
 SELECT 
-    a.node_uuid, 
-    a.node_anvil_uuid, 
-    a.node_host_uuid, 
-    a.node_remote_ip, 
-    a.node_remote_port, 
-    a.node_note, 
-    a.node_bcn, 
-    a.node_sn, 
-    a.node_ifn, 
-    a.node_password,
-    b.host_name,  
-    a.modified_date 
+    anvil_uuid 
 FROM 
-    nodes a,
-    hosts b 
+    anvils 
 WHERE 
-    a.node_host_uuid = b.host_uuid
+    anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name)." 
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $node_uuid        = $row->[0];
-		my $node_anvil_uuid  = $row->[1];
-		my $node_host_uuid   = $row->[2];
-		my $node_remote_ip   = $row->[3] ? $row->[3] : "";
-		my $node_remote_port = $row->[4] ? $row->[4] : "";
-		my $node_note        = $row->[5] ? $row->[5] : "";
-		my $node_bcn         = $row->[6] ? $row->[6] : "";
-		my $node_sn          = $row->[7] ? $row->[7] : "";
-		my $node_ifn         = $row->[8] ? $row->[8] : "";
-		my $node_password    = $row->[9] ? $row->[9] : "";
-		my $host_name        = $row->[10];
-		my $modified_date    = $row->[11];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
-			name1  => "node_uuid",        value1  => $node_uuid, 
-			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
-			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
-			name4  => "node_remote_ip",   value4  => $node_remote_ip, 
-			name5  => "node_remote_port", value5  => $node_remote_port, 
-			name6  => "node_note",        value6  => $node_note, 
-			name7  => "node_bcn",         value7  => $node_bcn, 
-			name8  => "node_sn",          value8  => $node_sn, 
-			name9  => "node_ifn",         value9  => $node_ifn, 
-			name10 => "host_name",        value10 => $host_name, 
-			name11 => "modified_date",    value11 => $modified_date, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "node_password", value1 => $node_password, 
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			node_uuid		=>	$node_uuid,
-			node_anvil_uuid		=>	$node_anvil_uuid, 
-			node_host_uuid		=>	$node_host_uuid, 
-			node_remote_ip		=>	$node_remote_ip, 
-			node_remote_port	=>	$node_remote_port, 
-			node_note		=>	$node_note, 
-			node_bcn		=>	$node_bcn, 
-			node_sn			=>	$node_sn, 
-			node_ifn		=>	$node_ifn, 
-			host_name		=>	$host_name, 
-			node_password		=>	$node_password, 
-			modified_date		=>	$modified_date, 
-		};
+		foreach my $row (@{$results})
+		{
+			$anvil_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvil_uuid", value1 => $anvil_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
 	}
 	
-	return($return);
-}
-
-# Get a list of Anvil! systems as an array of hash references
-sub get_anvils
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    anvil_uuid, 
-    anvil_owner_uuid, 
-    anvil_smtp_uuid, 
-    anvil_name, 
-    anvil_description, 
-    anvil_note, 
-    anvil_password, 
+	# If I still don't have an anvil_uuid, we're INSERT'ing .
+	if (not $anvil_uuid)
+	{
+		# INSERT, *if* we have an owner and smtp UUID.
+		if (not $anvil_owner_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => "$THIS_FILE", line => __LINE__});
+		}
+		if (not $anvil_smtp_uuid)
+		{
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => "$THIS_FILE", line => __LINE__});
+		}
+		   $anvil_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    anvils 
+(
+    anvil_uuid,
+    anvil_owner_uuid,
+    anvil_smtp_uuid,
+    anvil_name,
+    anvil_description,
+    anvil_note,
+    anvil_password,
     modified_date 
-FROM 
-    anvils
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $anvil_uuid        = $row->[0];
-		my $anvil_owner_uuid  = $row->[1];
-		my $anvil_smtp_uuid   = $row->[2];
-		my $anvil_name        = $row->[3];
-		my $anvil_description = $row->[4];
-		my $anvil_note        = $row->[5];
-		my $anvil_password    = $row->[6];
-		my $modified_date     = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
-			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
-			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
-			name4 => "anvil_name",        value4 => $anvil_name, 
-			name5 => "anvil_description", value5 => $anvil_description, 
-			name6 => "anvil_note",        value6 => $anvil_note, 
-			name7 => "modified_date",     value7 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "anvil_password", value1 => $anvil_password, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			anvil_uuid		=>	$anvil_uuid,
-			anvil_owner_uuid	=>	$anvil_owner_uuid, 
-			anvil_smtp_uuid		=>	$anvil_smtp_uuid, 
-			anvil_name		=>	$anvil_name, 
-			anvil_description	=>	$anvil_description, 
-			anvil_note		=>	$anvil_note, 
-			anvil_password		=>	$anvil_password, 
-			modified_date		=>	$modified_date, 
-		};
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_description).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($anvil_password).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
-	
-	return($return);
-}
-
-# Get a list of Anvil! SMTP mail servers as an array of hash references
-sub get_smtp
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
 SELECT 
-    smtp_uuid, 
-    smtp_server, 
-    smtp_port, 
-    smtp_username, 
-    smtp_password, 
-    smtp_security, 
-    smtp_authentication, 
-    smtp_helo_domain,
-    modified_date 
+    anvil_owner_uuid,
+    anvil_smtp_uuid,
+    anvil_name,
+    anvil_description,
+    anvil_note,
+    anvil_password 
 FROM 
-    smtp
+    anvils 
+WHERE 
+    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $smtp_uuid           = $row->[0];
-		my $smtp_server         = $row->[1];
-		my $smtp_port           = $row->[2];
-		my $smtp_username       = $row->[3];
-		my $smtp_password       = $row->[4];
-		my $smtp_security       = $row->[5];
-		my $smtp_authentication = $row->[6];
-		my $smtp_helo_domain    = $row->[7];
-		my $modified_date       = $row->[8];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-			name1 => "smtp_uuid",           value1 => $smtp_uuid, 
-			name2 => "smtp_server",         value2 => $smtp_server, 
-			name3 => "smtp_port",           value3 => $smtp_port, 
-			name4 => "smtp_username",       value4 => $smtp_username, 
-			name5 => "smtp_security",       value5 => $smtp_security, 
-			name6 => "smtp_authentication", value6 => $smtp_authentication, 
-			name7 => "smtp_helo_domain",    value7 => $smtp_helo_domain, 
-			name8 => "modified_date",       value8 => $modified_date, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "smtp_password", value1 => $smtp_password, 
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			smtp_uuid		=>	$smtp_uuid,
-			smtp_server		=>	$smtp_server, 
-			smtp_port		=>	$smtp_port, 
-			smtp_username		=>	$smtp_username, 
-			smtp_password		=>	$smtp_password, 
-			smtp_security		=>	$smtp_security, 
-			smtp_authentication	=>	$smtp_authentication, 
-			smtp_helo_domain	=>	$smtp_helo_domain, 
-			modified_date		=>	$modified_date, 
-		};
+		foreach my $row (@{$results})
+		{
+			my $old_anvil_owner_uuid  = $row->[0];
+			my $old_anvil_smtp_uuid   = $row->[1];
+			my $old_anvil_name        = $row->[2];
+			my $old_anvil_description = $row->[3];
+			my $old_anvil_note        = $row->[4];
+			my $old_anvil_password    = $row->[5];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "old_anvil_owner_uuid",  value1 => $old_anvil_owner_uuid, 
+				name2 => "old_anvil_smtp_uuid",   value2 => $old_anvil_smtp_uuid, 
+				name3 => "old_anvil_name",        value3 => $old_anvil_name, 
+				name4 => "old_anvil_description", value4 => $old_anvil_description, 
+				name5 => "old_anvil_note",        value5 => $old_anvil_note, 
+				name6 => "old_anvil_password",    value6 => $old_anvil_password, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_anvil_owner_uuid  ne $anvil_owner_uuid)  or 
+			    ($old_anvil_smtp_uuid   ne $anvil_smtp_uuid)   or 
+			    ($old_anvil_name        ne $anvil_name)        or 
+			    ($old_anvil_description ne $anvil_description) or 
+			    ($old_anvil_note        ne $anvil_note)        or 
+			    ($old_anvil_password    ne $anvil_password)) 
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    anvils 
+SET 
+    anvil_owner_uuid  = ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).",
+    anvil_smtp_uuid   = ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).",
+    anvil_name        = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
+    anvil_description = ".$an->data->{sys}{use_db_fh}->quote($anvil_description).",
+    anvil_note        = ".$an->data->{sys}{use_db_fh}->quote($anvil_note).",
+    anvil_password    = ".$an->data->{sys}{use_db_fh}->quote($anvil_password).",
+    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    anvil_uuid        = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
 	}
 	
-	return($return);
-}
-
-# Get a list of Anvil! Owners as an array of hash references
-sub get_owners
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    owner_uuid, 
-    owner_name, 
-    owner_note, 
-    modified_date 
-FROM 
-    owners
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $owner_uuid    = $row->[0];
-		my $owner_name    = $row->[1];
-		my $owner_note    = $row->[2] ? $row->[2] : "";
-		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-			name1 => "owner_uuid",    value1 => $owner_uuid, 
-			name2 => "owner_name",    value2 => $owner_name, 
-			name3 => "owner_note",    value3 => $owner_note, 
-			name4 => "modified_date", value4 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			owner_uuid	=>	$owner_uuid,
-			owner_name	=>	$owner_name, 
-			owner_note	=>	$owner_note, 
-			modified_date	=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# Get a list of Anvil! servers as an array of hash references
-sub get_servers
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    server_uuid, 
-    server_name, 
-    server_stop_reason, 
-    server_start_after, 
-    server_start_delay, 
-    server_note, 
-    server_definition, 
-    server_host, 
-    server_state, 
-    server_migration_type, 
-    server_pre_migration_script, 
-    server_pre_migration_arguments, 
-    server_post_migration_script, 
-    server_post_migration_arguments, 
-    modified_date 
-FROM 
-    servers
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $server_uuid                     = $row->[0];
-		my $server_name                     = $row->[1];
-		my $server_stop_reason              = $row->[2];
-		my $server_start_after              = $row->[3];
-		my $server_start_delay              = $row->[4];
-		my $server_note                     = $row->[5] ? $row->[5] : "";
-		my $server_definition               = $row->[6];
-		my $server_host                     = $row->[7];
-		my $server_state                    = $row->[8];
-		my $server_migration_type           = $row->[9];
-		my $server_pre_migration_script     = $row->[10];
-		my $server_pre_migration_arguments  = $row->[11];
-		my $server_post_migration_script    = $row->[12];
-		my $server_post_migration_arguments = $row->[13];
-		my $modified_date                   = $row->[14];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
-			name1  => "server_uuid",                     value1  => $server_uuid, 
-			name2  => "server_name",                     value2  => $server_name, 
-			name3  => "server_stop_reason",              value3  => $server_stop_reason, 
-			name4  => "server_start_after",              value4  => $server_start_after, 
-			name5  => "server_start_delay",              value5  => $server_start_delay, 
-			name6  => "server_note",                     value6  => $server_note, 
-			name7  => "server_definition",               value7  => $server_definition, 
-			name8  => "server_host",                     value8  => $server_host, 
-			name9  => "server_state",                    value9  => $server_state, 
-			name10 => "server_migration_type",           value10 => $server_migration_type, 
-			name11 => "server_pre_migration_script",     value11 => $server_pre_migration_script, 
-			name12 => "server_pre_migration_arguments",  value12 => $server_pre_migration_arguments, 
-			name13 => "server_post_migration_script",    value13 => $server_post_migration_script, 
-			name14 => "server_post_migration_arguments", value14 => $server_post_migration_arguments, 
-			name15 => "modified_date",                   value15 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			server_uuid			=>	$server_uuid,
-			server_name			=>	$server_name, 
-			server_stop_reason		=>	$server_stop_reason, 
-			server_start_after		=>	$server_start_after, 
-			server_start_delay		=>	$server_start_delay, 
-			server_note			=>	$server_note, 
-			server_definition		=>	$server_definition, 
-			server_host			=>	$server_host, 
-			server_state			=>	$server_state, 
-			server_migration_type		=>	$server_migration_type, 
-			server_pre_migration_script	=>	$server_pre_migration_script, 
-			server_pre_migration_arguments	=>	$server_pre_migration_arguments, 
-			server_post_migration_script	=>	$server_post_migration_script, 
-			server_post_migration_arguments	=>	$server_post_migration_arguments, 
-			modified_date			=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# Get a list of recipients (links between Anvil! systems and who receives alert notifications from it).
-sub get_recipients
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    recipient_uuid, 
-    recipient_anvil_uuid, 
-    recipient_notify_uuid, 
-    recipient_notify_level, 
-    recipient_note, 
-    modified_date 
-FROM 
-    recipients
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $recipient_uuid         = $row->[0];
-		my $recipient_anvil_uuid   = $row->[1];
-		my $recipient_notify_uuid  = $row->[2];
-		my $recipient_notify_level = $row->[3];
-		my $recipient_note         = $row->[4] ? $row->[4] : "";
-		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
-			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
-			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
-			name4 => "recipient_notify_level", value4 => $recipient_notify_level, 
-			name5 => "recipient_note",         value5 => $recipient_note, 
-			name6 => "modified_date",          value6 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			recipient_uuid		=>	$recipient_uuid,
-			recipient_anvil_uuid	=>	$recipient_anvil_uuid, 
-			recipient_notify_uuid	=>	$recipient_notify_uuid, 
-			recipient_notify_level	=>	$recipient_notify_level, 
-			recipient_note		=>	$recipient_note, 
-			modified_date		=>	$modified_date, 
-		};
-	}
-	
-	return($return);
-}
-
-# Get a list of Anvil! Owners as an array of hash references
-sub get_notifications
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	my $query = "
-SELECT 
-    notify_uuid, 
-    notify_name, 
-    notify_target, 
-    notify_language, 
-    notify_level, 
-    notify_units, 
-    notify_note, 
-    modified_date 
-FROM 
-    notifications
-;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return  = [];
-	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-	my $count   = @{$results};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "results", value1 => $results, 
-		name2 => "count",   value2 => $count
-	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $row (@{$results})
-	{
-		my $notify_uuid     = $row->[0];
-		my $notify_name     = $row->[1];
-		my $notify_target   = $row->[2];
-		my $notify_language = $row->[3];
-		my $notify_level    = $row->[4];
-		my $notify_units    = $row->[5];
-		my $notify_note     = $row->[6] ? $row->[6] : "";
-		my $modified_date   = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-			name1 => "notify_uuid",     value1 => $notify_uuid, 
-			name2 => "notify_name",     value2 => $notify_name, 
-			name3 => "notify_target",   value3 => $notify_target, 
-			name4 => "notify_language", value4 => $notify_language, 
-			name5 => "notify_level",    value5 => $notify_level, 
-			name6 => "notify_units",    value6 => $notify_units, 
-			name7 => "notify_note",     value7 => $notify_note, 
-			name8 => "modified_date",   value8 => $modified_date, 
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$return}, {
-			notify_uuid	=>	$notify_uuid,
-			notify_name	=>	$notify_name, 
-			notify_target	=>	$notify_target, 
-			notify_language	=>	$notify_language, 
-			notify_level	=>	$notify_level, 
-			notify_units	=>	$notify_units, 
-			notify_note	=>	$notify_note, 
-			modified_date	=>	$modified_date, 
-		};
-	}
-	
-	return($return);
+	return($anvil_uuid);
 }
 
 # This updates (or inserts) a record in the 'nodes' table.
@@ -1024,170 +1215,6 @@ WHERE
 	return($node_uuid);
 }
 
-# This updates (or inserts) a record in the 'anvils' table.
-sub insert_or_update_anvils
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $anvil_uuid        = $parameter->{anvil_uuid}        ? $parameter->{anvil_uuid}        : "";
-	my $anvil_owner_uuid  = $parameter->{anvil_owner_uuid}  ? $parameter->{anvil_owner_uuid}  : "";
-	my $anvil_smtp_uuid   = $parameter->{anvil_smtp_uuid}   ? $parameter->{anvil_smtp_uuid}   : "";
-	my $anvil_name        = $parameter->{anvil_name}        ? $parameter->{anvil_name}        : "";
-	my $anvil_description = $parameter->{anvil_description} ? $parameter->{anvil_description} : "";
-	my $anvil_note        = $parameter->{anvil_note}        ? $parameter->{anvil_note}        : "";
-	my $anvil_password    = $parameter->{anvil_password}    ? $parameter->{anvil_password}    : "";
-	if (not $anvil_name)
-	{
-		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	# If we don't have a UUID, see if we can find one for the given Anvil! name.
-	if (not $anvil_uuid)
-	{
-		my $query = "
-SELECT 
-    anvil_uuid 
-FROM 
-    anvils 
-WHERE 
-    anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name)." 
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			$anvil_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "anvil_uuid", value1 => $anvil_uuid, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# If I still don't have an anvil_uuid, we're INSERT'ing .
-	if (not $anvil_uuid)
-	{
-		# INSERT, *if* we have an owner and smtp UUID.
-		if (not $anvil_owner_uuid)
-		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => "$THIS_FILE", line => __LINE__});
-		}
-		if (not $anvil_smtp_uuid)
-		{
-			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => "$THIS_FILE", line => __LINE__});
-		}
-		   $anvil_uuid = $an->Get->uuid();
-		my $query      = "
-INSERT INTO 
-    anvils 
-(
-    anvil_uuid,
-    anvil_owner_uuid,
-    anvil_smtp_uuid,
-    anvil_name,
-    anvil_description,
-    anvil_note,
-    anvil_password,
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_description).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_note).", 
-    ".$an->data->{sys}{use_db_fh}->quote($anvil_password).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);
-";
-		$query =~ s/'NULL'/NULL/g;
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Query the rest of the values and see if anything changed.
-		my $query = "
-SELECT 
-    anvil_owner_uuid,
-    anvil_smtp_uuid,
-    anvil_name,
-    anvil_description,
-    anvil_note,
-    anvil_password 
-FROM 
-    anvils 
-WHERE 
-    anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			my $old_anvil_owner_uuid  = $row->[0];
-			my $old_anvil_smtp_uuid   = $row->[1];
-			my $old_anvil_name        = $row->[2];
-			my $old_anvil_description = $row->[3];
-			my $old_anvil_note        = $row->[4];
-			my $old_anvil_password    = $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-				name1 => "old_anvil_owner_uuid",  value1 => $old_anvil_owner_uuid, 
-				name2 => "old_anvil_smtp_uuid",   value2 => $old_anvil_smtp_uuid, 
-				name3 => "old_anvil_name",        value3 => $old_anvil_name, 
-				name4 => "old_anvil_description", value4 => $old_anvil_description, 
-				name5 => "old_anvil_note",        value5 => $old_anvil_note, 
-				name6 => "old_anvil_password",    value6 => $old_anvil_password, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Anything change?
-			if (($old_anvil_owner_uuid  ne $anvil_owner_uuid)  or 
-			    ($old_anvil_smtp_uuid   ne $anvil_smtp_uuid)   or 
-			    ($old_anvil_name        ne $anvil_name)        or 
-			    ($old_anvil_description ne $anvil_description) or 
-			    ($old_anvil_note        ne $anvil_note)        or 
-			    ($old_anvil_password    ne $anvil_password)) 
-			{
-				# Something changed, save.
-				my $query = "
-UPDATE 
-    anvils 
-SET 
-    anvil_owner_uuid  = ".$an->data->{sys}{use_db_fh}->quote($anvil_owner_uuid).",
-    anvil_smtp_uuid   = ".$an->data->{sys}{use_db_fh}->quote($anvil_smtp_uuid).",
-    anvil_name        = ".$an->data->{sys}{use_db_fh}->quote($anvil_name).", 
-    anvil_description = ".$an->data->{sys}{use_db_fh}->quote($anvil_description).",
-    anvil_note        = ".$an->data->{sys}{use_db_fh}->quote($anvil_note).",
-    anvil_password    = ".$an->data->{sys}{use_db_fh}->quote($anvil_password).",
-    modified_date     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-WHERE 
-    anvil_uuid        = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
-";
-				$query =~ s/'NULL'/NULL/g;
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	return($anvil_uuid);
-}
-
 # This updates (or inserts) a record in the 'notifications' table.
 sub insert_or_update_notifications
 {
@@ -1344,6 +1371,130 @@ WHERE
 	return($notify_uuid);
 }
 
+# This updates (or inserts) a record in the 'owners' table.
+sub insert_or_update_owners
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $owner_uuid = $parameter->{owner_uuid} ? $parameter->{owner_uuid} : "";
+	my $owner_name = $parameter->{owner_name} ? $parameter->{owner_name} : "";
+	my $owner_note = $parameter->{owner_note} ? $parameter->{owner_note} : "NULL";
+	if (not $owner_name)
+	{
+		# Throw an error and exit.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given owner server name.
+	if (not $owner_uuid)
+	{
+		my $query = "
+SELECT 
+    owner_uuid 
+FROM 
+    owners 
+WHERE 
+    owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$owner_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "owner_uuid", value1 => $owner_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an owner_uuid, we're INSERT'ing .
+	if (not $owner_uuid)
+	{
+		# INSERT
+		   $owner_uuid = $an->Get->uuid();
+		my $query      = "
+INSERT INTO 
+    owners 
+(
+    owner_uuid, 
+    owner_name, 
+    owner_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($owner_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    owner_name, 
+    owner_note 
+FROM 
+    owners 
+WHERE 
+    owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_owner_name = $row->[0];
+			my $old_owner_note = $row->[1];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "old_owner_name", value1 => $old_owner_name, 
+				name2 => "old_owner_note", value2 => $old_owner_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_owner_name ne $owner_name) or 
+			    ($old_owner_note ne $owner_note))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    owners 
+SET 
+    owner_name    = ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
+    owner_note    = ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    owner_uuid    = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($owner_uuid);
+}
+
 # This updates (or inserts) a record in the 'recipients' table.
 sub insert_or_update_recipients
 {
@@ -1484,130 +1635,6 @@ WHERE
 	}
 	
 	return($recipient_uuid);
-}
-
-# This updates (or inserts) a record in the 'owners' table.
-sub insert_or_update_owners
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $owner_uuid = $parameter->{owner_uuid} ? $parameter->{owner_uuid} : "";
-	my $owner_name = $parameter->{owner_name} ? $parameter->{owner_name} : "";
-	my $owner_note = $parameter->{owner_note} ? $parameter->{owner_note} : "NULL";
-	if (not $owner_name)
-	{
-		# Throw an error and exit.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
-	}
-	
-	# If we don't have a UUID, see if we can find one for the given owner server name.
-	if (not $owner_uuid)
-	{
-		my $query = "
-SELECT 
-    owner_uuid 
-FROM 
-    owners 
-WHERE 
-    owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name)." 
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			$owner_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "owner_uuid", value1 => $owner_uuid, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	# If I still don't have an owner_uuid, we're INSERT'ing .
-	if (not $owner_uuid)
-	{
-		# INSERT
-		   $owner_uuid = $an->Get->uuid();
-		my $query      = "
-INSERT INTO 
-    owners 
-(
-    owner_uuid, 
-    owner_name, 
-    owner_note, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($owner_uuid).", 
-    ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
-    ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);
-";
-		$query =~ s/'NULL'/NULL/g;
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Query the rest of the values and see if anything changed.
-		my $query = "
-SELECT 
-    owner_name, 
-    owner_note 
-FROM 
-    owners 
-WHERE 
-    owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
-		my $count   = @{$results};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "results", value1 => $results, 
-			name2 => "count",   value2 => $count
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $row (@{$results})
-		{
-			my $old_owner_name = $row->[0];
-			my $old_owner_note = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "old_owner_name", value1 => $old_owner_name, 
-				name2 => "old_owner_note", value2 => $old_owner_note, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			# Anything change?
-			if (($old_owner_name ne $owner_name) or 
-			    ($old_owner_note ne $owner_note))
-			{
-				# Something changed, save.
-				my $query = "
-UPDATE 
-    owners 
-SET 
-    owner_name    = ".$an->data->{sys}{use_db_fh}->quote($owner_name).", 
-    owner_note    = ".$an->data->{sys}{use_db_fh}->quote($owner_note).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-WHERE 
-    owner_uuid    = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
-";
-				$query =~ s/'NULL'/NULL/g;
-				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	return($owner_uuid);
 }
 
 # This updates (or inserts) a record in the 'smtp' table.
@@ -1780,340 +1807,6 @@ WHERE
 	}
 	
 	return($smtp_uuid);
-}
-
-# This generates an Install Manifest and records it in the 'manifests' table.
-sub save_install_manifest
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	# If 'raw' is set, just straight update the manifest_data.
-	my $xml;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::raw",           value1 => $an->data->{cgi}{raw}, 
-		name2 => "cgi::manifest_data", value2 => $an->data->{cgi}{manifest_data}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (($an->data->{cgi}{raw}) && ($an->data->{cgi}{manifest_data}))
-	{
-		$xml = $an->data->{cgi}{manifest_data};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "xml", value1 => $xml, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Break up hostsnames
-		my ($node1_short_name)    = ($an->data->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
-		my ($node2_short_name)    = ($an->data->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
-		my ($switch1_short_name)  = ($an->data->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
-		my ($switch2_short_name)  = ($an->data->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
-		my ($pdu1_short_name)     = ($an->data->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
-		my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
-		my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
-		my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
-		my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
-		my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
-		my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
-		my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
-		my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-		my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-		my ($now_date, $now_time) = $an->Get->date_and_time();
-		my $date                  = "$now_date, $now_time";
-		
-		# Note yet supported but will be later.
-		$an->data->{cgi}{anvil_node1_ipmi_password} = $an->data->{cgi}{anvil_node1_ipmi_password} ? $an->data->{cgi}{anvil_node1_ipmi_password} : $an->data->{cgi}{anvil_password};
-		$an->data->{cgi}{anvil_node1_ipmi_user}     = $an->data->{cgi}{anvil_node1_ipmi_user}     ? $an->data->{cgi}{anvil_node1_ipmi_user}     : "admin";
-		$an->data->{cgi}{anvil_node2_ipmi_password} = $an->data->{cgi}{anvil_node2_ipmi_password} ? $an->data->{cgi}{anvil_node2_ipmi_password} : $an->data->{cgi}{anvil_password};
-		$an->data->{cgi}{anvil_node2_ipmi_user}     = $an->data->{cgi}{anvil_node2_ipmi_user}     ? $an->data->{cgi}{anvil_node2_ipmi_user}     : "admin";
-		
-		# Generate UUIDs if needed.
-		$an->data->{cgi}{anvil_node1_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node1_uuid};
-		$an->data->{cgi}{anvil_node2_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node2_uuid};
-		
-		### TODO: This isn't set for some reason, fix
-		$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
-		
-		# Set the MTU.
-		$an->data->{cgi}{anvil_mtu_size} = $an->data->{sys}{install_manifest}{'default'}{mtu_size} if not $an->data->{cgi}{anvil_mtu_size};
-		
-		# Use the subnet mask of the IPMI devices by comparing their IP to that
-		# of the BCN and IFN, and use the netmask of the matching network.
-		my $node1_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node1_ipmi_ip}});
-		my $node2_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node2_ipmi_ip}});
-		
-		### Setup the DRBD lines.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Standardize
-		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'});
-		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
-		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/0/false/;
-		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-flushes'});
-		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/no/false/;
-		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/0/false/;
-		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =  lc($an->data->{cgi}{'anvil_drbd_disk_md-flushes'});
-		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/no/false/;
-		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/0/false/;
-		
-		# Convert
-		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} eq "false" ? "no" : "yes";
-		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} eq "false" ? "no" : "yes";
-		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   eq "false" ? "no" : "yes";
-		$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   ? $an->data->{cgi}{'anvil_drbd_options_cpu-mask'} : "";
-		$an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = $an->data->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $an->data->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
-		$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
-		$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
-			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
-			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
-			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
-			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
-			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
-			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		### TODO: Get the node and dashboard UUIDs if not yet set.
-		
-		### KVM-based fencing is supported but not documented. Sample entries
-		### are here for those who might ask for it when building test Anvil!
-		### systems later.
-		# Many things are currently static but might be made configurable later.
-		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-
-<!--
-Generated on:    ".$date."
-Striker Version: ".$an->data->{sys}{version}."
--->
-
-<config>
-	<node name=\"".$an->data->{cgi}{anvil_node1_name}."\" uuid=\"".$an->data->{cgi}{anvil_node1_uuid}."\">
-		<network>
-			<bcn ip=\"".$an->data->{cgi}{anvil_node1_bcn_ip}."\" />
-			<sn ip=\"".$an->data->{cgi}{anvil_node1_sn_ip}."\" />
-			<ifn ip=\"".$an->data->{cgi}{anvil_node1_ifn_ip}."\" />
-		</network>
-		<ipmi>
-			<on reference=\"ipmi_n01\" ip=\"".$an->data->{cgi}{anvil_node1_ipmi_ip}."\" netmask=\"$node1_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node1_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node1_ipmi_password}."\" gateway=\"\" />
-		</ipmi>
-		<pdu>
-			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node1_pdu1_outlet}."\" />
-			<on reference=\"pdu02\" port=\"".$an->data->{cgi}{anvil_node1_pdu2_outlet}."\" />
-			<on reference=\"pdu03\" port=\"".$an->data->{cgi}{anvil_node1_pdu3_outlet}."\" />
-			<on reference=\"pdu04\" port=\"".$an->data->{cgi}{anvil_node1_pdu4_outlet}."\" />
-		</pdu>
-		<kvm>
-			<!-- port == virsh name of VM -->
-			<on reference=\"kvm_host\" port=\"\" />
-		</kvm>
-		<interfaces>
-			<interface name=\"bcn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_bcn_link1_mac}."\" />
-			<interface name=\"bcn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_bcn_link2_mac}."\" />
-			<interface name=\"sn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_sn_link1_mac}."\" />
-			<interface name=\"sn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_sn_link2_mac}."\" />
-			<interface name=\"ifn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_ifn_link1_mac}."\" />
-			<interface name=\"ifn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_ifn_link2_mac}."\" />
-		</interfaces>
-	</node>
-	<node name=\"".$an->data->{cgi}{anvil_node2_name}."\" uuid=\"".$an->data->{cgi}{anvil_node2_uuid}."\">
-		<network>
-			<bcn ip=\"".$an->data->{cgi}{anvil_node2_bcn_ip}."\" />
-			<sn ip=\"".$an->data->{cgi}{anvil_node2_sn_ip}."\" />
-			<ifn ip=\"".$an->data->{cgi}{anvil_node2_ifn_ip}."\" />
-		</network>
-		<ipmi>
-			<on reference=\"ipmi_n02\" ip=\"".$an->data->{cgi}{anvil_node2_ipmi_ip}."\" netmask=\"$node2_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node2_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node2_ipmi_password}."\" gateway=\"\" />
-		</ipmi>
-		<pdu>
-			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node2_pdu1_outlet}."\" />
-			<on reference=\"pdu02\" port=\"".$an->data->{cgi}{anvil_node2_pdu2_outlet}."\" />
-			<on reference=\"pdu03\" port=\"".$an->data->{cgi}{anvil_node2_pdu3_outlet}."\" />
-			<on reference=\"pdu04\" port=\"".$an->data->{cgi}{anvil_node2_pdu4_outlet}."\" />
-		</pdu>
-		<kvm>
-			<on reference=\"kvm_host\" port=\"\" />
-		</kvm>
-		<interfaces>
-			<interface name=\"bcn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_bcn_link1_mac}."\" />
-			<interface name=\"bcn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_bcn_link2_mac}."\" />
-			<interface name=\"sn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_sn_link1_mac}."\" />
-			<interface name=\"sn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_sn_link2_mac}."\" />
-			<interface name=\"ifn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_ifn_link1_mac}."\" />
-			<interface name=\"ifn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_ifn_link2_mac}."\" />
-		</interfaces>
-	</node>
-	<common>
-		<networks>
-			<bcn netblock=\"".$an->data->{cgi}{anvil_bcn_network}."\" netmask=\"".$an->data->{cgi}{anvil_bcn_subnet}."\" gateway=\"\" defroute=\"no\" ethtool_opts=\"".$an->data->{cgi}{anvil_bcn_ethtool_opts}."\" />
-			<sn netblock=\"".$an->data->{cgi}{anvil_sn_network}."\" netmask=\"".$an->data->{cgi}{anvil_sn_subnet}."\" gateway=\"\" defroute=\"no\" ethtool_opts=\"".$an->data->{cgi}{anvil_sn_ethtool_opts}."\" />
-			<ifn netblock=\"".$an->data->{cgi}{anvil_ifn_network}."\" netmask=\"".$an->data->{cgi}{anvil_ifn_subnet}."\" gateway=\"".$an->data->{cgi}{anvil_ifn_gateway}."\" dns1=\"".$an->data->{cgi}{anvil_dns1}."\" dns2=\"".$an->data->{cgi}{anvil_dns2}."\" ntp1=\"".$an->data->{cgi}{anvil_ntp1}."\" ntp2=\"".$an->data->{cgi}{anvil_ntp2}."\" defroute=\"yes\" ethtool_opts=\"".$an->data->{cgi}{anvil_ifn_ethtool_opts}."\" />
-			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
-				<bcn name=\"bcn_bond1\" primary=\"bcn_link1\" secondary=\"bcn_link2\" />
-				<sn name=\"sn_bond1\" primary=\"sn_link1\" secondary=\"sn_link2\" />
-				<ifn name=\"ifn_bond1\" primary=\"ifn_link1\" secondary=\"ifn_link2\" />
-			</bonding>
-			<bridges>
-				<bridge name=\"ifn_bridge1\" on=\"ifn\" />
-			</bridges>
-			<mtu size=\"".$an->data->{cgi}{anvil_mtu_size}."\" />
-		</networks>
-		<repository urls=\"".$an->data->{cgi}{anvil_repositories}."\" />
-		<media_library size=\"".$an->data->{cgi}{anvil_media_library_size}."\" units=\"".$an->data->{cgi}{anvil_media_library_unit}."\" />
-		<storage_pool_1 size=\"".$an->data->{cgi}{anvil_storage_pool1_size}."\" units=\"".$an->data->{cgi}{anvil_storage_pool1_unit}."\" />
-		<anvil prefix=\"".$an->data->{cgi}{anvil_prefix}."\" sequence=\"".$an->data->{cgi}{anvil_sequence}."\" domain=\"".$an->data->{cgi}{anvil_domain}."\" password=\"".$an->data->{cgi}{anvil_password}."\" striker_user=\"".$an->data->{cgi}{striker_user}."\" striker_databas=\"".$an->data->{cgi}{striker_database}."\" />
-		<ssh keysize=\"8191\" />
-		<cluster name=\"".$an->data->{cgi}{anvil_name}."\">
-			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
-			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"".$an->data->{cgi}{anvil_node1_name}."\" />
-		</cluster>
-		<drbd>
-			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" />
-			<options cpu-mask=\"".$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}."\" />
-			<net max-buffers=\"".$an->data->{cgi}{'anvil_drbd_net_max-buffers'}."\" sndbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}."\" rcvbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}."\" />
-		</drbd>
-		<switch>
-			<switch name=\"".$an->data->{cgi}{anvil_switch1_name}."\" ip=\"".$an->data->{cgi}{anvil_switch1_ip}."\" />
-";
-
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_switch2_name", value1 => $an->data->{cgi}{anvil_switch2_name},
-		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{cgi}{anvil_switch2_name}) && ($an->data->{cgi}{anvil_switch2_name} ne "--"))
-		{
-			$xml .= "\t\t\t<switch name=\"".$an->data->{cgi}{anvil_switch2_name}."\" ip=\"".$an->data->{cgi}{anvil_switch2_ip}."\" />";
-		}
-		$xml .= "
-		</switch>
-		<ups>
-			<ups name=\"".$an->data->{cgi}{anvil_ups1_name}."\" type=\"apc\" port=\"3551\" ip=\"".$an->data->{cgi}{anvil_ups1_ip}."\" />
-			<ups name=\"".$an->data->{cgi}{anvil_ups2_name}."\" type=\"apc\" port=\"3552\" ip=\"".$an->data->{cgi}{anvil_ups2_ip}."\" />
-		</ups>
-		<pts>
-			<pts name=\"".$an->data->{cgi}{anvil_pts1_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts1_ip}."\" />
-			<pts name=\"".$an->data->{cgi}{anvil_pts2_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts2_ip}."\" />
-		</pts>
-		<pdu>";
-		# PDU 1 and 2 always exist.
-		my $pdu1_agent = $an->data->{cgi}{anvil_pdu1_agent} ? $an->data->{cgi}{anvil_pdu1_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-		$xml .= "
-			<pdu reference=\"pdu01\" name=\"".$an->data->{cgi}{anvil_pdu1_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu1_ip}."\" agent=\"$pdu1_agent\" />";
-		my $pdu2_agent = $an->data->{cgi}{anvil_pdu2_agent} ? $an->data->{cgi}{anvil_pdu2_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-		$xml .= "
-			<pdu reference=\"pdu02\" name=\"".$an->data->{cgi}{anvil_pdu2_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu2_ip}."\" agent=\"$pdu2_agent\" />";
-		if ($an->data->{cgi}{anvil_pdu3_name})
-		{
-			my $pdu3_agent = $an->data->{cgi}{anvil_pdu3_agent} ? $an->data->{cgi}{anvil_pdu3_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-			$xml .= "
-			<pdu reference=\"pdu03\" name=\"".$an->data->{cgi}{anvil_pdu3_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu3_ip}."\" agent=\"$pdu3_agent\" />";
-		}
-		if ($an->data->{cgi}{anvil_pdu4_name})
-		{
-			my $pdu4_agent = $an->data->{cgi}{anvil_pdu4_agent} ? $an->data->{cgi}{anvil_pdu4_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
-			$xml .= "
-			<pdu reference=\"pdu04\" name=\"".$an->data->{cgi}{anvil_pdu4_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu4_ip}."\" agent=\"$pdu4_agent\" />";
-		}
-		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
-			name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
-			name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
-		}, file => $THIS_FILE, line => __LINE__});
-		my $say_use_anvil_kick_apc_ups = $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
-		my $say_use_anvil_safe_start   = $an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   ? "true" : "false";
-		my $say_use_scancore           = $an->data->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
-			name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil_safe_start,
-			name3 => "say_use_scancore",           value3 => $say_use_scancore,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$xml .= "
-		</pdu>
-		<ipmi>
-			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />
-			<ipmi reference=\"ipmi_n02\" agent=\"fence_ipmilan\" />
-		</ipmi>
-		<kvm>
-			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password=\"\" password_script=\"\" agent=\"fence_virsh\" />
-		</kvm>
-		<striker>
-			<striker name=\"".$an->data->{cgi}{anvil_striker1_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker1_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker1_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
-			<striker name=\"".$an->data->{cgi}{anvil_striker2_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker2_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker2_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
-		</striker>
-		<update os=\"true\" />
-		<iptables>
-			<vnc ports=\"".$an->data->{cgi}{anvil_open_vnc_ports}."\" />
-		</iptables>
-		<servers>
-			<!-- This isn't used anymore, but this section may be useful for other things in the future, -->
-			<!-- <provision use_spice_graphics=\"0\" /> -->
-		</servers>
-		<tools>
-			<use anvil-safe-start=\"$say_use_anvil_safe_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
-		</tools>
-	</common>
-</config>
-		";
-	}
-	
-	# Record it to the database.
-	if (not $an->data->{cgi}{manifest_uuid})
-	{
-		# Unsert it.
-		   $an->data->{cgi}{manifest_uuid} = $an->Get->uuid();
-		my $query = "
-INSERT INTO 
-    manifests 
-(
-    manifest_uuid, 
-    manifest_data, 
-    manifest_note, 
-    modified_date 
-) VALUES (
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid}).", 
-    ".$an->data->{sys}{use_db_fh}->quote($xml).", 
-    NULL, 
-    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-);";
-		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{
-		# Update it
-		my $query = "
-UPDATE 
-    public.manifests 
-SET
-    manifest_data = ".$an->data->{sys}{use_db_fh}->quote($xml).", 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})." 
-;";
-		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query, 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid}, 
-	}, file => $THIS_FILE, line => __LINE__});
-	return($an->data->{cgi}{manifest_uuid});
 }
 
 # This parses an Install Manifest
@@ -3507,5 +3200,344 @@ sub parse_install_manifest
 	
 	return(0);
 }
+
+# This generates an Install Manifest and records it in the 'manifests' table.
+sub save_install_manifest
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# If 'raw' is set, just straight update the manifest_data.
+	my $xml;
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::raw",           value1 => $an->data->{cgi}{raw}, 
+		name2 => "cgi::manifest_data", value2 => $an->data->{cgi}{manifest_data}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{cgi}{raw}) && ($an->data->{cgi}{manifest_data}))
+	{
+		$xml = $an->data->{cgi}{manifest_data};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "xml", value1 => $xml, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Break up hostsnames
+		my ($node1_short_name)    = ($an->data->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
+		my ($node2_short_name)    = ($an->data->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
+		my ($switch1_short_name)  = ($an->data->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
+		my ($switch2_short_name)  = ($an->data->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
+		my ($pdu1_short_name)     = ($an->data->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
+		my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+		my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
+		my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
+		my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
+		my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
+		my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
+		my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
+		my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+		my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+		my ($now_date, $now_time) = $an->Get->date_and_time();
+		my $date                  = "$now_date, $now_time";
+		
+		# Note yet supported but will be later.
+		$an->data->{cgi}{anvil_node1_ipmi_password} = $an->data->{cgi}{anvil_node1_ipmi_password} ? $an->data->{cgi}{anvil_node1_ipmi_password} : $an->data->{cgi}{anvil_password};
+		$an->data->{cgi}{anvil_node1_ipmi_user}     = $an->data->{cgi}{anvil_node1_ipmi_user}     ? $an->data->{cgi}{anvil_node1_ipmi_user}     : "admin";
+		$an->data->{cgi}{anvil_node2_ipmi_password} = $an->data->{cgi}{anvil_node2_ipmi_password} ? $an->data->{cgi}{anvil_node2_ipmi_password} : $an->data->{cgi}{anvil_password};
+		$an->data->{cgi}{anvil_node2_ipmi_user}     = $an->data->{cgi}{anvil_node2_ipmi_user}     ? $an->data->{cgi}{anvil_node2_ipmi_user}     : "admin";
+		
+		# Generate UUIDs if needed.
+		$an->data->{cgi}{anvil_node1_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node1_uuid};
+		$an->data->{cgi}{anvil_node2_uuid}          = $an->Get->uuid() if not $an->data->{cgi}{anvil_node2_uuid};
+		
+		### TODO: This isn't set for some reason, fix
+		$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
+		
+		# Set the MTU.
+		$an->data->{cgi}{anvil_mtu_size} = $an->data->{sys}{install_manifest}{'default'}{mtu_size} if not $an->data->{cgi}{anvil_mtu_size};
+		
+		# Use the subnet mask of the IPMI devices by comparing their IP to that
+		# of the BCN and IFN, and use the netmask of the matching network.
+		my $node1_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node1_ipmi_ip}});
+		my $node2_ipmi_netmask = $an->Get->netmask_from_ip({ip => $an->data->{cgi}{anvil_node2_ipmi_ip}});
+		
+		### Setup the DRBD lines.
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Standardize
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'});
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} =~ s/0/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =  lc($an->data->{cgi}{'anvil_drbd_disk_disk-flushes'});
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} =~ s/0/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =  lc($an->data->{cgi}{'anvil_drbd_disk_md-flushes'});
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/no/false/;
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   =~ s/0/false/;
+		
+		# Convert
+		$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} = $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'} eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} = $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'} eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   = $an->data->{cgi}{'anvil_drbd_disk_md-flushes'}   eq "false" ? "no" : "yes";
+		$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}  = defined $an->data->{cgi}{'anvil_drbd_options_cpu-mask'}   ? $an->data->{cgi}{'anvil_drbd_options_cpu-mask'} : "";
+		$an->data->{cgi}{'anvil_drbd_net_max-buffers'}   = $an->data->{cgi}{'anvil_drbd_net_max-buffers'} =~ /^\d+$/ ? $an->data->{cgi}{'anvil_drbd_net_max-buffers'}  : "";
+		$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}  : "";
+		$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}   = $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}            ? $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}  : "";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "cgi::anvil_drbd_disk_disk-barrier", value1 => $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'},
+			name2 => "cgi::anvil_drbd_disk_disk-flushes", value2 => $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'},
+			name3 => "cgi::anvil_drbd_disk_md-flushes",   value3 => $an->data->{cgi}{'anvil_drbd_disk_md-flushes'},
+			name4 => "cgi::anvil_drbd_options_cpu-mask",  value4 => $an->data->{cgi}{'anvil_drbd_options_cpu-mask'},
+			name5 => "cgi::anvil_drbd_net_max-buffers",   value5 => $an->data->{cgi}{'anvil_drbd_net_max-buffers'},
+			name6 => "cgi::anvil_drbd_net_sndbuf-size",   value6 => $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'},
+			name7 => "cgi::anvil_drbd_net_rcvbuf-size",   value7 => $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		### TODO: Get the node and dashboard UUIDs if not yet set.
+		
+		### KVM-based fencing is supported but not documented. Sample entries
+		### are here for those who might ask for it when building test Anvil!
+		### systems later.
+		# Many things are currently static but might be made configurable later.
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+
+<!--
+Generated on:    ".$date."
+Striker Version: ".$an->data->{sys}{version}."
+-->
+
+<config>
+	<node name=\"".$an->data->{cgi}{anvil_node1_name}."\" uuid=\"".$an->data->{cgi}{anvil_node1_uuid}."\">
+		<network>
+			<bcn ip=\"".$an->data->{cgi}{anvil_node1_bcn_ip}."\" />
+			<sn ip=\"".$an->data->{cgi}{anvil_node1_sn_ip}."\" />
+			<ifn ip=\"".$an->data->{cgi}{anvil_node1_ifn_ip}."\" />
+		</network>
+		<ipmi>
+			<on reference=\"ipmi_n01\" ip=\"".$an->data->{cgi}{anvil_node1_ipmi_ip}."\" netmask=\"$node1_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node1_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node1_ipmi_password}."\" gateway=\"\" />
+		</ipmi>
+		<pdu>
+			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node1_pdu1_outlet}."\" />
+			<on reference=\"pdu02\" port=\"".$an->data->{cgi}{anvil_node1_pdu2_outlet}."\" />
+			<on reference=\"pdu03\" port=\"".$an->data->{cgi}{anvil_node1_pdu3_outlet}."\" />
+			<on reference=\"pdu04\" port=\"".$an->data->{cgi}{anvil_node1_pdu4_outlet}."\" />
+		</pdu>
+		<kvm>
+			<!-- port == virsh name of VM -->
+			<on reference=\"kvm_host\" port=\"\" />
+		</kvm>
+		<interfaces>
+			<interface name=\"bcn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_bcn_link1_mac}."\" />
+			<interface name=\"bcn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_bcn_link2_mac}."\" />
+			<interface name=\"sn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_sn_link1_mac}."\" />
+			<interface name=\"sn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_sn_link2_mac}."\" />
+			<interface name=\"ifn_link1\" mac=\"".$an->data->{cgi}{anvil_node1_ifn_link1_mac}."\" />
+			<interface name=\"ifn_link2\" mac=\"".$an->data->{cgi}{anvil_node1_ifn_link2_mac}."\" />
+		</interfaces>
+	</node>
+	<node name=\"".$an->data->{cgi}{anvil_node2_name}."\" uuid=\"".$an->data->{cgi}{anvil_node2_uuid}."\">
+		<network>
+			<bcn ip=\"".$an->data->{cgi}{anvil_node2_bcn_ip}."\" />
+			<sn ip=\"".$an->data->{cgi}{anvil_node2_sn_ip}."\" />
+			<ifn ip=\"".$an->data->{cgi}{anvil_node2_ifn_ip}."\" />
+		</network>
+		<ipmi>
+			<on reference=\"ipmi_n02\" ip=\"".$an->data->{cgi}{anvil_node2_ipmi_ip}."\" netmask=\"$node2_ipmi_netmask\" user=\"".$an->data->{cgi}{anvil_node2_ipmi_user}."\" password=\"".$an->data->{cgi}{anvil_node2_ipmi_password}."\" gateway=\"\" />
+		</ipmi>
+		<pdu>
+			<on reference=\"pdu01\" port=\"".$an->data->{cgi}{anvil_node2_pdu1_outlet}."\" />
+			<on reference=\"pdu02\" port=\"".$an->data->{cgi}{anvil_node2_pdu2_outlet}."\" />
+			<on reference=\"pdu03\" port=\"".$an->data->{cgi}{anvil_node2_pdu3_outlet}."\" />
+			<on reference=\"pdu04\" port=\"".$an->data->{cgi}{anvil_node2_pdu4_outlet}."\" />
+		</pdu>
+		<kvm>
+			<on reference=\"kvm_host\" port=\"\" />
+		</kvm>
+		<interfaces>
+			<interface name=\"bcn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_bcn_link1_mac}."\" />
+			<interface name=\"bcn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_bcn_link2_mac}."\" />
+			<interface name=\"sn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_sn_link1_mac}."\" />
+			<interface name=\"sn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_sn_link2_mac}."\" />
+			<interface name=\"ifn_link1\" mac=\"".$an->data->{cgi}{anvil_node2_ifn_link1_mac}."\" />
+			<interface name=\"ifn_link2\" mac=\"".$an->data->{cgi}{anvil_node2_ifn_link2_mac}."\" />
+		</interfaces>
+	</node>
+	<common>
+		<networks>
+			<bcn netblock=\"".$an->data->{cgi}{anvil_bcn_network}."\" netmask=\"".$an->data->{cgi}{anvil_bcn_subnet}."\" gateway=\"\" defroute=\"no\" ethtool_opts=\"".$an->data->{cgi}{anvil_bcn_ethtool_opts}."\" />
+			<sn netblock=\"".$an->data->{cgi}{anvil_sn_network}."\" netmask=\"".$an->data->{cgi}{anvil_sn_subnet}."\" gateway=\"\" defroute=\"no\" ethtool_opts=\"".$an->data->{cgi}{anvil_sn_ethtool_opts}."\" />
+			<ifn netblock=\"".$an->data->{cgi}{anvil_ifn_network}."\" netmask=\"".$an->data->{cgi}{anvil_ifn_subnet}."\" gateway=\"".$an->data->{cgi}{anvil_ifn_gateway}."\" dns1=\"".$an->data->{cgi}{anvil_dns1}."\" dns2=\"".$an->data->{cgi}{anvil_dns2}."\" ntp1=\"".$an->data->{cgi}{anvil_ntp1}."\" ntp2=\"".$an->data->{cgi}{anvil_ntp2}."\" defroute=\"yes\" ethtool_opts=\"".$an->data->{cgi}{anvil_ifn_ethtool_opts}."\" />
+			<bonding opts=\"mode=1 miimon=100 use_carrier=1 updelay=120000 downdelay=0\">
+				<bcn name=\"bcn_bond1\" primary=\"bcn_link1\" secondary=\"bcn_link2\" />
+				<sn name=\"sn_bond1\" primary=\"sn_link1\" secondary=\"sn_link2\" />
+				<ifn name=\"ifn_bond1\" primary=\"ifn_link1\" secondary=\"ifn_link2\" />
+			</bonding>
+			<bridges>
+				<bridge name=\"ifn_bridge1\" on=\"ifn\" />
+			</bridges>
+			<mtu size=\"".$an->data->{cgi}{anvil_mtu_size}."\" />
+		</networks>
+		<repository urls=\"".$an->data->{cgi}{anvil_repositories}."\" />
+		<media_library size=\"".$an->data->{cgi}{anvil_media_library_size}."\" units=\"".$an->data->{cgi}{anvil_media_library_unit}."\" />
+		<storage_pool_1 size=\"".$an->data->{cgi}{anvil_storage_pool1_size}."\" units=\"".$an->data->{cgi}{anvil_storage_pool1_unit}."\" />
+		<anvil prefix=\"".$an->data->{cgi}{anvil_prefix}."\" sequence=\"".$an->data->{cgi}{anvil_sequence}."\" domain=\"".$an->data->{cgi}{anvil_domain}."\" password=\"".$an->data->{cgi}{anvil_password}."\" striker_user=\"".$an->data->{cgi}{striker_user}."\" striker_databas=\"".$an->data->{cgi}{striker_database}."\" />
+		<ssh keysize=\"8191\" />
+		<cluster name=\"".$an->data->{cgi}{anvil_name}."\">
+			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->
+			<fence order=\"ipmi,pdu\" post_join_delay=\"90\" delay=\"15\" delay_node=\"".$an->data->{cgi}{anvil_node1_name}."\" />
+		</cluster>
+		<drbd>
+			<disk disk-barrier=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-barrier'}."\" disk-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_disk-flushes'}."\" md-flushes=\"".$an->data->{cgi}{'anvil_drbd_disk_md-flushes'}."\" />
+			<options cpu-mask=\"".$an->data->{cgi}{'anvil_drbd_options_cpu-mask'}."\" />
+			<net max-buffers=\"".$an->data->{cgi}{'anvil_drbd_net_max-buffers'}."\" sndbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_sndbuf-size'}."\" rcvbuf-size=\"".$an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'}."\" />
+		</drbd>
+		<switch>
+			<switch name=\"".$an->data->{cgi}{anvil_switch1_name}."\" ip=\"".$an->data->{cgi}{anvil_switch1_ip}."\" />
+";
+
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::anvil_switch2_name", value1 => $an->data->{cgi}{anvil_switch2_name},
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{cgi}{anvil_switch2_name}) && ($an->data->{cgi}{anvil_switch2_name} ne "--"))
+		{
+			$xml .= "\t\t\t<switch name=\"".$an->data->{cgi}{anvil_switch2_name}."\" ip=\"".$an->data->{cgi}{anvil_switch2_ip}."\" />";
+		}
+		$xml .= "
+		</switch>
+		<ups>
+			<ups name=\"".$an->data->{cgi}{anvil_ups1_name}."\" type=\"apc\" port=\"3551\" ip=\"".$an->data->{cgi}{anvil_ups1_ip}."\" />
+			<ups name=\"".$an->data->{cgi}{anvil_ups2_name}."\" type=\"apc\" port=\"3552\" ip=\"".$an->data->{cgi}{anvil_ups2_ip}."\" />
+		</ups>
+		<pts>
+			<pts name=\"".$an->data->{cgi}{anvil_pts1_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts1_ip}."\" />
+			<pts name=\"".$an->data->{cgi}{anvil_pts2_name}."\" type=\"raritan\" port=\"161\" ip=\"".$an->data->{cgi}{anvil_pts2_ip}."\" />
+		</pts>
+		<pdu>";
+		# PDU 1 and 2 always exist.
+		my $pdu1_agent = $an->data->{cgi}{anvil_pdu1_agent} ? $an->data->{cgi}{anvil_pdu1_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+		$xml .= "
+			<pdu reference=\"pdu01\" name=\"".$an->data->{cgi}{anvil_pdu1_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu1_ip}."\" agent=\"$pdu1_agent\" />";
+		my $pdu2_agent = $an->data->{cgi}{anvil_pdu2_agent} ? $an->data->{cgi}{anvil_pdu2_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+		$xml .= "
+			<pdu reference=\"pdu02\" name=\"".$an->data->{cgi}{anvil_pdu2_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu2_ip}."\" agent=\"$pdu2_agent\" />";
+		if ($an->data->{cgi}{anvil_pdu3_name})
+		{
+			my $pdu3_agent = $an->data->{cgi}{anvil_pdu3_agent} ? $an->data->{cgi}{anvil_pdu3_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+			$xml .= "
+			<pdu reference=\"pdu03\" name=\"".$an->data->{cgi}{anvil_pdu3_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu3_ip}."\" agent=\"$pdu3_agent\" />";
+		}
+		if ($an->data->{cgi}{anvil_pdu4_name})
+		{
+			my $pdu4_agent = $an->data->{cgi}{anvil_pdu4_agent} ? $an->data->{cgi}{anvil_pdu4_agent} : $an->data->{sys}{install_manifest}{anvil_pdu_agent};
+			$xml .= "
+			<pdu reference=\"pdu04\" name=\"".$an->data->{cgi}{anvil_pdu4_name}."\" ip=\"".$an->data->{cgi}{anvil_pdu4_ip}."\" agent=\"$pdu4_agent\" />";
+		}
+		
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
+			name2 => "sys::install_manifest::use_anvil-safe-start",   value2 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
+			name3 => "sys::install_manifest::use_scancore",           value3 => $an->data->{sys}{install_manifest}{use_scancore},
+		}, file => $THIS_FILE, line => __LINE__});
+		my $say_use_anvil_kick_apc_ups = $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'} ? "true" : "false";
+		my $say_use_anvil_safe_start   = $an->data->{sys}{install_manifest}{'use_anvil-safe-start'}   ? "true" : "false";
+		my $say_use_scancore           = $an->data->{sys}{install_manifest}{use_scancore}             ? "true" : "false";
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "say_use_anvil_kick_apc_ups", value1 => $say_use_anvil_kick_apc_ups,
+			name2 => "say_use_anvil-safe-start",   value2 => $say_use_anvil_safe_start,
+			name3 => "say_use_scancore",           value3 => $say_use_scancore,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$xml .= "
+		</pdu>
+		<ipmi>
+			<ipmi reference=\"ipmi_n01\" agent=\"fence_ipmilan\" />
+			<ipmi reference=\"ipmi_n02\" agent=\"fence_ipmilan\" />
+		</ipmi>
+		<kvm>
+			<kvm reference=\"kvm_host\" ip=\"192.168.122.1\" user=\"root\" password=\"\" password_script=\"\" agent=\"fence_virsh\" />
+		</kvm>
+		<striker>
+			<striker name=\"".$an->data->{cgi}{anvil_striker1_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker1_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker1_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
+			<striker name=\"".$an->data->{cgi}{anvil_striker2_name}."\" bcn_ip=\"".$an->data->{cgi}{anvil_striker2_bcn_ip}."\" ifn_ip=\"".$an->data->{cgi}{anvil_striker2_ifn_ip}."\" database=\"\" user=\"\" password=\"\" uuid=\"\" />
+		</striker>
+		<update os=\"true\" />
+		<iptables>
+			<vnc ports=\"".$an->data->{cgi}{anvil_open_vnc_ports}."\" />
+		</iptables>
+		<servers>
+			<!-- This isn't used anymore, but this section may be useful for other things in the future, -->
+			<!-- <provision use_spice_graphics=\"0\" /> -->
+		</servers>
+		<tools>
+			<use anvil-safe-start=\"$say_use_anvil_safe_start\" anvil-kick-apc-ups=\"$say_use_anvil_kick_apc_ups\" scancore=\"$say_use_scancore\" />
+		</tools>
+	</common>
+</config>
+		";
+	}
+	
+	# Record it to the database.
+	if (not $an->data->{cgi}{manifest_uuid})
+	{
+		# Unsert it.
+		   $an->data->{cgi}{manifest_uuid} = $an->Get->uuid();
+		my $query = "
+INSERT INTO 
+    manifests 
+(
+    manifest_uuid, 
+    manifest_data, 
+    manifest_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($xml).", 
+    NULL, 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Update it
+		my $query = "
+UPDATE 
+    public.manifests 
+SET
+    manifest_data = ".$an->data->{sys}{use_db_fh}->quote($xml).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})." 
+;";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($an->data->{cgi}{manifest_uuid});
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

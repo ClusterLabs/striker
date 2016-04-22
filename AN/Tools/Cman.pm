@@ -10,17 +10,24 @@ use IO::Handle;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Cman.pm";
 
-### Methods
+### Methods;
 # boot_server
 # cluster_conf_data
+# cluster_name
+# get_clustat_data
 # get_cluster_server_list
 # peer_hostname
 # peer_short_hostname
-# cluster_name
 # stop_server
 # withdraw_node
-# _do_server_boot
 # _read_cluster_conf
+# _recover_rgmanager
+# _do_server_boot
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -44,6 +51,11 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 ### TODO: For now, this requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
@@ -256,35 +268,10 @@ sub boot_server
 	# Check the node health files and log what we've found.
 	foreach my $node (sort {$a cmp $b} keys %{$nodes})
 	{
-		my $short_host_name =  $node;
-		   $short_host_name =~ s/\..*$//;
-		my $health_file     = $an->data->{path}{status}."/.".$short_host_name;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node",            value1 => $node, 
-			name2 => "short_host_name", value2 => $short_host_name, 
-			name3 => "health_file",     value3 => $health_file, 
+		$nodes->{$node}{healthy} = $an->ScanCore->host_state({target => $node});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "nodes->${node}::healthy", value1 => $nodes->{$node}{healthy}, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if (-e $health_file)
-		{
-			my $shell_call = $health_file;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "shell_call", value1 => $shell_call, 
-			}, file => $THIS_FILE, line => __LINE__});
-			open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				$nodes->{$node}{healthy} = ($line =~ /health = (.*)$/)[0];
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "nodes->${node}::healthy", value1 => $nodes->{$node}{healthy}, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			close $file_handle;
-		}
 	}
 	
 	# All thing being equal, which node is preferred?
@@ -760,6 +747,20 @@ sub cluster_conf_data
 	return($return);
 }
 
+# This reads cluster.conf to find the cluster name.
+sub cluster_name
+{
+	my $self = shift;
+	my $an   = $self->parent;
+	
+	# Read in cluster.conf. if necessary
+	$an->Cman->_read_cluster_conf();
+	
+	my $cluster_name = $an->data->{cman_config}{data}{name};
+	
+	return($cluster_name);
+}
+
 # This returns a hash reference containing the cluster information from 'clustat'.
 sub get_clustat_data
 {
@@ -1104,20 +1105,6 @@ sub peer_short_hostname
 	   $peer_short_hostname =~ s/\..*$//;
 	
 	return($peer_short_hostname);
-}
-
-# This reads cluster.conf to find the cluster name.
-sub cluster_name
-{
-	my $self = shift;
-	my $an   = $self->parent;
-	
-	# Read in cluster.conf. if necessary
-	$an->Cman->_read_cluster_conf();
-	
-	my $cluster_name = $an->data->{cman_config}{data}{name};
-	
-	return($cluster_name);
 }
 
 # This stops a server
@@ -1551,86 +1538,10 @@ sub withdraw_node
 	return($return_code, $output);
 }
 
-### NOTE: This was originally based on Striker.pm's 'recover_rgmanager()' function which checked/recovered
-###       storage. This was not ported because storage is now monitored/fixed elsewhere.
-# This performs a recovery of rgmanager after a failed stop (either because rgmanager itself failed to stop 
-# or because cman failed to stop and we had to restart cman then rgmanager)
-sub _recover_rgmanager
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	
-	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
-	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "target", value1 => $target, 
-		name2 => "port",   value2 => $port, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $return_code = 0;
-	my $shell_call  = $an->data->{path}{initd}."/rgmanager start";
-	my $return      = [];
-	my $output      = "";
-	
-	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
-	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
-	{
-		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
-		}, file => $THIS_FILE, line => __LINE__});
-		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-	}
-	else
-	{
-		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
-		while(<$file_handle>)
-		{
-			chomp;
-			my $line =  $_;
-			push @{$return}, $line;
-		}
-		close $file_handle;
-	}
-	foreach my $line (@{$return})
-	{
-		$output .= "$line\n";
-		$line   =~ s/^\s+//;
-		$line   =~ s/\s+$//;
-		$line   =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /fail/i)
-		{
-			$return_code = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "return_code", value1 => $return_code,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
 
-	# 0 == success
-	# 1 == failed
-	return($return_code, $output);
-}
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 # This performs the actual boot on the server after sanity checks are done. This should not be called directly!
 sub _do_server_boot
@@ -1751,6 +1662,87 @@ sub _read_cluster_conf
 	}
 	
 	return($an->data->{cman_config});
+}
+
+### NOTE: This was originally based on Striker.pm's 'recover_rgmanager()' function which checked/recovered
+###       storage. This was not ported because storage is now monitored/fixed elsewhere.
+# This performs a recovery of rgmanager after a failed stop (either because rgmanager itself failed to stop 
+# or because cman failed to stop and we had to restart cman then rgmanager)
+sub _recover_rgmanager
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target, 
+		name2 => "port",   value2 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 0;
+	my $shell_call  = $an->data->{path}{initd}."/rgmanager start";
+	my $return      = [];
+	my $output      = "";
+	
+	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
+	{
+		### Remote calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+			name2 => "target",     value2 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			'close'		=>	0,
+			shell_call	=>	$shell_call,
+		});
+	}
+	else
+	{
+		### Local calls
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line =  $_;
+			push @{$return}, $line;
+		}
+		close $file_handle;
+	}
+	foreach my $line (@{$return})
+	{
+		$output .= "$line\n";
+		$line   =~ s/^\s+//;
+		$line   =~ s/\s+$//;
+		$line   =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /fail/i)
+		{
+			$return_code = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+
+	# 0 == success
+	# 1 == failed
+	return($return_code, $output);
 }
 
 1;

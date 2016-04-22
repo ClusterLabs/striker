@@ -10,6 +10,17 @@ use warnings;
 our $VERSION  = "0.1.001";
 my $THIS_FILE = "Readable.pm";
 
+### Methods;
+# base2
+# bytes_to_hr
+# comma
+# hr_to_bytes
+# time
+
+
+#############################################################################################################
+# House keeping methods                                                                                     #
+#############################################################################################################
 
 sub new
 {
@@ -25,9 +36,8 @@ sub new
 	return ($self);
 }
 
-# Get a handle on the AN::Tools object. I know that technically that is a
-# sibling module, but it makes more sense in this case to think of it as a
-# parent.
+# Get a handle on the AN::Tools object. I know that technically that is a sibling module, but it makes more
+# sense in this case to think of it as a parent.
 sub parent
 {
 	my $self   = shift;
@@ -37,6 +47,11 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
+
+#############################################################################################################
+# Provided methods                                                                                          #
+#############################################################################################################
 
 # Return and/or set whether Base 2 or Base 10 notation is in use.
 sub base2
@@ -68,186 +83,6 @@ sub base2
 	}
 	
 	return ($self->{USE_BASE_2});
-}
-
-# This takes a large number and inserts commas every three characters left of
-# the decimal place. This method doesn't take a parameter hash reference.
-sub comma
-{
-	my $self   = shift;
-	my $number = shift;
-	my $an     = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# Return if nothing passed.
-	return undef if not defined $number;
-	
-	# Strip out any existing commas.
-	$number =~ s/,//g;
-	$number =~ s/^\+//g;
-	
-	# Split on the left-most period.
-	#print "$THIS_FILE ".__LINE__."; number: [$number]\n";
-	my ($whole, $decimal) = split/\./, $number, 2;
-	$whole   = "" if not defined $whole;
-	$decimal = "" if not defined $decimal;
-	
-	# Now die if either number has a non-digit character in it.
-	#print "$THIS_FILE ".__LINE__."; whole: [$whole], decimal: [$decimal]\n";
-	if (($whole =~ /\D/) || ($decimal =~ /\D/))
-	{
-		my $an = $self->parent;
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0010",
-			message_key	=>	"error_message_0014",
-			message_variables	=>	{
-				number		=>	$number,
-			},
-			code		=>	4,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal errors.
-		return (undef);
-	}
-	
-	local($_) = $whole ? $whole : "";
-	
-	1 while s/^(-?\d+)(\d{3})/$1,$2/;
-	$whole = $_;
-	
-	my $return = $decimal ? "$whole.$decimal" : $whole;
-	
-	return ($return);
-}
-
-# Takes a number of seconds and turns it into d/h/m/s
-sub time
-{
-	my $self  = shift;
-	my $param = shift;
-	return undef if not defined $param;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	my $time = 0;
-	if (ref($param) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$time = $param->{'time'} ? $param->{'time'} : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$time = $param ? $param : 0;
-	}
-	
-	# Exit if 'time' is not defined or set as '--'.
-	$param->{'time'} = "--" if not defined $param->{'time'};
-	return('--') if $param->{'time'} eq "--";
-	
-	my $old_time =  $time;
-	my $float    =  0;
-	my $sign     =  $time =~ /^-/ ? "-" : "";
-	$time        =~ s/^-//;
-	$time        =~ s/,//g;
-	if ($time=~/\./)
-	{
-		($time, $float) = split/\./, $time, 2;
-	}
-	
-	### TODO: Change the suffixes to 'tools_suffix_XXXX'.
-	
-	# Die if either the 'time' or 'float' has a non-digit character in it.
-	if (($time =~ /\D/) || ($float =~ /\D/))
-	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0011",
-			title_variables		=>	{
-				method			=>	"AN::Tools::Readable->time()",
-			},
-			message_key		=>	"error_message_0015",
-			message_variables	=>	{
-				old_time		=>	$old_time,
-			},
-			code			=>	5,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
-		return (undef);
-	}
-	
-	my $seconds   = $time % 60;
-	my $minutes   = ($time - $seconds) / 60;
-	my $rem_min   = $minutes % 60;
-	my $hours     = ($minutes - $rem_min) / 60;
-	my $rem_hours = $hours % 24;
-	my $days      = ($hours - $rem_hours) / 24;
-	my $rem_days  = $days % 7;
-	my $weeks     = ($days - $rem_days) / 7;
-
-	my $hr_time;
-	if ($seconds < 1)
-	{
-		$hr_time = $float ? "0.${float}s" : "0s";
-	}
-	else
-	{
-		$hr_time = sprintf("%01d", $seconds);
-		if ( $float > 0 )
-		{
-			$hr_time .= ".".$float."s";
-		}
-		else
-		{
-			$hr_time.="s";
-		}
-	}
-	if ( $rem_min > 0 )
-	{
-		$hr_time =~ s/ sec.$/s/;
-		$hr_time =  sprintf("%01d", $rem_min)."m $hr_time";
-	}
-	elsif (($hours > 0) || ($days > 0) || ($weeks > 0))
-	{
-		$hr_time = "0m $hr_time";
-	}
-	if ( $rem_hours > 0 )
-	{
-		$hr_time = sprintf("%01d", $rem_hours)."h $hr_time";
-	}
-	elsif (($days > 0) || ($weeks > 0))
-	{
-		$hr_time = "0h $hr_time";
-	}
-	if ( $days > 0 )
-	{
-		$hr_time = sprintf("%01d", $rem_days)."d $hr_time";
-	}
-	elsif ($weeks > 0)
-	{
-		$hr_time = "0d $hr_time";
-	}
-	if ( $weeks > 0 )
-	{
-		$weeks   = $an->Readable->comma($weeks);
-		$hr_time = $weeks."w $hr_time";
-	}
-	$hr_time = $sign ? $sign.$hr_time : $hr_time;
-	
-	return ($hr_time);
 }
 
 # Takes a raw number of bytes (whole integer).
@@ -582,6 +417,60 @@ sub bytes_to_hr
 	return($hr_size);
 }
 
+# This takes a large number and inserts commas every three characters left of the decimal place. This method
+# doesn't take a parameter hash reference.
+sub comma
+{
+	my $self   = shift;
+	my $number = shift;
+	my $an     = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# Return if nothing passed.
+	return undef if not defined $number;
+	
+	# Strip out any existing commas.
+	$number =~ s/,//g;
+	$number =~ s/^\+//g;
+	
+	# Split on the left-most period.
+	#print "$THIS_FILE ".__LINE__."; number: [$number]\n";
+	my ($whole, $decimal) = split/\./, $number, 2;
+	$whole   = "" if not defined $whole;
+	$decimal = "" if not defined $decimal;
+	
+	# Now die if either number has a non-digit character in it.
+	#print "$THIS_FILE ".__LINE__."; whole: [$whole], decimal: [$decimal]\n";
+	if (($whole =~ /\D/) || ($decimal =~ /\D/))
+	{
+		my $an = $self->parent;
+		$an->Alert->error({
+			fatal		=>	1,
+			title_key	=>	"error_title_0010",
+			message_key	=>	"error_message_0014",
+			message_variables	=>	{
+				number		=>	$number,
+			},
+			code		=>	4,
+			file		=>	"$THIS_FILE",
+			line		=>	__LINE__
+		});
+		# Return nothing in case the user is blocking fatal errors.
+		return (undef);
+	}
+	
+	local($_) = $whole ? $whole : "";
+	
+	1 while s/^(-?\d+)(\d{3})/$1,$2/;
+	$whole = $_;
+	
+	my $return = $decimal ? "$whole.$decimal" : $whole;
+	
+	return ($return);
+}
+
 # This takes a "human readable" size with an ISO suffix and converts it back to a base byte size as 
 # accurately as possible.
 sub hr_to_bytes
@@ -772,5 +661,136 @@ sub hr_to_bytes
 	
 	return ($sign.$bytes);
 }
+
+# Takes a number of seconds and turns it into d/h/m/s
+sub time
+{
+	my $self  = shift;
+	my $param = shift;
+	return undef if not defined $param;
+	
+	# This just makes the code more consistent.
+	my $an = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# Now see if the user passed the values in a hash reference or
+	# directly.
+	my $time = 0;
+	if (ref($param) eq "HASH")
+	{
+		# Values passed in a hash, good.
+		$time = $param->{'time'} ? $param->{'time'} : 0;
+	}
+	else
+	{
+		# Values passed directly.
+		$time = $param ? $param : 0;
+	}
+	
+	# Exit if 'time' is not defined or set as '--'.
+	$param->{'time'} = "--" if not defined $param->{'time'};
+	return('--') if $param->{'time'} eq "--";
+	
+	my $old_time =  $time;
+	my $float    =  0;
+	my $sign     =  $time =~ /^-/ ? "-" : "";
+	$time        =~ s/^-//;
+	$time        =~ s/,//g;
+	if ($time=~/\./)
+	{
+		($time, $float) = split/\./, $time, 2;
+	}
+	
+	### TODO: Change the suffixes to 'tools_suffix_XXXX'.
+	
+	# Die if either the 'time' or 'float' has a non-digit character in it.
+	if (($time =~ /\D/) || ($float =~ /\D/))
+	{
+		$an->Alert->error({
+			fatal			=>	1,
+			title_key		=>	"error_title_0011",
+			title_variables		=>	{
+				method			=>	"AN::Tools::Readable->time()",
+			},
+			message_key		=>	"error_message_0015",
+			message_variables	=>	{
+				old_time		=>	$old_time,
+			},
+			code			=>	5,
+			file			=>	"$THIS_FILE",
+			line			=>	__LINE__
+		});
+		# Return nothing in case the user is blocking fatal
+		# errors.
+		return (undef);
+	}
+	
+	my $seconds   = $time % 60;
+	my $minutes   = ($time - $seconds) / 60;
+	my $rem_min   = $minutes % 60;
+	my $hours     = ($minutes - $rem_min) / 60;
+	my $rem_hours = $hours % 24;
+	my $days      = ($hours - $rem_hours) / 24;
+	my $rem_days  = $days % 7;
+	my $weeks     = ($days - $rem_days) / 7;
+
+	my $hr_time;
+	if ($seconds < 1)
+	{
+		$hr_time = $float ? "0.${float}s" : "0s";
+	}
+	else
+	{
+		$hr_time = sprintf("%01d", $seconds);
+		if ( $float > 0 )
+		{
+			$hr_time .= ".".$float."s";
+		}
+		else
+		{
+			$hr_time.="s";
+		}
+	}
+	if ( $rem_min > 0 )
+	{
+		$hr_time =~ s/ sec.$/s/;
+		$hr_time =  sprintf("%01d", $rem_min)."m $hr_time";
+	}
+	elsif (($hours > 0) || ($days > 0) || ($weeks > 0))
+	{
+		$hr_time = "0m $hr_time";
+	}
+	if ( $rem_hours > 0 )
+	{
+		$hr_time = sprintf("%01d", $rem_hours)."h $hr_time";
+	}
+	elsif (($days > 0) || ($weeks > 0))
+	{
+		$hr_time = "0h $hr_time";
+	}
+	if ( $days > 0 )
+	{
+		$hr_time = sprintf("%01d", $rem_days)."d $hr_time";
+	}
+	elsif ($weeks > 0)
+	{
+		$hr_time = "0d $hr_time";
+	}
+	if ( $weeks > 0 )
+	{
+		$weeks   = $an->Readable->comma($weeks);
+		$hr_time = $weeks."w $hr_time";
+	}
+	$hr_time = $sign ? $sign.$hr_time : $hr_time;
+	
+	return ($hr_time);
+}
+
+
+#############################################################################################################
+# Internal methods                                                                                          #
+#############################################################################################################
 
 1;

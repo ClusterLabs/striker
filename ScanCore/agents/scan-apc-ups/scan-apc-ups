@@ -4369,7 +4369,7 @@ sub gather_ups_data
 		# Get the manufacture date of the UPS. This really should never change, but we need to record
 		# it at least once.
 		$an->data->{ups}{$ups_name}{apc_ups_manufactured_date} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{ups}{manufactured_date});
-		$an->data->{ups}{$ups_name}{apc_ups_manufactured_date} = $an->Convert->convert_to_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_manufactured_date}});
+		$an->data->{ups}{$ups_name}{apc_ups_manufactured_date} = $an->Convert->convert_format_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_manufactured_date}});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_manufactured_date", value1 => $an->data->{ups}{$ups_name}{apc_ups_manufactured_date}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4417,7 +4417,7 @@ sub gather_ups_data
 		# Read the estimated battery replacement date. This only has value if the user remembered to
 		# mark the date the battery was replaced.
 		$an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{replacement_date});
-		$an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date} = $an->Convert->convert_to_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}});
+		$an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date} = $an->Convert->convert_format_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_battery_replacement_date", value1 => $an->data->{ups}{$ups_name}{apc_ups_battery_replacement_date}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4455,7 +4455,7 @@ sub gather_ups_data
 		
 		# Get the date that the UPS was last replaced. (mm/dd/yy or yyyy format)
 		$an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date} = read_oid($an, $an->data->{ups}{$ups_name}{ip}, $an->data->{'default'}{battery}{last_replacement_date});
-		$an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date} = $an->Convert->convert_to_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date}});
+		$an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date} = $an->Convert->convert_format_mmddyy_to_yymmdd({date => $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date}});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "ups::${ups_name}::apc_ups_battery_last_replacement_date", value1 => $an->data->{ups}{$ups_name}{apc_ups_battery_last_replacement_date}, 
 		}, file => $THIS_FILE, line => __LINE__});

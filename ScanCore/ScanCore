@@ -61,37 +61,15 @@ my $an = AN::Tools->new({data =>
 	{
 		path		=>	{
 			agents_directory	=>	"$running_directory/agents",
-			'anvil-report-memory'	=>	"/sbin/striker/anvil-report-memory",
-			cp			=>	"/bin/cp",
-			email_directory		=>	"/var/log/alert_emails",
-			fence_agents		=>	"/usr/sbin",
-			'grep'			=>	"/bin/grep",
-			# under this directory will be a file called 
-			# ".<node_name>" for each node. This contains the 
-			# string 'health = [ok,warning,critical]. This is used
-			# to indicate to the peer our state and controls how
-			# 'safe_anvil_shutdown' behaves.
-			health_file		=>	"/shared/status",
-			# This stores this node's UUID. It is used to track all our sensor data in the 
-			# database. If you change this here, change it in the agents, too.
-			host_uuid		=>	"/etc/striker/host.uuid",
-			mailx			=>	"/bin/mailx",
 			# This is the path to Striker's cache directory. It is
 			# used by striker dashboards when they want to reboot a
 			# node that is in emergency-stop and the environment is
 			# safe again.
 			node_cache		=>	"/var/www/home/cache", 
-			postfix_init		=>	"/etc/init.d/postfix",
-			postfix_main		=>	"/etc/postfix/main.cf",
-			postfix_relay_file	=>	"/etc/postfix/relay_password",
-			postmap			=>	"/usr/sbin/postmap",
-			safe_anvil_shutdown	=>	"/sbin/striker/safe_anvil_shutdown",
 			scancore_strings	=>	"$running_directory/ScanCore.xml",
 			scancore_sql		=>	"$running_directory/ScanCore.sql",
-			sed			=>	"/bin/sed",
 			striker_config		=>	"/etc/striker/striker.conf",
 			striker_strings		=>	"/sbin/striker/Data/strings.xml",
-			uuidgen			=>	"/usr/bin/uuidgen",
 		},
 		# Things set here are meant to be overwritable by the user in striker.conf.
 		scancore			=>	{
@@ -116,7 +94,7 @@ my $an = AN::Tools->new({data =>
 			maximum_ram		=>	(128 * 1048576),
 			# When both/all UPSes powering a node switch to batteries, their remaining hold-up 
 			# time will be checked and the strongest will be compared against this value. If the
-			# remaining runtime of the strongest ups is below this time, 'safe_anvil_shutdown' 
+			# remaining runtime of the strongest ups is below this time, 'anvil-safe-stop' 
 			# will be invoked.
 			minimum_ups_runtime	=>	600,
 			minimum_safe_charge	=>	45,
@@ -141,7 +119,8 @@ my $an = AN::Tools->new({data =>
 			agents			=>	[],
 			# This gets the config ID(s) of any initialized databases.
 			db_initialized		=>	{},
-			db_timestamp		=>	"",			# This will hold the timestamp used to set 'modified_date' on all DB records.
+			# This will hold the timestamp used to set 'modified_date' on all DB records.
+			db_timestamp		=>	"",
 			# If the program hits a significant error, this will be set to '1' causing the
 			# program to exit at the end of the sweep.
 			'exit'			=>	0,
@@ -1791,12 +1770,12 @@ sub do_post_scan_node_tasks
 	
 	# OK, if both are '1', make sure our health file is set to 'OK'. If either returned '2', make sure
 	# our health file is set to 'Warning'. If either returned '3', set the health file to 'Critical' and 
-	# set the hosts -> host_emergency_stop to TRUE and then call 'safe_anvil_shutdown'.
+	# set the hosts -> host_emergency_stop to TRUE and then call 'anvil-safe-stop'.
 	if (($node_power_ok eq "3") || ($node_temperature_ok eq "3"))
 	{
 		### TODO: phase this out
 		# Set the health to 'Critical'.
-		update_health_file($an, 3);
+		$an->ScanCore->host_state({set => "critical"});
 		
 		# Why exactly are we shutting down?
 		my $host_stop_reason = $node_power_ok eq "3" ? "power" : "temperature";
@@ -1904,9 +1883,9 @@ WHERE
 				close $file_handle;
 			}
 			
-			# And now die via 'safe_anvil_shutdown'. We should be dead before this exits. So ya,
-			# so long and thanks for all the fish.
-			$shell_call = $an->data->{path}{safe_anvil_shutdown};
+			# And now die via 'anvil-safe-stop'. We should be dead before this exits. So ya, so 
+			# long and thanks for all the fish.
+			$shell_call = $an->data->{path}{'anvil-safe-stop'}." --local";
 			open ($file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 			while(<$file_handle>)
 			{
@@ -1937,7 +1916,7 @@ WHERE
 	{
 		### We're sick
 		# Set the health to 'Warning'.
-		update_health_file($an, 2);
+		$an->ScanCore->host_state({set => "warning"});
 		
 		# Tell the user that we're no longer a migration target.
 		my $set = $an->Alert->check_alert_sent({
@@ -1967,7 +1946,7 @@ WHERE
 	{
 		### We're healthy
 		# Set the health to 'OK'.
-		update_health_file($an, 1);
+		$an->ScanCore->host_state({set => "ok"});
 		
 		# If we were previously sick, tell the user that we're OK now.
 		my $cleared_node_sick = $an->Alert->check_alert_sent({
@@ -2061,52 +2040,6 @@ WHERE
 			$an->data->{sys}{reported}{temperature_is_critical} = 0;
 			$an->data->{sys}{reported}{temperature_is_warning}  = 0;
 		}
-	}
-	
-	return(0);
-}
-
-# This looks to see if the directory '/shared/status' exists. If it does, we 
-# assume the cluster is up and will create or update 
-# '/shared/status.<node_short_name>' to have 'health = [ok|warning|critical]
-# depending on the passed-in health level.
-sub update_health_file
-{
-	my ($an, $health_level) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_health_file" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "health_level", value1 => "$health_level" 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $health_file = $an->data->{path}{health_file}."/.".$an->short_hostname;
-	my $say_health  = "health = ok\n";
-	   $say_health  = "health = warning\n"  if $health_level eq "2";
-	   $say_health  = "health = critical\n" if $health_level eq "3";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "health_file", value1 => $health_file, 
-		name2 => "say_health",  value2 => $say_health, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if (-d $an->data->{path}{health_file})
-	{
-		# Cluster is up, write the file.
-		my $shell_call = $health_file;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# We don't die if we fail to write. If the system needs to poweroff, this is not the time to
-		# be exiting on small errors.
-		open (my $file_handle, ">$shell_call") or $an->Alert->error({fatal => 0, title_key => "an_0003", message_key => "error_title_0015", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		print $file_handle $say_health;
-		close $file_handle;
-	}
-	else
-	{
-		# Can't write, cluster may be down (in which case, we aren't a migration target anyway so it 
-		# hardly matters).
-		$an->Log->entry({log_level => 2, message_key => "scancore_log_0054", message_variables => {
-			health_file => $health_file, 
-		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -2735,7 +2668,7 @@ sub send_email
 	check_email_configuration($an);
 	
 	# Select a known_free email file name.
-	my $email_file = $an->data->{path}{email_directory}."/".get_date($an).".1";
+	my $email_file = $an->data->{path}{alert_emails}."/".get_date($an).".1";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "email_file", value1 => $email_file,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3198,21 +3131,21 @@ sub check_email_configuration
 	}
 	
 	# Make sure the mail alerts directory exists and create it if not.
-	if (-e $an->data->{path}{email_directory})
+	if (-e $an->data->{path}{alert_emails})
 	{
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0055", message_variables => {
-			email_directory => $an->data->{path}{email_directory}, 
+			email_directory => $an->data->{path}{alert_emails}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# Need to create it.
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0045", message_variables => {
-			email_directory => $an->data->{path}{email_directory}, 
+			email_directory => $an->data->{path}{alert_emails}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		mkdir $an->data->{path}{email_directory} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
-								directory => $an->data->{path}{email_directory}, 
+		mkdir $an->data->{path}{alert_emails} or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0019", message_variables => {
+								directory => $an->data->{path}{alert_emails}, 
 								error     => $! 
 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
 		
@@ -3221,7 +3154,7 @@ sub check_email_configuration
 		$an->Log->entry({log_level => 2, message_key => "scancore_log_0046", message_variables => {
 			directory_mode => sprintf("%04o", $directory_mode), 
 		}, file => $THIS_FILE, line => __LINE__});
-		chmod $directory_mode, $an->data->{path}{email_directory};
+		chmod $directory_mode, $an->data->{path}{alert_emails};
 	}
 	
 	return(0);
