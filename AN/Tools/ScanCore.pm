@@ -35,6 +35,164 @@ sub parent
 	return ($self->{HANDLE}{TOOLS});
 }
 
+# This returns the migration target of a given server, if it is being migrated.
+sub get_migration_target
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	my $server = $parameter->{server} ? $parameter->{server} : "";
+	if (not $server)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0101", code => 101, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $query  = "
+SELECT 
+    a.host_name 
+FROM 
+    hosts a, 
+    states b 
+WHERE 
+    a.host_uuid = b.state_host_uuid 
+AND 
+    b.state_name = 'migration' 
+AND 
+    b.state_note = ".$an->data->{sys}{use_db_fh}->quote($server)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $target = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	   $target = "" if not $target;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($target);
+}
+
+# Returns (and sets, if requested) the health of the target.
+sub host_state
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	# This will store the state.
+	my $state = "";
+	
+	# If I don't have a target, use the local host.
+	my $target = $parameter->{target} ? $parameter->{target} : "host_uuid";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->Validate->is_uuid({uuid => $target}))
+	{
+		# It's already a UUID
+	}
+	else
+	{
+		# Translate the target to a host_uuid
+		$target = $an->Get->uuid({get => $target});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $valid = $an->Validate->is_uuid({uuid => $target});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "valid", value1 => $valid, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $valid)
+		{
+			# No host 
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0099", message_variables => { target => $parameter->{target} }, code => 99, file => "$THIS_FILE", line => __LINE__});
+			return("");
+		}
+	}
+	
+	# First, read the current state. We'll update it if needed in a minute.
+	
+	my $query = "
+SELECT 
+    host_health 
+FROM 
+    hosts 
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)." 
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the count is '0', the host wasn't found and we've hit a program error.
+	if (not $count)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0100", message_variables => { target => $target }, code => 100, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	my $current_health = "";
+	foreach my $row (@{$results})
+	{
+		$current_health = $row->[0] ? $row->[0] : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "current_health", value1 => $current_health, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Am I setting?
+	my $host_health = $parameter->{set} ? $parameter->{set} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "host_health", value1 => $host_health, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($host_health)
+	{
+		# Yup. Has it changed?
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "current_health", value1 => $current_health, 
+			name2 => "host_health",    value2 => $host_health, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($current_health ne $host_health)
+		{
+			# It has changed.
+			   $current_health = $host_health;
+			my $query          = "
+UPDATE 
+    hosts 
+SET 
+    host_health   = ".$an->data->{sys}{use_db_fh}->quote($host_health).", 
+    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($target)." 
+";
+			$query =~ s/'NULL'/NULL/g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "query", value1 => $query
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "current_health", value1 => $current_health, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($current_health);
+}
+
 # Get a list of Anvil! Install Manifests as an array of hash references
 sub get_manifests
 {
@@ -105,6 +263,7 @@ SELECT
     host_type, 
     host_emergency_stop, 
     host_stop_reason, 
+    host_health, 
     modified_date 
 FROM 
     hosts
@@ -127,14 +286,16 @@ FROM
 		my $host_type           = $row->[2];
 		my $host_emergency_stop = $row->[3] ? $row->[3] : "";
 		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
-		my $modified_date       = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		my $host_health         = $row->[5] ? $row->[5] : "";
+		my $modified_date       = $row->[6];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "host_uuid",           value1 => $host_uuid, 
 			name2 => "host_name",           value2 => $host_name, 
 			name3 => "host_type",           value3 => $host_type, 
 			name4 => "host_emergency_stop", value4 => $host_emergency_stop, 
 			name5 => "host_stop_reason",    value5 => $host_stop_reason, 
-			name6 => "modified_date",       value6 => $modified_date, 
+			name6 => "host_health",         value6 => $host_health, 
+			name7 => "modified_date",       value7 => $modified_date, 
 		}, file => $THIS_FILE, line => __LINE__});
 		push @{$return}, {
 			host_uuid		=>	$host_uuid,
@@ -142,6 +303,7 @@ FROM
 			host_type		=>	$host_type, 
 			host_emergency_stop	=>	$host_emergency_stop, 
 			host_stop_reason	=>	$host_stop_reason, 
+			host_health		=>	$host_health, 
 			modified_date		=>	$modified_date, 
 		};
 	}

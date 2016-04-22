@@ -2583,7 +2583,8 @@ sub rsa_public_key
 	return($key_owner, $key_string);
 }
 
-# Uses 'uuidgen' to generate a UUID and return it to the caller.
+# Gets a UUID, either generates a new one or, if 'get' is set, the UUID of the target (with 'host_uuid' 
+# returning the actual host_uuid of the local machine)
 sub uuid
 {
 	my $self      = shift;
@@ -2593,10 +2594,11 @@ sub uuid
 	### TODO: Figure out why the heck I did this... Remove it, most likely.
 	# Set the 'uuidgen' path if set by the user.
 	$an->_uuidgen_path($parameter->{uuidgen_path}) if $parameter->{uuidgen_path};
+	my $get = $parameter->{get} ? $parameter->{get} : "";
 	
 	# If the user asked for the host UUID, read it in.
 	my $uuid = "";
-	if ((exists $parameter->{get}) && ($parameter->{get} eq "host_uuid"))
+	if ($get eq "host_uuid")
 	{
 		my $shell_call = $an->data->{path}{host_uuid};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -2613,6 +2615,19 @@ sub uuid
 			last;
 		}
 		close $file_handle;
+	}
+	elsif ($get)
+	{
+		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
+		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+		$uuid = "" if not $uuid;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "uuid", value1 => $uuid, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{

@@ -482,6 +482,7 @@ CREATE TABLE hosts (
 	host_type		text				not null,			-- Either 'node' or 'dashboard'.
 	host_emergency_stop	boolean				not null	default FALSE,	-- Set to TRUE when ScanCore shuts down the node.
 	host_stop_reason	text,								-- Set to 'power' if the UPS shut down and 'temperature' if the temperature went too high or low. Set to 'clean' if the user used Striker to power off the node (this prevents any Striker from booting the nodes back up).
+	host_health		text,								-- This stores the current health of the node ('ok', 'warning', 'critical', 'shutdown')
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE hosts OWNER TO #!variable!user!#;
@@ -493,6 +494,7 @@ CREATE TABLE history.hosts (
 	host_type		text				not null,
 	host_emergency_stop	boolean				not null,
 	host_stop_reason	text,
+	host_health		text,
 	modified_date		timestamp with time zone	not null
 );
 ALTER TABLE history.hosts OWNER TO #!variable!user!#;
@@ -509,6 +511,7 @@ BEGIN
 		 host_type,
 		 host_emergency_stop,
 		 host_stop_reason, 
+		 host_health, 
 		 modified_date)
 	VALUES
 		(history_hosts.host_uuid,
@@ -516,6 +519,7 @@ BEGIN
 		 history_hosts.host_type,
 		 history_hosts.host_emergency_stop,
 		 history_hosts.host_stop_reason, 
+		 history_hosts.host_health, 
 		 history_hosts.modified_date);
 	RETURN NULL;
 END;
@@ -526,6 +530,57 @@ ALTER FUNCTION history_hosts() OWNER TO #!variable!user!#;
 CREATE TRIGGER trigger_hosts
 	AFTER INSERT OR UPDATE ON hosts
 	FOR EACH ROW EXECUTE PROCEDURE history_hosts();
+
+
+-- This stores state information, like the whether migrations are happening and so on.
+CREATE TABLE states (
+	state_uuid		uuid				primary key,
+	state_name		text				not null,			-- This is the name of the state (ie: 'migration', etc)
+	state_host_uuid		uuid				not null,			-- The UUID of the machine that the state relates to. In migrations, this is the UUID of the target
+	state_note		text,								-- This is a free-form note section that the application setting the state can use for extra information (like the name of the server being migrated)
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(state_host_uuid) REFERENCES hosts(host_uuid)
+);
+ALTER TABLE states OWNER TO #!variable!user!#;
+
+CREATE TABLE history.states (
+	history_id		bigserial,
+	state_uuid		uuid,
+	state_name		text,
+	state_host_uuid		uuid,
+	state_note		text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.states OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_states() RETURNS trigger
+AS $$
+DECLARE
+	history_states RECORD;
+BEGIN
+	SELECT INTO history_states * FROM states WHERE state_uuid = new.state_uuid;
+	INSERT INTO history.states
+		(state_uuid,
+		 state_name, 
+		 state_host_uuid, 
+		 state_note, 
+		 modified_date)
+	VALUES
+		(history_states.state_uuid,
+		 history_states.state_name, 
+		 history_states.state_host_uuid, 
+		 history_states.state_note, 
+		 history_states.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_states() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_states
+	AFTER INSERT OR UPDATE ON states
+	FOR EACH ROW EXECUTE PROCEDURE history_states();
 
 
 -- This stores alerts coming in from various agents

@@ -941,7 +941,7 @@ sub get_clustat_data
 			my $server = $1;
 			my $host   = $2;
 			my $status = $3;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server, 
 				name2 => "host",   value2 => $host, 
 				name3 => "status", value3 => $status, 
@@ -951,7 +951,7 @@ sub get_clustat_data
 			if (($status !~ /start/) && ($status !~ /stopping/))
 			{
 				$host = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -961,7 +961,7 @@ sub get_clustat_data
 			if ($host =~ /^\(.*\)$/)
 			{
 				$host = "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -970,7 +970,7 @@ sub get_clustat_data
 				host   => $host,
 				status => $status,
 			};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
 				name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1153,13 +1153,13 @@ sub stop_server
 		return("");
 	}
 	
+	# This will disable the server.
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
 	
 	# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		# Read in drbdadm dump-xml regardless of whether the module is loaded.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,

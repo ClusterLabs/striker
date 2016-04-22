@@ -7,6 +7,9 @@
 # 0  = OK
 # 1  = Another instance was running
 # 2  = Called with invalid or missing switches.
+# 3  = Load shedding failed because we can't access the peer to determine its state.
+# 4  = Both nodes are SyncSource or Diskless, so load shedding is not possible.
+# 5  = We're SyncSource (or our peer is Diskless), so local shutdown is aborted.
 #
 
 use strict;
@@ -76,7 +79,7 @@ my $an = AN::Tools->new({data => {
 			program_name		=>	$THIS_FILE,
 			resync_max_wait_time	=>	600,
 			shutdown_target		=>	"",
-			stop_reason		=>	"clean",
+			stop_reason		=>	"host_poweroff",
 		},
 	},
 });
@@ -247,33 +250,7 @@ sub shed_load
 	if ($an->data->{sys}{shutdown_target})
 	{
 		# Get the DRBD info and see if a node is SyncTarget.
-		my $i_am_synctarget    = 0;
-		my $peer_is_synctarget = 0;
-		my $drbd_data          = $an->Get->drbd_data();
-		foreach my $resource (sort {$a cmp $b} keys %{$drbd_data->{resource}})
-		{
-			my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
-			my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "local_disk_state", value1 => $local_disk_state, 
-				name2 => "peer_disk_state",  value2 => $peer_disk_state, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			if ($local_disk_state =~ /SyncTarget/i)
-			{
-				$i_am_synctarget = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "i_am_synctarget", value1 => $i_am_synctarget, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			if ($peer_disk_state =~ /SyncTarget/i)
-			{
-				$peer_is_synctarget = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "peer_is_synctarget", value1 => $peer_is_synctarget, 
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
+		my ($i_am_synctarget, $peer_is_synctarget) = check_drbd($an);
 		
 		# If both are SyncTarget (on different resources), abort.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -436,6 +413,49 @@ sub shed_load
 	return(0);
 }
 
+# This checks to see if any DRBD resource is syncsource.
+sub check_drbd
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_request" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# If one node is Diskless, we're effectively sync source in that the diskless node relies on the 
+	# peer, so we'll treat it the same.
+	my $i_am_synctarget    = 0;
+	my $peer_is_synctarget = 0;
+	my $drbd_data          = $an->Get->drbd_data();
+	foreach my $resource (sort {$a cmp $b} keys %{$drbd_data->{resource}})
+	{
+		my $local_disk_state = $drbd_data->{resource}{$resource}{my_disk_state};
+		my $peer_disk_state  = $drbd_data->{resource}{$resource}{peer_disk_state};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local_disk_state", value1 => $local_disk_state, 
+			name2 => "peer_disk_state",  value2 => $peer_disk_state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (($local_disk_state =~ /SyncTarget/i) or ($peer_disk_state =~ /Diskless/i))
+		{
+			$i_am_synctarget = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "i_am_synctarget", value1 => $i_am_synctarget, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if (($peer_disk_state =~ /SyncTarget/i) or ($local_disk_state =~ /Diskless/i))
+		{
+			$peer_is_synctarget = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "peer_is_synctarget", value1 => $peer_is_synctarget, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "i_am_synctarget",    value1 => $i_am_synctarget, 
+		name2 => "peer_is_synctarget", value2 => $peer_is_synctarget, 
+	}, file => $THIS_FILE, line => __LINE__});
+	return($i_am_synctarget, $peer_is_synctarget);
+}
+
 # This shuts down the node, either stopping or migrating servers as the case may be. Shedding load should 
 # always migrate and local stop with migrate if the peer was accessible and online, and will otherwise power
 # off the servers.
@@ -465,31 +485,26 @@ sub shutdown_node
 		if ($host eq $node)
 		{
 			# Migrate or Terminate?
+			$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+				name1 => "migrate", value1 => $migrate, 
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($migrate)
 			{
 				# Get off my lawn!
-				my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "shell_call", value1 => $shell_call, 
+				my ($success, $migrate_output) = do_migration($an, $server);
+				$output .= $migrate_output;
+				
+				# Shut it down if migration failed.
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
 				}, file => $THIS_FILE, line => __LINE__});
-				open (my $file_handle, $shell_call) or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-				while(<$file_handle>)
+				if (not $success)
 				{
-					chomp;
-					my $line = $_;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "line", value1 => $line, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($line =~ /fail/i)
-					{
-						$proceed = 0;
-						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "proceed", value1 => $proceed, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					$output .= "$line\n";
+					$output .= $an->Cman->stop_server({
+						server => $server, 
+						reason => $an->data->{sys}{stop_reason},
+					});
 				}
-				close $file_handle;
 			}
 			else
 			{
@@ -497,7 +512,7 @@ sub shutdown_node
 				{
 					if ($an->data->{switches}{reason} =~ /\W/)
 					{
-						$an->Log->entry({log_level => 0, message_key => "assp_warning_0002", message_variables => {
+						$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
 							name1 => "reason", value1 => $an->data->{switches}{reason}, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$an->data->{switches}{reason} = "";
@@ -550,16 +565,248 @@ sub shutdown_node
 	return($output);
 }
 
-# This will shut down this node. Any servers running will either migrate to the peer, if possible, or shut 
-# down if not (ie: because the peer is in a 'warning' or 'critical' state and likely will shutdown shortly
-# too).
+# This will shut down this node. A decision needs to then be made of whether to migrate the servers or power
+# them down. Migration is obviously ideal, so the decision to shut down instead is based on;
+# 
+# 1. Can I access my peer?
+# 
+# 2. If so, is rgmanager running on this machine and the peer?
+# 
+# 3. If so, are we sync source for a resource?
+#    - If so, the shut down is aborted.
+# 
+# 4. If the peer is 'critical' health, don't migrate.
+# 
+# Before shutting down, a check is made to see if we're a migration target for any servers. If so, we will 
+# send the shutdown command to those servers before withdrawing and powering off.
 sub local_shut_down
 {
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "process_request" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Can we reach the peer?
+	my $peer_access = $an->Check->access({
+		target		=>	$an->data->{sys}{peer_node},
+		password	=>	$an->data->{sys}{anvil_password},
+	});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "peer_access", value1 => $peer_access, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $migrate_servers = 1;
+	if ($peer_access)
+	{
+		# Yes. Are we and the peer running rgmanager?
+		my $local_clustat_data = $an->Cman->get_clustat_data({
+			target   => $an->data->{sys}{local_node}, 
+			password => $an->data->{sys}{anvil_password}, 
+		});
+		my $peer_clustat_data = $an->Cman->get_clustat_data({
+			target   => $an->data->{sys}{peer_node}, 
+			password => $an->data->{sys}{anvil_password}, 
+		});
+		my $local_rgmanager_state = $local_clustat_data->{node}{'local'}{rgmanager} ? $local_clustat_data->{node}{'local'}{rgmanager} : "";
+		my $peer_rgmanager_state  = $peer_clustat_data->{node}{'local'}{rgmanager}  ? $peer_clustat_data->{node}{'local'}{rgmanager}  : "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "local_rgmanager_state", value1 => $local_rgmanager_state, 
+			name2 => "peer_rgmanager_state",  value2 => $peer_rgmanager_state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $local_rgmanager_state)
+		{
+			# I'm not in the cluster, so we won't have anything to migrate anyway.
+			$migrate_servers = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "migrate_servers", value1 => $migrate_servers, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif (not $peer_rgmanager_state)
+		{
+			# The peer is not in the cluster, so migration isn't possible.
+			$migrate_servers = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "migrate_servers", value1 => $migrate_servers, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# We're both in the cluster. Are we sync source?
+			my ($i_am_synctarget, $peer_is_synctarget) = check_drbd($an);
+			
+			# If both are SyncTarget (on different resources), abort.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "i_am_synctarget",    value1 => $i_am_synctarget, 
+				name2 => "peer_is_synctarget", value2 => $peer_is_synctarget, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($i_am_synctarget) && ($peer_is_synctarget))
+			{
+				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0003", code => 4, file => "$THIS_FILE", line => __LINE__});
+				exit(4);
+			}
+			
+			# If we're sync target (or the peer is diskless), abort.
+			if ($i_am_synctarget)
+			{
+				$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "assp_error_0004", code => 5, file => "$THIS_FILE", line => __LINE__});
+				exit(5);
+			}
+			
+			# If we're still alive, the last thing to check is whether the peer is 'critical' or
+			# 'shutdown'. We won't check that now though, we'll check before processing each 
+			# server.
+		}
+	}
+	else
+	{
+		$migrate_servers = 0;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "migrate_servers", value1 => $migrate_servers, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If our health isn't 'critical', set it to 'shutdown'.
+	my $current_health = $an->ScanCore->host_state();
+	if (($current_health) && ($current_health ne "critical") && ($current_health ne "shutdown"))
+	{
+		$an->ScanCore->host_state({set => "shutdown"});
+	}
+	
+	### TODO: This might be racy if the other node is also shutting down. Might be worth making this a 
+	###       loop that doesn't exit until all servers are on the peer or off.
+	# If we're not dead, the peer can run on it's own. That said, it may be critical and shutting down, 
+	# too. So despite planning to migrate, we'll check the peer's health before each migration starts and
+	# switch to shutting down servers if it goes critical.
+	my $local_clustat_data = $an->Cman->get_clustat_data({
+		target   => $an->data->{sys}{local_node}, 
+		password => $an->data->{sys}{anvil_password}, 
+	});
+	foreach my $server (sort {$a cmp $b} keys %{$local_clustat_data->{server}})
+	{
+		my $status = $local_clustat_data->{server}{$server}{status};
+		my $host   = $local_clustat_data->{server}{$server}{host};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "server",  value1 => $server, 
+			name2 => "status",  value2 => $status, 
+			name3 => "host",    value3 => $host, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($status !~ /start/)
+		{
+			# Ignore it
+			next;
+		}
+		if ($host eq $an->hostname)
+		{
+			# It's on us, deal with it.
+			if ($migrate_servers)
+			{
+				# Make sure the target is still OK.
+				my $peer_health = $an->ScanCore->host_state({target => $an->data->{sys}{peer_node}});
+				if (($peer_health eq "critical") or ($peer_health eq "shutdown"))
+				{
+					# Node is no longer a viable target, so we'll shut down.
+					$migrate_servers = 0;
+				}
+			}
+			
+			if ($migrate_servers)
+			{
+				# OK, so we're still OK to migrate, do so.
+				my ($success, $output) = do_migration($an, $server);
+				
+				# Shut it down if migration failed.
+				$an->Log->entry({log_level => 0, message_key => "an_variables_0001", message_variables => {
+					name1 => "success", value1 => $success, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $success)
+				{
+					$an->Cman->stop_server({
+						server => $server, 
+						reason => $an->data->{sys}{stop_reason},
+					});
+				}
+			}
+			else
+			{
+				# Shut 'er down.
+				$an->Cman->stop_server({
+					server => $server, 
+					reason => $an->data->{sys}{stop_reason},
+				});
+			}
+		}
+		else
+		{
+			# It's on the peer, see if it is being migrated to us and shut it down if so.
+			my $migration_target = $an->ScanCore->get_migration_target({server => $server});
+			if ($migration_target eq $an->hostname)
+			{
+				### NOTE: to future-me; yes, you can call 'clusvcadm -d' while a 
+				###       'clusvcadm -M' is in progress.
+				# Crap. Stop it.
+				$an->Cman->stop_server({
+					server => $server, 
+					reason => $an->data->{sys}{stop_reason},
+				});
+			}
+		}
+	}
+	
+	# Stop rgmanager, then stop cman.
+	my ($return_code, $withdraw_output) = $an->Cman->withdraw_node();
+	# 0 == success
+	# 1 == failed, restart succeeded.
+	# 2 == failed, restart also failed.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if ($return_code eq "0")
+	{
+		# We're done, power off.
+		$an->System->poweroff();
+	}
+	elsif ($return_code eq "2")
+	{
+		# TODO: self-fence?
+	}
 	
 	return(0);
+}
+
+# This makes the actual call to 'anvil-migrate-server'.
+sub do_migration
+{
+	my ($an, $server) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "shutdown_node" }, message_key => "an_variables_0002", message_variables => { 
+		name1 => "server", value1 => $server, 
+	}, file => $THIS_FILE, line => __LINE__});
+
+	my $output     = "";
+	my $success    = 1;
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($line =~ /fail/i)
+		{
+			$success = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "success", value1 => $success, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		$output .= "$line\n";
+	}
+	close $file_handle;
+	
+	return($success, $output);
 }
 
 # This figures out what to do.

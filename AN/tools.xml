@@ -527,7 +527,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0020">The passed real number: [#!variable!number!#] contains an illegal value. Only digits and one decimal place are allowed in the real number being rounded.</key>
 		<key name="error_message_0021">Loading the perl module '#!variable!module!#' failed with the error: [#!variable!error!#].</key>
 		<key name="error_message_0022">The shell call:  [#!variable!shell_call!#] failed with the error: [#!variable!error!#].</key>
-		<key name="error_message_0023">Failed to generate a sane UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#].</key>
+		<key name="error_message_0023">Failed to read or generate a (sane) UUID. Expected the format: '012345-6789-abcd-ef01-23456789abcd' but got: [#!variable!bad_uuid!#]. This could mean the 'get' values was a host name that was not found in the database.</key>
 		<key name="error_message_0024">Failed to generate UUID.</key>
 		<key name="error_message_0025">Connecting to the target machine: [#!variable!target!#] on requested TCP port: [#!variable!port!#] is not possible, the port is invalid.</key>
 		<key name="error_message_0026">#!variable!method!# was asked to call: [#!variable!shell_call!#] but no target was defined. This is probably a program error, sorry about the inconvenience. Please contact support (#!string!brand_0012!#) and we will try to help fix this.</key>
@@ -611,7 +611,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0096"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in program name.]]></key>
 		<key name="error_message_0097"><![CDATA[The 'AN::Tools::Remote' module's 'wait_on_peer()' method was called without passing in a target address.]]></key>
 		<key name="error_message_0098"><![CDATA[The 'AN::Tools::DB' module's 'do_db_query()' couldn't sort out a Striker database ID to use.]]></key>
-		<key name="error_message_0099"><![CDATA[]]></key>
+		<key name="error_message_0099"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which could not be translated to a host UUID.]]></key>
+		<key name="error_message_0100"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which does not exist in the 'nodes' database table.]]></key>
+		<key name="error_message_0101"><![CDATA[The 'AN::Tools::ScanCore' module's 'get_migration_target()' method was called without passing in a server name.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>
