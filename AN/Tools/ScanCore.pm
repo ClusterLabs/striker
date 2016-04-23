@@ -848,6 +848,15 @@ WHERE
 		}
 	}
 	
+	# If there is no current health data, assume the node is healthy.
+	if ($current_health eq "")
+	{
+		$current_health = "ok";
+		$an->Log->entry({log_level => 1, message_key => "warning_message_0016", message_variables => {
+			target => $target, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "current_health", value1 => $current_health, 
 	}, file => $THIS_FILE, line => __LINE__});

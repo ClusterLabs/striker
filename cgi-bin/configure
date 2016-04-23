@@ -45,7 +45,7 @@ my $an = AN::Tools->new({data => {
 });
 
 # Initialize.
-print "Content-type: text/html; charset=utf-8\n\n";
+$an->Web->initialize_http();
 $an->default_language    ($an->data->{sys}{language});
 $an->default_log_language($an->data->{'log'}{language});
 $an->default_log_file    ($an->data->{'log'}{file});

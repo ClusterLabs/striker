@@ -491,17 +491,20 @@ sub initialize
 	# Set default configuration variable values
 	my ($conf) = initialize_conf();
 	
+	# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
+	my $an = AN::Tools->new({data => $conf});
+	$conf->{handle}{an} = $an;
+	
 	# First thing first, initialize the web session.
-	initialize_http($conf) if $initialize_http;
+	$an->Web->initialize_http() if $initialize_http;
 
 	# First up, read in the default strings file.
-	read_strings($conf, $conf->{path}{common_strings});
-	read_strings($conf, $conf->{path}{striker_strings});
-	read_strings($conf, $conf->{path}{scancore_strings});
+	$an->Storage->read_words({file => $an->data->{path}{common_strings}});
+	$an->Storage->read_words({file => $an->data->{path}{scancore_strings}});
+	$an->Storage->read_words({file => $an->data->{path}{striker_strings}});
 
-	# Read in the configuration file. If the file doesn't exist, initial 
-	# setup will be triggered.
-	read_configuration_file($conf);
+	# Read in the configuration file. If the file doesn't exist, initial setup will be triggered.
+	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 	
 	return($conf);
 }
@@ -1105,17 +1108,6 @@ sub check_global_settings
 	return($global_set);
 }
 
-# At this point in time, all this does is print the content type needed for printing to browsers. '$an' is 
-# not set yet here.
-sub initialize_http
-{
-	my ($conf) = @_;
-	
-	print "Content-type: text/html; charset=utf-8\n\n";
-	
-	return(0);
-}
-
 # This takes a completed string and inserts variables into it as needed.
 sub insert_variables_into_string
 {
@@ -1155,44 +1147,6 @@ sub insert_variables_into_string
 	
 	#print "$THIS_FILE ".__LINE__."; << string: [$string]\n";
 	return($string);
-}
-
-# This reads in the configuration file. '$an' is not set yet here.
-sub read_configuration_file
-{
-	my ($conf) = @_;
-	
-	my $return_code = 1;
-	if (-e $conf->{path}{config_file})
-	{
-		   $conf->{raw}{config_file} = [];
-		   $return_code              = 0;
-		my $shell_call               = "$conf->{path}{config_file}";
-		open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-		#binmode $file_handle, ":utf8:";
-		while (<$file_handle>)
-		{
-			chomp;
-			my $line = $_;
-			push @{$conf->{raw}{config_file}}, $line;
-			next if not $line;
-			next if $line !~ /=/;
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			next if $line =~ /^#/;
-			next if not $line;
-			my ($variable, $value) = (split/=/, $line, 2);
-			$variable =~ s/^\s+//;
-			$variable =~ s/\s+$//;
-			$value    =~ s/^\s+//;
-			$value    =~ s/\s+$//;
-			next if (not $variable);
-			_make_hash_reference($conf, $variable, $value);
-		}
-		close $file_handle;
-	}
-	
-	return($return_code);
 }
 
 # This takes the name of a template file, the name of a template section within the file, an optional hash

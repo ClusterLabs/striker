@@ -96,7 +96,7 @@ sub boot_server
 	my ($servers, $state) = $an->Cman->get_cluster_server_list();
 	foreach my $server_name (sort {$a cmp $b} keys %{$state})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server_name", value1 => $server_name, 
 			name2 => "server",      value2 => $server, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -151,12 +151,15 @@ sub boot_server
 	my $cluster_data   = $an->Cman->cluster_conf_data();
 	my $drbd_data      = $an->Get->drbd_data();
 	my $nodes          = {};
-	my $my_host_name   = "";         
-	my $peer_host_name = "";         
+	my $my_host_name   = "";
+	my $peer_host_name = "";
 	
 	# Get the cluster names for node 1 and 2.
 	foreach my $node (sort {$a cmp $b} keys %{$cluster_data->{node}})
 	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "node", value1 => $node, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$nodes->{$node}{healthy}       = "";
 		$nodes->{$node}{storage_ready} = 1;
 		$nodes->{$node}{preferred}     = 0;
@@ -492,6 +495,10 @@ sub boot_server
 		}
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "booted",      value1 => $booted, 
+		name2 => "boot_return", value2 => $boot_return, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($booted, $boot_return);
 }
 
@@ -771,7 +778,7 @@ sub get_clustat_data
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -787,7 +794,7 @@ sub get_clustat_data
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -802,7 +809,7 @@ sub get_clustat_data
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -870,7 +877,7 @@ sub get_clustat_data
 					cman      => $cman,
 					rgmanager => $rgmanager
 				},
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "details->node::local::name",      value1 => $details->{node}{'local'}{name}, 
 					name2 => "details->node::local::id",        value2 => $details->{node}{'local'}{id}, 
 					name3 => "details->node::local::cman",      value3 => $details->{node}{'local'}{cman}, 
@@ -942,7 +949,7 @@ sub get_clustat_data
 			my $server = $1;
 			my $host   = $2;
 			my $status = $3;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server, 
 				name2 => "host",   value2 => $host, 
 				name3 => "status", value3 => $status, 
@@ -952,7 +959,7 @@ sub get_clustat_data
 			if (($status !~ /start/) && ($status !~ /stopping/))
 			{
 				$host = "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -962,7 +969,7 @@ sub get_clustat_data
 			if ($host =~ /^\(.*\)$/)
 			{
 				$host = "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "host", value1 => $host, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -971,7 +978,7 @@ sub get_clustat_data
 				host   => $host,
 				status => $status,
 			};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "details->server::${server}::host",   value1 => $details->{server}{$server}{host}, 
 				name2 => "details->server::${server}::status", value2 => $details->{server}{$server}{status}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1123,7 +1130,7 @@ sub stop_server
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clear";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "target", value2 => $target, 
 		name3 => "port",   value3 => $port, 
@@ -1147,7 +1154,7 @@ sub stop_server
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1163,7 +1170,7 @@ sub stop_server
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1177,7 +1184,7 @@ sub stop_server
 	}
 	foreach my $line (@{$return})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		$output .= "$line\n";
@@ -1186,11 +1193,11 @@ sub stop_server
 	# TODO: Handle stop failures
 	my $details     = $an->Get->server_data({server => $server});
 	my $server_uuid = $details->{uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "server_uuid", value1 => $server_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::read_db_id", value1 => $an->data->{sys}{read_db_id}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{read_db_id})
@@ -1204,7 +1211,7 @@ SET
 WHERE 
     server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -1259,7 +1266,7 @@ sub withdraw_node
 	{
 		### Remote calls
 		# Stop rgmanager
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1274,7 +1281,7 @@ sub withdraw_node
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1292,27 +1299,27 @@ sub withdraw_node
 		$line   =~ s/^\s+//;
 		$line   =~ s/\s+$//;
 		$line   =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /fail/i)
 		{
 			$rgmanager_stop = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "rgmanager_stop", value1 => $rgmanager_stop,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# Now clear the delayed run, if rgmanager stopped, then stop cman.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "rgmanager_stop", value1 => $rgmanager_stop, 
 		name2 => "token",          value2 => $token, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($rgmanager_stop)
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "token", value1 => $token,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($token)
@@ -1323,7 +1330,7 @@ sub withdraw_node
 			if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 			{
 				### Remote calls
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "target",     value2 => $target,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1338,7 +1345,7 @@ sub withdraw_node
 			else
 			{
 				### Local calls
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1352,7 +1359,7 @@ sub withdraw_node
 			}
 			foreach my $line (@{$return})
 			{
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1365,7 +1372,7 @@ sub withdraw_node
 		if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 		{
 			### Remote calls
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "target",     value2 => $target,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1380,7 +1387,7 @@ sub withdraw_node
 		else
 		{
 			### Local calls
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});
 			open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1398,14 +1405,14 @@ sub withdraw_node
 			$line   =~ s/^\s+//;
 			$line   =~ s/\s+$//;
 			$line   =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($line =~ /fail/i)
 			{
 				$cman_stop = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "cman_stop", value1 => $cman_stop, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1425,7 +1432,7 @@ sub withdraw_node
 			if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 			{
 				### Remote calls
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "target",     value2 => $target,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1440,7 +1447,7 @@ sub withdraw_node
 			else
 			{
 				### Local calls
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "shell_call", value1 => $shell_call, 
 				}, file => $THIS_FILE, line => __LINE__});
 				open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1458,14 +1465,14 @@ sub withdraw_node
 				$line   =~ s/^\s+//;
 				$line   =~ s/\s+$//;
 				$line   =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($line =~ /fail/i)
 				{
 					$cman_start = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "cman_start", value1 => $cman_start,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1478,7 +1485,7 @@ sub withdraw_node
 					password => $password,
 				});
 				$output .= $recover_output;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "recover", value1 => $recover,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -1486,7 +1493,7 @@ sub withdraw_node
 				{
 					# Failed to restart rgmanager...
 					$return_code = 2;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "return_code", value1 => $return_code,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1495,7 +1502,7 @@ sub withdraw_node
 			{
 				# Failed to restart cman...
 				$return_code = 2;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "return_code", value1 => $return_code,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -1505,7 +1512,7 @@ sub withdraw_node
 	{
 		# rgmanager failed to stop... Restart it
 		$return_code = 1;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "return_code", value1 => $return_code,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1515,7 +1522,7 @@ sub withdraw_node
 			password => $password,
 		});
 		$output .= $recover_output;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "recover", value1 => $recover,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1523,7 +1530,7 @@ sub withdraw_node
 		{
 			# Failed to restart rgmanager...
 			$return_code = 2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1532,7 +1539,7 @@ sub withdraw_node
 	# 0 == success
 	# 1 == failed, restart succeeded.
 	# 2 == failed, restart also failed.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code, $output);
@@ -1677,7 +1684,7 @@ sub _recover_rgmanager
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "port",   value2 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1694,7 +1701,7 @@ sub _recover_rgmanager
 	if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 	{
 		### Remote calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "target",     value2 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1709,7 +1716,7 @@ sub _recover_rgmanager
 	else
 	{
 		### Local calls
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call, 
 		}, file => $THIS_FILE, line => __LINE__});
 		open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
@@ -1727,14 +1734,14 @@ sub _recover_rgmanager
 		$line   =~ s/^\s+//;
 		$line   =~ s/\s+$//;
 		$line   =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		if ($line =~ /fail/i)
 		{
 			$return_code = 1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code,
 			}, file => $THIS_FILE, line => __LINE__});
 		}

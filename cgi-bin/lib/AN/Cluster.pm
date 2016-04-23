@@ -1037,122 +1037,6 @@ sub generate_anvil_entry_for_striker_conf
 	
 	return($data);
 }
-	
-
-# This reads in /etc/hosts and later will try to match host names to IPs
-sub read_hosts
-{
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $shell_call = "$conf->{path}{hosts}";
-	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line =  $_;
-		   $line =~ s/^\s+//;
-		   $line =~ s/#.*$//;
-		   $line =~ s/\s+$//;
-		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my ($this_ip, $these_hosts);
-		### NOTE: We don't support IPv6 yet
-		if ($line =~ /^(\d+\.\d+\.\d+\.\d+)\s+(.*)/)
-		{
-			$this_ip     = $1;
-			$these_hosts = $2;
-			foreach my $this_host (split/ /, $these_hosts)
-			{
-				$conf->{hosts}{$this_host}{ip} = $this_ip;
-				if (not exists $conf->{hosts}{by_ip}{$this_ip})
-				{
-					$conf->{hosts}{by_ip}{$this_ip} = [];
-				}
-				push @{$conf->{hosts}{by_ip}{$this_ip}}, $this_host;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "this_host",              value1 => $this_host, 
-					name2 => "hosts::by_ip::$this_ip", value2 => $conf->{hosts}{by_ip}{$this_ip},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	close $file_handle;
-	
-	# Debug
-	foreach my $this_ip (sort {$a cmp $b} keys %{$conf->{hosts}{by_ip}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "this_ip", value1 => $this_ip,
-		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $this_host (sort {$a cmp $b} @{$conf->{hosts}{by_ip}{$this_ip}})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "- this_host", value1 => $this_host,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	return(0);
-}
-
-# This reads /etc/ssh/ssh_config and later will try to match host names to
-# port forwards.
-sub read_ssh_config
-{
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_ssh_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	$conf->{raw}{ssh_config} = [];
-	my $this_host;
-	my $shell_call = "$conf->{path}{ssh_config}";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "reading", value1 => $shell_call,
-	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "<$shell_call") or die "$THIS_FILE ".__LINE__."; Failed to read: [$shell_call], error was: $!\n";
-	while (<$file_handle>)
-	{
-		chomp;
-		my $line = $_;
-		# I skip this to avoid multiple 'Last updated...' lines at the
-		# top of the file when I rewrite this.
-		next if $line =~ /^### Last updated: /;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		push @{$conf->{raw}{ssh_config}}, $line;
-		$line =~ s/#.*$//;
-		$line =~ s/\s+$//;
-		next if not $line;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /^host (.*)/i)
-		{
-			$this_host = $1;
-			next;
-		}
-		next if not $this_host;
-		if ($line =~ /port (\d+)/i)
-		{
-			my $port = $1;
-			$conf->{hosts}{$this_host}{port} = $port;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "this_host", value1 => $this_host, 
-				name2 => "port",      value2 => $conf->{hosts}{$this_host}{port},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	close $file_handle;
-	
-	return(0);
-}
 
 # This copies a file from one place to another.
 sub copy_file
@@ -8389,8 +8273,8 @@ sub configure_dashboard
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_dashboard" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	read_hosts($conf);
-	read_ssh_config($conf);
+	$an->Storage->read_hosts();
+	$an->Storage->read_ssh_config();
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::save", value1 => $conf->{cgi}{save},
@@ -9889,38 +9773,6 @@ sub header
 		});
 	}
 	
-	
-	return (0);
-}
-
-# This looks for an executable.
-sub find_executables
-{
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_executables" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $search = $ENV{'PATH'};
-	foreach my $prog (keys %{$conf->{path}})
-	{
-		if ( -e $conf->{path}{$prog} )
-		{
-			# Found it.
-		}
-		else
-		{
-			# Not found, searching for it now.;
-			foreach my $dir (split /:/, $search)
-			{
-				my $full_path = "$dir/$prog";
-				if ( -e $full_path )
-				{
-					$conf->{path}{$prog} = $full_path;
-					# Found it in: [$full_path]\n";
-				}
-			}
-		}
-	}
 	
 	return (0);
 }

@@ -454,6 +454,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="warning_message_0013">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] was refused. Is the database server running?</key>
 		<key name="warning_message_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		<key name="warning_message_0015">Unable to ping the database host: [#!variable!host!#] accessible from this dashboard?</key>
+		<key name="warning_message_0016">The host with the UUID: [#!variable!uuid!#] does not have a health state. Assuming it is OK.</key>
 		
 		<!-- notice messages -->
 		<key name="notice_message_0001">The database: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>

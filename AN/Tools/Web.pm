@@ -15,6 +15,7 @@ my $THIS_FILE = "Web.pm";
 
 ### Methods;
 # build_select
+# initialize_http
 # get_cgi
 # more_info_link
 # no_db_access
@@ -172,6 +173,18 @@ sub build_select
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($select);
+}
+
+# This simply initializes browsers.
+sub initialize_http
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	print "Content-type: text/html; charset=utf-8\n\n";
+	
+	return (0);
 }
 
 # This reads in data from CGI

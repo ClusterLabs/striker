@@ -1010,7 +1010,7 @@ sub install_target_state
 		{
 			chomp;
 			my $line = $_;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -1020,20 +1020,20 @@ sub install_target_state
 				# 0 = stopped
 				# 1 = running
 				# 2 = unknown
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "state", value1 => $state,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($state eq "0")
 				{
 					$install_target_state = 0;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_target_state", value1 => $install_target_state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($state eq "1")
 				{
 					$install_target_state = 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "install_target_state", value1 => $install_target_state,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -1044,14 +1044,14 @@ sub install_target_state
 	else
 	{
 		# The install target control setuid script wasn't found
-		$an->Log->entry({log_level => 2, message_key => "log_0013", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "log_0013", message_variables => {
 			file => $an->data->{path}{install_target_conf},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	# 0 == Stopped
 	# 1 == Running
 	# 2 == Unknown
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "install_target_state", value1 => $install_target_state,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($install_target_state);
@@ -1226,7 +1226,7 @@ sub local_anvil_details
 	$return->{health}{'local'} = $an->ScanCore->host_state();
 	$return->{health}{peer}    = $an->ScanCore->host_state({target => $an->Cman->peer_hostname});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "local_node",    value1 => $return->{local_node}, 
 		name2 => "peer_node",     value2 => $return->{peer_node}, 
 		name3 => "anvil_name",    value3 => $return->{anvil_name}, 
@@ -4019,12 +4019,12 @@ sub uuid
 	{
 		# Query the DB's hosts table to find a UUID matching the 'get' string (should be a host name)
 		my $query = "SELECT host_uuid FROM hosts WHERE host_name = ".$an->data->{sys}{use_db_fh}->quote($get).";";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$uuid = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 		$uuid = "" if not $uuid;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "uuid", value1 => $uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}

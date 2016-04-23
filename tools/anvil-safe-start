@@ -18,8 +18,7 @@
 # 12 = Failed to find this Anvil!'s password in the local striker.conf
 #
 # TODO:
-# - For each accessible UPS, call an explicit "on" to the outlet groups. Pass '--start-all' to scan-apc-ups?
-# - Test running without a password (passwordless SSH should be setup and works now)
+# - Make this work without DB access
 #
 
 use strict;
@@ -316,7 +315,10 @@ sub update_striker_conf
 		{
 			# Already cancelled.
 			$an->Log->entry({log_level => 1, message_key => "asst_message_0019", message_variables => {this_file => $THIS_FILE}, file => $THIS_FILE, line => __LINE__});
-			print $an->String->get({key => "asst_message_0019", variables => { this_file => $THIS_FILE }})."\n";
+			if (not $an->data->{switches}{force})
+			{
+				print $an->String->get({key => "asst_message_0019", variables => { this_file => $THIS_FILE }})."\n";
+			}
 		}
 	}
 	
@@ -473,7 +475,7 @@ FROM
 		foreach my $server_uuid (keys %{$an->data->{server_uuid}})
 		{
 			# Gather our thoughts...
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "server_uuid",                              value1 => $server_uuid, 
 				name2 => "server_uuid::${server_uuid}::processed",   value2 => $an->data->{server_uuid}{$server_uuid}{processed}, 
 				name3 => "server_uuid::${server_uuid}::name",        value3 => $an->data->{server_uuid}{$server_uuid}{name},
@@ -527,9 +529,10 @@ FROM
 				# 0 = Didn't boot (maybe no healthy node?)
 				# 1 = Booted
 				# 2 = Tried to boot, but it failed.
-				my $booted = $an->Cman->boot_server({server => $server_name});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "booted", value1 => $booted, 
+				my ($booted, $boot_return) = $an->Cman->boot_server({server => $server_name});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "booted",      value1 => $booted, 
+					name2 => "boot_return", value2 => $boot_return, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				if ($booted eq "1")
@@ -723,10 +726,9 @@ FROM
 		{
 			### TODO: Determine if sleeping only 1 second puts too much of a load on the system.
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0026", file => $THIS_FILE, line => __LINE__});
-			sleep 1;
+			sleep 3;
 		}
 	}
-	
 	
 	return(0);
 }

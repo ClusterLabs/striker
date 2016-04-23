@@ -500,6 +500,8 @@ sub _set_paths
 	my ($self) = shift;
 	my $an = $self;
 	
+	### TODO: Use '$an->Storage->find()' to locate these in case they aren't found at the set location
+	###       below.
 	# Executables
 	$an->data->{path}{cat}                = "/bin/cat";
 	$an->data->{path}{'chmod'}            = "/bin/chmod";

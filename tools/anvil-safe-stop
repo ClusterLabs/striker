@@ -11,6 +11,9 @@
 # 4  = Both nodes are SyncSource or Diskless, so load shedding is not possible.
 # 5  = We're SyncSource (or our peer is Diskless), so local shutdown is aborted.
 #
+# TODO:
+# - Make this work without DB access
+#
 
 use strict;
 use warnings;
