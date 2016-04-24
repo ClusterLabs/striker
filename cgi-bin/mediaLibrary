@@ -27,10 +27,10 @@ $| = 1;
 
 my ($conf) = AN::Common::initialize($THIS_FILE, 1);
 my $an     = $conf->{handle}{an};
-$an->default_log_file    ($conf->{path}{log_file});
-$an->default_log_language($conf->{sys}{log_language});
-$an->Log->level          ($conf->{sys}{log_level});
-$conf->{handle}{an} = $an;
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->Log->level          ($an->data->{sys}{log_level});
+$an->data->{handle}{an} = $an;
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -58,58 +58,54 @@ my $connections = $an->DB->connect_to_databases({
 	quiet	=>	1
 });
 
+# Read in some configuration information
 $an->Storage->read_hosts();
 $an->Storage->read_ssh_config();
 
-# I need to convert the global configuration of the clusters to the format I use here.
-AN::Cluster::convert_cluster_config($conf);
+# Read in our Anvil! systems.
+$an->ScanCore->parse_anvil_data();
 
-# If there is only one cluster defined, use it. Note that I need a special
-# exception in get_cgi_vars() for this to work properly.
-if (not $conf->{cgi}{cluster})
+# I need to convert the global configuration of the clusters to the format I use here.
+#AN::Cluster::convert_cluster_config($conf);
+
+# If there is only one cluster defined, use it. Note that I need a special exception in $an->Web->get_cgi() 
+# for this to work properly.
+if (not $an->data->{cgi}{cluster})
 {
 	my @cluster_name;
-	foreach my $cluster (keys %{$conf->{clusters}})
+	foreach my $cluster (keys %{$an->data->{clusters}})
 	{
 		push @cluster_name, $cluster;
 	}
 	if (@cluster_name == 1)
 	{
-		$conf->{cgi}{cluster} = $cluster_name[0];
+		$an->data->{cgi}{cluster} = $cluster_name[0];
 	}
 }
 
-AN::Cluster::get_cgi_vars($conf, [
-	"cluster",
-	"confirm",
-	"dev",
-	"file",
-	"name",
-	"task",
-	"url",
-	"script", 
-]);
+# Check for passed-in CGI variables.
+$an->Web->check_all_cgi();
 
 # Print the header.
 AN::Cluster::header($conf, "mediaLibrary");
 
 # Do I have a cluster name?
 $an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-	name1 => "cgi::cluster", value1 => $conf->{cgi}{cluster},
+	name1 => "cgi::cluster", value1 => $an->data->{cgi}{cluster},
 }, file => $THIS_FILE, line => __LINE__});
-if ($conf->{cgi}{cluster})
+if ($an->data->{cgi}{cluster})
 {
-	my $cluster                 = $conf->{cgi}{cluster};
-	$conf->{sys}{root_password} = $conf->{clusters}{$cluster}{root_pw};
-	$conf->{nodes}              = $conf->{clusters}{$cluster}{nodes};
+	my $cluster                 = $an->data->{cgi}{cluster};
+	$an->data->{sys}{root_password} = $an->data->{clusters}{$cluster}{root_pw};
+	$an->data->{nodes}              = $an->data->{clusters}{$cluster}{nodes};
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
-		name1 => "nodes",              value1 => $conf->{nodes},
-		name2 => "task",               value2 => $conf->{cgi}{task},
-		name3 => "sys::root_password", value3 => $conf->{sys}{root_password},
+		name1 => "nodes",              value1 => $an->data->{nodes},
+		name2 => "task",               value2 => $an->data->{cgi}{task},
+		name3 => "sys::root_password", value3 => $an->data->{sys}{root_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$an->data->{sys}{use_node} = "";
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node", value1 => $node,
@@ -117,7 +113,7 @@ if ($conf->{cgi}{cluster})
 		my $access = $an->Check->access({
 			target		=>	$node,
 			password	=>	$an->data->{sys}{root_password},
-			port		=>	$conf->{node}{$node}{port},
+			port		=>	$an->data->{node}{$node}{port},
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "access", value1 => $access,
@@ -132,9 +128,9 @@ if ($conf->{cgi}{cluster})
 		}
 	}
 	
-	if ($conf->{cgi}{task})
+	if ($an->data->{cgi}{task})
 	{
-		$conf->{sys}{show_refresh} = 0;
+		$an->data->{sys}{show_refresh} = 0;
 		AN::MediaLibrary::process_task($conf);
 	}
 	else

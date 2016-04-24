@@ -558,7 +558,11 @@ sub do_db_query
 			name4 => "line",   value4 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { query => $query, server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", db_error => $DBI::errstr}, code => 2, file => "$THIS_FILE", line => __LINE__});
+	my $DBreq = $an->data->{dbh}{$id}->prepare($query) or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0029", message_variables => { 
+		query    => $query, 
+		server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name},
+		db_error => $DBI::errstr, 
+	}, code => 2, file => "$THIS_FILE", line => __LINE__});
 	
 	# Execute on the query
 	$DBreq->execute() or $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0030", message_variables => {
@@ -662,7 +666,7 @@ sub do_db_write
 				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0072", message_variables => { 
 					id     => $id, 
 					query  => $query, 
-					server => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+					server => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 				}, code => 72, file => "$THIS_FILE", line => __LINE__});
 			}
 			
@@ -670,7 +674,7 @@ sub do_db_write
 			#print "id: [$id], query:\n============\n$query\n============\n";
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
-								server   => "$an->data->{scancore}{db}{$id}{host}:$an->data->{scancore}{db}{$id}{port} -> $an->data->{scancore}{db}{$id}{name}", 
+								server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 								db_error => $DBI::errstr
 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
 			#print "Done ===============\n\n";

@@ -13,6 +13,7 @@ my $THIS_FILE = "Get.pm";
 
 ### Methods;
 # anvil_data
+# current_directory
 # date_and_time
 # date_seperator
 # drbd_data
@@ -184,14 +185,36 @@ WHERE
 	return($return);
 }
 
+# This simply sorts out the current directory the program is running in.
+sub current_directory
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $current_dir = "/var/www/html/";
+	if ($ENV{DOCUMENT_ROOT})
+	{
+		$current_dir = $ENV{DOCUMENT_ROOT};
+	}
+	elsif ($ENV{CONTEXT_DOCUMENT_ROOT})
+	{
+		$current_dir = $ENV{CONTEXT_DOCUMENT_ROOT};
+	}
+	elsif ($ENV{PWD})
+	{
+		$current_dir = $ENV{PWD};
+	}
+	
+	return($current_dir);
+}
+
 # This returns the date and time based on the given unix-time.
 sub date_and_time
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;

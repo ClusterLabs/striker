@@ -149,10 +149,9 @@ sub download_url
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "download_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the 'scanning in progress' table.
-	# variables hash feeds 'message_0272'.
-	print AN::Common::template($conf, "common.html", "scanning-message", {}, {
-		anvil	=>	$conf->{cgi}{cluster},
-	});
+	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
+		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+	}});
 	
 	my $cluster       = $conf->{cgi}{cluster};
 	my $url           = $conf->{cgi}{url};
@@ -234,7 +233,7 @@ sub download_url
 					$next_percent += $progress_points;
 				}
 				$received        *= 1024;
-				my $say_received =  AN::Cluster::bytes_to_hr($conf, $received);
+				my $say_received =  $an->Readable->bytes_to_hr({'bytes' => $received });
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "received",     value1 => $received,
 					name2 => "say_received", value2 => $say_received,
@@ -247,7 +246,7 @@ sub download_url
 				{
 					$rate            =  int(($rate * 1024));
 				}
-				my $say_rate     =  AN::Cluster::bytes_to_hr($conf, $rate);
+				my $say_rate = $an->Readable->bytes_to_hr({'bytes' => $rate });
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "rate",     value1 => $rate,
 					name2 => "say_rate", value2 => $say_rate,
@@ -279,49 +278,47 @@ sub download_url
 				my $say_time_remaining;
 				if ($hours)
 				{
-					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
-						hours		=>	$hours,
-						say_hour	=>	$say_hour,
-						minutes		=>	$minutes,
-						say_minute	=>	$say_minute,
-						seconds		=>	$minutes,
-						say_second	=>	$say_minute,
-					}});
+					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
+							hours		=>	$hours,
+							say_hour	=>	$say_hour,
+							minutes		=>	$minutes,
+							say_minute	=>	$say_minute,
+							seconds		=>	$minutes,
+							say_second	=>	$say_minute,
+						}});
 				}
 				elsif ($minutes)
 				{
-					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
-						hours		=>	"0",
-						say_hour	=>	$say_hour,
-						minutes		=>	$minutes,
-						say_minute	=>	$say_minute,
-						seconds		=>	$minutes,
-						say_second	=>	$say_minute,
-					}});
+					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
+							hours		=>	"0",
+							say_hour	=>	$say_hour,
+							minutes		=>	$minutes,
+							say_minute	=>	$say_minute,
+							seconds		=>	$minutes,
+							say_second	=>	$say_minute,
+						}});
 				}
 				else
 				{
-					$say_time_remaining = AN::Common::get_string($conf, {key => "message_0293", variables => {
-						hours		=>	"0",
-						say_hour	=>	$say_hour,
-						minutes		=>	"0",
-						say_minute	=>	$say_minute,
-						seconds		=>	$minutes,
-						say_second	=>	$say_minute,
-					}});
+					$say_time_remaining = $an->String->get({key => "message_0293", variables => { 
+							hours		=>	"0",
+							say_hour	=>	$say_hour,
+							minutes		=>	"0",
+							say_minute	=>	$say_minute,
+							seconds		=>	$minutes,
+							say_second	=>	$say_minute,
+						}});
 				}
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "time",               value1 => $time,
 					name2 => "say_time_remaining", value2 => $say_time_remaining,
 				}, file => $THIS_FILE, line => __LINE__});
-				my $say_progress = AN::Common::get_string($conf, {key => "message_0291", variables => {
-					percent		=>	$percent,
-					received	=>	$say_received,
-					rate		=>	$say_rate,
-				}});
-				my $say_remaining = AN::Common::get_string($conf, {key => "message_0292", variables => {
-					time_remaining	=>	$say_time_remaining,
-				}});
+				my $say_progress = $an->String->get({key => "message_0291", variables => { 
+						percent		=>	$percent,
+						received	=>	$say_received,
+						rate		=>	$say_rate,
+					}});
+				my $say_remaining = $an->String->get({key => "message_0292", variables => { time_remaining => $say_time_remaining }});
 				print AN::Common::template($conf, "media-library.html", "download_website_progress", {
 					progress	=>	$say_progress,
 					remaining	=>	$say_remaining,
@@ -341,7 +338,7 @@ sub download_url
 			
 			if ($failed)
 			{
-				$line = AN::Common::get_string($conf, {key => "message_0354"}).$line;
+				$line = $an->String->get({key => "message_0354"}).$line;
 			}
 			
 			print AN::Common::template($conf, "common.html", "shell-call-output", {
@@ -416,12 +413,8 @@ sub confirm_download_url
 	my $url     = $conf->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	
-	my $say_title = AN::Common::get_string($conf, {key => "title_0122", variables => {
-		anvil	=>	$cluster,
-	}});
-	my $say_download = AN::Common::get_string($conf, {key => "message_0294", variables => {
-		anvil	=>	$cluster,
-	}});
+	my $say_title    = $an->String->get({key => "title_0122", variables => { anvil => $cluster }});
+	my $say_download = $an->String->get({key => "message_0294", variables => { anvil => $cluster }});
 	
 	print AN::Common::template($conf, "media-library.html", "download-website-confirm", {
 		file		=>	$file,
@@ -507,9 +500,9 @@ sub image_and_upload
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "image_and_upload" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Let the user know that this might take a bit.
-	print AN::Common::template($conf, "common.html", "scanning-message", {
-		anvil	=>	$conf->{cgi}{cluster},
-	});
+	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
+		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+	}});
 	
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
@@ -535,10 +528,10 @@ sub image_and_upload
 	}
 	elsif (exists $conf->{files}{shared}{$name})
 	{
-		# Tell the user a file with that name already exists. The variables hash ref feeds 
-		# 'message_0232'.
-		print AN::Common::template($conf, "media-library.html", "image-and-upload-name-conflict", {}, {
-			name	=>	$name,
+		# Tell the user a file with that name already exists. 
+		my $message = $an->String->get({key => "message_0302", variables => { name => $name }});
+		print AN::Common::template($conf, "media-library.html", "image-and-upload-name-conflict", {
+			message	=>	$message,
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "name", value1 => $name,
@@ -557,10 +550,8 @@ sub image_and_upload
 		if (not exists $conf->{drive}{$dev})
 		{
 			# The drive vanished.
-			my $say_missing_drive = AN::Common::get_string($conf, {key => "message_0304", variables => {
-				device	=>	$dev,
-			}});
-			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
+			my $say_missing_drive = $an->String->get({key => "message_0304", variables => { device => $dev }});
+			my $say_try_again     = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
@@ -572,10 +563,8 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{reload})
 		{
 			# Need to reload to read the disc.
-			my $say_drive_not_ready = AN::Common::get_string($conf, {key => "message_0305", variables => {
-				device	=>	$dev,
-			}});
-			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
+			my $say_drive_not_ready = $an->String->get({key => "message_0305", variables => { device => $dev }});
+			my $say_try_again       = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
 			}, "", 1);
@@ -587,9 +576,7 @@ sub image_and_upload
 		elsif ($conf->{drive}{$dev}{no_disc})
 		{
 			# No disc in the drive
-			my $say_no_disc = AN::Common::get_string($conf, {key => "message_0307", variables => {
-				device	=>	$dev,
-			}});
+			my $say_no_disc = $an->String->get({key => "message_0307", variables => { device => $dev }});
 			my $say_try_again = AN::Common::template($conf, "common.html", "enabled_button_no_class", {
 				button_link	=>	"$conf->{sys}{cgi_string}",
 				button_text	=>	"#!string!button_0043!#",
@@ -611,11 +598,11 @@ sub image_and_upload
 				name2 => "directory", value2 => $conf->{path}{media},
 				name3 => "name",      value3 => $name,
 			}, file => $THIS_FILE, line => __LINE__});
-			my $message  = AN::Common::get_string($conf, {key => "explain_0059", variables => {
-				device		=>	$dev,
-				name		=>	$name,
-				directory	=>	$conf->{path}{media},
-			}});
+			my $message = $an->String->get({key => "explain_0059", variables => { 
+					device		=>	$dev,
+					name		=>	$name,
+					directory	=>	$conf->{path}{media},
+				}});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "message", value1 => $message,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -646,7 +633,7 @@ sub image_and_upload
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($line =~ /Is a directory/i)
 				{
-					$error .= AN::Common::get_string($conf, {key => "message_0333"});
+					$error .= $an->String->get({key => "message_0333"});
 				}
 				print AN::Common::template($conf, "common.html", "shell-call-output", {
 					line	=>	$line,
@@ -661,17 +648,19 @@ sub image_and_upload
 			if ($error)
 			{
 				# Image failed, no sense trying to upload.
-				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-failed", {}, {
+				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-failed", {
 					error	=>	$error,
 				});
 			}
 			else
 			{
 				# Starting to upload now.
-				# The variables hash feeds 'explain_0052'.
-				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-uploading", {}, {
+				my $explain = $an->String->get({key => "explain_0052", variables => { 
 					name	=>	$name,
 					anvil	=>	$conf->{cgi}{cluster},
+				}});
+				print AN::Common::template($conf, "media-library.html", "image-and-upload-proceed-uploading", {
+					explain	=>	$explain, 
 				});
 
 				my ($failed) = upload_to_shared($conf, $node, $out_file);
@@ -756,8 +745,8 @@ sub upload_to_shared
 	return ($failed);
 }
 
-# This asks the user to confirm the image and upload task. It also gives a
-# chance for the user to name the image before upload.
+# This asks the user to confirm the image and upload task. It also gives a chance for the user to name the 
+# image before upload.
 sub confirm_image_and_upload
 {
 	my ($conf) = @_;
@@ -767,9 +756,7 @@ sub confirm_image_and_upload
 	my $dev  = $conf->{cgi}{dev};
 	my $name = $conf->{cgi}{name};
 	
-	my $say_title = AN::Common::get_string($conf, {key => "title_0132", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_title  = $an->String->get({key => "title_0132", variables => { anvil => $conf->{cgi}{cluster} }});
 	my $input_name = AN::Common::template($conf, "common.html", "form-input-no-class-defined-width", {
 		type	=>	"text",
 		name	=>	"name",
@@ -837,14 +824,14 @@ sub confirm_delete_file
 	my $cluster = $conf->{cgi}{cluster};
 	my $name    = $conf->{cgi}{name};
 	
-	my $say_title = AN::Common::get_string($conf, {key => "title_0134", variables => {
-		name	=>	$name,
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
-	my $say_delete = AN::Common::get_string($conf, {key => "message_0316", variables => {
-		name	=>	$name,
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_title = $an->String->get({key => "title_0134", variables => { 
+			name	=>	$name,
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
+	my $say_delete = $an->String->get({key => "message_0316", variables => { 
+			name	=>	$name,
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
 	my $confirm_button = AN::Common::template($conf, "common.html", "enabled-button", {
 		button_class	=>	"bold_button",
 		button_link	=>	"$conf->{sys}{cgi_string}&confirm=true",
@@ -877,9 +864,7 @@ sub delete_file
 	if (exists $conf->{files}{shared}{$name})
 	{
 		# Do the delete.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0135", variables => {
-			name	=>	$name,
-		}});
+		my $say_title = $an->String->get({key => "title_0135", variables => { name => $name }});
 		print AN::Common::template($conf, "media-library.html", "file-delete-header", {
 			title		=>	$say_title,
 		});
@@ -913,14 +898,14 @@ sub delete_file
 	else
 	{
 		# Failed...
-		my $say_title = AN::Common::get_string($conf, {key => "title_0136", variables => {
-			name	=>	$name,
-			anvil	=>	$cluster,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0318", variables => {
-			name	=>	$name,
-			anvil	=>	$cluster,
-		}});
+		my $say_title = $an->String->get({key => "title_0136", variables => { 
+				name	=>	$name,
+				anvil	=>	$cluster,
+			}});
+		my $say_message = $an->String->get({key => "message_0318", variables => { 
+				name	=>	$name,
+				anvil	=>	$cluster,
+			}});
 		print AN::Common::template($conf, "media-library.html", "file-delete-failed", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -1012,9 +997,7 @@ sub check_status
 	if (not -e $conf->{path}{status})
 	{
 		# Directory doesn't exist...
-		my $say_message = AN::Common::get_string($conf, {key => "message_0319", variables => {
-			directory	=>	$conf->{path}{status},
-		}});
+		my $say_message = $an->String->get({key => "message_0319", variables => { directory => $conf->{path}{status} }});
 		print AN::Common::template($conf, "media-library.html", "check-status-config-error", {
 			message	=>	$say_message,
 		});
@@ -1022,11 +1005,11 @@ sub check_status
 	elsif (not -r $conf->{path}{status})
 	{
 		# Can't read the directory
-		my $user = getpwuid($<);
-		my $say_message = AN::Common::get_string($conf, {key => "message_0320", variables => {
-			directory	=>	$conf->{path}{status},
-			user		=>	$user,
-		}});
+		my $user        = getpwuid($<);
+		my $say_message = $an->String->get({key => "message_0320", variables => { 
+				directory	=>	$conf->{path}{status},
+				user		=>	$user,
+			}});
 		print AN::Common::template($conf, "media-library.html", "check-status-config-error", {
 			message	=>	$say_message,
 		});
@@ -1081,9 +1064,7 @@ sub read_shared
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Print the general header and the files header
-		my $say_title = AN::Common::get_string($conf, {key => "title_0138", variables => {
-			anvil	=>	$cluster,
-		}});
+		my $say_title = $an->String->get({key => "title_0138", variables => { anvil => $cluster }});
 		print AN::Common::template($conf, "media-library.html", "read-shared-list-header", {
 			title		=>	$say_title,
 			total_space	=>	$say_total_space,
@@ -1194,9 +1175,7 @@ sub read_shared
 			else
 			{
 				# Some other problem reading the disc.
-				$disc_name = AN::Common::get_string($conf, {key => "message_0324", variables => {
-					device	=>	$dev,
-				}});
+				$disc_name = $an->String->get({key => "message_0324", variables => { device => $dev }});
 			}
 			print AN::Common::template($conf, "media-library.html", "read-shared-optical-drive-entry", {
 				device		=>	$dev,
@@ -1285,9 +1264,9 @@ sub read_shared
 	else
 	{
 		# Can't access either node.
-		# The variables hash feeds 'message_0328'.
-		print AN::Common::template($conf, "media-library.html", "read-shared-no-access", {}, {
-			anvil	=>	$cluster,
+		my $explain = $an->String->get({key => "message_0328", variables => { anvil => $cluster }});
+		print AN::Common::template($conf, "media-library.html", "read-shared-no-access", {
+			explain	=>	$explain, 
 		});
 	}
 

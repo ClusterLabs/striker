@@ -51,7 +51,9 @@ sub run_new_install_manifest
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "run_new_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print AN::Common::template($conf, "common.html", "scanning-message");
+	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
+		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+	}});
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-header");
 	
 	# Some variables we'll need.
@@ -147,7 +149,7 @@ sub run_new_install_manifest
 			# Write the updated manifest and reload it.
 			$an->ScanCore->save_install_manifest();
 			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-			print AN::Common::template($conf, "install-manifest.html", "manifest-created", { message => AN::Common::get_string($conf, {key => "message_0464"}) });
+			print AN::Common::template($conf, "install-manifest.html", "manifest-created", { message => $an->String->get({key => "message_0464"}) });
 		}
 	}
 	
@@ -362,7 +364,7 @@ sub run_new_install_manifest
 		}
 		
 		# Do we need to show the link for adding the Anvil! to the config?
-		my $message = AN::Common::get_string($conf, {key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
+		my $message = $an->String->get({key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "message", value1 => $message,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -383,7 +385,7 @@ sub run_new_install_manifest
 			# see what these value are, relative to global values.
 			
 			# Now the string.
-			$message = AN::Common::get_string($conf, {key => "message_0402", variables => { url => $url }});
+			$message = $an->String->get({key => "message_0402", variables => { url => $url }});
 		}
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success", {
 			message	=>	$message,
@@ -1273,56 +1275,14 @@ fi
 			$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			AN::Common::test_ssh_fingerprint($conf, $node, 1);	# 1 == silent
 			
-			$an->Log->entry({log_level => 2, message_key => "log_0035", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 2, message_key => "log_0009", file => $THIS_FILE, line => __LINE__});
-			AN::Common::create_rsync_wrapper($conf, $node, $password);
-			
-			$shell_call = "~/rsync.$node $conf->{args}{rsync} $temp_file root\@$node:$conf->{path}{striker_config}";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "Calling", value1 => $shell_call,
-			}, file => $THIS_FILE, line => __LINE__});
-			open ($file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
-			my $no_key = 0;
-			while(<$file_handle>)
-			{
-				chomp;
-				my $line = $_;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line,
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				# If the user is re-running the install, this could fail because the target's
-				# key changed. We won't clear it because that would open up a security 
-				# vulnerability... Sorry users. :(
-				if ($line =~ /REMOTE HOST IDENTIFICATION HAS CHANGED/i)
-				{
-					$return_code = 8;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "return_code", value1 => $return_code,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-				if ($line =~ /Offending key in (\/.*?\/known_hosts):(\d+)/)
-				{
-					$bad_file = $1;
-					$bad_line = $2;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "bad_file", value1 => $bad_file,
-						name2 => "bad_line", value2 => $bad_line,
-					}, file => $THIS_FILE, line => __LINE__});
-					$message  = AN::Common::get_string($conf, {key => "message_0448", variables => {
-						bad_file	=>	$bad_file,
-						bad_line	=>	$bad_line,
-					}});
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "message", value1 => $message,
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-			close $file_handle;
+			$an->Storage->rsync({
+				source		=>	$temp_file,
+				target		=>	$node,
+				password	=>	$an->data->{sys}{root_password},
+				destination	=>	"root\@$node:".$an->data->{path}{striker_config},
+				switches	=>	$conf->{args}{rsync},
+			});
 			
 			if (not $return_code)
 			{
@@ -3694,7 +3654,7 @@ sub create_shared_lv
 	if (($return_code ne "2") && ($create_lv))
 	{
 		# Create the LV
-		my $lv_size    =  AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size});
+		my $lv_size    =  $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} });
 		   $lv_size    =~ s/ //;
 		my $shell_call = "lvcreate -L $lv_size -n shared $conf->{sys}{vg_pool1_name}; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4573,12 +4533,12 @@ sub drbd_first_start
 		if ($node1_attach_message)
 		{
 			$node1_class   = "highlight_warning_bold";
-			$node1_message = AN::Common::get_string($conf, {key => "state_0083", variables => { message => "$node1_attach_message" }});
+			$node1_message = $an->String->get({key => "state_0083", variables => { message => $node1_attach_message }});
 		}
 		if ($node2_attach_message)
 		{
 			$node2_class   = "highlight_warning_bold";
-			$node2_message = AN::Common::get_string($conf, {key => "state_0083", variables => { message => "$node2_attach_message" }});
+			$node2_message = $an->String->get({key => "state_0083", variables => { message => $node2_attach_message }});
 		}
 		if ((not $node1_attach_message) && (not $node2_attach_message))
 		{
@@ -4633,17 +4593,16 @@ sub drbd_first_start
 		if ($node1_connect_message)
 		{
 			$node1_class   = "highlight_warning_bold";
-			$node1_message = AN::Common::get_string($conf, {key => "state_0085", variables => { message => "$node1_connect_message" }});
+			$node1_message = $an->String->get({key => "state_0085", variables => { message => $node1_connect_message }});
 		}
 		if ($node2_connect_message)
 		{
 			$node2_class   = "highlight_warning_bold";
-			$node2_message = AN::Common::get_string($conf, {key => "state_0085", variables => { message => "$node2_connect_message" }});
+			$node2_message = $an->String->get({key => "state_0085", variables => { message => $node2_connect_message }});
 		}
 		if ((not $node1_connect_message) && (not $node2_connect_message))
 		{
-			# Neither node had a connection error, so set both to
-			# generic error state.
+			# Neither node had a connection error, so set both to generic error state.
 			$node1_class   = "highlight_warning_bold";
 			$node1_message = "#!string!state_0088!#";
 			$node2_class   = "highlight_warning_bold";
@@ -4666,17 +4625,16 @@ sub drbd_first_start
 		if ($node1_primary_message)
 		{
 			$node1_class   = "highlight_warning_bold";
-			$node1_message = AN::Common::get_string($conf, {key => "state_0087", variables => { message => "$node1_primary_message" }});
+			$node1_message = $an->String->get({key => "state_0087", variables => { message => $node1_primary_message }});
 		}
 		if ($node2_primary_message)
 		{
 			$node2_class   = "highlight_warning_bold";
-			$node2_message = AN::Common::get_string($conf, {key => "state_0087", variables => { message => "$node2_primary_message" }});
+			$node2_message = $an->String->get({key => "state_0087", variables => { message => $node2_primary_message }});
 		}
 		if ((not $node1_primary_message) && (not $node2_primary_message))
 		{
-			# Neither node had a promotion error, so set both to
-			# generic error state.
+			# Neither node had a promotion error, so set both to generic error state.
 			$node1_class   = "highlight_warning_bold";
 			$node1_message = "#!string!state_0088!#";
 			$node2_class   = "highlight_warning_bold";
@@ -4860,7 +4818,7 @@ sub do_drbd_primary_on_node
 					node     => $node,
 					resource => "r0", 
 				}, file => $THIS_FILE, line => __LINE__});
-				$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
+				$message .= $an->String->get({key => "message_0400", variables => { resource => "r0", node => $node }});
 				$return_code = 1;
 			}
 		}
@@ -4913,7 +4871,7 @@ sub do_drbd_primary_on_node
 						node     => $node,
 						resource => "r1", 
 					}, file => $THIS_FILE, line => __LINE__});
-					$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r0", node => $node }});
+					$message .= $an->String->get({key => "message_0400", variables => { resource => "r0", node => $node }});
 					$return_code = 1;
 				}
 			}
@@ -5193,7 +5151,7 @@ sub do_drbd_connect_on_node
 							node             => $node, 
 							resource         => "r$resource", 
 						}, file => $THIS_FILE, line => __LINE__});
-						$message .= AN::Common::get_string($conf, {key => "message_0401", variables => { resource => "r$resource", node => $node }});
+						$message .= $an->String->get({key => "message_0401", variables => { resource => "r$resource", node => $node }});
 						$return_code = 1;
 					}
 				}
@@ -5289,7 +5247,7 @@ sub do_drbd_connect_on_node
 					node             => $node, 
 					resource         => "r$resource", 
 				}, file => $THIS_FILE, line => __LINE__});
-				$message .= AN::Common::get_string($conf, {key => "message_0450", variables => { resource => "r$resource", node => $node }});
+				$message .= $an->String->get({key => "message_0450", variables => { resource => "r$resource", node => $node }});
 				$return_code = 1;
 			}
 			elsif ($force_uptodate)
@@ -5482,7 +5440,7 @@ fi;
 							node     => $node, 
 							resource => "r$resource",
 						}, file => $THIS_FILE, line => __LINE__});
-						$message .= AN::Common::get_string($conf, {key => "message_0399", variables => { resource => "r$resource", node => $node }});
+						$message .= $an->String->get({key => "message_0399", variables => { resource => "r$resource", node => $node }});
 						$attached = 2;
 					}
 					elsif ($disk_state)
@@ -5538,7 +5496,7 @@ fi;
 						}, file => $THIS_FILE, line => __LINE__});
 						$no_metadata = 1;
 						$return_code = 3;
-						$message .= AN::Common::get_string($conf, {key => "message_0403", variables => { device => $device, resource => "r$resource", node => $node }});
+						$message .= $an->String->get({key => "message_0403", variables => { device => $device, resource => "r$resource", node => $node }});
 					}
 					if ($line =~ /^rc:(\d+)/)
 					{
@@ -5558,7 +5516,7 @@ fi;
 								node     => $node, 
 								resource => "r$resource",
 							}, file => $THIS_FILE, line => __LINE__});
-							$message .= AN::Common::get_string($conf, {key => "message_0400", variables => { resource => "r$resource", node => $node }});
+							$message .= $an->String->get({key => "message_0400", variables => { resource => "r$resource", node => $node }});
 							$return_code = 3;
 						}
 					}
@@ -6264,7 +6222,7 @@ sub start_cman
 	elsif (not $node1_fence_ok)
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0082", variables => { message => "$node1_return_message" }});
+		$node1_message = $an->String->get({key => "state_0082", variables => { message => $node1_return_message }});
 		$ok            = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node1_fence_ok bad, setting 'ok'", value1 => $ok,
@@ -6290,7 +6248,7 @@ sub start_cman
 	elsif (not $node2_fence_ok)
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0082", variables => { message => "$node2_return_message" }});
+		$node2_message = $an->String->get({key => "state_0082", variables => { message => $node2_return_message }});
 		$ok            = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node1_fence_ok bad, setting 'ok'", value1 => $ok,
@@ -7040,7 +6998,7 @@ sub configure_ipmi
 	{
 		# User ID not found
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0067", variables => { user => $conf->{cgi}{anvil_node1_ipmi_user} }}),
+		$node1_message = $an->String->get({key => "state_0067", variables => { user => $conf->{cgi}{anvil_node1_ipmi_user} }});
 		$ok            = 0;
 	}
 	elsif ($node1_rc eq "5")
@@ -7090,7 +7048,7 @@ sub configure_ipmi
 	{
 		# User ID not found
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0067", variables => { user => $conf->{cgi}{anvil_node2_ipmi_user} }}),
+		$node2_message = $an->String->get({key => "state_0067", variables => { user => $conf->{cgi}{anvil_node2_ipmi_user} }});
 		$ok            = 0;
 	}
 	elsif ($node2_rc eq "5")
@@ -7609,22 +7567,22 @@ sub configure_daemons
 			if ($error =~ /failed to enable:(.*)/)
 			{
 				my $daemon = $1;
-				$node1_message .= AN::Common::get_string($conf, {key => "state_0062", variables => { daemon => "$daemon" }}),
+				$node1_message .= $an->String->get({key => "state_0062", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to start:(.*)/)
 			{
 				my $daemon = $1;
-				$node1_message .= AN::Common::get_string($conf, {key => "state_0063", variables => { daemon => "$daemon" }}),
+				$node1_message .= $an->String->get({key => "state_0063", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to disable:(.*)/)
 			{
 				my $daemon = $1;
-				$node1_message .= AN::Common::get_string($conf, {key => "state_0064", variables => { daemon => "$daemon" }}),
+				$node1_message .= $an->String->get({key => "state_0064", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to stop:(.*)/)
 			{
 				my $daemon = $1;
-				$node1_message .= AN::Common::get_string($conf, {key => "state_0065", variables => { daemon => "$daemon" }}),
+				$node1_message .= $an->String->get({key => "state_0065", variables => { daemon => $daemon }});
 			}
 		}
 	}
@@ -7639,22 +7597,22 @@ sub configure_daemons
 			if ($error =~ /failed to enable:(.*)/)
 			{
 				my $daemon = $1;
-				$node2_message .= AN::Common::get_string($conf, {key => "state_0062", variables => { daemon => "$daemon" }}),
+				$node2_message .= $an->String->get({key => "state_0062", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to start:(.*)/)
 			{
 				my $daemon = $1;
-				$node2_message .= AN::Common::get_string($conf, {key => "state_0063", variables => { daemon => "$daemon" }}),
+				$node2_message .= $an->String->get({key => "state_0063", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to disable:(.*)/)
 			{
 				my $daemon = $1;
-				$node2_message .= AN::Common::get_string($conf, {key => "state_0064", variables => { daemon => "$daemon" }}),
+				$node2_message .= $an->String->get({key => "state_0064", variables => { daemon => $daemon }});
 			}
 			elsif ($error =~ /failed to stop:(.*)/)
 			{
 				my $daemon = $1;
-				$node2_message .= AN::Common::get_string($conf, {key => "state_0065", variables => { daemon => "$daemon" }}),
+				$node2_message .= $an->String->get({key => "state_0065", variables => { daemon => $daemon }});
 			}
 		}
 	}
@@ -8483,7 +8441,7 @@ sub reboot_nodes
 	{
 		# This could take a while
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-			message	=>	AN::Common::get_string($conf, {key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
+			message	=>	$an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
 		});
 	}
 	
@@ -9015,7 +8973,7 @@ sub add_user_repositories
 			}
 
 			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
-				row		=>	AN::Common::get_string($conf, {key => "row_0245", variables => { repo => "$repo_file" }}),
+				row		=>	$an->String->get({key => "row_0245", variables => { repo => $repo_file }}),
 				node1_class	=>	$node1_class,
 				node1_message	=>	$node1_message,
 				node2_class	=>	$node2_class,
@@ -9112,13 +9070,13 @@ sub create_partition_on_node
 			name4 => "partition_size", value4 => $partition_size,
 		}, file => $THIS_FILE, line => __LINE__});
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message	=>	AN::Common::get_string($conf, {key => "message_0389", variables => { 
-				node		=>	$node, 
-				disk		=>	$disk,
-				type		=>	$type,
-				size		=>	AN::Cluster::bytes_to_hr($conf, $partition_size)." ($partition_size #!string!suffix_0009!#)",
-				shell_call	=>	$shell_call,
-			}}),
+			message	=>	$an->String->get({key => "message_0389", variables => { 
+					node		=>	$node, 
+					disk		=>	$disk,
+					type		=>	$type,
+					size		=>	$an->Readable->bytes_to_hr({'bytes' => $partition_size })." ($partition_size #!string!suffix_0009!#)",
+					shell_call	=>	$shell_call,
+				}}),
 			row	=>	"#!string!state_0042!#",
 		});
 	}
@@ -9150,14 +9108,14 @@ sub create_partition_on_node
 			{
 				# Warn the user and then shrink the end.
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	AN::Common::get_string($conf, {key => "message_0391", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						old_end		=>	AN::Cluster::bytes_to_hr($conf, $use_end)." ($use_end #!string!suffix_0009!#)",
-						new_end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
-						shell_call	=>	$shell_call,
-					}}),
+					message	=>	$an->String->get({key => "message_0391", variables => { 
+							node		=>	$node, 
+							disk		=>	$disk,
+							type		=>	$type,
+							old_end		=>	$an->Readable->bytes_to_hr({'bytes' => $use_end })." ($use_end #!string!suffix_0009!#)",
+							new_end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+							shell_call	=>	$shell_call,
+						}}),
 					row	=>	"#!string!state_0043!#",
 				});
 				$use_end = $end;
@@ -9204,14 +9162,14 @@ sub create_partition_on_node
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	AN::Common::get_string($conf, {key => "message_0390", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						start		=>	AN::Cluster::bytes_to_hr($conf, $start)." ($start #!string!suffix_0009!#)",
-						end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
-						shell_call	=>	$shell_call,
-					}}),
+					message	=>	$an->String->get({key => "message_0390", variables => { 
+							node		=>	$node, 
+							disk		=>	$disk,
+							type		=>	$type,
+							start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+							end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+							shell_call	=>	$shell_call,
+						}}),
 					row	=>	"#!string!state_0042!#",
 				});
 			}
@@ -9226,14 +9184,14 @@ sub create_partition_on_node
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	AN::Common::get_string($conf, {key => "message_0431", variables => { 
-						node		=>	$node, 
-						disk		=>	$disk,
-						type		=>	$type,
-						start		=>	AN::Cluster::bytes_to_hr($conf, $start)." ($start #!string!suffix_0009!#)",
-						end		=>	AN::Cluster::bytes_to_hr($conf, $end)." ($end #!string!suffix_0009!#)",
-						shell_call	=>	$shell_call,
-					}}),
+					message	=>	$an->String->get({key => "message_0431", variables => { 
+							node		=>	$node, 
+							disk		=>	$disk,
+							type		=>	$type,
+							start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+							end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+							shell_call	=>	$shell_call,
+						}}),
 					row	=>	"#!string!state_0099!#",
 				});
 			}
@@ -9786,7 +9744,7 @@ sub configure_storage_stage1
 				node    => $node1, 
 				disk    => $node1_pool1_disk, 
 				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
@@ -9799,7 +9757,7 @@ sub configure_storage_stage1
 				node    => $node1, 
 				disk    => $node1_pool1_disk, 
 				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -9829,7 +9787,7 @@ sub configure_storage_stage1
 					node    => $node1, 
 					disk    => $node1_pool2_disk, 
 					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
@@ -9842,7 +9800,7 @@ sub configure_storage_stage1
 					node    => $node1, 
 					disk    => $node1_pool2_disk, 
 					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -9874,7 +9832,7 @@ sub configure_storage_stage1
 				node    => $node2, 
 				disk    => $node2_pool1_disk, 
 				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
@@ -9887,7 +9845,7 @@ sub configure_storage_stage1
 				node    => $node2, 
 				disk    => $node2_pool1_disk, 
 				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}), 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -9917,7 +9875,7 @@ sub configure_storage_stage1
 					node    => $node2, 
 					disk    => $node2_pool2_disk, 
 					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
@@ -9930,7 +9888,7 @@ sub configure_storage_stage1
 					node    => $node2, 
 					disk    => $node2_pool2_disk, 
 					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}), 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -10044,7 +10002,7 @@ sub configure_storage_stage2
 	elsif ($node1_pool1_rc eq "2")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0055", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node1_pool1_rc eq "3")
@@ -10056,14 +10014,14 @@ sub configure_storage_stage2
 	elsif ($node1_pool1_rc eq "4")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0057", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 		$show_lvm_note = 1;
 	}
 	elsif ($node1_pool1_rc eq "5")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0058", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node1_pool1_rc eq "6")
@@ -10081,7 +10039,7 @@ sub configure_storage_stage2
 	elsif ($node2_pool1_rc eq "2")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0055", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0055", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "3")
@@ -10093,14 +10051,14 @@ sub configure_storage_stage2
 	elsif ($node2_pool1_rc eq "4")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0057", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0057", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
 		$show_lvm_note = 1;
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "5")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0058", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0058", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "6")
@@ -11044,7 +11002,7 @@ sub summarize_build_plan
 		name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
 		name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $anvil_storage_partition_1_hr_size = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size});
+	my $anvil_storage_partition_1_hr_size = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_2_byte_size} });
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::anvil_storage_partition_1_byte_size", value1 => $conf->{cgi}{anvil_storage_partition_1_byte_size},
 		name2 => "anvil_storage_partition_1_hr_size",        value2 => $anvil_storage_partition_1_hr_size,
@@ -11060,29 +11018,29 @@ sub summarize_build_plan
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-summary-and-confirm", {
 		form_file			=>	"/cgi-bin/striker",
 		title				=>	"#!string!title_0177!#",
-		bcn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "1" }}),
+		bcn_link1_name			=>	$an->String->get({key => "script_0059", variables => { number => "1" }}),
 		bcn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
 		bcn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
-		bcn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0059", variables => { number => "2" }}),
+		bcn_link2_name			=>	$an->String->get({key => "script_0059", variables => { number => "2" }}),
 		bcn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
 		bcn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
-		sn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "1" }}),
+		sn_link1_name			=>	$an->String->get({key => "script_0061", variables => { number => "1" }}),
 		sn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link1},
 		sn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link1},
-		sn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0061", variables => { number => "2" }}),
+		sn_link2_name			=>	$an->String->get({key => "script_0061", variables => { number => "2" }}),
 		sn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link2},
 		sn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link2},
-		ifn_link1_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "1" }}),
+		ifn_link1_name			=>	$an->String->get({key => "script_0063", variables => { number => "1" }}),
 		ifn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
 		ifn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
-		ifn_link2_name			=>	AN::Common::get_string($conf, {key => "script_0063", variables => { number => "2" }}),
+		ifn_link2_name			=>	$an->String->get({key => "script_0063", variables => { number => "2" }}),
 		ifn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
 		ifn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
-		media_library_size		=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}),
-		pool1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}),
-		pool2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}),
-		partition1_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_1_byte_size}),
-		partition2_size			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_partition_2_byte_size}),
+		media_library_size		=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
+		pool1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
+		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }),
+		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_1_byte_size} }),
+		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_2_byte_size} }),
 		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",
 		remap_network_url		=>	"$conf->{sys}{cgi_string}&remap_network=true",
 		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
@@ -12232,7 +12190,7 @@ sub parse_script_line
 	{
 		# Simple string
 		my $key  = $1;
-		   $line = AN::Common::get_string($conf, {key => "$key"});
+		   $line = $an->String->get({key => $key});
 	}
 	elsif ($line =~ /#!string!(.*?)!#,,(.*)$/)
 	{
@@ -12255,7 +12213,7 @@ sub parse_script_line
 				$vars->{$variable} = $value;
 			}
 		}
-		$line = AN::Common::get_string($conf, {key => "$key", variables => $vars});
+		$line = $an->String->get({key => $key, variables => $vars});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "line", value1 => $line,
@@ -12612,9 +12570,7 @@ sub map_network_on_node
 	$conf->{cgi}{update_manifest} = 0 if not $conf->{cgi}{update_manifest};
 	if ($remap)
 	{
-		my $title = AN::Common::get_string($conf, {key => "title_0174", variables => {
-			node	=>	$say_node,
-		}});
+		my $title = $an->String->get({key => "title_0174", variables => { node => $say_node }});
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-config", {
 			title	=>	$title,
 		});
@@ -12716,7 +12672,7 @@ fi";
 	{
 		if ($remap)
 		{
-			print AN::Common::get_string($conf, {key => "message_0378"});
+			print $an->String->get({key => "message_0378"});
 		}
 	}
 	elsif ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
@@ -12920,19 +12876,19 @@ sub install_programs
 	if (not $node1_ok)
 	{
 		$node1_class   = "highlight_bad_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0025", variables => {
-			missing	=>	$conf->{node}{$node1}{missing_rpms},
-			node	=>	$node1,
-		}});
+		$node1_message = $an->String->get({key => "state_0025", variables => { 
+				missing	=>	$conf->{node}{$node1}{missing_rpms},
+				node	=>	$node1,
+			}});
 		$ok            = 0;
 	}
 	if (not $node2_ok)
 	{
 		$node2_class   = "highlight_bad_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0025", variables => {
-			missing	=>	$conf->{node}{$node2}{missing_rpms},
-			node	=>	$node2,
-		}});
+		$node2_message = $an->String->get({key => "state_0025", variables => { 
+				missing	=>	$conf->{node}{$node2}{missing_rpms},
+				node	=>	$node2,
+			}});
 		$ok            = 0;
 	}
 
@@ -14078,14 +14034,14 @@ sub calculate_storage_pool_sizes
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	AN::Common::get_string($conf, {key => "message_0394", variables => { 
-						node1		=>	$node1,
-						node1_device	=>	$conf->{node}{$node1}{pool1}{partition},
-						node1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node1}{pool1}{existing_size})." ($conf->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
-						node2		=>	$node2,
-						node2_device	=>	$conf->{node}{$node1}{pool1}{partition},
-						node1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node2}{pool1}{existing_size})." ($conf->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
-					}}),
+					message	=>	$an->String->get({key => "message_0394", variables => { 
+							node1		=>	$node1,
+							node1_device	=>	$conf->{node}{$node1}{pool1}{partition},
+							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool1}{existing_size} })." ($conf->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
+							node2		=>	$node2,
+							node2_device	=>	$conf->{node}{$node1}{pool1}{partition},
+							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool1}{existing_size} })." ($conf->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
+						}}),
 					row	=>	"#!string!state_0052!#",
 				});
 			}
@@ -14155,14 +14111,14 @@ sub calculate_storage_pool_sizes
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	AN::Common::get_string($conf, {key => "message_0394", variables => { 
-						node1		=>	$node1,
-						node1_device	=>	$conf->{node}{$node1}{pool2}{partition},
-						node1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node1}{pool2}{existing_size})." ($conf->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
-						node2		=>	$node2,
-						node2_device	=>	$conf->{node}{$node1}{pool2}{partition},
-						node1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node2}{pool2}{existing_size})." ($conf->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
-					}}),
+					message	=>	$an->String->get({key => "message_0394", variables => { 
+							node1		=>	$node1,
+							node1_device	=>	$conf->{node}{$node1}{pool2}{partition},
+							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool2}{existing_size} })." ($conf->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
+							node2		=>	$node2,
+							node2_device	=>	$conf->{node}{$node1}{pool2}{partition},
+							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool2}{existing_size} })." ($conf->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
+						}}),
 					row	=>	"#!string!state_0052!#",
 				});
 			}
@@ -14202,14 +14158,14 @@ sub calculate_storage_pool_sizes
 	# These are my minimums. I'll use these below for final sanity checks.
 	my $media_library_size      = $conf->{cgi}{anvil_media_library_size};
 	my $media_library_unit      = $conf->{cgi}{anvil_media_library_unit};
-	my $media_library_byte_size = AN::Cluster::hr_to_bytes($conf, $media_library_size, $media_library_unit, 1);
+	my $media_library_byte_size = $an->Readable->hr_to_bytes({size => $media_library_size, type => $media_library_unit });
 	my $minimum_space_needed    = $media_library_byte_size;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "media_library_byte_size", value1 => $media_library_byte_size,
 		name2 => "minimum_space_needed",    value2 => $minimum_space_needed,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $minimum_pool_size  = AN::Cluster::hr_to_bytes($conf, 8, "GiB", 1);
+	my $minimum_pool_size  = $an->Readable->hr_to_bytes({size => 8, type => "GiB" });
 	my $pool1_minimum_size = $minimum_space_needed + $minimum_pool_size;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "minimum_pool_size",  value1 => $minimum_pool_size,
@@ -14293,7 +14249,7 @@ sub calculate_storage_pool_sizes
 				}
 				else
 				{
-					$storage_pool1_byte_size =  AN::Cluster::hr_to_bytes($conf, $storage_pool1_size, $storage_pool1_unit, 1);
+					$storage_pool1_byte_size =  $an->Readable->hr_to_bytes({size => $storage_pool1_size, type => $storage_pool1_unit });
 					$minimum_space_needed    += $storage_pool1_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "storage_pool1_byte_size", value1 => $storage_pool1_byte_size,
@@ -14506,7 +14462,7 @@ sub calculate_storage_pool_sizes
 						$an->Log->entry({log_level => 2, message_key => "log_0262", message_variables => {
 							pool         => "1", 
 							pool_size    => $pool1_byte_size, 
-							hr_pool_size => AN::Cluster::bytes_to_hr($conf, $pool1_byte_size), 
+							hr_pool_size => $an->Readable->bytes_to_hr({'bytes' => $pool1_byte_size }), 
 						}, file => $THIS_FILE, line => __LINE__});
 						$conf->{sys}{pool1_shrunk} = 1;
 					}
@@ -14640,17 +14596,17 @@ sub check_storage
 	
 	if ($conf->{sys}{pool1_shrunk})
 	{
-		my $requested_byte_size = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{anvil_storage_pool1_size}, $conf->{cgi}{anvil_storage_pool1_unit}, 1);
-		my $say_requested_size  = AN::Cluster::bytes_to_hr($conf, $requested_byte_size);
+		my $requested_byte_size = $an->Readable->hr_to_bytes({size => $conf->{cgi}{anvil_storage_pool1_size}, type => $conf->{cgi}{anvil_storage_pool1_unit} });
+		my $say_requested_size  = $an->Readable->bytes_to_hr({'bytes' => $requested_byte_size });
 		my $byte_difference     = $requested_byte_size - $conf->{cgi}{anvil_storage_pool1_byte_size};
-		my $say_difference      = AN::Cluster::bytes_to_hr($conf, $byte_difference);
-		my $say_new_size        = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size});
+		my $say_difference      = $an->Readable->bytes_to_hr({'bytes' => $byte_difference });
+		my $say_new_size        = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} });
 		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message	=>	AN::Common::get_string($conf, {key => "message_0375", variables => {
-				say_requested_size	=>	$say_requested_size,
-				say_new_size		=>	$say_new_size,
-				say_difference		=>	$say_difference,
-			}}),
+			message	=>	$an->String->get({key => "message_0375", variables => { 
+					say_requested_size	=>	$say_requested_size,
+					say_new_size		=>	$say_new_size,
+					say_difference		=>	$say_difference,
+				}}),
 			row	=>	"#!string!state_0043!#",
 		});
 	}
@@ -14670,24 +14626,24 @@ sub check_storage
 	# Message stuff
 	if (not $conf->{cgi}{anvil_media_library_byte_size})
 	{
-		$conf->{cgi}{anvil_media_library_byte_size} = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{anvil_media_library_size}, $conf->{cgi}{anvil_media_library_unit}, 1);
+		$conf->{cgi}{anvil_media_library_byte_size} = $an->Readable->hr_to_bytes({size => $conf->{cgi}{anvil_media_library_size}, type => $conf->{cgi}{anvil_media_library_unit} });
 	}
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = AN::Common::get_string($conf, {key => "state_0054", variables => {
-				pool1_device	=>	"$conf->{node}{$node1}{pool1}{disk}$conf->{node}{$node1}{pool1}{partition}",
-				pool1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}),
-				pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node1}{pool2}{disk}$conf->{node}{$node1}{pool2}{partition}"  : "--",
-				pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}) : "--",
-				media_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}),
-			}});
+	my $node1_message = $an->String->get({key => "state_0054", variables => { 
+			pool1_device	=>	"$conf->{node}{$node1}{pool1}{disk}$conf->{node}{$node1}{pool1}{partition}",
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node1}{pool2}{disk}$conf->{node}{$node1}{pool2}{partition}"  : "--",
+			pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
+			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
+		}});
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = AN::Common::get_string($conf, {key => "state_0054", variables => {
-				pool1_device	=>	"$conf->{node}{$node2}{pool1}{disk}$conf->{node}{$node2}{pool1}{partition}",
-				pool1_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool1_byte_size}),
-				pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node2}{pool2}{disk}$conf->{node}{$node2}{pool2}{partition}"  : "--",
-				pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_storage_pool2_byte_size}) : "--",
-				media_size	=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{anvil_media_library_byte_size}),
-			}});
+	my $node2_message = $an->String->get({key => "state_0054", variables => { 
+			pool1_device	=>	"$conf->{node}{$node2}{pool1}{disk}$conf->{node}{$node2}{pool1}{partition}",
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node2}{pool2}{disk}$conf->{node}{$node2}{pool2}{partition}"  : "--",
+			pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
+			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
+		}});
 	if (not $ok)
 	{
 		$node1_class = "highlight_warning_bold";
@@ -15522,7 +15478,7 @@ sub configure_cman
 		if ($node1_rc eq "1")
 		{
 			$node1_class   = "highlight_warning_bold";
-			$node1_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node1_return_message" }});
+			$node1_message = $an->String->get({key => "state_0076", variables => { message => $node1_return_message }});
 			$ok            = 0;
 		}
 		elsif ($write_node1)
@@ -15532,7 +15488,7 @@ sub configure_cman
 		if ($node2_rc eq "1")
 		{
 			$node2_class   = "highlight_warning_bold";
-			$node2_message = AN::Common::get_string($conf, {key => "state_0076", variables => { message => "$node2_return_message" }});
+			$node2_message = $an->String->get({key => "state_0076", variables => { message => $node2_return_message }});
 			$ok            = 0;
 		}
 		elsif ($write_node2)
@@ -15862,18 +15818,18 @@ sub check_connection
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = AN::Common::get_string($conf, {key => "state_0017"});
+	my $node1_message = $an->String->get({key => "state_0017"});
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = AN::Common::get_string($conf, {key => "state_0017"});
+	my $node2_message = $an->String->get({key => "state_0017"});
 	if (not $node1_access)
 	{
 		$node1_class   = "highlight_bad_bold";
-		$node1_message = AN::Common::get_string($conf, {key => "state_0018"});
+		$node1_message = $an->String->get({key => "state_0018"});
 	}
 	if (not $node2_access)
 	{
 		$node2_class   = "highlight_bad_bold";
-		$node2_message = AN::Common::get_string($conf, {key => "state_0018"});
+		$node2_message = $an->String->get({key => "state_0018"});
 	}
 	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
 		row		=>	"#!string!row_0219!#",

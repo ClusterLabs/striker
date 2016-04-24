@@ -62,9 +62,9 @@ $| = 1;
 
 my ($conf) = AN::Common::initialize($THIS_FILE, 1);
 my $an     = $conf->{handle}{an};
-$an->default_log_file    ($conf->{path}{log_file});
-$an->default_log_language($conf->{sys}{log_language});
-$an->Log->level          ($conf->{sys}{log_level});
+$an->default_log_file    ($an->data->{path}{log_file});
+$an->default_log_language($an->data->{sys}{log_language});
+$an->Log->level          ($an->data->{sys}{log_level});
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -92,96 +92,100 @@ $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
 	quiet	=>	1
 });
 
+# Read in some configuration information
 $an->Storage->read_hosts();
 $an->Storage->read_ssh_config();
 
+# Read in our Anvil! systems. If only one anvil is found, it will be auto-set in 'cgi::anvil'.
+$an->ScanCore->parse_anvil_data();
+
+### Deprecated
 # I need to convert the global configuration of the clusters to the format I use here.
-AN::Cluster::convert_cluster_config($conf);
+#AN::Cluster::convert_cluster_config($conf);
 
-# If there is only one cluster defined, use it. Note that I need a special
-# exception in get_cgi_vars() for this to work properly.
-if ((not $conf->{cgi}{cluster}) && (not $conf->{cgi}{config}))
-{
-	my @cluster_name;
-	foreach my $cluster (keys %{$conf->{clusters}})
-	{
-		push @cluster_name, $cluster;
-	}
-	if (@cluster_name == 1)
-	{
-		$conf->{cgi}{cluster} = $cluster_name[0];
-	}
-}
+# If there is only one cluster defined, use it. Note that I need a special exception in $an->Web->get_cgi() 
+# for this to work properly.
+# if ((not $an->data->{cgi}{cluster}) && (not $an->data->{cgi}{config}))
+# {
+# 	my @cluster_name;
+# 	foreach my $cluster (keys %{$an->data->{clusters}})
+# 	{
+# 		push @cluster_name, $cluster;
+# 	}
+# 	if (@cluster_name == 1)
+# 	{
+# 		$an->data->{cgi}{cluster} = $cluster_name[0];
+# 	}
+# }
 
-# Get the CGI variables I might be passed.
-AN::Common::read_in_cgi_variables($conf);
+# Check for passed-in CGI variables.
+$an->Web->check_all_cgi();
 
 # If 'anvil' was passed, get it's ID and then check for CGI variables.
-#if (($conf->{cgi}{save}) && ($conf->{cgi}{anvil_id}))
-if ($conf->{cgi}{anvil_id})
-{
-	my $this_id = $conf->{cgi}{anvil_id};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "this_id", value1 => $this_id,
-	}, file => $THIS_FILE, line => __LINE__});
-	AN::Cluster::get_cgi_vars($conf, [
-		"cluster__${this_id}__name",
-		"cluster__${this_id}__description",
-		"cluster__${this_id}__url",
-		"cluster__${this_id}__company",
-		"cluster__${this_id}__ricci_pw",
-		"cluster__${this_id}__root_pw",
-		"cluster__${this_id}__nodes_1_name",
-		"cluster__${this_id}__nodes_1_ip",
-		"cluster__${this_id}__nodes_1_port",
-		"cluster__${this_id}__nodes_2_name",
-		"cluster__${this_id}__nodes_2_ip",
-		"cluster__${this_id}__nodes_2_port",
-		"cluster__${this_id}__smtp__server",
-		"cluster__${this_id}__smtp__port",
-		"cluster__${this_id}__smtp__username",
-		"cluster__${this_id}__smtp__password",
-		"cluster__${this_id}__smtp__security",
-		"cluster__${this_id}__smtp__encrypt_pass",
-		"cluster__${this_id}__smtp__helo_domain",
-		"cluster__${this_id}__mail_data__to",
-		"cluster__${this_id}__mail_data__sending_domain",
-	]);
-}
+# if ($an->data->{cgi}{anvil_id})
+# {
+# 	my $this_id = $an->data->{cgi}{anvil_id};
+# 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+# 		name1 => "this_id", value1 => $this_id,
+# 	}, file => $THIS_FILE, line => __LINE__});
+# 	$an->Web->get_cgi({variables => [
+# 		"cluster__${this_id}__name",
+# 		"cluster__${this_id}__description",
+# 		"cluster__${this_id}__url",
+# 		"cluster__${this_id}__company",
+# 		"cluster__${this_id}__ricci_pw",
+# 		"cluster__${this_id}__root_pw",
+# 		"cluster__${this_id}__nodes_1_name",
+# 		"cluster__${this_id}__nodes_1_ip",
+# 		"cluster__${this_id}__nodes_1_port",
+# 		"cluster__${this_id}__nodes_2_name",
+# 		"cluster__${this_id}__nodes_2_ip",
+# 		"cluster__${this_id}__nodes_2_port",
+# 		"cluster__${this_id}__smtp__server",
+# 		"cluster__${this_id}__smtp__port",
+# 		"cluster__${this_id}__smtp__username",
+# 		"cluster__${this_id}__smtp__password",
+# 		"cluster__${this_id}__smtp__security",
+# 		"cluster__${this_id}__smtp__encrypt_pass",
+# 		"cluster__${this_id}__smtp__helo_domain",
+# 		"cluster__${this_id}__mail_data__to",
+# 		"cluster__${this_id}__mail_data__sending_domain",
+# 	]});
+# }
 
 # Pick up the list of volume groups.
-if ($conf->{cgi}{vg_list})
+if ($an->data->{cgi}{vg_list})
 {
 	my @more_vars;
-	foreach my $vg (split/,/, $conf->{cgi}{vg_list})
+	foreach my $vg (split/,/, $an->data->{cgi}{vg_list})
 	{
 		next if not $vg;
 		push @more_vars, "vg_$vg";
 		push @more_vars, "vg_suffix_$vg";
 	}
-	AN::Cluster::get_cgi_vars($conf, \@more_vars);
+	$an->Web->get_cgi({variables => \@more_vars});
 }
 # Pick up the list of optical devices.
-if ($conf->{cgi}{device_keys})
+if ($an->data->{cgi}{device_keys})
 {
 	my @more_vars;
-	foreach my $device (split/,/, $conf->{cgi}{device_keys})
+	foreach my $device (split/,/, $an->data->{cgi}{device_keys})
 	{
 		next if not $device;
 		push @more_vars, "$device";
 		my $drive = ($device =~ /media_(.*)/)[0];
 		push @more_vars, "insert_$drive";
 	}
-	AN::Cluster::get_cgi_vars($conf, \@more_vars);
+	$an->Web->get_cgi({variables => \@more_vars});
 }
 
 # Print the header.
 AN::Cluster::header($conf);
 
 # Do I have a cluster name?
-if ($conf->{cgi}{logo})
+if ($an->data->{cgi}{logo})
 {
-	if ($conf->{cgi}{config})
+	if ($an->data->{cgi}{config})
 	{
 		AN::Cluster::configure_dashboard($conf);
 	}
@@ -191,44 +195,40 @@ if ($conf->{cgi}{logo})
 		AN::Cluster::show_anvil_selection_and_striker_options($conf);
 	}
 }
-elsif ($conf->{cgi}{config})
+elsif ($an->data->{cgi}{config})
 {
 	AN::Cluster::configure_dashboard($conf);
 }
-elsif ($conf->{cgi}{'system'})
+elsif ($an->data->{cgi}{'system'})
 {
 	AN::Cluster::configure_local_system($conf);
 }
-elsif ($conf->{cgi}{cluster})
+elsif ($an->data->{cgi}{cluster})
 {
-	my $cluster = $conf->{cgi}{cluster};
-	$conf->{sys}{root_password}           = $conf->{clusters}{$cluster}{root_pw};
-	$conf->{clusters}{$cluster}{ricci_pw} = $conf->{clusters}{$cluster}{root_pw} if not $conf->{clusters}{$cluster}{ricci_pw};
+	my $cluster = $an->data->{cgi}{cluster};
+	$an->data->{sys}{root_password}           = $an->data->{clusters}{$cluster}{root_pw};
+	$an->data->{clusters}{$cluster}{ricci_pw} = $an->data->{clusters}{$cluster}{root_pw} if not $an->data->{clusters}{$cluster}{ricci_pw};
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0004", message_variables => {
 		name1 => "cluster",                        value1 => $cluster,
-		name2 => "clusters::${cluster}::root_pw",  value2 => $conf->{clusters}{$cluster}{root_pw},
-		name3 => "clusters::${cluster}::ricci_pw", value3 => $conf->{clusters}{$cluster}{ricci_pw},
-		name4 => "sys::root_password",             value4 => $conf->{sys}{root_password},
+		name2 => "clusters::${cluster}::root_pw",  value2 => $an->data->{clusters}{$cluster}{root_pw},
+		name3 => "clusters::${cluster}::ricci_pw", value3 => $an->data->{clusters}{$cluster}{ricci_pw},
+		name4 => "sys::root_password",             value4 => $an->data->{sys}{root_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the requested cluster isn't found in the config file, error out.
-	if (not $conf->{clusters}{$cluster}{nodes})
+	if (not $an->data->{clusters}{$cluster}{nodes})
 	{
 		# You can pass in 'anvil => $cluster' as the first hash reference in the 'template' call and 
 		# then use the string directly in the template, but I think that's too indirect for future
 		# devs to follow initially.
-		my $say_message = AN::Common::get_string($conf, {key => "message_0003", variables => {
-			anvil	=>	$cluster,
-		}});
-		print AN::Common::template($conf, "main-page.html", "no-anvil-found", {
-			message	=>	$say_message,
-		}); 
+		my $say_message = $an->String->get({key => "message_0003", variables => { anvil => $cluster }});
+		print $an->Web->template({file => "main-page.html", template => "no-anvil-found", replace => { message => $say_message }});
 	}
 	else
 	{
-		if ($conf->{cgi}{task})
+		if ($an->data->{cgi}{task})
 		{
-			$conf->{sys}{show_refresh} = 0;
+			$an->data->{sys}{show_refresh} = 0;
 			AN::Striker::process_task($conf);
 		}
 		else
@@ -236,9 +236,9 @@ elsif ($conf->{cgi}{cluster})
 			# Set the node list.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "cluster", value1 => $cluster,
-				name2 => "ricci_pw", value2 => $conf->{clusters}{$cluster}{ricci_pw},
+				name2 => "ricci_pw", value2 => $an->data->{clusters}{$cluster}{ricci_pw},
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{nodes} = $conf->{clusters}{$cluster}{nodes};
+			$an->data->{nodes} = $an->data->{clusters}{$cluster}{nodes};
 			AN::Cluster::scan_cluster($conf);
 			AN::Striker::display_details($conf);
 		}

@@ -429,9 +429,9 @@ sub process_task
 	}
 	elsif ($conf->{cgi}{task} eq "display_health")
 	{
-		print AN::Common::template($conf, "common.html", "scanning-message", {
-			anvil	=>	$conf->{cgi}{cluster},
-		});
+		print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
+			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+		}});
 		get_storage_data($conf, $conf->{cgi}{node});
 		
 		if ((not $conf->{storage}{is}{lsi}) && 
@@ -439,12 +439,8 @@ sub process_task
 		    (not $conf->{storage}{is}{mdadm}))
 		{
 			# No managers found
-			my $say_title = AN::Common::get_string($conf, {key => "title_0016", variables => {
-				node	=>	$conf->{cgi}{node},
-			}});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0051", variables => {
-				node_cluster_name	=>	$conf->{cgi}{node_cluster_name},
-			}});
+			my $say_title = $an->String->get({key => "title_0016", variables => { node => $conf->{cgi}{node} }});
+			my $say_message = $an->String->get({key => "message_0051", variables => { node_cluster_name => $conf->{cgi}{node_cluster_name} }});
 			print AN::Common::template($conf, "lsi-storage.html", "no-managers-found", {
 				title	=>	$say_title,
 				message	=>	$say_message,
@@ -584,15 +580,15 @@ sub lsi_control_unmake_disk_as_hot_spare
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0002", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0002", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = $message_body  = AN::Common::get_string($conf, {key => "lsi_0003", variables => {
+		$message_body  = $an->String->get({key => "lsi_0003", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -655,14 +651,12 @@ sub lsi_control_clear_foreign_state
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0043", variables => {
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0043", variables => { adapter => $conf->{cgi}{adapter} }});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0044", variables => {
+		$message_body  = $an->String->get({key => "lsi_0044", variables => { 
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
@@ -724,15 +718,15 @@ sub lsi_control_make_disk_hot_spare
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0005", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0005", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0006", variables => {
+		$message_body  = $an->String->get({key => "lsi_0006", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -798,15 +792,15 @@ sub lsi_control_mark_disk_missing
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0007", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0007", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0008", variables => {
+		$message_body  = $an->String->get({key => "", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -816,7 +810,7 @@ sub lsi_control_mark_disk_missing
 	{
 		$title_message = "#!string!row_0032!#";
 		$title_class   = "highlight_detail";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0009", variables => {
+		$message_body  = $an->String->get({key => "lsi_0009", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -882,15 +876,15 @@ sub lsi_control_spin_disk_up
 
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0010", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0010", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0011", variables => {
+		$message_body  = $an->String->get({key => "lsi_0011", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -955,15 +949,15 @@ sub lsi_control_spin_disk_down
 
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0015", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0015", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0016", variables => {
+		$message_body  = $an->String->get({key => "lsi_0016", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -973,7 +967,7 @@ sub lsi_control_spin_disk_down
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0017", variables => {
+		$message_body  = $an->String->get({key => "lsi_0017", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 			}});
@@ -1074,12 +1068,12 @@ sub lsi_control_put_disk_offline
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i) && ($this_logical_disk != 9999))
 	{
-		my $reason = AN::Common::get_string($conf, {key => "lsi_0019"});
+		my $reason = $an->String->get({key => "lsi_0019"});
 		if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level} eq "6")
 		{
-			$reason = AN::Common::get_string($conf, {key => "lsi_0020"});
+			$reason = $an->String->get({key => "lsi_0020"});
 		}
-		my $message = AN::Common::get_string($conf, {key => "lsi_0021", variables => {
+		my $message = $an->String->get({key => "lsi_0021", variables => { 
 				disk		=>	$conf->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 				reason		=>	$reason,
@@ -1095,7 +1089,7 @@ sub lsi_control_put_disk_offline
 	
 	if (not $conf->{cgi}{confirm})
 	{
-		my $message = AN::Common::get_string($conf, {key => "lsi_0022", variables => {
+		my $message = $an->String->get({key => "lsi_0022", variables => { 
 				disk		=>	$conf->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 			}});
@@ -1103,12 +1097,12 @@ sub lsi_control_put_disk_offline
 		my $alert_class =  "highlight_warning_bold";
 		if ($this_logical_disk == 9999)
 		{
-			$message     = AN::Common::get_string($conf, {key => "lsi_0023"});
+			$message     = $an->String->get({key => "lsi_0023"});
 			$alert       = "#!string!row_0032!#";
 			$alert_class = "highlight_detail_bold";
 		}
 		# Both messages have the same second part that asks the user to confirm.
-		$message .= AN::Common::get_string($conf, {key => "lsi_0024", variables => {
+		$message .= $an->String->get({key => "lsi_0024", variables => { 
 				confirm_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$conf->{cgi}{disk_address}&adapter=$this_adapter&logical_disk=$this_logical_disk&confirm=true",
 				cancel_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
 			}});
@@ -1153,15 +1147,15 @@ sub lsi_control_put_disk_offline
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0025", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0025", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0027", variables => {
+		$message_body  = $an->String->get({key => "lsi_0027", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -1228,15 +1222,15 @@ sub lsi_control_put_disk_online
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0028", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0028", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0029", variables => {
+		$message_body  = $an->String->get({key => "lsi_0029", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -1297,16 +1291,16 @@ sub lsi_control_add_disk_to_array
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0031", variables => {
-				disk		=>	$conf->{cgi}{disk_address},
-				adapter		=>	$conf->{cgi}{adapter},
-				logical_disk	=>	$conf->{cgi}{logical_disk},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0031", variables => { 
+			disk		=>	$conf->{cgi}{disk_address},
+			adapter		=>	$conf->{cgi}{adapter},
+			logical_disk	=>	$conf->{cgi}{logical_disk},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0032", variables => {
+		$message_body  = $an->String->get({key => "lsi_0032", variables => { 
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 				logical_disk	=>	$conf->{cgi}{logical_disk},
@@ -1423,15 +1417,15 @@ sub lsi_control_make_disk_good
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0034", variables => {
-				disk		=>	$conf->{cgi}{disk_address},
-				adapter		=>	$conf->{cgi}{adapter},
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0034", variables => { 
+			disk		=>	$conf->{cgi}{disk_address},
+			adapter		=>	$conf->{cgi}{adapter},
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0035", variables => {
+		$message_body  = $an->String->get({key => "lsi_0035", variables => { 
 				disk		=>	$conf->{cgi}{disk_address},
 				adapter		=>	$conf->{cgi}{adapter},
 				message		=>	$return_string,
@@ -1507,16 +1501,16 @@ sub lsi_control_disk_id_led
 	
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = AN::Common::get_string($conf, {key => "lsi_0037", variables => {
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
-				action	=>	$say_action,
-			}});
+	my $message_body  = $an->String->get({key => "lsi_0037", variables => { 
+			disk	=>	$conf->{cgi}{disk_address},
+			adapter	=>	$conf->{cgi}{adapter},
+			action	=>	$say_action,
+		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
-		$message_body  = AN::Common::get_string($conf, {key => "lsi_0038", variables => {
+		$message_body  = $an->String->get({key => "lsi_0038", variables => { 
 				disk	=>	$conf->{cgi}{disk_address},
 				adapter	=>	$conf->{cgi}{adapter},
 				message	=>	$return_string,
@@ -1583,9 +1577,7 @@ sub display_node_health
 			my $say_bbu   =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is}                        ? "Present" : "Not Installed";
 			my $say_flash =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is}                      ? "Present" : "Not Installed";
 			my $say_restore_hotspare_on_insert = $conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ? "Yes"     : "No";
-			my $say_title = AN::Common::get_string($conf, {key => "lsi_0040", variables => {
-				adapter	=>	$this_adapter,
-			}});
+			my $say_title = $an->String->get({key => "lsi_0040", variables => { adapter => $this_adapter }});
 
 			print AN::Common::template($conf, "lsi-storage.html", "lsi-adapter-state", {
 				title				=>	$say_title,
@@ -1685,11 +1677,11 @@ sub display_node_health
 					$say_missing = "<br />";
 					foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 					{
-						my $say_minimum_size =  AN::Cluster::bytes_to_hr($conf, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row});
-						$say_missing         .= AN::Common::get_string($conf, {key => "lsi_0041", variables => {
-										row		=>	$this_row,
-										minimum_size	=>	$say_minimum_size,
-									}});
+						my $say_minimum_size =  $an->Readable->bytes_to_hr({'bytes' => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} });
+						$say_missing         .= $an->String->get({key => "lsi_0041", variables => { 
+								row		=>	$this_row,
+								minimum_size	=>	$say_minimum_size,
+							}});
 					}
 				}
 				
@@ -1710,9 +1702,7 @@ sub display_node_health
 						name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
 						name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 					}, file => $THIS_FILE, line => __LINE__});
-					my $title = AN::Common::get_string($conf, {key => "title_0021", variables => {
-							logical_disk	=>	$this_logical_disk,
-						}});
+					my $title = $an->String->get({key => "title_0021", variables => { logical_disk => $this_logical_disk }});
 					print AN::Common::template($conf, "lsi-storage.html", "lsi-logical-disk-state", {
 						title				=>	$title,
 						logical_disk_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
@@ -1738,7 +1728,7 @@ sub display_node_health
 					{
 						my $raw_size_sectors = hex($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
 						my $raw_size_bytes   = ($raw_size_sectors * $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
-						my $say_raw_size     = AN::Cluster::bytes_to_hr($conf, $raw_size_bytes);
+						my $say_raw_size     = $an->Readable->bytes_to_hr({'bytes' => $raw_size_bytes });
 						my $disk_temp_class  = "highlight_good";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 54)
 						{
@@ -1752,16 +1742,16 @@ sub display_node_health
 						my $say_drive_temp_f = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} : "--";
 						my $say_temperature = "<span class=\"$disk_temp_class\">$say_drive_temp_c &deg;C ($say_drive_temp_f &deg;F)</span>";
 						
-						my $say_location_title = AN::Common::get_string($conf, {key => "row_0066"});
+						my $say_location_title = $an->String->get({key => "row_0066"});
 						my $say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						if ($this_logical_disk == 9999)
 						{
-							$say_location_title = AN::Common::get_string($conf, {key => "row_0067"});
+							$say_location_title = $an->String->get({key => "row_0067"});
 							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
 						}
 						
 						my $say_offline_disabled_button = AN::Common::template($conf, "common.html", "disabled-button", {
-							button_text	=>	AN::Common::get_string($conf, {key => "row_0067"}),
+							button_text	=>	$an->String->get({key => "row_0067"}),
 						}, "", 1);
 						my $offline_button = $say_offline_disabled_button;
 						if ($allow_offline)
@@ -1815,10 +1805,10 @@ sub display_node_health
 						{
 							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($conf, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
 							$disk_state_class = "highlight_warning";
-							$say_disk_action  = AN::Common::get_string($conf, {key => "lsi_0042", variables => {
-								rebuild_percent		=>	$rebuild_percent,
-								time_to_complete	=>	$time_to_complete,
-							}})
+							$say_disk_action  = $an->String->get({key => "lsi_0042", variables => { 
+									rebuild_percent		=>	$rebuild_percent,
+									time_to_complete	=>	$time_to_complete,
+								}});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun Up")
 						{
@@ -1839,7 +1829,7 @@ sub display_node_health
 										}, file => $THIS_FILE, line => __LINE__});
 										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
-											my $say_button = AN::Common::get_string($conf, {key => "button_0010", variables => { logical_disk => $this_logical_disk }});
+											my $say_button = $an->String->get({key => "button_0010", variables => { logical_disk => $this_logical_disk }});
 											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 												name1 => "say_button", value1 => $say_button,
 											}, file => $THIS_FILE, line => __LINE__});
@@ -1869,7 +1859,6 @@ sub display_node_health
 										id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 									}, "", 1);
 									$say_disk_action .= AN::Common::template($conf, "common.html", "new_line", "", "", 1);
-									#$offline_button   = "<a href=\"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter\">".AN::Common::get_string($conf, {key => "button_0011"})."</a>";
 								}
 							}
 						}
@@ -1882,16 +1871,16 @@ sub display_node_health
 								button_text	=>	"#!string!button_0012!#",
 								id		=>	"spin_disk_up_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 							}, "", 1);
-							$say_temperature  = "<span class=\"highlight_unavailable\">".AN::Common::get_string($conf, {key => "message_0055"})."</a>";
-							$offline_button   = AN::Common::get_string($conf, {key => "message_0054"});
+							$say_temperature  = "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0055"})."</a>";
+							$offline_button   = $an->String->get({key => "message_0054"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
 						{
 							$disk_state_class =  "highlight_detail";
 							$say_disk_action  =  AN::Common::template($conf, "common.html", "new_line", "", "", 1);
-							$say_disk_action  .= AN::Common::get_string($conf, {key => "message_0056"});
-							$say_temperature  =  "<span class=\"highlight_unavailable\">".AN::Common::get_string($conf, {key => "message_0057"})."</span>";
-							$offline_button   =  AN::Common::get_string($conf, {key => "message_0058"});
+							$say_disk_action  .= $an->String->get({key => "message_0056"});
+							$say_temperature  =  "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0057"})."</span>";
+							$offline_button   =  $an->String->get({key => "message_0058"});
 						}
 						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
 						{
@@ -1909,13 +1898,13 @@ sub display_node_health
 						### the old hot spare reverts again to being a hot spare.
 						my $disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive_128x128.png";
 						my $id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
-						my $say_identify = AN::Common::get_string($conf, {key => "button_0014"});
+						my $say_identify = $an->String->get({key => "button_0014"});
 						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
 						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
 						{
 							$disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive-with-led_128x128.png";
 							$id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
-							$say_identify = AN::Common::get_string($conf, {key => "button_0015"});
+							$say_identify = $an->String->get({key => "button_0015"});
 						}
 						# This needs to be last because if a drive is foreign,
 						# we can't do anything else to it.
@@ -1934,7 +1923,7 @@ sub display_node_health
 						}
 						
 						# Finally, show the drive.
-						my $title = AN::Common::get_string($conf, {key => "title_0022", variables => {
+						my $title = $an->String->get({key => "title_0022", variables => { 
 								slot_number		=>	$this_slot_number,
 								enclosure_device_id	=>	$this_enclosure_device_id,
 							}});
@@ -3047,7 +3036,7 @@ sub change_vm
 	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
 	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
 	   $current_ram           /= 1024;
-	my $requested_ram         =  AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix}, 1);
+	my $requested_ram         =  $an->Readable->hr_to_bytes({size => $conf->{cgi}{ram}, type => $conf->{cgi}{ram_suffix} });
 	   $requested_ram         /= 1024;
 	my $max_ram               =  $available_ram / 1024;
 	my $current_cpus          =  $conf->{vm}{$vm}{details}{cpu_count};
@@ -3089,9 +3078,7 @@ sub change_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Open the table.
-	my $title = AN::Common::get_string($conf, {key => "title_0023", variables => {
-			server	=>	$say_vm,
-		}});
+	my $title = $an->String->get({key => "title_0023", variables => { server => $say_vm }});
 	print AN::Common::template($conf, "server.html", "update-server-config-header", {
 		title	=>	$title,
 	});
@@ -3141,9 +3128,7 @@ sub change_vm
 		if (($new_server_start_after) && ($new_server_start_after !~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/))
 		{
 			# Bad entry, must be a UUID.
-			$db_error .= AN::Common::get_string($conf, {key => "message_0203", variables => {
-				value	=>	$new_server_start_after,
-			}})."<br />";
+			$db_error .= $an->String->get({key => "message_0203", variables => { value => $new_server_start_after }})."<br />";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "db_error", value1 => $db_error,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3160,9 +3145,7 @@ sub change_vm
 		if ($new_server_start_delay !~ /^\d+$/)
 		{
 			# Bad group, must be a digit.
-			$db_error .= AN::Common::get_string($conf, {key => "message_0239", variables => {
-				value	=>	$new_server_start_delay,
-			}})."<br />";
+			$db_error .= $an->String->get({key => "message_0239", variables => { value => $new_server_start_delay }})."<br />";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "db_error", value1 => $db_error,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3226,12 +3209,12 @@ WHERE
 		if ($requested_ram > $max_ram)
 		{
 			# Not enough RAM
-			my $say_requested_ram = AN::Cluster::bytes_to_hr($conf, ($requested_ram * 1024));
-			my $say_max_ram       = AN::Cluster::bytes_to_hr($conf, ($max_ram * 1024));
-			my $message = AN::Common::get_string($conf, {key => "message_0059", variables => {
-				requested_ram	=>	$title,
-				max_ram		=>	$say_requested_ram,
-			}});
+			my $say_requested_ram = $an->Readable->bytes_to_hr({'bytes' => ($requested_ram * 1024) });
+			my $say_max_ram       = $an->Readable->bytes_to_hr({'bytes' => ($max_ram * 1024) });
+			my $message           = $an->String->get({key => "message_0059", variables => { 
+					requested_ram	=>	$title,
+					max_ram		=>	$say_requested_ram,
+				}});
 			print AN::Common::template($conf, "server.html", "update-server-error-message", {
 				title		=>	"#!string!title_0025!",
 				message		=>	$message,
@@ -3240,10 +3223,10 @@ WHERE
 		elsif ($requested_cpus > $max_cpus)
 		{
 			# Not enough CPUs
-			my $message = AN::Common::get_string($conf, {key => "message_0060", variables => {
-				requested_cpus	=>	$requested_cpus,
-				max_cpus	=>	$max_cpus,
-			}});
+			my $message = $an->String->get({key => "message_0060", variables => { 
+					requested_cpus	=>	$requested_cpus,
+					max_cpus	=>	$max_cpus,
+				}});
 			print AN::Common::template($conf, "server.html", "update-server-error-message", {
 				title		=>	"#!string!title_0026!",
 				message		=>	$message,
@@ -3274,12 +3257,12 @@ WHERE
 			}
 			
 			# Rewrite the XML file.
-			print AN::Common::get_string($conf, {key => "message_0061", variables => {
-				ram			=>	$conf->{cgi}{ram},
-				ram_suffix		=>	$conf->{cgi}{ram_suffix},
-				requested_cpus		=>	$requested_cpus,
-				requested_boot_device	=>	$say_requested_boot_device,
-			}});
+			print $an->String->get({key => "message_0061", variables => { 
+					ram			=>	$conf->{cgi}{ram},
+					ram_suffix		=>	$conf->{cgi}{ram_suffix},
+					requested_cpus		=>	$requested_cpus,
+					requested_boot_device	=>	$say_requested_boot_device,
+				}});
 			my $new_definition = "";
 			my $in_os          = 0;
 			my $shell_call     = $an->data->{path}{cat}." $definition_file";
@@ -3460,8 +3443,8 @@ WHERE
 			}
 			
 			# Sanity check the new XML and restore the backup if anything goes wrong.
-			my $say_ok  =  AN::Common::get_string($conf, {key => "message_0335"});
-			my $say_bad =  AN::Common::get_string($conf, {key => "message_0336"});
+			my $say_ok  =  $an->String->get({key => "message_0335"});
+			my $say_bad =  $an->String->get({key => "message_0336"});
 			   $say_ok  =~ s/'/\\'/g;
 			   $say_ok  =~ s/\\/\\\\/g;
 			   $say_bad =~ s/'/\\'/g;
@@ -3605,10 +3588,12 @@ sub vm_insert_media
 	# Archive the current config, just in case.
 	my ($backup)   = archive_file($conf, $node, $definition_file, 1);
 	
-	# The variables hash feeds into 'title_0030'.
-	print AN::Common::template($conf, "server.html", "insert-media-header", {}, {
+	my $title = $an->String->get({key => "title_0030", variables => { 
 		media	=>	$insert_media,
 		drive	=>	$insert_drive,
+	}});
+	print AN::Common::template($conf, "server.html", "insert-media-header", {
+		title	=>	$title,
 	});
 	
 	# How I do this depends on whether the VM is running or not.
@@ -3668,12 +3653,12 @@ sub vm_insert_media
 		}
 		else
 		{
-			$virsh_exit_code = "-" if not defined $virsh_exit_code;
-			my $say_error = AN::Common::get_string($conf, {key => "message_0069", variables => {
-				media		=>	$insert_media,
-				drive		=>	$insert_drive,
-				virsh_exit_code	=>	$virsh_exit_code,
-			}});
+			   $virsh_exit_code = "-" if not defined $virsh_exit_code;
+			my $say_error       = $an->String->get({key => "message_0069", variables => { 
+					media		=>	$insert_media,
+					drive		=>	$insert_drive,
+					virsh_exit_code	=>	$virsh_exit_code,
+				}});
 			print AN::Common::template($conf, "server.html", "insert-media-failed-bad-exit-code", {
 				error	=>	$say_error,
 			});
@@ -3681,10 +3666,10 @@ sub vm_insert_media
 	}
 	else
 	{
-		# The VM isn't running. Directly re-write the XML file. The variable hash feeds into
-		# 'message_0070'.
-		print AN::Common::template($conf, "server.html", "insert-media-server-off", {}, {
-			server	=>	$say_vm,
+		# The VM isn't running. Directly re-write the XML file. 
+		my $message = $an->String->get({key => "message_0070", variables => { server => $say_vm }});
+		print AN::Common::template($conf, "server.html", "insert-media-server-off", {
+			message	=>	$message,
 		});
 		my $new_definition = "";
 		my $shell_call     = "cat $definition_file";
@@ -3782,9 +3767,9 @@ sub vm_eject_media
 	my $device          = $conf->{cgi}{device};
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
-	# The variables hash feeds into 'title_0031'.
-	print AN::Common::template($conf, "server.html", "eject-media-header", {}, {
-		device	=>	$conf->{cgi}{device},
+	my $title = $an->String->get({key => "title_0031", variables => { device => $conf->{cgi}{device} }});
+	print AN::Common::template($conf, "server.html", "eject-media-header", {
+		title	=>	$title,
 	});
 	
 	# Archive the current config, just in case.
@@ -3848,11 +3833,11 @@ sub vm_eject_media
 		}
 		else
 		{
-			$virsh_exit_code = "-" if not defined $virsh_exit_code;
-			my $say_error = AN::Common::get_string($conf, {key => "message_0073", variables => {
-				drive		=>	$drive,
-				virsh_exit_code	=>	$virsh_exit_code,
-			}});
+			   $virsh_exit_code = "-" if not defined $virsh_exit_code;
+			my $say_error       = $an->String->get({key => "message_0073", variables => { 
+					drive		=>	$drive,
+					virsh_exit_code	=>	$virsh_exit_code,
+				}});
 			print AN::Common::template($conf, "server.html", "eject-media-failed-bad-exit-code", {
 				error	=>	$say_error,
 			});
@@ -3861,9 +3846,9 @@ sub vm_eject_media
 	else
 	{
 		# The VM isn't running. Directly re-write the XML file.
-		# The variable hash feeds into 'message_0070'.
-		print AN::Common::template($conf, "server.html", "eject-media-server-off", {}, {
-			server	=>	$say_vm,
+		my $message = $an->String->get({key => "message_0070", variables => { server => $say_vm }});
+		print AN::Common::template($conf, "server.html", "eject-media-server-off", {
+			message	=>	$message,
 		});
 		my $in_cdrom       = 0;
 		my $this_media     = "";
@@ -4534,8 +4519,8 @@ sub manage_vm
 	
 	# If the user sets the RAM to less than 1 GiB, warn them. If the user sets the RAM to less that 32 
 	# MiB, error out.
-	my $say_max_ram          = AN::Cluster::bytes_to_hr($conf, $max_ram);
-	my $say_current_ram      = AN::Cluster::bytes_to_hr($conf, $current_ram);
+	my $say_max_ram          = $an->Readable->bytes_to_hr({'bytes' => $max_ram });
+	my $say_current_ram      = $an->Readable->bytes_to_hr({'bytes' => $current_ram });
 	my ($current_ram_value, $current_ram_suffix) = (split/ /, $say_current_ram);
 	$conf->{cgi}{ram}        = $current_ram_value if not $conf->{cgi}{ram};
 	$conf->{cgi}{ram_suffix} = $current_ram_suffix if not $conf->{cgi}{ram_suffix};
@@ -4552,9 +4537,9 @@ sub manage_vm
 	my $remote_icon = "";
 	
 	# Finally, print it all
-	# The variable hash feeds 'title_0032'.
-	print AN::Common::template($conf, "server.html", "manager-server-header", {}, {
-		server	=>	$say_vm,
+	my $title = $an->String->get({key => "title_0032", variables => { server => $say_vm }});
+	print AN::Common::template($conf, "server.html", "manager-server-header", {
+		title	=>	$title,
 	});
 
 	my $i = 1;
@@ -4570,9 +4555,7 @@ sub manage_vm
 			$say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_eject};
 			$say_state  = "#!string!state_0125!#";
 		}
-		my $say_optical_drive = AN::Common::get_string($conf, {key => "device_0003", variables => {
-				drive_number	=>	$i,
-			}});
+		my $say_optical_drive = $an->String->get({key => "device_0003", variables => { drive_number => $i }});
 		print AN::Common::template($conf, "server.html", "manager-server-optical-drive", {
 			optical_drive	=>	$say_optical_drive,
 			'state'		=>	$say_state,
@@ -4662,7 +4645,7 @@ ORDER BY
 			}
 			
 			# Add the 'Don't Boot' option
-			my $say_dont_boot = AN::Common::get_string($conf, {key => "title_0105"});
+			my $say_dont_boot = $an->String->get({key => "title_0105"});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "say_dont_boot", value1 => $say_dont_boot,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -4757,18 +4740,12 @@ ORDER BY
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	my $current_boot_device = AN::Common::get_string($conf, {key => "message_0081", variables => {
-			boot_device	=>	$say_current_boot_device,
-		}});
-	my $ram_details = AN::Common::get_string($conf, {key => "message_0082", variables => {
+	my $current_boot_device = $an->String->get({key => "message_0081", variables => { boot_device => $say_current_boot_device }});
+	my $cpu_details         = $an->String->get({key => "message_0083", variables => { current_cpus => $conf->{vm}{$vm}{details}{cpu_count} }});
+	my $restart_tomcat      = $an->String->get({key => "message_0085", variables => { reset_tomcat_url => "?cluster=$conf->{cgi}{cluster}&task=restart_tomcat" }});
+	my $ram_details         = $an->String->get({key => "message_0082", variables => { 
 			current_ram	=>	$say_current_ram,
 			maximum_ram	=>	$say_max_ram,
-		}});
-	my $cpu_details = AN::Common::get_string($conf, {key => "message_0083", variables => {
-			current_cpus	=>	$conf->{vm}{$vm}{details}{cpu_count},
-		}});
-	my $restart_tomcat = AN::Common::get_string($conf, {key => "message_0085", variables => {
-			reset_tomcat_url	=>	"?cluster=$conf->{cgi}{cluster}&task=restart_tomcat",
 		}});
 
 	# Display all this wonderful data.
@@ -5010,19 +4987,21 @@ sub add_vm_to_cluster
 		});
 		print AN::Common::template($conf, "server.html", "general-message", {
 			row	=>	"#!string!row_0092!#",
-			message	=>	AN::Common::get_string($conf, {key => "title_0033", variables => {
-				server		=>	$vm,
-				failover_domain	=>	$failover_domain,
-			}}),
+			message	=>	$an->String->get({key => "title_0033", variables => { 
+					server		=>	$vm,
+					failover_domain	=>	$failover_domain,
+				}}),
 		});
 	}
 	else
 	{
-		# Doing a stand-alone addition of a server to the Anvil!, so
-		# we need a title.
-		print AN::Common::template($conf, "server.html", "add-server-to-anvil-header-detail", {}, {
+		# Doing a stand-alone addition of a server to the Anvil!, so we need a title.
+		my $title = $an->String->get({key => "title_0033", variables => { 
 			server		=>	$vm,
 			failover_domain	=>	$failover_domain,
+		}});
+		print AN::Common::template($conf, "server.html", "add-server-to-anvil-header-detail", {
+			title	=>	$title,
 		});
 	}
 	
@@ -5033,15 +5012,11 @@ sub add_vm_to_cluster
 		# them a link to the config for this Anvil!.
 		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0090!#",
-			message	=>	AN::Common::get_string($conf, {key => "message_0087", variables => {
-				server		=>	$vm,
-			}}),
+			message	=>	$an->String->get({key => "message_0087", variables => { server => $vm }}),
 		});
 		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0091!#",
-			message	=>	AN::Common::get_string($conf, {key => "message_0088", variables => {
-				manage_url	=>	"?config=true&anvil=$cluster",
-			}}),
+			message	=>	$an->String->get({key => "message_0088", variables => { manage_url => "?config=true&anvil=$cluster" }}),
 		});
 		return(1);
 	}
@@ -5169,10 +5144,10 @@ sub add_vm_to_cluster
 			else
 			{
 				# Failed to boot.
-				my $say_message = AN::Common::get_string($conf, {key => "message_0094", variables => {
-					server		=>	$vm,
-					virsh_exit_code	=>	$virsh_exit_code,
-				}});
+				my $say_message = $an->String->get({key => "message_0094", variables => { 
+						server		=>	$vm,
+						virsh_exit_code	=>	$virsh_exit_code,
+					}});
 				print AN::Common::template($conf, "server.html", "general-error-message", {
 					row	=>	"#!string!row_0044!#",
 					message	=>	$say_message,
@@ -5257,9 +5232,7 @@ sub add_vm_to_cluster
 	if ($virsh_exit_code eq "0")
 	{
 		# Wrote the definition.
-		my $say_message = AN::Common::get_string($conf, {key => "message_0099", variables => {
-			definition	=>	$definition,
-		}});
+		my $say_message = $an->String->get({key => "message_0099", variables => { definition => $definition }});
 		print AN::Common::template($conf, "server.html", "general-message", {
 			row	=>	"&nbsp;",
 			message	=>	$say_message,
@@ -5268,9 +5241,7 @@ sub add_vm_to_cluster
 	else
 	{
 		# Failed to write the definition file.
-		my $say_error = AN::Common::get_string($conf, {key => "message_0100", variables => {
-			virsh_exit_code	=>	$virsh_exit_code,
-		}});
+		my $say_error = $an->String->get({key => "message_0100", variables => { virsh_exit_code	=> $virsh_exit_code }});
 		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"&nbsp;",
 			message	=>	$say_error,
@@ -5416,9 +5387,7 @@ sub add_vm_to_cluster
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "virsh exit code", value1 => $virsh_exit_code,
 		}, file => $THIS_FILE, line => __LINE__});
-		my $say_error = AN::Common::get_string($conf, {key => "message_0103", variables => {
-			virsh_exit_code	=>	$virsh_exit_code,
-		}});
+		my $say_error = $an->String->get({key => "message_0103", variables => { virsh_exit_code	=> $virsh_exit_code }});
 		print AN::Common::template($conf, "server.html", "general-warning-message", {
 			row	=>	"#!string!row_0044!#",
 			message	=>	$say_error,
@@ -5473,9 +5442,7 @@ sub add_vm_to_cluster
 				# Tell the user that 'ricci' isn't running.
 				print AN::Common::template($conf, "server.html", "general-message", {
 					row	=>	"#!string!row_0044!#",
-					message	=>	AN::Common::get_string($conf, {key => "message_0108", variables => {
-						node	=>	$node,
-					}}),
+					message	=>	$an->String->get({key => "message_0108", variables => { node => $node }}),
 				});
 				print AN::Common::template($conf, "server.html", "general-message", {
 					row	=>	"&nbsp;",
@@ -5516,9 +5483,7 @@ sub add_vm_to_cluster
 		# ccs call failed
 		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0096!#",
-			message	=>	AN::Common::get_string($conf, {key => "message_0112", variables => {
-				ccs_exit_code	=>	$ccs_exit_code,
-			}}),
+			message	=>	$an->String->get({key => "message_0112", variables => { ccs_exit_code => $ccs_exit_code }}),
 		});
 		return (1);
 	}
@@ -5579,13 +5544,11 @@ sub add_vm_to_cluster
 	else
 	{
 		# Appears to have failed.
-		my $say_instruction = AN::Common::get_string($conf, {key => "message_0088", variables => {
-			manage_url		=>	"?config=true&anvil=$cluster",
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0115", variables => {
-			clusvcadm_exit_code	=>	$clusvcadm_exit_code,
-			instructions		=>	$say_instruction,
-		}});
+		my $say_instruction = $an->String->get({key => "message_0088", variables => { manage_url => "?config=true&anvil=$cluster" }});
+		my $say_message     = $an->String->get({key => "message_0115", variables => { 
+				clusvcadm_exit_code	=>	$clusvcadm_exit_code,
+				instructions		=>	$say_instruction,
+			}});
 		print AN::Common::template($conf, "server.html", "general-error-message", {
 			row	=>	"#!string!row_0096!#",
 			message	=>	$say_message,
@@ -5912,9 +5875,7 @@ sub provision_vm
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "provision_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $say_title = AN::Common::get_string($conf, {key => "title_0115", variables => {
-			server	=>	$conf->{new_vm}{name},
-		}});
+	my $say_title = $an->String->get({key => "title_0115", variables => { server => $conf->{new_vm}{name} }});
 	print AN::Common::template($conf, "server.html", "provision-server-header", {
 		title	=>	$say_title,
 	});
@@ -6082,26 +6043,24 @@ sub provision_vm
 		if ($line =~ /No such file or directory/i)
 		{
 			 # Failed to write the provision file.
-			$error = AN::Common::get_string($conf, {key => "message_0330", variables => {
-				provision_script	=>	$shell_script,
-			}});
+			$error = $an->String->get({key => "message_0330", variables => { provision_script => $shell_script }});
 		}
 		if ($line =~ /Unable to read from monitor/i)
 		{
 			### TODO: Delete the just-created LV
 			# This can be caused by insufficient free RAM
-			$error = AN::Common::get_string($conf, {key => "message_0437", variables => {
-				server		=>	$conf->{new_vm}{name},
-				node		=>	$node,
-			}});
+			$error = $an->String->get({key => "message_0437", variables => { 
+					server		=>	$conf->{new_vm}{name},
+					node		=>	$node,
+				}});
 		}
 		if ($line =~ /syntax error/i)
 		{
 			# Something is wrong with the provision script
-			$error = AN::Common::get_string($conf, {key => "message_0438", variables => {
-				provision_script	=>	$shell_script,
-				error			=>	$line,
-			}});
+			$error = $an->String->get({key => "message_0438", variables => { 
+					provision_script	=>	$shell_script,
+					error			=>	$line,
+				}});
 		}
 		### Supressing output to clean-up what the user sees.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -6211,8 +6170,8 @@ sub verify_vm_config
 			if ($conf->{cgi}{name} =~ /\s/)
 			{
 				# Bad name, no spaces allowed.
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
+				my $say_row     = $an->String->get({key => "row_0102"});
+				my $say_message = $an->String->get({key => "message_0127"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			# If this changes, remember to update message_0127!
@@ -6232,8 +6191,8 @@ sub verify_vm_config
 			       ($conf->{cgi}{name} =~ /\^/))
 			{
 				# Illegal characters.
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0102"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0127"});
+				my $say_row     = $an->String->get({key => "row_0102"});
+				my $say_message = $an->String->get({key => "message_0127"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			else
@@ -6243,10 +6202,8 @@ sub verify_vm_config
 				if (exists $conf->{vm}{$vm_key})
 				{
 					# Duplicate name
-					my $say_row     = AN::Common::get_string($conf, {key => "row_0103"});
-					my $say_message = AN::Common::get_string($conf, {key => "message_0128", variables => {
-						server	=>	$vm,
-					}});
+					my $say_row     = $an->String->get({key => "row_0103"});
+					my $say_message = $an->String->get({key => "message_0128", variables => { server => $vm }});
 					push @errors, "$say_row#!#$say_message";
 				}
 				else
@@ -6262,8 +6219,8 @@ sub verify_vm_config
 		else
 		{
 			# Missing server name
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0104"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0129"});
+			my $say_row     = $an->String->get({key => "row_0104"});
+			my $say_message = $an->String->get({key => "message_0129"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -6275,20 +6232,18 @@ sub verify_vm_config
 		if ($conf->{cgi}{cpu_cores} =~ /\D/)
 		{
 			# Not a digit.
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0105"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0130", variables => {
-				cpu_cores	=>	$conf->{cgi}{cpu_cores},
-			}});
+			my $say_row     = $an->String->get({key => "row_0105", variables => {  }});
+			my $say_message = $an->String->get({key => "message_0130", variables => { cpu_cores => $conf->{cgi}{cpu_cores} }});
 			push @errors, "$say_row#!#$say_message";
 		}
 		elsif ($conf->{cgi}{cpu_cores} > $conf->{resources}{total_threads})
 		{
 			# Not enough cores
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0106"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0131", variables => {
-				total_threads	=>	$conf->{resources}{total_threads},
-				cpu_cores	=>	$conf->{cgi}{cpu_cores},
-			}});
+			my $say_row     = $an->String->get({key => "row_0106"});
+			my $say_message = $an->String->get({key => "message_0131", variables => { 
+					total_threads	=>	$conf->{resources}{total_threads},
+					cpu_cores	=>	$conf->{cgi}{cpu_cores},
+				}});
 			push @errors, "$say_row#!#$say_message";
 		}
 		else
@@ -6306,13 +6261,11 @@ sub verify_vm_config
 		if (($conf->{cgi}{ram} =~ /\D/) && ($conf->{cgi}{ram} !~ /^\d+\.\d+$/))
 		{
 			# RAM amount isn't a digit...
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0107"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0132", variables => {
-				ram	=>	$conf->{cgi}{ram},
-			}});
+			my $say_row     = $an->String->get({key => "row_0107"});
+			my $say_message = $an->String->get({key => "message_0132", variables => { ram => $conf->{cgi}{ram} }});
 			push @errors, "$say_row#!#$say_message";
 		}
-		my $requested_ram = AN::Cluster::hr_to_bytes($conf, $conf->{cgi}{ram}, $conf->{cgi}{ram_suffix});
+		my $requested_ram = $an->Readable->hr_to_bytes({size => $conf->{cgi}{ram}, type => $conf->{cgi}{ram_suffix} });
 		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
 		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -6322,13 +6275,13 @@ sub verify_vm_config
 		if ($requested_ram > $available_ram)
 		{
 			# Requested too much RAM.
-			my $say_free_ram  = AN::Cluster::bytes_to_hr($conf, $available_ram);
-			my $say_requested = AN::Cluster::bytes_to_hr($conf, $requested_ram);
-			my $say_row       = AN::Common::get_string($conf, {key => "row_0108"});
-			my $say_message   = AN::Common::get_string($conf, {key => "message_0133", variables => {
-				free_ram	=>	$say_free_ram,
-				requested_ram	=>	$say_requested,
-			}});
+			my $say_free_ram  = $an->Readable->bytes_to_hr({'bytes' => $available_ram });
+			my $say_requested = $an->Readable->bytes_to_hr({'bytes' => $requested_ram });
+			my $say_row       = $an->String->get({key => "row_0108"});
+			my $say_message   = $an->String->get({key => "message_0133", variables => { 
+					free_ram	=>	$say_free_ram,
+					requested_ram	=>	$say_requested,
+				}});
 			push @errors, "$say_row#!#$say_message";
 		}
 		else
@@ -6403,8 +6356,8 @@ sub verify_vm_config
 			elsif ($conf->{new_vm}{host_node} ne $say_node)
 			{
 				# Conflicting Storage
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0109"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0134"});
+				my $say_row     = $an->String->get({key => "row_0109"});
+				my $say_message = $an->String->get({key => "message_0134"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			
@@ -6430,7 +6383,7 @@ sub verify_vm_config
 						name2 => "cgi::${vg_suffix_key}", value2 => $conf->{cgi}{$vg_suffix_key},
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $lv_size = AN::Cluster::hr_to_bytes($conf, $lv_size, $conf->{cgi}{$vg_suffix_key});
+					my $lv_size = $an->Readable->hr_to_bytes({size => $lv_size, type => $conf->{cgi}{$vg_suffix_key} });
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "> lv_size", value1 => $lv_size,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -6464,16 +6417,16 @@ sub verify_vm_config
 			else
 			{
 				# Dude, where's my ISO?
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0110"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0135"});
+				my $say_row     = $an->String->get({key => "row_0110"});
+				my $say_message = $an->String->get({key => "message_0135"});
 				push @errors, "$say_row#!#$say_message";
 			}
 		}
 		else
 		{
 			# The user needs an install source...
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0110"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0136"});
+			my $say_row     = $an->String->get({key => "row_0110"});
+			my $say_message = $an->String->get({key => "message_0136"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -6522,8 +6475,8 @@ sub verify_vm_config
 			else
 			{
 				# Install media no longer exists.
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0111"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0137"});
+				my $say_row     = $an->String->get({key => "row_0111"});
+				my $say_message = $an->String->get({key => "message_0137"});
 				push @errors, "$say_row#!#$say_message";
 			}
 			
@@ -6556,16 +6509,16 @@ sub verify_vm_config
 			if (not $match)
 			{
 				# OS variant specified but invalid
-				my $say_row     = AN::Common::get_string($conf, {key => "row_0112"});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0138"});
+				my $say_row     = $an->String->get({key => "row_0112"});
+				my $say_message = $an->String->get({key => "message_0138"});
 				push @errors, "$say_row#!#$say_message";
 			}
 		}
 		else
 		{
 			# No OS variant specified.
-			my $say_row     = AN::Common::get_string($conf, {key => "row_0113"});
-			my $say_message = AN::Common::get_string($conf, {key => "message_0139"});
+			my $say_row     = $an->String->get({key => "row_0113"});
+			my $say_message = $an->String->get({key => "message_0139"});
 			push @errors, "$say_row#!#$say_message";
 		}
 		
@@ -6640,7 +6593,7 @@ sub confirm_provision_vm
 			name1 => "storage", value1 => $storage,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
-		my $say_max_storage          =  AN::Cluster::bytes_to_hr($conf, $space);
+		my $say_max_storage          =  $an->Readable->bytes_to_hr({'bytes' => $space });
 		$say_max_storage             =~ s/\.(\d+)//;
 		$conf->{cgi}{vg_list}        .= "$vg,";
 		my $vg_key                   =  "vg_$vg";
@@ -6709,7 +6662,7 @@ sub confirm_provision_vm
 	$say_selects .= AN::Common::template($conf, "server.html", "provision-server-vg-list-hidden-input", {
 		vg_list	=>	$conf->{cgi}{vg_list},
 	});
-	my $say_max_ram          = AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{max_ram});
+	my $say_max_ram          = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{max_ram} });
 	$conf->{cgi}{ram}        = 2 if not $conf->{cgi}{ram};
 	$conf->{cgi}{ram_suffix} = "GiB" if not $conf->{cgi}{ram_suffix};
 	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
@@ -6718,9 +6671,9 @@ sub confirm_provision_vm
 	my $select_driver_iso    = AN::Cluster::build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
 	my $select_os_variant    = AN::Cluster::build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{sys}{os_variant});
 	
-	my $say_title = AN::Common::get_string($conf, {key => "message_0142", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_title = $an->String->get({key => "message_0142", variables => { 
+			anvil	=>	$conf->{cgi}{cluster},
+		}});
 	print AN::Common::template($conf, "server.html", "provision-server-questions", {
 		title			=>	$say_title,
 		name			=>	$conf->{cgi}{name},
@@ -6751,13 +6704,11 @@ sub confirm_withdraw_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0035", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-		anvil		=>	$conf->{cgi}{cluster},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0145", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title = $an->String->get({key => "title_0035", variables => { 
+			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+			anvil		=>	$conf->{cgi}{cluster},
+		}});
+	my $say_message = $an->String->get({key => "message_0145", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	print AN::Common::template($conf, "server.html", "confirm-withdrawl", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6775,13 +6726,11 @@ sub confirm_join_cluster
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_join_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0036", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-		anvil		=>	$conf->{cgi}{cluster},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0147", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title = $an->String->get({key => "title_0036", variables => { 
+			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+			anvil		=>	$conf->{cgi}{cluster},
+		}});
+	my $say_message = $an->String->get({key => "message_0147", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	print AN::Common::template($conf, "server.html", "confirm-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6799,12 +6748,8 @@ sub confirm_dual_join
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0037", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0150", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_title   = $an->String->get({key => "title_0037", variables => { anvil => $conf->{cgi}{cluster} }});
+	my $say_message = $an->String->get({key => "message_0150", variables => { anvil => $conf->{cgi}{cluster} }});
 	print AN::Common::template($conf, "server.html", "confirm-dual-join-anvil", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6822,12 +6767,8 @@ sub confirm_fence_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0038", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0151", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title   = $an->String->get({key => "title_0038", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0151", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	my $expire_time = time + $conf->{sys}{actime_timeout};
 	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-fence-node", {
@@ -6847,12 +6788,8 @@ sub confirm_poweroff_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0039", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0156", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title   = $an->String->get({key => "title_0039", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0156", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	my $expire_time = time + $conf->{sys}{actime_timeout};
 	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-poweroff-node", {
@@ -6872,12 +6809,8 @@ sub confirm_poweron_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0040", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0160", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title   = $an->String->get({key => "title_0040", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0160", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	print AN::Common::template($conf, "server.html", "confirm-poweron-node", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6895,9 +6828,7 @@ sub confirm_dual_boot
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_message = AN::Common::get_string($conf, {key => "message_0161", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_message = $an->String->get({key => "message_0161", variables => { anvil => $conf->{cgi}{cluster} }});
 	print AN::Common::template($conf, "server.html", "confirm-dual-poweron-node", {
 		message		=>	$say_message,
 		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
@@ -6914,22 +6845,16 @@ sub confirm_cold_stop_anvil
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_message = AN::Common::get_string($conf, {key => "message_0418", variables => {
-		anvil	=>	$conf->{cgi}{cluster},
-	}});
+	my $say_message = $an->String->get({key => "message_0418", variables => { anvil => $conf->{cgi}{cluster} }});
 	
 	# If there is a subtype, use a different warning.
 	if ($conf->{cgi}{subtask} eq "power_cycle")
 	{
-		$say_message = AN::Common::get_string($conf, {key => "message_0439", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		$say_message = $an->String->get({key => "message_0439", variables => { anvil => $conf->{cgi}{cluster} }});
 	}
 	elsif($conf->{cgi}{subtask} eq "power_off")
 	{
-		$say_message = AN::Common::get_string($conf, {key => "message_0440", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		$say_message = $an->String->get({key => "message_0440", variables => { anvil => $conf->{cgi}{cluster} }});
 	}
 	
 	my $expire_time = time + $conf->{sys}{actime_timeout};
@@ -6950,14 +6875,14 @@ sub confirm_start_vm
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0042", variables => {
-		server		=>	$conf->{cgi}{vm},
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0163", variables => {
-		server		=>	$conf->{cgi}{vm},
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title = $an->String->get({key => "title_0042", variables => { 
+			server		=>	$conf->{cgi}{vm},
+			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+		}});
+	my $say_message = $an->String->get({key => "message_0163", variables => { 
+			server		=>	$conf->{cgi}{vm},
+			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+		}});
 	print AN::Common::template($conf, "server.html", "confirm-start-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -6975,19 +6900,13 @@ sub confirm_stop_vm
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0043", variables => {
-		server		=>	$conf->{cgi}{vm},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0165", variables => {
-		server		=>	$conf->{cgi}{vm},
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
-	my $say_warning = AN::Common::get_string($conf, {key => "message_0166", variables => {
-		server		=>	$conf->{cgi}{vm},
-	}});
-	my $say_precaution = AN::Common::get_string($conf, {key => "message_0167", variables => {
-		node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-	}});
+	my $say_title   = $an->String->get({key => "title_0043", variables => { server => $conf->{cgi}{vm} }});
+	my $say_message = $an->String->get({key => "message_0165", variables => { 
+			server		=>	$conf->{cgi}{vm},
+			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+		}});
+	my $say_warning    = $an->String->get({key => "message_0166", variables => { server => $conf->{cgi}{vm} }});
+	my $say_precaution = $an->String->get({key => "message_0167", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 	my $expire_time = time + $conf->{sys}{actime_timeout};
 	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-stop-server", {
@@ -7009,13 +6928,11 @@ sub confirm_force_off_vm
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_force_off_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0044", variables => {
-		server		=>	$conf->{cgi}{vm},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0168", variables => {
-		server		=>	$conf->{cgi}{vm},
-		host		=>	$conf->{cgi}{host},
-	}});
+	my $say_title   = $an->String->get({key => "title_0044", variables => { server => $conf->{cgi}{vm} }});
+	my $say_message = $an->String->get({key => "message_0168", variables => { 
+			server	=>	$conf->{cgi}{vm},
+			host	=>	$conf->{cgi}{host},
+		}});
 	my $expire_time = time + $conf->{sys}{actime_timeout};
 	$conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print AN::Common::template($conf, "server.html", "confirm-force-off-server", {
@@ -7035,12 +6952,8 @@ sub confirm_delete_vm
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_delete_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0045", variables => {
-		server		=>	$conf->{cgi}{vm},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0178", variables => {
-		server		=>	$conf->{cgi}{vm},
-	}});
+	my $say_title   = $an->String->get({key => "title_0045", variables => { server => $conf->{cgi}{vm} }});
+	my $say_message = $an->String->get({key => "message_0178", variables => { server => $conf->{cgi}{vm} }});
 	print AN::Common::template($conf, "server.html", "confirm-delete-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -7062,16 +6975,16 @@ sub confirm_migrate_vm
 	$migration_time_estimate *= 10; # ~10s / GB
 
 	# Ask the user to confirm
-	my $say_title = AN::Common::get_string($conf, {key => "title_0047", variables => {
-		server		=>	$conf->{cgi}{vm},
-		target		=>	$conf->{cgi}{target},
-	}});
-	my $say_message = AN::Common::get_string($conf, {key => "message_0177", variables => {
-		server			=>	$conf->{cgi}{vm},
-		target			=>	$conf->{cgi}{target},
-		ram			=>	AN::Cluster::bytes_to_hr($conf, $conf->{cgi}{vm_ram}),
-		migration_time_estimate	=>	$migration_time_estimate,
-	}});
+	my $say_title = $an->String->get({key => "title_0047", variables => { 
+			server	=>	$conf->{cgi}{vm},
+			target	=>	$conf->{cgi}{target},
+		}});
+	my $say_message = $an->String->get({key => "message_0177", variables => { 
+			server			=>	$conf->{cgi}{vm},
+			target			=>	$conf->{cgi}{target},
+			ram			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{vm_ram} }),
+			migration_time_estimate	=>	$migration_time_estimate,
+		}});
 	print AN::Common::template($conf, "server.html", "confirm-migrate-server", {
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -7112,10 +7025,10 @@ sub start_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ready)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0046", variables => {
-			server		=>	$say_vm,
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title = $an->String->get({key => "title_0046", variables => { 
+				server		=>	$say_vm,
+				node_anvil_name	=>	$node_cluster_name,
+			}});
 		print AN::Common::template($conf, "server.html", "start-server-header", {
 			title		=>	$say_title,
 		});
@@ -7304,14 +7217,14 @@ WHERE
 	else
 	{
 		# The target node is not ready to run a server.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0048", variables => {
-			server		=>	$vm,
-			node_anvil_name	=>	$node_cluster_name,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0184", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-			server		=>	$vm,
-		}});
+		my $say_title = $an->String->get({key => "title_0048", variables => { 
+				server		=>	$vm,
+				node_anvil_name	=>	$node_cluster_name,
+			}});
+		my $say_message = $an->String->get({key => "message_0184", variables => { 
+				node_anvil_name	=>	$node_cluster_name,
+				server		=>	$vm,
+			}});
 		print AN::Common::template($conf, "server.html", "start-server-node-not-ready", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -7378,10 +7291,10 @@ sub migrate_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ready)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0049", variables => {
-			server	=>	$vm,
-			target	=>	$target,
-		}});
+		my $say_title = $an->String->get({key => "title_0049", variables => { 
+				server	=>	$vm,
+				target	=>	$target,
+			}});
 		print AN::Common::template($conf, "server.html", "migrate-server-header", {
 			title	=>	$say_title,
 		});
@@ -7427,14 +7340,14 @@ sub migrate_vm
 	else
 	{
 		# Target not ready
-		my $say_title = AN::Common::get_string($conf, {key => "title_0050", variables => {
-			server	=>	$vm,
-			target	=>	$target,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0187", variables => {
-			server	=>	$vm,
-			target	=>	$target,
-		}});
+		my $say_title = $an->String->get({key => "title_0050", variables => { 
+				server	=>	$vm,
+				target	=>	$target,
+			}});
+		my $say_message = $an->String->get({key => "message_0187", variables => { 
+				server	=>	$vm,
+				target	=>	$target,
+			}});
 		print AN::Common::template($conf, "server.html", "migrate-server-target-not-ready", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -7467,10 +7380,8 @@ sub stop_vm
 	if (time > $conf->{cgi}{expire})
 	{
 		# Abort!
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0185"});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0444", variables => {
-			server	=>	$conf->{cgi}{vm},
-		}});
+		my $say_title   = $an->String->get({key => "title_0185"});
+		my $say_message = $an->String->get({key => "message_0444", variables => { server => $conf->{cgi}{vm} }});
 		print AN::Common::template($conf, "server.html", "request-expired", {
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -7479,9 +7390,7 @@ sub stop_vm
 	}
 	
 	AN::Cluster::scan_cluster($conf);
-	my $say_title = AN::Common::get_string($conf, {key => "title_0051", variables => {
-		server	=>	$vm,
-	}});
+	my $say_title = $an->String->get({key => "title_0051", variables => { server => $vm }});
 	print AN::Common::template($conf, "server.html", "stop-server-header", {
 		title	=>	$say_title,
 	});
@@ -7578,10 +7487,10 @@ sub join_cluster
 	}
 	if ($proceed)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0052", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-			anvil		=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title = $an->String->get({key => "title_0052", variables => { 
+				node_anvil_name	=>	$node_cluster_name,
+				anvil		=>	$conf->{cgi}{cluster},
+			}});
 		print AN::Common::template($conf, "server.html", "join-anvil-header", {
 			title	=>	$say_title,
 		});
@@ -7626,10 +7535,10 @@ sub join_cluster
 	else
 	{
 		# Node is already in the Anvil!
-		my $say_title = AN::Common::get_string($conf, {key => "title_0053", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-			anvil		=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title = $an->String->get({key => "title_0053", variables => { 
+				node_anvil_name	=>	$node_cluster_name,
+				anvil		=>	$conf->{cgi}{cluster},
+			}});
 		print AN::Common::template($conf, "server.html", "join-anvil-aborted", {
 			title	=>	$say_title,
 		});
@@ -7666,17 +7575,13 @@ sub dual_join
 		{
 			$proceed = 0;
 			# Already joined the Anvil!
-			my $reason = AN::Common::get_string($conf, {key => "message_0190", variables => {
-				node	=>	$node,
-			}});
+			my $reason = $an->String->get({key => "message_0190", variables => { node => $node }});
 			push @abort_reason, $reason;
 		}
 	}
 	if ($proceed)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0054", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $conf->{cgi}{cluster} }});
 		print AN::Common::template($conf, "server.html", "dual-join-anvil-header", {
 			title	=>	$say_title,
 		});
@@ -7736,9 +7641,7 @@ sub dual_join
 	}
 	else
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0055", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title = $an->String->get({key => "title_0055", variables => { anvil => $conf->{cgi}{cluster} }});
 		print AN::Common::template($conf, "server.html", "dual-join-anvil-aborted-header", {
 			title	=>	$say_title,
 		});
@@ -7776,10 +7679,8 @@ sub force_off_vm
 	if (time > $conf->{cgi}{expire})
 	{
 		# Abort!
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0186"});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0445", variables => {
-			server	=>	$conf->{cgi}{vm},
-		}});
+		my $say_title   = $an->String->get({key => "title_0186"});
+		my $say_message = $an->String->get({key => "message_0445", variables => { server => $conf->{cgi}{vm} }});
 		print AN::Common::template($conf, "server.html", "request-expired", {
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -7788,9 +7689,7 @@ sub force_off_vm
 	}
 	
 	AN::Cluster::scan_cluster($conf);
-	my $say_title = AN::Common::get_string($conf, {key => "title_0056", variables => {
-		server	=>	$vm,
-	}});
+	my $say_title = $an->String->get({key => "title_0056", variables => { server => $vm }});
 	print AN::Common::template($conf, "server.html", "force-off-server-header", {
 		title	=>	$say_title,
 	});
@@ -7868,10 +7767,8 @@ sub delete_vm
 	{
 		$proceed      = 0;
 		# Failed to read the server's details.
-		my $sat_problem = AN::Common::get_string($conf, {key => "message_0195", variables => {
-			server	=>	$say_vm,
-		}});
-		$abort_reason = "<b>$sat_problem!</b><br />#!string!message_0194!#<br />#!string!explain_0035!#<br />#!string!brand_0011!#<br />";
+		my $sat_problem  = $an->String->get({key => "message_0195", variables => { server => $say_vm }});
+		   $abort_reason = "<b>$sat_problem!</b><br />#!string!message_0194!#<br />#!string!explain_0035!#<br />#!string!brand_0011!#<br />";
 	}
 	elsif ($conf->{vm}{$vm}{host} ne "none")
 	{
@@ -7894,9 +7791,7 @@ sub delete_vm
 		{
 			$proceed      = 0;
 			# Neither node is online.
-			$abort_reason = AN::Common::get_string($conf, {key => "message_0196", variables => {
-				server	=>	$say_vm,
-			}});
+			$abort_reason = $an->String->get({key => "message_0196", variables => { server => $say_vm }});
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -7905,9 +7800,7 @@ sub delete_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Get to work!
-	my $say_title = AN::Common::get_string($conf, {key => "title_0057", variables => {
-		server	=>	$vm,
-	}});
+	my $say_title = $an->String->get({key => "title_0057", variables => { server => $vm }});
 	print AN::Common::template($conf, "server.html", "delete-server-header", {
 		title	=>	$say_title,
 	});
@@ -7968,9 +7861,7 @@ sub delete_vm
 		}
 		else
 		{
-			my $say_error = AN::Common::get_string($conf, {key => "message_0198", variables => {
-				ccs_exit_code	=>	$ccs_exit_code,
-			}});
+			my $say_error = $an->String->get({key => "message_0198", variables => { ccs_exit_code => $ccs_exit_code }});
 			print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 				error	=>	$say_error,
 			});
@@ -8034,9 +7925,7 @@ sub delete_vm
 			else
 			{
 				# This is fatal
-				my $say_error = AN::Common::get_string($conf, {key => "message_0200", variables => {
-					virsh_exit_code	=>	$virsh_exit_code,
-				}});
+				my $say_error = $an->String->get({key => "message_0200", variables => { virsh_exit_code => $virsh_exit_code }});
 				print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 					error	=>	$say_error,
 				});
@@ -8101,9 +7990,7 @@ sub delete_vm
 				}
 				else
 				{
-					my $say_error = AN::Common::get_string($conf, {key => "message_0204", variables => {
-						lvremove_exit_code	=>	$lvremove_exit_code,
-					}});
+					my $say_error = $an->String->get({key => "message_0204", variables => { lvremove_exit_code => $lvremove_exit_code }});
 					print AN::Common::template($conf, "server.html", "delete-server-bad-exit-code", {
 						error			=>	$say_error,
 					});
@@ -8139,9 +8026,9 @@ WHERE
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 			
-			# variables hash feeds 'message_0205'.
-			print AN::Common::template($conf, "server.html", "delete-server-success", {}, {
-				server	=>	$say_vm,
+			my $message = $an->String->get({key => "message_0205", variables => { server => $say_vm }});
+			print AN::Common::template($conf, "server.html", "delete-server-success", {
+				message	=>	$message,
 			});
 		}
 	}
@@ -8169,10 +8056,10 @@ sub remove_vm_definition
 	# We only delete server definition files.
 	if ($file !~ /^\/shared\/definitions\/.*?\.xml/)
 	{
-		# We will only touch files in /shared/definitions
-		# The variables hash feeds 'message_0207'.
-		print AN::Common::template($conf, "server.html", "remove-vm-definition-wrong-definition-file", {}, {
-			file	=>	$file,
+		# We will only touch files in /shared/definitions.
+		my $message = $an->String->get({key => "message_0207", variables => { file => $file }});
+		print AN::Common::template($conf, "server.html", "remove-vm-definition-wrong-definition-file", {
+			message	=>	$message,
 		});
 		return (1);
 	}
@@ -8229,10 +8116,12 @@ sub remove_vm_definition
 	else
 	{
 		# Delete seems to have failed
-		# The variables hash feeds 'message_0210'
-		print AN::Common::template($conf, "server.html", "remove-vm-definition-failed", {}, {
+		my $message = $an->String->get({key => "message_0210", variables => { 
 			file		=>	$file,
 			ls_exit_code	=>	$ls_exit_code,
+		}});
+		print AN::Common::template($conf, "server.html", "remove-vm-definition-failed", {
+			message	=>	$message,
 		});
 	}
 	
@@ -8330,10 +8219,10 @@ sub archive_file
 			{
 				print AN::Common::template($conf, "server.html", "one-line-message-header");
 			}
-			my $message = AN::Common::get_string($conf, {key => "message_0211", variables => {
-				file		=>	$file,
-				destination	=>	$destination,
-			}});
+			my $message = $an->String->get({key => "message_0211", variables => { 
+					file		=>	$file,
+					destination	=>	$destination,
+				}});
 			print AN::Common::template($conf, "server.html", "one-line-message", {
 				message	=>	$message,
 			});
@@ -8347,11 +8236,13 @@ sub archive_file
 	else
 	{
 		# Failure
-		# The variables hash feeds 'message_0212'.
-		print AN::Common::template($conf, "server.html", "archive-file-failed", {}, {
+		my $message = $an->String->get({key => "message_0212", variables => { 
 			file		=>	$file,
 			destination	=>	$destination,
 			cp_exit_code	=>	$cp_exit_code,
+		}});
+		print AN::Common::template($conf, "server.html", "archive-file-failed", {
+			message	=>	$message,
 		});
 		$destination = 0;
 	}
@@ -8378,10 +8269,8 @@ sub poweroff_node
 	if (time > $conf->{cgi}{expire})
 	{
 		# Abort!
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0187"});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0446", variables => {
-			node	=>	$conf->{cgi}{node_cluster_name},
-		}});
+		my $say_title   = $an->String->get({key => "title_0187"});
+		my $say_message = $an->String->get({key => "message_0446", variables => { node => $conf->{cgi}{node_cluster_name} }});
 		print AN::Common::template($conf, "server.html", "request-expired", {
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -8399,12 +8288,8 @@ sub poweroff_node
 	if ($proceed)
 	{
 		# Call the 'poweroff'.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0061", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0213", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title   = $an->String->get({key => "title_0061", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0213", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "poweroff-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -8455,12 +8340,8 @@ sub poweroff_node
 	else
 	{
 		# Aborted, in use now.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0062", variables => {
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0214", variables => {
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-		}});
+		my $say_title   = $an->String->get({key => "title_0062", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+		my $say_message = $an->String->get({key => "message_0214", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
 		print AN::Common::template($conf, "server.html", "poweroff-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -8494,10 +8375,8 @@ sub cold_stop_anvil
 	if (time > $conf->{cgi}{expire})
 	{
 		# Abort!
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0184"});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0443", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title   = $an->String->get({key => "title_0184"});
+		my $say_message = $an->String->get({key => "message_0443", variables => { anvil => $conf->{cgi}{cluster} }});
 		print AN::Common::template($conf, "server.html", "request-expired", {
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -8513,9 +8392,7 @@ sub cold_stop_anvil
 	# kick script.
 	if ($conf->{sys}{up_nodes} > 0)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0181", variables => {
-			anvil	=>	$anvil,
-		}});
+		my $say_title = $an->String->get({key => "title_0181", variables => { anvil => $anvil }});
 		print AN::Common::template($conf, "server.html", "cold-stop-header", {
 			title		=>	$say_title,
 		});
@@ -8539,9 +8416,7 @@ sub cold_stop_anvil
 				# Stop the server
 				my $say_server  =  $server;
 				   $say_server  =~ s/^vm://;
-				my $say_message =  AN::Common::get_string($conf, {key => "message_0420", variables => {
-					server	=>	$say_server,
-				}});
+				my $say_message =  $an->String->get({key => "message_0420", variables => { server => $say_server }});
 				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 					row_class	=>	"highlight_detail_bold",
 					row		=>	"#!string!row_0270!#",
@@ -8615,9 +8490,7 @@ sub cold_stop_anvil
 				   $proceed     =  0;
 				my $say_server  =  $server;
 				   $say_server  =~ s/^vm://;
-				my $say_message =  AN::Common::get_string($conf, {key => "message_0421", variables => {
-					server	=>	$say_server,
-				}});
+				my $say_message =  $an->String->get({key => "message_0421", variables => { server => $say_server }});
 				print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 					row_class	=>	"highlight_detail_bold",
 					row		=>	"#!string!row_0270!#",
@@ -8658,9 +8531,7 @@ sub cold_stop_anvil
 					$an->Log->entry({log_level => 2, message_key => "log_0245", message_variables => {
 						node => $node, 
 					}, file => $THIS_FILE, line => __LINE__});
-					my $say_message = AN::Common::get_string($conf, {key => "message_0424", variables => {
-						node	=>	$node,
-					}});
+					my $say_message = $an->String->get({key => "message_0424", variables => { node => $node }});
 					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 						row_class	=>	"highlight_good_bold",
 						row		=>	"#!string!row_0271!#",
@@ -8672,9 +8543,7 @@ sub cold_stop_anvil
 				{
 					# Withdraw
 					$an->Log->entry({log_level => 2, message_key => "log_0246", file => $THIS_FILE, line => __LINE__});
-					my $say_message = AN::Common::get_string($conf, {key => "message_0425", variables => {
-						node	=>	$node,
-					}});
+					my $say_message = $an->String->get({key => "message_0425", variables => { node => $node }});
 					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 						row_class	=>	"highlight_good_bold",
 						row		=>	"#!string!row_0271!#",
@@ -8781,9 +8650,7 @@ sub cold_stop_anvil
 					$an->Log->entry({log_level => 1, message_key => "log_0251", message_variables => {
 						node => $node, 
 					}, file => $THIS_FILE, line => __LINE__});
-					my $say_message = AN::Common::get_string($conf, {key => "message_0430", variables => {
-						node	=>	$node,
-					}});
+					my $say_message = $an->String->get({key => "message_0430", variables => { node => $node }});
 					print AN::Common::template($conf, "server.html", "cold-stop-entry", {
 						row_class	=>	"highlight_good_bold",
 						row		=>	"#!string!row_0272!#",
@@ -8874,9 +8741,7 @@ poweroff";
 	{
 		# The user called this while the Anvil! was down, so don't throw a warning.
 		my $say_subtask = $conf->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0153", variables => {
-			subtask	=>	$say_subtask,
-		}});
+		my $say_title   = $an->String->get({key => "title_0153", variables => { subtask => $say_subtask }});
 		print AN::Common::template($conf, "server.html", "cold-stop-header", {
 			title		=>	$say_title,
 		});
@@ -8884,12 +8749,8 @@ poweroff";
 	else
 	{
 		# Already down, abort.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0180", variables => {
-			anvil	=>	$anvil,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0419", variables => {
-			anvil	=>	$anvil,
-		}});
+		my $say_title   = $an->String->get({key => "title_0180", variables => { anvil => $anvil }});
+		my $say_message = $an->String->get({key => "message_0419", variables => { anvil => $anvil }});
 		print AN::Common::template($conf, "server.html", "cold-stop-aborted", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -8982,9 +8843,7 @@ sub dual_boot
 		if (not $conf->{node}{$node}{info}{power_check_command})
 		{
 			# No cache
-			my $reason = AN::Common::get_string($conf, {key => "message_0215", variables => {
-				node	=>	$node,
-			}});
+			my $reason = $an->String->get({key => "message_0215", variables => { node => $node }});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
@@ -8997,9 +8856,7 @@ sub dual_boot
 		if ($conf->{node}{$node}{is_on} == 1)
 		{
 			# Already on.
-			my $reason = AN::Common::get_string($conf, {key => "message_0216", variables => {
-				node	=>	$node,
-			}});
+			my $reason = $an->String->get({key => "message_0216", variables => { node => $node }});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
@@ -9007,10 +8864,10 @@ sub dual_boot
 		{
 			# Can't reach IPMI interface
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = AN::Common::get_string($conf, {key => "message_0217", variables => {
-				node		=>	$node,
-				target_host	=>	$target_host,
-			}});
+			my $reason        = $an->String->get({key => "message_0217", variables => { 
+					node		=>	$node,
+					target_host	=>	$target_host,
+				}});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
@@ -9018,10 +8875,10 @@ sub dual_boot
 		{
 			# Not on the IPMI interface's subnet
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = AN::Common::get_string($conf, {key => "message_0218", variables => {
-				node		=>	$node,
-				target_host	=>	$target_host,
-			}});
+			my $reason        = $an->String->get({key => "message_0218", variables => { 
+					node		=>	$node,
+					target_host	=>	$target_host,
+				}});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
@@ -9029,25 +8886,23 @@ sub dual_boot
 		{
 			# Cache found, but no power command recorded
 			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
-			my $reason = AN::Common::get_string($conf, {key => "message_0219", variables => {
-				node		=>	$node,
-				target_host	=>	$target_host,
-			}});
+			my $reason        = $an->String->get({key => "message_0219", variables => { 
+					node		=>	$node,
+					target_host	=>	$target_host,
+				}});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
 		
 		# Still alive?
-		$shell_call .= "$conf->{node}{$node}{info}{power_check_command} -o on; ";
+		$shell_call .= $conf->{node}{$node}{info}{power_check_command}." -o on; ";
 		push @{$booted_nodes}, $node;
 	}
 	
 	# Let's go
 	if ($proceed)
 	{
-		my $say_message = AN::Common::get_string($conf, {key => "message_0220", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		my $say_message = $an->String->get({key => "message_0220", variables => { anvil => $conf->{cgi}{cluster} }});
 		print AN::Common::template($conf, "server.html", "dual-boot-header", {
 			message	=>	$say_message,
 		});
@@ -9092,9 +8947,7 @@ sub dual_boot
 	else
 	{
 		# Abort, abort!
-		my $say_title= AN::Common::get_string($conf, {key => "title_0064", variables => {
-			anvil	=>	$conf->{cgi}{cluster},
-		}});
+		my $say_title= $an->String->get({key => "title_0064", variables => { anvil => $conf->{cgi}{cluster} }});
 		print AN::Common::template($conf, "server.html", "dual-boot-aborted-header", {
 			title	=>	$say_title,
 		});
@@ -9134,9 +8987,7 @@ sub poweron_node
 	
 	my $proceed = 0;
 	# Unknown error is the default.
-	my $abort_reason = AN::Common::get_string($conf, {key => "message_0224", variables => {
-		node	=>	$node,
-	}});
+	my $abort_reason = $an->String->get({key => "message_0224", variables => { node => $node }});
 	if ($conf->{node}{$node}{is_on} == 0)
 	{
 		$proceed = 1;
@@ -9144,16 +8995,12 @@ sub poweron_node
 	elsif ($conf->{node}{$node}{is_on} == 1)
 	{
 		# Already on
-		$abort_reason = AN::Common::get_string($conf, {key => "message_0225", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		$abort_reason = $an->String->get({key => "message_0225", variables => { node_anvil_name => $node_cluster_name }});
 	}
 	elsif ($conf->{node}{$node}{is_on} == 2)
 	{
 		# Unable to contact the IPMI BMC
-		$abort_reason = AN::Common::get_string($conf, {key => "message_0226", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		$abort_reason = $an->String->get({key => "message_0226", variables => { node_anvil_name => $node_cluster_name }});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",    value1 => $node,
@@ -9162,12 +9009,8 @@ sub poweron_node
 	if ($proceed)
 	{
 		# It is still off.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0065", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0222", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title   = $an->String->get({key => "title_0065", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0222", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "poweron-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -9195,7 +9038,7 @@ sub poweron_node
 			if (not $conf->{node}{$node}{info}{power_check_command})
 			{
 				# Can't find the power command on the peer
-				my $error = AN::Common::get_string($conf, {key => "message_0227", variables => {
+				my $error = $an->String->get({key => "message_0227", variables => { 
 						node	=>	$node,
 						peer	=>	$peer,
 					}});
@@ -9281,12 +9124,8 @@ sub poweron_node
 			else
 			{
 				# Can't check the power.
-				my $say_title = AN::Common::get_string($conf, {key => "title_0066", variables => {
-					node_anvil_name	=>	$node_cluster_name,
-				}});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0228", variables => {
-					node_anvil_name	=>	$node_cluster_name,
-				}});
+				my $say_title   = $an->String->get({key => "title_0066", variables => { node_anvil_name => $node_cluster_name }});
+				my $say_message = $an->String->get({key => "message_0228", variables => { node_anvil_name => $node_cluster_name }});
 				print AN::Common::template($conf, "server.html", "poweron-node-failed", {
 					title	=>	$say_title,
 					message	=>	$say_message,
@@ -9297,9 +9136,7 @@ sub poweron_node
 	else
 	{
 		# Poweron aborted
-		my $say_title = AN::Common::get_string($conf, {key => "title_0067", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title = $an->String->get({key => "title_0067", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "poweron-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$abort_reason,
@@ -9336,10 +9173,8 @@ sub fence_node
 	if (time > $conf->{cgi}{expire})
 	{
 		# Abort!
-		my $say_title   = AN::Common::get_string($conf, {key => "title_0188"});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0447", variables => {
-			node	=>	$conf->{cgi}{node_cluster_name},
-		}});
+		my $say_title   = $an->String->get({key => "title_0188"});
+		my $say_message = $an->String->get({key => "message_0447", variables => { node => $conf->{cgi}{node_cluster_name} }});
 		print AN::Common::template($conf, "server.html", "request-expired", {
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -9367,10 +9202,8 @@ sub fence_node
 		}
 		else
 		{
-			$proceed      = 0;
-			my $reason = AN::Common::get_string($conf, {key => "message_0231", variables => {
-				node	=>	$node,
-			}});
+			   $proceed = 0;
+			my $reason  = $an->String->get({key => "message_0231", variables => { node => $node }});
 			push @abort_reason, "$reason\n";
 		}
 	}
@@ -9389,12 +9222,12 @@ sub fence_node
 				my ($local_access, $target_ip) = AN::Cluster::on_same_network($conf, $address, $node);
 				if (not $local_access)
 				{
-					$proceed = 0;
-					my $reason = AN::Common::get_string($conf, {key => "message_0232", variables => {
-						node	=>	$node,
-						peer	=>	$peer,
-						address	=>	$address,
-					}});
+					   $proceed = 0;
+					my $reason  = $an->String->get({key => "message_0232", variables => { 
+							node	=>	$node,
+							peer	=>	$peer,
+							address	=>	$address,
+						}});
 					push @abort_reason, "$reason\n";
 				}
 			}
@@ -9407,12 +9240,8 @@ sub fence_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0068", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0233", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "fence-node-header", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -9523,9 +9352,7 @@ sub fence_node
 				$an->Log->entry({log_level => 2, message_key => "log_0253", message_variables => {
 					method_name => $method_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0234", variables => {
-					method_name	=>	$method_name,
-				}});
+				my $say_message = $an->String->get({key => "message_0234", variables => { method_name => $method_name }});
 				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
@@ -9537,9 +9364,7 @@ sub fence_node
 				$an->Log->entry({log_level => 2, message_key => "log_0254", message_variables => {
 					method_name => $method_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0235", variables => {
-					method_name	=>	$method_name,
-				}});
+				my $say_message = $an->String->get({key => "message_0235", variables => { method_name => $method_name }});
 				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
@@ -9616,9 +9441,7 @@ sub fence_node
 				$an->Log->entry({log_level => 2, message_key => "log_0254", message_variables => {
 					method_name => $method_name, 
 				}, file => $THIS_FILE, line => __LINE__});
-				my $say_message = AN::Common::get_string($conf, {key => "message_0236", variables => {
-					method_name	=>	$method_name,
-				}});
+				my $say_message = $an->String->get({key => "message_0236", variables => { method_name => $method_name }});
 				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
@@ -9631,9 +9454,7 @@ sub fence_node
 				# This is allowed to go to the next fence method because some servers may 
 				# hang their IPMI interface after a fence call, requiring power to be cut in
 				# order to reset the BMC. HP, I'm looking at you and your DL1** G7 line...
-				my $say_message = AN::Common::get_string($conf, {key => "message_0237", variables => {
-					method_name	=>	$method_name,
-				}});
+				my $say_message = $an->String->get({key => "message_0237", variables => { method_name => $method_name }});
 				print AN::Common::template($conf, "server.html", "fence-node-message", {
 					message	=>	$say_message,
 				});
@@ -9642,9 +9463,7 @@ sub fence_node
 	}
 	else
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0069", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title = $an->String->get({key => "title_0069", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "fence-node-aborted-header", {
 			title	=>	$say_title,
 		});
@@ -9683,9 +9502,7 @@ sub withdraw_node
 	if ($proceed)
 	{
 		# Stop rgmanager and then check it's status.
-		my $say_title = AN::Common::get_string($conf, {key => "title_0070", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title = $an->String->get({key => "title_0070", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "withdraw-node-header", {
 			title	=>	$say_title,
 		});
@@ -9894,12 +9711,8 @@ sub withdraw_node
 	}
 	else
 	{
-		my $say_title = AN::Common::get_string($conf, {key => "title_0071", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
-		my $say_message = AN::Common::get_string($conf, {key => "message_0249", variables => {
-			node_anvil_name	=>	$node_cluster_name,
-		}});
+		my $say_title   = $an->String->get({key => "title_0071", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0249", variables => { node_anvil_name => $node_cluster_name }});
 		print AN::Common::template($conf, "server.html", "withdraw-node-aborted", {
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -9966,9 +9779,9 @@ sub recover_rgmanager
 		if ($storage_service)
 		{
 			# Need to rescan the Anvil!...
-			# variables hash feeds 'message_0251'
-			print AN::Common::template($conf, "server.html", "recover-resource-manager-check-storage", {}, {
-				storage_service	=>	$storage_service,
+			my $message = $an->String->get({key => "message_0251", variables => { storage_service => $storage_service }});
+			print AN::Common::template($conf, "server.html", "recover-resource-manager-check-storage", {
+				message	=>	$message,
 			});
 			
 			# I need to sleep for ~ten seconds to give time for 'clustat' to start showing the 
@@ -9986,12 +9799,8 @@ sub recover_rgmanager
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($storage_state =~ /Failed/i) 
 			{
-				my $say_failed = AN::Common::get_string($conf, {key => "message_0253", variables => {
-					storage_service	=>	$storage_service,
-				}});
-				my $say_cycle = AN::Common::get_string($conf, {key => "message_0254", variables => {
-					storage_service	=>	$storage_service,
-				}});
+				my $say_failed = $an->String->get({key => "message_0253", variables => { storage_service => $storage_service }});
+				my $say_cycle  = $an->String->get({key => "message_0254", variables => { storage_service => $storage_service }});
 				print AN::Common::template($conf, "server.html", "recover-resource-manager-cycle-storage-service", {
 					failed	=>	$say_failed,
 					cycle	=>	$say_cycle,
@@ -10047,9 +9856,7 @@ sub recover_rgmanager
 
 				if ($storage_stop)
 				{
-					my $say_stopped = AN::Common::get_string($conf, {key => "message_0255", variables => {
-						storage_service	=>	$storage_service,
-					}});
+					my $say_stopped = $an->String->get({key => "message_0255", variables => { storage_service => $storage_service }});
 					print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-stopped", {
 						stopped	=>	$say_stopped,
 					});
@@ -10103,12 +9910,8 @@ sub recover_rgmanager
 					if ($storage_start)
 					{
 						# Hoozah!
-						my $say_restarted = AN::Common::get_string($conf, {key => "message_0257", variables => {
-							storage_service	=>	$storage_service,
-						}});
-						my $say_advice = AN::Common::get_string($conf, {key => "message_0259", variables => {
-							node	=>	$node,
-						}});
+						my $say_restarted = $an->String->get({key => "message_0257", variables => { storage_service => $storage_service }});
+						my $say_advice    = $an->String->get({key => "message_0259", variables => { node => $node }});
 						print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-recovered", {
 							restarted	=>	$say_restarted,
 							advice		=>	$say_advice,
@@ -10117,9 +9920,7 @@ sub recover_rgmanager
 					else
 					{
 						# We're boned.
-						my $say_failed = AN::Common::get_string($conf, {key => "message_0262", variables => {
-							storage_service	=>	$storage_service,
-						}});
+						my $say_failed = $an->String->get({key => "message_0262", variables => { storage_service => $storage_service }});
 						print AN::Common::template($conf, "server.html", "recover-resource-manager-storage-service-unrecovered", {
 							failed	=>	$say_failed,
 						});
@@ -10128,9 +9929,7 @@ sub recover_rgmanager
 				else
 				{
 					# Failed to disable.
-					my $say_failed = AN::Common::get_string($conf, {key => "message_0263", variables => {
-						storage_service	=>	$storage_service,
-					}});
+					my $say_failed = $an->String->get({key => "message_0263", variables => { storage_service => $storage_service }});
 					print AN::Common::template($conf, "server.html", "recover-resource-manager-failed-to-disable", {
 						failed	=>	$say_failed,
 					});
@@ -10139,11 +9938,8 @@ sub recover_rgmanager
 			else
 			{
 				# Storage service is running, recovery unneeded.
-				# TODO: Check each individual storage service
-				# and restart each if needed.
-				my $say_abort = AN::Common::get_string($conf, {key => "message_0264", variables => {
-					storage_service	=>	$storage_service,
-				}});
+				# TODO: Check each individual storage service and restart each if needed.
+				my $say_abort = $an->String->get({key => "message_0264", variables => { storage_service => $storage_service }});
 				print AN::Common::template($conf, "server.html", "recover-resource-manager-abort-storage-recovery", {
 					abort	=>	$say_abort,
 				});
@@ -10467,7 +10263,7 @@ sub display_free_resources
 	}
 	
 	# Always knock off some RAM for the host OS.
-	my $real_total_ram            =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
+	my $real_total_ram            =  $an->Readable->bytes_to_hr({'bytes' => $conf->{resources}{total_ram} });
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB
 	# of total RAM. So we modulous off the difference, then subtract that
 	# plus the reserved RAM to get an even left-over amount of memory for
@@ -10476,12 +10272,12 @@ sub display_free_resources
 	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
 	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
 	my $free_ram                  =  $conf->{sys}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  $conf->{sys}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $free_ram);
-	my $say_total_ram             =  AN::Cluster::bytes_to_hr($conf, $conf->{resources}{total_ram});
-	my $say_allocated_ram         =  $conf->{sys}{gfs2_down}  ? "--" : AN::Cluster::bytes_to_hr($conf, $allocated_ram);
-	my $say_vg_size               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_size[0]);
-	my $say_vg_used               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_used[0]);
-	my $say_vg_free               =  $conf->{sys}{clvmd_down} ? "--" : AN::Cluster::bytes_to_hr($conf, $vg_free[0]);
+	my $say_free_ram              =  $conf->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $free_ram });
+	my $say_total_ram             =  $an->Readable->bytes_to_hr({'bytes' => $conf->{resources}{total_ram} });
+	my $say_allocated_ram         =  $conf->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $allocated_ram });
+	my $say_vg_size               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_size[0] });
+	my $say_vg_used               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_used[0] });
+	my $say_vg_free               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_free[0] });
 	my $say_vg                    =  $conf->{sys}{clvmd_down} ? "--" : $vg[0];
 	my $say_pv_name               =  $conf->{sys}{clvmd_down} ? "--" : $pv_name[0];
 	
@@ -10505,9 +10301,9 @@ sub display_free_resources
 	{
 		for (my $i=1; $i < @vg; $i++)
 		{
-			my $say_vg_size = AN::Cluster::bytes_to_hr($conf, $vg_size[$i]);
-			my $say_vg_used = AN::Cluster::bytes_to_hr($conf, $vg_used[$i]);
-			my $say_vg_free = AN::Cluster::bytes_to_hr($conf, $vg_free[$i]);
+			my $say_vg_size = $an->Readable->bytes_to_hr({'bytes' => $vg_size[$i] });
+			my $say_vg_used = $an->Readable->bytes_to_hr({'bytes' => $vg_used[$i] });
+			my $say_vg_free = $an->Readable->bytes_to_hr({'bytes' => $vg_free[$i] });
 			my $say_pv_name = $pv_name[$i];
 			$free_resources_panel .= AN::Common::template($conf, "server.html", "display-details-free-resources-entry-extra-storage", {
 				vg		=>	$vg[$i],
@@ -10645,7 +10441,7 @@ sub display_vm_details
 		next if $vm !~ /^vm/;
 		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $conf->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : AN::Cluster::bytes_to_hr($conf, $conf->{vm}{$vm}{details}{ram});
+		my $say_ram = $conf->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $conf->{vm}{$vm}{details}{ram} });
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "vm",      value1 => $vm,
 			name2 => "say_ram", value2 => $say_ram,
@@ -11063,7 +10859,7 @@ sub read_vm_definition
 			# Record the memory, multiple by 1024 to get bytes.
 			my $units                      =  $1;
 			my $ram                        =  $2;
-			$conf->{vm}{$vm}{details}{ram} = AN::Cluster::hr_to_bytes($conf, $ram, $units, 1);
+			$conf->{vm}{$vm}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "vm",  value1 => $vm,
 				name2 => "ram", value2 => $conf->{vm}{$vm}{details}{ram},
@@ -11230,7 +11026,7 @@ sub check_lv
 	}
 	
 	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $conf->{node}{$node}{lvm}{lv}{$lv}{active};
-	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = AN::Cluster::bytes_to_hr($conf, $conf->{node}{$node}{lvm}{lv}{$lv}{total_size});
+	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{lvm}{lv}{$lv}{total_size} });
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "node",         value1 => $node,
 		name2 => "VM",           value2 => $vm,
@@ -11383,10 +11179,10 @@ sub check_vms
 			}
 			$conf->{vm}{$vm}{say_node1} = "--";
 			$conf->{vm}{$vm}{say_node2} = "--";
-			my $say_error = AN::Common::get_string($conf, {key => "message_0271", variables => {
-				server	=>	$say_vm,
-				url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
-			}});
+			my $say_error = $an->String->get({key => "message_0271", variables => { 
+					server	=>	$say_vm,
+					url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
+				}});
 			AN::Cluster::error($conf, "$say_error", 0);
 			next;
 		}
@@ -11748,9 +11544,7 @@ sub display_vm_state_and_controls
 					name2 => "server_data->migration_type", value2 => $server_data->{migration_type},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			my $say_target = AN::Common::get_string($conf, {key => "button_0025", variables => {
-				migration_target	=>	$say_migration_target,
-			}});
+			my $say_target = $an->String->get({key => "button_0025", variables => { migration_target => $say_migration_target }});
 			$migrate_button = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
 				button_link	=>	$button_link,
 				button_text	=>	$say_target,

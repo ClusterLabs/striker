@@ -28,6 +28,7 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_owners
 # insert_or_update_recipients
 # insert_or_update_smtp
+# parse_anvil_data
 # parse_install_manifest
 # save_install_manifest
 
@@ -58,6 +59,7 @@ sub parent
 	
 	return ($self->{HANDLE}{TOOLS});
 }
+
 #############################################################################################################
 # Provided methods                                                                                          #
 #############################################################################################################
@@ -950,6 +952,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1019,6 +1024,9 @@ WHERE
     anvil_uuid        = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1132,6 +1140,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1216,6 +1227,9 @@ WHERE
     node_uuid        = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1303,6 +1317,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1372,6 +1389,9 @@ WHERE
     notify_uuid     = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1447,6 +1467,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1496,6 +1519,9 @@ WHERE
     owner_uuid    = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1579,6 +1605,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1638,6 +1667,9 @@ WHERE
     recipient_uuid         = ".$an->data->{sys}{use_db_fh}->quote($recipient_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1731,6 +1763,9 @@ INSERT INTO
 );
 ";
 		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -1810,12 +1845,290 @@ WHERE
     smtp_uuid           = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 
 ";
 				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
 	return($smtp_uuid);
+}
+
+# This uses the data from 'get_anvils()', 'get_nodes()' and 'get_owners()' and stores the data in 
+# '$an->data->{anvils}{<uuid>}{<values>}' as used in striker.
+sub parse_anvil_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $anvil_data = $an->ScanCore->get_anvils();
+	my $host_data  = $an->ScanCore->get_hosts();
+	my $node_data  = $an->ScanCore->get_nodes();
+	my $owner_data = $an->ScanCore->get_owners();
+	my $smtp_data  = $an->ScanCore->get_smtp();
+	
+	foreach my $hash_ref (@{$host_data})
+	{
+		# Get the host UUID
+		my $host_uuid = $hash_ref->{host_uuid};
+		
+		# Store the data
+		$an->data->{hosts}{$host_uuid}{name}           = $hash_ref->{host_name};
+		$an->data->{hosts}{$host_uuid}{type}           = $hash_ref->{host_type};
+		$an->data->{hosts}{$host_uuid}{health}         = $hash_ref->{host_health} ? $hash_ref->{host_health} : 0;
+		$an->data->{hosts}{$host_uuid}{emergency_stop} = $hash_ref->{host_emergency_stop};
+		$an->data->{hosts}{$host_uuid}{stop_reason}    = $hash_ref->{host_stop_reason};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "hosts::${host_uuid}::name",           value1 => $an->data->{hosts}{$host_uuid}{name}, 
+			name2 => "hosts::${host_uuid}::type",           value2 => $an->data->{hosts}{$host_uuid}{type}, 
+			name3 => "hosts::${host_uuid}::health",         value3 => $an->data->{hosts}{$host_uuid}{health}, 
+			name4 => "hosts::${host_uuid}::emergency_stop", value4 => $an->data->{hosts}{$host_uuid}{emergency_stop}, 
+			name5 => "hosts::${host_uuid}::stop_reason",    value5 => $an->data->{hosts}{$host_uuid}{stop_reason}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	foreach my $hash_ref (@{$node_data})
+	{
+		# Get the node UUID.
+		my $node_uuid = $hash_ref->{node_uuid};
+		my $host_uuid = $hash_ref->{node_host_uuid};
+		
+		# Store the data
+		$an->data->{nodes}{$node_uuid}{anvil_uuid}  = $hash_ref->{node_anvil_uuid};
+		$an->data->{nodes}{$node_uuid}{remote_ip}   = $hash_ref->{node_remote_ip};
+		$an->data->{nodes}{$node_uuid}{remote_port} = $hash_ref->{node_remote_port};
+		$an->data->{nodes}{$node_uuid}{note}        = $hash_ref->{node_note};
+		$an->data->{nodes}{$node_uuid}{bcn_ip}      = $hash_ref->{node_bcn};
+		$an->data->{nodes}{$node_uuid}{sn_ip}       = $hash_ref->{node_sn};
+		$an->data->{nodes}{$node_uuid}{ifn_ip}      = $hash_ref->{node_ifn};
+		$an->data->{nodes}{$node_uuid}{password}    = $hash_ref->{node_password};
+		
+		# Push in the host data
+		$an->data->{nodes}{$node_uuid}{name}           = $an->data->{hosts}{$host_uuid}{name};
+		$an->data->{nodes}{$node_uuid}{type}           = $an->data->{hosts}{$host_uuid}{type};
+		$an->data->{nodes}{$node_uuid}{health}         = $an->data->{hosts}{$host_uuid}{health};
+		$an->data->{nodes}{$node_uuid}{emergency_stop} = $an->data->{hosts}{$host_uuid}{emergency_stop};
+		$an->data->{nodes}{$node_uuid}{stop_reason}    = $an->data->{hosts}{$host_uuid}{stop_reason};
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_00012", message_variables => {
+			name1  => "nodes::${node_uuid}::anvil_uuid",     value1  => $an->data->{nodes}{$node_uuid}{anvil_uuid}, 
+			name2  => "nodes::${node_uuid}::remote_ip",      value2  => $an->data->{nodes}{$node_uuid}{remote_ip}, 
+			name3  => "nodes::${node_uuid}::remote_port",    value3  => $an->data->{nodes}{$node_uuid}{remote_port}, 
+			name4  => "nodes::${node_uuid}::note",           value4  => $an->data->{nodes}{$node_uuid}{note}, 
+			name5  => "nodes::${node_uuid}::bcn_ip",         value5  => $an->data->{nodes}{$node_uuid}{bcn_ip}, 
+			name6  => "nodes::${node_uuid}::sn_ip",          value6  => $an->data->{nodes}{$node_uuid}{sn_ip}, 
+			name7  => "nodes::${node_uuid}::ifn_ip",         value7  => $an->data->{nodes}{$node_uuid}{ifn_ip}, 
+			name8  => "nodes::${node_uuid}::name",           value8  => $an->data->{nodes}{$node_uuid}{name}, 
+			name9  => "nodes::${node_uuid}::type",           value9  => $an->data->{nodes}{$node_uuid}{type}, 
+			name10 => "nodes::${node_uuid}::health",         value10 => $an->data->{nodes}{$node_uuid}{health}, 
+			name11 => "nodes::${node_uuid}::emergency_stop", value11 => $an->data->{nodes}{$node_uuid}{emergency_stop}, 
+			name12 => "nodes::${node_uuid}::stop_reason",    value12 => $an->data->{nodes}{$node_uuid}{stop_reason}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "nodes::${node_uuid}::password", value1 => $an->data->{nodes}{$node_uuid}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	foreach my $hash_ref (@{$owner_data})
+	{
+		# Get the owner UUID
+		my $owner_uuid = $hash_ref->{owner_uuid};
+		
+		# Store the data
+		$an->data->{owners}{$owner_uuid}{name} = $hash_ref->{owner_name};
+		$an->data->{owners}{$owner_uuid}{note} = $hash_ref->{owner_note};
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "owners::${owner_uuid}::name", value1 => $an->data->{owners}{$owner_uuid}{name}, 
+			name2 => "owners::${owner_uuid}::note", value2 => $an->data->{owners}{$owner_uuid}{note}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	foreach my $hash_ref (@{$smtp_data})
+	{
+		# Get the SMTP UUID
+		my $smtp_uuid = $hash_ref->{smtp_uuid};
+		
+		# Store the data
+		$an->data->{smtp}{$smtp_uuid}{server}         = $hash_ref->{smtp_uuid};
+		$an->data->{smtp}{$smtp_uuid}{port}           = $hash_ref->{smtp_port};
+		$an->data->{smtp}{$smtp_uuid}{username}       = $hash_ref->{smtp_username};
+		$an->data->{smtp}{$smtp_uuid}{security}       = $hash_ref->{smtp_security};
+		$an->data->{smtp}{$smtp_uuid}{authentication} = $hash_ref->{smtp_authentication};
+		$an->data->{smtp}{$smtp_uuid}{helo_domain}    = $hash_ref->{smtp_helo_domain};
+		$an->data->{smtp}{$smtp_uuid}{password}       = $hash_ref->{smtp_password};
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "smtp::${smtp_uuid}::server",         value1 => $an->data->{smtp}{$smtp_uuid}{server}, 
+			name2 => "smtp::${smtp_uuid}::port",           value2 => $an->data->{smtp}{$smtp_uuid}{port}, 
+			name3 => "smtp::${smtp_uuid}::username",       value3 => $an->data->{smtp}{$smtp_uuid}{username}, 
+			name4 => "smtp::${smtp_uuid}::security",       value4 => $an->data->{smtp}{$smtp_uuid}{security}, 
+			name5 => "smtp::${smtp_uuid}::authentication", value5 => $an->data->{smtp}{$smtp_uuid}{authentication}, 
+			name6 => "smtp::${smtp_uuid}::helo_domain",    value6 => $an->data->{smtp}{$smtp_uuid}{helo_domain}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "smtp::${smtp_uuid}::password", value1 => $an->data->{smtp}{$smtp_uuid}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If no 'cgi::anvil' has been set and if only one anvil is defined, we will auto-select it.
+	my $anvil_count = @{$anvil_data};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_count", value1 => $anvil_count, 
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $hash_ref (@{$anvil_data})
+	{
+		# Get the Anvil! UUID and associates UUIDs.
+		my $anvil_uuid       = $hash_ref->{anvil_uuid};
+		my $anvil_owner_uuid = $hash_ref->{anvil_owner_uuid};
+		my $anvil_smtp_uuid  = $hash_ref->{anvil_smtp_uuid};
+		
+		if (($anvil_count == 1) && (not $an->data->{cgi}{anvil}))
+		{
+			$an->data->{cgi}{anvil} = $anvil_uuid;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil", value1 => $an->data->{cgi}{anvil}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Store the data
+		$an->data->{anvils}{$anvil_uuid}{name}        = $hash_ref->{anvil_name};
+		$an->data->{anvils}{$anvil_uuid}{description} = $hash_ref->{anvil_description};
+		$an->data->{anvils}{$anvil_uuid}{note}        = $hash_ref->{anvil_note};
+		$an->data->{anvils}{$anvil_uuid}{password}    = $hash_ref->{anvil_password};
+		
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "anvils::${anvil_uuid}::name",        value1 => $an->data->{anvils}{$anvil_uuid}{name}, 
+			name2 => "anvils::${anvil_uuid}::description", value2 => $an->data->{anvils}{$anvil_uuid}{description}, 
+			name3 => "anvils::${anvil_uuid}::note",        value3 => $an->data->{anvils}{$anvil_uuid}{note}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvils::${anvil_uuid}::password", value1 => $an->data->{anvils}{$anvil_uuid}{password}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Find the nodes associated with this Anvil!
+		my $nodes = [];
+		foreach my $node_uuid (keys %{$an->data->{nodes}})
+		{
+			# Is this node related to this Anvil! system?
+			my $node_anvil_uuid = $an->data->{nodes}{$node_uuid}{anvil_uuid};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "node_uuid",       value1 => $node_uuid, 
+				name2 => "node_anvil_uuid", value2 => $node_anvil_uuid, 
+				name3 => "anvil_uuid",      value3 => $anvil_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($node_anvil_uuid eq $anvil_uuid)
+			{
+				my $node_name   = $an->data->{nodes}{$node_uuid}{name};
+				my $node_string = "$node_name,$node_uuid";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node_string", value1 => $node_string, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				push @{$nodes}, $node_string;
+			}
+		}
+		# Sort the nodes by their name and pull out their UUID.
+		my $processed_node1 = 0;
+		foreach my $node (sort {$a cmp $b} @{$nodes})
+		{
+			my ($node_name, $node_uuid) = ($node =~ /^(.*?),(.*)$/);
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node_name", value1 => $node_name, 
+				name2 => "node_uuid", value2 => $node_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			my $node_key = "node1";
+			if ($processed_node1)
+			{
+				$node_key = "node2";
+			}
+			else
+			{
+				$processed_node1 = 1;
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_key", value1 => $node_key, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Store this so that we can later access the data as 'node1' or 'node2'
+			$an->data->{anvils}{$anvil_uuid}{$node_key} = {
+				uuid           => $node_uuid,
+				name           => $an->data->{nodes}{$node_uuid}{name}, 
+				remote_ip      => $an->data->{nodes}{$node_uuid}{remote_ip}, 
+				remote_port    => $an->data->{nodes}{$node_uuid}{remote_port}, 
+				note           => $an->data->{nodes}{$node_uuid}{note}, 
+				bcn_ip         => $an->data->{nodes}{$node_uuid}{bcn_ip}, 
+				sn_ip          => $an->data->{nodes}{$node_uuid}{sn_ip}, 
+				ifn_ip         => $an->data->{nodes}{$node_uuid}{ifn_ip}, 
+				type           => $an->data->{nodes}{$node_uuid}{type}, 
+				health         => $an->data->{nodes}{$node_uuid}{health}, 
+				emergency_stop => $an->data->{nodes}{$node_uuid}{emergency_stop}, 
+				stop_reason    => $an->data->{nodes}{$node_uuid}{stop_reason}, 
+				password       => $an->data->{nodes}{$node_uuid}{password} ? $an->data->{nodes}{$node_uuid}{password} : $an->data->{anvils}{$anvil_uuid}{password}, 
+			};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+				name1  => "anvils::${anvil_uuid}::${node_key}::uuid",           value1  => $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid}, 
+				name2  => "anvils::${anvil_uuid}::${node_key}::name",           value2  => $an->data->{anvils}{$anvil_uuid}{$node_key}{name}, 
+				name3  => "anvils::${anvil_uuid}::${node_key}::remote_ip",      value3  => $an->data->{anvils}{$anvil_uuid}{$node_key}{remote_ip}, 
+				name4  => "anvils::${anvil_uuid}::${node_key}::remote_port",    value4  => $an->data->{anvils}{$anvil_uuid}{$node_key}{remote_port}, 
+				name5  => "anvils::${anvil_uuid}::${node_key}::note",           value5  => $an->data->{anvils}{$anvil_uuid}{$node_key}{note}, 
+				name6  => "anvils::${anvil_uuid}::${node_key}::bcn_ip",         value6  => $an->data->{anvils}{$anvil_uuid}{$node_key}{bcn_ip}, 
+				name7  => "anvils::${anvil_uuid}::${node_key}::sn_ip",          value7  => $an->data->{anvils}{$anvil_uuid}{$node_key}{sn_ip}, 
+				name8  => "anvils::${anvil_uuid}::${node_key}::ifn_ip",         value8  => $an->data->{anvils}{$anvil_uuid}{$node_key}{ifn_ip}, 
+				name9  => "anvils::${anvil_uuid}::${node_key}::type",           value9  => $an->data->{anvils}{$anvil_uuid}{$node_key}{type}, 
+				name10 => "anvils::${anvil_uuid}::${node_key}::health",         value10 => $an->data->{anvils}{$anvil_uuid}{$node_key}{health}, 
+				name11 => "anvils::${anvil_uuid}::${node_key}::emergency_stop", value11 => $an->data->{anvils}{$anvil_uuid}{$node_key}{emergency_stop}, 
+				name12 => "anvils::${anvil_uuid}::${node_key}::stop_reason",    value12 => $an->data->{anvils}{$anvil_uuid}{$node_key}{stop_reason}, 
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "anvils::${anvil_uuid}::${node_key}::password", value1 => $an->data->{anvils}{$anvil_uuid}{$node_key}{password}, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		
+		# Store the owner data.
+		foreach my $owner_uuid (keys %{$an->data->{owners}})
+		{
+			if ($anvil_owner_uuid eq $owner_uuid)
+			{
+				$an->data->{anvils}{$anvil_uuid}{owner}{name} = $an->data->{owners}{$owner_uuid}{name};
+				$an->data->{anvils}{$anvil_uuid}{owner}{note} = $an->data->{owners}{$owner_uuid}{note};
+				
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "anvils::${anvil_uuid}::owner::name", value1 => $an->data->{anvils}{$anvil_uuid}{owner}{name}, 
+					name2 => "anvils::${anvil_uuid}::owner::note", value2 => $an->data->{anvils}{$anvil_uuid}{owner}{note}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
+		# Store the SMTP mail server info.
+		foreach my $smtp_uuid (keys %{$an->data->{smtp}})
+		{
+			if ($anvil_smtp_uuid eq $smtp_uuid)
+			{
+				$an->data->{anvils}{$anvil_uuid}{smtp}{server}         = $an->data->{smtp}{$smtp_uuid}{server};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{port}           = $an->data->{smtp}{$smtp_uuid}{port};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{username}       = $an->data->{smtp}{$smtp_uuid}{username};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{security}       = $an->data->{smtp}{$smtp_uuid}{security};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{authentication} = $an->data->{smtp}{$smtp_uuid}{authentication};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}    = $an->data->{smtp}{$smtp_uuid}{helo_domain};
+				$an->data->{anvils}{$anvil_uuid}{smtp}{password}       = $an->data->{smtp}{$smtp_uuid}{password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+					name1 => "anvils::${anvil_uuid}::smtp::server",         value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{server}, 
+					name2 => "anvils::${anvil_uuid}::smtp::port",           value2 => $an->data->{anvils}{$anvil_uuid}{smtp}{port}, 
+					name3 => "anvils::${anvil_uuid}::smtp::username",       value3 => $an->data->{anvils}{$anvil_uuid}{smtp}{username}, 
+					name4 => "anvils::${anvil_uuid}::smtp::security",       value4 => $an->data->{anvils}{$anvil_uuid}{smtp}{security}, 
+					name5 => "anvils::${anvil_uuid}::smtp::authentication", value5 => $an->data->{anvils}{$anvil_uuid}{smtp}{authentication}, 
+					name6 => "anvils::${anvil_uuid}::smtp::helo_domain",    value6 => $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvils::${anvil_uuid}::smtp::password", value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{password}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return(0);
 }
 
 # This parses an Install Manifest
@@ -2247,7 +2560,7 @@ sub parse_install_manifest
 					}
 					elsif ($c eq "mtu")
 					{
-						#<mtu size=\"$an->data->{cgi}{anvil_mtu_size}\" />
+						#<mtu size=\"".$an->data->{cgi}{anvil_mtu_size}."\" />
 						my $size = $a->{$b}->[0]->{$c}->[0]->{size};
 						$an->data->{install_manifest}{$uuid}{common}{network}{mtu}{size} = $size ? $size : 1500;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
