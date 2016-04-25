@@ -2938,7 +2938,7 @@ SUPPORT
 		<!-- logs -->
 		<key name="sda_log_0001">#!variable!this_file!# has started.</key>
 		<key name="sda_log_0002">Deleting the #!string!brand_0004!# named: [#!variable!anvil!#] with ID: [#!variable!anvil_id!#].</key>
-
+		
 		<!-- errors -->
 		<key name="sda_error_0001"><![CDATA[Must be called with '--anvil <name>'.]]></key>
 		<key name="sda_error_0002">The #!string!brand_0004!# called: [#!variable!anvil!#] was not found in: [#!data!path::striker_config!#]</key>

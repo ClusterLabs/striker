@@ -54,7 +54,7 @@ sub run_new_install_manifest
 	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
 		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
 	}});
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-header");
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-header"});
 	
 	# Some variables we'll need.
 	$conf->{packages}{to_install} = {
@@ -140,7 +140,7 @@ sub run_new_install_manifest
 	if ($conf->{perform_install})
 	{
 		# OK, GO!
-		print AN::Common::template($conf, "install-manifest.html", "install-beginning");
+		print $an->Web->template({file => "install-manifest.html", template => "install-beginning"});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::update_manifest", value1 => $conf->{cgi}{update_manifest},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -149,7 +149,7 @@ sub run_new_install_manifest
 			# Write the updated manifest and reload it.
 			$an->ScanCore->save_install_manifest();
 			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-			print AN::Common::template($conf, "install-manifest.html", "manifest-created", { message => $an->String->get({key => "message_0464"}) });
+			print $an->Web->template({file => "install-manifest.html", template => "manifest-created", replace => { message => $an->String->get({key => "message_0464"}) }});
 		}
 	}
 	
@@ -212,39 +212,29 @@ sub run_new_install_manifest
 		{
 			### Message already printed.
 			# remap tool not found.
-			#print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-inline", {
-			#	message		=>	"#!string!message_0378!#",
-			#});
+			#print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-inline", replace => { message => "#!string!message_0378!#" }});
 		}
 		if (($node1_rc eq "4") || ($node2_rc eq "4"))
 		{
 			# Not enough NICs (or remap program failure)
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-inline", {
-				message		=>	"#!string!message_0380!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-inline", replace => { message => "#!string!message_0380!#" }});
 		}
 		if (($node1_rc eq "7") || ($node2_rc eq "7"))
 		{
 			# Didn't recognize the node
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-inline", {
-				message		=>	"#!string!message_0383!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-inline", replace => { message => "#!string!message_0383!#" }});
 		}
 		if (($node1_rc eq "8") || ($node2_rc eq "8"))
 		{
 			# SSH handle didn't exist, though it should have.
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-inline", {
-				message		=>	"#!string!message_0382!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-inline", replace => { message => "#!string!message_0382!#" }});
 		}
 		if (($node1_rc eq "9") || ($node2_rc eq "9"))
 		{
 			# Failed to download the anvil-map-network script
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-inline", {
-				message		=>	"#!string!message_0381!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-inline", replace => { message => "#!string!message_0381!#" }});
 		}
-		print AN::Common::template($conf, "install-manifest.html", "close-table");
+		print $an->Web->template({file => "install-manifest.html", template => "close-table"});
 		return(2);
 	}
 	
@@ -260,7 +250,7 @@ sub run_new_install_manifest
 	else
 	{
 		# If we're here, we're ready to start!
-		print AN::Common::template($conf, "install-manifest.html", "sanity-checks-complete");
+		print $an->Web->template({file => "install-manifest.html", template => "sanity-checks-complete"});
 		
 		# Rewrite the install manifest if need be.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -387,12 +377,10 @@ sub run_new_install_manifest
 			# Now the string.
 			$message = $an->String->get({key => "message_0402", variables => { url => $url }});
 		}
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-success", {
-			message	=>	$message,
-		});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-succes", replace => { message => $message }});
 		
 		# Enough of that, now everyone go home.
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-footer");
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-footer"});
 	}
 	
 	return(0);
@@ -490,13 +478,14 @@ sub enable_tools
 		$node2_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0287!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+		
+	}});
 	
 	# Next, anvil-kick-apc-ups
 	$node1_class   = "highlight_warning_bold";
@@ -563,13 +552,13 @@ sub enable_tools
 		$node2_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0288!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	# And finally, ScanCore
 	$node1_class   = "highlight_warning_bold";
@@ -636,13 +625,13 @@ sub enable_tools
 		$node2_message = "#!string!state_0122!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0289!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -1579,13 +1568,13 @@ sub configure_scancore
 		$ok            = 0;
 	}
 	
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0286!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -1929,11 +1918,11 @@ sub update_install_manifest
 		$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
 		
 		# Tell the user.
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
 			row	=>	"#!string!title_0157!#",
 			class	=>	"body",
 			message	=>	"#!string!message_0464!#",
-		});
+		}});
 	}
 	
 	return(0);
@@ -2568,13 +2557,13 @@ sub watch_clustat
 		$node2_message = "#!string!state_0096!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0264!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	# And now libvirtd
 	$node1_class   = "highlight_good_bold";
@@ -2604,13 +2593,13 @@ sub watch_clustat
 		$node2_message = "#!string!state_0096!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0265!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -3103,13 +3092,13 @@ sub configure_gfs2
 		$node2_message = "#!string!state_0095!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0268!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -3572,11 +3561,11 @@ sub setup_gfs2
 			$message = "#!string!state_0089!#";
 			$ok      = 0;
 		}
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
 			row	=>	"#!string!row_0263!#",
 			class	=>	$class,
 			message	=>	$message,
-		});
+		}});
 	}
 	else
 	{
@@ -3713,11 +3702,11 @@ sub create_shared_lv
 		$message = "#!string!state_0018!#";
 		$ok      = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
 		row	=>	"#!string!row_0262!#",
 		class	=>	$class,
 		message	=>	$message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -3772,13 +3761,13 @@ sub setup_lvm_pv_and_vgs
 		$node2_message = "#!string!state_0123!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0259!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	# =======
 	# Below here, we switch to displaying one status per line
@@ -3809,11 +3798,11 @@ sub setup_lvm_pv_and_vgs
 			$message = "#!string!state_0018!#";
 			$ok      = 0;
 		}
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
 			row	=>	"#!string!row_0260!#",
 			class	=>	$class,
 			message	=>	$message,
-		});
+		}});
 
 		# Now create the VGs
 		my $vg_rc = 0;
@@ -3843,11 +3832,11 @@ sub setup_lvm_pv_and_vgs
 				$message = "#!string!state_0018!#";
 				$ok      = 0;
 			}
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message-wide", {
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
 				row	=>	"#!string!row_0261!#",
 				class	=>	$class,
 				message	=>	$message,
-			});
+			}});
 		}
 	}
 	
@@ -4642,13 +4631,13 @@ sub drbd_first_start
 		}
 		$ok = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0258!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	# Things seem a little racy, so we'll sleep here a touch if things are
 	# OK just to be sure DRBD is really ready.
@@ -5618,13 +5607,13 @@ sub configure_ssh
 		$node2_message = "#!string!state_0081!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0257!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -6258,13 +6247,13 @@ sub start_cman
 	{
 		$node2_message = "#!string!state_0078!#",
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0256!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -6473,13 +6462,13 @@ sub set_ricci_password
 		$node2_message = "#!string!state_0074!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0267!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -6521,13 +6510,13 @@ sub configure_selinux
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0018!#";
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0290!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -6641,13 +6630,13 @@ sub set_root_password
 		$node2_message = "#!string!state_0074!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0255!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -6710,13 +6699,13 @@ sub backup_files
 	my $node1_message = "#!string!state_0073!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0073!#";
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0254!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return(0);
 }
@@ -7073,14 +7062,13 @@ sub configure_ipmi
 		$ok            = 0;
 	}
 	
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0253!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
-	
+	}});
 	
 	return($ok);
 }
@@ -7616,13 +7604,13 @@ sub configure_daemons
 			}
 		}
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0252!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
@@ -8156,13 +8144,13 @@ sub configure_clvmd
 		$node2_message = "#!string!state_0061!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0251!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return($ok);
 }
@@ -8440,9 +8428,8 @@ sub reboot_nodes
 	    (($conf->{node}{$node2}{reboot_needed}) && (not $conf->{node}{$node2}{in_cluster})))
 	{
 		# This could take a while
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-			message	=>	$an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }}),
-		});
+		my $message = $an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => $message }});
 	}
 	
 	# I do this sequentially for now, so that if one fails, the other
@@ -8540,13 +8527,13 @@ sub reboot_nodes
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0097!#",
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0247!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return($ok);
 }
@@ -8972,20 +8959,20 @@ sub add_user_repositories
 				$ok            = 0;
 			}
 
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 				row		=>	$an->String->get({key => "row_0245", variables => { repo => $repo_file }}),
 				node1_class	=>	$node1_class,
 				node1_message	=>	$node1_message,
 				node2_class	=>	$node2_class,
 				node2_message	=>	$node2_message,
-			});
+			}});
 			
 			if (not $ok)
 			{
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 					message	=>	"#!string!message_0387!#",
 					row	=>	"#!string!state_0040!#",
-				});
+				}});
 			}
 		}
 	}
@@ -9069,16 +9056,17 @@ sub create_partition_on_node
 			name3 => "type",           value3 => $type,
 			name4 => "partition_size", value4 => $partition_size,
 		}, file => $THIS_FILE, line => __LINE__});
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message	=>	$an->String->get({key => "message_0389", variables => { 
-					node		=>	$node, 
-					disk		=>	$disk,
-					type		=>	$type,
-					size		=>	$an->Readable->bytes_to_hr({'bytes' => $partition_size })." ($partition_size #!string!suffix_0009!#)",
-					shell_call	=>	$shell_call,
-				}}),
+		my $message = $an->String->get({key => "message_0389", variables => { 
+				node		=>	$node, 
+				disk		=>	$disk,
+				type		=>	$type,
+				size		=>	$an->Readable->bytes_to_hr({'bytes' => $partition_size })." ($partition_size #!string!suffix_0009!#)",
+				shell_call	=>	$shell_call,
+			}});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+			message	=>	$message,
 			row	=>	"#!string!state_0042!#",
-		});
+		}});
 	}
 	else
 	{
@@ -9107,17 +9095,18 @@ sub create_partition_on_node
 			if ($use_end > $end)
 			{
 				# Warn the user and then shrink the end.
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	$an->String->get({key => "message_0391", variables => { 
-							node		=>	$node, 
-							disk		=>	$disk,
-							type		=>	$type,
-							old_end		=>	$an->Readable->bytes_to_hr({'bytes' => $use_end })." ($use_end #!string!suffix_0009!#)",
-							new_end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
-							shell_call	=>	$shell_call,
-						}}),
+				my $message = $an->String->get({key => "message_0391", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						old_end		=>	$an->Readable->bytes_to_hr({'bytes' => $use_end })." ($use_end #!string!suffix_0009!#)",
+						new_end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}});
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+					message	=>	$message,
 					row	=>	"#!string!state_0043!#",
-				});
+				}});
 				$use_end = $end;
 			}
 		}
@@ -9161,17 +9150,18 @@ sub create_partition_on_node
 					name3 => "start", value3 => $start,
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	$an->String->get({key => "message_0390", variables => { 
-							node		=>	$node, 
-							disk		=>	$disk,
-							type		=>	$type,
-							start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
-							end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
-							shell_call	=>	$shell_call,
-						}}),
+				my $message = $an->String->get({key => "message_0390", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+						end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}});
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+					message	=>	$message,
 					row	=>	"#!string!state_0042!#",
-				});
+				}});
 			}
 			if ($line =~ /not properly aligned/i)
 			{
@@ -9183,17 +9173,18 @@ sub create_partition_on_node
 					name3 => "start", value3 => $start,
 					name4 => "end",   value4 => $end,
 				}, file => $THIS_FILE, line => __LINE__});
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	$an->String->get({key => "message_0431", variables => { 
-							node		=>	$node, 
-							disk		=>	$disk,
-							type		=>	$type,
-							start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
-							end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
-							shell_call	=>	$shell_call,
-						}}),
+				my $message = $an->String->get({key => "message_0431", variables => { 
+						node		=>	$node, 
+						disk		=>	$disk,
+						type		=>	$type,
+						start		=>	$an->Readable->bytes_to_hr({'bytes' => $start })." ($start #!string!suffix_0009!#)",
+						end		=>	$an->Readable->bytes_to_hr({'bytes' => $end })." ($end #!string!suffix_0009!#)",
+						shell_call	=>	$shell_call,
+					}});
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+					message	=>	$message,
 					row	=>	"#!string!state_0099!#",
-				});
+				}});
 			}
 			if ($line =~ /reboot/)
 			{
@@ -9928,13 +9919,13 @@ sub configure_storage_stage1
 		$node2_pool1_message = "#!string!state_0020!#",
 	}
 	# Pool 1 message
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0246!#",
 		node1_class	=>	$node1_pool1_class,
 		node1_message	=>	$node1_pool1_message,
 		node2_class	=>	$node2_pool1_class,
 		node2_message	=>	$node2_pool1_message,
-	});
+	}});
 	
 	return($ok);
 }
@@ -10067,29 +10058,29 @@ sub configure_storage_stage2
 		$node2_message = "#!string!state_0059!#";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-messag", replace => { 
 		row		=>	"#!string!row_0249!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0398!#",
 			row	=>	"#!string!state_0034!#",
-		});
+		}});
 	}
 	
 	# Tell the user they may need to 'dd' the partition, if needed.
 	if ($show_lvm_note)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-note-message", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-note-message", replace => { 
 			message	=>	"#!string!message_0433!#",
 			row	=>	"#!string!row_0032!#",
-		});
+		}});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -10660,9 +10651,9 @@ sub register_with_rhn
 	if ((($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet})) ||
 	    (($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet})))
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { 
 			message	=>	"#!string!explain_0138!#",
-		});
+		}});
 	}
 	
 	# If it's not RHEL, no sense going further.
@@ -10677,10 +10668,10 @@ sub register_with_rhn
 		# No sense going further
 		if ((not $conf->{node}{$node1}{os}{registered}) || (not $conf->{node}{$node2}{os}{registered}))
 		{
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 				row	=>	"#!string!row_0242!#",
 				message	=>	"#!string!message_0385!#",
-			});
+			}});
 			return(0);
 		}
 		return(1);
@@ -10778,20 +10769,20 @@ sub register_with_rhn
 		$ok            = 0;
 	}
 
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0234!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0384!#",
 			row	=>	"#!string!state_0021!#",
-		});
+		}});
 	}
 	
 	return($ok);
@@ -10974,10 +10965,10 @@ sub summarize_build_plan
 	my $rhn_template = "";
 	if ($enable_rhn)
 	{
-		$rhn_template = AN::Common::template($conf, "install-manifest.html", "rhn-credential-form", {
+		$rhn_template = $an->Web->template({file => "install-manifest.html", template => "rhn-credential-form", replace => { 
 			rhn_user	=>	$conf->{cgi}{rhn_user},
 			rhn_password	=>	$conf->{cgi}{rhn_password},
-		});
+		}});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -11015,7 +11006,7 @@ sub summarize_build_plan
 	{
 		$conf->{cgi}{anvil_storage_partition_2_byte_size} = $conf->{cgi}{anvil_storage_pool2_byte_size};
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-summary-and-confirm", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-summary-and-confirm", replace => { 
 		form_file			=>	"/cgi-bin/striker",
 		title				=>	"#!string!title_0177!#",
 		bcn_link1_name			=>	$an->String->get({key => "script_0059", variables => { number => "1" }}),
@@ -11069,7 +11060,7 @@ sub summarize_build_plan
 		anvil_striker2_user		=>	$conf->{cgi}{anvil_striker2_user},
 		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
 		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
-	});
+	}});
 	
 	return(0);
 }
@@ -11083,8 +11074,7 @@ sub configure_ntp_on_node
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# We're going to do a grep for each defined NTP IP and, if the IP isn't
-	# found, it will be added.
+	# We're going to do a grep for each defined NTP IP and, if the IP isn't found, it will be added.
 	my $return_code = 0;
 	my @ntp_servers;
 	push @ntp_servers, $conf->{cgi}{anvil_ntp1} if $conf->{cgi}{anvil_ntp1};
@@ -12075,13 +12065,13 @@ sub configure_ntp
 			$node2_message = "#!string!state_0018!#",
 			$ok            = 0;
 		}
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 			row		=>	"#!string!row_0275!#",
 			node1_class	=>	$node1_class,
 			node1_message	=>	$node1_message,
 			node2_class	=>	$node2_class,
 			node2_message	=>	$node2_message,
-		});
+		}});
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12149,13 +12139,13 @@ sub configure_network
 		$node2_message = "#!string!state_0110!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0228!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return($ok);
 }
@@ -12545,13 +12535,13 @@ sub map_network
 		$node2_remap_needed = 1;
 	}
 
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0229!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return($node1_remap_needed, $node2_remap_needed);
 }
@@ -12571,9 +12561,7 @@ sub map_network_on_node
 	if ($remap)
 	{
 		my $title = $an->String->get({key => "title_0174", variables => { node => $say_node }});
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-start-network-config", {
-			title	=>	$title,
-		});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-start-network-config", replace => { title => $title }});
 	}
 	my $return_code = 0;
 	
@@ -12808,7 +12796,7 @@ fi";
 	
 	if (($remap) && (not $return_code))
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-end-network-config");
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-end-network-config"});
 		
 		# We should now know this info.
 		$conf->{conf}{node}{$node}{set_nic}{bcn_link1} = $conf->{conf}{node}{$node}{current_nic}{bcn_link1};
@@ -12857,9 +12845,7 @@ sub install_programs
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_programs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-		message	=>	"#!string!explain_0129!#",
-	});
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0129!#" }});
 	
 	### TODO: make these run at the same time
 	my ($node1_ok) = install_missing_packages($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
@@ -12892,33 +12878,27 @@ sub install_programs
 		$ok            = 0;
 	}
 
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0226!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
 		if ((not $conf->{node}{$node1}{internet}) || (not $conf->{node}{$node2}{internet}))
 		{
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-				message		=>	"#!string!message_0370!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0370!#" }});
 		}
 		elsif (($conf->{node}{$node1}{os}{brand} =~ /Red Hat/) || ($conf->{node}{$node2}{os}{brand} =~ /Red Hat/))
 		{
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-				message		=>	"#!string!message_0369!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0369!#" }});
 		}
 		else
 		{
-			print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-				message		=>	"#!string!message_0369!#",
-			});
+			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0369!#" }});
 		}
 	}
 	
@@ -13374,9 +13354,7 @@ sub update_nodes
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-be-patient-message", {
-		message	=>	"#!string!explain_0130!#",
-	});
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0130!#" }});
 	
 	# The OS update is good, but not fatal if it fails.
 	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
@@ -13412,13 +13390,13 @@ sub update_nodes
 	{
 		$node2_message = "#!string!state_0027!#",
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0227!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return(0);
 }
@@ -13555,20 +13533,20 @@ sub verify_perl_is_installed
 		$node2_message = "#!string!state_0036!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0243!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0386!#",
 			row	=>	"#!string!state_0037!#",
-		});
+		}});
 	}
 	
 	return($ok);
@@ -13693,20 +13671,20 @@ sub verify_internet_access
 		$node2_message = "#!string!state_0021!#",
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0223!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0366!#",
 			row	=>	"#!string!state_0021!#",
-		});
+		}});
 	}
 	
 	return(1);
@@ -14033,17 +14011,18 @@ sub calculate_storage_pool_sizes
 						name1 => "pool1_size", value1 => $pool1_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	$an->String->get({key => "message_0394", variables => { 
-							node1		=>	$node1,
-							node1_device	=>	$conf->{node}{$node1}{pool1}{partition},
-							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool1}{existing_size} })." ($conf->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
-							node2		=>	$node2,
-							node2_device	=>	$conf->{node}{$node1}{pool1}{partition},
-							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool1}{existing_size} })." ($conf->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
-						}}),
+				my $message = $an->String->get({key => "message_0394", variables => { 
+						node1		=>	$node1,
+						node1_device	=>	$conf->{node}{$node1}{pool1}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool1}{existing_size} })." ($conf->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
+						node2		=>	$node2,
+						node2_device	=>	$conf->{node}{$node1}{pool1}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool1}{existing_size} })." ($conf->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
+					}});
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+					message	=>	$message,
 					row	=>	"#!string!state_0052!#",
-				});
+				}});
 			}
 		}
 		elsif ($conf->{node}{$node1}{pool1}{existing_size})
@@ -14110,17 +14089,18 @@ sub calculate_storage_pool_sizes
 						name1 => "pool2_size", value1 => $pool2_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-					message	=>	$an->String->get({key => "message_0394", variables => { 
-							node1		=>	$node1,
-							node1_device	=>	$conf->{node}{$node1}{pool2}{partition},
-							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool2}{existing_size} })." ($conf->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
-							node2		=>	$node2,
-							node2_device	=>	$conf->{node}{$node1}{pool2}{partition},
-							node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool2}{existing_size} })." ($conf->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
-						}}),
+				my $message = $an->String->get({key => "message_0394", variables => { 
+						node1		=>	$node1,
+						node1_device	=>	$conf->{node}{$node1}{pool2}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool2}{existing_size} })." ($conf->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
+						node2		=>	$node2,
+						node2_device	=>	$conf->{node}{$node1}{pool2}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool2}{existing_size} })." ($conf->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
+					}});
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+					message	=>	$message,
 					row	=>	"#!string!state_0052!#",
-				});
+				}});
 			}
 		}
 		elsif ($conf->{node}{$node1}{pool2}{existing_size})
@@ -14601,14 +14581,15 @@ sub check_storage
 		my $byte_difference     = $requested_byte_size - $conf->{cgi}{anvil_storage_pool1_byte_size};
 		my $say_difference      = $an->Readable->bytes_to_hr({'bytes' => $byte_difference });
 		my $say_new_size        = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} });
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
-			message	=>	$an->String->get({key => "message_0375", variables => { 
-					say_requested_size	=>	$say_requested_size,
-					say_new_size		=>	$say_new_size,
-					say_difference		=>	$say_difference,
-				}}),
+		my $message             = $an->String->get({key => "message_0375", variables => { 
+				say_requested_size	=>	$say_requested_size,
+				say_new_size		=>	$say_new_size,
+				say_difference		=>	$say_difference,
+			}});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
+			message	=>	$message,
 			row	=>	"#!string!state_0043!#",
-		});
+		}});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
@@ -14616,11 +14597,11 @@ sub check_storage
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $conf->{cgi}{anvil_storage_pool1_byte_size}) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0397!#",
 			row	=>	"#!string!state_0043!#",
-		});
-		$ok      = 0;
+		}});
+		$ok = 0;
 	}
 	
 	# Message stuff
@@ -14649,13 +14630,13 @@ sub check_storage
 		$node1_class = "highlight_warning_bold";
 		$node2_class = "highlight_warning_bold";
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0222!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	return($ok);
 }
@@ -15019,10 +15000,10 @@ fi";
 			if ($line eq "parted not installed")
 			{
 				$device = "--";
-				print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-warning", {
+				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 					message	=>	"#!string!message_0368!#",
 					row	=>	"#!string!state_0042!#",
-				});
+				}});
 				last;
 			}
 			elsif ($line eq "parted installed")
@@ -15496,19 +15477,17 @@ sub configure_cman
 			$node2_message = "#!string!state_0029!#";
 		}
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0221!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-			message		=>	"#!string!message_0363!#",
-		});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0363!#" }});
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -15692,19 +15671,17 @@ sub verify_os
 		$node2_message = "--" if $node2_message eq "0.0";
 		$ok            = 0;
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0220!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	if (not $ok)
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-			message		=>	"#!string!message_0362!#",
-		});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0362!#" }});
 	}
 	
 	return($ok);
@@ -15831,20 +15808,18 @@ sub check_connection
 		$node2_class   = "highlight_bad_bold";
 		$node2_message = $an->String->get({key => "state_0018"});
 	}
-	print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-message", {
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0219!#",
 		node1_class	=>	$node1_class,
 		node1_message	=>	$node1_message,
 		node2_class	=>	$node2_class,
 		node2_message	=>	$node2_message,
-	});
+	}});
 	
 	my $access = 1;
 	if ((not $node1_access) || (not $node2_access))
 	{
-		print AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed", {
-			message		=>	"#!string!message_0361!#",
-		});
+		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0361!#" }});
 		$access = 0;
 		
 		# Copy the tools the nodes will need into docroot and update

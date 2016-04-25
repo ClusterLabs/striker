@@ -510,10 +510,10 @@ sub sanity_check_striker_conf
 	{
 		   $save        = 0;
 		my $say_message = $an->String->get({key => "message_0011", variables => { email => $conf->{cgi}{$smtp__username_key} }});
-		print AN::Common::template($conf, "config.html", "form-value-warning", {
+		print $an->Web->template({file => "config.html", template => "form-value-warning", replace => { 
 			row	=>	"#!string!row_0014!#",
 			message	=>	$say_message,
-		}); 
+		}});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::$mail_data__to_key", value1 => $conf->{cgi}{$mail_data__to_key},
@@ -527,10 +527,10 @@ sub sanity_check_striker_conf
 			{
 				   $save        = 0;
 				my $say_message = $an->String->get({key => "message_0011", variables => { email => $email }});
-				print AN::Common::template($conf, "config.html", "form-value-warning", {
+				print $an->Web->template({file => "config.html", template => "form-value-warning", replace => { 
 					row	=>	"#!string!row_0015!#",
 					message	=>	$say_message,
-				}); 
+				}});
 			}
 		}
 	}
@@ -546,10 +546,10 @@ sub sanity_check_striker_conf
 		if (($conf->{cgi}{$smtp__port_key} =~ /\D/) || ($conf->{cgi}{$smtp__port_key} < 1) || ($conf->{cgi}{$smtp__port_key} > 65535))
 		{
 			$save = 0;
-			print AN::Common::template($conf, "config.html", "form-value-warning", {
+			print $an->Web->template({file => "config.html", template => "form-value-warning", replace => { 
 				row	=>	"#!string!row_0016!#",
 				message	=>	"#!string!message_0012!#",
-			});
+			}});
 		}
 	}
 	elsif (($conf->{cgi}{$smtp__server_key}) && ($conf->{cgi}{$smtp__server_key} ne "#!inherit!#"))
@@ -557,10 +557,10 @@ sub sanity_check_striker_conf
 		   $save        = 0;
 		my $say_row     = $an->String->get({key => "row_0016"});
 		my $say_message = $an->String->get({key => "message_0013"});
-		print AN::Common::template($conf, "config.html", "form-value-warning", {
+		print $an->Web->template({file => "config.html", template => "form-value-warning", replace => { 
 			row	=>	"#!string!row_0016!#",
 			message	=>	"#!string!message_0013!#",
-		});
+		}});
 	}
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -732,16 +732,15 @@ sub write_new_striker_conf
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Tell the user where ready to go.
-	print AN::Common::template($conf, "config.html", "general-row-good", {
+	print $an->Web->template({file => "config.html", template => "general-row-good", replace => { 
 		row	=>	"#!string!row_0018!#",
 		message	=>	"#!string!message_0015!#",
-	});
+	}});
 	
 	# Tweak some values, if needed
 	if (not $conf->{cgi}{anvil_id})
 	{
-		# If the sending domain or helo domain are 
-		# 'example.com', make them the short version of the
+		# If the sending domain or helo domain are  'example.com', make them the short version of the
 		# sending email, if defined, or else the smtp server.
 		if ($conf->{cgi}{mail_data__sending_domain} eq "example.com")
 		{
@@ -1296,10 +1295,10 @@ sub save_dashboard_configure
 		{
 			# Tell the user
 			my $message  = $an->String->get({key => "message_0449", variables => { peer => $peer }});
-			print AN::Common::template($conf, "config.html", "general-row-good", {
+			print $an->Web->template({file => "config.html", template => "general-row-good", replace => { 
 				row	=>	"#!string!row_0292!#",
 				message	=>	$message,
-			});
+			}});
 		}
 		
 		# Which message to show will depend on whether we're saving an Anvil! or the global config. 
@@ -1310,10 +1309,10 @@ sub save_dashboard_configure
 		{
 			$message = $an->String->get({key => "message_0017", variables => { url => "?cluster=$anvil_name" }});
 		}
-		print AN::Common::template($conf, "config.html", "general-row-good", {
+		print $an->Web->template({file => "config.html", template => "general-row-good", replace => { 
 			row	=>	"#!string!row_0019!#",
 			message	=>	$message,
-		});
+		}});
 		print $an->Web->template({file => "config.html", template => "close-table"});
 		footer($conf);
 		exit(0);
@@ -1322,10 +1321,10 @@ sub save_dashboard_configure
 	{
 		# The Anvil! was deleted by 'striker-delete-anvil'.
 		my $message = $an->String->get({key => "message_0451", variables => { anvil => $conf->{cgi}{anvil} }});
-		print AN::Common::template($conf, "config.html", "general-row-good", {
+		print $an->Web->template({file => "config.html", template => "general-row-good", replace => { 
 			row	=>	"#!string!row_0019!#",
 			message	=>	$message,
-		});
+		}});
 		print $an->Web->template({file => "config.html", template => "close-table"});
 		footer($conf);
 		exit(0);
@@ -1333,10 +1332,10 @@ sub save_dashboard_configure
 	else
 	{
 		# Problem
-		print AN::Common::template($conf, "config.html", "form-value-warning", {
+		print $an->Web->template({file => "config.html", template => "form-value-warning", replace => { 
 			row	=>	"#!string!row_0020!#",
 			message	=>	"#!string!message_0018!#",
-		});
+		}});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::cluster__new__name", value1 => $conf->{cgi}{cluster__new__name},
@@ -1533,12 +1532,12 @@ sub show_anvil_config_header
 	my $this_cluster          = $conf->{cgi}{anvil};
 	my $say_this_cluster      = $this_cluster;
 	my $this_id               = defined $conf->{clusters}{$this_cluster}{id}               ? $conf->{clusters}{$this_cluster}{id}               : "new";
-	my $clear_icon            = AN::Common::template($conf, "common.html", "image_with_js", {
-		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_clear-fields_16x16.png",
-		javascript	=>	"onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\"",
-		alt_text	=>	"",
-		id		=>	"clear",
-	}, "", 1);
+	my $clear_icon            = $an->Web->template({file => "config.html", template => "image_with_js", replace => { 
+			image_source	=>	$conf->{url}{skins}."/".$conf->{sys}{skin}."/images/icon_clear-fields_16x16.png",
+			javascript	=>	"onclick=\"\$('#cluster__${this_id}__name, #cluster__${this_id}__description, #cluster__${this_id}__company, #cluster__${this_id}__ricci_pw, #cluster__${this_id}__root_pw, #cluster__${this_id}__url, #cluster__${this_id}__nodes_1_name, #cluster__${this_id}__nodes_1_ip, #cluster__${this_id}__nodes_1_port, #cluster__${this_id}__nodes_2_name, #cluster__${this_id}__nodes_2_ip, #cluster__${this_id}__nodes_2_port').val('')\"",
+			alt_text	=>	"",
+			id		=>	"clear",
+		}});
 	my $this_name             = defined $conf->{clusters}{$this_cluster}{name}             ? $conf->{clusters}{$this_cluster}{name}             : "";
 	my $this_company          = defined $conf->{clusters}{$this_cluster}{company}          ? $conf->{clusters}{$this_cluster}{company}          : "";
 	   $this_company          = convert_text_to_html($conf, $this_company);
@@ -1611,22 +1610,22 @@ sub show_anvil_config_header
 		$this_nodes_1_port = $conf->{cgi}{cluster__new__nodes_1_port} if $conf->{cgi}{cluster__new__nodes_1_port};
 		$this_nodes_2_port = $conf->{cgi}{cluster__new__nodes_2_port} if $conf->{cgi}{cluster__new__nodes_2_port};
 		$clear_icon        = "";
-		print AN::Common::template($conf, "config.html", "config-header", {
+		print $an->Web->template({file => "config.html", template => "config-header", replace => { 
 			title_1	=>	"#!string!title_0003!#",
 			title_2	=>	"#!string!title_0004!#",
-		});
+		}});
 	}
 	else
 	{
 		# Existing Anvil!
-		print AN::Common::template($conf, "config.html", "config-header", {
+		print $an->Web->template({file => "config.html", template => "config-header", replace => { 
 			title_1	=>	"#!string!title_0005!#",
 			title_2	=>	"#!string!title_0006!#",
-		});
+		}});
 	}
 	
 	# Print the body of the global/overrides section.
-	print AN::Common::template($conf, "config.html", "anvil-variables", {
+	print $an->Web->template({file => "config.html", template => "anvil-variables", replace => { 
 		anvil_id			=>	$this_id,
 		anvil				=>	$conf->{cgi}{anvil},
 		clear_icon			=>	"$clear_icon",
@@ -1666,7 +1665,7 @@ sub show_anvil_config_header
 		cluster_nodes_2_port_name	=>	"cluster__${this_id}__nodes_2_port",
 		cluster_nodes_2_port_id		=>	"cluster__${this_id}__nodes_2_port",
 		cluster_nodes_2_port_value	=>	"$this_nodes_2_port",
-	}); 
+	}});
 	
 	return(0);
 }
@@ -1678,24 +1677,23 @@ sub show_global_config_header
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_global_config_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print AN::Common::template($conf, "config.html", "config-header", {
+	print $an->Web->template({file => "config.html", template => "config-header", replace => { 
 		title_1	=>	"#!string!title_0011!#",
 		title_2	=>	"#!string!title_0012!#",
-	});
+	}});
 
 	return(0);
 }
 
-# This shows all the mail settings that are common to both the global and 
-# per-anvil config sections.
+# This shows all the mail settings that are common to both the global and per-anvil config sections.
 sub show_common_config_section
 {
 	my ($conf) = @_;
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_common_config_section" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# We display the global values or the per-Anvil! ones below. Load the
-	# global, the override with the Anvil! if needed.
+	# We display the global values or the per-Anvil! ones below. Load the global, the override with the 
+	# Anvil! if needed.
 	my $smtp__server_key              = "smtp__server";
 	my $smtp__port_key                = "smtp__port";
 	my $smtp__username_key            = "smtp__username";
@@ -1824,19 +1822,19 @@ sub show_common_config_section
 	if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 	{
 		$push_button =  "&nbsp; ";
-		$push_button .= AN::Common::template($conf, "common.html", "enabled-button", {
-			button_class	=>	"bold_button",
-			button_link	=>	"?config=true&anvil=$conf->{cgi}{anvil}&task=push",
-			button_text	=>	"#!string!button_0039!#",
-			id		=>	"push",
-		}, "", 1);
+		$push_button .= $an->Web->template({file => "config.html", template => "enabled-button", replace => { 
+				button_class	=>	"bold_button",
+				button_link	=>	"?config=true&anvil=$conf->{cgi}{anvil}&task=push",
+				button_text	=>	"#!string!button_0039!#",
+				id		=>	"push",
+			}});
 	}
 	else
 	{
 		$push_button =  "&nbsp; ";
 	}
 	
-	print AN::Common::template($conf, "config.html", "global-variables", {
+	print $an->Web->template({file => "config.html", template => "global-variables", replace => { 
 		anvil_id			=>	$this_id,
 		smtp__server_name		=>	$smtp__server_key,
 		smtp__server_id			=>	$smtp__server_key,
@@ -1862,7 +1860,7 @@ sub show_common_config_section
 		mail_data__to_id		=>	$mail_data__to_key,
 		mail_data__to_value		=>	$conf->{cgi}{$mail_data__to_key},
 		push_button			=>	$push_button,
-	}); 
+	}});
 	
 	return(0);
 }
@@ -1874,10 +1872,10 @@ sub show_global_anvil_list
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "show_global_anvil_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print AN::Common::template($conf, "config.html", "config-header", {
+	print $an->Web->template({file => "config.html", template => "config-header", replace => { 
 		title_1	=>	"#!string!title_0009!#",
 		title_2	=>	"#!string!title_0010!#",
-	});
+	}});
 	print $an->Web->template({file => "config.html", template => "anvil-column-header"});
 	my $ids = "";
 	foreach my $this_cluster ("new", (sort {$a cmp $b} keys %{$conf->{clusters}}))
@@ -1894,24 +1892,24 @@ sub show_global_anvil_list
 		my $this_url          = defined $conf->{clusters}{$this_cluster}{url}         ? $conf->{clusters}{$this_cluster}{url}         : "";
 		if ($this_url)
 		{
-			my $image = AN::Common::template($conf, "common.html", "image", {
-				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
-				alt_text	=>	"",
-				id		=>	"url_icon",
-			}, "", 1);
-			$this_url = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-				button_link	=>	"$this_url",
-				button_text	=>	"$image",
-				id		=>	"url_$this_cluster",
-			}, "", 1);
+			my $image = $an->Web->template({file => "config.html", template => "image", replace => { 
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
+					alt_text	=>	"",
+					id		=>	"url_icon",
+				}});
+			$this_url = $an->Web->template({file => "config.html", template => "enabled-button-no-class-new-tab", replace => { 
+					button_link	=>	"$this_url",
+					button_text	=>	"$image",
+					id		=>	"url_$this_cluster",
+				}});
 		}
 		
-		print AN::Common::template($conf, "config.html", "anvil-column-entry", {
+		print $an->Web->template({file => "config.html", template => "anvil-column-entry", replace => { 
 			anvil		=>	$this_cluster,
 			company		=>	$this_company,
 			description	=>	$this_description,
 			url		=>	$this_url,
-		});
+		}});
 	}
 
 	print $an->Web->template({file => "config.html", template => "anvil-column-footer"});
@@ -1981,10 +1979,10 @@ sub push_config_to_anvil
 					source		=>	$config_file,
 					destination	=>	"$config_file.$date",
 				}});
-			print AN::Common::template($conf, "config.html", "open-push-entry", {
+			print $an->Web->template({file => "config.html", template => "open-push-entry", replace => { 
 				row	=>	"#!string!row_0130!#",
 				message	=>	"$message",
-			});
+			}});
 			
 			# Make sure there is an '/etc/striker' directory on the node and create it, if not.
 			my $striker_directory = ($conf->{path}{config_file} =~ /^(.*)\/.*$/)[0];
@@ -2019,9 +2017,7 @@ ls $striker_directory";
 				if ($config_file =~ /$line$/)
 				{
 					$line = $an->String->get({key => "message_0283"});
-					print AN::Common::template($conf, "common.html", "shell-call-output", {
-						line	=>	$line,
-					});
+					print $an->Web->template({file => "config.html", template => "shell-call-output", replace => { line => $line }});
 				}
 			}
 			$error      = "";
@@ -2062,9 +2058,7 @@ ls $backup_file";
 				{
 					$line = $an->String->get({key => "message_0285"});
 				}
-				print AN::Common::template($conf, "common.html", "shell-call-output", {
-					line	=>	$line,
-				});
+				print $an->Web->template({file => "config.html", template => "shell-call-output", replace => { line => $line }});
 			}
 			
 			print $an->Web->template({file => "config.html", template => "close-push-entry"});
@@ -2074,10 +2068,10 @@ ls $backup_file";
 					node		=>	$node,
 					config_file	=>	"$config_file",
 				}});
-			print AN::Common::template($conf, "config.html", "open-push-entry", {
+			print $an->Web->template({file => "config.html", template => "open-push-entry", replace => { 
 				row	=>	"#!string!row_0131!#",
 				message	=>	"$message",
-			});
+			}});
 			$an->Storage->rsync({
 				source		=>	$config_file,
 				target		=>	$node,
@@ -2103,9 +2097,7 @@ sub show_archive_options
 	# First up, collect the config files and make them available for download.
 	my $backup_url = create_backup_file($conf);
 	
-	print AN::Common::template($conf, "config.html", "archive-menu", {
-		form_file	=>	"/cgi-bin/striker",
-	});
+	print $an->Web->template({file => "config.html", template => "archive-menu", replace => { form_file => "/cgi-bin/striker" }});
 	
 	return(0);
 }
@@ -2225,10 +2217,10 @@ sub load_backup_configuration
 	{
 		my $message1 = $an->String->get({key => "explain_0039", variables => { file => $conf->{cgi}{file} }});
 		my $message2 = $an->String->get({key => "explain_0040", variables => { mimetype => $conf->{cgi_mimetype}{file} }});
-		print AN::Common::template($conf, "config.html", "backup-file-bad-mimetype", {
+		print $an->Web->template({file => "config.html", template => "backup-file-bad-mimetype", replace => { 
 			message1	=>	$message1,
 			message2	=>	$message2,
-		});
+		}});
 		show_archive_options($conf);
 		return(1);
 	}
@@ -2250,9 +2242,7 @@ sub load_backup_configuration
 			{
 				# Not a valid backup file.
 				my $explain = $an->String->get({key => "explain_0039", variables => { file => $conf->{cgi}{file} }});
-				print AN::Common::template($conf, "config.html", "invalid-backup-file-uploaded", {
-					replace	=>	$explain,
-				});
+				print $an->Web->template({file => "config.html", template => "invalid-backup-file-uploaded", replace => { replace => $explain }});
 				show_archive_options($conf);
 				return(1);
 			}
@@ -2347,10 +2337,10 @@ sub load_backup_configuration
 		{
 			# Tell the user
 			my $message = $an->String->get({key => "message_0449", variables => { peer => $peer }});
-			print AN::Common::template($conf, "config.html", "general-table-row-good", {
+			print $an->Web->template({file => "config.html", template => "general-table-row-good", replace => { 
 				row	=>	"#!string!row_0292!#",
 				message	=>	$message,
-			});
+			}});
 		}
 		
 		# Configure SSH for each configured Anvil! and setup Virtual Machine Manager.
@@ -2366,7 +2356,7 @@ sub load_backup_configuration
 		}
 		configure_vmm_local($conf);
 		
-		print AN::Common::template($conf, "config.html", "backup-file-loaded");
+		print $an->Web->template({file => "config.html", template => "backup-file-loaded"});
 		footer($conf);
 		exit;
 	}
@@ -2562,18 +2552,16 @@ WHERE
 			# Pass the array in.
 			$an->DB->do_db_write({query => $queries, source => $THIS_FILE, line => __LINE__});
 			my $message = $an->String->get({key => "message_0462", variables => { anvil => $anvil_name }});
-			print AN::Common::template($conf, "config.html", "delete-manifest-success", {
-				message	=>	$message,
-			});
+			print $an->Web->template({file => "config.html", template => "delete-manifest-success", replace => { message => $message }});
 		}
 		else
 		{
 			$show_form = 0;
 			my $message = $an->String->get({key => "message_0463", variables => { anvil => $anvil_name }});
-			print AN::Common::template($conf, "config.html", "manifest-confirm-delete", {
+			print $an->Web->template({file => "config.html", template => "manifest-confirm-delete", replace => { 
 				message	=>	$message,
 				confirm	=>	"?config=true&task=create-install-manifest&delete=true&manifest_uuid=".$an->data->{cgi}{manifest_uuid}."&confirm=true",
-			});
+			}});
 		}
 	}
 	
@@ -2591,9 +2579,8 @@ WHERE
 			my $manifest_uuid = $an->ScanCore->save_install_manifest();
 			
 			#my ($target_url, $xml_file) = generate_install_manifest($conf);
-			print AN::Common::template($conf, "config.html", "manifest-created", {
-				message	=>	$an->String->get({key => "explain_0124", variables => { uuid => $manifest_uuid }}),
-			});
+			my $message = $an->String->get({key => "explain_0124", variables => { uuid => $manifest_uuid }});
+			print $an->Web->template({file => "config.html", template => "manifest-created", replace => { message => $message }});
 			$show_form = 1;
 		}
 		else
@@ -2618,10 +2605,10 @@ WHERE
 					last;
 				}
 			}
-			print AN::Common::template($conf, "config.html", "manifest-raw-edit", {
+			print $an->Web->template({file => "config.html", template => "manifest-raw-edit", replace => { 
 				manifest_uuid	=>	$an->data->{cgi}{manifest_uuid},
 				manifest_data	=>	$an->data->{cgi}{manifest_data},
-			});
+			}});
 		}
 	}
 	
@@ -2643,9 +2630,8 @@ WHERE
 				my $manifest_uuid = $an->ScanCore->save_install_manifest();
 				
 				#my ($target_url, $xml_file) = generate_install_manifest($conf);
-				print AN::Common::template($conf, "config.html", "manifest-created", {
-					message	=>	$an->String->get({key => "explain_0124", variables => { uuid => $manifest_uuid }}),
-				});
+				my $message = $an->String->get({key => "explain_0124", variables => { uuid => $manifest_uuid }});
+				print $an->Web->template({file => "config.html", template => "manifest-created", replace => { message => $message }});
 			}
 		}
 	}
@@ -2666,12 +2652,12 @@ WHERE
 			if ($return_code eq "1")
 			{
 				# Something went wrong.
-				my $button = AN::Common::template($conf, "common.html", "form-button", {
-					class	=>	"bold_button", 
-					name	=>	"confirm",
-					id	=>	"confirm",
-					value	=>	"#!string!button_0063!#",
-				});
+				my $button = $an->Web->template({file => "config.html", template => "form-button", replace => { 
+						class	=>	"bold_button", 
+						name	=>	"confirm",
+						id	=>	"confirm",
+						value	=>	"#!string!button_0063!#",
+					}});
 				my $message = $an->String->get({key => "message_0432", variables => { try_again_button => $button }});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 					name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $conf->{cgi}{anvil_node1_bcn_link1_mac},
@@ -2687,35 +2673,35 @@ WHERE
 					name11 => "cgi::anvil_node2_ifn_link1_mac", value11 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
 					name12 => "cgi::anvil_node2_ifn_link2_mac", value12 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				my $restart_html = AN::Common::template($conf, "install-manifest.html", "new-anvil-install-failed-footer", {
-					form_file			=>	"/cgi-bin/striker",
-					button_class			=>	"bold_button", 
-					button_name			=>	"confirm",
-					button_id			=>	"confirm",
-					button_value			=>	"#!string!button_0063!#",
-					message				=>	$message, 
-					anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
-					anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
-					anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
-					anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
-					anvil_open_vnc_ports		=>	$conf->{cgi}{anvil_open_vnc_ports},
-					run				=>	$conf->{cgi}{run},
-					try_again_button		=>	$button,
-					anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
-					anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
-					anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
-					anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
-					anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
-					anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
-					anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
-					anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
-					anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
-					anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
-					anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
-					anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
-					rhn_user			=>	$conf->{cgi}{rhn_user},
-					rhn_password			=>	$conf->{cgi}{rhn_password},
-				});
+				my $restart_html = $an->Web->template({file => "config.html", template => "new-anvil-install-failed-footer", replace => { 
+						form_file			=>	"/cgi-bin/striker",
+						button_class			=>	"bold_button", 
+						button_name			=>	"confirm",
+						button_id			=>	"confirm",
+						button_value			=>	"#!string!button_0063!#",
+						message				=>	$message, 
+						anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
+						anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
+						anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
+						anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
+						anvil_open_vnc_ports		=>	$conf->{cgi}{anvil_open_vnc_ports},
+						run				=>	$conf->{cgi}{run},
+						try_again_button		=>	$button,
+						anvil_node1_bcn_link1_mac	=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
+						anvil_node1_bcn_link2_mac	=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
+						anvil_node1_ifn_link1_mac	=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
+						anvil_node1_ifn_link2_mac	=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
+						anvil_node1_sn_link1_mac	=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
+						anvil_node1_sn_link2_mac	=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
+						anvil_node2_bcn_link1_mac	=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
+						anvil_node2_bcn_link2_mac	=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
+						anvil_node2_ifn_link1_mac	=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
+						anvil_node2_ifn_link2_mac	=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
+						anvil_node2_sn_link1_mac	=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
+						anvil_node2_sn_link2_mac	=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
+						rhn_user			=>	$conf->{cgi}{rhn_user},
+						rhn_password			=>	$conf->{cgi}{rhn_password},
+					}});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "restart_html", value1 => $restart_html,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2875,35 +2861,31 @@ WHERE
 		}
 		
 		# Print the header
-		print AN::Common::template($conf, "config.html", "install-manifest-form-header", {
-			form_file	=>	"/cgi-bin/striker",
-		});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-header", replace => { form_file => "/cgi-bin/striker" }});
 		
 		# Record the manifest_uuid, if set.
 		if ($conf->{cgi}{manifest_uuid})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"manifest_uuid",
 				id		=>	"manifest_uuid",
 				value		=>	$conf->{cgi}{manifest_uuid},
-			});
+			}});
 		}
 		
 		# Anvil! prefix
 		if (not $conf->{sys}{install_manifest}{show}{prefix_field})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_prefix",
 				id		=>	"anvil_prefix",
 				value		=>	$conf->{cgi}{anvil_prefix},
-			});
+			}});
 		}
 		else
 		{
-			my $anvil_prefix_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_prefix_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0159!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0061!#" : "#!string!explain_0061!#",
 				name		=>	"anvil_prefix",
@@ -2911,24 +2893,22 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_prefix},
 				star		=>	$conf->{form}{anvil_prefix_star},
 				more_info	=>	"$anvil_prefix_more_info",
-			});
+			}});
 		}
 		
 		# Anvil! sequence
 		if (not $conf->{sys}{install_manifest}{show}{sequence_field})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_sequence",
 				id		=>	"anvil_sequence",
 				value		=>	$conf->{cgi}{anvil_sequence},
-			});
+			}});
 		}
 		else
 		{
-			my $anvil_sequence_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_sequence_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0161!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0063!#" : "#!string!explain_0063!#",
 				name		=>	"anvil_sequence",
@@ -2936,27 +2916,25 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_sequence},
 				star		=>	$conf->{form}{anvil_sequence_star},
 				more_info	=>	"$anvil_sequence_more_info",
-			});
+			}});
 		}
 		
 		# Anvil! domain name
 		if (not $conf->{sys}{install_manifest}{show}{domain_field})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_domain",
 				id		=>	"anvil_domain",
 				value		=>	$conf->{cgi}{anvil_domain},
-			});
+			}});
 		}
 		else
 		{
-			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-			});
+			my $anvil_domain_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::anvil_domain", value1 => $conf->{cgi}{anvil_domain},
 			}, file => $THIS_FILE, line => __LINE__});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0160!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0062!#" : "#!string!explain_0062!#",
 				name		=>	"anvil_domain",
@@ -2964,22 +2942,22 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_domain},
 				star		=>	$conf->{form}{anvil_domain_star},
 				more_info	=>	"$anvil_domain_more_info",
-			});
+			}});
 		}
 		
 		# Anvil! password - Skip if set and hidden.
 		if (($conf->{sys}{install_manifest}{'default'}{password}) && (not $conf->{sys}{install_manifest}{show}{password_field}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_password",
 				id		=>	"anvil_password",
 				value		=>	$conf->{cgi}{anvil_password},
-			});
+			}});
 		}
 		else
 		{
 			my $anvil_password_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0194!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0110!#" : "#!string!explain_0110!#",
 				name		=>	"anvil_password",
@@ -2987,7 +2965,7 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_password},
 				star		=>	$conf->{form}{anvil_password_star},
 				more_info	=>	"$anvil_password_more_info",
-			});
+			}});
 		}
 		
 		# Anvil! BCN Network definition
@@ -2995,21 +2973,21 @@ WHERE
 		    ($conf->{sys}{install_manifest}{'default'}{bcn_subnet}) && 
 		    (not $conf->{sys}{install_manifest}{show}{bcn_network_fields}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_bcn_network",
 				id		=>	"anvil_bcn_network",
 				value		=>	$conf->{cgi}{anvil_bcn_network},
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			}});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_bcn_subnet",
 				id		=>	"anvil_bcn_subnet",
 				value		=>	$conf->{cgi}{anvil_bcn_subnet},
-			});
+			}});
 		}
 		else
 		{
 			my $anvil_bcn_network_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-subnet-entry", replace => { 
 				row		=>	"#!string!row_0162!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0065!#" : "#!string!explain_0065!#",
 				network_name	=>	"anvil_bcn_network",
@@ -3020,16 +2998,16 @@ WHERE
 				subnet_value	=>	$conf->{cgi}{anvil_bcn_subnet},
 				star		=>	$conf->{form}{anvil_bcn_network_star},
 				more_info	=>	"$anvil_bcn_network_more_info",
-			});
+			}});
 		}
 		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_bcn_ethtool_opts",
 				id		=>	"anvil_bcn_ethtool_opts",
 				value		=>	$conf->{cgi}{anvil_bcn_ethtool_opts},
-			});
+			}});
 		}
 		
 		# Anvil! SN Network definition
@@ -3037,21 +3015,21 @@ WHERE
 		    ($conf->{sys}{install_manifest}{'default'}{sn_subnet}) && 
 		    (not $conf->{sys}{install_manifest}{show}{sn_network_fields}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_sn_network",
 				id		=>	"anvil_sn_network",
 				value		=>	$conf->{cgi}{anvil_sn_network},
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			}});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_sn_subnet",
 				id		=>	"anvil_sn_subnet",
 				value		=>	$conf->{cgi}{anvil_sn_subnet},
-			});
+			}});
 		}
 		else
 		{
 			my $anvil_sn_network_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-subnet-entry", replace => { 
 				row		=>	"#!string!row_0163!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0066!#" : "#!string!explain_0066!#",
 				network_name	=>	"anvil_sn_network",
@@ -3062,16 +3040,16 @@ WHERE
 				subnet_value	=>	$conf->{cgi}{anvil_sn_subnet},
 				star		=>	$conf->{form}{anvil_sn_network_star},
 				more_info	=>	"$anvil_sn_network_more_info",
-			});
+			}});
 		}
 		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_sn_ethtool_opts",
 				id		=>	"anvil_sn_ethtool_opts",
 				value		=>	$conf->{cgi}{anvil_sn_ethtool_opts},
-			});
+			}});
 		}
 		
 		# Anvil! IFN Network definition
@@ -3079,21 +3057,21 @@ WHERE
 		    ($conf->{sys}{install_manifest}{'default'}{ifn_subnet}) && 
 		    (not $conf->{sys}{install_manifest}{show}{ifn_network_fields}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ifn_network",
 				id		=>	"anvil_ifn_network",
 				value		=>	$conf->{cgi}{anvil_ifn_network},
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			}});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ifn_subnet",
 				id		=>	"anvil_ifn_subnet",
 				value		=>	$conf->{cgi}{anvil_ifn_subnet},
-			});
+			}});
 		}
 		else
 		{
 			my $anvil_ifn_network_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-subnet-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-subnet-entry", replace => { 
 				row		=>	"#!string!row_0164!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0067!#" : "#!string!explain_0067!#",
 				network_name	=>	"anvil_ifn_network",
@@ -3104,16 +3082,16 @@ WHERE
 				subnet_value	=>	$conf->{cgi}{anvil_ifn_subnet},
 				star		=>	$conf->{form}{anvil_ifn_network_star},
 				more_info	=>	"$anvil_ifn_network_more_info",
-			});
+			}});
 		}
 		# For now, ethtool_opts is always hidden.
 		if (1)
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ifn_ethtool_opts",
 				id		=>	"anvil_ifn_ethtool_opts",
 				value		=>	$conf->{cgi}{anvil_ifn_ethtool_opts},
-			});
+			}});
 		}
 		
 		# Anvil! Media Library size
@@ -3121,21 +3099,21 @@ WHERE
 		    ($conf->{sys}{install_manifest}{'default'}{library_unit}) && 
 		    (not $conf->{sys}{install_manifest}{show}{library_fields}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_media_library_size",
 				id		=>	"anvil_media_library_size",
 				value		=>	$conf->{cgi}{anvil_media_library_size},
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			}});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_media_library_unit",
 				id		=>	"anvil_media_library_unit",
 				value		=>	$conf->{cgi}{anvil_media_library_unit},
-			});
+			}});
 		}
 		else
 		{
 			my $anvil_media_library_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-and-select-entry", replace => { 
 				row		=>	"#!string!row_0191!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0114!#" : "#!string!explain_0114!#",
 				name		=>	"anvil_media_library_size",
@@ -3144,7 +3122,7 @@ WHERE
 				'select'	=>	build_select($conf, "anvil_media_library_unit", 0, 0, 60, $conf->{cgi}{anvil_media_library_unit}, ["GiB", "TiB"]),
 				star		=>	$conf->{form}{anvil_media_library_star},
 				more_info	=>	"$anvil_media_library_more_info",
-			});
+			}});
 		}
 		
 		### NOTE: Disabled, now all goes to Pool 1
@@ -3155,23 +3133,21 @@ WHERE
 			    ($conf->{sys}{install_manifest}{'default'}{pool1_unit}) && 
 			    (not $conf->{sys}{install_manifest}{show}{pool1_fields}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"anvil_storage_pool1_size",
 					id		=>	"anvil_storage_pool1_size",
 					value		=>	$conf->{cgi}{anvil_storage_pool1_size},
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				}});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"anvil_storage_pool1_unit",
 					id		=>	"anvil_storage_pool1_unit",
 					value		=>	$conf->{cgi}{anvil_storage_pool1_unit},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-and-select-entry", {
+				my $anvil_storage_pool1_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-and-select-entry", replace => { 
 					row		=>	"#!string!row_0199!#",
 					explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0115!#" : "#!string!explain_0115!#",
 					name		=>	"anvil_storage_pool1_size",
@@ -3180,28 +3156,28 @@ WHERE
 					'select'	=>	build_select($conf, "anvil_storage_pool1_unit", 0, 0, 60, $conf->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
 					star		=>	$conf->{form}{anvil_storage_pool1_star},
 					more_info	=>	"$anvil_storage_pool1_more_info",
-				});
+				}});
 			}
 		}
 		else
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_storage_pool1_size",
 				id		=>	"anvil_storage_pool1_size",
 				value		=>	$conf->{cgi}{anvil_storage_pool1_size},
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			}});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_storage_pool1_unit",
 				id		=>	"anvil_storage_pool1_unit",
 				value		=>	$conf->{cgi}{anvil_storage_pool1_unit},
-			});
+			}});
 		}
 		
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_repositories",
 			id		=>	"anvil_repositories",
 			value		=>	$conf->{cgi}{anvil_repositories},
-		});
+		}});
 		
 		# Button to pre-populate the rest of the form.
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-spacer"});
@@ -3217,156 +3193,154 @@ WHERE
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-common-header"});
 		
 		### NOTE: For now, DRBD options are hidden.
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_disk_disk-barrier",
 			id		=>	"anvil_drbd_disk_disk-barrier",
 			value		=>	$conf->{cgi}{'anvil_drbd_disk_disk-barrier'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_disk_disk-flushes",
 			id		=>	"anvil_drbd_disk_disk-flushes",
 			value		=>	$conf->{cgi}{'anvil_drbd_disk_disk-flushes'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_disk_md-flushes",
 			id		=>	"anvil_drbd_disk_md-flushes",
 			value		=>	$conf->{cgi}{'anvil_drbd_disk_md-flushes'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_options_cpu-mask",
 			id		=>	"anvil_drbd_options_cpu-mask",
 			value		=>	$conf->{cgi}{'anvil_drbd_options_cpu-mask'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_net_max-buffers",
 			id		=>	"anvil_drbd_net_max-buffers",
 			value		=>	$conf->{cgi}{'anvil_drbd_net_max-buffers'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_net_sndbuf-size",
 			id		=>	"anvil_drbd_net_sndbuf-size",
 			value		=>	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
-		});
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		}});
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_drbd_net_rcvbuf-size",
 			id		=>	"anvil_drbd_net_rcvbuf-size",
 			value		=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
-		});
+		}});
 		
 		# Store defined MAC addresses
 		if ($conf->{cgi}{anvil_node1_bcn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_bcn_link1_mac",
 				id		=>	"anvil_node1_bcn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node1_bcn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node1_bcn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_bcn_link2_mac",
 				id		=>	"anvil_node1_bcn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node1_bcn_link2_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node1_sn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_sn_link1_mac",
 				id		=>	"anvil_node1_sn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node1_sn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node1_sn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_sn_link2_mac",
 				id		=>	"anvil_node1_sn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node1_sn_link2_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node1_ifn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_ifn_link1_mac",
 				id		=>	"anvil_node1_ifn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node1_ifn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node1_ifn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node1_ifn_link2_mac",
 				id		=>	"anvil_node1_ifn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node1_ifn_link2_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_bcn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_bcn_link1_mac",
 				id		=>	"anvil_node2_bcn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node2_bcn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_bcn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_bcn_link2_mac",
 				id		=>	"anvil_node2_bcn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node2_bcn_link2_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_sn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_sn_link1_mac",
 				id		=>	"anvil_node2_sn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node2_sn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_sn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_sn_link2_mac",
 				id		=>	"anvil_node2_sn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node2_sn_link2_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_ifn_link1_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_ifn_link1_mac",
 				id		=>	"anvil_node2_ifn_link1_mac",
 				value		=>	$conf->{cgi}{anvil_node2_ifn_link1_mac},
-			});
+			}});
 		}
 		if ($conf->{cgi}{anvil_node2_ifn_link2_mac})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_node2_ifn_link2_mac",
 				id		=>	"anvil_node2_ifn_link2_mac",
 				value		=>	$conf->{cgi}{anvil_node2_ifn_link2_mac},
-			});
+			}});
 		}
 		
 		# Anvil! (cman cluster) Name
 		if (($conf->{sys}{install_manifest}{'default'}{name}) && 
 		    (not $conf->{sys}{install_manifest}{show}{name_field}))
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_name",
 				id		=>	"anvil_name",
 				value		=>	$conf->{cgi}{anvil_name},
-			});
+			}});
 		}
 		else
 		{
-			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#The_First_cluster.conf_Foundation_Configuration" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0005!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0095!#" : "#!string!explain_0095!#",
 				name		=>	"anvil_name",
@@ -3374,30 +3348,28 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_name},
 				star		=>	$conf->{form}{anvil_name_star},
 				more_info	=>	"$anvil_name_more_info",
-			});
+			}});
 		}
 		# The "anvil_name" is stored as a hidden field.
-		print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 			name		=>	"anvil_cluster_name",
 			id		=>	"anvil_cluster_name",
 			value		=>	$conf->{cgi}{anvil_cluster_name},
-		});
+		}});
 		
 		# Anvil! IFN Gateway
 		if (not $conf->{sys}{install_manifest}{show}{ifn_network_fields})
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ifn_gateway",
 				id		=>	"anvil_ifn_gateway",
 				value		=>	$conf->{cgi}{anvil_ifn_gateway},
-			});
+			}});
 		}
 		else
 		{
-			my $anvil_ifn_gateway_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_ifn_gateway_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Foundation_Pack_Host_Names" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0188!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0092!#" : "#!string!explain_0092!#",
 				name		=>	"anvil_ifn_gateway",
@@ -3405,33 +3377,31 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_ifn_gateway},
 				star		=>	$conf->{form}{anvil_ifn_gateway_star},
 				more_info	=>	"$anvil_ifn_gateway_more_info",
-			});
+			}});
 		}
 		
 		# DNS
 		if (not $conf->{sys}{install_manifest}{show}{dns_fields})
 		{
 			# Anvil! Primary DNS
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_dns1",
 				id		=>	"anvil_dns1",
 				value		=>	$conf->{cgi}{anvil_dns1},
-			});
+			}});
 			
 			# Anvil! Secondary DNS
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_dns2",
 				id		=>	"anvil_dns2",
 				value		=>	$conf->{cgi}{anvil_dns2},
-			});
+			}});
 		}
 		else
 		{
 			# Anvil! Primary DNS
-			my $anvil_dns1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"http://en.wikipedia.org/wiki/Domain_Name_System",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_dns1_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "http://en.wikipedia.org/wiki/Domain_Name_System" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0189!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0093!#" : "#!string!explain_0093!#",
 				name		=>	"anvil_dns1",
@@ -3439,11 +3409,11 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_dns1},
 				star		=>	$conf->{form}{anvil_dns1_star},
 				more_info	=>	"$anvil_dns1_more_info",
-			});
+			}});
 			
 			# Anvil! Secondary DNS
 			my $anvil_dns2_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0190!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0094!#" : "#!string!explain_0094!#",
 				name		=>	"anvil_dns2",
@@ -3451,33 +3421,31 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_dns2},
 				star		=>	$conf->{form}{anvil_dns2_star},
 				more_info	=>	"$anvil_dns2_more_info",
-			});
+			}});
 		}
 		
 		# NTP
 		if (not $conf->{sys}{install_manifest}{show}{ntp_fields})
 		{
 			# Anvil! Primary NTP
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ntp1",
 				id		=>	"anvil_ntp1",
 				value		=>	$conf->{cgi}{anvil_ntp1},
-			});
+			}});
 			
 			# Anvil! Secondary NTP
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_ntp2",
 				id		=>	"anvil_ntp2",
 				value		=>	$conf->{cgi}{anvil_ntp2},
-			});
+			}});
 		}
 		else
 		{
 			# Anvil! Primary NTP
-			my $anvil_ntp1_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://en.wikipedia.org/wiki/Network_Time_Protocol",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_ntp1_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://en.wikipedia.org/wiki/Network_Time_Protocol" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0192!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0097!#" : "#!string!explain_0097!#",
 				name		=>	"anvil_ntp1",
@@ -3485,11 +3453,11 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_ntp1},
 				star		=>	$conf->{form}{anvil_ntp1_star},
 				more_info	=>	"$anvil_ntp1_more_info",
-			});
+			}});
 			
 			# Anvil! Secondary NTP
 			my $anvil_ntp2_more_info = "";
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0193!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0098!#" : "#!string!explain_0098!#",
 				name		=>	"anvil_ntp2",
@@ -3497,16 +3465,14 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_ntp2},
 				star		=>	$conf->{form}{anvil_ntp2_star},
 				more_info	=>	"$anvil_ntp2_more_info",
-			});
+			}});
 		}
 		
 		# Allows the user to set the MTU size manually
 		if (1)
 		{
-			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-				url	=>	"https://en.wikipedia.org/wiki/Maximum_transmission_unit",
-			});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+			my $anvil_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://en.wikipedia.org/wiki/Maximum_transmission_unit" }});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 				row		=>	"#!string!row_0291!#",
 				explain		=>	$conf->{sys}{expert_ui} ? "#!string!terse_0156!#" : "#!string!explain_0156!#",
 				name		=>	"anvil_mtu_size",
@@ -3514,15 +3480,15 @@ WHERE
 				value		=>	$conf->{cgi}{anvil_mtu_size},
 				star		=>	$conf->{form}{anvil_mtu_size_star},
 				more_info	=>	"$anvil_name_more_info",
-			});
+			}});
 		}
 		else
 		{
-			print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 				name		=>	"anvil_mtu_size",
 				id		=>	"anvil_mtu_size",
 				value		=>	$conf->{cgi}{anvil_mtu_size},
-			});
+			}});
 		}
 		
 		# Now show the header for the Foundation pack section.
@@ -3564,26 +3530,24 @@ WHERE
 			if (not $conf->{sys}{install_manifest}{show}{switch_fields})
 			{
 				# Switch name
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$name_key",
 					id		=>	"$name_key",
 					value		=>	$conf->{cgi}{$name_key},
-				});
+				}});
 				
 				# Switch IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$ip_key",
 					id		=>	"$ip_key",
 					value		=>	$conf->{cgi}{$ip_key},
-				});
+				}});
 			}
 			else
 			{
 				# Switch name
-				my $network_switch_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_name_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_switch_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_name_row",
 					explain		=>	"$say_name_explain",
 					name		=>	"$name_key",
@@ -3591,13 +3555,11 @@ WHERE
 					value		=>	$conf->{cgi}{$name_key},
 					star		=>	$conf->{form}{$name_star_key},
 					more_info	=>	"$network_switch_name_more_info",
-				});
+				}});
 				
 				# Switch IP
-				my $network_switch_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_switch_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_ip_row",
 					explain		=>	"$say_ip_explain",
 					name		=>	"$ip_key",
@@ -3605,7 +3567,7 @@ WHERE
 					value		=>	$conf->{cgi}{$ip_key},
 					star		=>	$conf->{form}{$ip_star_key},
 					more_info	=>	"$network_switch_ip_more_info",
-				});
+				}});
 			}
 		}
 		
@@ -3645,26 +3607,24 @@ WHERE
 			if (not $conf->{sys}{install_manifest}{show}{ups_fields})
 			{
 				# UPS name
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$name_key",
 					id		=>	"$name_key",
 					value		=>	$conf->{cgi}{$name_key},
-				});
+				}});
 				
 				# UPS IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$ip_key",
 					id		=>	"$ip_key",
 					value		=>	$conf->{cgi}{$ip_key},
-				});
+				}});
 			}
 			else
 			{
 				# UPS name
-				my $network_ups_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_name_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_ups_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_name_row",
 					explain		=>	"$say_name_explain",
 					name		=>	"$name_key",
@@ -3672,13 +3632,11 @@ WHERE
 					value		=>	$conf->{cgi}{$name_key},
 					star		=>	$conf->{form}{$name_star_key},
 					more_info	=>	"$network_ups_name_more_info",
-				});
+				}});
 				
 				# UPS IP
-				my $network_ups_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_ups_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_ip_row",
 					explain		=>	"$say_ip_explain",
 					name		=>	"$ip_key",
@@ -3686,7 +3644,7 @@ WHERE
 					value		=>	$conf->{cgi}{$ip_key},
 					star		=>	$conf->{form}{$ip_star_key},
 					more_info	=>	"$network_ups_ip_more_info",
-				});
+				}});
 			}
 		}
 		
@@ -3726,26 +3684,24 @@ WHERE
 			if (not $conf->{sys}{install_manifest}{show}{pts_fields})
 			{
 				# PTS name
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$name_key",
 					id		=>	"$name_key",
 					value		=>	$conf->{cgi}{$name_key},
-				});
+				}});
 				
 				# PTS IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$ip_key",
 					id		=>	"$ip_key",
 					value		=>	$conf->{cgi}{$ip_key},
-				});
+				}});
 			}
 			else
 			{
 				# PTS name
-				my $network_pts_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_name_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_pts_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_name_row",
 					explain		=>	"$say_name_explain",
 					name		=>	"$name_key",
@@ -3753,13 +3709,11 @@ WHERE
 					value		=>	$conf->{cgi}{$name_key},
 					star		=>	$conf->{form}{$name_star_key},
 					more_info	=>	"$network_pts_name_more_info",
-				});
+				}});
 				
 				# PTS IP
-				my $network_pts_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $network_pts_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_ip_row",
 					explain		=>	"$say_ip_explain",
 					name		=>	"$ip_key",
@@ -3767,7 +3721,7 @@ WHERE
 					value		=>	$conf->{cgi}{$ip_key},
 					star		=>	$conf->{form}{$ip_star_key},
 					more_info	=>	"$network_pts_ip_more_info",
-				});
+				}});
 			}
 		}
 		
@@ -3842,33 +3796,31 @@ WHERE
 			    (not $conf->{sys}{install_manifest}{show}{pdu_fields}))
 			{
 				# PDU name
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$pdu_name_key",
 					id		=>	"$pdu_name_key",
 					value		=>	$conf->{cgi}{$pdu_name_key},
-				});
+				}});
 				
 				# PDU IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$pdu_ip_key",
 					id		=>	"$pdu_ip_key",
 					value		=>	$conf->{cgi}{$pdu_ip_key},
-				});
+				}});
 				
 				# PDU Brand
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$pdu_agent_key",
 					id		=>	"$pdu_agent_key",
 					value		=>	$conf->{cgi}{$pdu_agent_key},
-				});
+				}});
 			}
 			else
 			{
 				# PDU Name
-				my $pdu_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_name_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $pdu_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_pdu_name",
 					explain		=>	"$say_name_explain",
 					name		=>	"$pdu_name_key",
@@ -3876,13 +3828,11 @@ WHERE
 					value		=>	$conf->{cgi}{$pdu_name_key},
 					star		=>	$conf->{form}{$pdu_star_name_key},
 					more_info	=>	"$pdu_name_more_info",
-				});
+				}});
 				
 				# PDU IP
-				my $pdu_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $pdu_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_pdu_ip",
 					explain		=>	"$say_ip_explain",
 					name		=>	"$pdu_ip_key",
@@ -3890,19 +3840,17 @@ WHERE
 					value		=>	$conf->{cgi}{$pdu_ip_key},
 					star		=>	$conf->{form}{$pdu_star_ip_key},
 					more_info	=>	"$pdu_ip_more_info",
-				});
+				}});
 				
 				# PDU Brand
-				my $pdu_agent_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_agent_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-select-entry", {
+				my $pdu_agent_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_agent_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-select-entry", replace => { 
 					row		=>	"$say_pdu_agent",
 					explain		=>	"$say_agent_explain",
 					'select'	=>	$pdu_model,
 					star		=>	$conf->{form}{$pdu_star_agent_key},
 					more_info	=>	"$pdu_agent_more_info",
-				});
+				}});
 			}
 		}
 		
@@ -3953,33 +3901,31 @@ WHERE
 			if (not $conf->{sys}{install_manifest}{show}{dashboard_fields})
 			{
 				# Striker name
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$name_key",
 					id		=>	"$name_key",
 					value		=>	$conf->{cgi}{$name_key},
-				});
+				}});
 				
 				# Striker BCN IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$bcn_ip_key",
 					id		=>	"$bcn_ip_key",
 					value		=>	$conf->{cgi}{$bcn_ip_key},
-				});
+				}});
 				
 				# Striker IFN IP
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	"$ifn_ip_key",
 					id		=>	"$ifn_ip_key",
 					value		=>	$conf->{cgi}{$ifn_ip_key},
-				});
+				}});
 			}
 			else
 			{
 				# Striker name
-				my $striker_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_name_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $striker_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_name_row",
 					explain		=>	"$say_name_explain",
 					name		=>	"$name_key",
@@ -3987,13 +3933,11 @@ WHERE
 					value		=>	$conf->{cgi}{$name_key},
 					star		=>	$conf->{form}{$name_star_key},
 					more_info	=>	"$striker_name_more_info",
-				});
+				}});
 				
 				# Striker BCN IP
-				my $striker_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_bcn_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $striker_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_bcn_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_bcn_ip_row",
 					explain		=>	"$say_bcn_ip_explain",
 					name		=>	"$bcn_ip_key",
@@ -4001,13 +3945,11 @@ WHERE
 					value		=>	$conf->{cgi}{$bcn_ip_key},
 					star		=>	$conf->{form}{$bcn_ip_star_key},
 					more_info	=>	"$striker_bcn_ip_more_info",
-				});
+				}});
 				
 				# Striker IFN IP
-				my $striker_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"$say_ifn_ip_url",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $striker_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ifn_ip_url }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"$say_ifn_ip_row",
 					explain		=>	"$say_ifn_ip_explain",
 					name		=>	"$ifn_ip_key",
@@ -4015,7 +3957,7 @@ WHERE
 					value		=>	$conf->{cgi}{$ifn_ip_key},
 					star		=>	$conf->{form}{$ifn_ip_star_key},
 					more_info	=>	"$striker_ifn_ip_more_info",
-				});
+				}});
 			}
 		}
 		
@@ -4028,9 +3970,7 @@ WHERE
 		{
 			# Print the node header
 			my $title = $an->String->get({key => "title_0152", variables => { node_number => $j }});
-			print AN::Common::template($conf, "config.html", "install-manifest-form-nodes-header", {
-				title	=>	$title,
-			});
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-nodes-header", replace => { title => $title }});
 			
 			my $name_key        = "anvil_node${j}_name";
 			my $explain_name    = "";
@@ -4054,18 +3994,16 @@ WHERE
 			if (($conf->{sys}{install_manifest}{'default'}{$default_node_name_key}) && 
 			    (not $conf->{sys}{install_manifest}{show}{nodes_name_field}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_name_key,
 					id		=>	$anvil_node_name_key,
 					value		=>	$conf->{cgi}{$anvil_node_name_key},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_node_name_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $anvil_node_name_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0165!#",
 					explain		=>	$explain_name,
 					name		=>	$anvil_node_name_key,
@@ -4073,7 +4011,7 @@ WHERE
 					value		=>	$conf->{cgi}{$anvil_node_name_key},
 					star		=>	$conf->{form}{$anvil_node_name_star_key},
 					more_info	=>	"$anvil_node_name_more_info",
-				});
+				}});
 			}
 			
 			# Node's BCN IP address
@@ -4083,18 +4021,16 @@ WHERE
 			if (($conf->{sys}{install_manifest}{'default'}{$default_node_bcn_ip_key}) && 
 			    (not $conf->{sys}{install_manifest}{show}{nodes_bcn_field}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_bcn_ip_key,
 					id		=>	$anvil_node_bcn_ip_key,
 					value		=>	$conf->{cgi}{$anvil_node_bcn_ip_key},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_node_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $anvil_node_bcn_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0166!#",
 					explain		=>	$explain_bcn_ip,
 					name		=>	$anvil_node_bcn_ip_key,
@@ -4102,7 +4038,7 @@ WHERE
 					value		=>	$conf->{cgi}{$anvil_node_bcn_ip_key},
 					star		=>	$conf->{form}{$anvil_node_bcn_ip_star_key},
 					more_info	=>	"$anvil_node_bcn_ip_more_info",
-				});
+				}});
 			}
 			
 			# Node's IPMI IP address
@@ -4112,18 +4048,16 @@ WHERE
 			if (($conf->{sys}{install_manifest}{'default'}{$default_node_ipmi_ip_key}) && 
 			    (not $conf->{sys}{install_manifest}{show}{nodes_ipmi_field}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_ipmi_ip_key,
 					id		=>	$anvil_node_ipmi_ip_key,
 					value		=>	$conf->{cgi}{$anvil_node_ipmi_ip_key},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_node_ipmi_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $anvil_node_ipmi_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#What_is_IPMI" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0168!#",
 					explain		=>	$explain_ipmi_ip,
 					name		=>	$anvil_node_ipmi_ip_key,
@@ -4131,7 +4065,7 @@ WHERE
 					value		=>	$conf->{cgi}{$anvil_node_ipmi_ip_key},
 					star		=>	$conf->{form}{$anvil_node_ipmi_ip_star_key},
 					more_info	=>	"$anvil_node_ipmi_ip_more_info",
-				});
+				}});
 			}
 			
 			# Node's SN IP address
@@ -4141,18 +4075,16 @@ WHERE
 			if (($conf->{sys}{install_manifest}{'default'}{$default_node_sn_ip_key}) && 
 			   (not $conf->{sys}{install_manifest}{show}{nodes_sn_field}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_sn_ip_key,
 					id		=>	$anvil_node_sn_ip_key,
 					value		=>	$conf->{cgi}{$anvil_node_sn_ip_key},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_node_sn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $anvil_node_sn_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0167!#",
 					explain		=>	$explain_sn_ip,
 					name		=>	$anvil_node_sn_ip_key,
@@ -4160,7 +4092,7 @@ WHERE
 					value		=>	$conf->{cgi}{$anvil_node_sn_ip_key},
 					star		=>	$conf->{form}{$anvil_node_sn_ip_star_key},
 					more_info	=>	"$anvil_node_sn_ip_more_info",
-				});
+				}});
 			}
 			
 			# Node's IFN IP address
@@ -4170,18 +4102,16 @@ WHERE
 			if (($conf->{sys}{install_manifest}{'default'}{$default_node_ifn_ip_key}) && 
 			   (not $conf->{sys}{install_manifest}{show}{nodes_ifn_field}))
 			{
-				print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 					name		=>	$anvil_node_ifn_ip_key,
 					id		=>	$anvil_node_ifn_ip_key,
 					value		=>	$conf->{cgi}{$anvil_node_ifn_ip_key},
-				});
+				}});
 			}
 			else
 			{
-				my $anvil_node_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-					url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets",
-				});
-				print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+				my $anvil_node_ifn_ip_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Subnets" }});
+				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 					row		=>	"#!string!row_0169!#",
 					explain		=>	$explain_ifn_ip,
 					name		=>	$anvil_node_ifn_ip_key,
@@ -4189,7 +4119,7 @@ WHERE
 					value		=>	$conf->{cgi}{$anvil_node_ifn_ip_key},
 					star		=>	$conf->{form}{$anvil_node_ifn_ip_star_key},
 					more_info	=>	"$anvil_node_ifn_ip_more_info",
-				});
+				}});
 			}
 			
 			# Now we create an entry for each possible PDU (2 to 4).
@@ -4222,18 +4152,16 @@ WHERE
 				my $pdu_outlet_star_key  = "anvil_node${j}_pdu${i}_outlet_star";
 				if (not $conf->{sys}{install_manifest}{show}{nodes_ifn_field})
 				{
-					print AN::Common::template($conf, "config.html", "install-manifest-form-hidden-entry", {
+					print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
 						name		=>	$pdu_outlet_key,
 						id		=>	$pdu_outlet_key,
 						value		=>	$conf->{cgi}{$pdu_outlet_key},
-					});
+					}});
 				}
 				else
 				{
-					my $pdu_outlet_more_info = $conf->{sys}{disable_links} ? "" : AN::Common::template($conf, "config.html", "install-manifest-more-info-url", {
-						url	=>	"https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F",
-					});
-					print AN::Common::template($conf, "config.html", "install-manifest-form-text-entry", {
+					my $pdu_outlet_more_info = $conf->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" }});
+					print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
 						row		=>	"$say_pdu_name",
 						explain		=>	$say_explain,
 						name		=>	$pdu_outlet_key,
@@ -4241,12 +4169,11 @@ WHERE
 						value		=>	$conf->{cgi}{$pdu_outlet_key},
 						star		=>	$conf->{form}{$pdu_outlet_star_key},
 						more_info	=>	"$pdu_outlet_more_info",
-					});
+					}});
 				}
 			}
 			
-			print AN::Common::template($conf, "config.html", "install-manifest-form-nodes", {
-
+			print $an->Web->template({file => "config.html", template => "install-manifest-form-nodes", replace => { 
 				anvil_node2_name		=>	$conf->{cgi}{anvil_node2_name},
 				anvil_node2_name_star		=>	$conf->{form}{anvil_node2_name_star},
 				anvil_node2_bcn_ip		=>	$conf->{cgi}{anvil_node2_bcn_ip},
@@ -4265,7 +4192,7 @@ WHERE
 				anvil_node2_pdu3_outlet_star	=>	$conf->{form}{anvil_node2_pdu3_outlet_star},
 				anvil_node2_pdu4_outlet		=>	$conf->{cgi}{anvil_node2_pdu4_outlet},
 				anvil_node2_pdu4_outlet_star	=>	$conf->{form}{anvil_node2_pdu4_outlet_star},
-			});
+			}});
 		}
 		
 		# Footer.
@@ -5686,9 +5613,7 @@ sub load_install_manifest
 	{
 		# File is gone. ;_;
 		my $message = $an->String->get({key => "message_0350", variables => { manifest_file => $manifest_file }});
-		print AN::Common::template($conf, "config.html", "load-manifest-failure", {
-			message	=>	$message,
-		});
+		print $an->Web->template({file => "config.html", template => "load-manifest-failure", replace => { message => $message }});
 	}
 	
 	return(0);
@@ -5741,12 +5666,12 @@ sub show_existing_install_manifests
 	
 	foreach my $manifest_uuid (sort {$b cmp $a} keys %{$conf->{manifest_file}})
 	{
-		print AN::Common::template($conf, "config.html", "install-manifest-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-entry", replace => { 
 			description	=>	$conf->{manifest_file}{$manifest_uuid}{anvil},
 			load		=>	"?config=true&task=create-install-manifest&load=true&manifest_uuid=$manifest_uuid",
 			run		=>	"?config=true&task=create-install-manifest&run=true&manifest_uuid=$manifest_uuid",
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=true&manifest_uuid=$manifest_uuid",
-		});
+		}});
 	}
 	if ($header_printed)
 	{
@@ -5817,13 +5742,13 @@ sub show_existing_install_manifests_old
 	}
 	foreach my $file (sort {$b cmp $a} keys %{$conf->{manifest_file}})
 	{
-		print AN::Common::template($conf, "config.html", "install-manifest-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-entry", replace => { 
 			description	=>	$conf->{manifest_file}{$file}{anvil},
 			load		=>	"?config=true&task=create-install-manifest&load=$file",
 			download	=>	$conf->{path}{apache_manifests_url}."/".$file,
 			run		=>	"?config=true&task=create-install-manifest&run=$file",
 			'delete'	=>	"?config=true&task=create-install-manifest&delete=$file",
-		});
+		}});
 	}
 	if ($header_printed)
 	{
@@ -6338,7 +6263,7 @@ sub confirm_install_manifest_run
 		name1 => "cgi::anvil_node1_name", value1 => $conf->{cgi}{anvil_node1_name},
 		name2 => "cgi::anvil_node2_name", value2 => $conf->{cgi}{anvil_node2_name},
 	}, file => $THIS_FILE, line => __LINE__});
-	print AN::Common::template($conf, "config.html", "confirm-anvil-manifest-run", {
+	print $an->Web->template({file => "config.html", template => "confirm-anvil-manifest-run", replace => { 
 		form_file			=>	"/cgi-bin/striker",
 		say_storage_pool_1		=>	$say_storage_pool_1,
 		say_storage_pool_2		=>	$say_storage_pool_2,
@@ -6414,7 +6339,7 @@ sub confirm_install_manifest_run
 		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
 		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
 		anvil_mtu_size			=>	$conf->{cgi}{anvil_mtu_size},
-	});
+	}});
 	
 	return(0);
 }
@@ -6436,55 +6361,49 @@ sub show_summary_manifest
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Open the table.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-header", {
-		form_file	=>	"/cgi-bin/striker",
-	});
-	
-	# Nodes header
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-title", {
-		title		=>	"#!string!title_0159!#",
-	});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-header", replace => { form_file => "/cgi-bin/striker" }});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-title", replace => { title => "#!string!title_0159!#" }});
 	
 	# Node colum header.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-column-header", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-column-header", replace => { 
 		column1		=>	"#!string!header_0001!#",
 		column2		=>	"#!string!header_0002!#",
-	});
+	}});
 	
 	# Node names
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0165!#",
 		column1		=>	$conf->{cgi}{anvil_node1_name},
 		column2		=>	$conf->{cgi}{anvil_node2_name},
-	});
+	}});
 	
 	# Node BCN IPs
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0166!#",
 		column1		=>	$conf->{cgi}{anvil_node1_bcn_ip},
 		column2		=>	$conf->{cgi}{anvil_node2_bcn_ip},
-	});
+	}});
 	
 	# Node IPMI BMC IPs
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0168!#",
 		column1		=>	$conf->{cgi}{anvil_node1_ipmi_ip},
 		column2		=>	$conf->{cgi}{anvil_node2_ipmi_ip},
-	});
+	}});
 	
 	# Node SN IPs
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0167!#",
 		column1		=>	$conf->{cgi}{anvil_node1_sn_ip},
 		column2		=>	$conf->{cgi}{anvil_node2_sn_ip},
-	});
+	}});
 	
 	# Node IFN IPs
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0169!#",
 		column1		=>	$conf->{cgi}{anvil_node1_ifn_ip},
 		column2		=>	$conf->{cgi}{anvil_node2_ifn_ip},
-	});
+	}});
 	
 	### PDUs are a little more complicated.
 	foreach my $i (1..$conf->{sys}{install_manifest}{pdu_count})
@@ -6504,92 +6423,88 @@ sub show_summary_manifest
 		my $node2_pdu_outlet_key = "anvil_node2_pdu${i}_outlet";
 		
 		# PDUs
-		print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 			row		=>	"$say_pdu_name",
 			column1		=>	$conf->{cgi}{$node1_pdu_outlet_key} ? $conf->{cgi}{$node1_pdu_outlet_key} : "#!string!symbol_0011!#",
 			column2		=>	$conf->{cgi}{$node2_pdu_outlet_key} ? $conf->{cgi}{$node2_pdu_outlet_key} : "#!string!symbol_0011!#",
-		});
+		}});
 	}
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-spacer"});
 	
 	# Strikers header
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-title", {
-		title		=>	"#!string!title_0161!#",
-	});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-title", replace => { title => "#!string!title_0161!#" }});
 	
 	# Striker colum header.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-column-header", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-column-header", replace => { 
 		column1		=>	"#!string!header_0014!#",
 		column2		=>	"#!string!header_0015!#",
-	});
+	}});
 	
 	# Striker names
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0165!#",
 		column1		=>	$conf->{cgi}{anvil_striker1_name},
 		column2		=>	$conf->{cgi}{anvil_striker2_name},
-	});
+	}});
 	
 	# Striker BCN IP
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0166!#",
 		column1		=>	$conf->{cgi}{anvil_striker1_bcn_ip},
 		column2		=>	$conf->{cgi}{anvil_striker2_bcn_ip},
-	});
+	}});
 	
 	# Striker IFN IP
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0169!#",
 		column1		=>	$conf->{cgi}{anvil_striker1_ifn_ip},
 		column2		=>	$conf->{cgi}{anvil_striker2_ifn_ip},
-	});
+	}});
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-spacer"});
 	
 	# Foundation Pack Header
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-title", {
-		title		=>	"#!string!title_0160!#",
-	});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-title", replace => { title => "#!string!title_0160!#" }});
 	
 	# Striker 2 colum header.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-column-header", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-column-header", replace => { 
 		column1		=>	"#!string!header_0003!#",
 		column2		=>	"#!string!header_0004!#",
-	});
+	}});
 	
 	# Striker 4 column header.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-header", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-header", replace => { 
 		column1		=>	"#!string!header_0006!#",
 		column2		=>	"#!string!header_0007!#",
 		column3		=>	"#!string!header_0006!#",
 		column4		=>	"#!string!header_0007!#",
-	});
+	}});
 	
 	# Switches
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 		row		=>	"#!string!row_0195!#",
 		column1		=>	$conf->{cgi}{anvil_switch1_name},
 		column2		=>	$conf->{cgi}{anvil_switch1_ip},
 		column3		=>	$conf->{cgi}{anvil_switch2_name},
 		column4		=>	$conf->{cgi}{anvil_switch2_ip},
-	});
+	}});
 	
 	# UPSes
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 		row		=>	"#!string!row_0197!#",
 		column1		=>	$conf->{cgi}{anvil_ups1_name},
 		column2		=>	$conf->{cgi}{anvil_ups1_ip},
 		column3		=>	$conf->{cgi}{anvil_ups2_name},
 		column4		=>	$conf->{cgi}{anvil_ups2_ip},
-	});
+	}});
 	
 	# PTSes
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 		row		=>	"#!string!row_0225!#",
 		column1		=>	$conf->{cgi}{anvil_pts1_name},
 		column2		=>	$conf->{cgi}{anvil_pts1_ip},
 		column3		=>	$conf->{cgi}{anvil_pts2_name},
 		column4		=>	$conf->{cgi}{anvil_pts2_ip},
-	});
+	}});
 	
 	### PDUs are, surprise, a little more complicated.
 	my $say_apc        = $an->String->get({key => "brand_0017"});
@@ -6614,138 +6529,137 @@ sub show_summary_manifest
 	{
 		### Two PDU setup 
 		# PDUs
-		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 			row		=>	"#!string!row_0196!#",
 			column1		=>	$conf->{cgi}{anvil_pdu1_name} ? "$conf->{cgi}{anvil_pdu1_name} ($say_pdu1_brand)" : "--",
 			column2		=>	$conf->{cgi}{anvil_pdu1_ip}   ? $conf->{cgi}{anvil_pdu1_ip}                       : "--",
 			column3		=>	$conf->{cgi}{anvil_pdu2_name} ? "$conf->{cgi}{anvil_pdu2_name} ($say_pdu2_brand)" : "--",
 			column4		=>	$conf->{cgi}{anvil_pdu2_ip}   ? $conf->{cgi}{anvil_pdu2_ip}                       : "--",
-		});
+		}});
 	}
 	else
 	{
 		### Four PDU setup
 		# 'PDU 1' will be for '1A' and '1B'.
-		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 			row		=>	"#!string!row_0276!#",
 			column1		=>	$conf->{cgi}{anvil_pdu1_name} ? "$conf->{cgi}{anvil_pdu1_name} ($say_pdu1_brand)" : "--",
 			column2		=>	$conf->{cgi}{anvil_pdu1_ip}   ? $conf->{cgi}{anvil_pdu1_ip}                       : "--",
 			column3		=>	$conf->{cgi}{anvil_pdu3_name} ? "$conf->{cgi}{anvil_pdu3_name} ($say_pdu3_brand)" : "--",
 			column4		=>	$conf->{cgi}{anvil_pdu3_ip}   ? $conf->{cgi}{anvil_pdu3_ip}                       : "--",
-		});
+		}});
+		
 		# 'PDU 2' will be for '2A' and '2B'.
-		print AN::Common::template($conf, "config.html", "install-manifest-summay-four-column-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-four-column-entry", replace => { 
 			row		=>	"#!string!row_0277!#",
 			column1		=>	$conf->{cgi}{anvil_pdu2_name} ? "$conf->{cgi}{anvil_pdu2_name} ($say_pdu2_brand)" : "--",
 			column2		=>	$conf->{cgi}{anvil_pdu2_ip}   ? $conf->{cgi}{anvil_pdu2_ip}                       : "--",
 			column3		=>	$conf->{cgi}{anvil_pdu4_name} ? "$conf->{cgi}{anvil_pdu4_name} ($say_pdu4_brand)" : "--",
 			column4		=>	$conf->{cgi}{anvil_pdu4_ip}   ? $conf->{cgi}{anvil_pdu4_ip}                       : "--",
-		});
+		}});
 	}
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-spacer"});
 	
 	# Shared Variables Header
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-title", {
-		title		=>	"#!string!title_0154!#",
-	});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-title", replace => { title => "#!string!title_0154!#" }});
 	
 	# Anvil! name
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0005!#",
 		column1		=>	$conf->{cgi}{anvil_name},
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# Anvil! Password
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0194!#",
 		column1		=>	$conf->{cgi}{anvil_password},
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# Media Library size
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0191!#",
 		column1		=>	"$conf->{cgi}{anvil_media_library_size} $conf->{cgi}{anvil_media_library_unit}",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	### NOTE: Disabled now, always 100% to pool 1.
 	# Storage Pool 1 size
 	if (0)
 	{
-		print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+		print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 			row		=>	"#!string!row_0199!#",
 			column1		=>	"$conf->{cgi}{anvil_storage_pool1_size} $conf->{cgi}{anvil_storage_pool1_unit}",
 			column2		=>	"&nbsp;",
-		});
+		}});
 	}
 	
 	# BCN Network Mask
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0200!#",
 		column1		=>	"$conf->{cgi}{anvil_bcn_subnet}",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# SN Network Mask
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0201!#",
 		column1		=>	"$conf->{cgi}{anvil_sn_subnet}",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# IFN Network Mask
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0202!#",
 		column1		=>	"$conf->{cgi}{anvil_ifn_subnet}",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# Default Gateway
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0188!#",
 		column1		=>	"$conf->{cgi}{anvil_ifn_gateway}",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# DNS 1
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0189!#",
 		column1		=>	$conf->{cgi}{anvil_dns1} ? $conf->{cgi}{anvil_dns1} : "#!string!symbol_0011!#",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# DNS 2
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0189!#",
 		column1		=>	$conf->{cgi}{anvil_dns2} ? $conf->{cgi}{anvil_dns2} : "#!string!symbol_0011!#",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# NTP 1
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0192!#",
 		column1		=>	$conf->{cgi}{anvil_ntp1} ? $conf->{cgi}{anvil_ntp1} : "#!string!symbol_0011!#",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# NTP 2
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0193!#",
 		column1		=>	$conf->{cgi}{anvil_ntp2} ? $conf->{cgi}{anvil_ntp2} : "#!string!symbol_0011!#",
 		column2		=>	"&nbsp;",
-	});
+	}});
 	
 	# Repositories.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-one-column-entry", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-one-column-entry", replace => { 
 		row		=>	"#!string!row_0244!#",
 		column1		=>	"$say_repos",
-	});
+	}});
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-spacer"});
 	
 	# The footer has all the values recorded as hidden values for the form.
-	print AN::Common::template($conf, "config.html", "install-manifest-summay-footer", {
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-footer", replace => { 
 		anvil_prefix			=>	$conf->{cgi}{anvil_prefix},
 		anvil_sequence			=>	$conf->{cgi}{anvil_sequence},
 		anvil_domain			=>	$conf->{cgi}{anvil_domain},
@@ -6840,7 +6754,7 @@ sub show_summary_manifest
 		'anvil_drbd_net_sndbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_sndbuf-size'},
 		'anvil_drbd_net_rcvbuf-size'	=>	$conf->{cgi}{'anvil_drbd_net_rcvbuf-size'},
 		manifest_uuid			=>	$an->data->{cgi}{manifest_uuid},
-	});
+	}});
 	
 	return(0);
 }
@@ -6860,17 +6774,15 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0161!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0161!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_sequence} =~ /\D/)
 	{
 		$conf->{form}{anvil_sequence_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0102", variables => { field => "#!string!row_0161!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0102", variables => { field => "#!string!row_0161!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -6879,17 +6791,15 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0160!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0160!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_domain}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_domain}}))
 	{
 		$conf->{form}{anvil_domain_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0160!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0160!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -6898,9 +6808,8 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_password_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0194!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0194!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -6910,34 +6819,30 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0116", variables => { field => "#!string!row_0162!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0116", variables => { field => "#!string!row_0162!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_network}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_bcn_network}}))
 	{
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0118", variables => { field => "#!string!row_0162!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0118", variables => { field => "#!string!row_0162!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_bcn_subnet})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0117", variables => { field => "#!string!row_0162!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0117", variables => { field => "#!string!row_0162!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_bcn_subnet}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_bcn_subnet}}))
 	{
 		$conf->{form}{anvil_bcn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0119", variables => { field => "#!string!row_0162!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0119", variables => { field => "#!string!row_0162!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -6946,34 +6851,30 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0116", variables => { field => "#!string!row_0163!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0116", variables => { field => "#!string!row_0163!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_network}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_sn_network}}))
 	{
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0118", variables => { field => "#!string!row_0163!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0118", variables => { field => "#!string!row_0163!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_sn_subnet})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0117", variables => { field => "#!string!row_0163!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0117", variables => { field => "#!string!row_0163!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_sn_subnet}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_sn_subnet}}))
 	{
 		$conf->{form}{anvil_sn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0119", variables => { field => "#!string!row_0163!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0119", variables => { field => "#!string!row_0163!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -6982,34 +6883,30 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0116", variables => { field => "#!string!row_0164!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0116", variables => { field => "#!string!row_0164!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_network}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ifn_network}}))
 	{
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0118", variables => { field => "#!string!row_0164!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0118", variables => { field => "#!string!row_0164!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_ifn_subnet})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0117", variables => { field => "#!string!row_0164!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0117", variables => { field => "#!string!row_0164!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_subnet}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ifn_subnet}}))
 	{
 		$conf->{form}{anvil_ifn_network_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0119", variables => { field => "#!string!row_0164!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0119", variables => { field => "#!string!row_0164!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# MTU
@@ -7025,18 +6922,16 @@ sub sanity_check_manifest_answers
 		if ($conf->{cgi}{anvil_mtu_size} =~ /\D/)
 		{
 			$conf->{form}{anvil_mtu_size_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0102", variables => { field => "#!string!row_0291!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0102", variables => { field => "#!string!row_0291!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 		# Is the MTU too small or too big? - https://tools.ietf.org/html/rfc879
 		elsif ($conf->{cgi}{anvil_mtu_size} < 576)
 		{
 			$conf->{form}{anvil_mtu_size_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0157", variables => { field => "#!string!row_0291!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0157", variables => { field => "#!string!row_0291!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 	}
@@ -7047,17 +6942,15 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0191!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0191!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_media_library_size}))
+	elsif (not $an->Validate->is_integer_or_unsigned_float({number => $conf->{cgi}{anvil_media_library_size}}))
 	{
 		$conf->{form}{anvil_media_library_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0121", variables => { field => "#!string!row_0191!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0121", variables => { field => "#!string!row_0191!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7066,25 +6959,22 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0199!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0199!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_integer_or_unsigned_float($conf, $conf->{cgi}{anvil_storage_pool1_size}))
+	elsif (not $an->Validate->is_integer_or_unsigned_float({number => $conf->{cgi}{anvil_storage_pool1_size}}))
 	{
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0121", variables => { field => "#!string!row_0199!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0121", variables => { field => "#!string!row_0199!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	} # Make sure the percentage is between 0 and 100.
 	elsif (($conf->{cgi}{anvil_storage_pool1_unit} eq "%") && (($conf->{cgi}{anvil_storage_pool1_size} < 0) || ($conf->{cgi}{anvil_storage_pool1_size} > 100)))
 	{
 		$conf->{form}{anvil_storage_pool1_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0120", variables => { field => "#!string!row_0199!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0120", variables => { field => "#!string!row_0199!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7095,12 +6985,11 @@ sub sanity_check_manifest_answers
 		{
 			$url =~ s/^\s+//;
 			$url =~ s/\s+$//;
-			if (not is_string_url($conf, $url))
+			if (not $an->Validate->is_url({url => $url}))
 			{
 				$conf->{form}{anvil_repositories_star} = "#!string!symbol_0012!#";
-				print AN::Common::template($conf, "config.html", "form-error", {
-					message	=>	$an->String->get({key => "explain_0140", variables => { field => "#!string!row_0244!#" }}),
-				});
+				my $message = $an->String->get({key => "explain_0140", variables => { field => "#!string!row_0244!#" }});
+				print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 				$problem = 1;
 			}
 		}
@@ -7111,25 +7000,22 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0005!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0005!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	} # cman only allows 1-15 characters
 	elsif (length($conf->{cgi}{anvil_name}) > 15)
 	{
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0122", variables => { field => "#!string!row_0005!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0122", variables => { field => "#!string!row_0005!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_name} =~ /[^a-zA-Z0-9\-]/)
 	{
 		$conf->{form}{anvil_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0123", variables => { field => "#!string!row_0005!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0123", variables => { field => "#!string!row_0005!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7175,54 +7061,47 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0188!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0188!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ifn_gateway}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ifn_gateway}}))
 	{
 		$conf->{form}{anvil_ifn_gateway_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0188!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0188!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
 	### DNS is allowed to be blank but, if it is set, it must be IPv4.
 	# Check DNS 1
-	if (($conf->{cgi}{anvil_dns1}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_dns1})))
+	if (($conf->{cgi}{anvil_dns1}) && (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_dns1}})))
 	{
 		$conf->{form}{anvil_dns1_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0189!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0189!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
 	# Check DNS 2
-	if (($conf->{cgi}{anvil_dns2}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_dns2})))
+	if (($conf->{cgi}{anvil_dns2}) && (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_dns2}})))
 	{
 		$conf->{form}{anvil_dns2_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0190!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0190!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
-	### NTP is allowed to be blank, but if it is set, if must be IPv4 or a
-	### domain name.
+	### NTP is allowed to be blank, but if it is set, if must be IPv4 or a domain name.
 	# Check NTP 1
 	if ($conf->{cgi}{anvil_ntp1})
 	{
-		# It's defined, so it has to be either a domain name or an
-		# IPv4 IP.
-		if ((not is_string_ipv4($conf, $conf->{cgi}{anvil_ntp1})) && (not is_domain_name($conf, $conf->{cgi}{anvil_ntp1})))
+		# It's defined, so it has to be either a domain name or an IPv4 IP.
+		if ((not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ntp1}})) && (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_ntp1}})))
 		{
 			$conf->{form}{anvil_ntp1_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0099", variables => { field => "#!string!row_0192!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0099", variables => { field => "#!string!row_0192!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 	}
@@ -7230,22 +7109,19 @@ sub sanity_check_manifest_answers
 	# Check NTP 2
 	if ($conf->{cgi}{anvil_ntp2})
 	{
-		# It's defined, so it has to be either a domain name or an
-		# IPv4 IP.
-		if ((not is_string_ipv4($conf, $conf->{cgi}{anvil_ntp2})) && (not is_domain_name($conf, $conf->{cgi}{anvil_ntp2})))
+		# It's defined, so it has to be either a domain name or an IPv4 IP.
+		if ((not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ntp2}})) && (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_ntp2}})))
 		{
 			$conf->{form}{anvil_ntp2_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0099", variables => { field => "#!string!row_0193!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0099", variables => { field => "#!string!row_0193!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 	}
 	
 	### Foundation Pack
-	# Check that switch #1's host name and IP are sane, if set. The
-	# switches are allowed to be blank in case the user has unmanaged
-	# switches.
+	# Check that switch #1's host name and IP are sane, if set. The switches are allowed to be blank in 
+	# case the user has unmanaged switches.
 	if (not $conf->{cgi}{anvil_switch1_name})
 	{
 		# Set it to '--' provided that the IP is also blank.
@@ -7253,9 +7129,8 @@ sub sanity_check_manifest_answers
 		{
 			# IP set, so host name is needed.
 			$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0111", variables => { field => "#!string!row_0178!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0111", variables => { field => "#!string!row_0178!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 		else
@@ -7264,12 +7139,11 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch1_name} = "--";
 		}
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch1_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_switch1_name}}))
 	{
 		$conf->{form}{anvil_switch1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0178!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0178!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_switch1_ip})
@@ -7279,9 +7153,8 @@ sub sanity_check_manifest_answers
 		{
 			# Host name set, so IP is needed.
 			$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0112", variables => { field => "#!string!row_0179!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0112", variables => { field => "#!string!row_0179!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 		else
@@ -7290,12 +7163,11 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch1_ip} = "--";
 		}
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch1_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_switch1_ip}}))
 	{
 		$conf->{form}{anvil_switch1_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0179!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0179!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7307,9 +7179,8 @@ sub sanity_check_manifest_answers
 		{
 			# IP set, so host name is needed.
 			$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0111", variables => { field => "#!string!row_0178!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0111", variables => { field => "#!string!row_0178!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 		else
@@ -7318,12 +7189,11 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch2_name} = "--";
 		}
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_switch2_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_switch2_name}}))
 	{
 		$conf->{form}{anvil_switch2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0180!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0180!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_switch2_ip})
@@ -7333,9 +7203,8 @@ sub sanity_check_manifest_answers
 		{
 			# Host name set, so IP is needed.
 			$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0112", variables => { field => "#!string!row_0181!#" }}),
-			});
+			my $message = $an->String->get({key => "explain_0112", variables => { field => "#!string!row_0181!#" }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 		else
@@ -7344,12 +7213,11 @@ sub sanity_check_manifest_answers
 			$conf->{cgi}{anvil_switch2_ip} = "--";
 		}
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_switch2_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_switch2_ip}}))
 	{
 		$conf->{form}{anvil_switch2_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0181!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0181!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7420,40 +7288,36 @@ sub sanity_check_manifest_answers
 			{
 				# Not allowed to be blank.
 				$conf->{form}{$name_star_key} = "#!string!symbol_0012!#";
-				print AN::Common::template($conf, "config.html", "form-error", {
-					message	=>	$an->String->get({key => "explain_0142", variables => { 
-							field 		=>	$say_pdu_name,
-							dependent_field	=>	$say_pdu_ip,
-						}}),
-				});
+				my $message = $an->String->get({key => "explain_0142", variables => { 
+						field 		=>	$say_pdu_name,
+						dependent_field	=>	$say_pdu_ip,
+					}});
+				print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 				$problem = 1;
 			}
-			elsif (not is_domain_name($conf, $conf->{cgi}{$name_key}))
+			elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{$name_key}}))
 			{
 				$conf->{form}{$name_star_key} = "#!string!symbol_0012!#";
-				print AN::Common::template($conf, "config.html", "form-error", {
-					message	=>	$an->String->get({key => "explain_0103", variables => { field => $say_pdu_name }}),
-				});
+				my $message = $an->String->get({key => "explain_0103", variables => { field => $say_pdu_name }});
+				print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 				$problem = 1;
 			}
 			if (not $conf->{cgi}{$ip_key})
 			{
 				# Not allowed to be blank.
 				$conf->{form}{$ip_star_key} = "#!string!symbol_0012!#";
-				print AN::Common::template($conf, "config.html", "form-error", {
-					message	=>	$an->String->get({key => "explain_0142", variables => { 
-							field 		=>	$say_pdu_ip,
-							dependent_field	=>	$say_pdu_name,
-						}}),
-				});
+				my $message = $an->String->get({key => "explain_0142", variables => { 
+						field 		=>	$say_pdu_ip,
+						dependent_field	=>	$say_pdu_name,
+					}});
+				print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 				$problem = 1;
 			}
-			elsif (not is_string_ipv4($conf, $conf->{cgi}{$ip_key}))
+			elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{$ip_key}}))
 			{
 				$conf->{form}{$ip_star_key} = "#!string!symbol_0012!#";
-				print AN::Common::template($conf, "config.html", "form-error", {
-					message	=>	$an->String->get({key => "explain_0104", variables => { field => $say_pdu_ip }}),
-				});
+				my $message = $an->String->get({key => "explain_0104", variables => { field => $say_pdu_ip }});
+				print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 				$problem = 1;
 			}
 		}
@@ -7480,12 +7344,11 @@ sub sanity_check_manifest_answers
 				if ($conf->{cgi}{$outlet_key} =~ /\D/)
 				{
 					$conf->{form}{$outlet_star_key} = "#!string!symbol_0012!#";
-					print AN::Common::template($conf, "config.html", "form-error", {
-						message	=>	$an->String->get({key => "explain_0108", variables => { 
-								node	=>	$say_node,
-								field	=>	$say_pdu_name,
-							}}),
-					});
+					my $message = $an->String->get({key => "explain_0108", variables => { 
+							node	=>	$say_node,
+							field	=>	$say_pdu_name,
+						}});
+					print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 					$problem = 1;
 				}
 				# Make sure this PDU is defined.
@@ -7493,12 +7356,11 @@ sub sanity_check_manifest_answers
 				{
 					# It's not.
 					$conf->{form}{$outlet_star_key} = "#!string!symbol_0012!#";
-					print AN::Common::template($conf, "config.html", "form-error", {
-						message	=>	$an->String->get({key => "explain_0144", variables => { 
-								node	=>	$say_node,
-								field	=>	$say_pdu_name,
-							}}),
-					});
+					my $message = $an->String->get({key => "explain_0144", variables => { 
+							node	=>	$say_node,
+							field	=>	$say_pdu_name,
+						}});
+					print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 					$problem = 1;
 				}
 			}
@@ -7507,9 +7369,8 @@ sub sanity_check_manifest_answers
 		# If there isn't at least 2 outlets defined, bail.
 		if ($node_pdu_count < 2)
 		{
-			print AN::Common::template($conf, "config.html", "form-error", {
-				message	=>	$an->String->get({key => "explain_0145", variables => { node => $say_node }}),
-			});
+			my $message = $an->String->get({key => "explain_0145", variables => { node => $say_node }});
+			print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 			$problem = 1;
 		}
 	}
@@ -7518,9 +7379,7 @@ sub sanity_check_manifest_answers
 	if ($defined_pdus < 2)
 	{
 		# Not allowed!
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	"#!string!explain_0143!#",
-		});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => "#!string!explain_0143!#" }});
 		$problem = 1;
 	}
 	
@@ -7529,34 +7388,30 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0170!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0170!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_ups1_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_ups1_name}}))
 	{
 		$conf->{form}{anvil_ups1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0170!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0170!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_ups1_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups1_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0171!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0171!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups1_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ups1_ip}}))
 	{
 		$conf->{form}{anvil_ups1_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0171!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0171!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7565,70 +7420,62 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0172!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0172!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_ups2_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_ups2_name}}))
 	{
 		$conf->{form}{anvil_ups2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0172!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0172!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_ups2_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0173!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0173!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_ups2_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_ups2_ip}}))
 	{
 		$conf->{form}{anvil_ups2_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0173!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0173!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
 	# Check that PTS #1's host name and IP are sane.
-	if (($conf->{cgi}{anvil_pts1_name}) && (not is_domain_name($conf, $conf->{cgi}{anvil_pts1_name})))
+	if (($conf->{cgi}{anvil_pts1_name}) && (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_pts1_name}})))
 	{
 		$conf->{form}{anvil_pts1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0296!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0296!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	if (($conf->{cgi}{anvil_pts1_ip}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts1_ip})))
+	if (($conf->{cgi}{anvil_pts1_ip}) && (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_pts1_ip}})))
 	{
 		$conf->{form}{anvil_pts1_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0297!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0297!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
 	# Check that PTS #2's host name and IP are sane.
-	if (($conf->{cgi}{anvil_pts2_name}) && (not is_domain_name($conf, $conf->{cgi}{anvil_pts2_name})))
+	if (($conf->{cgi}{anvil_pts2_name}) && (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_pts2_name}})))
 	{
 		$conf->{form}{anvil_pts2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0298!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0298!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	if (($conf->{cgi}{anvil_pts2_ip}) && (not is_string_ipv4($conf, $conf->{cgi}{anvil_pts2_ip})))
+	if (($conf->{cgi}{anvil_pts2_ip}) && (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_pts2_ip}})))
 	{
 		$conf->{form}{anvil_pts2_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0299!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0299!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7637,60 +7484,53 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0182!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0182!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_striker1_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_striker1_name}}))
 	{
 		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0182!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0182!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_striker1_name} !~ /\./)
 	{
 		# Must be a FQDN
 		$conf->{form}{anvil_striker1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_striker1_bcn_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0183!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0183!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_striker1_bcn_ip}}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0183!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0183!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_striker1_ifn_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0184!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0184!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker1_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_striker1_bcn_ip}}))
 	{
 		$conf->{form}{anvil_striker1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0184!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0184!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7699,60 +7539,53 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0185!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0185!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_striker2_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_striker2_name}}))
 	{
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0103", variables => { field => "#!string!row_0185!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0103", variables => { field => "#!string!row_0185!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_striker2_name} !~ /\./)
 	{
 		# Must be a FQDN
 		$conf->{form}{anvil_striker2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_striker2_bcn_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0186!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0186!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_striker2_bcn_ip}}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0186!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0186!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	if (not $conf->{cgi}{anvil_striker2_ifn_ip})
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_striker2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0100", variables => { field => "#!string!row_0187!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0100", variables => { field => "#!string!row_0187!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_striker2_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_striker2_bcn_ip}}))
 	{
 		$conf->{form}{anvil_striker2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0104", variables => { field => "#!string!row_0187!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0104", variables => { field => "#!string!row_0187!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7763,32 +7596,29 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0165!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0165!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_node1_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_node1_name}}))
 	{
 		$conf->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0107", variables => { 
-					field	=>	"#!string!row_0165!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0107", variables => { 
+				field	=>	"#!string!row_0165!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	elsif ($conf->{cgi}{anvil_node2_name} !~ /\./)
 	{
 		# Must be a FQDN
 		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }}),
-		});
+		my $message = $an->String->get({key => "explain_0042", variables => { field => "#!string!row_0182!#" }});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# BCN IP address
@@ -7796,23 +7626,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0166!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0166!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node1_bcn_ip}}))
 	{
 		$conf->{form}{anvil_node1_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0166!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0166!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# IPMI IP address
@@ -7820,23 +7648,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0168!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0168!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ipmi_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node1_ipmi_ip}}))
 	{
 		$conf->{form}{anvil_node1_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0168!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0168!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# SN IP address
@@ -7844,23 +7670,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_sn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_sn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node1_sn_ip}}))
 	{
 		$conf->{form}{anvil_node1_sn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# IFN IP address
@@ -7868,23 +7692,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node1_ifn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node1_ifn_ip}}))
 	{
 		$conf->{form}{anvil_node1_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0156!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0156!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
@@ -7894,23 +7716,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0165!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0165!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_domain_name($conf, $conf->{cgi}{anvil_node2_name}))
+	elsif (not $an->Validate->is_domain_name({name => $conf->{cgi}{anvil_node2_name}}))
 	{
 		$conf->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0107", variables => { 
-					field	=>	"#!string!row_0165!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0107", variables => { 
+				field	=>	"#!string!row_0165!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# BCN IP address
@@ -7918,23 +7738,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0166!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0166!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_bcn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node2_bcn_ip}}))
 	{
 		$conf->{form}{anvil_node2_bcn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0166!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0166!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# IPMI IP address
@@ -7942,23 +7760,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0168!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0168!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ipmi_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node2_ipmi_ip}}))
 	{
 		$conf->{form}{anvil_node2_ipmi_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0168!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0168!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# SN IP address
@@ -7966,23 +7782,21 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_sn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_sn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node2_sn_ip}}))
 	{
 		$conf->{form}{anvil_node2_sn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	# IFN IP address
@@ -7990,186 +7804,25 @@ sub sanity_check_manifest_answers
 	{
 		# Not allowed to be blank.
 		$conf->{form}{anvil_node2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0106", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0106", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not is_string_ipv4($conf, $conf->{cgi}{anvil_node2_ifn_ip}))
+	elsif (not $an->Validate->is_ipv4({ip => $conf->{cgi}{anvil_node2_ifn_ip}}))
 	{
 		$conf->{form}{anvil_node2_ifn_ip_star} = "#!string!symbol_0012!#";
-		print AN::Common::template($conf, "config.html", "form-error", {
-			message	=>	$an->String->get({key => "explain_0109", variables => { 
-					field	=>	"#!string!row_0167!#", 
-					node	=>	"#!string!title_0157!#",
-				}}),
-		});
+		my $message = $an->String->get({key => "explain_0109", variables => { 
+				field	=>	"#!string!row_0167!#", 
+				node	=>	"#!string!title_0157!#",
+			}});
+		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
 	
 	return($problem);
-}
-
-# Checks to see if the passed string is a URL or not.
-sub is_string_url
-{   
-	my ($conf, $string) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_url" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "string", value1 => $string, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $valid = 1;
-	if ($string =~ /^(.*?):\/\/(.*?)\/(.*)$/)
-	{
-		my $protocol = $1;
-		my $host     = $2;
-		my $path     = $3;
-		my $port     = "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "protocol", value1 => $protocol,
-			name2 => "host",     value2 => $host,
-			name3 => "path",     value3 => $path,
-			name4 => "port",     value4 => $port,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($protocol eq "http")
-		{
-			$port = 80;
-		}
-		elsif ($protocol eq "https")
-		{
-			$port = 443;
-		}
-		elsif ($protocol eq "ftp")
-		{
-			$port = 21;
-		}
-		else
-		{
-			# Invalid protocol
-			$valid = 0;
-		}
-		if ($host =~ /^(.*?):(\d+)$/)
-		{
-			$host = $1;
-			$port = $2;
-		}
-		if ($host =~ /^\d+\.\d+\.\d+\.\d+/)
-		{
-			if (not is_string_ipv4($conf, $host))
-			{
-				$valid = 0;
-			}
-		}
-		else
-		{
-			if (not is_domain_name($conf, $host))
-			{
-				$valid = 0;
-			}
-		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "protocol", value1 => $protocol,
-			name2 => "host",     value2 => $host,
-			name3 => "path",     value3 => $path,
-			name4 => "port",     value4 => $port,
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	else
-	{   
-		$valid = 0;
-	}
-	
-	return($valid);
-}
-
-# Check if the passed string is an unsigned floating point number. A whole
-# number is allowed.
-sub is_string_integer_or_unsigned_float
-{
-	my ($conf, $string) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_integer_or_unsigned_float" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "string", value1 => $string, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $valid = 1;
-	if ($string =~ /^\D/)
-	{
-		# Non-digit could mean it's signed or just garbage.
-		$valid = 0;
-	}
-	elsif (($string !~ /^\d+$/) && ($string != /^\d+\.\d+$/))
-	{
-		# Not an integer or float
-		$valid = 0;
-	}
-	
-	return($valid);
-}
-
-# Check to see if the string looks like a valid hostname
-sub is_domain_name
-{
-	my ($conf, $name) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_domain_name" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "name", value1 => $name, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $valid = 1;
-	if (not $name)
-	{
-		$valid = 0;
-	}
-	elsif (($name !~ /^((([a-z]|[0-9]|\-)+)\.)+([a-z])+$/i) && (($name !~ /^\w+$/) && ($name !~ /-/)))
-	{
-		# Doesn't appear to be valid.
-		$valid = 0;
-	}
-	
-	return($valid);
-}
-
-# Checks if the passed-in string is an IPv4 address (with or without a subnet mask). Returns '1' if OK, 0 if
-# not.
-sub is_string_ipv4
-{
-	my ($conf, $ip) = @_;
-	my $an = $conf->{handle}{an};
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "is_string_ipv4" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "ip", value1 => $ip, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $valid  = 1;
-	
-	if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
-	{
-		# It's in the right format.
-		my $first_octal  = $1;
-		my $second_octal = $2;
-		my $third_octal  = $3;
-		my $fourth_octal = $4;
-		
-		if (($first_octal  < 0) || ($first_octal  > 255) ||
-		    ($second_octal < 0) || ($second_octal > 255) ||
-		    ($third_octal  < 0) || ($third_octal  > 255) ||
-		    ($fourth_octal < 0) || ($fourth_octal > 255))
-		{
-			# One of the octals is out of range.
-			$valid = 0;
-		}
-	}
-	else
-	{
-		# Not in the right format.
-		$valid = 0;
-	}
-	
-	return($valid);
 }
 
 # This allows the user to configure their dashboard.
@@ -8222,9 +7875,7 @@ sub configure_dashboard
 	# If showing the main page, it's global settings and then the list of Anvil!s. If showing an Anvil!,
 	# it's the Anvil!'s details and then the overrides.
 
-	print AN::Common::template($conf, "config.html", "open-form-table", {
-		form_file	=>	"/cgi-bin/striker",
-	});
+	print $an->Web->template({file => "config.html", template => "open-form-table", replace => { form_file => "/cgi-bin/striker" }});
 	
 	# If showing an Anvil!, display it's details first.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -8255,7 +7906,7 @@ sub configure_dashboard
 		#show_global_anvil_list($conf);
 	}
 	# Close out the form.
-	print AN::Common::template($conf, "config.html", "close-form-table");
+	print $an->Web->template({file => "config.html", template => "close-form-table"});
 
 	return(0);
 }
@@ -8431,7 +8082,7 @@ sub ask_which_cluster
 	my $an = $conf->{handle}{an};
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ask_which_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	print AN::Common::template($conf, "select-anvil.html", "open-table");
+	print $an->Web->template({file => "select-anvil.html", template => "open-table"});
 	
 	# Now see if we have any Anvil! systems configured.
 	my $anvil_count = 0;
@@ -8441,7 +8092,7 @@ sub ask_which_cluster
 	}
 	if (not $anvil_count)
 	{
-		print AN::Common::template($conf, "select-anvil.html", "no-anvil-configured");
+		print $an->Web->template({file => "select-anvil.html", template => "no-anvil-configured"});
 	}
 	else
 	{
@@ -8451,38 +8102,38 @@ sub ask_which_cluster
 			my $say_url = "&nbsp;";
 			
 			# Create the 'Configure' link.
-			my $image = AN::Common::template($conf, "common.html", "image", {
-				image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_edit-anvil_16x16.png",
-				alt_text	=>	"#!string!button_0044!#",
-				id		=>	"configure_icon",
-			}, "", 1);
-			my $say_configure = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
-				button_link	=>	"?config=true&anvil=$cluster",
-				button_text	=>	$image,
-				id		=>	"configure_$cluster",
-			}, "", 1);
+			my $image = $an->Web->template({file => "common.html", template => "image", replace => { 
+					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/icon_edit-anvil_16x16.png",
+					alt_text	=>	"#!string!button_0044!#",
+					id		=>	"configure_icon",
+				}});
+			my $say_configure = $an->Web->template({file => "common.html", template => "enabled-button-no-class-new-tab", replace => { 
+					button_link	=>	"?config=true&anvil=$cluster",
+					button_text	=>	$image,
+					id		=>	"configure_$cluster",
+				}});
 			
 			# If an info link has been specified, show it.
 			if ($conf->{clusters}{$cluster}{url})
 			{
-				my $image = AN::Common::template($conf, "common.html", "image", {
+				my $image = $an->Web->template({file => "common.html", template => "image", replace => { 
 					image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/anvil-url_16x16.png",
 					alt_text	=>	"",
-				id		=>	"url_icon",
-				}, "", 1);
-				$say_url = AN::Common::template($conf, "common.html", "enabled-button-no-class-new-tab", {
+					id		=>	"url_icon",
+				}});
+				$say_url = $an->Web->template({file => "common.html", template => "enabled-button-no-class-new-tab", replace => { 
 					button_link	=>	"$conf->{clusters}{$cluster}{url}",
 					button_text	=>	$image,
 					id		=>	"url_$cluster",
-				}, "", 1);
+				}});
 			}
-			print AN::Common::template($conf, "select-anvil.html", "anvil-entry", {
+			print $an->Web->template({file => "select-anvil.html", template => "anvil-entry", replace => { 
 				anvil		=>	$cluster,
 				company		=>	$conf->{clusters}{$cluster}{company},
 				description	=>	$conf->{clusters}{$cluster}{description},
 				configure	=>	$say_configure,
 				url		=>	$say_url,
-			});
+			}});
 		}
 	}
 	
@@ -8494,7 +8145,7 @@ sub ask_which_cluster
 	if (not $global_set)
 	{
 		# Looks like the user hasn't configured the global values yet.
-		print AN::Common::template($conf, "select-anvil.html", "global-not-configured");
+		print $an->Web->template({file => "select-anvil.html", template => "global-not-configured"});
 	}
 	
 	return (0);
@@ -8873,9 +8524,7 @@ sub show_anvil_selection_and_striker_options
 			# Warn the user about possible DHCPd conflicts and ask
 			# them to confirm.
 			my $confirm_url = "?logo=true&install_target=start&confirm=true";
-			print AN::Common::template($conf, "select-anvil.html", "confirm-dhcpd-start", {
-				confirm_url	=>	$confirm_url,
-			});
+			print $an->Web->template({file => "select-anvil.html", template => "confirm-dhcpd-start", replace => { confirm_url => $confirm_url }});
 		}
 		elsif ($conf->{cgi}{install_target} eq "start")
 		{
@@ -8898,20 +8547,20 @@ sub show_anvil_selection_and_striker_options
 # 			if ($libvirtd_rc eq "2")
 # 			{
 # 				# Warn the user that we turned off libvirtd.
-# 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+# 				print $an->Web->template({file => "select-anvil.html", template => "control-dhcpd-results", replace => { 
 # 					class	=>	"highlight_warning_bold",
 # 					row	=>	"#!string!row_0044!#",
 # 					message	=>	"#!string!message_0117!#",
-# 				});
+# 				}});
 # 			}
 # 			elsif ($libvirtd_rc eq "3")
 # 			{
 # 				# Warn the user that we failed to turn off libvirtd.
-# 				print AN::Common::template($conf, "select-anvil.html", "control-dhcpd-results", {
+# 				print $an->Web->template({file => "select-anvil.html", template => "control-dhcpd-results", replace => { 
 # 					class	=>	"highlight_warning_bold",
 # 					row	=>	"#!string!row_0044!#",
 # 					message	=>	"#!string!message_0364!#",
-# 				});
+# 				}});
 # 			}
 			
 			# If shorewall is configured, tell the user that we toggled
@@ -8931,11 +8580,11 @@ sub show_anvil_selection_and_striker_options
 # 			{
 # 				$message = "#!string!message_0412!#";
 # 			}
-# 			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
+# 			print $an->Web->template({file => "select-anvil.html", template => "control-install-target-results", replace => { 
 # 				class	=>	$class,
 # 				row	=>	$row,
 # 				message	=>	$message,
-# 			});
+# 			}});
 			
 			# shorewall_rc:
 			# 0 == not enabled
@@ -8978,11 +8627,11 @@ sub show_anvil_selection_and_striker_options
 			{
 				$message = "#!string!message_0412!#";
 			}
-			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
+			print $an->Web->template({file => "select-anvil.html", template => "control-install-target-results", replace => { 
 				class	=>	$class,
 				row	=>	$row,
 				message	=>	$message,
-			});
+			}});
 		}
 		elsif ($conf->{cgi}{install_target} eq "stop")
 		{
@@ -9041,11 +8690,11 @@ sub show_anvil_selection_and_striker_options
 				$message = "#!string!message_0414!#";
 				$class   = "highlight_good_bold";
 			}
-			print AN::Common::template($conf, "select-anvil.html", "control-install-target-results", {
+			print $an->Web->template({file => "select-anvil.html", template => "control-install-target-results", replace => { 
 				class	=>	$class,
 				row	=>	$row,
 				message	=>	$message,
-			});
+			}});
 		}
 	}
 	
@@ -9109,17 +8758,15 @@ sub show_anvil_selection_and_striker_options
 		name3 => "install_target_message",  value3 => $install_target_message,
 		name4 => "install_target_url",      value4 => $install_target_url,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $install_manifest_tr = AN::Common::template($conf, "select-anvil.html", $install_target_template, {
-		install_target_button	=>	$install_target_button,
-		install_target_message	=>	$install_target_message,
-		install_target_url	=>	$install_target_url,
-	});
+	my $install_manifest_tr = $an->Web->template({file => "select-anvil.html", template => "$install_target_template", replace => { 
+			install_target_button	=>	$install_target_button,
+			install_target_message	=>	$install_target_message,
+			install_target_url	=>	$install_target_url,
+		}});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "install_manifest_tr", value1 => $install_manifest_tr,
 	}, file => $THIS_FILE, line => __LINE__});
-	print AN::Common::template($conf, "select-anvil.html", "close-table", {
-		install_manifest_tr	=>	$install_manifest_tr,
-	});
+	print $an->Web->template({file => "select-anvil.html", template => "close-table", replace => { install_manifest_tr => $install_manifest_tr }});
 	
 	return(0);
 }
@@ -9313,9 +8960,7 @@ sub error
 	my $an = $conf->{handle}{an};
 	$fatal = 1 if not defined $fatal;
 	
-	print AN::Common::template($conf, "common.html", "error-table", {
-		message	=>	$message,
-	});
+	print $an->Web->template({file => "common.html", template => "error-table", replace => { message => $message }});
 	footer($conf) if $fatal;
 	
 	exit(1) if $fatal;
@@ -9335,16 +8980,17 @@ sub header
 	my $say_back        = "&nbsp;";
 	my $say_refresh     = "&nbsp;";
 	
-	my $back_image = AN::Common::template($conf, "common.html", "image", {
+	my $back_image = $an->Web->template({file => "common.html", template => "image", replace => { 
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/back.png",
 		alt_text	=>	"#!string!button_0001!#",
 		id		=>	"back_icon",
-	}, "", 1);
-	my $refresh_image = AN::Common::template($conf, "common.html", "image", {
+	}});
+
+	my $refresh_image = $an->Web->template({file => "common.html", template => "image", replace => { 
 		image_source	=>	"$conf->{url}{skins}/$conf->{sys}{skin}/images/refresh.png",
 		alt_text	=>	"#!string!button_0002!#",
 		id		=>	"refresh_icon",
-	}, "", 1);
+	}});
 	
 	if ($conf->{cgi}{config})
 	{
@@ -9353,36 +8999,36 @@ sub header
 		if ($conf->{cgi}{save})
 		{
 			$say_refresh = "";
-			$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?config=true",
-				button_text	=>	"$back_image",
-				id		=>	"back",
-			}, "", 1);
+			$say_back    = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?config=true",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}});
 			if (($conf->{cgi}{anvil} eq "new") && ($conf->{cgi}{cluster__new__name}))
 			{
 				$conf->{cgi}{anvil} = $conf->{cgi}{cluster__new__name};
 			}
 			if (($conf->{cgi}{anvil}) && ($conf->{cgi}{anvil} ne "new"))
 			{
-				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
-					button_text	=>	"$back_image",
-					id		=>	"back",
-				}, "", 1);
+				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}});
 			}
 		}
 		elsif ($conf->{cgi}{task})
 		{
-			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?config=true",
-				button_text	=>	"$refresh_image",
-				id		=>	"refresh",
-			}, "", 1);
-			$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?logo=true",
-				button_text	=>	"$back_image",
-				id		=>	"back",
-			}, "", 1);
+			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?config=true",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}});
+			$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?logo=true",
+					button_text	=>	"$back_image",
+					id		=>	"back",
+				}});
 			
 			if ($conf->{cgi}{task} eq "load_config")
 			{
@@ -9392,11 +9038,11 @@ sub header
 				{
 					$back = "?anvil=$conf->{cgi}{anvil}&config=true";
 				}
-				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	$back,
-					button_text	=>	"$back_image",
-					id		=>	"back",
-				}, "", 1);
+				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	$back,
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}});
 			}
 			elsif ($conf->{cgi}{task} eq "push")
 			{
@@ -9404,16 +9050,16 @@ sub header
 			}
 			elsif ($conf->{cgi}{task} eq "archive")
 			{
-				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?config=true&task=archive",
-					button_text	=>	"$refresh_image",
-					id		=>	"refresh",
-				}, "", 1);
-				$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?logo=true",
-					button_text	=>	"$back_image",
-					id		=>	"back",
-				}, "", 1);
+				$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?config=true&task=archive",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}});
+				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?logo=true",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}});
 			}
 			elsif ($conf->{cgi}{task} eq "create-install-manifest")
 			{
@@ -9435,11 +9081,11 @@ sub header
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "back_url", value1 => $back_url,
 						}, file => $THIS_FILE, line => __LINE__});
-						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-							button_link	=>	"$back_url",
-							button_text	=>	"$back_image",
-							id		=>	"back",
-						}, "", 1);
+						$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+								button_link	=>	"$back_url",
+								button_text	=>	"$back_image",
+								id		=>	"back",
+							}});
 					}
 					elsif ($conf->{cgi}{'delete'})
 					{
@@ -9453,162 +9099,162 @@ sub header
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "back_url", value1 => $back_url,
 						}, file => $THIS_FILE, line => __LINE__});
-						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-							button_link	=>	"$back_url",
-							button_text	=>	"$back_image",
-							id		=>	"back",
-						}, "", 1);
+						$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+								button_link	=>	"$back_url",
+								button_text	=>	"$back_image",
+								id		=>	"back",
+							}});
 					}
 					else
 					{
-						$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-							button_link	=>	"$link",
-							button_text	=>	"$back_image",
-							id		=>	"back",
-						}, "", 1);
+						$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+								button_link	=>	"$link",
+								button_text	=>	"$back_image",
+								id		=>	"back",
+							}});
 					}
-					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"?config=true&task=create-install-manifest",
-						button_text	=>	"$refresh_image",
-						id		=>	"refresh",
-					}, "", 1);
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"?config=true&task=create-install-manifest",
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
 				}
 				elsif ($conf->{cgi}{generate})
 				{
-					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"$link",
-						button_text	=>	"$back_image",
-						id		=>	"back",
-					}, "", 1);
-					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"$conf->{sys}{cgi_string}",
-						button_text	=>	"$refresh_image",
-						id		=>	"refresh",
-					}, "", 1);
+					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"$link",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}});
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"$conf->{sys}{cgi_string}",
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
 				}
 				elsif ($conf->{cgi}{run})
 				{
-					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"?config=true&task=create-install-manifest",
-						button_text	=>	"$back_image",
-						id		=>	"back",
-					}, "", 1);
-					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"$conf->{sys}{cgi_string}",
-						button_text	=>	"$refresh_image",
-						id		=>	"refresh",
-					}, "", 1);
+					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"?config=true&task=create-install-manifest",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}});
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"$conf->{sys}{cgi_string}",
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
 				}
 				else
 				{
-					$say_back    = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"/cgi-bin/configure",
-						button_text	=>	"$back_image",
-						id		=>	"back",
-					}, "", 1);
-					$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-						button_link	=>	"?config=true&task=create-install-manifest",
-						button_text	=>	"$refresh_image",
-						id		=>	"refresh",
-					}, "", 1);
+					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"/cgi-bin/configure",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}});
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"?config=true&task=create-install-manifest",
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
 				}
 			}
 			elsif ($conf->{cgi}{anvil})
 			{
-				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
-					button_text	=>	"$refresh_image",
-					id		=>	"refresh",
-				}, "", 1);
+				$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?anvil=$conf->{cgi}{anvil}&config=true",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}});
 			}
 		}
 		else
 		{
-			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"$conf->{sys}{cgi_string}",
-				button_text	=>	"$refresh_image",
-				id		=>	"refresh",
-			}, "", 1);
-			$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?logo=true",
-				button_text	=>	"$back_image",
-				id		=>	"back",
-			}, "", 1);
-			if ($conf->{cgi}{anvil})
-			{
-				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?config=true",
+			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"$conf->{sys}{cgi_string}",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}});
+			$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?logo=true",
 					button_text	=>	"$back_image",
 					id		=>	"back",
-				}, "", 1);
+				}});
+			if ($conf->{cgi}{anvil})
+			{
+				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?config=true",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}});
 			}
 		}
 	}
 	elsif ($conf->{cgi}{task})
 	{
-		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"?cluster=$conf->{cgi}{cluster}",
-			button_text	=>	"$back_image",
-			id		=>	"back",
-		}, "", 1);
+		$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+				button_link	=>	"?cluster=$conf->{cgi}{cluster}",
+				button_text	=>	"$back_image",
+				id		=>	"back",
+			}});
 		if ($conf->{cgi}{task} eq "manage_vm")
 		{
 			if ($conf->{cgi}{change})
 			{
 				$say_refresh = "";
-				$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
-					button_text	=>	"$back_image",
-					id		=>	"back",
-				}, "", 1);
+				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
+						button_text	=>	"$back_image",
+						id		=>	"back",
+					}});
 			}
 			else
 			{
-				$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
-					button_text	=>	"$refresh_image",
-					id		=>	"refresh",
-				}, "", 1);
+				$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+						button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm",
+						button_text	=>	"$refresh_image",
+						id		=>	"refresh",
+					}});
 			}
 		}
 		elsif ($conf->{cgi}{task} eq "display_health")
 		{
-			$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
-				button_text	=>	"$refresh_image",
-				id		=>	"refresh",
-			}, "", 1);
+			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+					button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
+					button_text	=>	"$refresh_image",
+					id		=>	"refresh",
+				}});
 		}
 	}
 	elsif ($conf->{cgi}{logo})
 	{
-		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"?logo=true",
-			button_text	=>	"$refresh_image",
-			id		=>	"refresh",
-		}, "", 1);
-		$say_back    = "";
+		$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+				button_link	=>	"?logo=true",
+				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
+			}});
+		$say_back = "";
 	}
 	elsif ($caller eq "mediaLibrary")
 	{
-		$say_back = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"/cgi-bin/striker?cluster=$conf->{cgi}{cluster}",
-			button_text	=>	"$back_image",
-			id		=>	"back",
-		}, "", 1);
-		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"$conf->{sys}{cgi_string}",
-			button_text	=>	"$refresh_image",
-			id		=>	"refresh",
-		}, "", 1);
+		$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+				button_link	=>	"/cgi-bin/striker?cluster=$conf->{cgi}{cluster}",
+				button_text	=>	"$back_image",
+				id		=>	"back",
+			}});
+		$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+				button_link	=>	"$conf->{sys}{cgi_string}",
+				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
+			}});
 	}
 	else
 	{
-		$say_refresh = AN::Common::template($conf, "common.html", "enabled-button-no-class", {
-			button_link	=>	"$conf->{sys}{cgi_string}",
-			button_text	=>	"$refresh_image",
-			id		=>	"refresh",
-		}, "", 1);
+		$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+				button_link	=>	"$conf->{sys}{cgi_string}",
+				button_text	=>	"$refresh_image",
+				id		=>	"refresh",
+			}});
 	}
 	
 	foreach my $key (sort {$a cmp $b} keys %ENV)
@@ -9666,17 +9312,17 @@ sub header
 	if ($use_refresh)
 	{
 		# Add the auto-reload function if requested by the user.
-		print AN::Common::template($conf, "common.html", "auto-refresh-header", {
+		print $an->Web->template({file => "common.html", template => "auto-refresh-header", replace => { 
 			back		=>	$say_back,
 			refresh		=>	$say_refresh,
-		});
+		}});
 	}
 	else
 	{
-		print AN::Common::template($conf, "common.html", "header", {
+		print $an->Web->template({file => "common.html", template => "header", replace => { 
 			back		=>	$say_back,
 			refresh		=>	$say_refresh,
-		});
+		}});
 	}
 	
 	
@@ -9692,7 +9338,7 @@ sub footer
 	
 	return(0) if $conf->{sys}{footer_printed}; 
 	
-	print AN::Common::template($conf, "common.html", "footer");
+	print $an->Web->template({file => "common.html", template => "footer"});
 	$conf->{sys}{footer_printed} = 1;
 	
 	return (0);
@@ -10009,26 +9655,22 @@ sub read_files_on_shared
 	{
 		# Open the "not connected" table
 		my $title = $an->String->get({key => "title_0116", variables => { anvil => $cluster }});
-		print AN::Common::template($conf, "main-page.html", "connection-error-table-header", {
-			title	=>	$title,
-		});
+		print $an->Web->template({file => "main-page.html", template => "connection-error-table-header", replace => { title => $title }});
 		
 		foreach my $node (sort {$a cmp $b} keys %{$conf->{node}})
 		{
 			# Show each node's state.
 			my $state = $conf->{node}{$node}{info}{'state'};
 			my $note  = $conf->{node}{$node}{info}{note};
-			print AN::Common::template($conf, "main-page.html", "connection-error-node-entry", {
+			print $an->Web->template({file => "main-page.html", template => "connection-error-node-entry", replace => { 
 				node	=>	$node,
 				'state'	=>	$state,
 				note	=>	$node,
-			});
+			}});
 		}
-		print AN::Common::template($conf, "main-page.html", "connection-error-try-again", {
-			cgi_string	=>	$conf->{sys}{cgi_string},
-		});
+		print $an->Web->template({file => "main-page.html", template => "connection-error-try-again", replace => { cgi_string => $conf->{sys}{cgi_string} }});
 	}
-	#print AN::Common::template($conf, "main-page.html", "close-table");
+	#print $an->Web->template({file => "main-page.html", template => "close-table"});
 	
 	return ($connected);
 }
@@ -10099,17 +9741,17 @@ sub check_node_status
 		{
 			if ($conf->{clusters}{$cluster}{cache_exists})
 			{
-				print AN::Common::template($conf, "main-page.html", "no-access-message", {
+				print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
 					anvil	=>	$conf->{cgi}{cluster},
 					message	=>	"#!string!message_0028!#",
-				});
+				}});
 			}
 			else
 			{
-				print AN::Common::template($conf, "main-page.html", "no-access-message", {
+				print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
 					anvil	=>	$conf->{cgi}{cluster},
 					message	=>	"#!string!message_0029!#",
-				});
+				}});
 			}
 		}
 	}
@@ -10887,10 +10529,10 @@ fi;";
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $conf->{node}{$node}{enable_poweron}) && (not $conf->{cgi}{task}))
 		{
-			print AN::Common::template($conf, "main-page.html", "node-state-table", {
+			print $an->Web->template({file => "main-page.html", template => "node-state-table", replace => { 
 				'state'	=>	$conf->{node}{$node}{info}{'state'},
 				note	=>	$conf->{node}{$node}{info}{note},
-			}); 
+			}});
 		}
 	}
 	
@@ -12856,9 +12498,7 @@ sub parse_lvm_scan
 					lv	=>	$lv,
 					node	=>	$node,
 				}});
-				print AN::Common::template($conf, "main-page.html", "lv-inactive-error", {
-					replace	=>	$message
-				}); 
+				print $an->Web->template({file => "main-page.html", template => "lv-inactive-error", replace => { replace => $message }});
 			}
 			
 			if (exists $conf->{resources}{lv}{$lv})
