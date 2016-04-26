@@ -84,7 +84,7 @@ if (($an->data->{switches}{h})   ||
 }
 
 # Log our startup
-$an->Log->entry({log_level => 2, message_key => "smit_log_0001", message_variables => {
+$an->Log->entry({log_level => 3, message_key => "smit_log_0001", message_variables => {
 	this_file	=>	$THIS_FILE, 
 }, file => $THIS_FILE, line => __LINE__});
 
@@ -92,7 +92,7 @@ $an->Log->entry({log_level => 2, message_key => "smit_log_0001", message_variabl
 # $< == real UID, $> == effective UID
 if (($< != 0) && ($> != 0))
 {
-	$an->Log->entry({log_level => 2, message_key => "smit_error_0001", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, message_key => "smit_error_0001", file => $THIS_FILE, line => __LINE__});
 	my $return_code = 1;
 	print "rc:$return_code\n";
 	exit($return_code);
@@ -191,7 +191,7 @@ sub disable_install_target
 	
 	# Stop dhcpd
 	$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "stop");
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{daemons}{dhcpd} eq "3")
@@ -201,7 +201,7 @@ sub disable_install_target
 		
 		# Stop shorewall
 		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -212,7 +212,7 @@ sub disable_install_target
 			
 			# Start iptables
 			$an->data->{daemons}{shorewall} = set_daemon($an, "iptables", "start");
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "daemons::start", value1 => $an->data->{daemons}{start}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -231,7 +231,7 @@ sub disable_install_target
 				$an->data->{daemons}{dhcpd}     = set_daemon($an, "iptables",  "stop");
 				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
 				$an->data->{daemons}{iptables}  = set_daemon($an, "dhcpd",     "start");
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
 					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
 					name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
@@ -252,7 +252,7 @@ sub disable_install_target
 			# Call a 'start' to try and restore
 			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
 			$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd", "start");
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 				name2 => "daemons::dhcpd",    value2 => $an->data->{daemons}{dhcpd}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -272,7 +272,7 @@ sub disable_install_target
 		
 		# Roll back...
 		$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -295,7 +295,7 @@ sub enable_install_target
 	
 	# Stop iptables
 	$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "stop");
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{daemons}{iptables} eq "3")
@@ -305,7 +305,7 @@ sub enable_install_target
 		
 		# Now start shorewall
 		$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "start");
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -316,7 +316,7 @@ sub enable_install_target
 			
 			# now start dhcpd
 			$an->data->{daemons}{dhcpd} = set_daemon($an, "dhcpd", "start");
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "daemons::dhcpd", value1 => $an->data->{daemons}{dhcpd}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -335,7 +335,7 @@ sub enable_install_target
 				$an->data->{daemons}{dhcpd}     = set_daemon($an, "dhcpd",     "stop");
 				$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
 				$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "daemons::dhcpd",     value1 => $an->data->{daemons}{dhcpd}, 
 					name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
 					name3 => "daemons::iptables",  value3 => $an->data->{daemons}{iptables}, 
@@ -356,7 +356,7 @@ sub enable_install_target
 			# Call a 'stop' on shorewall and restart iptables.
 			$an->data->{daemons}{shorewall} = set_daemon($an, "shorewall", "stop");
 			$an->data->{daemons}{iptables}  = set_daemon($an, "iptables",  "start");
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "daemons::shorewall", value1 => $an->data->{daemons}{shorewall}, 
 				name2 => "daemons::iptables",  value2 => $an->data->{daemons}{iptables}, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -375,7 +375,7 @@ sub enable_install_target
 		
 		# Call a 'start' to try and restore
 		$an->data->{daemons}{iptables} = set_daemon($an, "iptables", "start");
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -403,7 +403,7 @@ sub check_status
 	$an->data->{daemons}{iptables}  = check_daemon($an, "iptables");
 	$an->data->{daemons}{shorewall} = check_daemon($an, "shorewall");
 	$an->data->{daemons}{dhcpd}     = check_daemon($an, "dhcpd");
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "daemons::iptables",  value1 => $an->data->{daemons}{iptables}, 
 		name2 => "daemons::shorewall", value2 => $an->data->{daemons}{shorewall}, 
 		name3 => "daemons::dhcpd",     value3 => $an->data->{daemons}{dhcpd}, 
@@ -413,7 +413,7 @@ sub check_status
 	if ($an->data->{daemons}{shorewall})
 	{
 		$an->data->{daemons}{iptables} = 3;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "daemons::iptables", value1 => $an->data->{daemons}{iptables}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -440,7 +440,7 @@ sub check_status
 sub set_daemon
 {
 	my ($an, $daemon, $set) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_daemon" }, message_key => "an_variables_0002", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_daemon" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "daemon", value1 => $daemon, 
 		name2 => "set",    value2 => $set, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -479,7 +479,7 @@ sub set_daemon
 	}
 	
 	my $shell_call  = $an->data->{path}{initd}."/$daemon $set; echo rc:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -489,7 +489,7 @@ sub set_daemon
 		my $line = $_;
 		$line =~ s/\n//g;
 		$line =~ s/\r//g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -497,7 +497,7 @@ sub set_daemon
 		{
 			# Local
 			my $return_code = $1;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "return_code", value1 => $return_code, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -507,7 +507,7 @@ sub set_daemon
 	# Now check the state. This is the return_code we care about
 	my $return_code = check_daemon($an, $daemon);
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);
@@ -517,13 +517,13 @@ sub set_daemon
 sub check_daemon
 {
 	my ($an, $daemon) = @_;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_daemon" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_daemon" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "daemon", value1 => $daemon, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = "";
 	my $shell_call  = $an->data->{path}{initd}."/$daemon status; echo rc:\$?";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call, 
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
@@ -547,7 +547,7 @@ sub check_daemon
 	}
 	close $file_handle;
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($return_code);

@@ -644,6 +644,18 @@ The 'AN::Tools::ScanCore' module's 'node_state()' method was passes in a target 
 
 The 'AN::Tools::ScanCore' module's 'get_migration_target()' method was called without passing in a server name.
 
+=head2 C<102>
+
+The 'AN::Tools::Striker' module's 'load_anvil()' method was called without passing in a UUID.
+
+=head2 C<103>
+
+The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID set but it did not appear to be a properly formatted UUID.
+
+=head2 C<104>
+
+The 'AN::Tools::Striker' module's 'load_anvil()' method was called with a valid format UUID, but it did not appear to match any known Anvil! systems.
+
 
 =head1 SEE ALSO
 

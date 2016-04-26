@@ -60,8 +60,7 @@ use AN::Tools;
 # Turn off buffering so that the pinwheel will display while waiting for the SSH call(s) to complete.
 $| = 1;
 
-my ($conf) = AN::Common::initialize($THIS_FILE, 1);
-my $an     = $conf->{handle}{an};
+my ($an) = AN::Common::initialize($THIS_FILE, 1);
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->default_log_language($an->data->{sys}{log_language});
 $an->Log->level          ($an->data->{sys}{log_level});
@@ -99,59 +98,8 @@ $an->Storage->read_ssh_config();
 # Read in our Anvil! systems. If only one anvil is found, it will be auto-set in 'cgi::anvil'.
 $an->ScanCore->parse_anvil_data();
 
-### Deprecated
-# I need to convert the global configuration of the clusters to the format I use here.
-#AN::Cluster::convert_cluster_config($conf);
-
-# If there is only one cluster defined, use it. Note that I need a special exception in $an->Web->get_cgi() 
-# for this to work properly.
-# if ((not $an->data->{cgi}{cluster}) && (not $an->data->{cgi}{config}))
-# {
-# 	my @cluster_name;
-# 	foreach my $cluster (keys %{$an->data->{clusters}})
-# 	{
-# 		push @cluster_name, $cluster;
-# 	}
-# 	if (@cluster_name == 1)
-# 	{
-# 		$an->data->{cgi}{cluster} = $cluster_name[0];
-# 	}
-# }
-
 # Check for passed-in CGI variables.
 $an->Web->check_all_cgi();
-
-# If 'anvil' was passed, get it's ID and then check for CGI variables.
-# if ($an->data->{cgi}{anvil_id})
-# {
-# 	my $this_id = $an->data->{cgi}{anvil_id};
-# 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-# 		name1 => "this_id", value1 => $this_id,
-# 	}, file => $THIS_FILE, line => __LINE__});
-# 	$an->Web->get_cgi({variables => [
-# 		"cluster__${this_id}__name",
-# 		"cluster__${this_id}__description",
-# 		"cluster__${this_id}__url",
-# 		"cluster__${this_id}__company",
-# 		"cluster__${this_id}__ricci_pw",
-# 		"cluster__${this_id}__root_pw",
-# 		"cluster__${this_id}__nodes_1_name",
-# 		"cluster__${this_id}__nodes_1_ip",
-# 		"cluster__${this_id}__nodes_1_port",
-# 		"cluster__${this_id}__nodes_2_name",
-# 		"cluster__${this_id}__nodes_2_ip",
-# 		"cluster__${this_id}__nodes_2_port",
-# 		"cluster__${this_id}__smtp__server",
-# 		"cluster__${this_id}__smtp__port",
-# 		"cluster__${this_id}__smtp__username",
-# 		"cluster__${this_id}__smtp__password",
-# 		"cluster__${this_id}__smtp__security",
-# 		"cluster__${this_id}__smtp__encrypt_pass",
-# 		"cluster__${this_id}__smtp__helo_domain",
-# 		"cluster__${this_id}__mail_data__to",
-# 		"cluster__${this_id}__mail_data__sending_domain",
-# 	]});
-# }
 
 # Pick up the list of volume groups.
 if ($an->data->{cgi}{vg_list})
@@ -180,34 +128,39 @@ if ($an->data->{cgi}{device_keys})
 }
 
 # Print the header.
-AN::Cluster::header($conf);
+AN::Cluster::header($an);
 
 # Do I have a cluster name?
 if ($an->data->{cgi}{logo})
 {
 	if ($an->data->{cgi}{config})
 	{
-		AN::Cluster::configure_dashboard($conf);
+		$an->Striker->configure();
+		AN::Cluster::configure_dashboard($an);
 	}
 	else
 	{
 		# This is also where we provide options for backup/restore, install manifests, etc.
-		AN::Cluster::show_anvil_selection_and_striker_options($conf);
+		AN::Cluster::show_anvil_selection_and_striker_options($an);
 	}
 }
 elsif ($an->data->{cgi}{config})
 {
-	AN::Cluster::configure_dashboard($conf);
+	AN::Cluster::configure_dashboard($an);
 }
 elsif ($an->data->{cgi}{'system'})
 {
-	AN::Cluster::configure_local_system($conf);
+	AN::Cluster::configure_local_system($an);
+}
+elsif ($an->data->{cgi}{anvil_uuid})
+{
+	$an->Striker->load_anvil();
 }
 elsif ($an->data->{cgi}{cluster})
 {
-	my $cluster = $an->data->{cgi}{cluster};
-	$an->data->{sys}{root_password}           = $an->data->{clusters}{$cluster}{root_pw};
-	$an->data->{clusters}{$cluster}{ricci_pw} = $an->data->{clusters}{$cluster}{root_pw} if not $an->data->{clusters}{$cluster}{ricci_pw};
+	my $cluster                                  = $an->data->{cgi}{cluster};
+	   $an->data->{sys}{root_password}           = $an->data->{clusters}{$cluster}{root_pw};
+	   $an->data->{clusters}{$cluster}{ricci_pw} = $an->data->{clusters}{$cluster}{root_pw} if not $an->data->{clusters}{$cluster}{ricci_pw};
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0004", message_variables => {
 		name1 => "cluster",                        value1 => $cluster,
 		name2 => "clusters::${cluster}::root_pw",  value2 => $an->data->{clusters}{$cluster}{root_pw},
@@ -229,7 +182,7 @@ elsif ($an->data->{cgi}{cluster})
 		if ($an->data->{cgi}{task})
 		{
 			$an->data->{sys}{show_refresh} = 0;
-			AN::Striker::process_task($conf);
+			AN::Striker::process_task($an);
 		}
 		else
 		{
@@ -239,16 +192,16 @@ elsif ($an->data->{cgi}{cluster})
 				name2 => "ricci_pw", value2 => $an->data->{clusters}{$cluster}{ricci_pw},
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{nodes} = $an->data->{clusters}{$cluster}{nodes};
-			AN::Cluster::scan_cluster($conf);
-			AN::Striker::display_details($conf);
+			AN::Cluster::scan_cluster($an);
+			AN::Striker::display_details($an);
 		}
 	}
 }
 else
 {
 	# Ask the user which cluster they want to look at.
-	AN::Cluster::show_anvil_selection_and_striker_options($conf);
+	AN::Cluster::show_anvil_selection_and_striker_options($an);
 }
-AN::Cluster::footer($conf);
+AN::Cluster::footer($an);
 
 exit (0);

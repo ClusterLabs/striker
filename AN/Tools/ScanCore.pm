@@ -108,7 +108,7 @@ FROM
 		my $anvil_note        = $row->[5];
 		my $anvil_password    = $row->[6];
 		my $modified_date     = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "anvil_uuid",        value1 => $anvil_uuid, 
 			name2 => "anvil_owner_uuid",  value2 => $anvil_owner_uuid, 
 			name3 => "anvil_smtp_uuid",   value3 => $anvil_smtp_uuid, 
@@ -177,7 +177,7 @@ FROM
 		my $host_stop_reason    = $row->[4] ? $row->[4] : "";
 		my $host_health         = $row->[5] ? $row->[5] : "";
 		my $modified_date       = $row->[6];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "host_uuid",           value1 => $host_uuid, 
 			name2 => "host_name",           value2 => $host_name, 
 			name3 => "host_type",           value3 => $host_type, 
@@ -219,7 +219,7 @@ SELECT
 FROM 
     manifests
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -283,12 +283,12 @@ AND
 AND 
     b.state_note = ".$an->data->{sys}{use_db_fh}->quote($server)."
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
 	}, file => $THIS_FILE, line => __LINE__});
 	my $target = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
 	   $target = "" if not $target;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -350,7 +350,7 @@ WHERE
 		my $node_password    = $row->[9] ? $row->[9] : "";
 		my $host_name        = $row->[10];
 		my $modified_date    = $row->[11];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0011", message_variables => {
 			name1  => "node_uuid",        value1  => $node_uuid, 
 			name2  => "node_anvil_uuid",  value2  => $node_anvil_uuid, 
 			name3  => "node_host_uuid",   value3  => $node_host_uuid, 
@@ -429,7 +429,7 @@ FROM
 		my $notify_units    = $row->[5];
 		my $notify_note     = $row->[6] ? $row->[6] : "";
 		my $modified_date   = $row->[7];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "notify_uuid",     value1 => $notify_uuid, 
 			name2 => "notify_name",     value2 => $notify_name, 
 			name3 => "notify_target",   value3 => $notify_target, 
@@ -490,7 +490,7 @@ FROM
 		my $owner_name    = $row->[1];
 		my $owner_note    = $row->[2] ? $row->[2] : "";
 		my $modified_date = $row->[3];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "owner_uuid",    value1 => $owner_uuid, 
 			name2 => "owner_name",    value2 => $owner_name, 
 			name3 => "owner_note",    value3 => $owner_note, 
@@ -547,7 +547,7 @@ FROM
 		my $recipient_notify_level = $row->[3];
 		my $recipient_note         = $row->[4] ? $row->[4] : "";
 		my $modified_date          = $row->[5];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "recipient_uuid",         value1 => $recipient_uuid, 
 			name2 => "recipient_anvil_uuid",   value2 => $recipient_anvil_uuid, 
 			name3 => "recipient_notify_uuid",  value3 => $recipient_notify_uuid, 
@@ -626,7 +626,7 @@ FROM
 		my $server_post_migration_script    = $row->[12];
 		my $server_post_migration_arguments = $row->[13];
 		my $modified_date                   = $row->[14];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 			name1  => "server_uuid",                     value1  => $server_uuid, 
 			name2  => "server_name",                     value2  => $server_name, 
 			name3  => "server_stop_reason",              value3  => $server_stop_reason, 
@@ -689,7 +689,7 @@ SELECT
 FROM 
     smtp
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -711,7 +711,7 @@ FROM
 		my $smtp_authentication = $row->[6];
 		my $smtp_helo_domain    = $row->[7];
 		my $modified_date       = $row->[8];
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 			name1 => "smtp_uuid",           value1 => $smtp_uuid, 
 			name2 => "smtp_server",         value2 => $smtp_server, 
 			name3 => "smtp_port",           value3 => $smtp_port, 
@@ -755,7 +755,7 @@ sub host_state
 	
 	# If I don't have a target, use the local host.
 	my $target = $parameter->{target} ? $parameter->{target} : "host_uuid";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->Validate->is_uuid({uuid => $target}))
@@ -766,12 +766,12 @@ sub host_state
 	{
 		# Translate the target to a host_uuid
 		$target = $an->Get->uuid({get => $target});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "target", value1 => $target, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $valid = $an->Validate->is_uuid({uuid => $target});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $valid)
@@ -792,12 +792,12 @@ FROM
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)." 
 ;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 	my $count   = @{$results};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "results", value1 => $results, 
 		name2 => "count",   value2 => $count
 	}, file => $THIS_FILE, line => __LINE__});
@@ -812,20 +812,20 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		$current_health = $row->[0] ? $row->[0] : "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "current_health", value1 => $current_health, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Am I setting?
 	my $host_health = $parameter->{set} ? $parameter->{set} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "host_health", value1 => $host_health, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($host_health)
 	{
 		# Yup. Has it changed?
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "current_health", value1 => $current_health, 
 			name2 => "host_health",    value2 => $host_health, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -843,7 +843,7 @@ WHERE
     host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($target)." 
 ";
 			$query =~ s/'NULL'/NULL/g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "query", value1 => $query
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -859,7 +859,7 @@ WHERE
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "current_health", value1 => $current_health, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($current_health);
@@ -896,7 +896,7 @@ FROM
 WHERE 
     anvil_name = ".$an->data->{sys}{use_db_fh}->quote($anvil_name)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -909,7 +909,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			$anvil_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvil_uuid", value1 => $anvil_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -973,7 +973,7 @@ FROM
 WHERE 
     anvil_uuid = ".$an->data->{sys}{use_db_fh}->quote($anvil_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -991,7 +991,7 @@ WHERE
 			my $old_anvil_description = $row->[3];
 			my $old_anvil_note        = $row->[4];
 			my $old_anvil_password    = $row->[5];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "old_anvil_owner_uuid",  value1 => $old_anvil_owner_uuid, 
 				name2 => "old_anvil_smtp_uuid",   value2 => $old_anvil_smtp_uuid, 
 				name3 => "old_anvil_name",        value3 => $old_anvil_name, 
@@ -1052,7 +1052,7 @@ sub insert_or_update_nodes
 	my $node_sn          = $parameter->{node_sn}          ? $parameter->{node_sn}          : "NULL";
 	my $node_ifn         = $parameter->{node_ifn}         ? $parameter->{node_ifn}         : "NULL";
 	my $node_password    = $parameter->{node_password}    ? $parameter->{node_password}    : "NULL";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 		name1 => "node_uuid",        value1 => $node_uuid, 
 		name2 => "node_anvil_uuid",  value2 => $node_anvil_uuid, 
 		name3 => "node_host_uuid",   value3 => $node_host_uuid, 
@@ -1078,7 +1078,7 @@ FROM
 WHERE 
     node_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_host_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1091,7 +1091,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			$node_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_uuid", value1 => $node_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1164,7 +1164,7 @@ FROM
 WHERE 
     node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1185,7 +1185,7 @@ WHERE
 			my $old_node_sn          = $row->[6] ? $row->[6] : "NULL"; 
 			my $old_node_ifn         = $row->[7] ? $row->[7] : "NULL"; 
 			my $old_node_password    = $row->[8] ? $row->[8] : "NULL"; 
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
 				name1 => "old_node_anvil_uuid",  value1 => $old_node_anvil_uuid, 
 				name2 => "old_node_host_uuid",   value2 => $old_node_host_uuid, 
 				name3 => "old_node_remote_ip",   value3 => $old_node_remote_ip, 
@@ -1269,7 +1269,7 @@ FROM
 WHERE 
     notify_target = ".$an->data->{sys}{use_db_fh}->quote($notify_target)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1282,7 +1282,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			$notify_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "notify_uuid", value1 => $notify_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1338,7 +1338,7 @@ FROM
 WHERE 
     notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($notify_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1356,7 +1356,7 @@ WHERE
 			my $old_notify_level    = $row->[3];
 			my $old_notify_units    = $row->[4];
 			my $old_notify_note     = $row->[5] ? $row->[5] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 				name1 => "old_notify_name",     value1 => $old_notify_name, 
 				name2 => "old_notify_target",   value2 => $old_notify_target, 
 				name3 => "old_notify_language", value3 => $old_notify_language, 
@@ -1427,7 +1427,7 @@ FROM
 WHERE 
     owner_name = ".$an->data->{sys}{use_db_fh}->quote($owner_name)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1440,7 +1440,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			$owner_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "owner_uuid", value1 => $owner_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1484,7 +1484,7 @@ FROM
 WHERE 
     owner_uuid = ".$an->data->{sys}{use_db_fh}->quote($owner_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1498,7 +1498,7 @@ WHERE
 		{
 			my $old_owner_name = $row->[0];
 			my $old_owner_note = $row->[1];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "old_owner_name", value1 => $old_owner_name, 
 				name2 => "old_owner_note", value2 => $old_owner_note, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -1561,7 +1561,7 @@ WHERE
 AND 
     recipient_notify_uuid = ".$an->data->{sys}{use_db_fh}->quote($recipient_notify_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1574,7 +1574,7 @@ AND
 		foreach my $row (@{$results})
 		{
 			$recipient_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "recipient_uuid", value1 => $recipient_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1624,7 +1624,7 @@ FROM
 WHERE 
     recipient_uuid = ".$an->data->{sys}{use_db_fh}->quote($recipient_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1640,7 +1640,7 @@ WHERE
 			my $old_recipient_notify_uuid  = $row->[1];
 			my $old_recipient_notify_level = $row->[2] ? $row->[2] : "NULL";
 			my $old_recipient_note         = $row->[3] ? $row->[3] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "old_recipient_anvil_uuid",   value1 => $old_recipient_anvil_uuid, 
 				name2 => "old_recipient_notify_uuid",  value2 => $old_recipient_notify_uuid, 
 				name3 => "old_recipient_notify_level", value3 => $old_recipient_notify_level, 
@@ -1711,7 +1711,7 @@ FROM
 WHERE 
     smtp_server = ".$an->data->{sys}{use_db_fh}->quote($smtp_server)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1724,7 +1724,7 @@ WHERE
 		foreach my $row (@{$results})
 		{
 			$smtp_uuid = $row->[0];
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "smtp_uuid", value1 => $smtp_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -1786,7 +1786,7 @@ FROM
 WHERE 
     smtp_uuid = ".$an->data->{sys}{use_db_fh}->quote($smtp_uuid)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -1806,7 +1806,7 @@ WHERE
 			my $old_smtp_authentication = $row->[5];
 			my $old_smtp_helo_domain    = $row->[6] ? $row->[6] : "";
 			my $old_smtp_note           = $row->[7] ? $row->[7] : "NULL";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
 				name1 => "old_smtp_server",         value1 => $old_smtp_server, 
 				name2 => "old_smtp_port",           value2 => $old_smtp_port, 
 				name3 => "old_smtp_username",       value3 => $old_smtp_username, 
@@ -1869,7 +1869,7 @@ sub parse_anvil_data
 	my $node_data  = $an->ScanCore->get_nodes();
 	my $owner_data = $an->ScanCore->get_owners();
 	my $smtp_data  = $an->ScanCore->get_smtp();
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 		name1 => "anvil_data", value1 => $anvil_data, 
 		name2 => "host_data",  value2 => $host_data, 
 		name3 => "node_data",  value3 => $node_data, 
@@ -1887,7 +1887,7 @@ sub parse_anvil_data
 		$an->data->{db}{hosts}{$host_uuid}{health}         = $hash_ref->{host_health} ? $hash_ref->{host_health} : 0;
 		$an->data->{db}{hosts}{$host_uuid}{emergency_stop} = $hash_ref->{host_emergency_stop};
 		$an->data->{db}{hosts}{$host_uuid}{stop_reason}    = $hash_ref->{host_stop_reason};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "db::hosts::${host_uuid}::name",           value1 => $an->data->{db}{hosts}{$host_uuid}{name}, 
 			name2 => "db::hosts::${host_uuid}::type",           value2 => $an->data->{db}{hosts}{$host_uuid}{type}, 
 			name3 => "db::hosts::${host_uuid}::health",         value3 => $an->data->{db}{hosts}{$host_uuid}{health}, 
@@ -1900,7 +1900,7 @@ sub parse_anvil_data
 		# Get the node UUID.
 		my $node_uuid = $hash_ref->{node_uuid};
 		my $host_uuid = $hash_ref->{node_host_uuid};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node_uuid", value1 => $node_uuid, 
 			name2 => "host_uuid", value2 => $host_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1922,7 +1922,7 @@ sub parse_anvil_data
 		$an->data->{db}{nodes}{$node_uuid}{emergency_stop} = $an->data->{db}{hosts}{$host_uuid}{emergency_stop};
 		$an->data->{db}{nodes}{$node_uuid}{stop_reason}    = $an->data->{db}{hosts}{$host_uuid}{stop_reason};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 			name1  => "db::nodes::${node_uuid}::anvil_uuid",     value1  => $an->data->{db}{nodes}{$node_uuid}{anvil_uuid}, 
 			name2  => "db::nodes::${node_uuid}::remote_ip",      value2  => $an->data->{db}{nodes}{$node_uuid}{remote_ip}, 
 			name3  => "db::nodes::${node_uuid}::remote_port",    value3  => $an->data->{db}{nodes}{$node_uuid}{remote_port}, 
@@ -1949,7 +1949,7 @@ sub parse_anvil_data
 		$an->data->{db}{owners}{$owner_uuid}{name} = $hash_ref->{owner_name};
 		$an->data->{db}{owners}{$owner_uuid}{note} = $hash_ref->{owner_note};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "db::owners::${owner_uuid}::name", value1 => $an->data->{db}{owners}{$owner_uuid}{name}, 
 			name2 => "db::owners::${owner_uuid}::note", value2 => $an->data->{db}{owners}{$owner_uuid}{note}, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1968,7 +1968,7 @@ sub parse_anvil_data
 		$an->data->{db}{smtp}{$smtp_uuid}{helo_domain}    = $hash_ref->{smtp_helo_domain};
 		$an->data->{db}{smtp}{$smtp_uuid}{password}       = $hash_ref->{smtp_password};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 			name1 => "db::smtp::${smtp_uuid}::server",         value1 => $an->data->{db}{smtp}{$smtp_uuid}{server}, 
 			name2 => "db::smtp::${smtp_uuid}::port",           value2 => $an->data->{db}{smtp}{$smtp_uuid}{port}, 
 			name3 => "db::smtp::${smtp_uuid}::username",       value3 => $an->data->{db}{smtp}{$smtp_uuid}{username}, 
@@ -1981,23 +1981,24 @@ sub parse_anvil_data
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# If no 'cgi::anvil' has been set and if only one anvil is defined, we will auto-select it.
+	# If no 'cgi::anvil_uuid' has been set and if only one anvil is defined, we will auto-select it.
 	my $anvil_count = @{$anvil_data};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_count", value1 => $anvil_count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $hash_ref (@{$anvil_data})
 	{
 		# Get the Anvil! UUID and associates UUIDs.
 		my $anvil_uuid       = $hash_ref->{anvil_uuid};
+		my $anvil_name       = $hash_ref->{anvil_name};
 		my $anvil_owner_uuid = $hash_ref->{anvil_owner_uuid};
 		my $anvil_smtp_uuid  = $hash_ref->{anvil_smtp_uuid};
 		
-		if (($anvil_count == 1) && (not $an->data->{cgi}{anvil}))
+		if (($anvil_count == 1) && (not $an->data->{cgi}{anvil_uuid}))
 		{
-			$an->data->{cgi}{anvil} = $anvil_uuid;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "cgi::anvil", value1 => $an->data->{cgi}{anvil}, 
+			$an->data->{cgi}{anvil_uuid} = $anvil_uuid;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -2007,7 +2008,7 @@ sub parse_anvil_data
 		$an->data->{anvils}{$anvil_uuid}{note}        = $hash_ref->{anvil_note};
 		$an->data->{anvils}{$anvil_uuid}{password}    = $hash_ref->{anvil_password};
 		
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "anvils::${anvil_uuid}::name",        value1 => $an->data->{anvils}{$anvil_uuid}{name}, 
 			name2 => "anvils::${anvil_uuid}::description", value2 => $an->data->{anvils}{$anvil_uuid}{description}, 
 			name3 => "anvils::${anvil_uuid}::note",        value3 => $an->data->{anvils}{$anvil_uuid}{note}, 
@@ -2016,13 +2017,16 @@ sub parse_anvil_data
 			name1 => "anvils::${anvil_uuid}::password", value1 => $an->data->{anvils}{$anvil_uuid}{password}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
+		# This will be used later to display Anvil! systems to users in a sorted list.
+		$an->data->{sorted}{anvils}{$anvil_name}{uuid} = $anvil_uuid;
+		
 		# Find the nodes associated with this Anvil!
 		my $nodes = [];
 		foreach my $node_uuid (keys %{$an->data->{db}{nodes}})
 		{
 			# Is this node related to this Anvil! system?
 			my $node_anvil_uuid = $an->data->{db}{nodes}{$node_uuid}{anvil_uuid};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "node_uuid",       value1 => $node_uuid, 
 				name2 => "node_anvil_uuid", value2 => $node_anvil_uuid, 
 				name3 => "anvil_uuid",      value3 => $anvil_uuid, 
@@ -2032,7 +2036,7 @@ sub parse_anvil_data
 			{
 				my $node_name   = $an->data->{db}{nodes}{$node_uuid}{name};
 				my $node_string = "$node_name,$node_uuid";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "node_string", value1 => $node_string, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -2044,7 +2048,7 @@ sub parse_anvil_data
 		foreach my $node (sort {$a cmp $b} @{$nodes})
 		{
 			my ($node_name, $node_uuid) = ($node =~ /^(.*?),(.*)$/);
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 				name2 => "node_uuid", value2 => $node_uuid, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2057,7 +2061,7 @@ sub parse_anvil_data
 			{
 				$processed_node1 = 1;
 			}
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_key", value1 => $node_key, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -2077,7 +2081,7 @@ sub parse_anvil_data
 				stop_reason    => $an->data->{db}{nodes}{$node_uuid}{stop_reason}, 
 				password       => $an->data->{db}{nodes}{$node_uuid}{password} ? $an->data->{db}{nodes}{$node_uuid}{password} : $an->data->{anvils}{$anvil_uuid}{password}, 
 			};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 				name1  => "anvils::${anvil_uuid}::${node_key}::uuid",           value1  => $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid}, 
 				name2  => "anvils::${anvil_uuid}::${node_key}::name",           value2  => $an->data->{anvils}{$anvil_uuid}{$node_key}{name}, 
 				name3  => "anvils::${anvil_uuid}::${node_key}::remote_ip",      value3  => $an->data->{anvils}{$anvil_uuid}{$node_key}{remote_ip}, 
@@ -2104,7 +2108,7 @@ sub parse_anvil_data
 				$an->data->{anvils}{$anvil_uuid}{owner}{name} = $an->data->{db}{owners}{$owner_uuid}{name};
 				$an->data->{anvils}{$anvil_uuid}{owner}{note} = $an->data->{db}{owners}{$owner_uuid}{note};
 				
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "anvils::${anvil_uuid}::owner::name", value1 => $an->data->{anvils}{$anvil_uuid}{owner}{name}, 
 					name2 => "anvils::${anvil_uuid}::owner::note", value2 => $an->data->{anvils}{$anvil_uuid}{owner}{note}, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2123,7 +2127,7 @@ sub parse_anvil_data
 				$an->data->{anvils}{$anvil_uuid}{smtp}{authentication} = $an->data->{db}{smtp}{$smtp_uuid}{authentication};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain}    = $an->data->{db}{smtp}{$smtp_uuid}{helo_domain};
 				$an->data->{anvils}{$anvil_uuid}{smtp}{password}       = $an->data->{db}{smtp}{$smtp_uuid}{password};
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "anvils::${anvil_uuid}::smtp::server",         value1 => $an->data->{anvils}{$anvil_uuid}{smtp}{server}, 
 					name2 => "anvils::${anvil_uuid}::smtp::port",           value2 => $an->data->{anvils}{$anvil_uuid}{smtp}{port}, 
 					name3 => "anvils::${anvil_uuid}::smtp::username",       value3 => $an->data->{anvils}{$anvil_uuid}{smtp}{username}, 
@@ -2176,7 +2180,7 @@ sub parse_install_manifest
 	}
 	
 	my $uuid = $parameter->{uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "uuid", value1 => $uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2208,7 +2212,7 @@ sub parse_install_manifest
 						elsif ($mac)
 						{
 							# Malformed MAC
-							$an->Log->entry({log_level => 2, message_key => "tools_log_0027", message_variables => {
+							$an->Log->entry({log_level => 3, message_key => "tools_log_0027", message_variables => {
 								uuid => $uuid, 
 								node => $node, 
 								name => $name, 
@@ -2358,14 +2362,14 @@ sub parse_install_manifest
 			else
 			{
 				# What's this?
-				$an->Log->entry({log_level => 2, message_key => "tools_log_0028", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "tools_log_0028", message_variables => {
 					node    => $node, 
 					uuid    => $uuid, 
 					element => $b, 
 				}, file => $THIS_FILE, line => __LINE__});
 				foreach my $b (@{$data->{node}{$node}{$a}})
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "data->node::${node}::${a}->[${b}]", value1 => $data->{node}{$node}{$a}->[$b],
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2876,7 +2880,7 @@ sub parse_install_manifest
 			else
 			{
 				# Extra element.
-				$an->Log->entry({log_level => 2, message_key => "tools_log_0029", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "tools_log_0029", message_variables => {
 					uuid    => $uuid, 
 					element => $b, 
 					value   => $a->{$b}, 
@@ -3837,7 +3841,7 @@ INSERT INTO
     ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 );";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -3855,13 +3859,13 @@ WHERE
     manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{cgi}{manifest_uuid})." 
 ;";
 		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($an->data->{cgi}{manifest_uuid});

@@ -486,10 +486,10 @@ sub get_cgi
 		
 		# I auto-select the 'anvil' variable if only one is checked. Because of this, I don't want
 		# to overwrite the empty CGI value. This prevents that.
-		if (($variable eq "anvil") && ($an->data->{cgi}{anvil}))
+		if (($variable eq "anvil_uuid") && ($an->data->{cgi}{anvil_uuid}))
 		{
 			$an->data->{sys}{cgi_string} .= "$variable=".$an->data->{cgi}{$variable}."&";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "variable", value1 => $variable, 
 				name2 => "value",    value2 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -546,7 +546,7 @@ sub get_cgi
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{$variable})
 		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::$variable", value1 => $an->data->{cgi}{$variable},
 			}, file => $THIS_FILE, line => __LINE__});
 			
@@ -558,9 +558,55 @@ sub get_cgi
 	}
 	# Clear the final '&' from sys::cgi_string
 	$an->data->{sys}{cgi_string} =~ s/&$//;
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::cgi_string", value1 => $an->data->{sys}{cgi_string}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This is a pretty way of displaying the passed-in CGI variables. It loops through all we've got and
+	# sorts out the longest variable name. Then it loops again, appending '.' to shorter ones so that 
+	# everything is lined up in the logs.
+	my $longest_variable = 0;
+	foreach my $variable (keys %{$an->data->{cgi}})
+	{
+		next if $an->data->{cgi}{$variable} eq "";
+		if (length($variable) > $longest_variable)
+		{
+			$longest_variable = length($variable);
+		}
+	}
+	
+	# Now loop again in alphabetical order printing in the dots as needed.
+	foreach my $variable (sort {$a cmp $b} keys %{$an->data->{cgi}})
+	{
+		next if $an->data->{cgi}{$variable} eq "";
+		my $difference   = $longest_variable - length($variable);
+		my $say_variable = $variable;
+		if ($difference == 0)
+		{
+			# Do nothing
+		}
+		elsif ($difference == 1) 
+		{
+			$say_variable .= " ";
+		}
+		elsif ($difference == 2) 
+		{
+			$say_variable .= "  ";
+		}
+		else
+		{
+			my $dots         =  $difference - 2;
+			   $say_variable .= " ";
+			for (1 .. $dots)
+			{
+				$say_variable .= ".";
+			}
+			$say_variable .= " ";
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "cgi::$say_variable", value1 => $an->data->{cgi}{$variable},
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	return(0);
 }

@@ -271,7 +271,7 @@ sub connect_to_databases
 			$connections++;
 			push @{$successful_connections}, $id;
 			$an->data->{dbh}{$id} = $dbh;
-			$an->Log->entry({log_level => 2, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
+			$an->Log->entry({log_level => 3, title_key => "tools_title_0004", message_key => "tools_log_0019", message_variables => {
 				host => $host,
 				port => $port,
 				name => $name,

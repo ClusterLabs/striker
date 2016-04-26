@@ -7,6 +7,7 @@
 
 use strict;
 use warnings;
+use Data::Dumper;
 use IO::Handle;
 use AN::Tools;
 
@@ -46,15 +47,21 @@ my $an = AN::Tools->new({data => {
 
 # Initialize.
 $an->Web->initialize_http();
+
+# print "<pre>\n";
+# foreach my $key (sort {$a cmp $b} keys %ENV)
+# {
+# 	print "$key\t->\t[".$ENV{$key}."]\n";
+# }
+# print "</pre>\n";
+# die;
+
 $an->default_language    ($an->data->{sys}{language});
 $an->default_log_language($an->data->{'log'}{language});
 $an->default_log_file    ($an->data->{'log'}{file});
 $an->Log->level          ($an->data->{'log'}{level});
 $an->Storage->read_conf  ({file => $an->data->{path}{striker_config}});
 $an->Storage->read_words ({file => $an->data->{path}{striker_strings}});
-
-# Check for passed-in CGI variables.
-$an->Web->check_all_cgi();
 
 # Connect to the databases.
 $an->data->{sys}{db_connections} = $an->DB->connect_to_databases({
@@ -66,6 +73,15 @@ if (not $an->data->{sys}{db_connections})
 	$an->Web->no_db_access();
 	exit(1);
 }
+
+### NOTE: This has to come before '$an->Web->check_all_cgi()' because this will auto-set 'anvil_uuid' if only
+###       one Anvil! exists, where 'check_all_cgi()' will blank it if an empty 'anvil_uuid' is passed in over
+###       CGI.
+# Read in our Anvil! systems. If only one anvil is found, it will be auto-set in 'cgi::anvil'.
+$an->ScanCore->parse_anvil_data();
+
+# Check for passed-in CGI variables.
+$an->Web->check_all_cgi();
 
 $an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 	name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
@@ -3474,19 +3490,32 @@ sub show_main_menu
 	}
 	
 	# Put together the frame of the page.
-	my $back_image    = "";
-	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
-			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
-			alt_text     => "#!string!button_0002!#",
-			id           => "refresh_icon",
-		}});
+	my $back_image = "";
+	my $back_link  = "?";
+	
+	# If I have a referer and if it is striker or MediaLirary, set it.
+	if (($ENV{HTTP_REFERER}) && (($ENV{HTTP_REFERER} =~ /cgi-bin\/mediaLibrary/) or ($ENV{HTTP_REFERER} =~ /cgi-bin\/striker/)))
+	{
+		$back_link  = ($ENV{HTTP_REFERER} =~ /(\/cgi-bin\/.*)$/)[0];
+		$back_image = $an->Web->template({file => "common.html", template => "image", no_comment => 1, replace => {
+				image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/back.png",
+				alt_text     => "#!string!button_0001!#",
+				id           => "back_icon",
+			}});
+	}
 	my $back_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
 			name	=>	"back",
 			id	=>	"back",
 			alt	=>	"#!string!button_0001!#",
 			value	=>	$back_image,
-			url	=>	"?",
+			url	=>	$back_link,
 		}, no_comment => 1});
+	
+	my $refresh_image = $an->Web->template({file => "common.html", template	=> "image", no_comment => 1, replace => {
+			image_source => $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/refresh.png",
+			alt_text     => "#!string!button_0002!#",
+			id           => "refresh_icon",
+		}});
 	my $refresh_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
 			name	=>	"refresh",
 			id	=>	"refresh",
@@ -3494,6 +3523,7 @@ sub show_main_menu
 			value	=>	$refresh_image,
 			url	=>	$refresh_link,
 		}, no_comment => 1});
+	
 	my $header = $an->Web->template({file => "configure.html", template => "configure-header", replace => {
 			back	=>	$back_anchor,
 			refresh	=>	$refresh_anchor,
@@ -3572,9 +3602,6 @@ sub show_main_menu
 			description	=>	"#!string!explain_0172!#",
 			url		=>	"",
 		}})."\n";
-		
-	# Add a divider before the next section
-	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-spacer"});
 	
 	# For the Enable/Disable install target, I need to know the current state.
 	# 0 == Stopped
@@ -3658,6 +3685,52 @@ sub show_main_menu
 # 			description	=>	"#!string!explain_0173!#",
 # 			url		=>	"",
 # 		}})."\n";
+		
+	# Get the list of existing Anvil! systems, if any
+	my $anvil_count = 0;
+	foreach my $anvil_name (sort {$a cmp $b} keys %{$an->data->{sorted}{anvils}})
+	{
+		my $anvil_uuid        = $an->data->{sorted}{anvils}{$anvil_name}{uuid};
+		my $anvil_owner       = $an->data->{anvils}{$anvil_uuid}{owner}{name};
+		my $anvil_description = $an->data->{anvils}{$anvil_uuid}{description};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "anvil_name",        value1 => $anvil_name, 
+			name2 => "anvil_uuid",        value2 => $anvil_uuid, 
+			name3 => "anvil_owner",       value3 => $anvil_owner, 
+			name4 => "anvil_description", value4 => $anvil_description, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if (not $anvil_count)
+		{
+			# Print a spacer;
+			$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-spacer"});
+		}
+		$anvil_count++;
+		
+		my $view_anvil_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"view_".$anvil_name,
+				id	=>	"view_".$anvil_name,
+				alt	=>	$anvil_name,
+				value	=>	$anvil_name,
+				url	=>	"/cgi-bin/striker?anvil_uuid=".$anvil_uuid,
+			}, no_comment => 1});
+		my $edit_anvil_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+				name	=>	"edit_".$anvil_name,
+				id	=>	"edit_".$anvil_name,
+				alt	=>	"#!string!button_0077!#",
+				value	=>	"#!string!button_0077!#",
+				url	=>	"?task=anvil&load_anvil=true&anvil_uuid=".$anvil_uuid,
+			}, no_comment => 1});
+		my $say_description = $an->String->get({key => "message_0465", variables => { 
+			owner		=>	$anvil_owner,
+			description	=>	$anvil_description, 
+		}});
+		$menu_items .= $an->Web->template({file => "configure.html", template => "configure-anvil-entry", replace => {
+				view		=>	$view_anvil_anchor,
+				description	=>	$say_description,
+				edit		=>	$edit_anvil_anchor,
+			}})."\n";
+	}
 	
 	# Build the body of the menu.	
 	my $menu = $an->Web->template({file => "configure.html", template => "configure-menu", replace => { options => $menu_items }});

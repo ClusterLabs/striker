@@ -1880,6 +1880,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0462"><![CDATA[Successfully deleted the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
 		<key name="message_0463"><![CDATA[Are you sure you want to delete the install manifest for the #!string!brand_0003!# named: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
 		<key name="message_0464"><![CDATA[The install manifest has been updated to record the MAC addresses.]]></key>
+		<key name="message_0465"><![CDATA[<span class="highlight_detail">#!variable!owner!#</span><br />#!variable!description!#]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

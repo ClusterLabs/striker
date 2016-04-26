@@ -54,8 +54,7 @@ my $THIS_FILE = "AN::Striker.pm";
 # just turn right back on.
 sub mark_node_as_clean_off
 {
-	my ($conf, $node, $delay) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $delay) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_off" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",  value1 => $node, 
 		name2 => "delay", value2 => $delay, 
@@ -86,10 +85,10 @@ sub mark_node_as_clean_off
 		if ($delay)
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::power_off_delay", value1 => $conf->{sys}{power_off_delay},
+				name1 => "sys::power_off_delay", value1 => $an->data->{sys}{power_off_delay},
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{sys}{power_off_delay} = 300 if not $conf->{sys}{power_off_delay};
-			$say_off = time + $conf->{sys}{power_off_delay};
+			$an->data->{sys}{power_off_delay} = 300 if not $an->data->{sys}{power_off_delay};
+			$say_off = time + $an->data->{sys}{power_off_delay};
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "say_off", value1 => $say_off,
@@ -144,8 +143,7 @@ WHERE ";
 # if they're suddenly found to be off.
 sub mark_node_as_clean_on
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -201,15 +199,14 @@ WHERE
 # This takes a node name and returns the peer node.
 sub get_peer_node
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_peer_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $peer    = "";
-	my $cluster = $conf->{cgi}{cluster};
-	foreach my $this_node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	my $cluster = $an->data->{cgi}{cluster};
+	foreach my $this_node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 	{
 		next if $node eq $this_node;
 		$peer = $this_node;
@@ -218,7 +215,7 @@ sub get_peer_node
 	
 	if (not $peer)
 	{
-		AN::Cluster::error($conf, "I was asked to find the peer to: [$node], but failed. This is likely a program error.\n");
+		AN::Cluster::error($an, "I was asked to find the peer to: [$node], but failed. This is likely a program error.\n");
 	}
 	
 	return($peer);
@@ -227,220 +224,219 @@ sub get_peer_node
 # This sorts out what needs to happen if 'task' was set.
 sub process_task
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::task",    value1 => $conf->{cgi}{task}, 
-		name2 => "cgi::confirm", value2 => $conf->{cgi}{confirm}, 
+		name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
+		name2 => "cgi::confirm", value2 => $an->data->{cgi}{confirm}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{task} eq "withdraw")
+	if ($an->data->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			withdraw_node($conf);
+			withdraw_node($an);
 		}
 		else
 		{
-			confirm_withdraw_node($conf);
+			confirm_withdraw_node($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "join_cluster")
+	elsif ($an->data->{cgi}{task} eq "join_cluster")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			join_cluster($conf);
+			join_cluster($an);
 		}
 		else
 		{
-			confirm_join_cluster($conf);
+			confirm_join_cluster($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "dual_join")
+	elsif ($an->data->{cgi}{task} eq "dual_join")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			dual_join($conf);
+			dual_join($an);
 		}
 		else
 		{
-			confirm_dual_join($conf);
+			confirm_dual_join($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "fence_node")
+	elsif ($an->data->{cgi}{task} eq "fence_node")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			fence_node($conf);
+			fence_node($an);
 		}
 		else
 		{
-			confirm_fence_node($conf);
+			confirm_fence_node($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "poweroff_node")
+	elsif ($an->data->{cgi}{task} eq "poweroff_node")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			poweroff_node($conf);
+			poweroff_node($an);
 		}
 		else
 		{
-			confirm_poweroff_node($conf);
+			confirm_poweroff_node($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "poweron_node")
+	elsif ($an->data->{cgi}{task} eq "poweron_node")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			poweron_node($conf);
+			poweron_node($an);
 		}
 		else
 		{
-			confirm_poweron_node($conf);
+			confirm_poweron_node($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "dual_boot")
+	elsif ($an->data->{cgi}{task} eq "dual_boot")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			dual_boot($conf);
+			dual_boot($an);
 		}
 		else
 		{
-			confirm_dual_boot($conf);
+			confirm_dual_boot($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "cold_stop")
+	elsif ($an->data->{cgi}{task} eq "cold_stop")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
 			# The '1' cancels the APC UPS watchdog timer, if used.
-			cold_stop_anvil($conf, 1);
+			cold_stop_anvil($an, 1);
 		}
 		else
 		{
-			confirm_cold_stop_anvil($conf);
+			confirm_cold_stop_anvil($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "start_vm")
+	elsif ($an->data->{cgi}{task} eq "start_vm")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			start_vm($conf);
+			start_vm($an);
 		}
 		else
 		{
-			confirm_start_vm($conf);
+			confirm_start_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "stop_vm")
+	elsif ($an->data->{cgi}{task} eq "stop_vm")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			stop_vm($conf);
+			stop_vm($an);
 		}
 		else
 		{
-			confirm_stop_vm($conf);
+			confirm_stop_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "force_off_vm")
+	elsif ($an->data->{cgi}{task} eq "force_off_vm")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			force_off_vm($conf);
+			force_off_vm($an);
 		}
 		else
 		{
-			confirm_force_off_vm($conf);
+			confirm_force_off_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "delete_vm")
+	elsif ($an->data->{cgi}{task} eq "delete_vm")
 	{
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			delete_vm($conf);
+			delete_vm($an);
 		}
 		else
 		{
-			confirm_delete_vm($conf);
+			confirm_delete_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "migrate_vm")
+	elsif ($an->data->{cgi}{task} eq "migrate_vm")
 	{
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			migrate_vm($conf);
+			migrate_vm($an);
 		}
 		else
 		{
-			confirm_migrate_vm($conf);
+			confirm_migrate_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "provision")
+	elsif ($an->data->{cgi}{task} eq "provision")
 	{
-		### TODO: If '$conf->{cgi}{os_variant}' is "generic", warn the
+		### TODO: If '$an->data->{cgi}{os_variant}' is "generic", warn the
 		###       user and ask them to confirm that they really want to
 		###       do this.
 		# Confirmed yet?
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
-			if (verify_vm_config($conf))
+			if (verify_vm_config($an))
 			{
 				# We're golden
 				$an->Log->entry({log_level => 2, message_key => "log_0216", file => $THIS_FILE, line => __LINE__});
-				provision_vm($conf);
+				provision_vm($an);
 			}
 			else
 			{
 				# Something wasn't sane.
 				$an->Log->entry({log_level => 2, message_key => "log_0217", file => $THIS_FILE, line => __LINE__});
-				confirm_provision_vm($conf);
+				confirm_provision_vm($an);
 			}
 		}
 		else
 		{
-			confirm_provision_vm($conf);
+			confirm_provision_vm($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "add_vm")
+	elsif ($an->data->{cgi}{task} eq "add_vm")
 	{
 		# This is called after provisioning a VM usually, so no need to
 		# confirm
-		add_vm_to_cluster($conf, 0);
+		add_vm_to_cluster($an, 0);
 	}
-	elsif ($conf->{cgi}{task} eq "manage_vm")
+	elsif ($an->data->{cgi}{task} eq "manage_vm")
 	{
-		manage_vm($conf);
+		manage_vm($an);
 	}
-	elsif ($conf->{cgi}{task} eq "display_health")
+	elsif ($an->data->{cgi}{task} eq "display_health")
 	{
 		print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
 			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
 		}});
-		get_storage_data($conf, $conf->{cgi}{node});
+		get_storage_data($an, $an->data->{cgi}{node});
 		
-		if ((not $conf->{storage}{is}{lsi}) && 
-		    (not $conf->{storage}{is}{hp})  &&
-		    (not $conf->{storage}{is}{mdadm}))
+		if ((not $an->data->{storage}{is}{lsi}) && 
+		    (not $an->data->{storage}{is}{hp})  &&
+		    (not $an->data->{storage}{is}{mdadm}))
 		{
 			# No managers found
-			my $say_title = $an->String->get({key => "title_0016", variables => { node => $conf->{cgi}{node} }});
-			my $say_message = $an->String->get({key => "message_0051", variables => { node_cluster_name => $conf->{cgi}{node_cluster_name} }});
+			my $say_title = $an->String->get({key => "title_0016", variables => { node => $an->data->{cgi}{node} }});
+			my $say_message = $an->String->get({key => "message_0051", variables => { node_cluster_name => $an->data->{cgi}{node_cluster_name} }});
 			print $an->Web->template({file => "lsi-storage.html", template => "no-managers-found", replace => { 
 				title	=>	$say_title,
 				message	=>	$say_message,
@@ -449,83 +445,83 @@ sub process_task
 		else
 		{
 			my $display_details = 1;
-			if ($conf->{cgi}{'do'})
+			if ($an->data->{cgi}{'do'})
 			{
-				if ($conf->{cgi}{'do'} eq "start_id_disk")
+				if ($an->data->{cgi}{'do'} eq "start_id_disk")
 				{
-					lsi_control_disk_id_led($conf, "start");
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_disk_id_led($an, "start");
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "stop_id_disk")
+				elsif ($an->data->{cgi}{'do'} eq "stop_id_disk")
 				{
-					lsi_control_disk_id_led($conf, "stop");
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_disk_id_led($an, "stop");
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "make_disk_good")
+				elsif ($an->data->{cgi}{'do'} eq "make_disk_good")
 				{
-					lsi_control_make_disk_good($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_make_disk_good($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "add_disk_to_array")
+				elsif ($an->data->{cgi}{'do'} eq "add_disk_to_array")
 				{
-					lsi_control_add_disk_to_array($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_add_disk_to_array($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "put_disk_online")
+				elsif ($an->data->{cgi}{'do'} eq "put_disk_online")
 				{
-					lsi_control_put_disk_online($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_put_disk_online($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "put_disk_offline")
+				elsif ($an->data->{cgi}{'do'} eq "put_disk_offline")
 				{
-					lsi_control_put_disk_offline($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_put_disk_offline($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "mark_disk_missing")
+				elsif ($an->data->{cgi}{'do'} eq "mark_disk_missing")
 				{
-					lsi_control_mark_disk_missing($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_mark_disk_missing($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "spin_disk_down")
+				elsif ($an->data->{cgi}{'do'} eq "spin_disk_down")
 				{
-					lsi_control_spin_disk_down($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_spin_disk_down($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "spin_disk_up")
+				elsif ($an->data->{cgi}{'do'} eq "spin_disk_up")
 				{
-					lsi_control_spin_disk_up($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_spin_disk_up($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "make_disk_hot_spare")
+				elsif ($an->data->{cgi}{'do'} eq "make_disk_hot_spare")
 				{
-					lsi_control_make_disk_hot_spare($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_make_disk_hot_spare($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
+				elsif ($an->data->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
 				{
-					lsi_control_unmake_disk_as_hot_spare($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_unmake_disk_as_hot_spare($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
-				elsif ($conf->{cgi}{'do'} eq "clear_foreign_state")
+				elsif ($an->data->{cgi}{'do'} eq "clear_foreign_state")
 				{
-					lsi_control_clear_foreign_state($conf);
-					get_storage_data($conf, $conf->{cgi}{node});
+					lsi_control_clear_foreign_state($an);
+					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				### Prepare Unconfigured drives for removal
 				# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
 			}
 			if ($display_details)
 			{
-				display_node_health($conf);
+				display_node_health($an);
 			}
 		}
 	}
 	else
 	{
 		print "<pre>\n";
-		foreach my $var (sort {$a cmp $b} keys %{$conf->{cgi}})
+		foreach my $var (sort {$a cmp $b} keys %{$an->data->{cgi}})
 		{
-			print "var: [$var] -> [$conf->{cgi}{$var}]\n" if $conf->{cgi}{$var};
+			print "var: [$var] -> [$an->data->{cgi}{$var}]\n" if $an->data->{cgi}{$var};
 		}
 		print "</pre>";
 	}
@@ -536,26 +532,25 @@ sub process_task
 # This unmarks a disk as a hot spare.
 sub lsi_control_unmake_disk_as_hot_spare
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_unmake_disk_as_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my $shell_call = "$conf->{storage}{is}{lsi} PDHSP Rmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDHSP Rmv PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -581,16 +576,16 @@ sub lsi_control_unmake_disk_as_hot_spare
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0002", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0003", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -607,26 +602,25 @@ sub lsi_control_unmake_disk_as_hot_spare
 # Thus clears a disk's foreign state
 sub lsi_control_clear_foreign_state
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_clear_foreign_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my $shell_call = "$conf->{storage}{is}{lsi} CfgForeign Clear -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." CfgForeign Clear -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -651,13 +645,13 @@ sub lsi_control_clear_foreign_state
 	# Show the user the results.
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
-	my $message_body  = $an->String->get({key => "lsi_0043", variables => { adapter => $conf->{cgi}{adapter} }});
+	my $message_body  = $an->String->get({key => "lsi_0043", variables => { adapter => $an->data->{cgi}{adapter} }});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0044", variables => { 
-				adapter	=>	$conf->{cgi}{adapter},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -674,26 +668,25 @@ sub lsi_control_clear_foreign_state
 # This marks a disk as a hot spare.
 sub lsi_control_make_disk_hot_spare
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_make_disk_hot_spare" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Mark the disk as a global hot-spare.
-	my $shell_call = "$conf->{storage}{is}{lsi} PDHSP Set PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDHSP Set PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -719,16 +712,16 @@ sub lsi_control_make_disk_hot_spare
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0005", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0006", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -745,25 +738,24 @@ sub lsi_control_make_disk_hot_spare
 # This marks an "Offline" disk as "Missing".
 sub lsi_control_mark_disk_missing
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_mark_disk_missing" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDMarkMissing PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDMarkMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -793,16 +785,16 @@ sub lsi_control_mark_disk_missing
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0007", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -811,8 +803,8 @@ sub lsi_control_mark_disk_missing
 		$title_message = "#!string!row_0032!#";
 		$title_class   = "highlight_detail";
 		$message_body  = $an->String->get({key => "lsi_0009", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 			}});
 	}
 	print $an->Web->template({file => "lsi-storage.html", template => "lsi-complete-table-message", replace => { 
@@ -824,7 +816,7 @@ sub lsi_control_mark_disk_missing
 	
 	if ($success)
 	{
-		lsi_control_spin_disk_down($conf);
+		lsi_control_spin_disk_down($an);
 	}
 
 	return(0);
@@ -833,26 +825,25 @@ sub lsi_control_mark_disk_missing
 # This spins up an "Unconfigured, spun down" disk, making it available again.
 sub lsi_control_spin_disk_up
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_spin_disk_up" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# This spins the drive back up.
-	my $shell_call = "$conf->{storage}{is}{lsi} PDPrpRmv Undo PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDPrpRmv Undo PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -877,16 +868,16 @@ sub lsi_control_spin_disk_up
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0010", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0011", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -903,25 +894,24 @@ sub lsi_control_spin_disk_up
 # This spins down an "Offline" disk, Preparing it for removal.
 sub lsi_control_spin_disk_down
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_spin_disk_down" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDPrpRmv PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDPrpRmv PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -950,16 +940,16 @@ sub lsi_control_spin_disk_down
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0015", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0016", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -968,8 +958,8 @@ sub lsi_control_spin_disk_down
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0017", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 			}});
 	}
 	print $an->Web->template({file => "lsi-storage.html", template => "lsi-complete-table-message", replace => { 
@@ -983,9 +973,9 @@ sub lsi_control_spin_disk_down
 	# the disk as good and then spin it down.
 	if ($success == 2)
 	{
-		if (lsi_control_make_disk_good($conf))
+		if (lsi_control_make_disk_good($an))
 		{
-			lsi_control_spin_disk_down($conf);
+			lsi_control_spin_disk_down($an);
 		}
 	}
 	
@@ -995,8 +985,7 @@ sub lsi_control_spin_disk_down
 # This gets the rebuild status of a drive
 sub lsi_control_get_rebuild_progress
 {
-	my ($conf, $disk_address, $adapter) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $disk_address, $adapter) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_get_rebuild_progress" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "disk_address", value1 => $disk_address, 
 		name2 => "adapter",      value2 => $adapter, 
@@ -1004,19 +993,19 @@ sub lsi_control_get_rebuild_progress
 	
 	my $rebuild_percent   = "";
 	my $time_to_complete  = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDRbld ShowProg PhysDrv [$disk_address] a$adapter";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDRbld ShowProg PhysDrv [$disk_address] a$adapter";
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1045,36 +1034,35 @@ sub lsi_control_get_rebuild_progress
 # This puts an "Online, Spun Up" disk into "Offline" state.
 sub lsi_control_put_disk_offline
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_put_disk_offline" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: I don't think I need this function. For now, I simply
 	###       redirect to the "prepare for removal" function.
-	#lsi_control_mark_disk_missing($conf);
+	#lsi_control_mark_disk_missing($an);
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	my $this_adapter      = $conf->{cgi}{adapter};
-	my $this_logical_disk = $conf->{cgi}{logical_disk};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
+	my $this_adapter      = $an->data->{cgi}{adapter};
+	my $this_logical_disk = $an->data->{cgi}{logical_disk};
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "this_adapter",                                                                      value1 => $this_adapter,
 		name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
-		name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+		name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i) && ($this_logical_disk != 9999))
+	if (($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i) && ($this_logical_disk != 9999))
 	{
 		my $reason = $an->String->get({key => "lsi_0019"});
-		if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level} eq "6")
+		if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level} eq "6")
 		{
 			$reason = $an->String->get({key => "lsi_0020"});
 		}
 		my $message = $an->String->get({key => "lsi_0021", variables => { 
-				disk		=>	$conf->{cgi}{disk_address},
+				disk		=>	$an->data->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 				reason		=>	$reason,
 			}});
@@ -1087,10 +1075,10 @@ sub lsi_control_put_disk_offline
 		return(0);
 	}
 	
-	if (not $conf->{cgi}{confirm})
+	if (not $an->data->{cgi}{confirm})
 	{
 		my $message = $an->String->get({key => "lsi_0022", variables => { 
-				disk		=>	$conf->{cgi}{disk_address},
+				disk		=>	$an->data->{cgi}{disk_address},
 				logical_disk	=>	$this_logical_disk,
 			}});
 		my $alert       =  "#!string!row_0044!#";
@@ -1103,8 +1091,8 @@ sub lsi_control_put_disk_offline
 		}
 		# Both messages have the same second part that asks the user to confirm.
 		$message .= $an->String->get({key => "lsi_0024", variables => { 
-				confirm_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$conf->{cgi}{disk_address}&adapter=$this_adapter&logical_disk=$this_logical_disk&confirm=true",
-				cancel_url	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health",
+				confirm_url	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=put_disk_offline&disk_address=".$an->data->{cgi}{disk_address}."&adapter=$this_adapter&logical_disk=$this_logical_disk&confirm=true",
+				cancel_url	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health",
 			}});
 		print $an->Web->template({file => "lsi-storage.html", template => "lsi-complete-table-message", replace => { 
 			title		=>	"#!string!title_0018!#",
@@ -1115,15 +1103,15 @@ sub lsi_control_put_disk_offline
 		return (0);
 	}
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDOffline PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDOffline PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1148,16 +1136,16 @@ sub lsi_control_put_disk_offline
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0025", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0027", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -1171,7 +1159,7 @@ sub lsi_control_put_disk_offline
 	if ($success)
 	{
 		# Mark the disk as "missing" from the array.
-		lsi_control_mark_disk_missing($conf);
+		lsi_control_mark_disk_missing($an);
 	}
 
 	return(0);
@@ -1180,25 +1168,24 @@ sub lsi_control_put_disk_offline
 # This puts an "Offline" disk into "Online" state.
 sub lsi_control_put_disk_online
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_put_disk_online" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDRbld Start PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDRbld Start PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1223,16 +1210,16 @@ sub lsi_control_put_disk_online
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0028", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0029", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 			}});
 	}
@@ -1248,25 +1235,24 @@ sub lsi_control_put_disk_online
 # This adds an "Unconfigured Good" disk to the specified array.
 sub lsi_control_add_disk_to_array
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_add_disk_to_array" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PdReplaceMissing PhysDrv [$conf->{cgi}{disk_address}] -array$conf->{cgi}{logical_disk} -row$conf->{cgi}{row} -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PdReplaceMissing PhysDrv [".$an->data->{cgi}{disk_address}."] -array$an->data->{cgi}{logical_disk} -row$an->data->{cgi}{row} -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1291,18 +1277,18 @@ sub lsi_control_add_disk_to_array
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0031", variables => { 
-			disk		=>	$conf->{cgi}{disk_address},
-			adapter		=>	$conf->{cgi}{adapter},
-			logical_disk	=>	$conf->{cgi}{logical_disk},
+			disk		=>	$an->data->{cgi}{disk_address},
+			adapter		=>	$an->data->{cgi}{adapter},
+			logical_disk	=>	$an->data->{cgi}{logical_disk},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0032", variables => { 
-				disk		=>	$conf->{cgi}{disk_address},
-				adapter		=>	$conf->{cgi}{adapter},
-				logical_disk	=>	$conf->{cgi}{logical_disk},
+				disk		=>	$an->data->{cgi}{disk_address},
+				adapter		=>	$an->data->{cgi}{adapter},
+				logical_disk	=>	$an->data->{cgi}{logical_disk},
 				message		=>	$return_string,
 			}});
 	}
@@ -1316,7 +1302,7 @@ sub lsi_control_add_disk_to_array
 	# If successful, put the disk Online.
 	if ($success)
 	{
-		lsi_control_put_disk_online($conf);
+		lsi_control_put_disk_online($an);
 	}
 	
 	return(0);
@@ -1325,26 +1311,25 @@ sub lsi_control_add_disk_to_array
 # This looks ip the missing disk(s) in a given degraded array
 sub lsi_control_get_missing_disks
 {
-	my ($conf, $this_adapter, $this_logical_disk) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $this_adapter, $this_logical_disk) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_get_missing_disks" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "this_adapter",      value1 => $this_adapter, 
 		name2 => "this_logical_disk", value2 => $this_logical_disk, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PdGetMissing a$this_adapter";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PdGetMissing a$this_adapter";
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1364,7 +1349,7 @@ sub lsi_control_get_missing_disks
 			my $this_row     =  $1;
 			my $minimum_size =  $2;		# This is in MiB and is the cooerced size.
 			   $minimum_size *= 1048576;	# Now it should be in bytes
-			$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} = $minimum_size;
+			$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} = $minimum_size;
 		}
 	}
 	
@@ -1374,25 +1359,24 @@ sub lsi_control_get_missing_disks
 # This tells the controller to make the flagged disk "Good"
 sub lsi_control_make_disk_good
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_make_disk_good" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PDMakeGood PhysDrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PDMakeGood PhysDrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1417,16 +1401,16 @@ sub lsi_control_make_disk_good
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0034", variables => { 
-			disk		=>	$conf->{cgi}{disk_address},
-			adapter		=>	$conf->{cgi}{adapter},
+			disk		=>	$an->data->{cgi}{disk_address},
+			adapter		=>	$an->data->{cgi}{adapter},
 		}});
 	if (not $success)
 	{
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0035", variables => { 
-				disk		=>	$conf->{cgi}{disk_address},
-				adapter		=>	$conf->{cgi}{adapter},
+				disk		=>	$an->data->{cgi}{disk_address},
+				adapter		=>	$an->data->{cgi}{adapter},
 				message		=>	$return_string,
 			}});
 	}
@@ -1443,17 +1427,16 @@ sub lsi_control_make_disk_good
 # This turns on or off the "locate" LED on the hard drives.
 sub lsi_control_disk_id_led
 {
-	my ($conf, $action) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $action) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "lsi_control_disk_id_led" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "action", value1 => $action, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $success           = 0;
 	my $return_string     = "";
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	my $say_action        = "#!string!state_0014!#";
 	if ($action eq "stop")
 	{
@@ -1468,15 +1451,15 @@ sub lsi_control_disk_id_led
 		name2 => "say_action", value2 => $say_action,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = "$conf->{storage}{is}{lsi} PdLocate $action physdrv [$conf->{cgi}{disk_address}] -a$conf->{cgi}{adapter}";
-	my $password   = $conf->{sys}{root_password};
+	my $shell_call = $an->data->{storage}{is}{lsi}." PdLocate $action physdrv [".$an->data->{cgi}{disk_address}."] -a".$an->data->{cgi}{adapter};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1501,8 +1484,8 @@ sub lsi_control_disk_id_led
 	my $title_message = "#!string!state_0005!#";
 	my $title_class   = "highlight_good";
 	my $message_body  = $an->String->get({key => "lsi_0037", variables => { 
-			disk	=>	$conf->{cgi}{disk_address},
-			adapter	=>	$conf->{cgi}{adapter},
+			disk	=>	$an->data->{cgi}{disk_address},
+			adapter	=>	$an->data->{cgi}{adapter},
 			action	=>	$say_action,
 		}});
 	if (not $success)
@@ -1510,8 +1493,8 @@ sub lsi_control_disk_id_led
 		$title_message = "#!string!row_0044!#";
 		$title_class   = "highlight_warning";
 		$message_body  = $an->String->get({key => "lsi_0038", variables => { 
-				disk	=>	$conf->{cgi}{disk_address},
-				adapter	=>	$conf->{cgi}{adapter},
+				disk	=>	$an->data->{cgi}{disk_address},
+				adapter	=>	$an->data->{cgi}{adapter},
 				message	=>	$return_string,
 				action	=>	$say_action,
 			}});
@@ -1530,13 +1513,12 @@ sub lsi_control_disk_id_led
 # will be controllable; like failing/adding a hard drive.
 sub display_node_health
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_health" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Open up the table.
 	print $an->Web->template({file => "lsi-storage.html", template => "lsi-adapter-health-header", replace => { 
@@ -1546,26 +1528,26 @@ sub display_node_health
 	}});
 	
 	# Display results.
-	if ($conf->{storage}{is}{lsi})
+	if ($an->data->{storage}{is}{lsi})
 	{
 		# Displaying storage
 		$an->Log->entry({log_level => 2, message_key => "log_0218", file => $THIS_FILE, line => __LINE__});
-		foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+		foreach my $this_adapter (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "- this_adapter", value1 => $this_adapter,
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "  - this_logical_disk", value1 => $this_logical_disk,
 				}, file => $THIS_FILE, line => __LINE__});
-				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "    - this_enclosure_device_id", value1 => $this_enclosure_device_id,
 					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+					foreach my $this_slot_number (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 					{
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "      - this_slot_number", value1 => $this_slot_number,
@@ -1573,28 +1555,28 @@ sub display_node_health
 					}
 				}
 			}
-			my $say_bbu   =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is}                        ? "Present" : "Not Installed";
-			my $say_flash =                      $conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is}                      ? "Present" : "Not Installed";
-			my $say_restore_hotspare_on_insert = $conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ? "Yes"     : "No";
+			my $say_bbu   =                      $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is}                        ? "Present" : "Not Installed";
+			my $say_flash =                      $an->data->{storage}{lsi}{adapter}{$this_adapter}{flash_is}                      ? "Present" : "Not Installed";
+			my $say_restore_hotspare_on_insert = $an->data->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} ? "Yes"     : "No";
 			my $say_title = $an->String->get({key => "lsi_0040", variables => { adapter => $this_adapter }});
 
 			print $an->Web->template({file => "lsi-storage.html", template => "lsi-adapter-state", replace => { 
 				title				=>	$say_title,
-				model				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
-				cache_size			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size},
+				model				=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name},
+				cache_size			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{cache_size},
 				bbu				=>	$say_bbu,
 				flash_module			=>	$say_flash,
 				restore_hotspare_on_insert	=>	$say_restore_hotspare_on_insert,
 			}});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "  - storage::lsi::adapter::${this_adapter}::bbu_is", value1 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is},
+				name1 => "  - storage::lsi::adapter::${this_adapter}::bbu_is", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is})
+			if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is})
 			{
-				my $say_replace_bbu     = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}        ? "Yes" : "No";
-				my $say_learn_cycle     = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ? "Yes" : "No";
+				my $say_replace_bbu     = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}        ? "Yes" : "No";
+				my $say_learn_cycle     = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} ? "Yes" : "No";
 				my $battery_state_class = "highlight_good";
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} ne "Optimal")
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} ne "Optimal")
 				{
 					$battery_state_class = "highlight_bad";
 				}
@@ -1604,52 +1586,52 @@ sub display_node_health
 				my $say_design_capcity   = "--";
 				my $say_current_charge   = "--";
 				my $say_cycle_count      = "<span class=\"highlight_unavailable\">#!string!state_0016!#</a>";
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity})
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity})
 				{
-					$say_current_capacity = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity};
+					$say_current_capacity = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity};
 				}
-				elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance})
+				elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance})
 				{
-					$say_current_capacity = "$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance} %";
+					$say_current_capacity = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance}." %";
 				}
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity})
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity})
 				{
-					$say_design_capcity = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity};
+					$say_design_capcity = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity};
 				}
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity})
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity})
 				{
-					$say_current_charge = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity};
+					$say_current_charge = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity};
 				}
-				elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy})
+				elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy})
 				{
-					$say_current_charge = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy};
+					$say_current_charge = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy};
 				}
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count})
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count})
 				{
-					$say_cycle_count = $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count};
+					$say_cycle_count = $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count};
 				}
 				
 				print $an->Web->template({file => "lsi-storage.html", template => "lsi-bbu-state", replace => { 
-					battery_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
+					battery_state		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
 					battery_state_class	=>	$battery_state_class,
-					manufacture_name	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
-					bbu_type		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type},
+					manufacture_name	=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
+					bbu_type		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type},
 					full_capacity		=>	$say_current_capacity,
 					design_capacity		=>	$say_design_capcity,
 					remaining_capacity	=>	$say_current_charge,
 					replace_bbu		=>	$say_replace_bbu,
 					learn_cycle		=>	$say_learn_cycle,
-					next_learn_cycle	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time},
+					next_learn_cycle	=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time},
 					cycle_count		=>	$say_cycle_count,
 				}});
 			}
 			
 			# Show the logical disks now.
-			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+			foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 			{
 				next if $this_logical_disk eq "";
-				my $say_bad_blocks =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
-				my $say_size       =  $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size};
+				my $say_bad_blocks =  $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} ? "Yes" : "No";
+				my $say_size       =  $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size};
 				   $say_size       =~ s/(\w)B/$1iB/;	# The use 'GB' when it should be 'GiB'.
 				my $logical_disk_state_class = "highlight_good";
 				my $say_missing    = "";
@@ -1657,26 +1639,26 @@ sub display_node_health
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                      value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
+				if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "this_adapter",                                                                      value1 => $this_adapter,
 						name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
-						name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+						name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 					}, file => $THIS_FILE, line => __LINE__});
-					lsi_control_get_missing_disks($conf, $this_adapter, $this_logical_disk);
+					lsi_control_get_missing_disks($an, $this_adapter, $this_logical_disk);
 					$allow_offline            = 0;
 					$logical_disk_state_class = "highlight_bad";
-					if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Partially Degraded/i)
+					if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Partially Degraded/i)
 					{
 						$logical_disk_state_class = "highlight_warning";
 					}
 					$say_missing = "<br />";
-					foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
+					foreach my $this_row (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 					{
-						my $say_minimum_size =  $an->Readable->bytes_to_hr({'bytes' => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} });
+						my $say_minimum_size =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row} });
 						$say_missing         .= $an->String->get({key => "lsi_0041", variables => { 
 								row		=>	$this_row,
 								minimum_size	=>	$say_minimum_size,
@@ -1695,58 +1677,58 @@ sub display_node_health
 				else
 				{
 					# Real logical disk
-					next if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'};
+					next if not $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "this_adapter",                                                                      value1 => $this_adapter,
 						name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
-						name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+						name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 					}, file => $THIS_FILE, line => __LINE__});
 					my $title = $an->String->get({key => "title_0021", variables => { logical_disk => $this_logical_disk }});
 					print $an->Web->template({file => "lsi-storage.html", template => "lsi-logical-disk-state", replace => { 
 						title				=>	$title,
-						logical_disk_state		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+						logical_disk_state		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 						logical_disk_state_class	=>	$logical_disk_state_class,
 						missing				=>	$say_missing,
 						bad_blocks_exist		=>	$say_bad_blocks,
-						primary_raid_level		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level},
-						raid_url			=>	"https://alteeve.ca/w/TLUG_Talk:_Storage_Technologies_and_Theory#Level_$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}",
+						primary_raid_level		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level},
+						raid_url			=>	"https://alteeve.ca/w/TLUG_Talk:_Storage_Technologies_and_Theory#Level_$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}",
 						size				=>	$say_size,
-						number_of_drives		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives},
-						encryption_type			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type},
-						target_id			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id},
-						current_cache_policy		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy},
-						disk_cache_policy		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy},
+						number_of_drives		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives},
+						encryption_type			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type},
+						target_id			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id},
+						current_cache_policy		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy},
+						disk_cache_policy		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy},
 					}});
 				}
 				
 				# Display the drives in this logical disk.
-				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+				foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 				{
 					#print " | |- Enclusure Device ID: [$this_enclosure_device_id]<br />\n";
-					foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+					foreach my $this_slot_number (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 					{
-						my $raw_size_sectors = hex($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
-						my $raw_size_bytes   = ($raw_size_sectors * $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
+						my $raw_size_sectors = hex($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex});
+						my $raw_size_bytes   = ($raw_size_sectors * $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size});
 						my $say_raw_size     = $an->Readable->bytes_to_hr({'bytes' => $raw_size_bytes });
 						my $disk_temp_class  = "highlight_good";
-						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 54)
+						if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 54)
 						{
 							$disk_temp_class = "highlight_dangerous";
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 45)
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} > 45)
 						{
 							$disk_temp_class = "highlight_warning";
 						}
-						my $say_drive_temp_c = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} : "--";
-						my $say_drive_temp_f = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} : "--";
+						my $say_drive_temp_c = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} ? $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} : "--";
+						my $say_drive_temp_f = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} ? $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} : "--";
 						my $say_temperature = "<span class=\"$disk_temp_class\">$say_drive_temp_c &deg;C ($say_drive_temp_f &deg;F)</span>";
 						
 						my $say_location_title = $an->String->get({key => "row_0066"});
-						my $say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}, $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
+						my $say_location_body  = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span}.", ".$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm}.", ".$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id};
 						if ($this_logical_disk == 9999)
 						{
 							$say_location_title = $an->String->get({key => "row_0067"});
-							$say_location_body  = "$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id}";
+							$say_location_body  = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id};
 						}
 						
 						my $button = $an->String->get({key => "row_0067"});
@@ -1755,14 +1737,14 @@ sub display_node_health
 						if ($allow_offline)
 						{
 							$offline_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=put_disk_offline&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 									button_text	=>	"#!string!button_0006!#",
 									id		=>	"put_disk_offline_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
 							if ($this_logical_disk == 9999)
 							{
 								$offline_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-										button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+										button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 										button_text	=>	"#!string!button_0007!#",
 										id		=>	"spin_disk_down_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 									}});
@@ -1771,61 +1753,61 @@ sub display_node_health
 						
 						my $disk_state_class = "highlight_good";
 						my $say_disk_action  = "";
-						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
+						if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(bad)")
 						{
 							$disk_state_class =  "highlight_bad";
 							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action  .= $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 									button_class	=>	"highlight_warning",
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=make_disk_good&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0008!#",
 									id		=>	"make_disk_good_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Offline")
 						{
 							$disk_state_class = "highlight_detail";
 							my $say_put_disk_online_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 									button_class	=>	$disk_state_class,
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=put_disk_online&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0009!#",
 									id		=>	"put_disk_online__${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
 							my $say_spin_disk_down_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 									button_class	=>	$disk_state_class,
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=spin_disk_down&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0007!#",
 									id		=>	"spin_disk_down",
 								}});
 							$say_disk_action = " - $say_put_disk_online_button - $say_spin_disk_down_button";
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Rebuild")
 						{
-							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($conf, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
+							my ($rebuild_percent, $time_to_complete) = lsi_control_get_rebuild_progress($an, "$this_enclosure_device_id:$this_slot_number", $this_adapter);
 							$disk_state_class = "highlight_warning";
 							$say_disk_action  = $an->String->get({key => "lsi_0042", variables => { 
 									rebuild_percent		=>	$rebuild_percent,
 									time_to_complete	=>	$time_to_complete,
 								}});
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun Up")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun Up")
 						{
 							$disk_state_class = "highlight_detail";
-							foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+							foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 							{
 								next if $this_logical_disk eq "";
-								if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
+								if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} =~ /Degraded/i)
 								{
 									# NOTE: I only loop once because if two drives are missing from a RAID 6 
 									#       array, the 'Add to this_logical_disk' will print twice, once for each
 									#       row. So we exit the loop after the first run and thus will always
 									#       add disks to the first open row.
-									foreach my $this_row (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
+									foreach my $this_row (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}})
 									{
 										$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 											name1 => "this_row", value1 => $this_row,
 										}, file => $THIS_FILE, line => __LINE__});
-										if ($raw_size_bytes >= $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
+										if ($raw_size_bytes >= $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{missing_row}{$this_row})
 										{
 											my $say_button = $an->String->get({key => "button_0010", variables => { logical_disk => $this_logical_disk }});
 											$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1835,7 +1817,7 @@ sub display_node_health
 											$say_disk_action =  $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
 											$say_disk_action .= $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 												button_class	=>	"bold_button",
-												button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
+												button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=add_disk_to_array&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&row=$this_row&logical_disk=$this_logical_disk",
 												button_text	=>	$say_button,
 												id		=>	"add_disk_to_array_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 											}});
@@ -1851,7 +1833,7 @@ sub display_node_health
 								{
 									$say_disk_action =  $an->Web->template({file => "common.html", template => "new_line"}) if not $say_disk_action;
 									$say_disk_action .= $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-											button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+											button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=make_disk_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 											button_text	=>	"#!string!button_0011!#",
 											id		=>	"make_disk_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 										}});
@@ -1859,19 +1841,19 @@ sub display_node_health
 								}
 							}
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Unconfigured(good), Spun down")
 						{
 							$disk_state_class =  "highlight_detail";
 							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action  .= $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=spin_disk_up&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0012!#",
 									id		=>	"spin_disk_up_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
 							$say_temperature  = "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0055"})."</a>";
 							$offline_button   = $an->String->get({key => "message_0054"});
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Transition")
 						{
 							$disk_state_class =  "highlight_detail";
 							$say_disk_action  =  $an->Web->template({file => "common.html", template => "new_line"});
@@ -1879,12 +1861,12 @@ sub display_node_health
 							$say_temperature  =  "<span class=\"highlight_unavailable\">".$an->String->get({key => "message_0057"})."</span>";
 							$offline_button   =  $an->String->get({key => "message_0058"});
 						}
-						elsif ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
+						elsif ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} eq "Hotspare, Spun Up")
 						{
 							$disk_state_class = "highlight_detail";
 							$say_disk_action  = "";
 							$offline_button   = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=unmake_disk_as_hot_spare&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter&logical_disk=$this_logical_disk",
 									button_text	=>	"#!string!button_0013!#",
 									id		=>	"unmake_disk_as_hot_spare_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
@@ -1894,27 +1876,27 @@ sub display_node_health
 						###       disk. This state is where the hot-spare's data gets
 						###       copied to the replaced drive, then the old hot 
 						###       spare reverts again to being a hot spare.
-						my $disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive_128x128.png";
-						my $id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
+						my $disk_icon    = $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/hard-drive_128x128.png";
+						my $id_led_url   = "?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=start_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
 						my $say_identify = $an->String->get({key => "button_0014"});
-						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
-						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
+						#print "adapter: [$this_adapter], Disk: [$this_enclosure_device_id:$this_slot_number], Locator ID Status: [$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit}]\n";
+						if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
 						{
-							$disk_icon    = "$conf->{url}{skins}/$conf->{sys}{skin}/images/hard-drive-with-led_128x128.png";
-							$id_led_url   = "?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
+							$disk_icon    = $an->data->{url}{skins}."/".$an->data->{sys}{skin}."/images/hard-drive-with-led_128x128.png";
+							$id_led_url   = "?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=stop_id_disk&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter";
 							$say_identify = $an->String->get({key => "button_0015"});
 						}
 						# This needs to be last because if a drive is foreign,
 						# we can't do anything else to it.
 						my $foreign_state_class = "fixed_width_left";
 						my $say_foreign_state   = "#!string!state_0013!#";
-						if ($conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} eq "Foreign")
+						if ($an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} eq "Foreign")
 						{
 							$foreign_state_class =  "highlight_warning_bold_fixed_width_left";
 							$say_foreign_state   =  "#!string!state_0012!#";
 							$say_disk_action     .= $an->Web->template({file => "common.html", template => "new_line"});
 							$say_disk_action     .= $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-									button_link	=>	"?cluster=$conf->{cgi}{cluster}&node=$conf->{cgi}{node}&node_cluster_name=$conf->{cgi}{node_cluster_name}&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
+									button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health&do=clear_foreign_state&disk_address=$this_enclosure_device_id:$this_slot_number&adapter=$this_adapter",
 									button_text	=>	"#!string!button_0038!#",
 									id		=>	"clear_foreign_state_${this_adapter}_${this_enclosure_device_id}_${this_slot_number}",
 								}});
@@ -1925,14 +1907,14 @@ sub display_node_health
 								slot_number		=>	$this_slot_number,
 								enclosure_device_id	=>	$this_enclosure_device_id,
 							}});
-						$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = "--" if not $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1};
+						$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = "--" if not $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1};
 						print $an->Web->template({file => "lsi-storage.html", template => "lsi-physical-disk-state", replace => { 
 							title				=>	$title,
 							id_led_url			=>	$id_led_url,
 							disk_icon			=>	$disk_icon,
-							model				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data},
-							wwn				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn},
-							disk_state			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
+							model				=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data},
+							wwn				=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn},
+							disk_state			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
 							foreign_state			=>	$say_foreign_state,
 							foreign_state_class		=>	$foreign_state_class,
 							disk_state_class		=>	$disk_state_class,
@@ -1940,16 +1922,16 @@ sub display_node_health
 							temperature			=>	$say_temperature,
 							id_led_url			=>	$id_led_url,
 							identify			=>	$say_identify,
-							device_type			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type},
-							media_error_count		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count},
-							other_error_count		=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count},
-							predictive_failure_count	=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count},
+							device_type			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type},
+							media_error_count		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count},
+							other_error_count		=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count},
+							predictive_failure_count	=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count},
 							raw_drive_size			=>	$say_raw_size,
-							pd_type				=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type},
-							device_speed			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed},
-							link_speed			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed},
-							sas_address_0			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0},
-							sas_address_1			=>	$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1},
+							pd_type				=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type},
+							device_speed			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed},
+							link_speed			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed},
+							sas_address_0			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0},
+							sas_address_1			=>	$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1},
 							location_title			=>	$say_location_title,
 							location_body			=>	$say_location_body,
 							offline_button			=>	$offline_button,
@@ -1970,24 +1952,23 @@ sub display_node_health
 # details.
 sub get_storage_data
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_data" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$conf->{storage}{is}{lsi}   = "";
-	$conf->{storage}{is}{hp}    = "";
-	$conf->{storage}{is}{mdadm} = "";
+	$an->data->{storage}{is}{lsi}   = "";
+	$an->data->{storage}{is}{hp}    = "";
+	$an->data->{storage}{is}{mdadm} = "";
 	my $shell_call = "whereis MegaCli64 hpacucli";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2009,34 +1990,34 @@ sub get_storage_data
 			#print "program: [$program], path: [$path]\n";
 			if ($program eq "MegaCli64")
 			{
-				$conf->{storage}{is}{lsi} = $path;
+				$an->data->{storage}{is}{lsi} = $path;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "storage::is::lsi", value1 => $conf->{storage}{is}{lsi},
+					name1 => "storage::is::lsi", value1 => $an->data->{storage}{is}{lsi},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($program eq "hpacucli")
 			{
-				$conf->{storage}{is}{hp} = $path;
+				$an->data->{storage}{is}{hp} = $path;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "storage::is::hp", value1 => $conf->{storage}{is}{hp},
+					name1 => "storage::is::hp", value1 => $an->data->{storage}{is}{hp},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($program eq "mdadm")
 			{
 				### TODO: This is always installed... 
 				### Check if any arrays are configured and drop this if none.
-				$conf->{storage}{is}{mdadm} = $path;
+				$an->data->{storage}{is}{mdadm} = $path;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "storage::is::mdadm", value1 => $conf->{storage}{is}{mdadm},
+					name1 => "storage::is::mdadm", value1 => $an->data->{storage}{is}{mdadm},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
 	# For now, only LSI is supported.
-	if ($conf->{storage}{is}{lsi})
+	if ($an->data->{storage}{is}{lsi})
 	{
-		get_storage_data_lsi($conf, $node);
+		get_storage_data_lsi($an, $node);
 	}
 	
 	return(0);
@@ -2045,8 +2026,7 @@ sub get_storage_data
 # This uses the 'MegaCli64' program to gather information about the LSI-based storage of a node.
 sub get_storage_data_lsi
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_data_lsi" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2072,7 +2052,7 @@ sub get_storage_data_lsi
 	my $this_arm                 = "";
 	
 	# Delete any old data.
-	delete $conf->{storage}{lsi}{adapter};
+	delete $an->data->{storage}{lsi}{adapter};
 	
 	# This is set to 1 once all the discovered physical drives have been
 	# found and their ID LED statuses set to '0'.
@@ -2080,20 +2060,20 @@ sub get_storage_data_lsi
 	
 	# Now call.
 	my $in_section     =  0;
-	my $megacli64_path =  $conf->{storage}{is}{lsi};
+	my $megacli64_path =  $an->data->{storage}{is}{lsi};
 	my $shell_call     =  "echo '==] Start adapter_info'; $megacli64_path AdpAllInfo aAll; ";
 	   $shell_call     .= "echo '==] Start bbu_info'; $megacli64_path AdpBbuCmd aAll; ";
 	   $shell_call     .= "echo '==] Start logical_disk_info'; $megacli64_path LDInfo Lall aAll; ";
 	   $shell_call     .= "echo '==] Start physical_disk_info'; $megacli64_path PDList aAll; ";
-	   $shell_call     .= "echo '==] Start pd_id_led_state'; $conf->{path}{grep} \"PD Locate\" /root/MegaSAS.log;";
-	my $password   = $conf->{sys}{root_password};
+	   $shell_call     .= "echo '==] Start pd_id_led_state'; $an->data->{path}{grep} \"PD Locate\" /root/MegaSAS.log;";
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2141,7 +2121,7 @@ sub get_storage_data_lsi
 			{
 				$skip_equal_sign_bar = 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
+					name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name},
 					name2 => "skip_equal_sign_bar",                                  value2 => $skip_equal_sign_bar,
 				}, file => $THIS_FILE, line => __LINE__});
 				next;
@@ -2149,10 +2129,10 @@ sub get_storage_data_lsi
 			
 			if ($line =~ /Product Name\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{product_name} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                         value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::product_name", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
+					name2 => "storage::lsi::adapter::${this_adapter}::product_name", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
@@ -2162,7 +2142,7 @@ sub get_storage_data_lsi
 				$in_hw_information   = 1;
 				$skip_equal_sign_bar = 1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
+					name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name},
 					name2 => "in_hw_information",                                    value2 => $in_hw_information,
 					name3 => "skip_equal_sign_bar",                                  value3 => $skip_equal_sign_bar,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2174,36 +2154,36 @@ sub get_storage_data_lsi
 				{
 					$in_hw_information = 0;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $conf->{storage}{lsi}{adapter}{$this_adapter}{product_name},
+						name1 => "storage::lsi::adapter::${this_adapter}::product_name", value1 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{product_name},
 						name2 => "in_hw_information",                                    value2 => $in_hw_information,
 					}, file => $THIS_FILE, line => __LINE__});
 					next
 				}
 				elsif ($line =~ /Memory Size\s*:\s*(.*)/)
 				{
-					$conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size} = $1;
+					$an->data->{storage}{lsi}{adapter}{$this_adapter}{cache_size} = $1;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "this_adapter",                                       value1 => $this_adapter,
-						name2 => "storage::lsi::adapter::${this_adapter}::cache_size", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{cache_size},
+						name2 => "storage::lsi::adapter::${this_adapter}::cache_size", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{cache_size},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($line =~ /BBU\s*:\s*(.*)/)
 				{
 					my $bbu_is = $1;
-					$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is} = $bbu_is eq "Present" ? 1 : 0;
+					$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is} = $bbu_is eq "Present" ? 1 : 0;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "this_adapter",                                   value1 => $this_adapter,
-						name2 => "storage::lsi::adapter::${this_adapter}::bbu_is", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu_is},
+						name2 => "storage::lsi::adapter::${this_adapter}::bbu_is", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu_is},
 						name3 => "bbu_is",                                         value3 => $bbu_is,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				elsif ($line =~ /Flash\s*:\s*(.*)/)
 				{
 					my $flash_is = $1;
-					$conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is} = $flash_is eq "Present" ? 1 : 0;
+					$an->data->{storage}{lsi}{adapter}{$this_adapter}{flash_is} = $flash_is eq "Present" ? 1 : 0;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "this_adapter",                                     value1 => $this_adapter,
-						name2 => "storage::lsi::adapter::${this_adapter}::flash_is", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{flash_is},
+						name2 => "storage::lsi::adapter::${this_adapter}::flash_is", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{flash_is},
 						name3 => "flash_is",                                         value3 => $flash_is,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2226,10 +2206,10 @@ sub get_storage_data_lsi
 				elsif ($line =~ /Restore HotSpare on Insertion\s*:\s*(.*)/)
 				{
 					my $is_enabled = $1;
-					$conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} = $is_enabled eq "Enabled" ? 1 : 0;
+					$an->data->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion} = $is_enabled eq "Enabled" ? 1 : 0;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "this_adapter",                                                          value1 => $this_adapter,
-						name2 => "storage::lsi::adapter::${this_adapter}::restore_hotspare_on_insertion", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion}, 
+						name2 => "storage::lsi::adapter::${this_adapter}::restore_hotspare_on_insertion", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{restore_hotspare_on_insertion}, 
 						name3 => "is_enabled",                                                            value3 => $is_enabled,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -2253,110 +2233,110 @@ sub get_storage_data_lsi
 			
 			if ($line =~ /BatteryType\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                      value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::type", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::type", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{type},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Battery State\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                               value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::battery_state", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::battery_state", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{battery_state},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Learn Cycle Active\s*:\s*(.*)/)
 			{
 				my $learn_cycle_active = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} = $learn_cycle_active eq "Yes" ? 1 : 0;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active} = $learn_cycle_active eq "Yes" ? 1 : 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                               value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::learn_cycle_active", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active}, 
+					name2 => "storage::lsi::adapter::${this_adapter}::learn_cycle_active", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{learn_cycle_active}, 
 					name3 => "learn_cycle_active",                                         value3 => $learn_cycle_active,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Pack is about to fail & should be replaced\s*:\s*(.*)/)
 			{
 				my $replace_bbu = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu} = $replace_bbu eq "Yes" ? 1 : 0;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu} = $replace_bbu eq "Yes" ? 1 : 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                             value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::replace_bbu", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}, 
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::replace_bbu", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{replace_bbu}, 
 					name3 => "replace_bbu",                                              value3 => $replace_bbu,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Design Capacity\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                                 value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::design_capacity", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::design_capacity", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{design_capacity},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Remaining Capacity Alarm\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                                          value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::remaining_capacity_alarm", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::remaining_capacity_alarm", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity_alarm},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Cycle Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                             value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::cycle_count", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::cycle_count", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{cycle_count},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Next Learn time\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                                 value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::next_learn_time", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::next_learn_time", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{next_learn_time},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Remaining Capacity\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                                    value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::remaining_capacity", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::remaining_capacity", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{remaining_capacity},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Full Charge Capacity\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                               value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::full_capacity", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::full_capacity", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{full_capacity},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Manufacture Name\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                                  value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::manufacture_name", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::manufacture_name", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{manufacture_name},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Pack energy\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                             value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::pack_energy", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::pack_energy", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{pack_energy},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Capacitance\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "this_adapter",                                             value1 => $this_adapter,
-					name2 => "storage::lsi::adapter::${this_adapter}::bbu::capacitance", value2 => $conf->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance},
+					name2 => "storage::lsi::adapter::${this_adapter}::bbu::capacitance", value2 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{bbu}{capacitance},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -2379,108 +2359,108 @@ sub get_storage_data_lsi
 			if ($line =~ /Virtual Drive: (\d+) \(Target Id: (\d+)\)/)
 			{
 				$this_logical_disk = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id} = $2;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id} = $2;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                          value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                     value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::target_id", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::target_id", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{target_id},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			next if $this_logical_disk eq "";
 			
 			if ($line =~ /^Size\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                     value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::size", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::size", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /State\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                      value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                 value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::state", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Current Cache Policy\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                     value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                                value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::current_cache_policy", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::current_cache_policy", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{current_cache_policy},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Bad Blocks Exist\s*:\s*(.*)/)
 			{
 				my $bad_blocks = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} = $bad_blocks eq "Yes" ? 1 : 0;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist} = $bad_blocks eq "Yes" ? 1 : 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 					name1 => "this_adapter",                                                                                 value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                            value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::bad_blocks_exist", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist}, 
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::bad_blocks_exist", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{bad_blocks_exist}, 
 					name4 => "bad_blocks",                                                                                   value4 => $bad_blocks, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Number Of Drives\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                 value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                            value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::number_of_drives", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::number_of_drives", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{number_of_drives},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Encryption Type\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                           value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::encryption_type", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::encryption_type", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{encryption_type},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Disk Cache Policy\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                  value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                             value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::disk_cache_policy", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::disk_cache_policy", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{disk_cache_policy},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                            value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                       value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::sector_size", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::sector_size", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /RAID Level\s*:\s*Primary-(\d+), Secondary-(\d+), RAID Level Qualifier-(\d+)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}   = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level} = $2;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier}       = $3;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level}   = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level} = $2;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier}       = $3;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                   value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                              value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::primary_raid_level", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::primary_raid_level", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{primary_raid_level},
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                                     value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                                value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::secondary_raid_level", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::secondary_raid_level", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{secondary_raid_level},
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "this_adapter",                                                                               value1 => $this_adapter,
 					name2 => "this_logical_disk",                                                                          value2 => $this_logical_disk,
-					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::raid_qualifier", value3 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier},
+					name3 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::raid_qualifier", value3 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{raid_qualifier},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -2563,9 +2543,9 @@ sub get_storage_data_lsi
 			}
 			next if (($this_enclosure_device_id eq "") or ($this_slot_number eq "") or ($this_logical_disk eq ""));
 			
-			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span})
+			if (not exists $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span})
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span} = $this_span;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{span} = $this_span;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "Disk Group",          value2 => $this_logical_disk,
@@ -2574,9 +2554,9 @@ sub get_storage_data_lsi
 					name5 => "this_span",           value5 => $this_span,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if (not exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm})
+			if (not exists $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm})
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm} = $this_arm;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{arm} = $this_arm;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "Disk Group",          value2 => $this_logical_disk,
@@ -2589,90 +2569,90 @@ sub get_storage_data_lsi
 			# Record the slot number.
 			if ($line =~ /Device Id\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Device ID",           value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id},
+					name5 => "Device ID",           value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_id},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /WWN\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "World Wide Number",   value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn},
+					name5 => "World Wide Number",   value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{wwn},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Sequence Number\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Sequence Number",     value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number},
+					name5 => "Sequence Number",     value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sequence_number},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Media Error Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Media Error Count",   value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count},
+					name5 => "Media Error Count",   value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_error_count},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Other Error Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Other Error Count",   value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count},
+					name5 => "Other Error Count",   value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{other_error_count},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Predictive Failure Count\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",             value1 => $this_adapter,
 					name2 => "this_logical_disk",        value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",      value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",              value4 => $this_slot_number,
-					name5 => "Predictive Failure Count", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count},
+					name5 => "Predictive Failure Count", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{predictive_failure_count},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /PD Type\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Physical Disk Type",  value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type},
+					name5 => "Physical Disk Type",  value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{pd_type},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Raw Size: .*? \[0x(.*?) Sectors\]/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex} = "0x".$1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex} = "0x".$1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",            value1 => $this_adapter,
 					name2 => "this_logical_disk",       value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",     value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",             value4 => $this_slot_number,
-					name5 => "Raw Sector Count in Hex", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex},
+					name5 => "Raw Sector Count in Hex", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{raw_sector_count_in_hex},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Sector Size\s*:\s*(.*)/)
@@ -2684,114 +2664,114 @@ sub get_storage_data_lsi
 				my $sector_size = $1;
 				if (not $sector_size)
 				{
-					$sector_size = $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} ? $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} : 512;
+					$sector_size = $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} ? $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{sector_size} : 512;
 				}
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size} = $sector_size ? $sector_size : 512;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size} = $sector_size ? $sector_size : 512;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Sector Size",         value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size},
+					name5 => "Sector Size",         value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sector_size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Firmware state\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",            value1 => $this_adapter,
 					name2 => "this_logical_disk",       value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",     value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",             value4 => $this_slot_number,
-					name5 => "Firmware-Reported State", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
+					name5 => "Firmware-Reported State", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{firmware_state},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /SAS Address\(0\)\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",         value1 => $this_adapter,
 					name2 => "this_logical_disk",    value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",  value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",          value4 => $this_slot_number,
-					name5 => "SAS Address, Port #0", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0},
+					name5 => "SAS Address, Port #0", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_0},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /SAS Address\(1\)\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",         value1 => $this_adapter,
 					name2 => "this_logical_disk",    value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",  value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",          value4 => $this_slot_number,
-					name5 => "SAS Address, Port #1", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1},
+					name5 => "SAS Address, Port #1", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{sas_address_1},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Connected Port Number\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",          value1 => $this_adapter,
 					name2 => "this_logical_disk",     value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",   value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",           value4 => $this_slot_number,
-					name5 => "Connected Port Number", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number},
+					name5 => "Connected Port Number", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{connected_port_number},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Inquiry Data\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Drive Data",          value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data},
+					name5 => "Drive Data",          value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{inquiry_data},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Device Speed\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Device Speed",        value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed},
+					name5 => "Device Speed",        value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{device_speed},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Link Speed\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Link Speed",          value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed},
+					name5 => "Link Speed",          value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{link_speed},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Media Type\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Media Type",          value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type},
+					name5 => "Media Type",          value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{media_type},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Foreign State\s*:\s*(.*)/)
 			{
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} = $1;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state} = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "Foreign State",       value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state},
+					name5 => "Foreign State",       value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{foreign_state},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Drive Temperature\s*:\s*(\d+)C \((.*?) F\)/)
@@ -2802,33 +2782,33 @@ sub get_storage_data_lsi
 					name1 => "temp_c", value1 => $temp_c,
 					name2 => "temp_f", value2 => $temp_f,
 				}, file => $THIS_FILE, line => __LINE__});
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} = $temp_c;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} = $temp_f;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c} = $temp_c;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f} = $temp_f;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",           value1 => $this_adapter,
 					name2 => "this_logical_disk",      value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",    value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",            value4 => $this_slot_number,
-					name5 => "Drive Temperature (*C)", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c},
+					name5 => "Drive Temperature (*C)", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_c},
 				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 					name1 => "this_adapter",           value1 => $this_adapter,
 					name2 => "this_logical_disk",      value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID",    value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",            value4 => $this_slot_number,
-					name5 => "Drive Temperature (*F)", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f},
+					name5 => "Drive Temperature (*F)", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{drive_temp_f},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Drive has flagged a S.M.A.R.T alert\s*:\s*(.*)/)
 			{
 				my $alert = $1;
-				$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert} = $alert eq "Yes" ? 1 : 0;
+				$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert} = $alert eq "Yes" ? 1 : 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 					name1 => "this_adapter",        value1 => $this_adapter,
 					name2 => "this_logical_disk",   value2 => $this_logical_disk,
 					name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 					name4 => "Slot Number",         value4 => $this_slot_number,
-					name5 => "SMART Alert",         value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert},
+					name5 => "SMART Alert",         value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{smart_alert},
 					name6 => "alert",               value6 => $alert,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2842,31 +2822,31 @@ sub get_storage_data_lsi
 			if (not $initial_led_state_set)
 			{
 				$initial_led_state_set = 1;
-				foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+				foreach my $this_adapter (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}})
 				{
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "this_adapter", value1 => $this_adapter,
 					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 					{
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "- this_logical_disk", value1 => $this_logical_disk,
 						}, file => $THIS_FILE, line => __LINE__});
-						foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+						foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 						{
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 								name1 => "   - Enclosure Device ID", value1 => $this_enclosure_device_id,
 							}, file => $THIS_FILE, line => __LINE__});
-							foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+							foreach my $this_slot_number (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 							{
 								#print __LINE__.";      - Slot ID: [$this_slot_number]\n");
-								$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = 0;
+								$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = 0;
 								$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 									name1 => "       - this_adapter", value1 => $this_adapter,
 									name2 => "this_logical_disk",                value2 => $this_logical_disk,
 									name3 => "Enclosure Device ID",         value3 => $this_enclosure_device_id,
 									name4 => "Slot Number",                 value4 => $this_slot_number,
-									name5 => "id_led_lit",                  value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
+									name5 => "id_led_lit",                  value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
 								}, file => $THIS_FILE, line => __LINE__});
 							}
 						}
@@ -2910,12 +2890,12 @@ sub get_storage_data_lsi
 				# the log doesn't reference the disk's logic
 				# drive, so we loop through all looking for a
 				# match.
-				foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+				foreach my $this_adapter (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}})
 				{
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "Adapter", value1 => $this_adapter,
 					}, file => $THIS_FILE, line => __LINE__});
-					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+					foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 					{
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 							name1 => "  - Adapter",         value1 => $this_logical_disk,
@@ -2923,9 +2903,9 @@ sub get_storage_data_lsi
 							name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 							name4 => "Slot Number",         value4 => $this_slot_number,
 						}, file => $THIS_FILE, line => __LINE__});
-						if (exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number})
+						if (exists $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number})
 						{
-							$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = $set_state;
+							$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit} = $set_state;
 							# Exists
 							$an->Log->entry({log_level => 2, message_key => "log_0219", file => $THIS_FILE, line => __LINE__});
 							$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
@@ -2933,7 +2913,7 @@ sub get_storage_data_lsi
 								name2 => "this_logical_disk",   value2 => $this_logical_disk,
 								name3 => "Enclosure Device ID", value3 => $this_enclosure_device_id,
 								name4 => "Slot Number",         value4 => $this_slot_number,
-								name5 => "id_led_lit",          value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
+								name5 => "id_led_lit",          value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
 							}, file => $THIS_FILE, line => __LINE__});
 							last;
 						}
@@ -2953,22 +2933,22 @@ sub get_storage_data_lsi
 	}
 	
 	# This is purely debug to show the status of the drive LEDs.
-	foreach my $this_adapter (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}})
+	foreach my $this_adapter (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}})
 	{
-		foreach my $this_logical_disk (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
+		foreach my $this_logical_disk (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}})
 		{
-			foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
+			foreach my $this_enclosure_device_id (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}})
 			{
-				foreach my $this_slot_number (sort {$a cmp $b} keys %{$conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
+				foreach my $this_slot_number (sort {$a cmp $b} keys %{$an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}})
 				{
-					if (exists $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
+					if (exists $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit})
 					{
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 							name1 => "adapter",                                                                                                                                                                    value1 => $this_adapter,
 							name2 => "this_logical_disk",                                                                                                                                                          value2 => $this_logical_disk,
 							name3 => "Disk Address",                                                                                                                                                               value3 => $this_enclosure_device_id, 
 							name4 => "this_slot_number",                                                                                                                                                           value4 => $this_slot_number, 
-							name5 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::enclosure_device_id::${this_enclosure_device_id}::slot_number::${this_slot_number}::id_led_lit", value5 => $conf->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
+							name5 => "storage::lsi::adapter::${this_adapter}::logical_disk::${this_logical_disk}::enclosure_device_id::${this_enclosure_device_id}::slot_number::${this_slot_number}::id_led_lit", value5 => $an->data->{storage}{lsi}{adapter}{$this_adapter}{logical_disk}{$this_logical_disk}{enclosure_device_id}{$this_enclosure_device_id}{slot_number}{$this_slot_number}{id_led_lit},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -2982,32 +2962,31 @@ sub get_storage_data_lsi
 # This changes the amount of RAM or the number of CPUs allocated to a VM.
 sub change_vm
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "change_vm" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster                             =  $conf->{cgi}{cluster};
-	my $vm                                  =  $conf->{cgi}{vm};
+	my $cluster                             =  $an->data->{cgi}{cluster};
+	my $vm                                  =  $an->data->{cgi}{vm};
 	my $say_vm                              =  ($vm =~ /vm:(.*)/)[0];
-	my $node1                               =  $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2                               =  $conf->{clusters}{$cluster}{nodes}[1];
-	my $device                              =  $conf->{cgi}{device};
-	my $new_server_note                     =  $conf->{cgi}{server_note};
-	my $new_server_migration_type           =  $conf->{cgi}{server_migration_type};
-	my $new_server_pre_migration_script     =  $conf->{cgi}{server_pre_migration_script};
-	my $new_server_pre_migration_arguments  =  $conf->{cgi}{server_pre_migration_arguments};
-	my $new_server_post_migration_script    =  $conf->{cgi}{server_post_migration_script};
-	my $new_server_post_migration_arguments =  $conf->{cgi}{server_post_migration_arguments};
-	my $new_server_start_after              =  $conf->{cgi}{server_start_after};
+	my $node1                               =  $an->data->{clusters}{$cluster}{nodes}[0];
+	my $node2                               =  $an->data->{clusters}{$cluster}{nodes}[1];
+	my $device                              =  $an->data->{cgi}{device};
+	my $new_server_note                     =  $an->data->{cgi}{server_note};
+	my $new_server_migration_type           =  $an->data->{cgi}{server_migration_type};
+	my $new_server_pre_migration_script     =  $an->data->{cgi}{server_pre_migration_script};
+	my $new_server_pre_migration_arguments  =  $an->data->{cgi}{server_pre_migration_arguments};
+	my $new_server_post_migration_script    =  $an->data->{cgi}{server_post_migration_script};
+	my $new_server_post_migration_arguments =  $an->data->{cgi}{server_post_migration_arguments};
+	my $new_server_start_after              =  $an->data->{cgi}{server_start_after};
 	   $new_server_start_after              =~ s/^\s+//;
 	   $new_server_start_after              =~ s/\s+$//;
-	my $new_server_start_delay              = $conf->{cgi}{server_start_delay};
+	my $new_server_start_delay              = $an->data->{cgi}{server_start_delay};
 	   $new_server_start_delay              =~ s/^\s+//;
 	   $new_server_start_delay              =~ s/\s+$//;
 	my $definition_file                     =  "/shared/definitions/$say_vm.xml";
-	my $other_allocated_ram                 =  $conf->{resources}{allocated_ram} - $conf->{vm}{$vm}{details}{ram};
+	my $other_allocated_ram                 =  $an->data->{resources}{allocated_ram} - $an->data->{vm}{$vm}{details}{ram};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0015", message_variables => {
 		name1  => "cluster",                             value1  => $cluster,
 		name2  => "vm",                                  value2  => $vm,
@@ -3031,16 +3010,16 @@ sub change_vm
 	# changes, update the DB. If all this passes, rewrite the definition file and/or update the DB.
 	my $hardware_changed      = 0;
 	my $database_changed      = 0;
-	my $current_ram           =  $conf->{vm}{$vm}{details}{ram};
-	my $available_ram         =  ($conf->{resources}{total_ram} - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	my $current_ram           =  $an->data->{vm}{$vm}{details}{ram};
+	my $available_ram         =  ($an->data->{resources}{total_ram} - $an->data->{sys}{unusable_ram} - $an->data->{resources}{allocated_ram}) + $current_ram;
 	   $current_ram           /= 1024;
-	my $requested_ram         =  $an->Readable->hr_to_bytes({size => $conf->{cgi}{ram}, type => $conf->{cgi}{ram_suffix} });
+	my $requested_ram         =  $an->Readable->hr_to_bytes({size => $an->data->{cgi}{ram}, type => $an->data->{cgi}{ram_suffix} });
 	   $requested_ram         /= 1024;
 	my $max_ram               =  $available_ram / 1024;
-	my $current_cpus          =  $conf->{vm}{$vm}{details}{cpu_count};
-	my $requested_cpus        =  $conf->{cgi}{cpu_cores};
-	my $current_boot_device   =  $conf->{vm}{$vm}{current_boot_device};
-	my $requested_boot_device =  $conf->{cgi}{boot_device};
+	my $current_cpus          =  $an->data->{vm}{$vm}{details}{cpu_count};
+	my $requested_cpus        =  $an->data->{cgi}{cpu_cores};
+	my $current_boot_device   =  $an->data->{vm}{$vm}{current_boot_device};
+	my $requested_boot_device =  $an->data->{cgi}{boot_device};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "vm",             value1 => $vm,
 		name2 => "requested_ram",  value2 => $requested_ram,
@@ -3195,7 +3174,7 @@ WHERE
 	    ($current_boot_device ne $requested_boot_device))
 	{
 		# Something has changed. Make sure the request is sane,
-		my $max_cpus = $conf->{resources}{total_threads};
+		my $max_cpus = $an->data->{resources}{total_threads};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "requested_ram",  value1 => $requested_ram,
 			name2 => "max_ram",        value2 => $max_ram,
@@ -3236,7 +3215,7 @@ WHERE
 				name1 => "hardware_changed", value1 => $hardware_changed,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			my ($backup_file) = archive_file($conf, $node, $definition_file, 1);
+			my ($backup_file) = archive_file($an, $node, $definition_file, 1);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "backup_file", value1 => $backup_file,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3254,22 +3233,22 @@ WHERE
 			
 			# Rewrite the XML file.
 			print $an->String->get({key => "message_0061", variables => { 
-					ram			=>	$conf->{cgi}{ram},
-					ram_suffix		=>	$conf->{cgi}{ram_suffix},
+					ram			=>	$an->data->{cgi}{ram},
+					ram_suffix		=>	$an->data->{cgi}{ram_suffix},
 					requested_cpus		=>	$requested_cpus,
 					requested_boot_device	=>	$say_requested_boot_device,
 				}});
 			my $new_definition = "";
 			my $in_os          = 0;
 			my $shell_call     = $an->data->{path}{cat}." $definition_file";
-			my $password       = $conf->{sys}{root_password};
+			my $password       = $an->data->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3354,7 +3333,7 @@ WHERE
 							name1 => "vm",                          value1 => $vm,
 							name2 => "Adding initiall boot device", value2 => $requested_boot_device,
 						}, file => $THIS_FILE, line => __LINE__});
-						foreach my $device (split /,/, $conf->{vm}{$vm}{available_boot_devices})
+						foreach my $device (split /,/, $an->data->{vm}{$vm}{available_boot_devices})
 						{
 							next if $device eq $requested_boot_device;
 							$new_definition .= "    <boot dev='$device'/>\n";
@@ -3402,13 +3381,13 @@ WHERE
 				}
 			}
 			$new_definition =~ s/(\S)\s+$/$1\n/;
-			$conf->{vm}{$vm}{available_boot_devices} =~ s/,$//;
+			$an->data->{vm}{$vm}{available_boot_devices} =~ s/,$//;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "new_definition", value1 => $new_definition,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# See if I need to insert or edit any network interface driver elements.
-			$new_definition = update_network_driver($conf, $new_definition);
+			$new_definition = update_network_driver($an, $new_definition);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "new_definition", value1 => $new_definition,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3421,7 +3400,7 @@ WHERE
 			}, file => $THIS_FILE, line => __LINE__});
 			($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3459,7 +3438,7 @@ fi
 			}, file => $THIS_FILE, line => __LINE__});
 			($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3488,20 +3467,20 @@ fi
 			
 			# Wipe and re-read the definition file's XML and reset the amount of RAM and the 
 			# number of CPUs allocated to this machine.
-			$conf->{vm}{$vm}{xml}     = [];
-			@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
+			$an->data->{vm}{$vm}{xml}     = [];
+			@{$an->data->{vm}{$vm}{xml}} = split/\n/, $new_definition;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "requested_ram",           value1 => $requested_ram,
-				name2 => "vm::${vm}::details::ram", value2 => $conf->{vm}{$vm}{details}{ram},
+				name2 => "vm::${vm}::details::ram", value2 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$conf->{vm}{$vm}{details}{ram} = ($requested_ram * 1024);
+			$an->data->{vm}{$vm}{details}{ram} = ($requested_ram * 1024);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::details::ram", value1 => $conf->{vm}{$vm}{details}{ram},
+				name1 => "vm::${vm}::details::ram", value1 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$conf->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
-			$conf->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
+			$an->data->{resources}{allocated_ram}    = $other_allocated_ram + ($requested_ram * 1024);
+			$an->data->{vm}{$vm}{details}{cpu_count} = $requested_cpus;
 		}
 	}
 	
@@ -3515,9 +3494,9 @@ fi
 	if ($hardware_changed)
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "host", value1 => $conf->{vm}{$vm}{current_host},
+			name1 => "host", value1 => $an->data->{vm}{$vm}{current_host},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{vm}{$vm}{current_host})
+		if ($an->data->{vm}{$vm}{current_host})
 		{
 			print $an->Web->template({file => "server.html", template => "server-poweroff-required-message"});
 		}
@@ -3537,9 +3516,9 @@ fi
 	if (($hardware_changed) or ($database_changed))
 	{
 		# Yup, we're good.
-		print $an->Web->template({file => "server.html", template => "update-server-config-footer", replace => { url => "?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm" }});
+		print $an->Web->template({file => "server.html", template => "update-server-config-footer", replace => { url => "?cluster=".$an->data->{cgi}{cluster}."&vm=".$an->data->{cgi}{vm}."&task=manage_vm" }});
 		
-		AN::Cluster::footer($conf);
+		AN::Cluster::footer($an);
 		exit(0);
 	}
 	else
@@ -3554,8 +3533,7 @@ fi
 # This inserts an ISO into the server's virtual optical drive.
 sub vm_insert_media
 {
-	my ($conf, $node, $insert_media, $insert_drive, $vm_is_running) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $insert_media, $insert_drive, $vm_is_running) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "vm_insert_media" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "node",          value1 => $node, 
 		name2 => "insert_media",  value2 => $insert_media, 
@@ -3563,16 +3541,16 @@ sub vm_insert_media
 		name4 => "vm_is_running", value4 => $vm_is_running, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster         = $conf->{cgi}{cluster};
-	my $vm              = $conf->{cgi}{vm};
+	my $cluster         = $an->data->{cgi}{cluster};
+	my $vm              = $an->data->{cgi}{vm};
 	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
-	my $node1           = $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2           = $conf->{clusters}{$cluster}{nodes}[1];
-	my $device          = $conf->{cgi}{device};
+	my $node1           = $an->data->{clusters}{$cluster}{nodes}[0];
+	my $node2           = $an->data->{clusters}{$cluster}{nodes}[1];
+	my $device          = $an->data->{cgi}{device};
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 
 	# Archive the current config, just in case.
-	my ($backup)   = archive_file($conf, $node, $definition_file, 1);
+	my ($backup)   = archive_file($an, $node, $definition_file, 1);
 	
 	my $title = $an->String->get({key => "title_0030", variables => { 
 		media	=>	$insert_media,
@@ -3586,14 +3564,14 @@ sub vm_insert_media
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
 		my $shell_call = "/usr/bin/virsh change-media $say_vm $insert_drive --insert '/shared/files/$insert_media'; echo virsh:\$?";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3624,14 +3602,14 @@ sub vm_insert_media
 			print $an->Web->template({file => "server.html", template => "insert-media-failed-already-mounted"});
 
 			# Update the definition file in case it was missed by .
-			update_vm_definition($conf, $node, $vm);
+			update_vm_definition($an, $node, $vm);
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
 			print $an->Web->template({file => "server.html", template => "insert-media-success"});
 
 			# Update the definition file.
-			update_vm_definition($conf, $node, $vm);
+			update_vm_definition($an, $node, $vm);
 		}
 		else
 		{
@@ -3651,14 +3629,14 @@ sub vm_insert_media
 		print $an->Web->template({file => "server.html", template => "insert-media-server-off", replace => { message => $message }});
 		my $new_definition = "";
 		my $shell_call     = "cat $definition_file";
-		my $password       = $conf->{sys}{root_password};
+		my $password       = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3689,7 +3667,7 @@ sub vm_insert_media
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# See if I need to insert or edit any network interface driver elements.
-		$new_definition = update_network_driver($conf, $new_definition);
+		$new_definition = update_network_driver($an, $new_definition);
 		
 		# Write the new definition file.
 		print $an->Web->template({file => "server.html", template => "saving-server-config"});
@@ -3700,7 +3678,7 @@ sub vm_insert_media
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3718,8 +3696,8 @@ sub vm_insert_media
 		
 		# Lastly, copy the new definition to the stored XML for
 		# this VM.
-		$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
-		@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
+		$an->data->{vm}{$vm}{xml}    = [];	# this is probably redundant
+		@{$an->data->{vm}{$vm}{xml}} = split/\n/, $new_definition;
 	}
 	
 	return(0);
@@ -3728,42 +3706,41 @@ sub vm_insert_media
 # This ejects an ISO from a server's virtual optical drive.
 sub vm_eject_media
 {
-	my ($conf, $node, $vm_is_running) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $vm_is_running) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "vm_eject_media" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",          value1 => $node, 
 		name2 => "vm_is_running", value2 => $vm_is_running, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster         = $conf->{cgi}{cluster};
-	my $vm              = $conf->{cgi}{vm};
+	my $cluster         = $an->data->{cgi}{cluster};
+	my $vm              = $an->data->{cgi}{vm};
 	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
-	my $node1           = $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2           = $conf->{clusters}{$cluster}{nodes}[1];
-	my $device          = $conf->{cgi}{device};
+	my $node1           = $an->data->{clusters}{$cluster}{nodes}[0];
+	my $node2           = $an->data->{clusters}{$cluster}{nodes}[1];
+	my $device          = $an->data->{cgi}{device};
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
-	my $title = $an->String->get({key => "title_0031", variables => { device => $conf->{cgi}{device} }});
+	my $title = $an->String->get({key => "title_0031", variables => { device => $an->data->{cgi}{device} }});
 	print $an->Web->template({file => "server.html", template => "eject-media-header", replace => { title => $title }});
 	
 	# Archive the current config, just in case.
-	my ($backup) = archive_file($conf, $node, $definition_file, 1);
-	my $drive    = $conf->{cgi}{device};
+	my ($backup) = archive_file($an, $node, $definition_file, 1);
+	my $drive    = $an->data->{cgi}{device};
 	
 	# How I do this depends on whether the VM is running or not.
 	if ($vm_is_running)
 	{
 		# It is, so I will use 'virsh'.
 		my $virsh_exit_code;
-		my $shell_call = "/usr/bin/virsh change-media $say_vm $conf->{cgi}{device} --eject; echo virsh:\$?";
-		my $password   = $conf->{sys}{root_password};
+		my $shell_call = "/usr/bin/virsh change-media $say_vm $an->data->{cgi}{device} --eject; echo virsh:\$?";
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3794,14 +3771,14 @@ sub vm_eject_media
 			print $an->Web->template({file => "server.html", template => "eject-media-failed-already-ejected"});
 			
 			# Update the definition file in case it was missed by .
-			update_vm_definition($conf, $node, $vm);
+			update_vm_definition($an, $node, $vm);
 		}
 		elsif ($virsh_exit_code eq "0")
 		{
 			print $an->Web->template({file => "server.html", template => "eject-media-success"});
 			
 			# Update the definition file.
-			update_vm_definition($conf, $node, $vm);
+			update_vm_definition($an, $node, $vm);
 		}
 		else
 		{
@@ -3823,14 +3800,14 @@ sub vm_eject_media
 		my $this_device    = "";
 		my $new_definition = "";
 		my $shell_call     = "cat $definition_file";
-		my $password       = $conf->{sys}{root_password};
+		my $password       = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3875,9 +3852,9 @@ sub vm_eject_media
 					# Check if this is what I want to eject.
 					$an->Log->entry({log_level => 2, message_key => "log_0224", message_variables => {
 						this_device   => $this_device, 
-						target_device => $conf->{cgi}{device}, 
+						target_device => $an->data->{cgi}{device}, 
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($this_device eq $conf->{cgi}{device})
+					if ($this_device eq $an->data->{cgi}{device})
 					{
 						# This is the device I want to unmount.
 						$an->Log->entry({log_level => 2, message_key => "log_0225", file => $THIS_FILE, line => __LINE__});
@@ -3900,7 +3877,7 @@ sub vm_eject_media
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# See if I need to insert or edit any network interface driver elements.
-		$new_definition = update_network_driver($conf, $new_definition);
+		$new_definition = update_network_driver($an, $new_definition);
 		
 		# Write the new definition file.
 		print $an->Web->template({file => "server.html", template => "saving-server-config"});
@@ -3911,7 +3888,7 @@ sub vm_eject_media
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3929,8 +3906,8 @@ sub vm_eject_media
 
 		# Lastly, copy the new definition to the stored XML for
 		# this VM.
-		$conf->{vm}{$vm}{xml}    = [];	# this is probably redundant
-		@{$conf->{vm}{$vm}{xml}} = split/\n/, $new_definition;
+		$an->data->{vm}{$vm}{xml}    = [];	# this is probably redundant
+		@{$an->data->{vm}{$vm}{xml}} = split/\n/, $new_definition;
 	}
 	
 	return(0);
@@ -3939,62 +3916,61 @@ sub vm_eject_media
 # This shows or changes the configuration of the VM, including mounted media.
 sub manage_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manage_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# I need to get a list of the running VM's resource/media, read the VM's current XML if it's up, 
 	# otherwise read the stored XML, read the available ISOs and then display everything in a form. If
 	# the user submits the form and something is different, re-write the stored config and, if possible,
 	# make the required changes immediately.
-	my $cluster         = $conf->{cgi}{cluster};
-	my $vm              = $conf->{cgi}{vm};
+	my $cluster         = $an->data->{cgi}{cluster};
+	my $vm              = $an->data->{cgi}{vm};
 	my $say_vm          = ($vm =~ /vm:(.*)/)[0];
-	my $node1           = $conf->{clusters}{$cluster}{nodes}[0];
-	my $node2           = $conf->{clusters}{$cluster}{nodes}[1];
-	my $device          = $conf->{cgi}{device};
+	my $node1           = $an->data->{clusters}{$cluster}{nodes}[0];
+	my $node2           = $an->data->{clusters}{$cluster}{nodes}[1];
+	my $device          = $an->data->{cgi}{device};
 	my $definition_file = "/shared/definitions/$say_vm.xml";
 	
 	# First, see if the VM is up.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	
 	# Count how much RAM and CPU cores have been allocated.
-	$conf->{resources}{available_ram}   = 0;
-	$conf->{resources}{max_cpu_cores}   = 0;
-	$conf->{resources}{allocated_cores} = 0;
-	$conf->{resources}{allocated_ram}   = 0;
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	$an->data->{resources}{available_ram}   = 0;
+	$an->data->{resources}{max_cpu_cores}   = 0;
+	$an->data->{resources}{allocated_cores} = 0;
+	$an->data->{resources}{allocated_ram}   = 0;
+	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 	{
 		next if $vm !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
-		if ($conf->{sys}{gfs2_down})
+		if ($an->data->{sys}{gfs2_down})
 		{
-			$conf->{resources}{allocated_ram}   = "--";
-			$conf->{resources}{allocated_cores} = "--";
+			$an->data->{resources}{allocated_ram}   = "--";
+			$an->data->{resources}{allocated_cores} = "--";
 		}
 		else
 		{
-			$conf->{resources}{allocated_ram}   += $conf->{vm}{$vm}{details}{ram};
+			$an->data->{resources}{allocated_ram}   += $an->data->{vm}{$vm}{details}{ram};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "allocated_ram", value1 => $conf->{resources}{allocated_ram},
+				name1 => "allocated_ram", value1 => $an->data->{resources}{allocated_ram},
 				name2 => "vm",            value2 => $vm,
-				name3 => "ram",           value3 => $conf->{vm}{$vm}{details}{ram},
+				name3 => "ram",           value3 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{resources}{allocated_cores} += $conf->{vm}{$vm}{details}{cpu_count};
+			$an->data->{resources}{allocated_cores} += $an->data->{vm}{$vm}{details}{cpu_count};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "allocated_cores", value1 => $conf->{resources}{allocated_cores},
+				name1 => "allocated_cores", value1 => $an->data->{resources}{allocated_cores},
 				name2 => "vm",              value2 => $vm,
-				name3 => "cpu_count",       value3 => $conf->{vm}{$vm}{details}{cpu_count},
+				name3 => "cpu_count",       value3 => $an->data->{vm}{$vm}{details}{cpu_count},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	# First up, if the cluster is not running, go no further.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::daemon::gfs2::exit_code", value1 => $conf->{node}{$node1}{daemon}{gfs2}{exit_code},
-		name2 => "node::${node2}::daemon::gfs2::exit_code", value2 => $conf->{node}{$node2}{daemon}{gfs2}{exit_code},
+		name1 => "node::${node1}::daemon::gfs2::exit_code", value1 => $an->data->{node}{$node1}{daemon}{gfs2}{exit_code},
+		name2 => "node::${node2}::daemon::gfs2::exit_code", value2 => $an->data->{node}{$node2}{daemon}{gfs2}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code}))
+	if (($an->data->{node}{$node1}{daemon}{gfs2}{exit_code}) && ($an->data->{node}{$node2}{daemon}{gfs2}{exit_code}))
 	{
 		print $an->Web->template({file => "server.html", template => "storage-not-ready"});
 	}
@@ -4003,23 +3979,23 @@ sub manage_vm
 	my $node          = "";
 	my $vm_is_running = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "vm::${vm}::current_host", value1 => $conf->{vm}{$vm}{current_host},
+		name1 => "vm::${vm}::current_host", value1 => $an->data->{vm}{$vm}{current_host},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{vm}{$vm}{current_host})
+	if ($an->data->{vm}{$vm}{current_host})
 	{
 		# Read the current VM config from virsh.
 		$vm_is_running = 1;
-		$node          = $conf->{vm}{$vm}{current_host};
+		$node          = $an->data->{vm}{$vm}{current_host};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "vm",                         value1 => $vm,
 			name2 => "node",                       value2 => $node,
-			name3 => "vm::${vm}::definition_file", value3 => $conf->{vm}{$vm}{definition_file},
+			name3 => "vm::${vm}::definition_file", value3 => $an->data->{vm}{$vm}{definition_file},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# The VM isn't running.
-		if ($conf->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0")
+		if ($an->data->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0")
 		{
 			# Node 1 is up.
 			$node = $node1;
@@ -4031,10 +4007,10 @@ sub manage_vm
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "vm",                         value1 => $vm,
-			name2 => "vm::${vm}::definition_file", value2 => $conf->{vm}{$vm}{definition_file},
+			name2 => "vm::${vm}::definition_file", value2 => $an->data->{vm}{$vm}{definition_file},
 			name3 => "node",                       value3 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
-		read_vm_definition($conf, $node, $vm);
+		read_vm_definition($an, $node, $vm);
 	}
 	
 	# Find the list of bootable devices and present them in a selection box. Also pull out the server's
@@ -4043,13 +4019,13 @@ sub manage_vm
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "boot select", value1 => $boot_select,
 	}, file => $THIS_FILE, line => __LINE__});
-	   $conf->{vm}{$vm}{current_boot_device}    = "";
-	   $conf->{vm}{$vm}{available_boot_devices} = "";
+	   $an->data->{vm}{$vm}{current_boot_device}    = "";
+	   $an->data->{vm}{$vm}{available_boot_devices} = "";
 	my $say_current_boot_device                 = "";
 	my $in_os                                   = 0;
 	my $saw_cdrom                               = 0;
 	my $server_uuid                             = "";
-	foreach my $line (@{$conf->{vm}{$vm}{xml}})
+	foreach my $line (@{$an->data->{vm}{$vm}{xml}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "in_os", value1 => $in_os,
@@ -4093,7 +4069,7 @@ sub manage_vm
 				}, file => $THIS_FILE, line => __LINE__});
 				my $device                               =  $1;
 				my $say_device                           =  $device;
-				$conf->{vm}{$vm}{available_boot_devices} .= "$device,";
+				$an->data->{vm}{$vm}{available_boot_devices} .= "$device,";
 				if ($device eq "hd")
 				{
 					$say_device = "#!string!device_0001!#";
@@ -4105,9 +4081,9 @@ sub manage_vm
 				}
 				
 				my $selected = "";
-				if (not $conf->{vm}{$vm}{current_boot_device})
+				if (not $an->data->{vm}{$vm}{current_boot_device})
 				{
-					$conf->{vm}{$vm}{current_boot_device} = $device;
+					$an->data->{vm}{$vm}{current_boot_device} = $device;
 					$say_current_boot_device = $say_device;
 					$selected = "selected";
 				}
@@ -4202,28 +4178,28 @@ sub manage_vm
 	
 	# If I need to change the number of CPUs or the amount of RAM, do so now.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::change", value1 => $conf->{cgi}{change},
+		name1 => "cgi::change", value1 => $an->data->{cgi}{change},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{change})
+	if ($an->data->{cgi}{change})
 	{
-		change_vm($conf, $node);
+		change_vm($an, $node);
 	}
 	
 	# If I've been asked to insert a disc, do so now.
 	my $do_insert    = 0;
 	my $insert_media = "";
 	my $insert_drive = "";
-	foreach my $key (split/,/, $conf->{cgi}{device_keys})
+	foreach my $key (split/,/, $an->data->{cgi}{device_keys})
 	{
 		next if not $key;
-		next if not $conf->{cgi}{$key};
+		next if not $an->data->{cgi}{$key};
 		my $device_key = $key;
 		$insert_drive  = ($key =~ /media_(.*)/)[0];
 		my $insert_key = "insert_${insert_drive}";
-		if ($conf->{cgi}{$insert_key})
+		if ($an->data->{cgi}{$insert_key})
 		{
 			$do_insert    = 1;
-			$insert_media = $conf->{cgi}{$device_key};
+			$insert_media = $an->data->{cgi}{$device_key};
 		}
 	}
 	
@@ -4235,25 +4211,25 @@ sub manage_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($do_insert)
 	{
-		vm_insert_media($conf, $node, $insert_media, $insert_drive, $vm_is_running);
+		vm_insert_media($an, $node, $insert_media, $insert_drive, $vm_is_running);
 	}
 	
 	# If I've been asked to eject a disc, do so now.
-	if ($conf->{cgi}{'do'} eq "eject")
+	if ($an->data->{cgi}{'do'} eq "eject")
 	{
-		vm_eject_media($conf, $node, $vm_is_running);
+		vm_eject_media($an, $node, $vm_is_running);
 	}
 	
 	# Get the list of files on the /shared/files/ directory.
 	my $shell_call = "df -P && ls -l /shared/files/";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4270,22 +4246,22 @@ sub manage_vm
 		
 		if ($line =~ /\s(\d+)-blocks\s/)
 		{
-			$conf->{partition}{shared}{block_size} = $1;
+			$an->data->{partition}{shared}{block_size} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "block_size", value1 => $conf->{partition}{shared}{block_size},
+				name1 => "block_size", value1 => $an->data->{partition}{shared}{block_size},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^\/.*?\s+(\d+)\s+(\d+)\s+(\d+)\s(\d+)%\s+\/shared/)
 		{
-			$conf->{partition}{shared}{total_space}  = $1;
-			$conf->{partition}{shared}{used_space}   = $2;
-			$conf->{partition}{shared}{free_space}   = $3;
-			$conf->{partition}{shared}{used_percent} = $4;
+			$an->data->{partition}{shared}{total_space}  = $1;
+			$an->data->{partition}{shared}{used_space}   = $2;
+			$an->data->{partition}{shared}{free_space}   = $3;
+			$an->data->{partition}{shared}{used_percent} = $4;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-				name1 => "partition::shared::total_space",  value1 => $conf->{partition}{shared}{total_space},
-				name2 => "partition::shared::used_space",   value2 => $conf->{partition}{shared}{used_space},
-				name3 => "partition::shared::used_percent". value3 => $conf->{partition}{shared}{used_percent},
-				name4 => "partition::shared::free_space",   value4 => $conf->{partition}{shared}{free_space},
+				name1 => "partition::shared::total_space",  value1 => $an->data->{partition}{shared}{total_space},
+				name2 => "partition::shared::used_space",   value2 => $an->data->{partition}{shared}{used_space},
+				name3 => "partition::shared::used_percent". value3 => $an->data->{partition}{shared}{used_percent},
+				name4 => "partition::shared::free_space",   value4 => $an->data->{partition}{shared}{free_space},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /^(\S)(\S+)\s+\d+\s+(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(.*)$/)
@@ -4305,26 +4281,26 @@ sub manage_vm
 				# It's a symlink, strip off the destination.
 				($file, $target) = ($file =~ /^(.*?) -> (.*)$/);
 			}
-			$conf->{files}{shared}{$file}{type}   = $type;
-			$conf->{files}{shared}{$file}{mode}   = $mode;
-			$conf->{files}{shared}{$file}{user}   = $user;
-			$conf->{files}{shared}{$file}{group}  = $group;
-			$conf->{files}{shared}{$file}{size}   = $size;
-			$conf->{files}{shared}{$file}{month}  = $month;
-			$conf->{files}{shared}{$file}{day}    = $day;
-			$conf->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
-			$conf->{files}{shared}{$file}{target} = $target;
+			$an->data->{files}{shared}{$file}{type}   = $type;
+			$an->data->{files}{shared}{$file}{mode}   = $mode;
+			$an->data->{files}{shared}{$file}{user}   = $user;
+			$an->data->{files}{shared}{$file}{group}  = $group;
+			$an->data->{files}{shared}{$file}{size}   = $size;
+			$an->data->{files}{shared}{$file}{month}  = $month;
+			$an->data->{files}{shared}{$file}{day}    = $day;
+			$an->data->{files}{shared}{$file}{'time'} = $time; # might be a year, look for '\d+:\d+'.
+			$an->data->{files}{shared}{$file}{target} = $target;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
 				name1  => "file",                             value1  => $file,
-				name2  => "files::shared::${file}::type",     value2  => $conf->{files}{shared}{$file}{type},
-				name3  => "files::shared::${file}::mode",     value3  => $conf->{files}{shared}{$file}{mode},
-				name4  => "files::shared::${file}::owner",    value4  => $conf->{files}{shared}{$file}{user},
-				name5  => "files::shared::${file}::group",    value5  => $conf->{files}{shared}{$file}{group},
-				name6  => "files::shared::${file}::size",     value6  => $conf->{files}{shared}{$file}{size},
-				name7  => "files::shared::${file}::modified", value7  => $conf->{files}{shared}{$file}{month},
-				name8  => "files::shared::${file}::day",      value8  => $conf->{files}{shared}{$file}{day},
-				name9  => "files::shared::${file}::time",     value9  => $conf->{files}{shared}{$file}{'time'},
-				name10 => "files::shared::${file}::target",   value10 => $conf->{files}{shared}{$file}{target},
+				name2  => "files::shared::${file}::type",     value2  => $an->data->{files}{shared}{$file}{type},
+				name3  => "files::shared::${file}::mode",     value3  => $an->data->{files}{shared}{$file}{mode},
+				name4  => "files::shared::${file}::owner",    value4  => $an->data->{files}{shared}{$file}{user},
+				name5  => "files::shared::${file}::group",    value5  => $an->data->{files}{shared}{$file}{group},
+				name6  => "files::shared::${file}::size",     value6  => $an->data->{files}{shared}{$file}{size},
+				name7  => "files::shared::${file}::modified", value7  => $an->data->{files}{shared}{$file}{month},
+				name8  => "files::shared::${file}::day",      value8  => $an->data->{files}{shared}{$file}{day},
+				name9  => "files::shared::${file}::time",     value9  => $an->data->{files}{shared}{$file}{'time'},
+				name10 => "files::shared::${file}::target",   value10 => $an->data->{files}{shared}{$file}{target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -4334,7 +4310,7 @@ sub manage_vm
 	my $this_media  = "";
 	my $in_cdrom    = 0;
 	### TODO: Find out why the XML data is doubled up.
-	foreach my $line (@{$conf->{vm}{$vm}{xml}})
+	foreach my $line (@{$an->data->{vm}{$vm}{xml}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm",   value1 => $vm,
@@ -4352,9 +4328,9 @@ sub manage_vm
 		elsif (($line =~ /<\/disk>/) && ($in_cdrom))
 		{
 			# Record what I found/
-			$conf->{vm}{$vm}{cdrom}{$this_device}{media} = $this_media ? $this_media : "";
+			$an->data->{vm}{$vm}{cdrom}{$this_device}{media} = $this_media ? $this_media : "";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::cdrom::${this_device}::media", value1 => $conf->{vm}{$vm}{cdrom}{$this_device}{media},
+				name1 => "vm::${vm}::cdrom::${this_device}::media", value1 => $an->data->{vm}{$vm}{cdrom}{$this_device}{media},
 			}, file => $THIS_FILE, line => __LINE__});
 			$in_cdrom    = 0;
 			$this_device = "";
@@ -4380,41 +4356,41 @@ sub manage_vm
 		}
 	}
 
-	my $current_cpu_count = $conf->{vm}{$vm}{details}{cpu_count};
-	my $max_cpu_count     = $conf->{resources}{total_threads};
+	my $current_cpu_count = $an->data->{vm}{$vm}{details}{cpu_count};
+	my $max_cpu_count     = $an->data->{resources}{total_threads};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "current_cpu_count", value1 => $current_cpu_count,
 		name2 => "max_cpu_count",     value2 => $max_cpu_count,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Create the media select boxes.
-	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
+	foreach my $device (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{cdrom}})
 	{
 		my $key                                 =  "media_$device";
-		   $conf->{vm}{$vm}{cdrom}{device_keys} .= "$key,";
-		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
+		   $an->data->{vm}{$vm}{cdrom}{device_keys} .= "$key,";
+		if ($an->data->{vm}{$vm}{cdrom}{$device}{media})
 		{
 			### TODO: If the media no longer exists, re-write the XML definition immediately.
 			# Offer the eject button.
-			$conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\" disabled>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"fixed_width\">$conf->{vm}{$vm}{cdrom}{$device}{media}</span>\n";
-			$conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
+			$an->data->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\" disabled>\n";
+			$an->data->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"fixed_width\">".$an->data->{vm}{$vm}{cdrom}{$device}{media}."</span>\n";
+			$an->data->{vm}{$vm}{cdrom}{$device}{say_eject}    = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$conf->{cgi}{vm}&task=manage_vm&do=eject&device=$device",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&vm=".$an->data->{cgi}{vm}."&task=manage_vm&do=eject&device=$device",
 					button_text	=>	"#!string!button_0017!#",
 					id		=>	"eject_$device",
 				}});
 			my $say_insert_disabled_button                  = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0018!#" }});
-			   $conf->{vm}{$vm}{cdrom}{$device}{say_insert} = "$say_insert_disabled_button\n";
+			   $an->data->{vm}{$vm}{cdrom}{$device}{say_insert} = "$say_insert_disabled_button\n";
 		}
 		else
 		{
 			# Offer the insert button
-			   $conf->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\">\n";
-			   $conf->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"highlight_unavailable\">(#!string!state_0007!#)</span>\n";
+			   $an->data->{vm}{$vm}{cdrom}{$device}{say_select}   = "<select name=\"$key\">\n";
+			   $an->data->{vm}{$vm}{cdrom}{$device}{say_in_drive} = "<span class=\"highlight_unavailable\">(#!string!state_0007!#)</span>\n";
 			my $say_eject_disabled_button                     = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0017!#" }});
-			   $conf->{vm}{$vm}{cdrom}{$device}{say_eject}    = "$say_eject_disabled_button\n";
-			   $conf->{vm}{$vm}{cdrom}{$device}{say_insert}   = $an->Web->template({file => "common.html", template => "form-input", replace => { 
+			   $an->data->{vm}{$vm}{cdrom}{$device}{say_eject}    = "$say_eject_disabled_button\n";
+			   $an->data->{vm}{$vm}{cdrom}{$device}{say_insert}   = $an->Web->template({file => "common.html", template => "form-input", replace => { 
 					type	=>	"submit",
 					name	=>	"insert_$device",
 					id	=>	"insert_$device",
@@ -4422,27 +4398,27 @@ sub manage_vm
 					class	=>	"bold_button",
 				}});
 		}
-		foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+		foreach my $file (sort {$a cmp $b} keys %{$an->data->{files}{shared}})
 		{
-			next if ($file eq $conf->{vm}{$vm}{cdrom}{$device}{media});
+			next if ($file eq $an->data->{vm}{$vm}{cdrom}{$device}{media});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "file",        value1 => $file,
-				name2 => "cgi::${key}", value2 => $conf->{cgi}{$key},
+				name2 => "cgi::${key}", value2 => $an->data->{cgi}{$key},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ((defined $conf->{cgi}{$key}) && ($file eq $conf->{cgi}{$key}))
+			if ((defined $an->data->{cgi}{$key}) && ($file eq $an->data->{cgi}{$key}))
 			{
-				$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\" selected>$file</option>\n";
+				$an->data->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\" selected>$file</option>\n";
 			}
 			else
 			{
-				$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\">$file</option>\n";
+				$an->data->{vm}{$vm}{cdrom}{$device}{say_select} .= "<option name=\"$file\">$file</option>\n";
 			}
 		}
-		$conf->{vm}{$vm}{cdrom}{$device}{say_select} .= "</select>\n";
+		$an->data->{vm}{$vm}{cdrom}{$device}{say_select} .= "</select>\n";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "device",                                  value1 => $device,
-			name2 => "vm::${vm}::cdrom::${device}::media",      value2 => $conf->{vm}{$vm}{cdrom}{$device}{media},
-			name3 => "vm::${vm}::cdrom::${device}::say_select", value3 => $conf->{vm}{$vm}{cdrom}{$device}{say_select},
+			name2 => "vm::${vm}::cdrom::${device}::media",      value2 => $an->data->{vm}{$vm}{cdrom}{$device}{media},
+			name3 => "vm::${vm}::cdrom::${device}::say_select", value3 => $an->data->{vm}{$vm}{cdrom}{$device}{say_select},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -4460,20 +4436,20 @@ sub manage_vm
 			push @{$cpu_cores}, $core_num;
 		}
 	}
-	$conf->{cgi}{cpu_cores} = $current_cpu_count if not $conf->{cgi}{cpu_cores};
-	my $select_cpu_cores    = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
+	$an->data->{cgi}{cpu_cores} = $current_cpu_count if not $an->data->{cgi}{cpu_cores};
+	my $select_cpu_cores    = AN::Cluster::build_select($an, "cpu_cores", 0, 0, 60, $an->data->{cgi}{cpu_cores}, $cpu_cores);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "select_cpu_cores", value1 => $select_cpu_cores,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Something has changed. Make sure the request is sane,
-	my $current_ram   = $conf->{vm}{$vm}{details}{ram};
+	my $current_ram   = $an->data->{vm}{$vm}{details}{ram};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "current_ram", value1 => $current_ram,
 	}, file => $THIS_FILE, line => __LINE__});
 
-	my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
-	my $available_ram = ($conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram} - $conf->{resources}{allocated_ram}) + $current_ram;
+	my $diff          = $an->data->{resources}{total_ram} % (1024 ** 3);
+	my $available_ram = ($an->data->{resources}{total_ram} - $diff - $an->data->{sys}{unusable_ram} - $an->data->{resources}{allocated_ram}) + $current_ram;
 	my $max_ram       = $available_ram;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "available_ram", value1 => $available_ram,
@@ -4484,12 +4460,12 @@ sub manage_vm
 	my $say_max_ram          = $an->Readable->bytes_to_hr({'bytes' => $max_ram });
 	my $say_current_ram      = $an->Readable->bytes_to_hr({'bytes' => $current_ram });
 	my ($current_ram_value, $current_ram_suffix) = (split/ /, $say_current_ram);
-	$conf->{cgi}{ram}        = $current_ram_value if not $conf->{cgi}{ram};
-	$conf->{cgi}{ram_suffix} = $current_ram_suffix if not $conf->{cgi}{ram_suffix};
-	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	$an->data->{cgi}{ram}        = $current_ram_value if not $an->data->{cgi}{ram};
+	$an->data->{cgi}{ram_suffix} = $current_ram_suffix if not $an->data->{cgi}{ram_suffix};
+	my $select_ram_suffix    = AN::Cluster::build_select($an, "ram_suffix", 0, 0, 60, $an->data->{cgi}{ram_suffix}, ["MiB", "GiB"]);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "say_max_ram",       value1 => $say_max_ram,
-		name2 => "cgi::ram",          value2 => $conf->{cgi}{ram},
+		name2 => "cgi::ram",          value2 => $an->data->{cgi}{ram},
 		name3 => "select_ram_suffix", value3 => $select_ram_suffix,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -4503,16 +4479,16 @@ sub manage_vm
 	print $an->Web->template({file => "server.html", template => "manager-server-header", replace => { title => $title }});
 
 	my $i = 1;
-	foreach my $device (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{cdrom}})
+	foreach my $device (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{cdrom}})
 	{
 		next if $device eq "device_keys";
-		my $say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_select};
-		my $say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_insert};
+		my $say_disk   = $an->data->{vm}{$vm}{cdrom}{$device}{say_select};
+		my $say_button = $an->data->{vm}{$vm}{cdrom}{$device}{say_insert};
 		my $say_state  = "#!string!state_0124!#";
-		if ($conf->{vm}{$vm}{cdrom}{$device}{media})
+		if ($an->data->{vm}{$vm}{cdrom}{$device}{media})
 		{
-			$say_disk   = $conf->{vm}{$vm}{cdrom}{$device}{say_in_drive};
-			$say_button = $conf->{vm}{$vm}{cdrom}{$device}{say_eject};
+			$say_disk   = $an->data->{vm}{$vm}{cdrom}{$device}{say_in_drive};
+			$say_button = $an->data->{vm}{$vm}{cdrom}{$device}{say_eject};
 			$say_state  = "#!string!state_0125!#";
 		}
 		my $say_optical_drive = $an->String->get({key => "device_0003", variables => { drive_number => $i }});
@@ -4538,9 +4514,9 @@ sub manage_vm
 			server => $say_vm, 
 			anvil  => $cluster, 
 		});
-		if (not $conf->{cgi}{server_start_after})
+		if (not $an->data->{cgi}{server_start_after})
 		{
-			$conf->{cgi}{server_start_after} = $return->{start_after};
+			$an->data->{cgi}{server_start_after} = $return->{start_after};
 		}
 		
 		# These will become the select boxes
@@ -4589,7 +4565,7 @@ ORDER BY
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Make sure this is a server on this Anvil!
-				foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+				foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 				{
 					next if $vm !~ /^vm/;
 					my $say_vm  =  ($vm =~ /^vm:(.*)/)[0];
@@ -4612,54 +4588,54 @@ ORDER BY
 			push @{$other_servers}, "00000000-0000-0000-0000-000000000000#!#<i>$say_dont_boot</i>";
 			
 			# Build the Start After select
-			$say_boot_after_select   = AN::Cluster::build_select($conf, "server_start_after", 0, 1, 150, $conf->{cgi}{server_start_after}, $other_servers);
+			$say_boot_after_select   = AN::Cluster::build_select($an, "server_start_after", 0, 1, 150, $an->data->{cgi}{server_start_after}, $other_servers);
 			$say_boot_delay_disabled = "";
 		}
 		
 		### Now build the rest of the selects.
 		# If the user didn't click save, load the DB values.
-		if (not $conf->{cgi}{change})
+		if (not $an->data->{cgi}{change})
 		{
-			if (not $conf->{cgi}{server_migration_type})
+			if (not $an->data->{cgi}{server_migration_type})
 			{
-				$conf->{cgi}{server_migration_type} = $server_migration_type;
+				$an->data->{cgi}{server_migration_type} = $server_migration_type;
 			}
-			if (not $conf->{cgi}{server_pre_migration_script})
+			if (not $an->data->{cgi}{server_pre_migration_script})
 			{
-				$conf->{cgi}{server_pre_migration_script} = $server_pre_migration_script;
+				$an->data->{cgi}{server_pre_migration_script} = $server_pre_migration_script;
 			}
-			if (($conf->{cgi}{server_pre_migration_script}) && (not $conf->{cgi}{server_pre_migration_arguments}))
+			if (($an->data->{cgi}{server_pre_migration_script}) && (not $an->data->{cgi}{server_pre_migration_arguments}))
 			{
-				$conf->{cgi}{server_pre_migration_arguments} = $server_pre_migration_arguments;
-			}
-			else
-			{
-				# No script, so clear args.
-				$conf->{cgi}{server_pre_migration_arguments} = "";
-			}
-			if (not $conf->{cgi}{server_post_migration_script})
-			{
-				$conf->{cgi}{server_post_migration_script} = $server_post_migration_script;
-			}
-			if (($conf->{cgi}{server_post_migration_script}) && (not $conf->{cgi}{server_post_migration_arguments}))
-			{
-				$conf->{cgi}{server_post_migration_arguments} = $server_post_migration_arguments;
+				$an->data->{cgi}{server_pre_migration_arguments} = $server_pre_migration_arguments;
 			}
 			else
 			{
 				# No script, so clear args.
-				$conf->{cgi}{server_post_migration_arguments} = "";
+				$an->data->{cgi}{server_pre_migration_arguments} = "";
+			}
+			if (not $an->data->{cgi}{server_post_migration_script})
+			{
+				$an->data->{cgi}{server_post_migration_script} = $server_post_migration_script;
+			}
+			if (($an->data->{cgi}{server_post_migration_script}) && (not $an->data->{cgi}{server_post_migration_arguments}))
+			{
+				$an->data->{cgi}{server_post_migration_arguments} = $server_post_migration_arguments;
+			}
+			else
+			{
+				# No script, so clear args.
+				$an->data->{cgi}{server_post_migration_arguments} = "";
 			}
 		}
 		
 		# Migration type
-		$say_migration_type_select = AN::Cluster::build_select($conf, "server_migration_type", 0, 0, 150, $conf->{cgi}{server_migration_type}, ["live#!##!string!state_0126!#", "cold#!##!string!state_0127!#"]);;
+		$say_migration_type_select = AN::Cluster::build_select($an, "server_migration_type", 0, 0, 150, $an->data->{cgi}{server_migration_type}, ["live#!##!string!state_0126!#", "cold#!##!string!state_0127!#"]);;
 		
 		# Get a list of files from /shared/files that are not ISOs and have their 'executable' bit 
 		# set.
-		my $password = $conf->{sys}{root_password};
-		my $node     = $conf->{sys}{use_node};
-		my $port     = $conf->{node}{$node}{port};
+		my $password = $an->data->{sys}{root_password};
+		my $node     = $an->data->{sys}{use_node};
+		my $port     = $an->data->{node}{$node}{port};
 		my $scripts  = [];
 		my ($files, $partition) = $an->Get->shared_files({
 			password	=>	$password,
@@ -4678,8 +4654,8 @@ ORDER BY
 		}
 		
 		# Build the Pre and Post migration script selection boxes.
-		$say_pre_migration_script_select  = AN::Cluster::build_select($conf, "server_pre_migration_script", 0, 1, 150, $conf->{cgi}{server_pre_migration_script}, $scripts);;
-		$say_post_migration_script_select = AN::Cluster::build_select($conf, "server_post_migration_script", 0, 1, 150, $conf->{cgi}{server_post_migration_script}, $scripts);;
+		$say_pre_migration_script_select  = AN::Cluster::build_select($an, "server_pre_migration_script", 0, 1, 150, $an->data->{cgi}{server_pre_migration_script}, $scripts);;
+		$say_post_migration_script_select = AN::Cluster::build_select($an, "server_post_migration_script", 0, 1, 150, $an->data->{cgi}{server_post_migration_script}, $scripts);;
 		
 		# Take the fractional component of the second off the modified date stamp.
 		$modified_date =~ s/\..*//;
@@ -4701,8 +4677,8 @@ ORDER BY
 	}
 	
 	my $current_boot_device = $an->String->get({key => "message_0081", variables => { boot_device => $say_current_boot_device }});
-	my $cpu_details         = $an->String->get({key => "message_0083", variables => { current_cpus => $conf->{vm}{$vm}{details}{cpu_count} }});
-	my $restart_tomcat      = $an->String->get({key => "message_0085", variables => { reset_tomcat_url => "?cluster=$conf->{cgi}{cluster}&task=restart_tomcat" }});
+	my $cpu_details         = $an->String->get({key => "message_0083", variables => { current_cpus => $an->data->{vm}{$vm}{details}{cpu_count} }});
+	my $restart_tomcat      = $an->String->get({key => "message_0085", variables => { reset_tomcat_url => "?cluster=".$an->data->{cgi}{cluster}."&task=restart_tomcat" }});
 	my $ram_details         = $an->String->get({key => "message_0082", variables => { 
 			current_ram	=>	$say_current_ram,
 			maximum_ram	=>	$say_max_ram,
@@ -4713,7 +4689,7 @@ ORDER BY
 			current_boot_device	=>	$current_boot_device,
 			boot_select		=>	$boot_select,
 			ram_details		=>	$ram_details,
-			ram			=>	$conf->{cgi}{ram},
+			ram			=>	$an->data->{cgi}{ram},
 			select_ram_suffix	=>	$select_ram_suffix,
 			cpu_details		=>	$cpu_details,
 			select_cpu_cores	=>	$select_cpu_cores,
@@ -4721,10 +4697,10 @@ ORDER BY
 			message			=>	$message,
 			server_note		=>	$note_form, 
 			restart_tomcat		=>	$restart_tomcat,
-			anvil			=>	$conf->{cgi}{cluster},
-			server			=>	$conf->{cgi}{vm},
-			task			=>	$conf->{cgi}{task},
-			device_keys		=>	$conf->{vm}{$vm}{cdrom}{device_keys},
+			anvil			=>	$an->data->{cgi}{cluster},
+			server			=>	$an->data->{cgi}{vm},
+			task			=>	$an->data->{cgi}{task},
+			device_keys		=>	$an->data->{vm}{$vm}{cdrom}{device_keys},
 			rowspan			=>	$show_db_options ? 10 : 5,
 		}});
 	
@@ -4734,8 +4710,7 @@ ORDER BY
 # This calls 'virsh dumpxml' against the given VM.
 sub update_vm_definition
 {
-	my ($conf, $node, $vm) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $vm) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "vm",   value2 => $vm, 
@@ -4750,7 +4725,7 @@ sub update_vm_definition
 	{
 		$vm = "vm:$vm";
 	}
-	my $definition_file = $conf->{vm}{$vm}{definition_file};
+	my $definition_file = $an->data->{vm}{$vm}{definition_file};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "in update_vm_definition(); node", value1 => $node,
 		name2 => "vm",                              value2 => $vm,
@@ -4760,14 +4735,14 @@ sub update_vm_definition
 	
 	my $new_definition = "";
 	my $shell_call     = "/usr/bin/virsh dumpxml $say_vm";
-	my $password       = $conf->{sys}{root_password};
+	my $password       = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4786,7 +4761,7 @@ sub update_vm_definition
 	}
 	
 	# See if I need to insert or edit any network interface driver elements.
-	$new_definition = update_network_driver($conf, $new_definition);
+	$new_definition = update_network_driver($an, $new_definition);
 	
 	# Die if the definition_file data is an array because wtf.
 	die if $new_definition =~ /ARRAY/;
@@ -4799,7 +4774,7 @@ sub update_vm_definition
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4812,12 +4787,12 @@ sub update_vm_definition
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	# Rebuild the $conf->{vm}{$vm}{xml} array.
-	undef $conf->{vm}{$vm}{xml};
-	$conf->{vm}{$vm}{xml} = [];
+	# Rebuild the $an->data->{vm}{$vm}{xml} array.
+	undef $an->data->{vm}{$vm}{xml};
+	$an->data->{vm}{$vm}{xml} = [];
 	foreach my $line (split/\n/, $new_definition)
 	{
-		push @{$conf->{vm}{$vm}{xml}}, $line;
+		push @{$an->data->{vm}{$vm}{xml}}, $line;
 	}
 	
 	return(0);
@@ -4825,8 +4800,7 @@ sub update_vm_definition
 
 sub add_vm_to_cluster
 {
-	my ($conf, $skip_scan) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $skip_scan) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_vm_to_cluster" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "skip_scan", value1 => $skip_scan, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4835,11 +4809,11 @@ sub add_vm_to_cluster
 	# print the opening header. 
 	
 	# Two steps needed; Dump the definition and use ccs to add it to the cluster.
-	my $cluster    = $conf->{cgi}{cluster};
-	my $vm         = $conf->{cgi}{name};
-	#my $node       = $conf->{cgi}{node};
-	my $node       = $conf->{new_vm}{host_node} ? $conf->{new_vm}{host_node} : $conf->{cgi}{node};
-	my $host_node  = $conf->{new_vm}{host_node};
+	my $cluster    = $an->data->{cgi}{cluster};
+	my $vm         = $an->data->{cgi}{name};
+	#my $node       = $an->data->{cgi}{node};
+	my $node       = $an->data->{new_vm}{host_node} ? $an->data->{new_vm}{host_node} : $an->data->{cgi}{node};
+	my $host_node  = $an->data->{new_vm}{host_node};
 	my $definition = "/shared/definitions/$vm.xml";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "cluster",    value1 => $cluster,
@@ -4848,7 +4822,7 @@ sub add_vm_to_cluster
 		name4 => "definition", value4 => $definition,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $peer;
-	foreach my $this_node (@{$conf->{clusters}{$cluster}{nodes}})
+	foreach my $this_node (@{$an->data->{clusters}{$cluster}{nodes}})
 	{
 		if ($this_node ne $node)
 		{
@@ -4863,7 +4837,7 @@ sub add_vm_to_cluster
 	
 	# First, find the failover domain...
 	my $failover_domain;
-	$conf->{sys}{ignore_missing_vm} = 1;
+	$an->data->{sys}{ignore_missing_vm} = 1;
 	
 	if ($skip_scan)
 	{
@@ -4871,13 +4845,13 @@ sub add_vm_to_cluster
 	}
 	else
 	{
-		AN::Cluster::scan_cluster($conf);
+		AN::Cluster::scan_cluster($an);
 		$an->Log->entry({log_level => 2, message_key => "log_0231", file => $THIS_FILE, line => __LINE__});
 		print $an->Web->template({file => "server.html", template => "add-server-to-anvil-header"});
 	}
 	
 	# Find the failover domain.
-	foreach my $fod (keys %{$conf->{failoverdomain}})
+	foreach my $fod (keys %{$an->data->{failoverdomain}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "fod", value1 => $fod,
@@ -4965,7 +4939,7 @@ sub add_vm_to_cluster
 	}
 	
 	# If there is no password set, abort.
-	if (not $conf->{clusters}{$cluster}{ricci_pw})
+	if (not $an->data->{clusters}{$cluster}{ricci_pw})
 	{
 		# No ricci user, so we can't add it. Tell the user and give 
 		# them a link to the config for this Anvil!.
@@ -4993,7 +4967,7 @@ sub add_vm_to_cluster
 	### Lets get started!
 	# On occasion, the installed VM will power off, not reboot. So this checks to see if the VM needs to
 	# be kicked awake.
-	my ($host) = find_vm_host($conf, $node, $peer, $vm);
+	my ($host) = find_vm_host($an, $node, $peer, $vm);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "vm",   value1 => $vm,
 		name2 => "host", value2 => $host,
@@ -5008,14 +4982,14 @@ sub add_vm_to_cluster
 		$an->Log->entry({log_level => 2, message_key => "log_0232", message_variables => { server => $vm }, file => $THIS_FILE, line => __LINE__});
 		my $virsh_exit_code;
 		my $shell_call = "/usr/bin/virsh start $vm; echo virsh:\$?";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5066,7 +5040,7 @@ sub add_vm_to_cluster
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -5153,14 +5127,14 @@ sub add_vm_to_cluster
 	my @new_vm_xml;
 	my $virsh_exit_code;
 	my $shell_call = "/usr/bin/virsh dumpxml $vm; echo virsh:\$?";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5247,7 +5221,7 @@ sub add_vm_to_cluster
 	}
 	
 	# See if I need to insert or edit any network interface driver elements.
-	$new_xml = update_network_driver($conf, $new_xml);
+	$new_xml = update_network_driver($an, $new_xml);
 	
 	# Now write out the XML.
 	$shell_call = "cat > $definition << EOF\n$new_xml\nEOF";
@@ -5257,7 +5231,7 @@ sub add_vm_to_cluster
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5295,7 +5269,7 @@ sub add_vm_to_cluster
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5358,7 +5332,7 @@ sub add_vm_to_cluster
 	
 	my $ccs_exit_code;
 	   $shell_call =  "ccs ";
-	   $shell_call .= "-h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --addvm $vm ";
+	   $shell_call .= "-h localhost --activate --sync --password \"".$an->data->{clusters}{$cluster}{ricci_pw}."\" --addvm $vm ";
 	   $shell_call .= "domain=\"$failover_domain\" ";
 	   $shell_call .= "path=\"/shared/definitions/\" ";
 	   $shell_call .= "autostart=\"0\" ";
@@ -5374,7 +5348,7 @@ sub add_vm_to_cluster
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5412,7 +5386,7 @@ sub add_vm_to_cluster
 			else
 			{
 				# Show any output from the call.
-				$line = parse_text_line($conf, $line);
+				$line = parse_text_line($an, $line);
 				print $an->Web->template({file => "server.html", template => "general-message", replace => { 
 					row	=>	"#!string!row_0127!#",
 					message	=>	"<span class=\"fixed_width\">$line</span>",
@@ -5460,7 +5434,7 @@ sub add_vm_to_cluster
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5479,7 +5453,7 @@ sub add_vm_to_cluster
 		}
 		else
 		{
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			print $an->Web->template({file => "server.html", template => "general-message", replace => { 
 				row	=>	"#!string!row_0127!#",
 				message	=>	"<span class=\"fixed_width\">$line</span>",
@@ -5520,16 +5494,15 @@ sub add_vm_to_cluster
 # This inserts, updates or removes a network interface driver in the passed-in XML definition file.
 sub update_network_driver
 {
-	my ($conf, $new_xml) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $new_xml) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_network_driver" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "new_xml", value1 => $new_xml, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "sys::server::bcn_nic_driver", value1 => $conf->{sys}{server}{bcn_nic_driver},
-		name2 => "sys::server::sn_nic_driver",  value2 => $conf->{sys}{server}{sn_nic_driver},
-		name3 => "sys::server::ifn_nic_driver", value3 => $conf->{sys}{server}{ifn_nic_driver},
+		name1 => "sys::server::bcn_nic_driver", value1 => $an->data->{sys}{server}{bcn_nic_driver},
+		name2 => "sys::server::sn_nic_driver",  value2 => $an->data->{sys}{server}{sn_nic_driver},
+		name3 => "sys::server::ifn_nic_driver", value3 => $an->data->{sys}{server}{ifn_nic_driver},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Clear out the old array and refill it with the possibly-edited 'new_xml'.
@@ -5577,21 +5550,21 @@ sub update_network_driver
 					my $key = $this_network."_nic_driver";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "key",               value1 => $key,
-						name2 => "sys::server::$key", value2 => $conf->{sys}{server}{$key},
+						name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($conf->{sys}{server}{$key})
+					if ($an->data->{sys}{server}{$key})
 					{
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "this_driver",       value1 => $this_driver,
-							name2 => "sys::server::$key", value2 => $conf->{sys}{server}{$key},
+							name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 						}, file => $THIS_FILE, line => __LINE__});
-						if ($this_driver ne $conf->{sys}{server}{$key})
+						if ($this_driver ne $an->data->{sys}{server}{$key})
 						{
 							# Change the driver
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 								name1 => ">> line", value1 => $line,
 							}, file => $THIS_FILE, line => __LINE__});
-							$line =~ s/driver name='.*?'/driver name='$conf->{sys}{server}{$key}'/;
+							$line =~ s/driver name='.*?'/driver name='$an->data->{sys}{server}{$key}'/;
 							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 								name1 => "<< line", value1 => $line,
 							}, file => $THIS_FILE, line => __LINE__});
@@ -5618,14 +5591,14 @@ sub update_network_driver
 					my $key = $this_network."_nic_driver";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "key",               value1 => $key,
-						name2 => "sys::server::$key", value2 => $conf->{sys}{server}{$key},
+						name2 => "sys::server::$key", value2 => $an->data->{sys}{server}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($conf->{sys}{server}{$key})
+					if ($an->data->{sys}{server}{$key})
 					{
 						# Insert it
-						$new_xml .= "      <driver name='$conf->{sys}{server}{$key}'/>\n";
+						$new_xml .= "      <driver name='$an->data->{sys}{server}{$key}'/>\n";
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-							name1 => "sys::server::$key", value1 => $conf->{sys}{server}{$key}, 
+							name1 => "sys::server::$key", value1 => $an->data->{sys}{server}{$key}, 
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -5654,8 +5627,7 @@ sub update_network_driver
 # then "none" is returned.
 sub find_vm_host
 {
-	my ($conf, $node, $peer, $vm) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $peer, $vm) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_vm_host" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "peer", value2 => $peer, 
@@ -5664,14 +5636,14 @@ sub find_vm_host
 	
 	my $host       = "none";
 	my $shell_call = "/usr/bin/virsh list --all";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5726,7 +5698,7 @@ sub find_vm_host
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$peer,
-			port		=>	$conf->{node}{$peer}{port}, 
+			port		=>	$an->data->{node}{$peer}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5781,22 +5753,21 @@ sub find_vm_host
 # This gets the name of the bridge on the target node.
 sub get_bridge_name
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_bridge_name" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $bridge     = "";
 	my $shell_call = "brctl show";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5827,55 +5798,54 @@ sub get_bridge_name
 # This actually kicks off the VM.
 sub provision_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "provision_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $say_title = $an->String->get({key => "title_0115", variables => { server => $conf->{new_vm}{name} }});
+	my $say_title = $an->String->get({key => "title_0115", variables => { server => $an->data->{new_vm}{name} }});
 	print $an->Web->template({file => "server.html", template => "provision-server-header", replace => { title => $say_title }});
 	
 	# I need to know what the bridge is called.
-	my $node   = $conf->{new_vm}{host_node};
-	my $bridge = get_bridge_name($conf, $node);
+	my $node   = $an->data->{new_vm}{host_node};
+	my $bridge = get_bridge_name($an, $node);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "new_vm::host_node", value1 => $conf->{new_vm}{host_node},
+		name1 => "new_vm::host_node", value1 => $an->data->{new_vm}{host_node},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Create the LVs
 	my $provision = "";
 	my @logical_volumes;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "new_vm::vg", value1 => $conf->{new_vm}{vg},
+		name1 => "new_vm::vg", value1 => $an->data->{new_vm}{vg},
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $vg (keys %{$conf->{new_vm}{vg}})
+	foreach my $vg (keys %{$an->data->{new_vm}{vg}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "vg", value1 => $vg,
 		}, file => $THIS_FILE, line => __LINE__});
-		for (my $i = 0; $i < @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}; $i++)
+		for (my $i = 0; $i < @{$an->data->{new_vm}{vg}{$vg}{lvcreate_size}}; $i++)
 		{
-			my $lv_size   = $conf->{new_vm}{vg}{$vg}{lvcreate_size}->[$i];
-			my $lv_device = "/dev/$vg/$conf->{new_vm}{name}_$i";
+			my $lv_size   = $an->data->{new_vm}{vg}{$vg}{lvcreate_size}->[$i];
+			my $lv_device = "/dev/$vg/$an->data->{new_vm}{name}_$i";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "i",         value1 => $i,
 				name2 => "vg",        value2 => $vg,
 				name3 => "lv_size",   value3 => $lv_size,
 				name4 => "lv_device", value4 => $lv_device,
 			}, file => $THIS_FILE, line => __LINE__});
-			$provision .= "if [ ! -e '/dev/$vg/$conf->{new_vm}{name}_$i' ];\n";
+			$provision .= "if [ ! -e '/dev/$vg/$an->data->{new_vm}{name}_$i' ];\n";
 			$provision .= "then\n";
 			if (lc($lv_size) eq "all")
 			{
-				$provision .= "    lvcreate -l 100\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -l 100\%FREE -n $an->data->{new_vm}{name}_$i $vg\n";
 			}
 			elsif ($lv_size =~ /^(\d+\.?\d+?)%$/)
 			{
 				my $size = $1;
-				$provision .= "    lvcreate -l $size\%FREE -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -l $size\%FREE -n $an->data->{new_vm}{name}_$i $vg\n";
 			}
 			else
 			{
-				$provision .= "    lvcreate -L ${lv_size}GiB -n $conf->{new_vm}{name}_$i $vg\n";
+				$provision .= "    lvcreate -L ${lv_size}GiB -n $an->data->{new_vm}{name}_$i $vg\n";
 			}
 			$provision .= "fi\n";
 			push @logical_volumes, $lv_device;
@@ -5884,27 +5854,27 @@ sub provision_vm
 	
 	# Setup the 'virt-install' call.
 	$provision .= "virt-install --connect qemu:///system \\\\\n";
-	$provision .= "  --name $conf->{new_vm}{name} \\\\\n";
-	$provision .= "  --ram $conf->{new_vm}{ram} \\\\\n";
+	$provision .= "  --name $an->data->{new_vm}{name} \\\\\n";
+	$provision .= "  --ram $an->data->{new_vm}{ram} \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
-	$provision .= "  --vcpus $conf->{new_vm}{cpu_cores} \\\\\n";
+	$provision .= "  --vcpus $an->data->{new_vm}{cpu_cores} \\\\\n";
 	$provision .= "  --cpu host \\\\\n";
-	$provision .= "  --cdrom '/shared/files/$conf->{new_vm}{install_iso}' \\\\\n";
+	$provision .= "  --cdrom '/shared/files/$an->data->{new_vm}{install_iso}' \\\\\n";
 	$provision .= "  --boot menu=on \\\\\n";
-	if ($conf->{cgi}{driver_iso})
+	if ($an->data->{cgi}{driver_iso})
 	{
-		$provision .= "  --disk path='/shared/files/$conf->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
+		$provision .= "  --disk path='/shared/files/$an->data->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
 	}
-	$provision .= "  --os-variant $conf->{cgi}{os_variant} \\\\\n";
+	$provision .= "  --os-variant $an->data->{cgi}{os_variant} \\\\\n";
 	
 	# Connect to the discovered bridge
 	my $nic_driver = "virtio";
-	if (not $conf->{new_vm}{virtio}{nic})
+	if (not $an->data->{new_vm}{virtio}{nic})
 	{
-		$nic_driver = $conf->{sys}{server}{alternate_nic_model} ? $conf->{sys}{server}{alternate_nic_model} : "e1000";
+		$nic_driver = $an->data->{sys}{server}{alternate_nic_model} ? $an->data->{sys}{server}{alternate_nic_model} : "e1000";
 	}
-	$conf->{sys}{server}{nic_count} = 1 if not $conf->{sys}{server}{nic_count};
-	for (1..$conf->{sys}{server}{nic_count})
+	$an->data->{sys}{server}{nic_count} = 1 if not $an->data->{sys}{server}{nic_count};
+	for (1..$an->data->{sys}{server}{nic_count})
 	{
 		$provision .= "  --network bridge=$bridge,model=$nic_driver \\\\\n";
 	}
@@ -5913,10 +5883,10 @@ sub provision_vm
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "lv_device",  value1 => $lv_device,
-			name2 => "use virtio", value2 => $conf->{new_vm}{virtio}{disk},
+			name2 => "use virtio", value2 => $an->data->{new_vm}{virtio}{disk},
 		}, file => $THIS_FILE, line => __LINE__});
 		$provision .= "  --disk path=$lv_device";
-		if ($conf->{new_vm}{virtio}{disk})
+		if ($an->data->{new_vm}{virtio}{disk})
 		{
 			### NOTE: Not anymore.
 			# The 'cache=writeback' is required to support systems built on 4kb native sector 
@@ -5928,7 +5898,7 @@ sub provision_vm
 	$provision .= "  --graphics spice \\\\\n";
 	# See https://www.redhat.com/archives/virt-tools-list/2014-August/msg00078.html
 	# for why we're using '--noautoconsole --wait -1'.
-	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$conf->{new_vm}{name}.".log &\n";
+	$provision .= "  --noautoconsole --wait -1 > /var/log/an-install_".$an->data->{new_vm}{name}.".log &\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "provision", value1 => $provision,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5936,19 +5906,19 @@ sub provision_vm
 	### TODO: Make sure the desired node is up and, if not, use the one good node.
 	
 	# Push the provision script into a file.
-	my $shell_script = "/shared/provision/$conf->{new_vm}{name}.sh";
+	my $shell_script = "/shared/provision/$an->data->{new_vm}{name}.sh";
 	my $message      = $an->String->get({key => "message_0118", variables => { script => $shell_script }});
 	print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
 	
 	my $shell_call = "echo \"$provision\" > $shell_script && chmod 755 $shell_script";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5961,7 +5931,7 @@ sub provision_vm
 		}, file => $THIS_FILE, line => __LINE__});
 		
 	}
-	$message = $an->String->get({key => "message_0119", variables => { server => $conf->{new_vm}{name} }});
+	$message = $an->String->get({key => "message_0119", variables => { server => $an->data->{new_vm}{name} }});
 	print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
 	
 	### NOTE: Don't try to redirect output (2>&1 |), it causes errors I've not yet solved.
@@ -5973,7 +5943,7 @@ sub provision_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5999,7 +5969,7 @@ sub provision_vm
 			### TODO: Delete the just-created LV
 			# This can be caused by insufficient free RAM
 			$error = $an->String->get({key => "message_0437", variables => { 
-					server		=>	$conf->{new_vm}{name},
+					server		=>	$an->data->{new_vm}{name},
 					node		=>	$node,
 				}});
 		}
@@ -6026,14 +5996,14 @@ sub provision_vm
 		print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => "#!string!message_0120!#" }});
 		
 		# Verify that the new VM is running.
-		my $shell_call = "sleep 3; virsh list | grep -q '$conf->{new_vm}{name}'; echo rc:\$?";
+		my $shell_call = "sleep 3; virsh list | grep -q '$an->data->{new_vm}{name}'; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -6071,9 +6041,9 @@ sub provision_vm
 	{
 		# Add it and then change the boot device to 'hd'.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_node", value1 => $conf->{new_vm}{host_node},
+			name1 => "host_node", value1 => $an->data->{new_vm}{host_node},
 		}, file => $THIS_FILE, line => __LINE__});
-		add_vm_to_cluster($conf, 1);
+		add_vm_to_cluster($an, 1);
 	}
 	
 	return (0);
@@ -6082,33 +6052,32 @@ sub provision_vm
 # This sanity-checks the requested VM config prior to creating the VM itself.
 sub verify_vm_config
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_vm_config" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, get a current view of the cluster.
 	my $proceed = 1;
-	AN::Cluster::scan_cluster($conf);
-	AN::Cluster::read_files_on_shared($conf);
+	AN::Cluster::scan_cluster($an);
+	AN::Cluster::read_files_on_shared($an);
 	
 	# If we connected, start parsing.
-	my $cluster = $conf->{cgi}{cluster};
+	my $cluster = $an->data->{cgi}{cluster};
 	my @errors;
-	if ($conf->{sys}{up_nodes})
+	if ($an->data->{sys}{up_nodes})
 	{
 		# Did the user name the VM?
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::name", value1 => $conf->{cgi}{name},
+			name1 => "cgi::name", value1 => $an->data->{cgi}{name},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{name})
+		if ($an->data->{cgi}{name})
 		{
 			# Normally, it's safer to only allow a subset of
 			# characters, but it would be nice to allow users to 
 			# name their servers using non-latin characters, so for
 			# now, we look for bad characters only.
-			$conf->{cgi}{name} =~ s/^\s+//;
-			$conf->{cgi}{name} =~ s/\s+$//;
-			if ($conf->{cgi}{name} =~ /\s/)
+			$an->data->{cgi}{name} =~ s/^\s+//;
+			$an->data->{cgi}{name} =~ s/\s+$//;
+			if ($an->data->{cgi}{name} =~ /\s/)
 			{
 				# Bad name, no spaces allowed.
 				my $say_row     = $an->String->get({key => "row_0102"});
@@ -6116,20 +6085,20 @@ sub verify_vm_config
 				push @errors, "$say_row#!#$say_message";
 			}
 			# If this changes, remember to update message_0127!
-			elsif (($conf->{cgi}{name} =~ /;/) || 
-			       ($conf->{cgi}{name} =~ /&/) || 
-			       ($conf->{cgi}{name} =~ /\|/) || 
-			       ($conf->{cgi}{name} =~ /\$/) || 
-			       ($conf->{cgi}{name} =~ />/) || 
-			       ($conf->{cgi}{name} =~ /</) || 
-			       ($conf->{cgi}{name} =~ /\[/) || 
-			       ($conf->{cgi}{name} =~ /\]/) || 
-			       ($conf->{cgi}{name} =~ /\(/) || 
-			       ($conf->{cgi}{name} =~ /\)/) || 
-			       ($conf->{cgi}{name} =~ /}/) || 
-			       ($conf->{cgi}{name} =~ /{/) || 
-			       ($conf->{cgi}{name} =~ /!/) || 
-			       ($conf->{cgi}{name} =~ /\^/))
+			elsif (($an->data->{cgi}{name} =~ /;/) || 
+			       ($an->data->{cgi}{name} =~ /&/) || 
+			       ($an->data->{cgi}{name} =~ /\|/) || 
+			       ($an->data->{cgi}{name} =~ /\$/) || 
+			       ($an->data->{cgi}{name} =~ />/) || 
+			       ($an->data->{cgi}{name} =~ /</) || 
+			       ($an->data->{cgi}{name} =~ /\[/) || 
+			       ($an->data->{cgi}{name} =~ /\]/) || 
+			       ($an->data->{cgi}{name} =~ /\(/) || 
+			       ($an->data->{cgi}{name} =~ /\)/) || 
+			       ($an->data->{cgi}{name} =~ /}/) || 
+			       ($an->data->{cgi}{name} =~ /{/) || 
+			       ($an->data->{cgi}{name} =~ /!/) || 
+			       ($an->data->{cgi}{name} =~ /\^/))
 			{
 				# Illegal characters.
 				my $say_row     = $an->String->get({key => "row_0102"});
@@ -6138,9 +6107,9 @@ sub verify_vm_config
 			}
 			else
 			{
-				my $vm     = $conf->{cgi}{name};
+				my $vm     = $an->data->{cgi}{name};
 				my $vm_key = "vm:$vm";
-				if (exists $conf->{vm}{$vm_key})
+				if (exists $an->data->{vm}{$vm_key})
 				{
 					# Duplicate name
 					my $say_row     = $an->String->get({key => "row_0103"});
@@ -6150,9 +6119,9 @@ sub verify_vm_config
 				else
 				{
 					# Name is OK
-					$conf->{new_vm}{name} = $vm;
+					$an->data->{new_vm}{name} = $vm;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "new_vm::name", value1 => $conf->{new_vm}{name},
+						name1 => "new_vm::name", value1 => $an->data->{new_vm}{name},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -6167,48 +6136,48 @@ sub verify_vm_config
 		
 		# Did the user ask for too many cores?
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "cgi::cpu_cores",           value1 => $conf->{cgi}{cpu_cores},
-			name2 => "resources::total_threads", value2 => $conf->{resources}{total_threads},
+			name1 => "cgi::cpu_cores",           value1 => $an->data->{cgi}{cpu_cores},
+			name2 => "resources::total_threads", value2 => $an->data->{resources}{total_threads},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{cpu_cores} =~ /\D/)
+		if ($an->data->{cgi}{cpu_cores} =~ /\D/)
 		{
 			# Not a digit.
 			my $say_row     = $an->String->get({key => "row_0105", variables => {  }});
-			my $say_message = $an->String->get({key => "message_0130", variables => { cpu_cores => $conf->{cgi}{cpu_cores} }});
+			my $say_message = $an->String->get({key => "message_0130", variables => { cpu_cores => $an->data->{cgi}{cpu_cores} }});
 			push @errors, "$say_row#!#$say_message";
 		}
-		elsif ($conf->{cgi}{cpu_cores} > $conf->{resources}{total_threads})
+		elsif ($an->data->{cgi}{cpu_cores} > $an->data->{resources}{total_threads})
 		{
 			# Not enough cores
 			my $say_row     = $an->String->get({key => "row_0106"});
 			my $say_message = $an->String->get({key => "message_0131", variables => { 
-					total_threads	=>	$conf->{resources}{total_threads},
-					cpu_cores	=>	$conf->{cgi}{cpu_cores},
+					total_threads	=>	$an->data->{resources}{total_threads},
+					cpu_cores	=>	$an->data->{cgi}{cpu_cores},
 				}});
 			push @errors, "$say_row#!#$say_message";
 		}
 		else
 		{
-			$conf->{new_vm}{cpu_cores} = $conf->{cgi}{cpu_cores};
+			$an->data->{new_vm}{cpu_cores} = $an->data->{cgi}{cpu_cores};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "new_vm::cpu_cores", value1 => $conf->{new_vm}{cpu_cores},
+				name1 => "new_vm::cpu_cores", value1 => $an->data->{new_vm}{cpu_cores},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Now what about RAM?
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::ram", value1 => $conf->{cgi}{ram},
+			name1 => "cgi::ram", value1 => $an->data->{cgi}{ram},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($conf->{cgi}{ram} =~ /\D/) && ($conf->{cgi}{ram} !~ /^\d+\.\d+$/))
+		if (($an->data->{cgi}{ram} =~ /\D/) && ($an->data->{cgi}{ram} !~ /^\d+\.\d+$/))
 		{
 			# RAM amount isn't a digit...
 			my $say_row     = $an->String->get({key => "row_0107"});
-			my $say_message = $an->String->get({key => "message_0132", variables => { ram => $conf->{cgi}{ram} }});
+			my $say_message = $an->String->get({key => "message_0132", variables => { ram => $an->data->{cgi}{ram} }});
 			push @errors, "$say_row#!#$say_message";
 		}
-		my $requested_ram = $an->Readable->hr_to_bytes({size => $conf->{cgi}{ram}, type => $conf->{cgi}{ram_suffix} });
-		my $diff          = $conf->{resources}{total_ram} % (1024 ** 3);
-		my $available_ram = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
+		my $requested_ram = $an->Readable->hr_to_bytes({size => $an->data->{cgi}{ram}, type => $an->data->{cgi}{ram_suffix} });
+		my $diff          = $an->data->{resources}{total_ram} % (1024 ** 3);
+		my $available_ram = $an->data->{resources}{total_ram} - $diff - $an->data->{sys}{unusable_ram};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "requested_ram", value1 => $requested_ram,
 			name2 => "available_ram", value2 => $available_ram,
@@ -6229,20 +6198,20 @@ sub verify_vm_config
 		{
 			# RAM is specified as a number of MiB.
 			my $say_ram = sprintf("%.0f", ($requested_ram /= (2 ** 20)));
-			$conf->{new_vm}{ram} = $say_ram;
+			$an->data->{new_vm}{ram} = $say_ram;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "new_vm::ram", value1 => $conf->{new_vm}{ram},
+				name1 => "new_vm::ram", value1 => $an->data->{new_vm}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Look at the selected storage. if VGs named for two separate
 		# nodes are defined, error.
-		$conf->{new_vm}{host_node} = "";
+		$an->data->{new_vm}{host_node} = "";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "host_node", value1 => $conf->{new_vm}{host_node},
-			name2 => "vg_list",   value2 => $conf->{cgi}{vg_list},
+			name1 => "host_node", value1 => $an->data->{new_vm}{host_node},
+			name2 => "vg_list",   value2 => $an->data->{cgi}{vg_list},
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $vg (split /,/, $conf->{cgi}{vg_list})
+		foreach my $vg (split /,/, $an->data->{cgi}{vg_list})
 		{
 			my $short_vg   = $vg;
 			my $short_node = $vg;
@@ -6268,8 +6237,8 @@ sub verify_vm_config
 				name2 => "vg_key",        value2 => $vg_key,
 				name3 => "vg_suffix_key", value3 => $vg_suffix_key,
 			}, file => $THIS_FILE, line => __LINE__});
-			next if not $conf->{cgi}{$vg_key};
-			foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+			next if not $an->data->{cgi}{$vg_key};
+			foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node",       value1 => $node,
@@ -6285,16 +6254,16 @@ sub verify_vm_config
 				}
 			}
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "host_node", value1 => $conf->{new_vm}{host_node},
+				name1 => "host_node", value1 => $an->data->{new_vm}{host_node},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $conf->{new_vm}{host_node})
+			if (not $an->data->{new_vm}{host_node})
 			{
-				$conf->{new_vm}{host_node} = $say_node;
+				$an->data->{new_vm}{host_node} = $say_node;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "host_node", value1 => $conf->{new_vm}{host_node},
+					name1 => "host_node", value1 => $an->data->{new_vm}{host_node},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($conf->{new_vm}{host_node} ne $say_node)
+			elsif ($an->data->{new_vm}{host_node} ne $say_node)
 			{
 				# Conflicting Storage
 				my $say_row     = $an->String->get({key => "row_0109"});
@@ -6303,28 +6272,28 @@ sub verify_vm_config
 			}
 			
 			# Setup the 'lvcreate' call
-			foreach my $lv_size (split/:/, $conf->{cgi}{$vg_key})
+			foreach my $lv_size (split/:/, $an->data->{cgi}{$vg_key})
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "lv_size", value1 => $lv_size,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($lv_size eq "all")
 				{
-					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "all";
+					push @{$an->data->{new_vm}{vg}{$vg}{lvcreate_size}}, "all";
 				}
-				elsif ($conf->{cgi}{$vg_suffix_key} eq "%")
+				elsif ($an->data->{cgi}{$vg_suffix_key} eq "%")
 				{
-					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "${lv_size}%";
+					push @{$an->data->{new_vm}{vg}{$vg}{lvcreate_size}}, "${lv_size}%";
 				}
 				else
 				{
 					# Make to lvcreate command a GiB value.
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "cgi::${vg_key}",        value1 => $lv_size,
-						name2 => "cgi::${vg_suffix_key}", value2 => $conf->{cgi}{$vg_suffix_key},
+						name2 => "cgi::${vg_suffix_key}", value2 => $an->data->{cgi}{$vg_suffix_key},
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					my $lv_size = $an->Readable->hr_to_bytes({size => $lv_size, type => $conf->{cgi}{$vg_suffix_key} });
+					my $lv_size = $an->Readable->hr_to_bytes({size => $lv_size, type => $an->data->{cgi}{$vg_suffix_key} });
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "> lv_size", value1 => $lv_size,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -6333,26 +6302,26 @@ sub verify_vm_config
 						name1 => "< lv_size", value1 => $lv_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					push @{$conf->{new_vm}{vg}{$vg}{lvcreate_size}}, "$lv_size";
+					push @{$an->data->{new_vm}{vg}{$vg}{lvcreate_size}}, "$lv_size";
 				}
 			}
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "host_node", value1 => $conf->{new_vm}{host_node},
+			name1 => "host_node", value1 => $an->data->{new_vm}{host_node},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Make sure the user specified an install disc.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::install_iso", value1 => $conf->{cgi}{install_iso},
+			name1 => "cgi::install_iso", value1 => $an->data->{cgi}{install_iso},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{install_iso})
+		if ($an->data->{cgi}{install_iso})
 		{
-			my $file_name = $conf->{cgi}{install_iso};
-			if (exists $conf->{files}{shared}{$file_name})
+			my $file_name = $an->data->{cgi}{install_iso};
+			if (exists $an->data->{files}{shared}{$file_name})
 			{
-				$conf->{new_vm}{install_iso} = $conf->{cgi}{install_iso};
+				$an->data->{new_vm}{install_iso} = $an->data->{cgi}{install_iso};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "new_vm::install_iso", value1 => $conf->{new_vm}{install_iso},
+					name1 => "new_vm::install_iso", value1 => $an->data->{new_vm}{install_iso},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -6372,45 +6341,45 @@ sub verify_vm_config
 		}
 		
 		# A few OSes we set don't match a real os-variant. Swap them here.
-		if ($conf->{cgi}{os_variant} eq "debianjessie")
+		if ($an->data->{cgi}{os_variant} eq "debianjessie")
 		{
 			# Debian is modern enough so we'll use the 'rhel7' variant.
-			$conf->{cgi}{os_variant} = "rhel7";
+			$an->data->{cgi}{os_variant} = "rhel7";
 		}
 		
 		### TODO: Find a better way to determine this.
 		# Look at the OS type to try and determine if 'e1000' or
 		# 'virtio' should be used by the network.
-		$conf->{new_vm}{virtio}{nic}  = 0;
-		$conf->{new_vm}{virtio}{disk} = 0;
-		if (($conf->{cgi}{os_variant} =~ /fedora1\d/) || 
-		    ($conf->{cgi}{os_variant} =~ /virtio/) || 
-		    ($conf->{cgi}{os_variant} =~ /ubuntu/) || 
-		    ($conf->{cgi}{os_variant} =~ /sles11/) || 
-		    ($conf->{cgi}{os_variant} =~ /rhel5/) || 
-		    ($conf->{cgi}{os_variant} =~ /rhel6/) || 
-		    ($conf->{cgi}{os_variant} =~ /rhel7/))
+		$an->data->{new_vm}{virtio}{nic}  = 0;
+		$an->data->{new_vm}{virtio}{disk} = 0;
+		if (($an->data->{cgi}{os_variant} =~ /fedora1\d/) || 
+		    ($an->data->{cgi}{os_variant} =~ /virtio/) || 
+		    ($an->data->{cgi}{os_variant} =~ /ubuntu/) || 
+		    ($an->data->{cgi}{os_variant} =~ /sles11/) || 
+		    ($an->data->{cgi}{os_variant} =~ /rhel5/) || 
+		    ($an->data->{cgi}{os_variant} =~ /rhel6/) || 
+		    ($an->data->{cgi}{os_variant} =~ /rhel7/))
 		{
-			$conf->{new_vm}{virtio}{disk} = 1;
-			$conf->{new_vm}{virtio}{nic}  = 1;
+			$an->data->{new_vm}{virtio}{disk} = 1;
+			$an->data->{new_vm}{virtio}{nic}  = 1;
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "new_vm::virtio::disk", value1 => $conf->{new_vm}{virtio}{disk},
-			name2 => "new_vm::virtio::nic",  value2 => $conf->{new_vm}{virtio}{nic},
+			name1 => "new_vm::virtio::disk", value1 => $an->data->{new_vm}{virtio}{disk},
+			name2 => "new_vm::virtio::nic",  value2 => $an->data->{new_vm}{virtio}{nic},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Optional driver disk, enables virtio when appropriate
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::driver_iso", value1 => $conf->{cgi}{driver_iso},
+			name1 => "cgi::driver_iso", value1 => $an->data->{cgi}{driver_iso},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{driver_iso})
+		if ($an->data->{cgi}{driver_iso})
 		{
-			my $file_name = $conf->{cgi}{driver_iso};
-			if (exists $conf->{files}{shared}{$file_name})
+			my $file_name = $an->data->{cgi}{driver_iso};
+			if (exists $an->data->{files}{shared}{$file_name})
 			{
-				$conf->{new_vm}{driver_iso} = $conf->{cgi}{driver_iso};
+				$an->data->{new_vm}{driver_iso} = $an->data->{cgi}{driver_iso};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "new_vm::driver_iso", value1 => $conf->{new_vm}{driver_iso},
+					name1 => "new_vm::driver_iso", value1 => $an->data->{new_vm}{driver_iso},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -6423,26 +6392,26 @@ sub verify_vm_config
 			
 			if (lc($file_name) =~ /virtio/)
 			{
-				$conf->{new_vm}{virtio}{disk} = 1;
-				$conf->{new_vm}{virtio}{nic}  = 1;
+				$an->data->{new_vm}{virtio}{disk} = 1;
+				$an->data->{new_vm}{virtio}{nic}  = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "new_vm::virtio::disk", value1 => $conf->{new_vm}{virtio}{disk},
-					name2 => "new_vm::virtio::nic",  value2 => $conf->{new_vm}{virtio}{nic},
+					name1 => "new_vm::virtio::disk", value1 => $an->data->{new_vm}{virtio}{disk},
+					name2 => "new_vm::virtio::nic",  value2 => $an->data->{new_vm}{virtio}{nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
 		# Make sure a valid os-variant was passed.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::os_variant", value1 => $conf->{cgi}{os_variant},
+			name1 => "cgi::os_variant", value1 => $an->data->{cgi}{os_variant},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{os_variant})
+		if ($an->data->{cgi}{os_variant})
 		{
 			my $match = 0;
-			foreach my $os_variant (@{$conf->{sys}{os_variant}})
+			foreach my $os_variant (@{$an->data->{sys}{os_variant}})
 			{
 				my ($short_name, $desc) = ($os_variant =~ /^(.*?)#!#(.*)$/);
-				if ($conf->{cgi}{os_variant} eq $short_name)
+				if ($an->data->{cgi}{os_variant} eq $short_name)
 				{
 					$match = 1;
 				}
@@ -6495,27 +6464,26 @@ sub verify_vm_config
 # This doesn't so much confirm as it does ask the user how they want to build the VM.
 sub confirm_provision_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_provision_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "read file list from node", value1 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	return if not $node;
 	
-	my $cluster = $conf->{cgi}{cluster};
+	my $cluster = $an->data->{cgi}{cluster};
 	my $images  = [];
-	foreach my $file (sort {$a cmp $b} keys %{$conf->{files}{shared}})
+	foreach my $file (sort {$a cmp $b} keys %{$an->data->{files}{shared}})
 	{
 		next if $file !~ /iso$/i;
 		push @{$images}, $file;
 	}
 	my $cpu_cores = [];
-	foreach my $core_num (1..$conf->{cgi}{max_cores})
+	foreach my $core_num (1..$an->data->{cgi}{max_cores})
 	{
-		if ($conf->{cgi}{max_cores} > 9)
+		if ($an->data->{cgi}{max_cores} > 9)
 		{
 			#push @{$cpu_cores}, sprintf("%.2d", $core_num);
 			push @{$cpu_cores}, $core_num;
@@ -6525,9 +6493,9 @@ sub confirm_provision_vm
 			push @{$cpu_cores}, $core_num;
 		}
 	}
-	$conf->{cgi}{cpu_cores}  = 2 if not $conf->{cgi}{cpu_cores};
-	my $select_cpu_cores     = AN::Cluster::build_select($conf, "cpu_cores", 0, 0, 60, $conf->{cgi}{cpu_cores}, $cpu_cores);
-	foreach my $storage (sort {$a cmp $b} split/,/, $conf->{cgi}{max_storage})
+	$an->data->{cgi}{cpu_cores}  = 2 if not $an->data->{cgi}{cpu_cores};
+	my $select_cpu_cores     = AN::Cluster::build_select($an, "cpu_cores", 0, 0, 60, $an->data->{cgi}{cpu_cores}, $cpu_cores);
+	foreach my $storage (sort {$a cmp $b} split/,/, $an->data->{cgi}{max_storage})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "storage", value1 => $storage,
@@ -6535,23 +6503,23 @@ sub confirm_provision_vm
 		my ($vg, $space)             =  ($storage =~ /^(.*?):(\d+)$/);
 		my $say_max_storage          =  $an->Readable->bytes_to_hr({'bytes' => $space });
 		$say_max_storage             =~ s/\.(\d+)//;
-		$conf->{cgi}{vg_list}        .= "$vg,";
+		$an->data->{cgi}{vg_list}        .= "$vg,";
 		my $vg_key                   =  "vg_$vg";
 		my $vg_suffix_key            =  "vg_suffix_$vg";
-		$conf->{cgi}{$vg_key}        =  ""    if not $conf->{cgi}{$vg_key};
-		$conf->{cgi}{$vg_suffix_key} =  "GiB" if not $conf->{cgi}{$vg_suffix_key};
-		my $select_vg_suffix         =  AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB", "%"]);
+		$an->data->{cgi}{$vg_key}        =  ""    if not $an->data->{cgi}{$vg_key};
+		$an->data->{cgi}{$vg_suffix_key} =  "GiB" if not $an->data->{cgi}{$vg_suffix_key};
+		my $select_vg_suffix         =  AN::Cluster::build_select($an, "$vg_suffix_key", 0, 0, 60, $an->data->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "TiB", "%"]);
 		if ($space < (2 ** 30))
 		{
 			# Less than a Terabyte
-			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "%"]);
-			$conf->{cgi}{$vg_suffix_key} = "GiB" if not $conf->{cgi}{$vg_suffix_key};
+			$select_vg_suffix            = AN::Cluster::build_select($an, "$vg_suffix_key", 0, 0, 60, $an->data->{cgi}{$vg_suffix_key}, ["MiB", "GiB", "%"]);
+			$an->data->{cgi}{$vg_suffix_key} = "GiB" if not $an->data->{cgi}{$vg_suffix_key};
 		}
 		elsif ($space < (2 ** 20))
 		{
 			# Less than a Gigabyte
-			$select_vg_suffix            = AN::Cluster::build_select($conf, "$vg_suffix_key", 0, 0, 60, $conf->{cgi}{$vg_suffix_key}, ["MiB", "%"]);
-			$conf->{cgi}{$vg_suffix_key} = "MiB" if not $conf->{cgi}{$vg_suffix_key};
+			$select_vg_suffix            = AN::Cluster::build_select($an, "$vg_suffix_key", 0, 0, 60, $an->data->{cgi}{$vg_suffix_key}, ["MiB", "%"]);
+			$an->data->{cgi}{$vg_suffix_key} = "MiB" if not $an->data->{cgi}{$vg_suffix_key};
 		}
 		# Devine the node associated with this VG.
 		my $short_vg   =  $vg;
@@ -6562,7 +6530,7 @@ sub confirm_provision_vm
 			$short_vg   = $2;
 		}
 		my $say_node =  $short_vg;
-		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+		foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 		{
 			if ($node =~ /$short_node/)
 			{
@@ -6571,64 +6539,64 @@ sub confirm_provision_vm
 			}
 		}
 		
-		$conf->{vg_selects}{$vg}{space}         = $space;
-		$conf->{vg_selects}{$vg}{say_storage}   = $say_max_storage;
-		$conf->{vg_selects}{$vg}{select_suffix} = $select_vg_suffix;
-		$conf->{vg_selects}{$vg}{say_node}      = $say_node;
-		$conf->{vg_selects}{$vg}{short_vg}      = $short_vg;
+		$an->data->{vg_selects}{$vg}{space}         = $space;
+		$an->data->{vg_selects}{$vg}{say_storage}   = $say_max_storage;
+		$an->data->{vg_selects}{$vg}{select_suffix} = $select_vg_suffix;
+		$an->data->{vg_selects}{$vg}{say_node}      = $say_node;
+		$an->data->{vg_selects}{$vg}{short_vg}      = $short_vg;
 	}
 	my $say_selects;
 	my $say_or      = $an->Web->template({file => "server.html", template => "provision-server-storage-pool-or-message"});
-	foreach my $vg (sort {$a cmp $b} keys %{$conf->{vg_selects}})
+	foreach my $vg (sort {$a cmp $b} keys %{$an->data->{vg_selects}})
 	{
-		my $space            =  $conf->{vg_selects}{$vg}{space};
-		my $say_max_storage  =  $conf->{vg_selects}{$vg}{say_storage};
-		my $select_vg_suffix =  $conf->{vg_selects}{$vg}{select_suffix};
-		my $say_node         =  $conf->{vg_selects}{$vg}{say_node};
+		my $space            =  $an->data->{vg_selects}{$vg}{space};
+		my $say_max_storage  =  $an->data->{vg_selects}{$vg}{say_storage};
+		my $select_vg_suffix =  $an->data->{vg_selects}{$vg}{select_suffix};
+		my $say_node         =  $an->data->{vg_selects}{$vg}{say_node};
 		   $say_node         =~ s/\..*$//;
-		my $short_vg         =  $conf->{vg_selects}{$vg}{short_vg};
+		my $short_vg         =  $an->data->{vg_selects}{$vg}{short_vg};
 		my $vg_key           =  "vg_$vg";
 		   $say_selects      .= $an->Web->template({file => "server.html", template => "provision-server-selects", replace => { 
 				node			=>	$say_node,
 				short_vg		=>	$short_vg,
 				max_storage		=>	$say_max_storage,
 				vg_key			=>	$vg_key,
-				vg_key_value		=>	$conf->{cgi}{$vg_key},
+				vg_key_value		=>	$an->data->{cgi}{$vg_key},
 				select_vg_suffix	=>	$select_vg_suffix,
 			}});
 		$say_selects .= "$say_or";
 	}
 	$say_selects =~ s/$say_or$//m;
-	$say_selects .= $an->Web->template({file => "server.html", template => "provision-server-vg-list-hidden-input", replace => { vg_list => $conf->{cgi}{vg_list} }});
-	my $say_max_ram          = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{max_ram} });
-	$conf->{cgi}{ram}        = 2 if not $conf->{cgi}{ram};
-	$conf->{cgi}{ram_suffix} = "GiB" if not $conf->{cgi}{ram_suffix};
-	my $select_ram_suffix    = AN::Cluster::build_select($conf, "ram_suffix", 0, 0, 60, $conf->{cgi}{ram_suffix}, ["MiB", "GiB"]);
-	$conf->{cgi}{os_variant} = "generic" if not $conf->{cgi}{os_variant};
-	my $select_install_iso   = AN::Cluster::build_select($conf, "install_iso", 1, 1, 300, $conf->{cgi}{install_iso}, $images);
-	my $select_driver_iso    = AN::Cluster::build_select($conf, "driver_iso", 1, 1, 300, $conf->{cgi}{driver_iso}, $images);
-	my $select_os_variant    = AN::Cluster::build_select($conf, "os_variant", 1, 0, 300, $conf->{cgi}{os_variant}, $conf->{sys}{os_variant});
+	$say_selects .= $an->Web->template({file => "server.html", template => "provision-server-vg-list-hidden-input", replace => { vg_list => $an->data->{cgi}{vg_list} }});
+	my $say_max_ram          = $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{max_ram} });
+	$an->data->{cgi}{ram}        = 2 if not $an->data->{cgi}{ram};
+	$an->data->{cgi}{ram_suffix} = "GiB" if not $an->data->{cgi}{ram_suffix};
+	my $select_ram_suffix    = AN::Cluster::build_select($an, "ram_suffix", 0, 0, 60, $an->data->{cgi}{ram_suffix}, ["MiB", "GiB"]);
+	$an->data->{cgi}{os_variant} = "generic" if not $an->data->{cgi}{os_variant};
+	my $select_install_iso   = AN::Cluster::build_select($an, "install_iso", 1, 1, 300, $an->data->{cgi}{install_iso}, $images);
+	my $select_driver_iso    = AN::Cluster::build_select($an, "driver_iso", 1, 1, 300, $an->data->{cgi}{driver_iso}, $images);
+	my $select_os_variant    = AN::Cluster::build_select($an, "os_variant", 1, 0, 300, $an->data->{cgi}{os_variant}, $an->data->{sys}{os_variant});
 	
 	my $say_title = $an->String->get({key => "message_0142", variables => { 
-			anvil	=>	$conf->{cgi}{cluster},
+			anvil	=>	$an->data->{cgi}{cluster},
 		}});
 	print $an->Web->template({file => "server.html", template => "provision-server-questions", replace => { 
 		title			=>	$say_title,
-		name			=>	$conf->{cgi}{name},
+		name			=>	$an->data->{cgi}{name},
 		select_os_variant	=>	$select_os_variant,
-		media_library_url	=>	"mediaLibrary?cluster=".$conf->{cgi}{cluster},
+		media_library_url	=>	"mediaLibrary?cluster=".$an->data->{cgi}{cluster},
 		select_install_iso	=>	$select_install_iso,
 		select_driver_iso	=>	$select_driver_iso,
 		say_max_ram		=>	$say_max_ram,
-		ram			=>	$conf->{cgi}{ram},
+		ram			=>	$an->data->{cgi}{ram},
 		select_ram_suffix	=>	$select_ram_suffix,
 		select_cpu_cores	=>	$select_cpu_cores,
 		selects			=>	$say_selects,
-		anvil			=>	$conf->{cgi}{cluster},
-		task			=>	$conf->{cgi}{task},
-		max_ram			=>	$conf->{cgi}{max_ram},
-		max_cores		=>	$conf->{cgi}{max_cores},
-		max_storage		=>	$conf->{cgi}{max_storage},
+		anvil			=>	$an->data->{cgi}{cluster},
+		task			=>	$an->data->{cgi}{task},
+		max_ram			=>	$an->data->{cgi}{max_ram},
+		max_cores		=>	$an->data->{cgi}{max_cores},
+		max_storage		=>	$an->data->{cgi}{max_storage},
 	}});
 	
 	return (0);
@@ -6637,20 +6605,19 @@ sub confirm_provision_vm
 # Confirm that the user wants to join both nodes to the cluster.
 sub confirm_withdraw_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = $an->String->get({key => "title_0035", variables => { 
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-			anvil		=>	$conf->{cgi}{cluster},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+			anvil		=>	$an->data->{cgi}{cluster},
 		}});
-	my $say_message = $an->String->get({key => "message_0145", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0145", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
 	print $an->Web->template({file => "server.html", template => "confirm-withdrawl", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6659,20 +6626,19 @@ sub confirm_withdraw_node
 # Confirm that the user wants to join a node to the cluster.
 sub confirm_join_cluster
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_join_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = $an->String->get({key => "title_0036", variables => { 
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
-			anvil		=>	$conf->{cgi}{cluster},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+			anvil		=>	$an->data->{cgi}{cluster},
 		}});
-	my $say_message = $an->String->get({key => "message_0147", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0147", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
 	print $an->Web->template({file => "server.html", template => "confirm-join-anvil", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6681,17 +6647,16 @@ sub confirm_join_cluster
 # Confirm that the user wants to join both nodes to the cluster.
 sub confirm_dual_join
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0037", variables => { anvil => $conf->{cgi}{cluster} }});
-	my $say_message = $an->String->get({key => "message_0150", variables => { anvil => $conf->{cgi}{cluster} }});
+	my $say_title   = $an->String->get({key => "title_0037", variables => { anvil => $an->data->{cgi}{cluster} }});
+	my $say_message = $an->String->get({key => "message_0150", variables => { anvil => $an->data->{cgi}{cluster} }});
 	print $an->Web->template({file => "server.html", template => "confirm-dual-join-anvil", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6700,19 +6665,18 @@ sub confirm_dual_join
 # Confirm that the user wants to fence a nodes.
 sub confirm_fence_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title               =  $an->String->get({key => "title_0038", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $say_message             =  $an->String->get({key => "message_0151", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $expire_time             =  time + $conf->{sys}{actime_timeout};
-	   $conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	my $say_title               =  $an->String->get({key => "title_0038", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $say_message             =  $an->String->get({key => "message_0151", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-fence-node", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6721,19 +6685,18 @@ sub confirm_fence_node
 # Confirm that the user wants to power-off a nodes.
 sub confirm_poweroff_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title               =  $an->String->get({key => "title_0039", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $say_message             =  $an->String->get({key => "message_0156", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $expire_time             =  time + $conf->{sys}{actime_timeout};
-	   $conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	my $say_title               =  $an->String->get({key => "title_0039", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $say_message             =  $an->String->get({key => "message_0156", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-poweroff-node", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6742,17 +6705,16 @@ sub confirm_poweroff_node
 # Confirm that the user wants to boot a nodes.
 sub confirm_poweron_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0040", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $say_message = $an->String->get({key => "message_0160", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+	my $say_title   = $an->String->get({key => "title_0040", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0160", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
 	print $an->Web->template({file => "server.html", template => "confirm-poweron-node", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6761,15 +6723,14 @@ sub confirm_poweron_node
 # Confirm that the user wants to boot both nodes.
 sub confirm_dual_boot
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_message = $an->String->get({key => "message_0161", variables => { anvil => $conf->{cgi}{cluster} }});
+	my $say_message = $an->String->get({key => "message_0161", variables => { anvil => $an->data->{cgi}{cluster} }});
 	print $an->Web->template({file => "server.html", template => "confirm-dual-poweron-node", replace => { 
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6778,28 +6739,27 @@ sub confirm_dual_boot
 # Confirm that the user wants to cold-stop the Anvil!.
 sub confirm_cold_stop_anvil
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_message = $an->String->get({key => "message_0418", variables => { anvil => $conf->{cgi}{cluster} }});
+	my $say_message = $an->String->get({key => "message_0418", variables => { anvil => $an->data->{cgi}{cluster} }});
 	
 	# If there is a subtype, use a different warning.
-	if ($conf->{cgi}{subtask} eq "power_cycle")
+	if ($an->data->{cgi}{subtask} eq "power_cycle")
 	{
-		$say_message = $an->String->get({key => "message_0439", variables => { anvil => $conf->{cgi}{cluster} }});
+		$say_message = $an->String->get({key => "message_0439", variables => { anvil => $an->data->{cgi}{cluster} }});
 	}
-	elsif($conf->{cgi}{subtask} eq "power_off")
+	elsif($an->data->{cgi}{subtask} eq "power_off")
 	{
-		$say_message = $an->String->get({key => "message_0440", variables => { anvil => $conf->{cgi}{cluster} }});
+		$say_message = $an->String->get({key => "message_0440", variables => { anvil => $an->data->{cgi}{cluster} }});
 	}
 	
-	my $expire_time             =  time + $conf->{sys}{actime_timeout};
-	   $conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-cold-stop", replace => { 
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6808,23 +6768,22 @@ sub confirm_cold_stop_anvil
 # Confirm that the user wants to start a VM.
 sub confirm_start_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
 	my $say_title = $an->String->get({key => "title_0042", variables => { 
-			server		=>	$conf->{cgi}{vm},
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+			server		=>	$an->data->{cgi}{vm},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
 		}});
 	my $say_message = $an->String->get({key => "message_0163", variables => { 
-			server		=>	$conf->{cgi}{vm},
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+			server		=>	$an->data->{cgi}{vm},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
 		}});
 	print $an->Web->template({file => "server.html", template => "confirm-start-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	$conf->{sys}{cgi_string}."&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6833,26 +6792,25 @@ sub confirm_start_vm
 # Confirm that the user wants to stop a VM.
 sub confirm_stop_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0043", variables => { server => $conf->{cgi}{vm} }});
+	my $say_title   = $an->String->get({key => "title_0043", variables => { server => $an->data->{cgi}{vm} }});
 	my $say_message = $an->String->get({key => "message_0165", variables => { 
-			server		=>	$conf->{cgi}{vm},
-			node_anvil_name	=>	$conf->{cgi}{node_cluster_name},
+			server		=>	$an->data->{cgi}{vm},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
 		}});
-	my $say_warning             =  $an->String->get({key => "message_0166", variables => { server => $conf->{cgi}{vm} }});
-	my $say_precaution          =  $an->String->get({key => "message_0167", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-	my $expire_time             =  time + $conf->{sys}{actime_timeout};
-	   $conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	my $say_warning             =  $an->String->get({key => "message_0166", variables => { server => $an->data->{cgi}{vm} }});
+	my $say_precaution          =  $an->String->get({key => "message_0167", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-stop-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
 		warning		=>	$say_warning,
 		precaution	=>	$say_precaution,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -6861,22 +6819,21 @@ sub confirm_stop_vm
 # Confirm that the user wants to force-off a VM.
 sub confirm_force_off_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_force_off_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0044", variables => { server => $conf->{cgi}{vm} }});
+	my $say_title   = $an->String->get({key => "title_0044", variables => { server => $an->data->{cgi}{vm} }});
 	my $say_message = $an->String->get({key => "message_0168", variables => { 
-			server	=>	$conf->{cgi}{vm},
-			host	=>	$conf->{cgi}{host},
+			server	=>	$an->data->{cgi}{vm},
+			host	=>	$an->data->{cgi}{host},
 		}});
-	my $expire_time             =  time + $conf->{sys}{actime_timeout};
-	   $conf->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-force-off-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6885,17 +6842,16 @@ sub confirm_force_off_vm
 # Confirm that the user wants to migrate a VM.
 sub confirm_delete_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_delete_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0045", variables => { server => $conf->{cgi}{vm} }});
-	my $say_message = $an->String->get({key => "message_0178", variables => { server => $conf->{cgi}{vm} }});
+	my $say_title   = $an->String->get({key => "title_0045", variables => { server => $an->data->{cgi}{vm} }});
+	my $say_message = $an->String->get({key => "message_0178", variables => { server => $an->data->{cgi}{vm} }});
 	print $an->Web->template({file => "server.html", template => "confirm-delete-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6904,29 +6860,28 @@ sub confirm_delete_vm
 # Confirm that the user wants to migrate a VM.
 sub confirm_migrate_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_migrate_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Calculate roughly how long the migration will take.
-	my $migration_time_estimate = $conf->{cgi}{vm_ram} / 1073741824; # Get # of GB.
+	my $migration_time_estimate = $an->data->{cgi}{vm_ram} / 1073741824; # Get # of GB.
 	$migration_time_estimate *= 10; # ~10s / GB
 
 	# Ask the user to confirm
 	my $say_title = $an->String->get({key => "title_0047", variables => { 
-			server	=>	$conf->{cgi}{vm},
-			target	=>	$conf->{cgi}{target},
+			server	=>	$an->data->{cgi}{vm},
+			target	=>	$an->data->{cgi}{target},
 		}});
 	my $say_message = $an->String->get({key => "message_0177", variables => { 
-			server			=>	$conf->{cgi}{vm},
-			target			=>	$conf->{cgi}{target},
-			ram			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{vm_ram} }),
+			server			=>	$an->data->{cgi}{vm},
+			target			=>	$an->data->{cgi}{target},
+			ram			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{vm_ram} }),
 			migration_time_estimate	=>	$migration_time_estimate,
 		}});
 	print $an->Web->template({file => "server.html", template => "confirm-migrate-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
 	return (0);
@@ -6935,14 +6890,13 @@ sub confirm_migrate_vm
 # This boots a VM on a target node.
 sub start_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node              = $conf->{cgi}{node};
-	my $cluster           = $conf->{cgi}{cluster};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	my $vm                = $conf->{cgi}{vm};
+	my $node              = $an->data->{cgi}{node};
+	my $cluster           = $an->data->{cgi}{cluster};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
+	my $vm                = $an->data->{cgi}{vm};
 	my $say_vm            = $vm =~ /^vm:/ ? ($vm =~ /vm:(.*)/)[0] : $vm;
 	my $remote_message    = "";
 	my $remote_icon       = "";
@@ -6954,9 +6908,9 @@ sub start_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure the node is still ready to take this VM.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $vm_key = "vm:$vm";
-	my $ready = check_node_readiness($conf, $vm_key, $node);
+	my $ready = check_node_readiness($an, $vm_key, $node);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",  value1 => $node,
 		name2 => "ready", value2 => $ready,
@@ -6972,14 +6926,14 @@ sub start_vm
 		my $server_started           = 0;
 		my $show_remote_desktop_link = 0;
 		my $shell_call = "clusvcadm -e vm:$vm -m $node_cluster_name";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -6999,13 +6953,13 @@ sub start_vm
 				# Set the host manually as the server wasn't
 				# running when the cluster was last scanned.
 				my $vm_key = "vm:$vm";
-				$conf->{vm}{$vm_key}{current_host} = $node;
+				$an->data->{vm}{$vm_key}{current_host} = $node;
 				$show_remote_desktop_link      = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 					name1 => "vm",                          value1 => $vm,
 					name2 => "vm_key",                      value2 => $vm_key,
 					name3 => "node",                        value3 => $node,
-					name4 => "vm::${vm_key}::current_host", value4 => $conf->{vm}{$vm_key}{current_host},
+					name4 => "vm::${vm_key}::current_host", value4 => $an->data->{vm}{$vm_key}{current_host},
 				}, file => $THIS_FILE, line => __LINE__});
 				$server_started = 1;
 			}
@@ -7026,7 +6980,7 @@ sub start_vm
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7041,7 +6995,7 @@ sub start_vm
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$line = parse_text_line($conf, $line);
+					$line = parse_text_line($an, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
 					if (not $message)
@@ -7062,7 +7016,7 @@ sub start_vm
 				}, file => $THIS_FILE, line => __LINE__});
 				($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7077,7 +7031,7 @@ sub start_vm
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$line = parse_text_line($conf, $line);
+					$line = parse_text_line($an, $line);
 					if ($line =~ /Fail/i)
 					{
 						# The VM failed to start. Call a stop against it.
@@ -7101,7 +7055,7 @@ sub start_vm
 					}});
 				}
 			}
-			   $line    = parse_text_line($conf, $line);
+			   $line    = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -7173,8 +7127,7 @@ WHERE
 # This tries to parse lines coming back from a shell call to add highlighting and what-not.
 sub parse_text_line
 {
-	my ($conf, $line) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $line) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_text_line" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "line", value1 => $line, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -7204,13 +7157,12 @@ sub parse_text_line
 # This migrates a VM to the target node.
 sub migrate_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "migrate_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target = $conf->{cgi}{target};
-	my $vm     = $conf->{cgi}{vm};
-	my $node   = long_host_name_to_node_name($conf, $target);
+	my $target = $an->data->{cgi}{target};
+	my $vm     = $an->data->{cgi}{vm};
+	my $node   = long_host_name_to_node_name($an, $target);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",     value1 => $vm,
 		name2 => "node",   value2 => $node,
@@ -7218,9 +7170,9 @@ sub migrate_vm
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure the node is still ready to take this VM.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $vm_key = "vm:$vm";
-	my $ready = check_node_readiness($conf, $vm_key, $node);
+	my $ready = check_node_readiness($an, $vm_key, $node);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",  value1 => $node,
 		name2 => "ready", value2 => $ready,
@@ -7233,14 +7185,14 @@ sub migrate_vm
 			}});
 		print $an->Web->template({file => "server.html", template => "migrate-server-header", replace => { title => $say_title }});
 		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $vm";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -7255,7 +7207,7 @@ sub migrate_vm
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -7293,13 +7245,12 @@ sub migrate_vm
 # This sttempts to shut down a VM on a target node.
 sub stop_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node    = $conf->{cgi}{node};
-	my $vm      = $conf->{cgi}{vm};
-	my $cluster = $conf->{cgi}{cluster};
+	my $node    = $an->data->{cgi}{node};
+	my $vm      = $an->data->{cgi}{vm};
+	my $cluster = $an->data->{cgi}{cluster};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "vm",   value1 => $vm,
 		name2 => "node", value2 => $node,
@@ -7308,13 +7259,13 @@ sub stop_vm
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "time",        value1 => time,
-		name2 => "cgi::expire", value2 => $conf->{cgi}{expire},
+		name2 => "cgi::expire", value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (time > $conf->{cgi}{expire})
+	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0185"});
-		my $say_message = $an->String->get({key => "message_0444", variables => { server => $conf->{cgi}{vm} }});
+		my $say_message = $an->String->get({key => "message_0444", variables => { server => $an->data->{cgi}{vm} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -7322,15 +7273,15 @@ sub stop_vm
 		return(1);
 	}
 	
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $say_title = $an->String->get({key => "title_0051", variables => { server => $vm }});
 	print $an->Web->template({file => "server.html", template => "stop-server-header", replace => { title => $say_title }});
-	my $say_node = node_name_to_long_host_name($conf, $node);
+	my $say_node = node_name_to_long_host_name($an, $node);
 	my $return   = $an->Cman->stop_server({
 		server		=>	$vm,
 		target		=>	$node, 
-		port		=>	$conf->{node}{$node}{port}, 
-		password	=>	$conf->{sys}{root_password},
+		port		=>	$an->data->{node}{$node}{port}, 
+		password	=>	$an->data->{sys}{root_password},
 	});
 	foreach my $line (split/\n/, $return)
 	{
@@ -7342,7 +7293,7 @@ sub stop_vm
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$line = parse_text_line($conf, $line);
+		$line = parse_text_line($an, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
 		if (not $message)
@@ -7390,12 +7341,11 @@ WHERE
 # This sttempts to shut down a VM on a target node.
 sub join_cluster
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "join_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	my $proceed           = 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "in join_cluster(), node", value1 => $node,
@@ -7403,16 +7353,16 @@ sub join_cluster
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This, more than 
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	
 	# Proceed only if all of the storage components, cman and rgmanager are
 	# off.
-	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
+	if (($an->data->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
 	{
 		$proceed = 1;
 	}
@@ -7420,18 +7370,18 @@ sub join_cluster
 	{
 		my $say_title = $an->String->get({key => "title_0052", variables => { 
 				node_anvil_name	=>	$node_cluster_name,
-				anvil		=>	$conf->{cgi}{cluster},
+				anvil		=>	$an->data->{cgi}{cluster},
 			}});
 		print $an->Web->template({file => "server.html", template => "join-anvil-header", replace => { title => $say_title }});
 		my $shell_call = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -7446,7 +7396,7 @@ sub join_cluster
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -7466,7 +7416,7 @@ sub join_cluster
 		# Node is already in the Anvil!
 		my $say_title = $an->String->get({key => "title_0053", variables => { 
 				node_anvil_name	=>	$node_cluster_name,
-				anvil		=>	$conf->{cgi}{cluster},
+				anvil		=>	$an->data->{cgi}{cluster},
 			}});
 		print $an->Web->template({file => "server.html", template => "join-anvil-aborted", replace => { title => $say_title }});
 	}
@@ -7477,28 +7427,27 @@ sub join_cluster
 # This sttempts to start the cluster stack on both nodes simultaneously.
 sub dual_join
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster = $conf->{cgi}{cluster};
+	my $cluster = $an->data->{cgi}{cluster};
 	my $proceed = 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "in dual_join(), cluster", value1 => $cluster,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This, more than 
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	
 	# Proceed only if all of the storage components, cman and rgmanager are off.
 	my @abort_reason;
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 	{
-		if (($conf->{node}{$node}{daemon}{cman}{exit_code} eq "0") ||
-		($conf->{node}{$node}{daemon}{rgmanager}{exit_code} eq "0") ||
-		($conf->{node}{$node}{daemon}{drbd}{exit_code} eq "0") ||
-		($conf->{node}{$node}{daemon}{clvmd}{exit_code} eq "0") ||
-		($conf->{node}{$node}{daemon}{gfs2}{exit_code} eq "0"))
+		if (($an->data->{node}{$node}{daemon}{cman}{exit_code} eq "0") ||
+		($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} eq "0") ||
+		($an->data->{node}{$node}{daemon}{drbd}{exit_code} eq "0") ||
+		($an->data->{node}{$node}{daemon}{clvmd}{exit_code} eq "0") ||
+		($an->data->{node}{$node}{daemon}{gfs2}{exit_code} eq "0"))
 		{
 			$proceed = 0;
 			# Already joined the Anvil!
@@ -7508,13 +7457,13 @@ sub dual_join
 	}
 	if ($proceed)
 	{
-		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $conf->{cgi}{cluster} }});
+		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $an->data->{cgi}{cluster} }});
 		print $an->Web->template({file => "server.html", template => "dual-join-anvil-header", replace => { title => $say_title }});
 
 		# Now call the command against both nodes using '$an->Remote->synchronous_command_run()'.
 		my $command         = "/etc/init.d/cman start && /etc/init.d/rgmanager start";
-		my ($node1, $node2) = @{$conf->{clusters}{$cluster}{nodes}};
-		my $password        = $conf->{sys}{root_password};
+		my ($node1, $node2) = @{$an->data->{clusters}{$cluster}{nodes}};
+		my $password        = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command", value1 => $command,
 			name2 => "node1",   value2 => $node1,
@@ -7528,7 +7477,7 @@ sub dual_join
 			password	=>	$password, 
 		});
 		
-		foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+		foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node",             value1 => $node,
@@ -7544,7 +7493,7 @@ sub dual_join
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$line = parse_text_line($conf, $line);
+				$line = parse_text_line($an, $line);
 				my $message = ($line =~ /^(.*)\[/)[0];
 				my $status  = ($line =~ /(\[.*)$/)[0];
 				if (not $message)
@@ -7566,7 +7515,7 @@ sub dual_join
 	}
 	else
 	{
-		my $say_title = $an->String->get({key => "title_0055", variables => { anvil => $conf->{cgi}{cluster} }});
+		my $say_title = $an->String->get({key => "title_0055", variables => { anvil => $an->data->{cgi}{cluster} }});
 		print $an->Web->template({file => "server.html", template => "dual-join-anvil-aborted-header", replace => { title => $say_title }});
 		foreach my $reason (@abort_reason)
 		{
@@ -7581,12 +7530,11 @@ sub dual_join
 # This forcibly shuts down a VM on a target node. The cluster should restart it shortly after.
 sub force_off_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "force_off_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node = $conf->{cgi}{node};
-	my $vm   = $conf->{cgi}{vm};
+	my $node = $an->data->{cgi}{node};
+	my $vm   = $an->data->{cgi}{vm};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "in force_off_vm(), vm", value1 => $vm,
 		name2 => "node",                  value2 => $node,
@@ -7595,13 +7543,13 @@ sub force_off_vm
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current time", value1 => time,
-		name2 => "cgi::expire",  value2 => $conf->{cgi}{expire},
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (time > $conf->{cgi}{expire})
+	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0186"});
-		my $say_message = $an->String->get({key => "message_0445", variables => { server => $conf->{cgi}{vm} }});
+		my $say_message = $an->String->get({key => "message_0445", variables => { server => $an->data->{cgi}{vm} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -7609,18 +7557,18 @@ sub force_off_vm
 		return(1);
 	}
 	
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $say_title = $an->String->get({key => "title_0056", variables => { server => $vm }});
 	print $an->Web->template({file => "server.html", template => "force-off-server-header", replace => { title => $say_title }});
 	my $shell_call = "/usr/bin/virsh destroy $vm";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -7635,7 +7583,7 @@ sub force_off_vm
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$line = parse_text_line($conf, $line);
+		$line = parse_text_line($an, $line);
 		my $message = ($line =~ /^(.*)\[/)[0];
 		my $status  = ($line =~ /(\[.*)$/)[0];
 		if (not $message)
@@ -7657,52 +7605,51 @@ sub force_off_vm
 # cluster out, deletes the VM's definition file and finally deletes the LV.
 sub delete_vm
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster = $conf->{cgi}{cluster};
-	my $say_vm  = $conf->{cgi}{vm};
-	my $vm      = "vm:$conf->{cgi}{vm}";
+	my $cluster = $an->data->{cgi}{cluster};
+	my $say_vm  = $an->data->{cgi}{vm};
+	my $vm      = "vm:$an->data->{cgi}{vm}";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "in delete_vm(), vm", value1 => $vm,
 		name2 => "cluster",            value2 => $cluster,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This, more than ... what? what was I going to say here?!
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $proceed      = 1;
 	my $stop_vm      = 0;
 	my $say_host     = "";
 	my $host         = "";
 	my $abort_reason = "";
-	my $node         = $conf->{sys}{cluster}{node1_name};
-	my $node1        = $conf->{sys}{cluster}{node1_name};
-	my $node2        = $conf->{sys}{cluster}{node2_name};
+	my $node         = $an->data->{sys}{cluster}{node1_name};
+	my $node1        = $an->data->{sys}{cluster}{node1_name};
+	my $node2        = $an->data->{sys}{cluster}{node2_name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "vm::${vm}::host", value1 => $conf->{vm}{$vm}{host},
+		name1 => "vm::${vm}::host", value1 => $an->data->{vm}{$vm}{host},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $conf->{vm}{$vm}{host})
+	if (not $an->data->{vm}{$vm}{host})
 	{
 		$proceed      = 0;
 		# Failed to read the server's details.
 		my $sat_problem  = $an->String->get({key => "message_0195", variables => { server => $say_vm }});
 		   $abort_reason = "<b>$sat_problem!</b><br />#!string!message_0194!#<br />#!string!explain_0035!#<br />#!string!brand_0011!#<br />";
 	}
-	elsif ($conf->{vm}{$vm}{host} ne "none")
+	elsif ($an->data->{vm}{$vm}{host} ne "none")
 	{
 		$stop_vm  = 1;
-		$say_host = $conf->{vm}{$vm}{host};
-		$host     = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+		$say_host = $an->data->{vm}{$vm}{host};
+		$host     = long_host_name_to_node_name($an, $an->data->{vm}{$vm}{host});
 	}
 	else
 	{
 		# Pick the first up node to use.
-		if ($conf->{node}{$node1}{up})
+		if ($an->data->{node}{$node1}{up})
 		{
 			$host = $node1;
 		}
-		elsif ($conf->{node}{$node2}{up})
+		elsif ($an->data->{node}{$node2}{up})
 		{
 			$host = $node2;
 		}
@@ -7733,15 +7680,15 @@ sub delete_vm
 		# First, delete the VM from the cluster.
 		my $ccs_exit_code;
 		   $proceed = 0;
-		my $shell_call = "ccs -h localhost --activate --sync --password \"$conf->{clusters}{$cluster}{ricci_pw}\" --rmvm $conf->{cgi}{vm}; echo ccs:\$?";
-		my $password   = $conf->{sys}{root_password};
+		my $shell_call = "ccs -h localhost --activate --sync --password \"".$an->data->{clusters}{$cluster}{ricci_pw}."\" --rmvm $an->data->{cgi}{vm}; echo ccs:\$?";
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -7760,7 +7707,7 @@ sub delete_vm
 			}
 			else
 			{
-				$line = parse_text_line($conf, $line);
+				$line = parse_text_line($an, $line);
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 			}
 		}
@@ -7798,7 +7745,7 @@ sub delete_vm
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7817,7 +7764,7 @@ sub delete_vm
 				}
 				else
 				{
-					$line = parse_text_line($conf, $line);
+					$line = parse_text_line($an, $line);
 					print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 				}
 			}
@@ -7844,7 +7791,7 @@ sub delete_vm
 		{
 			# Free up the storage
 			print $an->Web->template({file => "server.html", template => "delete-server-remove-lv-header"});
-			foreach my $lv (keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
+			foreach my $lv (keys %{$an->data->{vm}{$vm}{node}{$node}{lv}})
 			{
 				my $message = $an->String->get({key => "message_0201", variables => { lv => $lv }});
 				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
@@ -7856,7 +7803,7 @@ sub delete_vm
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7894,9 +7841,9 @@ sub delete_vm
 			
 			# Regardless of whether the removal succeeded, archive
 			# and then delete the definition file.
-			my $file = $conf->{vm}{$vm}{definition_file};
-			archive_file($conf, $host, $file, 0, "hidden_table");
-			remove_vm_definition($conf, $host, $file);
+			my $file = $an->data->{vm}{$vm}{definition_file};
+			archive_file($an, $host, $file, 0, "hidden_table");
+			remove_vm_definition($an, $host, $file);
 			
 			# Remove it from the database now if we have a database connection.
 			if ($an->data->{sys}{db_connections})
@@ -7937,8 +7884,7 @@ WHERE
 # This deletes a VM definition file.
 sub remove_vm_definition
 {
-	my ($conf, $node, $file) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $file) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "file", value2 => $file, 
@@ -7957,14 +7903,14 @@ sub remove_vm_definition
 	# the file is gone. 'ls' will return '2' on file not found.
 	my $ls_exit_code;
 	my $shell_call = "rm -f $file; ls $file; echo ls:\$?";
-	my $password   = $conf->{sys}{root_password};
+	my $password   = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -7984,7 +7930,7 @@ sub remove_vm_definition
 		else
 		{
 			### There will be output, I don't care about it.
-			#$line = parse_text_line($conf, $line);
+			#$line = parse_text_line($an, $line);
 			#print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 		}
 	}
@@ -8013,8 +7959,7 @@ sub remove_vm_definition
 # This copies the passed file to 'node:/shared/archive'
 sub archive_file
 {
-	my ($conf, $node, $file, $quiet, $table_type) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $file, $quiet, $table_type) = @_;
 	$table_type = "hidden_table" if not $table_type;
 	$quiet      = 0 if not defined $quiet;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "archive_file" }, message_key => "an_variables_0004", message_variables => { 
@@ -8027,21 +7972,21 @@ sub archive_file
 	### TODO: Check/create the archive directory.
 	
 	my ($directory, $file_name) =  ($file =~ /^(.*)\/(.*?)$/);
-	my ($date)                  =  AN::Cluster::get_date($conf, time);
+	my ($date)                  =  AN::Cluster::get_date($an, time);
 	my $destination             =  "/shared/archive/$file_name.$date";
 	   $destination             =~ s/ /_/;
 
 	my $cp_exit_code;
 	my $header_printed = 0;
 	my $shell_call     = "cp $file $destination; echo cp:\$?";
-	my $password       = $conf->{sys}{root_password};
+	my $password       = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -8075,7 +8020,7 @@ sub archive_file
 				}
 				$header_printed = 1;
 			}
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 		}
 	}
@@ -8129,24 +8074,23 @@ sub archive_file
 # This makes an ssh call to the node and sends a simple 'poweroff' command.
 sub poweroff_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "poweroff_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current time", value1 => time,
-		name2 => "cgi::expire",  value2 => $conf->{cgi}{expire},
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (time > $conf->{cgi}{expire})
+	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0187"});
-		my $say_message = $an->String->get({key => "message_0446", variables => { node => $conf->{cgi}{node_cluster_name} }});
+		my $say_message = $an->String->get({key => "message_0446", variables => { node => $an->data->{cgi}{node_cluster_name} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -8155,8 +8099,8 @@ sub poweroff_node
 	}
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	AN::Cluster::scan_cluster($conf);
-	my $proceed = $conf->{node}{$node}{enable_poweroff};
+	AN::Cluster::scan_cluster($an);
+	my $proceed = $an->data->{node}{$node}{enable_poweroff};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "in poweroff_node(), node", value1 => $node,
 		name2 => "proceed",                  value2 => $proceed,
@@ -8172,17 +8116,17 @@ sub poweroff_node
 		}});
 		
 		# The ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
-		mark_node_as_clean_off($conf, $node, 0);	# 0 == no delay reboot time
+		mark_node_as_clean_off($an, $node, 0);	# 0 == no delay reboot time
 		
 		my $shell_call = "poweroff && echo \"Power down initiated. Please return to the main page now.\"";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -8197,7 +8141,7 @@ sub poweroff_node
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -8215,28 +8159,27 @@ sub poweroff_node
 	else
 	{
 		# Aborted, in use now.
-		my $say_title   = $an->String->get({key => "title_0062", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
-		my $say_message = $an->String->get({key => "message_0214", variables => { node_anvil_name => $conf->{cgi}{node_cluster_name} }});
+		my $say_title   = $an->String->get({key => "title_0062", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+		my $say_message = $an->String->get({key => "message_0214", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
 		print $an->Web->template({file => "server.html", template => "poweroff-node-aborted", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,
 		}});
 	}
 	
-	AN::Cluster::footer($conf);
+	AN::Cluster::footer($an);
 	return(0);
 }
 
 # This sequentially stops all servers, withdraws both nodes and powers down the Anvil!.
 sub cold_stop_anvil
 {
-	my ($conf, $cancel_ups) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $cancel_ups) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "cold_stop_anvil" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "cancel_ups", value1 => $cancel_ups, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil   = $conf->{cgi}{cluster};
+	my $anvil   = $an->data->{cgi}{cluster};
 	my $proceed = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil", value1 => $anvil,
@@ -8245,13 +8188,13 @@ sub cold_stop_anvil
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current time", value1 => time,
-		name2 => "cgi::expire",  value2 => $conf->{cgi}{expire},
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (time > $conf->{cgi}{expire})
+	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0184"});
-		my $say_message = $an->String->get({key => "message_0443", variables => { anvil => $conf->{cgi}{cluster} }});
+		my $say_message = $an->String->get({key => "message_0443", variables => { anvil => $an->data->{cgi}{cluster} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -8260,31 +8203,31 @@ sub cold_stop_anvil
 	}
 	
 	# Make sure we've got an up-to-date view of the cluster.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	
 	# If the system is already down, the user may be asking to power cycle/ power off the rack anyway.
 	# So if the Anvil! is down, we'll instead perform the requested sub-task using our local copy of the
 	# kick script.
-	if ($conf->{sys}{up_nodes} > 0)
+	if ($an->data->{sys}{up_nodes} > 0)
 	{
 		my $say_title = $an->String->get({key => "title_0181", variables => { anvil => $anvil }});
 		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
 		
 		# Pick a node to use to stop servers.
-		my $node = $conf->{up_nodes}->[0];
+		my $node = $an->data->{up_nodes}->[0];
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node", value1 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Now find and stop all servers.
-		foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{vm}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server,
-				name2 => "host",   value2 => $conf->{vm}{$server}{host},
-				name3 => "state",  value3 => $conf->{vm}{$server}{'state'},
+				name2 => "host",   value2 => $an->data->{vm}{$server}{host},
+				name3 => "state",  value3 => $an->data->{vm}{$server}{'state'},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{vm}{$server}{'state'} eq "started")
+			if ($an->data->{vm}{$server}{'state'} eq "started")
 			{
 				# Stop the server
 				my $say_server  =  $server;
@@ -8301,15 +8244,15 @@ sub cold_stop_anvil
 					name1 => "server", value1 => $server,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $shell_output = "";
-				my $shell_call   = "$conf->{path}{clusvcadm} -d $server";
-				my $password     = $conf->{sys}{root_password};
+				my $shell_call   = $an->data->{path}{clusvcadm}." -d $server";
+				my $password     = $an->data->{sys}{root_password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -8325,11 +8268,11 @@ sub cold_stop_anvil
 						name1 => "line", value1 => $line, 
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$line =  parse_text_line($conf, $line);
+					$line =  parse_text_line($an, $line);
 					$shell_output .= "$line<br />\n";
 					if ($line =~ /success/i)
 					{
-						$conf->{vm}{$server}{'state'} = "disabled";
+						$an->data->{vm}{$server}{'state'} = "disabled";
 					}
 				}
 				$shell_output =~ s/\n$//;
@@ -8347,14 +8290,14 @@ sub cold_stop_anvil
 		
 		# Servers down?
 		my $proceed = 1;
-		foreach my $server (sort {$a cmp $b} keys %{$conf->{vm}})
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{vm}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "server", value1 => $server,
-				name2 => "host",   value2 => $conf->{vm}{$server}{host},
-				name3 => "state",  value3 => $conf->{vm}{$server}{'state'},
+				name2 => "host",   value2 => $an->data->{vm}{$server}{host},
+				name3 => "state",  value3 => $an->data->{vm}{$server}{'state'},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{vm}{$server}{'state'} eq "started")
+			if ($an->data->{vm}{$server}{'state'} eq "started")
 			{
 				# Well crap...
 				$an->Log->entry({log_level => 2, message_key => "log_0243", message_variables => {
@@ -8391,14 +8334,14 @@ sub cold_stop_anvil
 			}});
 			
 			# Now withdraw both nodes from the cluster, if they're up.
-			foreach my $node (@{$conf->{up_nodes}})
+			foreach my $node (@{$an->data->{up_nodes}})
 			{
 				# rc == 0 -> up
 				$an->Log->entry({log_level => 2, message_key => "log_0244", message_variables => {
 					node        => $node, 
-					return_code => $conf->{node}{$node}{daemon}{cman}{exit_code}, 
+					return_code => $an->data->{node}{$node}{daemon}{cman}{exit_code}, 
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($conf->{node}{$node}{daemon}{cman}{exit_code})
+				if ($an->data->{node}{$node}{daemon}{cman}{exit_code})
 				{
 					# Was already withdrawn.
 					$an->Log->entry({log_level => 2, message_key => "log_0245", message_variables => {
@@ -8430,14 +8373,14 @@ sub cold_stop_anvil
 					}, file => $THIS_FILE, line => __LINE__});
 					my $shell_output = "";
 					my $shell_call   = "/etc/init.d/rgmanager stop && /etc/init.d/cman stop; echo rc:\$?";
-					my $password     = $conf->{sys}{root_password};
+					my $password     = $an->data->{sys}{root_password};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 						name2 => "node",       value2 => $node,
 					}, file => $THIS_FILE, line => __LINE__});
 					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 						target		=>	$node,
-						port		=>	$conf->{node}{$node}{port}, 
+						port		=>	$an->data->{node}{$node}{port}, 
 						password	=>	$password,
 						ssh_fh		=>	"",
 						'close'		=>	0,
@@ -8471,7 +8414,7 @@ sub cold_stop_anvil
 						}
 						else
 						{
-							$line =  parse_text_line($conf, $line);
+							$line =  parse_text_line($an, $line);
 							$shell_output .= "$line<br />\n";
 						}
 					}
@@ -8496,7 +8439,7 @@ sub cold_stop_anvil
 				# node. If we're powering off or power cycling the system, tell 
 				# mark_node_as_clean_off()' to set a delay instead of "clean" (off).
 				my $delay = 0;
-				if (($conf->{cgi}{subtask} eq "power_cycle") or ($conf->{cgi}{subtask} eq "power_off"))
+				if (($an->data->{cgi}{subtask} eq "power_cycle") or ($an->data->{cgi}{subtask} eq "power_off"))
 				{
 					# Set the delay. This will set the hosts -> host_stop_reason
 					# to be time + sys::power_off_delay.
@@ -8511,14 +8454,14 @@ sub cold_stop_anvil
 				}});
 				
 				# Now withdraw both nodes from the cluster, if they're up.
-				foreach my $node (@{$conf->{up_nodes}})
+				foreach my $node (@{$an->data->{up_nodes}})
 				{
 					# Mark it as clean-off
 					$an->Log->entry({log_level => 2, message_key => "log_0250", message_variables => {
 						node  => $node, 
 						delay => $delay, 
 					}, file => $THIS_FILE, line => __LINE__});
-					mark_node_as_clean_off($conf, $node, $delay);
+					mark_node_as_clean_off($an, $node, $delay);
 					
 					# Power it off
 					$an->Log->entry({log_level => 1, message_key => "log_0251", message_variables => {
@@ -8541,21 +8484,21 @@ sub cold_stop_anvil
 					if ($cancel_ups)
 					{
 						$shell_call = "
-if [ -e '$conf->{path}{nodes}{'anvil-kick-apc-ups'}' ]
+if [ -e '$an->data->{path}{nodes}{'anvil-kick-apc-ups'}' ]
 then
     echo 'Cancelling APC UPS watchdog timer.'
-    $conf->{path}{nodes}{'anvil-kick-apc-ups'} --cancel --force
+    $an->data->{path}{nodes}{'anvil-kick-apc-ups'} --cancel --force
 fi;
 poweroff";
 					}
-					my $password   = $conf->{sys}{root_password};
+					my $password   = $an->data->{sys}{root_password};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 						name2 => "node",       value2 => $node,
 					}, file => $THIS_FILE, line => __LINE__});
 					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 						target		=>	$node,
-						port		=>	$conf->{node}{$node}{port}, 
+						port		=>	$an->data->{node}{$node}{port}, 
 						password	=>	$password,
 						ssh_fh		=>	"",
 						'close'		=>	0,
@@ -8614,7 +8557,7 @@ poweroff";
 	elsif ($an->data->{cgi}{note} eq "no_abort")
 	{
 		# The user called this while the Anvil! was down, so don't throw a warning.
-		my $say_subtask = $conf->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
+		my $say_subtask = $an->data->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
 		my $say_title   = $an->String->get({key => "title_0153", variables => { subtask => $say_subtask }});
 		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
 	}
@@ -8631,9 +8574,9 @@ poweroff";
 	
 	# If I have a sub-task, perform it now.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::subtask", value1 => $conf->{cgi}{subtask},
+		name1 => "cgi::subtask", value1 => $an->data->{cgi}{subtask},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{subtask} eq "power_cycle")
+	if ($an->data->{cgi}{subtask} eq "power_cycle")
 	{
 		# Tell the user
 		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
@@ -8644,7 +8587,7 @@ poweroff";
 		}});
 		
 		# Nighty night, see you in the morning!
-		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --reboot --force";
+		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --reboot --force";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8659,7 +8602,7 @@ poweroff";
 		}
 		close $file_handle;
 	}
-	elsif($conf->{cgi}{subtask} eq "power_off")
+	elsif($an->data->{cgi}{subtask} eq "power_off")
 	{
 		# Tell the user
 		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
@@ -8670,7 +8613,7 @@ poweroff";
 		}});
 		
 		# Do eet!
-		my $shell_call = "$conf->{path}{'call_anvil-kick-apc-ups'} --shutdown --force";
+		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --shutdown --force";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8689,30 +8632,29 @@ poweroff";
 	# All done.
 	print $an->Web->template({file => "server.html", template => "cold-stop-footer"});
 	
-	AN::Cluster::footer($conf);
+	AN::Cluster::footer($an);
 	return(0);
 }
 
 # This uses the local machine to call "power on" against both nodes in the cluster.
 sub dual_boot
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $proceed      = 1;
-	my $cluster      = $conf->{cgi}{cluster};
+	my $cluster      = $an->data->{cgi}{cluster};
 	my $shell_call   = "";
 	my $booted_nodes = [];
 	# TODO: Provide an option to boot just one node if one node fails for
 	# some reason but the other node is fine.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my @abort_reasons;
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 	{
 		# Read the cache files.
-		AN::Cluster::read_node_cache($conf, $node);
-		if (not $conf->{node}{$node}{info}{power_check_command})
+		AN::Cluster::read_node_cache($an, $node);
+		if (not $an->data->{node}{$node}{info}{power_check_command})
 		{
 			# No cache
 			my $reason = $an->String->get({key => "message_0215", variables => { node => $node }});
@@ -8721,21 +8663,21 @@ sub dual_boot
 		}
 		
 		# Confirm the node is off still.
-		AN::Cluster::check_if_on($conf, $node);
+		AN::Cluster::check_if_on($an, $node);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node}::is_on", value1 => $conf->{node}{$node}{is_on},
+			name1 => "node::${node}::is_on", value1 => $an->data->{node}{$node}{is_on},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{node}{$node}{is_on} == 1)
+		if ($an->data->{node}{$node}{is_on} == 1)
 		{
 			# Already on.
 			my $reason = $an->String->get({key => "message_0216", variables => { node => $node }});
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
-		elsif ($conf->{node}{$node}{is_on} == 2)
+		elsif ($an->data->{node}{$node}{is_on} == 2)
 		{
 			# Can't reach IPMI interface
-			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			my ($target_host) = ($an->data->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 			my $reason        = $an->String->get({key => "message_0217", variables => { 
 					node		=>	$node,
 					target_host	=>	$target_host,
@@ -8743,10 +8685,10 @@ sub dual_boot
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
-		elsif ($conf->{node}{$node}{is_on} == 3)
+		elsif ($an->data->{node}{$node}{is_on} == 3)
 		{
 			# Not on the IPMI interface's subnet
-			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			my ($target_host) = ($an->data->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 			my $reason        = $an->String->get({key => "message_0218", variables => { 
 					node		=>	$node,
 					target_host	=>	$target_host,
@@ -8754,10 +8696,10 @@ sub dual_boot
 			push @abort_reasons, "$reason\n";
 			$proceed = 0;
 		}
-		elsif ($conf->{node}{$node}{is_on} == 4)
+		elsif ($an->data->{node}{$node}{is_on} == 4)
 		{
 			# Cache found, but no power command recorded
-			my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+			my ($target_host) = ($an->data->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 			my $reason        = $an->String->get({key => "message_0219", variables => { 
 					node		=>	$node,
 					target_host	=>	$target_host,
@@ -8767,14 +8709,14 @@ sub dual_boot
 		}
 		
 		# Still alive?
-		$shell_call .= $conf->{node}{$node}{info}{power_check_command}." -o on; ";
+		$shell_call .= $an->data->{node}{$node}{info}{power_check_command}." -o on; ";
 		push @{$booted_nodes}, $node;
 	}
 	
 	# Let's go
 	if ($proceed)
 	{
-		my $say_message = $an->String->get({key => "message_0220", variables => { anvil => $conf->{cgi}{cluster} }});
+		my $say_message = $an->String->get({key => "message_0220", variables => { anvil => $an->data->{cgi}{cluster} }});
 		print $an->Web->template({file => "server.html", template => "dual-boot-header", replace => { message => $say_message }});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -8790,7 +8732,7 @@ sub dual_boot
 			
 			# If I can't contact the peer's database, I will get an error message. 
 			
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -8808,7 +8750,7 @@ sub dual_boot
 		# Update ScanCore to tell it that the nodes should now be booted if they're found to be off.
 		foreach my $node (sort {$a cmp $b} @{$booted_nodes})
 		{
-			mark_node_as_clean_on($conf, $node);
+			mark_node_as_clean_on($an, $node);
 		}
 		
 		print $an->Web->template({file => "server.html", template => "dual-boot-footer"});
@@ -8816,7 +8758,7 @@ sub dual_boot
 	else
 	{
 		# Abort, abort!
-		my $say_title= $an->String->get({key => "title_0064", variables => { anvil => $conf->{cgi}{cluster} }});
+		my $say_title= $an->String->get({key => "title_0064", variables => { anvil => $an->data->{cgi}{cluster} }});
 		print $an->Web->template({file => "server.html", template => "dual-boot-aborted-header", replace => { title => $say_title }});
 		foreach my $reason (@abort_reasons)
 		{
@@ -8831,38 +8773,37 @@ sub dual_boot
 # This uses the IPMI (or similar) to try and power on the node.
 sub poweron_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "poweron_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",              value1 => $node,
 		name2 => "node_cluster_name", value2 => $node_cluster_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	AN::Cluster::scan_cluster($conf);
-	AN::Cluster::check_if_on($conf, $node);
+	AN::Cluster::scan_cluster($an);
+	AN::Cluster::check_if_on($an, $node);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node::${node}::is_on",  value1 => $conf->{node}{$node}{is_on},
+		name1 => "node::${node}::is_on",  value1 => $an->data->{node}{$node}{is_on},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $proceed = 0;
 	# Unknown error is the default.
 	my $abort_reason = $an->String->get({key => "message_0224", variables => { node => $node }});
-	if ($conf->{node}{$node}{is_on} == 0)
+	if ($an->data->{node}{$node}{is_on} == 0)
 	{
 		$proceed = 1;
 	}
-	elsif ($conf->{node}{$node}{is_on} == 1)
+	elsif ($an->data->{node}{$node}{is_on} == 1)
 	{
 		# Already on
 		$abort_reason = $an->String->get({key => "message_0225", variables => { node_anvil_name => $node_cluster_name }});
 	}
-	elsif ($conf->{node}{$node}{is_on} == 2)
+	elsif ($an->data->{node}{$node}{is_on} == 2)
 	{
 		# Unable to contact the IPMI BMC
 		$abort_reason = $an->String->get({key => "message_0226", variables => { node_anvil_name => $node_cluster_name }});
@@ -8885,12 +8826,12 @@ sub poweron_node
 		my $peer  = "";
 		my $is_on = 2;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
+			name1 => "sys::up_nodes", value1 => $an->data->{sys}{up_nodes},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{sys}{up_nodes} == 1)
+		if ($an->data->{sys}{up_nodes} == 1)
 		{
 			# It has to be the peer of this node.
-			$peer = @{$conf->{up_nodes}}[0];
+			$peer = @{$an->data->{up_nodes}}[0];
 		}
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8900,24 +8841,24 @@ sub poweron_node
 		if ($peer)
 		{
 			# It's peer is up, use it.
-			if (not $conf->{node}{$node}{info}{power_check_command})
+			if (not $an->data->{node}{$node}{info}{power_check_command})
 			{
 				# Can't find the power command on the peer
 				my $error = $an->String->get({key => "message_0227", variables => { 
 						node	=>	$node,
 						peer	=>	$peer,
 					}});
-				AN::Cluster::error($conf, "$error\n");
+				AN::Cluster::error($an, "$error\n");
 			}
-			my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
-			my $password   = $conf->{sys}{root_password};
+			my $shell_call = $an->data->{node}{$node}{info}{power_check_command}." -o on";
+			my $password   = $an->data->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "peer",       value2 => $peer,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$peer,
-				port		=>	$conf->{node}{$peer}{port}, 
+				port		=>	$an->data->{node}{$peer}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -8933,21 +8874,21 @@ sub poweron_node
 			}
 			
 			# Update ScanCore to tell it that the nodes should now be booted.
-			mark_node_as_clean_on($conf, $node);
+			mark_node_as_clean_on($an, $node);
 			print $an->Web->template({file => "server.html", template => "poweron-node-close-tr"});
 		}
 		else
 		{
 			# Try to boot the node locally.
-			if ($conf->{node}{$node}{info}{power_check_command})
+			if ($an->data->{node}{$node}{info}{power_check_command})
 			{
-				my ($target_host) = ($conf->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
+				my ($target_host) = ($an->data->{node}{$node}{info}{power_check_command} =~ /-a\s(.*?)\s/)[0];
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node",                value1 => $node,
 					name2 => "target host",         value2 => $target_host,
-					name3 => "power check command", value3 => $conf->{node}{$node}{info}{power_check_command},
+					name3 => "power check command", value3 => $an->data->{node}{$node}{info}{power_check_command},
 				}, file => $THIS_FILE, line => __LINE__});
-				my ($local_access, $target_ip) = AN::Cluster::on_same_network($conf, $target_host, $node);
+				my ($local_access, $target_ip) = AN::Cluster::on_same_network($an, $target_host, $node);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node",         value1 => $node,
 					name2 => "local access", value2 => $local_access,
@@ -8955,7 +8896,7 @@ sub poweron_node
 				if ($local_access)
 				{
 					# I can reach it directly
-					my $shell_call = "$conf->{node}{$node}{info}{power_check_command} -o on";
+					my $shell_call = $an->data->{node}{$node}{info}{power_check_command}." -o on";
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 					}, file => $THIS_FILE, line => __LINE__});
@@ -9004,7 +8945,7 @@ sub poweron_node
 		}});
 	}
 	print $an->Web->template({file => "server.html", template => "poweron-node-footer"});
-	AN::Cluster::footer($conf);
+	AN::Cluster::footer($an);
 	
 	return(0);
 }
@@ -9012,14 +8953,13 @@ sub poweron_node
 # This uses the fence methods, as defined in cluster.conf and in the proper order, to fence the target node.
 sub fence_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
-	my $peer              = get_peer_node($conf, $node);
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
+	my $peer              = get_peer_node($an, $node);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "in poweron_node(), node", value1 => $node,
 		name2 => "peer",                    value2 => $peer,
@@ -9029,13 +8969,13 @@ sub fence_node
 	# Has the timer expired?
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "current time", value1 => time,
-		name2 => "cgi::expire",  value2 => $conf->{cgi}{expire},
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (time > $conf->{cgi}{expire})
+	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0188"});
-		my $say_message = $an->String->get({key => "message_0447", variables => { node => $conf->{cgi}{node_cluster_name} }});
+		my $say_message = $an->String->get({key => "message_0447", variables => { node => $an->data->{cgi}{node_cluster_name} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title		=>	$say_title,
 			message		=>	$say_message,
@@ -9044,22 +8984,22 @@ sub fence_node
 	}
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	AN::Cluster::scan_cluster($conf);
+	AN::Cluster::scan_cluster($an);
 	my $proceed      = 1;
 	my @abort_reason = "";
 	
 	my $fence_string = "";
 	# See if I already have the fence string. If not, load it from cache.
-	if ($conf->{node}{$node}{info}{fence_methods})
+	if ($an->data->{node}{$node}{info}{fence_methods})
 	{
-		$fence_string = $conf->{node}{$node}{info}{fence_methods};
+		$fence_string = $an->data->{node}{$node}{info}{fence_methods};
 	}
 	else
 	{
-		AN::Cluster::read_node_cache($conf, $node);
-		if ($conf->{node}{$node}{info}{fence_methods})
+		AN::Cluster::read_node_cache($an, $node);
+		if ($an->data->{node}{$node}{info}{fence_methods})
 		{
-			$fence_string = $conf->{node}{$node}{info}{fence_methods};
+			$fence_string = $an->data->{node}{$node}{info}{fence_methods};
 		}
 		else
 		{
@@ -9074,13 +9014,13 @@ sub fence_node
 	# available, abort.
 	if ($proceed)
 	{
-		if (not $conf->{node}{$peer}{up})
+		if (not $an->data->{node}{$peer}{up})
 		{
 			# See if this machine can reach each '-a ...' fence device
 			# address.
 			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
 			{
-				my ($local_access, $target_ip) = AN::Cluster::on_same_network($conf, $address, $node);
+				my ($local_access, $target_ip) = AN::Cluster::on_same_network($an, $address, $node);
 				if (not $local_access)
 				{
 					   $proceed = 0;
@@ -9124,7 +9064,7 @@ sub fence_node
 			my $on_success  = 1;
 			
 			# If the peer is up, set the command to run through it.
-			if ($conf->{node}{$peer}{up})
+			if ($an->data->{node}{$peer}{up})
 			{
 				# When called remotely, I need to double-escape
 				# the $? to protect it inside the "".
@@ -9149,14 +9089,14 @@ sub fence_node
 			{
 				my $node       = $1;
 				my $shell_call = $2;
-				my $password   = $conf->{sys}{root_password};
+				my $password   = $an->data->{sys}{root_password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9232,14 +9172,14 @@ sub fence_node
 			{
 				my $node       = $1;
 				my $shell_call = $2;
-				my $password   = $conf->{sys}{root_password};
+				my $password   = $an->data->{sys}{root_password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9319,7 +9259,7 @@ sub fence_node
 		}
 	}
 	print $an->Web->template({file => "server.html", template => "fence-node-footer"});
-	AN::Cluster::footer($conf);
+	AN::Cluster::footer($an);
 	
 	return(0);
 }
@@ -9328,17 +9268,16 @@ sub fence_node
 # This does a final check of the target node then withdraws it from the cluster.
 sub withdraw_node
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make sure no VMs are running.
-	my $node              = $conf->{cgi}{node};
-	my $node_cluster_name = $conf->{cgi}{node_cluster_name};
+	my $node              = $an->data->{cgi}{node};
+	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
 	
 	# Scan the cluster, then confirm that withdrawl is still enabled.
-	AN::Cluster::scan_cluster($conf);
-	my $proceed = $conf->{node}{$node}{enable_withdraw};
+	AN::Cluster::scan_cluster($an);
+	my $proceed = $an->data->{node}{$node}{enable_withdraw};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",    value1 => $node,
 		name2 => "proceed", value2 => $proceed,
@@ -9352,13 +9291,13 @@ sub withdraw_node
 		# Sometimes rgmanager gets stuck waiting for gfs2 and/or clvmd2 to stop. So to help with 
 		# these cases, we'll call '$an->Remote->delayed_run()' for at least 60 seconds in the future.
 		# This usually gives rgmanager the kick it needs to actually stop.
-		my $password = $conf->{sys}{root_password};
+		my $password = $an->data->{sys}{root_password};
 		my ($token, $output, $problem) = $an->Remote->delayed_run({
 			command  => "/etc/init.d/gfs2 stop && /etc/init.d/clvmd stop",
 			delay    => 60,
 			target   => $node,
 			password => $password,
-			port     => $conf->{node}{$node}{port},
+			port     => $an->data->{node}{$node}{port},
 		});
 		
 		my $rgmanager_stop = 1;
@@ -9369,7 +9308,7 @@ sub withdraw_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -9388,7 +9327,7 @@ sub withdraw_node
 			{
 				$rgmanager_stop = 0;
 			}
-			$line = parse_text_line($conf, $line);
+			$line = parse_text_line($an, $line);
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
 			if (not $message)
@@ -9421,7 +9360,7 @@ sub withdraw_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9447,7 +9386,7 @@ sub withdraw_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -9466,7 +9405,7 @@ sub withdraw_node
 				{
 					$cman_stop = 0;
 				}
-				$line = parse_text_line($conf, $line);
+				$line = parse_text_line($an, $line);
 				my $message = ($line =~ /^(.*)\[/)[0];
 				my $status  = ($line =~ /(\[.*)$/)[0];
 				if (not $message)
@@ -9493,7 +9432,7 @@ sub withdraw_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9515,7 +9454,7 @@ sub withdraw_node
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line,
 					}, file => $THIS_FILE, line => __LINE__});
-					$line = parse_text_line($conf, $line);
+					$line = parse_text_line($an, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
 					if (not $message)
@@ -9533,7 +9472,7 @@ sub withdraw_node
 				{
 					# and we're back
 					print $an->Web->template({file => "server.html", template => "withdraw-node-membership-restarted-successfully"});
-					recover_rgmanager($conf, $node);
+					recover_rgmanager($an, $node);
 					
 				}
 				else
@@ -9547,7 +9486,7 @@ sub withdraw_node
 		{
 			# Recover rgmanager
 			print $an->Web->template({file => "server.html", template => "withdraw-node-resource-manager-failed-to-stop"});
-			recover_rgmanager($conf, $node);
+			recover_rgmanager($an, $node);
 		}
 		print $an->Web->template({file => "server.html", template => "withdraw-node-footer"});
 	}
@@ -9561,7 +9500,7 @@ sub withdraw_node
 		}});
 	}
 	
-	AN::Cluster::footer($conf);
+	AN::Cluster::footer($an);
 	
 	return(0);
 }
@@ -9569,8 +9508,7 @@ sub withdraw_node
 # This restarts rgmanager and, if necessary, disables and re-enables the storage service.
 sub recover_rgmanager
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "recover_rgmanager" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -9579,14 +9517,14 @@ sub recover_rgmanager
 	print $an->Web->template({file => "server.html", template => "recover-resource-manager-header"});
 	my $rgmanager_start = 1;
 	my $shell_call      = "/etc/init.d/rgmanager start";
-	my $password        = $conf->{sys}{root_password};
+	my $password        = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -9614,7 +9552,7 @@ sub recover_rgmanager
 
 	if ($rgmanager_start)
 	{
-		my $storage_service = $conf->{node}{$node}{info}{storage_name};
+		my $storage_service = $an->data->{node}{$node}{info}{storage_name};
 		print $an->Web->template({file => "server.html", template => "recover-resource-manager-successful"});
 		if ($storage_service)
 		{
@@ -9628,8 +9566,8 @@ sub recover_rgmanager
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
 			sleep 10;
-			AN::Cluster::check_node_status($conf);
-			my $storage_state = $conf->{node}{$node}{info}{storage_state};
+			AN::Cluster::check_node_status($an);
+			my $storage_state = $an->data->{node}{$node}{info}{storage_state};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",            value1 => $node,
 				name2 => "storage service", value2 => $storage_service,
@@ -9647,15 +9585,15 @@ sub recover_rgmanager
 				# NOTE: This will return 'Warning' because of whatever is holding open the 
 				#       storage. This is fine, as the goal is to enable, not stop.
 				my $storage_stop = 1;
-				my $shell_call   = "$conf->{path}{clusvcadm} -d $storage_service";
-				my $password     = $conf->{sys}{root_password};
+				my $shell_call   = $an->data->{path}{clusvcadm}." -d $storage_service";
+				my $password     = $an->data->{sys}{root_password};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9677,7 +9615,7 @@ sub recover_rgmanager
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 						name1 => "line", value1 => $line,
 					}, file => $THIS_FILE, line => __LINE__});
-					$line = parse_text_line($conf, $line);
+					$line = parse_text_line($an, $line);
 					my $message = ($line =~ /^(.*)\[/)[0];
 					my $status  = ($line =~ /(\[.*)$/)[0];
 					if (not $message)
@@ -9698,15 +9636,15 @@ sub recover_rgmanager
 					print $an->Web->template({file => "server.html", template => "recover-resource-manager-storage-service-stopped", replace => { stopped => $say_stopped }});
 					
 					my $storage_start = 1;
-					my $shell_call    = $conf->{path}{clusvcadm}." -e $storage_service";
-					my $password      = $conf->{sys}{root_password};
+					my $shell_call    = $an->data->{path}{clusvcadm}." -e $storage_service";
+					my $password      = $an->data->{sys}{root_password};
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "shell_call", value1 => $shell_call,
 						name2 => "node",       value2 => $node,
 					}, file => $THIS_FILE, line => __LINE__});
 					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 						target		=>	$node,
-						port		=>	$conf->{node}{$node}{port}, 
+						port		=>	$an->data->{node}{$node}{port}, 
 						password	=>	$password,
 						ssh_fh		=>	"",
 						'close'		=>	0,
@@ -9728,7 +9666,7 @@ sub recover_rgmanager
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 							name1 => "line", value1 => $line,
 						}, file => $THIS_FILE, line => __LINE__});
-						$line = parse_text_line($conf, $line);
+						$line = parse_text_line($an, $line);
 						my $message = ($line =~ /^(.*)\[/)[0];
 						my $status  = ($line =~ /(\[.*)$/)[0];
 						if (not $message)
@@ -9793,26 +9731,25 @@ sub recover_rgmanager
 # This creates the summary page after a cluster has been selected.
 sub display_details
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	#print $an->Web->template({file => "server.html", template => "display-details-header"});
 	# Display the status of each node's daemons
-	my $up_nodes = @{$conf->{up_nodes}};
+	my $up_nodes = @{$an->data->{up_nodes}};
 	
 	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
 	# calls are available. IE: enable this when the cache exists and the
 	# fence command addresses are reachable.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "sys::show_nodes", value1 => $conf->{sys}{show_nodes},
-		name2 => "sys::up_nodes",   value2 => $conf->{sys}{up_nodes},
+		name1 => "sys::show_nodes", value1 => $an->data->{sys}{show_nodes},
+		name2 => "sys::up_nodes",   value2 => $an->data->{sys}{up_nodes},
 		name3 => "up_nodes",        value3 => $up_nodes,
 	}, file => $THIS_FILE, line => __LINE__});
-#	if ($conf->{sys}{show_nodes})
+#	if ($an->data->{sys}{show_nodes})
 	if (1)
 	{
-		my $node_control_panel = display_node_controls($conf);
+		my $node_control_panel = display_node_controls($an);
 		#print $node_control_panel;
 		
 		my $anvil_safe_start_notice    = "";
@@ -9827,35 +9764,35 @@ sub display_details
 
 		# I don't show below here unless at least one node is up.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
+			name1 => "sys::up_nodes", value1 => $an->data->{sys}{up_nodes},
 			name2 => "up_nodes",      value2 => $up_nodes,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{sys}{up_nodes} > 0)
+		if ($an->data->{sys}{up_nodes} > 0)
 		{
 			# Displays a notice if anvil-safe-start is running on either node.
-			$anvil_safe_start_notice = display_anvil_safe_start_notice($conf);
+			$anvil_safe_start_notice = display_anvil_safe_start_notice($an);
 			
 			# Show the user the current VM states and the control buttons.
-			$vm_state_and_control_panel = display_vm_state_and_controls($conf);
+			$vm_state_and_control_panel = display_vm_state_and_controls($an);
 			
 			# Show the state of the daemons.
-			$node_details_panel = display_node_details($conf);
+			$node_details_panel = display_node_details($an);
 			
 			# Show the details about each VM.
-			$server_details_panel = display_vm_details($conf);
+			$server_details_panel = display_vm_details($an);
 			
 			# Show the status of each node's GFS2 share(s)
-			$gfs2_details_panel = display_gfs2_details($conf);
+			$gfs2_details_panel = display_gfs2_details($an);
 			
 			# This shows the status of each DRBD resource in the cluster.
-			$drbd_details_panel = display_drbd_details($conf);
+			$drbd_details_panel = display_drbd_details($an);
 			
 			# Show the free resources available for new VMs.
-			$free_resources_panel = display_free_resources($conf);
+			$free_resources_panel = display_free_resources($an);
 			
 			# This generates a panel below 'Available Resources' 
 			# *if* the user has enabled 'tools::anvil-kick-apc-ups::enabled'
-			$watchdog_panel = display_watchdog_panel($conf, "");
+			$watchdog_panel = display_watchdog_panel($an, "");
 		}
 		else
 		{
@@ -9864,7 +9801,7 @@ sub display_details
 			
 			# This generates a panel below 'Available Resources' *if* the user has enabled 
 			# 'tools::anvil-kick-apc-ups::enabled'
-			$watchdog_panel = display_watchdog_panel($conf, "no_abort");
+			$watchdog_panel = display_watchdog_panel($an, "no_abort");
 		}
 		
 		print $an->Web->template({file => "server.html", template => "main-page", replace => { 
@@ -9887,22 +9824,21 @@ sub display_details
 # This returns a panel for controlling hard-resets via the 'APC UPS Watchdog' tools
 sub display_watchdog_panel
 {
-	my ($conf, $note) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $note) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "display_watchdog_panel" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "note", value1 => $note, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $expire_time      =  time + $conf->{sys}{actime_timeout};
-	my $power_cycle_link = "?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_cycle";
-	my $power_off_link   = "?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop&subtask=power_off";
+	my $expire_time      =  time + $an->data->{sys}{actime_timeout};
+	my $power_cycle_link = "?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=cold_stop&subtask=power_cycle";
+	my $power_off_link   = "?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=cold_stop&subtask=power_off";
 	my $watchdog_panel   = "";
 	my $use_node         = "";
-	my $this_cluster     = $conf->{cgi}{cluster};
+	my $this_cluster     = $an->data->{cgi}{cluster};
 	my $enable           = 0;
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$this_cluster}{nodes}})
 	{
-		if ($conf->{node}{$node}{up})
+		if ($an->data->{node}{$node}{up})
 		{
 			$use_node = $node;
 			last;
@@ -9911,7 +9847,7 @@ sub display_watchdog_panel
 	
 	### TODO: If not 'use_node', use our local copy of the watchdog script if we can reach the UPSes.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "tools::anvil-kick-apc-ups::enabled", value1 => $conf->{tools}{'anvil-kick-apc-ups'}{enabled},
+		name1 => "tools::anvil-kick-apc-ups::enabled", value1 => $an->data->{tools}{'anvil-kick-apc-ups'}{enabled},
 		name2 => "use_node",                           value2 => $use_node,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($use_node)
@@ -9919,20 +9855,20 @@ sub display_watchdog_panel
 		# Check that 'anvil-kick-apc-ups' exists.
 		my $node       = $use_node;
 		my $shell_call = "
-if \$($conf->{path}{nodes}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $conf->{path}{nodes}{striker_config});
+if \$($an->data->{path}{nodes}{'grep'} -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' $an->data->{path}{nodes}{striker_config});
 then 
     echo enabled; 
 else 
     echo disabled;
 fi";
-		my $password = $conf->{sys}{root_password};
+		my $password = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -10018,8 +9954,7 @@ fi
 # This shows the free resources available to be assigned to new VMs.
 sub display_free_resources
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_free_resources" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $free_resources_panel .= $an->Web->template({file => "server.html", template => "display-details-free-resources-header"});
@@ -10035,33 +9970,33 @@ sub display_free_resources
 	my @vg_free;
 	my @pv_name;
 	my $vg_link="";
-	foreach my $vg (sort {$a cmp $b} keys %{$conf->{resources}{vg}})
+	foreach my $vg (sort {$a cmp $b} keys %{$an->data->{resources}{vg}})
 	{
 		# If it's not a clustered VG, I don't care about it.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vg",        value1 => $vg,
-			name2 => "clustered", value2 => $conf->{resources}{vg}{$vg}{clustered},
+			name2 => "clustered", value2 => $an->data->{resources}{vg}{$vg}{clustered},
 		}, file => $THIS_FILE, line => __LINE__});
-		next if not $conf->{resources}{vg}{$vg}{clustered};
+		next if not $an->data->{resources}{vg}{$vg}{clustered};
 		push @vg,      $vg;
-		push @vg_size, $conf->{resources}{vg}{$vg}{size};
-		push @vg_used, $conf->{resources}{vg}{$vg}{used_space};
-		push @vg_free, $conf->{resources}{vg}{$vg}{free_space};
-		push @pv_name, $conf->{resources}{vg}{$vg}{pv_name};
+		push @vg_size, $an->data->{resources}{vg}{$vg}{size};
+		push @vg_used, $an->data->{resources}{vg}{$vg}{used_space};
+		push @vg_free, $an->data->{resources}{vg}{$vg}{free_space};
+		push @pv_name, $an->data->{resources}{vg}{$vg}{pv_name};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 			name1 => "vg",         value1 => $vg,
-			name2 => "size",       value2 => $conf->{resources}{vg}{$vg}{size},
-			name3 => "used space", value3 => $conf->{resources}{vg}{$vg}{used_space},
-			name4 => "free space", value4 => $conf->{resources}{vg}{$vg}{free_space},
-			name5 => "pv name",    value5 => $conf->{resources}{vg}{$vg}{pv_name},
+			name2 => "size",       value2 => $an->data->{resources}{vg}{$vg}{size},
+			name3 => "used space", value3 => $an->data->{resources}{vg}{$vg}{used_space},
+			name4 => "free space", value4 => $an->data->{resources}{vg}{$vg}{free_space},
+			name5 => "pv name",    value5 => $an->data->{resources}{vg}{$vg}{pv_name},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If there is at least a GiB free, mark free storage as
 		# sufficient.
-		if (not $conf->{sys}{clvmd_down})
+		if (not $an->data->{sys}{clvmd_down})
 		{
-			$enough_storage =  1 if $conf->{resources}{vg}{$vg}{free_space} > (2**30);
-			$vg_link        .= "$vg:$conf->{resources}{vg}{$vg}{free_space},";
+			$enough_storage =  1 if $an->data->{resources}{vg}{$vg}{free_space} > (2**30);
+			$vg_link        .= "$vg:$an->data->{resources}{vg}{$vg}{free_space},";
 		}
 	}
 	$vg_link =~ s/,$//;
@@ -10069,49 +10004,49 @@ sub display_free_resources
 	# Count how much RAM and CPU cores have been allocated.
 	my $allocated_cores = 0;
 	my $allocated_ram   = 0;
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 	{
 		next if $vm !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
-		if ($conf->{sys}{gfs2_down})
+		if ($an->data->{sys}{gfs2_down})
 		{
 			$allocated_ram   = "#!string!symbol_0011!#";
 			$allocated_cores = "#!string!symbol_0011!#";
 		}
 		else
 		{
-			$allocated_ram   += $conf->{vm}{$vm}{details}{ram};
+			$allocated_ram   += $an->data->{vm}{$vm}{details}{ram};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "allocated_ram", value1 => $allocated_ram,
 				name2 => "vm",            value2 => $vm,
-				name3 => "ram",           value3 => $conf->{vm}{$vm}{details}{ram},
+				name3 => "ram",           value3 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
-			$allocated_cores += $conf->{vm}{$vm}{details}{cpu_count};
+			$allocated_cores += $an->data->{vm}{$vm}{details}{cpu_count};
 		}
 	}
 	
 	# Always knock off some RAM for the host OS.
-	my $real_total_ram            =  $an->Readable->bytes_to_hr({'bytes' => $conf->{resources}{total_ram} });
+	my $real_total_ram            =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{resources}{total_ram} });
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB of total RAM. So we modulous 
 	# off the difference, then subtract that plus the reserved RAM to get an even left-over amount of 
 	# memory for the user to allocate to their servers.
-	my $diff                      = $conf->{resources}{total_ram} % (1024 ** 3);
-	$conf->{resources}{total_ram} = $conf->{resources}{total_ram} - $diff - $conf->{sys}{unusable_ram};
-	$conf->{resources}{total_ram} =  0 if $conf->{resources}{total_ram} < 0;
-	my $free_ram                  =  $conf->{sys}{gfs2_down}  ? 0    : $conf->{resources}{total_ram} - $allocated_ram;
-	my $say_free_ram              =  $conf->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $free_ram });
-	my $say_total_ram             =  $an->Readable->bytes_to_hr({'bytes' => $conf->{resources}{total_ram} });
-	my $say_allocated_ram         =  $conf->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $allocated_ram });
-	my $say_vg_size               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_size[0] });
-	my $say_vg_used               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_used[0] });
-	my $say_vg_free               =  $conf->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_free[0] });
-	my $say_vg                    =  $conf->{sys}{clvmd_down} ? "--" : $vg[0];
-	my $say_pv_name               =  $conf->{sys}{clvmd_down} ? "--" : $pv_name[0];
+	my $diff                      = $an->data->{resources}{total_ram} % (1024 ** 3);
+	$an->data->{resources}{total_ram} = $an->data->{resources}{total_ram} - $diff - $an->data->{sys}{unusable_ram};
+	$an->data->{resources}{total_ram} =  0 if $an->data->{resources}{total_ram} < 0;
+	my $free_ram                  =  $an->data->{sys}{gfs2_down}  ? 0    : $an->data->{resources}{total_ram} - $allocated_ram;
+	my $say_free_ram              =  $an->data->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $free_ram });
+	my $say_total_ram             =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{resources}{total_ram} });
+	my $say_allocated_ram         =  $an->data->{sys}{gfs2_down}  ? "--" : $an->Readable->bytes_to_hr({'bytes' => $allocated_ram });
+	my $say_vg_size               =  $an->data->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_size[0] });
+	my $say_vg_used               =  $an->data->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_used[0] });
+	my $say_vg_free               =  $an->data->{sys}{clvmd_down} ? "--" : $an->Readable->bytes_to_hr({'bytes' => $vg_free[0] });
+	my $say_vg                    =  $an->data->{sys}{clvmd_down} ? "--" : $vg[0];
+	my $say_pv_name               =  $an->data->{sys}{clvmd_down} ? "--" : $pv_name[0];
 	
 	# Show the main info.
 	$free_resources_panel .= $an->Web->template({file => "server.html", template => "display-details-free-resources-entry", replace => { 
-		total_cores		=>	$conf->{resources}{total_cores},
-		total_threads		=>	$conf->{resources}{total_threads},
+		total_cores		=>	$an->data->{resources}{total_cores},
+		total_threads		=>	$an->data->{resources}{total_threads},
 		allocated_cores		=>	$allocated_cores,
 		real_total_ram		=>	$real_total_ram,
 		say_total_ram		=>	$say_total_ram,
@@ -10145,8 +10080,8 @@ sub display_free_resources
 	### NOTE: Disabled in this release.
 	# If I found enough free disk space, have at least 1 GiB of free RAM  and both nodes are up, enable 
 	# the "provision new server" button.
-	my $node1   = $conf->{sys}{cluster}{node1_name};
-	my $node2   = $conf->{sys}{cluster}{node2_name};
+	my $node1   = $an->data->{sys}{cluster}{node1_name};
+	my $node2   = $an->data->{sys}{cluster}{node2_name};
 	#my $say_bns = "<span class=\"disabled_button\">#!string!button_0022!#</span>";
 	#my $say_mc  = "<span class=\"disabled_button\">#!string!button_0023!#</span>";
 	my $say_bns = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0022!#" }});
@@ -10155,24 +10090,24 @@ sub display_free_resources
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "enough_storage", value1 => $enough_storage,
 		name2 => "free_ram",       value2 => $free_ram,
-		name3 => "node1 cman",     value3 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
-		name4 => "node2 cman",     value4 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
+		name3 => "node1 cman",     value3 => $an->data->{node}{$node1}{daemon}{cman}{exit_code},
+		name4 => "node2 cman",     value4 => $an->data->{node}{$node2}{daemon}{cman}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
-	    ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
+	if (($an->data->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && 
+	    ($an->data->{node}{$node2}{daemon}{cman}{exit_code} eq "0"))
 	{
 		# The cluster is running, so enable the media library link.
 		$say_mc = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"/cgi-bin/mediaLibrary?cluster=$conf->{cgi}{cluster}",
+				button_link	=>	"/cgi-bin/mediaLibrary?cluster=".$an->data->{cgi}{cluster},
 				button_text	=>	"#!string!button_0023!#",
-				id		=>	"media_library_$conf->{cgi}{cluster}",
+				id		=>	"media_library_$an->data->{cgi}{cluster}",
 			}});
 		
 		# Enable the "New Server" button if there is enough free memory and storage space.
-		if (($enough_storage) && ($free_ram > $conf->{sys}{server}{minimum_ram}))
+		if (($enough_storage) && ($free_ram > $an->data->{sys}{server}{minimum_ram}))
 		{
 			$say_bns = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=provision&max_ram=$free_ram&max_cores=$conf->{resources}{total_cores}&max_storage=$vg_link",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=provision&max_ram=$free_ram&max_cores=".$an->data->{resources}{total_cores}."&max_storage=$vg_link",
 					button_text	=>	"#!string!button_0022!#",
 					id		=>	"provision",
 				}});
@@ -10190,18 +10125,17 @@ sub display_free_resources
 # Simply converts a full domain name back to the node name used in the main hash.
 sub long_host_name_to_node_name
 {
-	my ($conf, $host) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $host) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "long_host_name_to_node_name" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "host", value1 => $host, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster   = $conf->{cgi}{cluster};
+	my $cluster   = $an->data->{cgi}{cluster};
 	my $node_name = "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "cluster", value1 => $cluster,
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node", value1 => $node,
@@ -10232,13 +10166,12 @@ sub long_host_name_to_node_name
 # Simply converts a node name to the full domain name.
 sub node_name_to_long_host_name
 {
-	my ($conf, $host) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $host) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "node_name_to_long_host_name" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "host", value1 => $host, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $node_name = $conf->{node}{$host}{me}{name};
+	my $node_name = $an->data->{node}{$host}{me}{name};
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "node name", value1 => $node_name,
@@ -10249,31 +10182,30 @@ sub node_name_to_long_host_name
 # This just shows the details of the server (no controls)
 sub display_vm_details
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_vm_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
 	my $server_details_panel = $an->Web->template({file => "server.html", template => "display-server-details-header"});
 	
 	# Pull up the server details.
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 	{
 		next if $vm !~ /^vm/;
 		
 		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $conf->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $conf->{vm}{$vm}{details}{ram} });
+		my $say_ram = $an->data->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $an->data->{vm}{$vm}{details}{ram} });
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "vm",      value1 => $vm,
 			name2 => "say_ram", value2 => $say_ram,
-			name3 => "ram",     value3 => $conf->{vm}{$vm}{details}{ram},
+			name3 => "ram",     value3 => $an->data->{vm}{$vm}{details}{ram},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the LV arrays populated.
 		my @lv_path;
 		my @lv_size;
-		my $host = $conf->{vm}{$vm}{host};
+		my $host = $an->data->{vm}{$vm}{host};
 		
 		# If the host is "none", read the details from one of the "up"
 		# nodes.
@@ -10281,8 +10213,8 @@ sub display_vm_details
 		{
 			# If the first node is running, use it. Otherwise use
 			# the second node.
-			my $node1_daemons_running = check_node_daemons($conf, $node1);
-			my $node2_daemons_running = check_node_daemons($conf, $node2);
+			my $node1_daemons_running = check_node_daemons($an, $node1);
+			my $node2_daemons_running = check_node_daemons($an, $node2);
 			if ($node1_daemons_running)
 			{
 				$host = $node1;
@@ -10302,7 +10234,7 @@ sub display_vm_details
 		my $say_host     = "--";
 		if ($host)
 		{
-			$node = long_host_name_to_node_name($conf, $host);
+			$node = long_host_name_to_node_name($an, $host);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",   value1 => $vm,
 				name2 => "host", value2 => $host,
@@ -10313,32 +10245,32 @@ sub display_vm_details
 				name1 => "vm",               value1 => $vm,
 				name2 => "host",             value2 => $host,
 				name3 => "node",             value3 => $node,
-				name4 => "lv hash on node1", value4 => $conf->{vm}{$vm}{node}{$node1}{lv},
-				name5 => "lv hash on node2", value5 => $conf->{vm}{$vm}{node}{$node2}{lv},
+				name4 => "lv hash on node1", value4 => $an->data->{vm}{$vm}{node}{$node1}{lv},
+				name5 => "lv hash on node2", value5 => $an->data->{vm}{$vm}{node}{$node2}{lv},
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
+			foreach my $lv (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}})
 			{
-				#record ($conf, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
+				#record ($an, "$THIS_FILE ".__LINE__."; lv: [$lv], size: [$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size}]\n");
 				push @lv_path, $lv;
-				push @lv_size, $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
+				push @lv_size, $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
 			}
 			
 			# Get the network arrays built.
-			foreach my $current_bridge (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{details}{bridge}})
+			foreach my $current_bridge (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{details}{bridge}})
 			{
 				push @bridge, $current_bridge;
-				push @device, $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
-				push @mac,    uc($conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
-				push @type,   $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
+				push @device, $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
+				push @mac,    uc($an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
+				push @type,   $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
 			}
 			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "vm",   value1 => $vm,
-				name2 => "host", value2 => $conf->{vm}{$vm}{host},
+				name2 => "host", value2 => $an->data->{vm}{$vm}{host},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{vm}{$vm}{host} ne "none")
+			if ($an->data->{vm}{$vm}{host} ne "none")
 			{
-				$say_host     =  $conf->{vm}{$vm}{host};
+				$say_host     =  $an->data->{vm}{$vm}{host};
 				$say_host     =~ s/\..*//;
 				$say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-network-entry", replace => { 
 						host	=>	$say_host,
@@ -10349,12 +10281,12 @@ sub display_vm_details
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
-		$conf->{vm}{$vm}{details}{cpu_count} = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
-		$lv_path[0]                          = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
-		$lv_size[0]                          = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
-		$type[0]                             = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
-		$mac[0]                              = "#!string!symbol_0011!#" if $conf->{sys}{gfs2_down};
-		$conf->{vm}{$vm}{details}{cpu_count} = "--" if not defined $conf->{vm}{$vm}{details}{cpu_count};
+		$an->data->{vm}{$vm}{details}{cpu_count} = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$lv_path[0]                          = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$lv_size[0]                          = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$type[0]                             = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$mac[0]                              = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$an->data->{vm}{$vm}{details}{cpu_count} = "--" if not defined $an->data->{vm}{$vm}{details}{cpu_count};
 		$say_ram                             = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
 		$lv_path[0]                          = "--" if not defined $lv_path[0];
 		$lv_size[0]                          = "--" if not defined $lv_size[0];
@@ -10362,7 +10294,7 @@ sub display_vm_details
 		$mac[0]                              = "--" if not defined $mac[0];
 		$server_details_panel .= $an->Web->template({file => "server.html", template => "display-server-details-resources", replace => { 
 				say_vm		=>	$say_vm,
-				cpu_count	=>	$conf->{vm}{$vm}{details}{cpu_count},
+				cpu_count	=>	$an->data->{vm}{$vm}{details}{cpu_count},
 				say_ram		=>	$say_ram,
 				lv_path		=>	$lv_path[0],
 				lv_size		=>	$lv_size[0],
@@ -10391,11 +10323,11 @@ sub display_vm_details
 					my $say_net_host = "";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "vm",   value1 => $vm,
-						name2 => "host", value2 => $conf->{vm}{$vm}{host},
+						name2 => "host", value2 => $an->data->{vm}{$vm}{host},
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($conf->{vm}{$vm}{host} ne "none")
+					if ($an->data->{vm}{$vm}{host} ne "none")
 					{
-						my $say_host     =  $conf->{vm}{$vm}{host};
+						my $say_host     =  $an->data->{vm}{$vm}{host};
 						   $say_host     =~ s/\..*//;
 						   $say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-entra-nics", replace => { 
 								say_host	=>	$say_host,
@@ -10423,15 +10355,14 @@ sub display_vm_details
 # This checks the daemons running on a node and returns '1' if all are running.
 sub check_node_daemons
 {
-	my ($conf, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_daemons" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $node)
 	{
-		AN::Cluster::error($conf, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
+		AN::Cluster::error($an, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "in check_node_daemons(), node", value1 => $node,
@@ -10440,19 +10371,19 @@ sub check_node_daemons
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 		name1 => "node",                value1 => $node,
-		name2 => "node::${node}::daemon::rgmanager::exit_code", value2 => $conf->{node}{$node}{daemon}{rgmanager}{exit_code},
-		name3 => "node::${node}::daemon::cman::exit_code",      value3 => $conf->{node}{$node}{daemon}{cman}{exit_code},
-		name4 => "node::${node}::daemon::drbd::exit_code",      value4 => $conf->{node}{$node}{daemon}{drbd}{exit_code},
-		name5 => "node::${node}::daemon::clvmd::exit_code",     value5 => $conf->{node}{$node}{daemon}{clvmd}{exit_code},
-		name6 => "node::${node}::daemon::gfs2::exit_code",      value6 => $conf->{node}{$node}{daemon}{gfs2}{exit_code},
-		name7 => "node::${node}::daemon::libvirtd::exit_code",  value7 => $conf->{node}{$node}{daemon}{libvirtd}{exit_code},
+		name2 => "node::${node}::daemon::rgmanager::exit_code", value2 => $an->data->{node}{$node}{daemon}{rgmanager}{exit_code},
+		name3 => "node::${node}::daemon::cman::exit_code",      value3 => $an->data->{node}{$node}{daemon}{cman}{exit_code},
+		name4 => "node::${node}::daemon::drbd::exit_code",      value4 => $an->data->{node}{$node}{daemon}{drbd}{exit_code},
+		name5 => "node::${node}::daemon::clvmd::exit_code",     value5 => $an->data->{node}{$node}{daemon}{clvmd}{exit_code},
+		name6 => "node::${node}::daemon::gfs2::exit_code",      value6 => $an->data->{node}{$node}{daemon}{gfs2}{exit_code},
+		name7 => "node::${node}::daemon::libvirtd::exit_code",  value7 => $an->data->{node}{$node}{daemon}{libvirtd}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
-	($conf->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
+	if (($an->data->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
+	($an->data->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
 	{
 		$ready = 0;
 	}
@@ -10463,15 +10394,14 @@ sub check_node_daemons
 # This checks a node to see if it's ready to run a given VM.
 sub check_node_readiness
 {
-	my ($conf, $vm, $node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $vm, $node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_readiness" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "vm",   value1 => $vm, 
 		name2 => "node", value2 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node)
 	{
-		AN::Cluster::error($conf, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
+		AN::Cluster::error($an, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
 	}
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -10480,7 +10410,7 @@ sub check_node_readiness
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# This will get negated if something isn't ready.
-	my $ready = check_node_daemons($conf, $node);
+	my $ready = check_node_daemons($an, $node);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "1. vm", value1 => $vm,
 		name2 => "node",  value2 => $node,
@@ -10499,23 +10429,23 @@ sub check_node_readiness
 			name1 => "node", value1 => $node,
 			name2 => "vm",   value2 => $vm,
 		}, file => $THIS_FILE, line => __LINE__});
-		read_vm_definition($conf, $node, $vm);
+		read_vm_definition($an, $node, $vm);
 		
-		foreach my $lv (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}})
+		foreach my $lv (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}})
 		{
 			# Make sure the LV is active.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::node::${node}::lv::${lv}::active", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
+				name1 => "vm::${vm}::node::${node}::lv::${lv}::active", value1 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
+			if ($an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
 			{
 				# It's active, so now check the backing storage.
-				foreach my $resource (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}})
+				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}})
 				{
 					# For easier reading...
-					my $connection_state = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{connection_state};
-					my $role             = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{role};
-					my $disk_state       = $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{disk_state};
+					my $connection_state = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{connection_state};
+					my $role             = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{role};
+					my $disk_state       = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{disk_state};
 					
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "resource",         value1 => $resource,
@@ -10559,8 +10489,7 @@ sub check_node_readiness
 # This reads a VM's definition file and pulls out information about the system.
 sub read_vm_definition
 {
-	my ($conf, $node, $vm) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $vm) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_vm_definition" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "vm",   value2 => $vm, 
@@ -10568,7 +10497,7 @@ sub read_vm_definition
 	
 	if (not $vm)
 	{
-		AN::Cluster::error($conf, "I was asked to look at a server's definition file, but no server was specified.", 1);
+		AN::Cluster::error($an, "I was asked to look at a server's definition file, but no server was specified.", 1);
 	}
 	
 	my $say_vm = $vm;
@@ -10584,34 +10513,34 @@ sub read_vm_definition
 		name1 => "vm",     value1 => $vm,
 		name2 => "say_vm", value2 => $say_vm,
 	}, file => $THIS_FILE, line => __LINE__});
-	$conf->{vm}{$vm}{definition_file} = "" if not defined $conf->{vm}{$vm}{definition_file};
-	$conf->{vm}{$vm}{xml}             = "" if not defined $conf->{vm}{$vm}{xml};
+	$an->data->{vm}{$vm}{definition_file} = "" if not defined $an->data->{vm}{$vm}{definition_file};
+	$an->data->{vm}{$vm}{xml}             = "" if not defined $an->data->{vm}{$vm}{xml};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",              value1 => $vm,
 		name2 => "say_vm",          value2 => $say_vm,
-		name3 => "definition_file", value3 => $conf->{vm}{$vm}{definition_file},
+		name3 => "definition_file", value3 => $an->data->{vm}{$vm}{definition_file},
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Here I want to parse the VM definition XML. Hopefully it was already
 	# read in, but if not, I'll make a specific SSH call to get it.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",  value1 => $vm,
-		name2 => "XML", value2 => $conf->{vm}{$vm}{xml},
-		name3 => "def", value3 => $conf->{vm}{$vm}{definition_file},
+		name2 => "XML", value2 => $an->data->{vm}{$vm}{xml},
+		name3 => "def", value3 => $an->data->{vm}{$vm}{definition_file},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not ref($conf->{vm}{$vm}{xml}) eq "ARRAY") && ($conf->{vm}{$vm}{definition_file}))
+	if ((not ref($an->data->{vm}{$vm}{xml}) eq "ARRAY") && ($an->data->{vm}{$vm}{definition_file}))
 	{
-		$conf->{vm}{$vm}{raw_xml} = [];
-		$conf->{vm}{$vm}{xml}     = [];
-		my $shell_call = "cat $conf->{vm}{$vm}{definition_file}";
-		my $password   = $conf->{sys}{root_password};
+		$an->data->{vm}{$vm}{raw_xml} = [];
+		$an->data->{vm}{$vm}{xml}     = [];
+		my $shell_call = "cat $an->data->{vm}{$vm}{definition_file}";
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -10619,7 +10548,7 @@ sub read_vm_definition
 		});
 		foreach my $line (@{$return})
 		{
-			push @{$conf->{vm}{$vm}{raw_xml}}, $line;
+			push @{$an->data->{vm}{$vm}{raw_xml}}, $line;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -10627,7 +10556,7 @@ sub read_vm_definition
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			push @{$conf->{vm}{$vm}{xml}}, $line;
+			push @{$an->data->{vm}{$vm}{xml}}, $line;
 		}
 	}
 	
@@ -10638,7 +10567,7 @@ sub read_vm_definition
 	my $current_device;
 	my $current_mac_address;
 	my $current_interface_type;
-	if (not $conf->{vm}{$vm}{xml})
+	if (not $an->data->{vm}{$vm}{xml})
 	{
 		# XML definition not found on the node.
 		$an->Log->entry({log_level => 2, message_key => "log_0257", message_variables => {
@@ -10648,14 +10577,14 @@ sub read_vm_definition
 		return (0);
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "vm::${vm}::raw_xml", value1 => $conf->{vm}{$vm}{raw_xml},
+		name1 => "vm::${vm}::raw_xml", value1 => $an->data->{vm}{$vm}{raw_xml},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not ref($conf->{vm}{$vm}{raw_xml}) eq "ARRAY")
+	if (not ref($an->data->{vm}{$vm}{raw_xml}) eq "ARRAY")
 	{
-		$conf->{vm}{$vm}{raw_xml} = [];
+		$an->data->{vm}{$vm}{raw_xml} = [];
 		$fill_raw_xml             = 1;
 	}
-	foreach my $line (@{$conf->{vm}{$vm}{xml}})
+	foreach my $line (@{$an->data->{vm}{$vm}{xml}})
 	{
 		next if not $line;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -10663,17 +10592,17 @@ sub read_vm_definition
 			name2 => "line",         value2 => $line,
 			name3 => "fill_raw_xml", value3 => $fill_raw_xml,
 		}, file => $THIS_FILE, line => __LINE__});
-		push @{$conf->{vm}{$vm}{raw_xml}}, $line if $fill_raw_xml;
+		push @{$an->data->{vm}{$vm}{raw_xml}}, $line if $fill_raw_xml;
 		
 		# Pull out RAM amount.
 		if ($line =~ /<memory>(\d+)<\/memory>/)
 		{
 			# Record the memory, multiple by 1024 to get bytes.
-			$conf->{vm}{$vm}{details}{ram} =  $1;
-			$conf->{vm}{$vm}{details}{ram} *= 1024;
+			$an->data->{vm}{$vm}{details}{ram} =  $1;
+			$an->data->{vm}{$vm}{details}{ram} *= 1024;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "vm",  value1 => $vm,
-				name2 => "ram", value2 => $conf->{vm}{$vm}{details}{ram},
+				name2 => "ram", value2 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/)
@@ -10681,10 +10610,10 @@ sub read_vm_definition
 			# Record the memory, multiple by 1024 to get bytes.
 			my $units                      =  $1;
 			my $ram                        =  $2;
-			$conf->{vm}{$vm}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
+			$an->data->{vm}{$vm}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "vm",  value1 => $vm,
-				name2 => "ram", value2 => $conf->{vm}{$vm}{details}{ram},
+				name2 => "ram", value2 => $an->data->{vm}{$vm}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
@@ -10692,19 +10621,19 @@ sub read_vm_definition
 		# Pull out the CPU details
 		if ($line =~ /<vcpu>(\d+)<\/vcpu>/)
 		{
-			$conf->{vm}{$vm}{details}{cpu_count} = $1;
+			$an->data->{vm}{$vm}{details}{cpu_count} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "vm",        value1 => $vm,
-				name2 => "cpu count", value2 => $conf->{vm}{$vm}{details}{cpu_count},
+				name2 => "cpu count", value2 => $an->data->{vm}{$vm}{details}{cpu_count},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
 		{
 			my $cpu_type                         = $1;
-			$conf->{vm}{$vm}{details}{cpu_count} = $2;
+			$an->data->{vm}{$vm}{details}{cpu_count} = $2;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",        value1 => $vm,
-				name2 => "cpu count", value2 => $conf->{vm}{$vm}{details}{cpu_count},
+				name2 => "cpu count", value2 => $an->data->{vm}{$vm}{details}{cpu_count},
 				name3 => "type",      value3 => $cpu_type,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -10718,15 +10647,15 @@ sub read_vm_definition
 		elsif ($line =~ /<\/interface/)
 		{
 			# Record the values I found
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
-			$conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
+			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
+			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
+			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "vm",     value1 => $vm,
 				name2 => "bride",  value2 => $current_bridge,
-				name3 => "device", value3 => $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{device},
-				name4 => "mac",    value4 => $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{mac},
-				name5 => "type",   value5 => $conf->{vm}{$vm}{details}{bridge}{$current_bridge}{type},
+				name3 => "device", value3 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device},
+				name4 => "mac",    value4 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac},
+				name5 => "type",   value5 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type},
 			}, file => $THIS_FILE, line => __LINE__});
 			$current_bridge         = "";
 			$current_device         = "";
@@ -10795,7 +10724,7 @@ sub read_vm_definition
 					name1 => "vm",          value1 => $vm,
 					name2 => "checking LV", value2 => $lv,
 				}, file => $THIS_FILE, line => __LINE__});
-				check_lv($conf, $node, $vm, $lv);
+				check_lv($an, $node, $vm, $lv);
 			}
 		}
 		
@@ -10811,12 +10740,12 @@ sub read_vm_definition
 				address => $listen, 
 				port    => $port, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{vm}{$vm}{graphics}{type}     = $type;
-			$conf->{vm}{$vm}{graphics}{port}     = $port;
-			$conf->{vm}{$vm}{graphics}{'listen'} = $listen;
+			$an->data->{vm}{$vm}{graphics}{type}     = $type;
+			$an->data->{vm}{$vm}{graphics}{port}     = $port;
+			$an->data->{vm}{$vm}{graphics}{'listen'} = $listen;
 		}
 	}
-	my $xml_line_count = @{$conf->{vm}{$vm}{raw_xml}};
+	my $xml_line_count = @{$an->data->{vm}{$vm}{raw_xml}};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "xml_line_count", value1 => $xml_line_count,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10827,8 +10756,7 @@ sub read_vm_definition
 # This takes a node name and an LV and checks the DRBD resources to see if they are Primary and UpToDate.
 sub check_lv
 {
-	my ($conf, $node, $vm, $lv) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $vm, $lv) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lv" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "vm",   value2 => $vm, 
@@ -10836,7 +10764,7 @@ sub check_lv
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If this node is down, just return.
-	if ($conf->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
+	if ($an->data->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
 	{
 		# Node is down, skip LV check.
 		$an->Log->entry({log_level => 3, message_key => "log_0258", message_variables => {
@@ -10847,31 +10775,31 @@ sub check_lv
 		return(0);
 	}
 	
-	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $conf->{node}{$node}{lvm}{lv}{$lv}{active};
-	$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{lvm}{lv}{$lv}{total_size} });
+	$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $an->data->{node}{$node}{lvm}{lv}{$lv}{active};
+	$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{lvm}{lv}{$lv}{total_size} });
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "node",         value1 => $node,
 		name2 => "VM",           value2 => $vm,
 		name3 => "LV",           value3 => $lv,
-		name4 => "active",       value4 => $conf->{node}{$node}{lvm}{lv}{$lv}{active},
-		name5 => "size",         value5 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{size},
-		name6 => "on device(s)", value6 => $conf->{node}{$node}{lvm}{lv}{$lv}{on_devices},
+		name4 => "active",       value4 => $an->data->{node}{$node}{lvm}{lv}{$lv}{active},
+		name5 => "size",         value5 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size},
+		name6 => "on device(s)", value6 => $an->data->{node}{$node}{lvm}{lv}{$lv}{on_devices},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If there is a comman in the devices, the LV spans multiple devices.
-	foreach my $device (split/,/, $conf->{node}{$node}{lvm}{lv}{$lv}{on_devices})
+	foreach my $device (split/,/, $an->data->{node}{$node}{lvm}{lv}{$lv}{on_devices})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "device", value1 => $device,
 		}, file => $THIS_FILE, line => __LINE__});
 		# Find the resource name.
 		my $on_res;
-		foreach my $res (sort {$a cmp $b} keys %{$conf->{drbd}})
+		foreach my $res (sort {$a cmp $b} keys %{$an->data->{drbd}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "res", value1 => $res,
 			}, file => $THIS_FILE, line => __LINE__});
-			my $res_device = $conf->{drbd}{$res}{node}{$node}{device};
+			my $res_device = $an->data->{drbd}{$res}{node}{$node}{device};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "res",         value1 => $res,
 				name2 => "device",      value2 => $device,
@@ -10893,13 +10821,13 @@ sub check_lv
 			name4 => "on_res", value4 => $on_res,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $conf->{drbd}{$on_res}{node}{$node}{connection_state};
-		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $conf->{drbd}{$on_res}{node}{$node}{role};
-		$conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $conf->{drbd}{$on_res}{node}{$node}{disk_state};
+		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $an->data->{drbd}{$on_res}{node}{$node}{connection_state};
+		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $an->data->{drbd}{$on_res}{node}{$node}{role};
+		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $an->data->{drbd}{$on_res}{node}{$node}{disk_state};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
-			name2 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::role",             value2 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
-			name3 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $conf->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},
+			name1 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
+			name2 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::role",             value2 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
+			name3 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -10909,32 +10837,31 @@ sub check_lv
 # Check the status of servers.
 sub check_vms
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_vms" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
 	
-	$conf->{node}{$node1}{info}{short_host_name} = $conf->{node}{$node1}{info}{host_name} if not $conf->{node}{$node1}{info}{short_host_name};
-	$conf->{node}{$node2}{info}{short_host_name} = $conf->{node}{$node2}{info}{host_name} if not $conf->{node}{$node2}{info}{short_host_name};
+	$an->data->{node}{$node1}{info}{short_host_name} = $an->data->{node}{$node1}{info}{host_name} if not $an->data->{node}{$node1}{info}{short_host_name};
+	$an->data->{node}{$node2}{info}{short_host_name} = $an->data->{node}{$node2}{info}{host_name} if not $an->data->{node}{$node2}{info}{short_host_name};
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "node1",                                 value1 => $node1,
-		name2 => "node::${node1}::info::short_host_name", value2 => $conf->{node}{$node1}{info}{short_host_name},
-		name3 => "node::${node1}::info::host_name",       value3 => $conf->{node}{$node1}{info}{host_name},
+		name2 => "node::${node1}::info::short_host_name", value2 => $an->data->{node}{$node1}{info}{short_host_name},
+		name3 => "node::${node1}::info::host_name",       value3 => $an->data->{node}{$node1}{info}{host_name},
 		name4 => "node2",                                 value4 => $node2,
-		name5 => "node::${node2}::info::short_host_name", value5 => $conf->{node}{$node2}{info}{short_host_name},
-		name6 => "node::${node2}::info::host_name",       value6 => $conf->{node}{$node2}{info}{host_name},
+		name5 => "node::${node2}::info::short_host_name", value5 => $an->data->{node}{$node2}{info}{short_host_name},
+		name6 => "node::${node2}::info::host_name",       value6 => $an->data->{node}{$node2}{info}{host_name},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $short_node1 = "$conf->{node}{$node1}{info}{short_host_name}";
-	my $short_node2 = "$conf->{node}{$node2}{info}{short_host_name}";
-	my $long_node1  = "$conf->{node}{$node1}{info}{host_name}";
-	my $long_node2  = "$conf->{node}{$node2}{info}{host_name}";
-	my $say_node1   = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2   = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	my $short_node1 = $an->data->{node}{$node1}{info}{short_host_name};
+	my $short_node2 = $an->data->{node}{$node2}{info}{short_host_name};
+	my $long_node1  = $an->data->{node}{$node1}{info}{host_name};
+	my $long_node2  = $an->data->{node}{$node2}{info}{host_name};
+	my $say_node1   = "<span class=\"fixed_width\">".$an->data->{node}{$node1}{info}{short_host_name}."</span>";
+	my $say_node2   = "<span class=\"fixed_width\">".$an->data->{node}{$node2}{info}{short_host_name}."</span>";
+	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 	{
 		my $say_vm;
 		if ($vm =~ /^vm:(.*)/)
@@ -10943,7 +10870,7 @@ sub check_vms
 		}
 		else
 		{
-			AN::Cluster::error($conf, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
+			AN::Cluster::error($an, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm",     value1 => $vm,
@@ -10951,156 +10878,156 @@ sub check_vms
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This will control the buttons.
-		$conf->{vm}{$vm}{can_start}        = 0;
-		$conf->{vm}{$vm}{can_stop}         = 0;
-		$conf->{vm}{$vm}{can_migrate}      = 0;
-		$conf->{vm}{$vm}{current_host}     = 0;
-		$conf->{vm}{$vm}{migration_target} = "";
+		$an->data->{vm}{$vm}{can_start}        = 0;
+		$an->data->{vm}{$vm}{can_stop}         = 0;
+		$an->data->{vm}{$vm}{can_migrate}      = 0;
+		$an->data->{vm}{$vm}{current_host}     = 0;
+		$an->data->{vm}{$vm}{migration_target} = "";
 		
 		# Find out who, if anyone, is running this VM and who *can* run
 		# it. 2 == Running, 1 == Can run, 0 == Can't run.
-		$conf->{vm}{$vm}{say_node1}        = $conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$conf->{vm}{$vm}{node1_ready}      = 0;
+		$an->data->{vm}{$vm}{say_node1}        = $an->data->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
+		$an->data->{vm}{$vm}{node1_ready}      = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1",                    value1 => $conf->{vm}{$vm}{say_node1},
-			name2 => "node::${node1}::daemon::cman::exit_code", value2 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
+			name1 => "vm::${vm}::say_node1",                    value1 => $an->data->{vm}{$vm}{say_node1},
+			name2 => "node::${node1}::daemon::cman::exit_code", value2 => $an->data->{node}{$node1}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{vm}{$vm}{say_node2}        = $conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$conf->{vm}{$vm}{node2_ready}      = 0;
+		$an->data->{vm}{$vm}{say_node2}        = $an->data->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
+		$an->data->{vm}{$vm}{node2_ready}      = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node2",                    value1 => $conf->{vm}{$vm}{say_node2},
-			name2 => "node::${node2}::daemon::cman::exit_code", value2 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
+			name1 => "vm::${vm}::say_node2",                    value1 => $an->data->{vm}{$vm}{say_node2},
+			name2 => "node::${node2}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# If a VM's XML definition file is found but there is no host,
 		# the user probably forgot to define it.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm",   value1 => $vm,
-			name2 => "host", value2 => $conf->{vm}{$vm}{host},
+			name2 => "host", value2 => $an->data->{vm}{$vm}{host},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $conf->{vm}{$vm}{host}) && (not $conf->{sys}{ignore_missing_vm}))
+		if ((not $an->data->{vm}{$vm}{host}) && (not $an->data->{sys}{ignore_missing_vm}))
 		{
 			# Pull the host node and current state out of the hash.
 			my $host_node = "";
 			my $vm_state  = "";
-			foreach my $node (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}})
+			foreach my $node (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}})
 			{
 				$host_node = $node;
-				foreach my $key (sort {$a cmp $b} keys %{$conf->{vm}{$vm}{node}{$node}{virsh}})
+				foreach my $key (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{virsh}})
 				{
 					if ($key eq "state") 
 					{
-						$vm_state = $conf->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
+						$vm_state = $an->data->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
 					}
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 						name1 => "vm",           value1 => $vm,
 						name2 => "node",         value2 => $node,
-						name3 => "virsh '$key'", value3 => $conf->{vm}{$vm}{node}{$node}{virsh}{$key},
+						name3 => "virsh '$key'", value3 => $an->data->{vm}{$vm}{node}{$node}{virsh}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
-			$conf->{vm}{$vm}{say_node1} = "--";
-			$conf->{vm}{$vm}{say_node2} = "--";
+			$an->data->{vm}{$vm}{say_node1} = "--";
+			$an->data->{vm}{$vm}{say_node2} = "--";
 			my $say_error = $an->String->get({key => "message_0271", variables => { 
 					server	=>	$say_vm,
-					url	=>	"?cluster=$conf->{cgi}{cluster}&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
+					url	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
 				}});
-			AN::Cluster::error($conf, "$say_error", 0);
+			AN::Cluster::error($an, "$say_error", 0);
 			next;
 		}
 		
-		$conf->{vm}{$vm}{host} = "" if not defined $conf->{vm}{$vm}{host};
+		$an->data->{vm}{$vm}{host} = "" if not defined $an->data->{vm}{$vm}{host};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "vm",              value1 => $vm,
-			name2 => "vm::${vm}::host", value2 => $conf->{vm}{$vm}{host},
+			name2 => "vm::${vm}::host", value2 => $an->data->{vm}{$vm}{host},
 			name3 => "short_node1",     value3 => $short_node1,
 			name4 => "short_node2",     value4 => $short_node2,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{vm}{$vm}{host} =~ /$short_node1/)
+		if ($an->data->{vm}{$vm}{host} =~ /$short_node1/)
 		{
 			# Even though I know the host is ready, this function
 			# loads some data, like LV details, which I will need
 			# later.
-			check_node_readiness($conf, $vm, $node1);
-			$conf->{vm}{$vm}{can_start}     = 0;
-			$conf->{vm}{$vm}{can_stop}      = 1;
-			$conf->{vm}{$vm}{current_host}  = $node1;
-			$conf->{vm}{$vm}{node1_ready}   = 2;
-			($conf->{vm}{$vm}{node2_ready}) = check_node_readiness($conf, $vm, $node2);
-			if ($conf->{vm}{$vm}{node2_ready})
+			check_node_readiness($an, $vm, $node1);
+			$an->data->{vm}{$vm}{can_start}     = 0;
+			$an->data->{vm}{$vm}{can_stop}      = 1;
+			$an->data->{vm}{$vm}{current_host}  = $node1;
+			$an->data->{vm}{$vm}{node1_ready}   = 2;
+			($an->data->{vm}{$vm}{node2_ready}) = check_node_readiness($an, $vm, $node2);
+			if ($an->data->{vm}{$vm}{node2_ready})
 			{
-				$conf->{vm}{$vm}{migration_target} = $long_node2;
-				$conf->{vm}{$vm}{can_migrate}      = 1;
+				$an->data->{vm}{$vm}{migration_target} = $long_node2;
+				$an->data->{vm}{$vm}{can_migrate}      = 1;
 			}
 			# Disable cluster withdrawl of this node.
-			$conf->{node}{$node1}{enable_withdraw} = 0;
+			$an->data->{node}{$node1}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "vm",               value1 => $vm,
 				name2 => "node1",            value2 => $node1,
-				name3 => "node2 ready",      value3 => $conf->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $conf->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $conf->{vm}{$vm}{migration_target},
+				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
+				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
+				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($conf->{vm}{$vm}{host} =~ /$short_node2/)
+		elsif ($an->data->{vm}{$vm}{host} =~ /$short_node2/)
 		{
 			# Even though I know the host is ready, this function
 			# loads some data, like LV details, which I will need
 			# later.
-			check_node_readiness($conf, $vm, $node2);
-			$conf->{vm}{$vm}{can_start}     = 0;
-			$conf->{vm}{$vm}{can_stop}      = 1;
-			$conf->{vm}{$vm}{current_host}  = $node2;
-			($conf->{vm}{$vm}{node1_ready}) = check_node_readiness($conf, $vm, $node1);
-			$conf->{vm}{$vm}{node2_ready}   = 2;
-			if ($conf->{vm}{$vm}{node1_ready})
+			check_node_readiness($an, $vm, $node2);
+			$an->data->{vm}{$vm}{can_start}     = 0;
+			$an->data->{vm}{$vm}{can_stop}      = 1;
+			$an->data->{vm}{$vm}{current_host}  = $node2;
+			($an->data->{vm}{$vm}{node1_ready}) = check_node_readiness($an, $vm, $node1);
+			$an->data->{vm}{$vm}{node2_ready}   = 2;
+			if ($an->data->{vm}{$vm}{node1_ready})
 			{
-				$conf->{vm}{$vm}{migration_target} = $long_node1;
-				$conf->{vm}{$vm}{can_migrate}      = 1;
+				$an->data->{vm}{$vm}{migration_target} = $long_node1;
+				$an->data->{vm}{$vm}{can_migrate}      = 1;
 			}
 			# Disable withdrawl of this node.
-			$conf->{node}{$node2}{enable_withdraw} = 0;
+			$an->data->{node}{$node2}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
 				name1 => "vm",               value1 => $vm,
 				name2 => "node1",            value2 => $node1,
-				name3 => "node2 ready",      value3 => $conf->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $conf->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $conf->{vm}{$vm}{migration_target},
+				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
+				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
+				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			$conf->{vm}{$vm}{can_stop}      = 0;
-			($conf->{vm}{$vm}{node1_ready}) = check_node_readiness($conf, $vm, $node1);
-			($conf->{vm}{$vm}{node2_ready}) = check_node_readiness($conf, $vm, $node2);
+			$an->data->{vm}{$vm}{can_stop}      = 0;
+			($an->data->{vm}{$vm}{node1_ready}) = check_node_readiness($an, $vm, $node1);
+			($an->data->{vm}{$vm}{node2_ready}) = check_node_readiness($an, $vm, $node2);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",          value1 => $vm,
-				name2 => "node1_ready", value2 => $conf->{vm}{$vm}{node1_ready},
-				name3 => "node2_ready", value3 => $conf->{vm}{$vm}{node2_ready},
+				name2 => "node1_ready", value2 => $an->data->{vm}{$vm}{node1_ready},
+				name3 => "node2_ready", value3 => $an->data->{vm}{$vm}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm",           value1 => $vm,
-			name2 => "current host", value2 => $conf->{vm}{$vm}{current_host},
+			name2 => "current host", value2 => $an->data->{vm}{$vm}{current_host},
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{vm}{$vm}{boot_target} = "";
-		if ($conf->{vm}{$vm}{current_host})
+		$an->data->{vm}{$vm}{boot_target} = "";
+		if ($an->data->{vm}{$vm}{current_host})
 		{
 			# This is a bit expensive, but read the VM's running
 			# definition.
-			my $node       =  $conf->{vm}{$vm}{current_host};
+			my $node       =  $an->data->{vm}{$vm}{current_host};
 			my $say_vm     =  $vm;
 			   $say_vm     =~ s/^vm://;
 			my $shell_call =  "/usr/bin/virsh dumpxml $say_vm";
-			my $password   =  $conf->{sys}{root_password};
+			my $password   =  $an->data->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -11115,50 +11042,50 @@ sub check_vms
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				push @{$conf->{vm}{$vm}{xml}}, $line;
+				push @{$an->data->{vm}{$vm}{xml}}, $line;
 			}
 		}
 		else
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",          value1 => $vm,
-				name2 => "node1_ready", value2 => $conf->{vm}{$vm}{node1_ready},
-				name3 => "node2_ready", value3 => $conf->{vm}{$vm}{node2_ready},
+				name2 => "node1_ready", value2 => $an->data->{vm}{$vm}{node1_ready},
+				name3 => "node2_ready", value3 => $an->data->{vm}{$vm}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (($conf->{vm}{$vm}{node1_ready}) && ($conf->{vm}{$vm}{node2_ready}))
+			if (($an->data->{vm}{$vm}{node1_ready}) && ($an->data->{vm}{$vm}{node2_ready}))
 			{
 				# I can boot on either node, so choose the 
 				# first one in the VM's failover domain.
-				$conf->{vm}{$vm}{boot_target} = find_prefered_host($conf, $vm);
-				$conf->{vm}{$vm}{can_start}   = 1;
+				$an->data->{vm}{$vm}{boot_target} = find_prefered_host($an, $vm);
+				$an->data->{vm}{$vm}{can_start}   = 1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 					name1 => "vm",                   value1 => $vm,
-					name2 => "boot target",          value2 => $conf->{vm}{$vm}{boot_target},
-					name3 => "vm::${vm}::can_start", value3 => $conf->{vm}{$vm}{can_start},
+					name2 => "boot target",          value2 => $an->data->{vm}{$vm}{boot_target},
+					name3 => "vm::${vm}::can_start", value3 => $an->data->{vm}{$vm}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($conf->{vm}{$vm}{node1_ready})
+			elsif ($an->data->{vm}{$vm}{node1_ready})
 			{
-				$conf->{vm}{$vm}{boot_target} = $node1;
+				$an->data->{vm}{$vm}{boot_target} = $node1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "vm",          value1 => $vm,
-					name2 => "boot target", value2 => $conf->{vm}{$vm}{boot_target},
+					name2 => "boot target", value2 => $an->data->{vm}{$vm}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($conf->{vm}{$vm}{node2_ready})
+			elsif ($an->data->{vm}{$vm}{node2_ready})
 			{
-				$conf->{vm}{$vm}{boot_target} = $node2;
+				$an->data->{vm}{$vm}{boot_target} = $node2;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "vm",          value1 => $vm,
-					name2 => "boot target", value2 => $conf->{vm}{$vm}{boot_target},
+					name2 => "boot target", value2 => $an->data->{vm}{$vm}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				$conf->{vm}{$vm}{can_start} = 0;
+				$an->data->{vm}{$vm}{can_start} = 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 					name1 => "vm",        value1 => $vm,
-					name2 => "can_start", value2 => $conf->{vm}{$vm}{can_start},
+					name2 => "can_start", value2 => $an->data->{vm}{$vm}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -11171,15 +11098,14 @@ sub check_vms
 # This looks through the failover domain for a VM and returns the prefered host.
 sub find_prefered_host
 {
-	my ($conf, $vm) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $vm) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_prefered_host" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "vm", value1 => $vm, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $prefered_host = "";
 	
-	my $failover_domain = $conf->{vm}{$vm}{failover_domain};
+	my $failover_domain = $an->data->{vm}{$vm}{failover_domain};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "vm",              value1 => $vm,
 		name2 => "failover_domain", value2 => $failover_domain,
@@ -11191,11 +11117,11 @@ sub find_prefered_host
 	}
 	
 	# TODO: Check to see if I need to use <=> instead of cmp.
-	foreach my $priority (sort {$a cmp $b} keys %{$conf->{failoverdomain}{$failover_domain}{priority}})
+	foreach my $priority (sort {$a cmp $b} keys %{$an->data->{failoverdomain}{$failover_domain}{priority}})
 	{
 		# I only care about the first entry, so I will
 		# exit the loop as soon as I analyze it.
-		$prefered_host = $conf->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
+		$prefered_host = $an->data->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "vm",            value1 => $vm,
 			name2 => "prefered host", value2 => $prefered_host,
@@ -11214,18 +11140,17 @@ sub find_prefered_host
 # the $conf hash declaration
 sub set_node_names
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_node_names" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First pull the names into easier to follow variables.
-	my $this_cluster = $conf->{cgi}{cluster};
-	$conf->{sys}{cluster}{node1_name} = $conf->{clusters}{$this_cluster}{nodes}[0];
-	$conf->{sys}{cluster}{node2_name} = $conf->{clusters}{$this_cluster}{nodes}[1];
+	my $this_cluster = $an->data->{cgi}{cluster};
+	$an->data->{sys}{cluster}{node1_name} = $an->data->{clusters}{$this_cluster}{nodes}[0];
+	$an->data->{sys}{cluster}{node2_name} = $an->data->{clusters}{$this_cluster}{nodes}[1];
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "this_cluster", value1 => $this_cluster,
-		name2 => "node1",        value2 => $conf->{sys}{cluster}{node1_name},
-		name3 => "node2",        value3 => $conf->{sys}{cluster}{node2_name},
+		name2 => "node1",        value2 => $an->data->{sys}{cluster}{node1_name},
+		name3 => "node2",        value3 => $an->data->{sys}{cluster}{node2_name},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return (0);
@@ -11234,15 +11159,14 @@ sub set_node_names
 # This shows a banner asking for patience in anvil-safe-start is running on either node.
 sub display_anvil_safe_start_notice
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "display_anvil_safe_start_notice" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_safe_start_notice = "";
 	
 	my $display_notice = 0;
-	my $this_cluster   = $conf->{cgi}{cluster};
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	my $this_cluster   = $an->data->{cgi}{cluster};
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$this_cluster}{nodes}})
 	{
 		$display_notice = 1 if $an->data->{node}{$node}{'anvil-safe-start'};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11268,15 +11192,14 @@ sub display_anvil_safe_start_notice
 # This shows the current state of the VMs as well as the available control buttons.
 sub display_vm_state_and_controls
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_vm_state_and_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
+	my $node1_long = $an->data->{node}{$node1}{info}{host_name};
+	my $node2_long = $an->data->{node}{$node2}{info}{host_name};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1",      value1 => $node1,
 		name2 => "node1_long", value2 => $node1_long,
@@ -11287,12 +11210,12 @@ sub display_vm_state_and_controls
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $vm_state_and_control_panel = $an->Web->template({file => "server.html", template => "display-server-state-and-control-header", replace => { 
-			anvil			=>	$conf->{cgi}{cluster},
-			node1_short_host_name	=>	$conf->{node}{$node1}{info}{short_host_name},
-			node2_short_host_name	=>	$conf->{node}{$node2}{info}{short_host_name},
+			anvil			=>	$an->data->{cgi}{cluster},
+			node1_short_host_name	=>	$an->data->{node}{$node1}{info}{short_host_name},
+			node2_short_host_name	=>	$an->data->{node}{$node2}{info}{short_host_name},
 		}});
 
-	foreach my $vm (sort {$a cmp $b} keys %{$conf->{vm}})
+	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
 	{
 		# Break the name out of the hash key.
 		my ($say_vm) = ($vm =~ /^vm:(.*)/);
@@ -11302,25 +11225,25 @@ sub display_vm_state_and_controls
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Use the node's short name for the buttons.
-		my $say_start_target     =  $conf->{vm}{$vm}{boot_target} ? $conf->{vm}{$vm}{boot_target} : "--";
+		my $say_start_target     =  $an->data->{vm}{$vm}{boot_target} ? $an->data->{vm}{$vm}{boot_target} : "--";
 		$say_start_target        =~ s/\..*?$//;
-		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		my $start_target_long    = $node1_long =~ /$say_start_target/ ? $an->data->{node}{$node1}{info}{host_name} : $an->data->{node}{$node2}{info}{host_name};
 		my $start_target_name    = $node1      =~ /$say_start_target/ ? $node1 : $node2;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "say_start_target",       value1 => $say_start_target,
-			name2 => "vm::${vm}::boot_target", value2 => $conf->{vm}{$vm}{boot_target},
+			name2 => "vm::${vm}::boot_target", value2 => $an->data->{vm}{$vm}{boot_target},
 			name3 => "start_target_long",      value3 => $start_target_long,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $prefered_host        =  find_prefered_host($conf, $vm);
+		my $prefered_host        =  find_prefered_host($an, $vm);
 		$prefered_host           =~ s/\..*$//;
-		if ($conf->{vm}{$vm}{boot_target})
+		if ($an->data->{vm}{$vm}{boot_target})
 		{
 			$prefered_host = "<span class=\"highlight_ready\">$prefered_host</span>";
 		}
 		else
 		{
-			my $on_host =  $conf->{vm}{$vm}{host};
+			my $on_host =  $an->data->{vm}{$vm}{host};
 			   $on_host =~ s/\..*$//;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "on_host",       value1 => $on_host,
@@ -11339,15 +11262,15 @@ sub display_vm_state_and_controls
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		my $say_migration_target =  $conf->{vm}{$vm}{migration_target};
+		my $say_migration_target =  $an->data->{vm}{$vm}{migration_target};
 		$say_migration_target    =~ s/\..*?$//;
 		#my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
 		my $migrate_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
-		if ($conf->{vm}{$vm}{can_migrate})
+		if ($an->data->{vm}{$vm}{can_migrate})
 		{
 			# If we're doing a cold migration, ask for confirmation. If this would be a live 
 			# migration, just do it.
-			my $button_link = "?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=migrate_vm&target=$conf->{vm}{$vm}{migration_target}&vm_ram=$conf->{vm}{$vm}{details}{ram}";
+			my $button_link = "?cluster=".$an->data->{cgi}{cluster}."&vm=$say_vm&task=migrate_vm&target=".$an->data->{vm}{$vm}{migration_target}."&vm_ram=".$an->data->{vm}{$vm}{details}{ram};
 			my $server_data = $an->Get->server_data({
 				server   => $say_vm, 
 				anvil    => $an->data->{cgi}{cluster}, 
@@ -11371,95 +11294,95 @@ sub display_vm_state_and_controls
 					id		=>	"migrate_vm_$vm",
 				}});
 		}
-		my $host_node        = "$conf->{vm}{$vm}{host}";
+		my $host_node        = $an->data->{vm}{$vm}{host};
 		#my $stop_button      = "<span class=\"disabled_button\">#!string!button_0033!#</span>";
 		#my $force_off_button = "<span class=\"disabled_button\">#!string!button_0027!#</span>";
 		my $stop_button      = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
 		my $force_off_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0027!#" }});
-		if ($conf->{vm}{$vm}{can_stop})
+		if ($an->data->{vm}{$vm}{can_stop})
 		{
-			$host_node        = long_host_name_to_node_name($conf, $conf->{vm}{$vm}{host});
+			$host_node        = long_host_name_to_node_name($an, $an->data->{vm}{$vm}{host});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "vm",        value1 => $vm,
 				name2 => "host node", value2 => $host_node,
-				name3 => "vm host",   value3 => $conf->{vm}{$vm}{host},
+				name3 => "vm host",   value3 => $an->data->{vm}{$vm}{host},
 			}, file => $THIS_FILE, line => __LINE__});
-			my $expire_time = time + $conf->{sys}{actime_timeout};
+			my $expire_time = time + $an->data->{sys}{actime_timeout};
 			   $stop_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=stop_vm&vm=$say_vm&node=$host_node",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=stop_vm&vm=$say_vm&node=$host_node",
 					button_text	=>	"#!string!button_0028!#",
 					id		=>	"stop_vm_$vm",
 				}});
 			$force_off_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"highlight_dangerous",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=force_off_vm&vm=$say_vm&node=$host_node&host=$conf->{vm}{$vm}{host}",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=force_off_vm&vm=$say_vm&node=$host_node&host=".$an->data->{vm}{$vm}{host},
 					button_text	=>	"#!string!button_0027!#",
 					id		=>	"force_off_vm_$say_vm",
 				}});
 		}
 		my $start_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0029!#" }});
 
-		if ($conf->{vm}{$vm}{boot_target})
+		if ($an->data->{vm}{$vm}{boot_target})
 		{
 			$start_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
 					button_text	=>	"#!string!button_0029!#",
 					id		=>	"start_vm_$vm",
 				}});
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "start_button",           value1 => $start_button,
-			name2 => "vm::${vm}::boot_target", value2 => $conf->{vm}{$vm}{boot_target},
+			name2 => "vm::${vm}::boot_target", value2 => $an->data->{vm}{$vm}{boot_target},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I need both nodes up to delete a VM.
 		my $say_delete_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0030!#" }});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node::${node1}::daemon::cman::exit_code", value1 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
-			name2 => "node::${node2}::daemon::cman::exit_code", value2 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
+			name1 => "node::${node1}::daemon::cman::exit_code", value1 => $an->data->{node}{$node1}{daemon}{cman}{exit_code},
+			name2 => "node::${node2}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2}{daemon}{cman}{exit_code},
 			name3 => "prefered_host",                           value3 => $prefered_host,
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($prefered_host !~ /--/))
+		if (($an->data->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($an->data->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($prefered_host !~ /--/))
 		{
 			$say_delete_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"highlight_dangerous",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$say_vm&task=delete_vm",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&vm=$say_vm&task=delete_vm",
 					button_text	=>	"#!string!button_0030!#",
 					id		=>	"delete_vm_$say_vm",
 				}});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1", value1 => $conf->{vm}{$vm}{say_node1},
-			name2 => "vm::${vm}::say_node2", value2 => $conf->{vm}{$vm}{say_node2},
+			name1 => "vm::${vm}::say_node1", value1 => $an->data->{vm}{$vm}{say_node1},
+			name2 => "vm::${vm}::say_node2", value2 => $an->data->{vm}{$vm}{say_node2},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{vm}{$vm}{node1_ready} == 2)
+		if ($an->data->{vm}{$vm}{node1_ready} == 2)
 		{
-			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
+			$an->data->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
 		}
-		elsif ($conf->{vm}{$vm}{node1_ready} == 1)
+		elsif ($an->data->{vm}{$vm}{node1_ready} == 1)
 		{
-			$conf->{vm}{$vm}{say_node1} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
+			$an->data->{vm}{$vm}{say_node1} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
 		}
-		if ($conf->{vm}{$vm}{node2_ready} == 2)
+		if ($an->data->{vm}{$vm}{node2_ready} == 2)
 		{
-			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
+			$an->data->{vm}{$vm}{say_node2} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
 		}
-		elsif ($conf->{vm}{$vm}{node2_ready} == 1)
+		elsif ($an->data->{vm}{$vm}{node2_ready} == 1)
 		{
-			$conf->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
+			$an->data->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1", value1 => $conf->{vm}{$vm}{say_node1},
-			name2 => "vm::${vm}::say_node2", value2 => $conf->{vm}{$vm}{say_node2},
+			name1 => "vm::${vm}::say_node1", value1 => $an->data->{vm}{$vm}{say_node1},
+			name2 => "vm::${vm}::say_node2", value2 => $an->data->{vm}{$vm}{say_node2},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I don't want to make the VM editable until the cluster is
 		# runnong on at least one node.
-		my $dual_join   = (($conf->{node}{$node1}{enable_join}) && ($conf->{node}{$node2}{enable_join})) ? 1 : 0;
+		my $dual_join   = (($an->data->{node}{$node1}{enable_join}) && ($an->data->{node}{$node2}{enable_join})) ? 1 : 0;
 		my $say_vm_link = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 			button_class	=>	"fixed_width_button",
-			button_link	=>	"?cluster=$conf->{cgi}{cluster}&vm=$vm&task=manage_vm",
+			button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&vm=$vm&task=manage_vm",
 			button_text	=>	"$say_vm",
 			id		=>	"manage_vm_$say_vm",
 		}});
@@ -11471,8 +11394,8 @@ sub display_vm_state_and_controls
 		
 		$vm_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entry", replace => { 
 				vm_link			=>	$say_vm_link,
-				say_node1		=>	$conf->{vm}{$vm}{say_node1},
-				say_node2		=>	$conf->{vm}{$vm}{say_node2},
+				say_node1		=>	$an->data->{vm}{$vm}{say_node1},
+				say_node2		=>	$an->data->{vm}{$vm}{say_node2},
 				prefered_host		=>	$prefered_host,
 				start_button		=>	$start_button,
 				migrate_button		=>	$migrate_button,
@@ -11492,21 +11415,20 @@ sub display_vm_state_and_controls
 # This shows the status of each DRBD resource in the cluster.
 sub display_drbd_details
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_drbd_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
-	my $say_node1 = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2 = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
+	my $say_node1 = "<span class=\"fixed_width\">".$an->data->{node}{$node1}{info}{short_host_name}."</span>";
+	my $say_node2 = "<span class=\"fixed_width\">".$an->data->{node}{$node2}{info}{short_host_name}."</span>";
 	my $drbd_details_panel = $an->Web->template({file => "server.html", template => "display-replicated-storage-header", replace => { 
 			say_node1	=>	$say_node1,
 			say_node2	=>	$say_node2,
 		}});
 
-	foreach my $res (sort {$a cmp $b} keys %{$conf->{drbd}})
+	foreach my $res (sort {$a cmp $b} keys %{$an->data->{drbd}})
 	{
 		next if not $res;
 		# If the DRBD daemon is stopped, I will use the values from the resource files.
@@ -11520,53 +11442,53 @@ sub display_drbd_details
 		my $say_n2_ds   = "--";
 		
 		# Check if node 1 is online.
-		if ($conf->{node}{$node1}{up})
+		if ($an->data->{node}{$node1}{up})
 		{
 			# It is, but is DRBD running?
-			if ($conf->{node}{$node1}{daemon}{drbd}{exit_code} eq "0")
+			if ($an->data->{node}{$node1}{daemon}{drbd}{exit_code} eq "0")
 			{
 				# It is. 
-				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{device}           if $conf->{drbd}{$res}{node}{$node1}{device};
-				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{connection_state} if $conf->{drbd}{$res}{node}{$node1}{connection_state};
-				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{role}             if $conf->{drbd}{$res}{node}{$node1}{role};
-				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{disk_state}       if $conf->{drbd}{$res}{node}{$node1}{disk_state};
-				if (($conf->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
+				$say_n1_dev = $an->data->{drbd}{$res}{node}{$node1}{device}           if $an->data->{drbd}{$res}{node}{$node1}{device};
+				$say_n1_cs  = $an->data->{drbd}{$res}{node}{$node1}{connection_state} if $an->data->{drbd}{$res}{node}{$node1}{connection_state};
+				$say_n1_ro  = $an->data->{drbd}{$res}{node}{$node1}{role}             if $an->data->{drbd}{$res}{node}{$node1}{role};
+				$say_n1_ds  = $an->data->{drbd}{$res}{node}{$node1}{disk_state}       if $an->data->{drbd}{$res}{node}{$node1}{disk_state};
+				if (($an->data->{drbd}{$res}{node}{$node1}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node1}{resync_percent} =~ /^\d/))
 				{
-					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node1}{resync_percent}%)</span>";
+					$say_n1_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($an->data->{drbd}{$res}{node}{$node1}{resync_percent}%)</span>";
 				}
 			}
 			else
 			{
 				# It is not, use the {res_file} values.
-				$say_n1_dev = $conf->{drbd}{$res}{node}{$node1}{res_file}{device}           if $conf->{drbd}{$res}{node}{$node1}{res_file}{device};
-				$say_n1_cs  = $conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state} if $conf->{drbd}{$res}{node}{$node1}{res_file}{connection_state};
-				$say_n1_ro  = $conf->{drbd}{$res}{node}{$node1}{res_file}{role}             if $conf->{drbd}{$res}{node}{$node1}{res_file}{role};
-				$say_n1_ds  = $conf->{drbd}{$res}{node}{$node1}{res_file}{disk_state}       if $conf->{drbd}{$res}{node}{$node1}{res_file}{disk_state};
+				$say_n1_dev = $an->data->{drbd}{$res}{node}{$node1}{res_file}{device}           if $an->data->{drbd}{$res}{node}{$node1}{res_file}{device};
+				$say_n1_cs  = $an->data->{drbd}{$res}{node}{$node1}{res_file}{connection_state} if $an->data->{drbd}{$res}{node}{$node1}{res_file}{connection_state};
+				$say_n1_ro  = $an->data->{drbd}{$res}{node}{$node1}{res_file}{role}             if $an->data->{drbd}{$res}{node}{$node1}{res_file}{role};
+				$say_n1_ds  = $an->data->{drbd}{$res}{node}{$node1}{res_file}{disk_state}       if $an->data->{drbd}{$res}{node}{$node1}{res_file}{disk_state};
 			}
 		}
 		# Check if node 2 is online.
-		if ($conf->{node}{$node2}{up})
+		if ($an->data->{node}{$node2}{up})
 		{
 			# It is, but is DRBD running?
-			if ($conf->{node}{$node2}{daemon}{drbd}{exit_code} eq "0")
+			if ($an->data->{node}{$node2}{daemon}{drbd}{exit_code} eq "0")
 			{
 				# It is. 
-				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{device}           if $conf->{drbd}{$res}{node}{$node2}{device};
-				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{connection_state} if $conf->{drbd}{$res}{node}{$node2}{connection_state};
-				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{role}             if $conf->{drbd}{$res}{node}{$node2}{role};
-				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{disk_state}       if $conf->{drbd}{$res}{node}{$node2}{disk_state};
-				if (($conf->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($conf->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
+				$say_n2_dev = $an->data->{drbd}{$res}{node}{$node2}{device}           if $an->data->{drbd}{$res}{node}{$node2}{device};
+				$say_n2_cs  = $an->data->{drbd}{$res}{node}{$node2}{connection_state} if $an->data->{drbd}{$res}{node}{$node2}{connection_state};
+				$say_n2_ro  = $an->data->{drbd}{$res}{node}{$node2}{role}             if $an->data->{drbd}{$res}{node}{$node2}{role};
+				$say_n2_ds  = $an->data->{drbd}{$res}{node}{$node2}{disk_state}       if $an->data->{drbd}{$res}{node}{$node2}{disk_state};
+				if (($an->data->{drbd}{$res}{node}{$node2}{disk_state} eq "Inconsistent") && ($an->data->{drbd}{$res}{node}{$node2}{resync_percent} =~ /^\d/))
 				{
-					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($conf->{drbd}{$res}{node}{$node2}{resync_percent}%)</span>";
+					$say_n2_ds .= " <span class=\"subtle_text\" style=\"font-style: normal;\">($an->data->{drbd}{$res}{node}{$node2}{resync_percent}%)</span>";
 				}
 			}
 			else
 			{
 				# It is not, use the {res_file} values.
-				$say_n2_dev = $conf->{drbd}{$res}{node}{$node2}{res_file}{device}           if $conf->{drbd}{$res}{node}{$node2}{res_file}{device};
-				$say_n2_cs  = $conf->{drbd}{$res}{node}{$node2}{res_file}{connection_state} if $conf->{drbd}{$res}{node}{$node2}{res_file}{connection_state};
-				$say_n2_ro  = $conf->{drbd}{$res}{node}{$node2}{res_file}{role}             if $conf->{drbd}{$res}{node}{$node2}{res_file}{role};
-				$say_n2_ds  = $conf->{drbd}{$res}{node}{$node2}{res_file}{disk_state}       if $conf->{drbd}{$res}{node}{$node2}{res_file}{disk_state};
+				$say_n2_dev = $an->data->{drbd}{$res}{node}{$node2}{res_file}{device}           if $an->data->{drbd}{$res}{node}{$node2}{res_file}{device};
+				$say_n2_cs  = $an->data->{drbd}{$res}{node}{$node2}{res_file}{connection_state} if $an->data->{drbd}{$res}{node}{$node2}{res_file}{connection_state};
+				$say_n2_ro  = $an->data->{drbd}{$res}{node}{$node2}{res_file}{role}             if $an->data->{drbd}{$res}{node}{$node2}{res_file}{role};
+				$say_n2_ds  = $an->data->{drbd}{$res}{node}{$node2}{res_file}{disk_state}       if $an->data->{drbd}{$res}{node}{$node2}{res_file}{disk_state};
 			}
 		}
 		
@@ -11626,15 +11548,14 @@ sub display_drbd_details
 # This shows the details on each node's GFS2 mount(s)
 sub display_gfs2_details
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_gfs2_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
-	my $node1              = $conf->{sys}{cluster}{node1_name};
-	my $node2              = $conf->{sys}{cluster}{node2_name};
-	my $say_node1          = "<span class=\"fixed_width\">$conf->{node}{$node1}{info}{short_host_name}</span>";
-	my $say_node2          = "<span class=\"fixed_width\">$conf->{node}{$node2}{info}{short_host_name}</span>";
+	my $node1              = $an->data->{sys}{cluster}{node1_name};
+	my $node2              = $an->data->{sys}{cluster}{node2_name};
+	my $say_node1          = "<span class=\"fixed_width\">".$an->data->{node}{$node1}{info}{short_host_name}."</span>";
+	my $say_node2          = "<span class=\"fixed_width\">".$an->data->{node}{$node2}{info}{short_host_name}."</span>";
 	my $gfs2_details_panel = $an->Web->template({file => "server.html", template => "display-cluster-storage-header", replace => { 
 			say_node1	=>	$say_node1,
 			say_node2	=>	$say_node2,
@@ -11643,24 +11564,24 @@ sub display_gfs2_details
 	my $gfs2_hash = "";
 	my $node      = "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node1 - cman exit code", value1 => $conf->{node}{$node1}{daemon}{cman}{exit_code},
-		name2 => "gfs2 exit code",         value2 => $conf->{node}{$node1}{daemon}{gfs2}{exit_code},
+		name1 => "node1 - cman exit code", value1 => $an->data->{node}{$node1}{daemon}{cman}{exit_code},
+		name2 => "gfs2 exit code",         value2 => $an->data->{node}{$node1}{daemon}{gfs2}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node2 - cman exit code", value1 => $conf->{node}{$node2}{daemon}{cman}{exit_code},
-		name2 => "gfs2 exit code",         value2 => $conf->{node}{$node2}{daemon}{gfs2}{exit_code},
+		name1 => "node2 - cman exit code", value1 => $an->data->{node}{$node2}{daemon}{cman}{exit_code},
+		name2 => "gfs2 exit code",         value2 => $an->data->{node}{$node2}{daemon}{gfs2}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node1}{gfs}) eq "HASH"))
+	if (($an->data->{node}{$node1}{daemon}{cman}{exit_code} eq "0") && ($an->data->{node}{$node1}{daemon}{gfs2}{exit_code} eq "0") && (ref($an->data->{node}{$node1}{gfs}) eq "HASH"))
 	{
-		$gfs2_hash = $conf->{node}{$node1}{gfs};
+		$gfs2_hash = $an->data->{node}{$node1}{gfs};
 		$node      = $node1;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "using node1's gfs2 hash", value1 => $gfs2_hash,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif (($conf->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($conf->{node}{$node2}{daemon}{gfs2}{exit_code} eq "0") && (ref($conf->{node}{$node2}{gfs}) eq "HASH"))
+	elsif (($an->data->{node}{$node2}{daemon}{cman}{exit_code} eq "0") && ($an->data->{node}{$node2}{daemon}{gfs2}{exit_code} eq "0") && (ref($an->data->{node}{$node2}{gfs}) eq "HASH"))
 	{
-		$gfs2_hash = $conf->{node}{$node2}{gfs};
+		$gfs2_hash = $an->data->{node}{$node2}{gfs};
 		$node      = $node2;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "using node2's gfs2 hash", value1 => $gfs2_hash,
@@ -11671,14 +11592,14 @@ sub display_gfs2_details
 		# Neither node has the GFS2 partition mounted. Use the data from /etc/fstab. This is what
 		# will be stored in either node's hash. So pick a node that's online and use it.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "up nodes", value1 => $conf->{sys}{up_nodes},
+			name1 => "up nodes", value1 => $an->data->{sys}{up_nodes},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{sys}{up_nodes} == 1)
+		if ($an->data->{sys}{up_nodes} == 1)
 		{
 			# Neither node has the GFS2 partition mounted.
 			$an->Log->entry({log_level => 2, message_key => "log_0259", file => $THIS_FILE, line => __LINE__});
-			$node      = @{$conf->{up_nodes}}[0];
-			$gfs2_hash = $conf->{node}{$node}{gfs};
+			$node      = @{$an->data->{up_nodes}}[0];
+			$gfs2_hash = $an->data->{node}{$node}{gfs};
 		}
 		else
 		{
@@ -11688,19 +11609,19 @@ sub display_gfs2_details
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "gfs2_hash",  value1 => $gfs2_hash,
-		name2 => "node1 hash", value2 => ref($conf->{node}{$node1}{gfs}),
-		name3 => "node2 hash", value3 => ref($conf->{node}{$node2}{gfs}),
+		name2 => "node1 hash", value2 => ref($an->data->{node}{$node1}{gfs}),
+		name3 => "node2 hash", value3 => ref($an->data->{node}{$node2}{gfs}),
 	}, file => $THIS_FILE, line => __LINE__});
 	if (ref($gfs2_hash) eq "HASH")
 	{
 		foreach my $mount_point (sort {$a cmp $b} keys %{$gfs2_hash})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${node1}::gfs::${mount_point}::mounted", value1 => $conf->{node}{$node1}{gfs}{$mount_point}{mounted},
-				name2 => "node::${node2}::gfs::${mount_point}::mounted", value2 => $conf->{node}{$node2}{gfs}{$mount_point}{mounted},
+				name1 => "node::${node1}::gfs::${mount_point}::mounted", value1 => $an->data->{node}{$node1}{gfs}{$mount_point}{mounted},
+				name2 => "node::${node2}::gfs::${mount_point}::mounted", value2 => $an->data->{node}{$node2}{gfs}{$mount_point}{mounted},
 			}, file => $THIS_FILE, line => __LINE__});
-			my $say_node1_mounted = $conf->{node}{$node1}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
-			my $say_node2_mounted = $conf->{node}{$node2}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
+			my $say_node1_mounted = $an->data->{node}{$node1}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
+			my $say_node2_mounted = $an->data->{node}{$node2}{gfs}{$mount_point}{mounted} ? "<span class=\"highlight_good\">#!string!state_0010!#</span>" : "<span class=\"highlight_bad\">#!string!state_0011!#</span>";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "say_node1_mounted", value1 => $say_node1_mounted,
 				name2 => "say_node2_mounted", value2 => $say_node2_mounted,
@@ -11712,27 +11633,27 @@ sub display_gfs2_details
 			
 			# This is to avoid the "undefined variable" errors in
 			# the log from when a node isn't online.
-			$conf->{node}{$node1}{gfs}{$mount_point}{total_size} = "" if not defined $conf->{node}{$node1}{gfs}{$mount_point}{total_size};
-			$conf->{node}{$node2}{gfs}{$mount_point}{total_size} = "" if not defined $conf->{node}{$node2}{gfs}{$mount_point}{total_size};
+			$an->data->{node}{$node1}{gfs}{$mount_point}{total_size} = "" if not defined $an->data->{node}{$node1}{gfs}{$mount_point}{total_size};
+			$an->data->{node}{$node2}{gfs}{$mount_point}{total_size} = "" if not defined $an->data->{node}{$node2}{gfs}{$mount_point}{total_size};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "node1 total size", value1 => $conf->{node}{$node1}{gfs}{$mount_point}{total_size},
+				name1 => "node1 total size", value1 => $an->data->{node}{$node1}{gfs}{$mount_point}{total_size},
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "node2 total size", value1 => $conf->{node}{$node2}{gfs}{$mount_point}{total_size},
+				name1 => "node2 total size", value1 => $an->data->{node}{$node2}{gfs}{$mount_point}{total_size},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{node}{$node1}{gfs}{$mount_point}{total_size} =~ /^\d/)
+			if ($an->data->{node}{$node1}{gfs}{$mount_point}{total_size} =~ /^\d/)
 			{
-				$say_size         = $conf->{node}{$node1}{gfs}{$mount_point}{total_size};
-				$say_used         = $conf->{node}{$node1}{gfs}{$mount_point}{used_space};
-				$say_used_percent = $conf->{node}{$node1}{gfs}{$mount_point}{percent_used};
-				$say_free         = $conf->{node}{$node1}{gfs}{$mount_point}{free_space};
+				$say_size         = $an->data->{node}{$node1}{gfs}{$mount_point}{total_size};
+				$say_used         = $an->data->{node}{$node1}{gfs}{$mount_point}{used_space};
+				$say_used_percent = $an->data->{node}{$node1}{gfs}{$mount_point}{percent_used};
+				$say_free         = $an->data->{node}{$node1}{gfs}{$mount_point}{free_space};
 			}
-			elsif ($conf->{node}{$node2}{gfs}{$mount_point}{total_size} =~ /^\d/)
+			elsif ($an->data->{node}{$node2}{gfs}{$mount_point}{total_size} =~ /^\d/)
 			{
-				$say_size         = $conf->{node}{$node2}{gfs}{$mount_point}{total_size};
-				$say_used         = $conf->{node}{$node2}{gfs}{$mount_point}{used_space};
-				$say_used_percent = $conf->{node}{$node2}{gfs}{$mount_point}{percent_used};
-				$say_free         = $conf->{node}{$node2}{gfs}{$mount_point}{free_space};
+				$say_size         = $an->data->{node}{$node2}{gfs}{$mount_point}{total_size};
+				$say_used         = $an->data->{node}{$node2}{gfs}{$mount_point}{used_space};
+				$say_used_percent = $an->data->{node}{$node2}{gfs}{$mount_point}{percent_used};
+				$say_free         = $an->data->{node}{$node2}{gfs}{$mount_point}{free_space};
 			}
 			$gfs2_details_panel .= $an->Web->template({file => "server.html", template => "display-cluster-storage-entry", replace => { 
 					mount_point		=>	$mount_point,
@@ -11758,15 +11679,14 @@ sub display_gfs2_details
 # This shows the user the state of the nodes and their daemons.
 sub display_node_details
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	my $this_cluster = $an->data->{cgi}{cluster};
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
+	my $node1_long = $an->data->{node}{$node1}{info}{host_name};
+	my $node2_long = $an->data->{node}{$node2}{info}{host_name};
 	
 	my $i = 0;
 	my @host_name;
@@ -11777,20 +11697,20 @@ sub display_node_details
 	my @gfs2;
 	my @libvirtd;
 	
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
 		my $say_short_name =  $node;
 		$say_short_name    =~ s/\..*//;
-		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $conf->{node}{$node1}{info}{host_name} : $conf->{node}{$node2}{info}{host_name};
+		my $node_long_name =  $node1_long =~ /$say_short_name/ ? $an->data->{node}{$node1}{info}{host_name} : $an->data->{node}{$node2}{info}{host_name};
 		
-		$host_name[$i] = $conf->{node}{$node}{info}{short_host_name};
-		$cman[$i]      = $conf->{node}{$node}{daemon}{cman}{status};
-		$rgmanager[$i] = $conf->{node}{$node}{daemon}{rgmanager}{status};
-		$drbd[$i]      = $conf->{node}{$node}{daemon}{drbd}{status};
-		$clvmd[$i]     = $conf->{node}{$node}{daemon}{clvmd}{status};
-		$gfs2[$i]      = $conf->{node}{$node}{daemon}{gfs2}{status};
-		$libvirtd[$i]  = $conf->{node}{$node}{daemon}{libvirtd}{status};
+		$host_name[$i] = $an->data->{node}{$node}{info}{short_host_name};
+		$cman[$i]      = $an->data->{node}{$node}{daemon}{cman}{status};
+		$rgmanager[$i] = $an->data->{node}{$node}{daemon}{rgmanager}{status};
+		$drbd[$i]      = $an->data->{node}{$node}{daemon}{drbd}{status};
+		$clvmd[$i]     = $an->data->{node}{$node}{daemon}{clvmd}{status};
+		$gfs2[$i]      = $an->data->{node}{$node}{daemon}{gfs2}{status};
+		$libvirtd[$i]  = $an->data->{node}{$node}{daemon}{libvirtd}{status};
 		$i++;
 	}
 	
@@ -11817,8 +11737,7 @@ sub display_node_details
 # This shows the controls for the nodes.
 sub display_node_controls
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "display_node_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 
 	# Variables for the full template.
@@ -11834,33 +11753,33 @@ sub display_node_controls
 	my @say_fence;
 	
 	# I want to map storage service to nodes for the "Withdraw" buttons.
-	my $expire_time = time + $conf->{sys}{actime_timeout};
+	my $expire_time = time + $an->data->{sys}{actime_timeout};
 	my $disable_join = 0;
-	my $this_cluster = $conf->{cgi}{cluster};
-	my $node1 = $conf->{sys}{cluster}{node1_name};
-	my $node2 = $conf->{sys}{cluster}{node2_name};
+	my $this_cluster = $an->data->{cgi}{cluster};
+	my $node1 = $an->data->{sys}{cluster}{node1_name};
+	my $node2 = $an->data->{sys}{cluster}{node2_name};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1", value1 => $node1,
 		name2 => "node2", value2 => $node2,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $node1_long = $conf->{node}{$node1}{info}{host_name};
-	my $node2_long = $conf->{node}{$node2}{info}{host_name};
+	my $node1_long = $an->data->{node}{$node1}{info}{host_name};
+	my $node2_long = $an->data->{node}{$node2}{info}{host_name};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_long", value1 => $node1_long,
 		name2 => "node2_long", value2 => $node2_long,
 	}, file => $THIS_FILE, line => __LINE__});
 	my $rowspan    = 2;
-	my $dual_boot  = (($conf->{node}{$node1}{enable_poweron}) && ($conf->{node}{$node2}{enable_poweron})) ? 1 : 0;
-	my $dual_join  = (($conf->{node}{$node1}{enable_join})    && ($conf->{node}{$node2}{enable_join}))    ? 1 : 0;
-	my $cold_stop  = ($conf->{sys}{up_nodes} > 0)                                                         ? 1 : 0;
+	my $dual_boot  = (($an->data->{node}{$node1}{enable_poweron}) && ($an->data->{node}{$node2}{enable_poweron})) ? 1 : 0;
+	my $dual_join  = (($an->data->{node}{$node1}{enable_join})    && ($an->data->{node}{$node2}{enable_join}))    ? 1 : 0;
+	my $cold_stop  = ($an->data->{sys}{up_nodes} > 0)                                                         ? 1 : 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-		name1 => "sys::up_nodes", value1 => $conf->{sys}{up_nodes},
+		name1 => "sys::up_nodes", value1 => $an->data->{sys}{up_nodes},
 		name2 => "dual_boot",     value2 => $dual_boot,
 		name3 => "dual_join",     value3 => $dual_join,
 		name4 => "cold_stop",     value4 => $cold_stop,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	foreach my $node (sort {$a cmp $b} @{$conf->{clusters}{$this_cluster}{nodes}})
+	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$this_cluster}{nodes}})
 	{
 		# Get the cluster's node name.
 		my $say_short_name =  $node;
@@ -11870,17 +11789,17 @@ sub display_node_controls
 		$say_short_name    =~ s/\..*//;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "say_short_name",                  value1 => $say_short_name,
-			name2 => "node::${node1}::info::host_name", value2 => $conf->{node}{$node1}{info}{host_name},
-			name3 => "node::${node2}::info::host_name", value3 => $conf->{node}{$node2}{info}{host_name},
+			name2 => "node::${node1}::info::host_name", value2 => $an->data->{node}{$node1}{info}{host_name},
+			name3 => "node::${node2}::info::host_name", value3 => $an->data->{node}{$node2}{info}{host_name},
 		}, file => $THIS_FILE, line => __LINE__});
 		my $node_long_name = "";
 		if ($node1_long =~ /$say_short_name/)
 		{
-			$node_long_name = $conf->{node}{$node1}{info}{host_name};
+			$node_long_name = $an->data->{node}{$node1}{info}{host_name};
 		}
 		elsif ($node2_long =~ /$say_short_name/)
 		{
-			$node_long_name = $conf->{node}{$node2}{info}{host_name};
+			$node_long_name = $an->data->{node}{$node2}{info}{host_name};
 		}
 		else
 		{
@@ -11893,7 +11812,7 @@ sub display_node_controls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "node_long_name", value1 => $node_long_name,
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node}{enable_withdraw} = 0 if not defined $conf->{node}{$node}{enable_withdraw};
+		$an->data->{node}{$node}{enable_withdraw} = 0 if not defined $an->data->{node}{$node}{enable_withdraw};
 		
 		# Join button.
 		my $say_join_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0031!#" }});
@@ -11901,53 +11820,53 @@ sub display_node_controls
 		### TODO: See if the peer is online already and, if so, add 'confirm=true' as the join is safe.
 		my $say_join_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=join_cluster&node=$node&node_cluster_name=$node_long_name",
+				button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=join_cluster&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"#!string!button_0031!#",
 				id		=>	"join_cluster_$node",
 			}});
-		$say_join[$i] = $conf->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
+		$say_join[$i] = $an->data->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
 		$say_join[$i] = $say_join_disabled_button if $disable_join;
 		   
 		# Withdraw button
 		my $say_withdraw_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0032!#" }});
 		my $say_withdraw_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=withdraw&node=$node&node_cluster_name=$node_long_name",
+				button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=withdraw&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"#!string!button_0032!#",
 				id		=>	"withdraw_$node",
 			}});
-		$say_withdraw[$i] = $conf->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
+		$say_withdraw[$i] = $an->data->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
 		
 		# Shutdown button
 		my $say_shutdown_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
 		my $say_shutdown_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
+				button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=poweroff_node&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"#!string!button_0033!#",
 				id		=>	"poweroff_node_$node",
 			}});
-		$say_shutdown[$i] = $conf->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
+		$say_shutdown[$i] = $an->data->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
 		
 		# Boot button
 		my $say_boot_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0034!#" }});
 		my $say_boot_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true",
+				button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=poweron_node&node=$node&node_cluster_name=$node_long_name&confirm=true",
 				button_text	=>	"#!string!button_0034!#",
 				id		=>	"poweron_node_$node",
 			}});
-		$say_boot[$i] = $conf->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
+		$say_boot[$i] = $an->data->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
 		
 		# Fence button
 		# If the node is already confirmed off, no need to fence.
 		my $say_fence_node_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0037!#" }});
-		my $expire_time                    = time + $conf->{sys}{actime_timeout};
+		my $expire_time                    = time + $an->data->{sys}{actime_timeout};
 		# &expire=$expire_time
 		my $say_fence_node_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"highlight_dangerous",
-				button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=fence_node&node=$node&node_cluster_name=$node_long_name",
+				button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=fence_node&node=$node&node_cluster_name=$node_long_name",
 				button_text	=>	"#!string!button_0037!#",
 				id		=>	"fence_node_$node",
 			}});
-		$say_fence[$i] = $conf->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
+		$say_fence[$i] = $an->data->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
 		
 		# Dual-boot/Cold-Stop button.
 		if ($i == 0)
@@ -11969,10 +11888,10 @@ sub display_node_controls
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($cold_stop)
 			{
-				my $expire_time      = time + $conf->{sys}{actime_timeout};
+				my $expire_time      = time + $an->data->{sys}{actime_timeout};
 				   $say_boot_or_stop = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 						button_class	=>	"bold_button",
-						button_link	=>	"?cluster=$conf->{cgi}{cluster}&expire=$expire_time&task=cold_stop",
+						button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&expire=$expire_time&task=cold_stop",
 						button_text	=>	"#!string!button_0062!#",
 						id		=>	"dual_boot",
 					}});
@@ -11993,7 +11912,7 @@ sub display_node_controls
 				{
 					$say_boot_or_stop = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 							button_class	=>	"bold_button",
-							button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_boot&confirm=true",
+							button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=dual_boot&confirm=true",
 							button_text	=>	"#!string!button_0035!#",
 							id		=>	"dual_boot",
 						}});
@@ -12006,7 +11925,7 @@ sub display_node_controls
 				{
 					$say_dual_join = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 							button_class	=>	"bold_button",
-							button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=dual_join&confirm=true",
+							button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=dual_join&confirm=true",
 							button_text	=>	"#!string!button_0036!#",
 							id		=>	"dual_join",
 						}});
@@ -12018,18 +11937,18 @@ sub display_node_controls
 		}
 		
 		# Make the node names click-able to show the hardware states.
-		$say_node_name[$i] = "$conf->{node}{$node}{info}{host_name}";
+		$say_node_name[$i] = $an->data->{node}{$node}{info}{host_name};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "i",                              value1 => $i,
-			name2 => "node::${node}::info::host_name", value2 => $conf->{node}{$node}{info}{host_name},
+			name2 => "node::${node}::info::host_name", value2 => $an->data->{node}{$node}{info}{host_name},
 			name3 => "say_node_name",                  value3 => $say_node_name[$i],
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{node}{$node}{connected})
+		if ($an->data->{node}{$node}{connected})
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "enabled-button-new-tab", replace => { 
 					button_class	=>	"fixed_width_button",
-					button_link	=>	"?cluster=$conf->{cgi}{cluster}&task=display_health&node=$node&node_cluster_name=$node_long_name",
-					button_text	=>	"$conf->{node}{$node}{info}{host_name}",
+					button_link	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=display_health&node=$node&node_cluster_name=$node_long_name",
+					button_text	=>	$an->data->{node}{$node}{info}{host_name},
 					id		=>	"display_health_$node",
 				}});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -12041,7 +11960,7 @@ sub display_node_controls
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "disabled-button-with-class", replace => { 
 					button_class	=>	"highlight_offline_fixed_width_button",
-					button_text	=>	"$conf->{node}{$node}{info}{host_name}",
+					button_text	=>	$an->data->{node}{$node}{info}{host_name},
 				}});
 		}
 		$rowspan = 0;

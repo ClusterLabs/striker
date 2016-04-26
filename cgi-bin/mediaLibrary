@@ -25,8 +25,7 @@ my $THIS_FILE = "mediaLibrary";
 # for the SSH call(s) to complete.
 $| = 1;
 
-my ($conf) = AN::Common::initialize($THIS_FILE, 1);
-my $an     = $conf->{handle}{an};
+my ($an) = AN::Common::initialize($THIS_FILE, 1);
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->default_log_language($an->data->{sys}{log_language});
 $an->Log->level          ($an->data->{sys}{log_level});
@@ -66,7 +65,7 @@ $an->Storage->read_ssh_config();
 $an->ScanCore->parse_anvil_data();
 
 # I need to convert the global configuration of the clusters to the format I use here.
-#AN::Cluster::convert_cluster_config($conf);
+#AN::Cluster::convert_cluster_config($an);
 
 # If there is only one cluster defined, use it. Note that I need a special exception in $an->Web->get_cgi() 
 # for this to work properly.
@@ -87,7 +86,7 @@ if (not $an->data->{cgi}{cluster})
 $an->Web->check_all_cgi();
 
 # Print the header.
-AN::Cluster::header($conf, "mediaLibrary");
+AN::Cluster::header($an, "mediaLibrary");
 
 # Do I have a cluster name?
 $an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -131,20 +130,20 @@ if ($an->data->{cgi}{cluster})
 	if ($an->data->{cgi}{task})
 	{
 		$an->data->{sys}{show_refresh} = 0;
-		AN::MediaLibrary::process_task($conf);
+		AN::MediaLibrary::process_task($an);
 	}
 	else
 	{
 		# Show the files.
-		AN::MediaLibrary::read_shared($conf);
+		AN::MediaLibrary::read_shared($an);
 	}
 }
 else
 {
 	# Ask the user which cluster they want to look at.
-	AN::Cluster::ask_which_cluster($conf);
+	AN::Cluster::ask_which_cluster($an);
 }
-AN::Cluster::footer($conf);
+AN::Cluster::footer($an);
 
 
 exit 0;

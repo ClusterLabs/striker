@@ -35,63 +35,62 @@ my $THIS_FILE = "mediaLibrary.pm";
 # Do whatever the user has asked.
 sub process_task
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "Task", value1 => $conf->{cgi}{task},
+		name1 => "Task", value1 => $an->data->{cgi}{task},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{task} eq "image_and_upload")
+	if ($an->data->{cgi}{task} eq "image_and_upload")
 	{
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
 			# Proceed.
-			image_and_upload($conf);
+			image_and_upload($an);
 		}
 		else
 		{
 			# Get the user to confirm.
-			confirm_image_and_upload($conf);
+			confirm_image_and_upload($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "delete")
+	elsif ($an->data->{cgi}{task} eq "delete")
 	{
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
 			# Proceed.
-			delete_file($conf);
+			delete_file($an);
 		}
 		else
 		{
 			# Get the user to confirm.
-			confirm_delete_file($conf);
+			confirm_delete_file($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "upload_file")
+	elsif ($an->data->{cgi}{task} eq "upload_file")
 	{
-		save_file_to_disk($conf);
+		save_file_to_disk($an);
 	}
-	elsif ($conf->{cgi}{task} eq "download_url")
+	elsif ($an->data->{cgi}{task} eq "download_url")
 	{
-		if ($conf->{cgi}{confirm})
+		if ($an->data->{cgi}{confirm})
 		{
 			# Proceed.
-			download_url($conf);
+			download_url($an);
 		}
 		else
 		{
 			# Get the user to confirm.
-			confirm_download_url($conf);
+			confirm_download_url($an);
 		}
 	}
-	elsif ($conf->{cgi}{task} eq "make_plain_text")
+	elsif ($an->data->{cgi}{task} eq "make_plain_text")
 	{
-		toggle_executable($conf, "off");
+		toggle_executable($an, "off");
 	}
-	elsif ($conf->{cgi}{task} eq "make_executable")
+	elsif ($an->data->{cgi}{task} eq "make_executable")
 	{
-		toggle_executable($conf, "on");
+		toggle_executable($an, "on");
 	}
 	
 	return (0);
@@ -100,8 +99,7 @@ sub process_task
 # This chmod's the file to 755 if 'on' and 644 if 'off'.
 sub toggle_executable
 {
-	my ($conf, $turn) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $turn) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "toggle_executable" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "turn", value1 => $turn, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -136,7 +134,7 @@ sub toggle_executable
 	}
 	
 	# Show the files.
-	AN::MediaLibrary::read_shared($conf);
+	AN::MediaLibrary::read_shared($an);
 	
 	return(0);
 }
@@ -144,8 +142,7 @@ sub toggle_executable
 # This downloads a given URL directly to the cluster using 'wget'.
 sub download_url
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "download_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the 'scanning in progress' table.
@@ -153,12 +150,12 @@ sub download_url
 		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
 	}});
 	
-	my $cluster       = $conf->{cgi}{cluster};
-	my $url           = $conf->{cgi}{url};
+	my $cluster       = $an->data->{cgi}{cluster};
+	my $url           = $an->data->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	$base .= "/" if $base !~ /\/$/;
 	
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($an);
 	print $an->Web->template({file => "media-library.html", template => "download-website-header", replace => { 
 		file	=>	$file,
 		base	=>	$base,
@@ -169,14 +166,14 @@ sub download_url
 	my $progress_points = 5;
 	my $next_percent    = $progress_points;
 	my $shell_call      = $an->data->{path}{wget}." -c --progress=dot -e dotbytes=10M $url -O ".$an->data->{path}{shared_files}."/$file";
-	my $password        = $conf->{sys}{root_password};
+	my $password        = $an->data->{sys}{root_password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -356,8 +353,8 @@ sub download_url
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$conf->{sys}{root_password},
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$an->data->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
@@ -378,8 +375,8 @@ sub download_url
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$conf->{sys}{root_password},
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$an->data->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
@@ -403,12 +400,11 @@ sub download_url
 # This prompts the user to confirm the download of a file from the web.
 sub confirm_download_url
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_download_url" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster = $conf->{cgi}{cluster};
-	my $url     = $conf->{cgi}{url};
+	my $cluster = $an->data->{cgi}{cluster};
+	my $url     = $an->data->{cgi}{url};
 	my ($base, $file) = ($url =~ /^(.*)\/(.*?)$/);
 	
 	my $say_title    = $an->String->get({key => "title_0122", variables => { anvil => $cluster }});
@@ -419,7 +415,7 @@ sub confirm_download_url
 		title		=>	$say_title,
 		base		=>	$base,
 		download	=>	$say_download,
-		confirm_url	=>	"$conf->{sys}{cgi_string}&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 
 	return (0);
@@ -428,23 +424,22 @@ sub confirm_download_url
 # This saves a file to disk from a user's upload.
 sub save_file_to_disk
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "save_file_to_disk" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($an);
 	print $an->Web->template({file => "media-library.html", template => "save-to-disk-header"});
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "cgi_fh::file", value1 => $conf->{cgi_fh}{file},
-		name2 => "path::media",  value2 => $conf->{path}{media},
-		name3 => "cgi::file",    value3 => $conf->{cgi}{file},
+		name1 => "cgi_fh::file", value1 => $an->data->{cgi_fh}{file},
+		name2 => "path::media",  value2 => $an->data->{path}{media},
+		name3 => "cgi::file",    value3 => $an->data->{cgi}{file},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "path::media", value1 => $conf->{path}{media},
-		name2 => "cgi::file",   value2 => $conf->{cgi}{file},
+		name1 => "path::media", value1 => $an->data->{path}{media},
+		name2 => "cgi::file",   value2 => $an->data->{cgi}{file},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $in_fh = $conf->{cgi_fh}{file};
+	my $in_fh = $an->data->{cgi_fh}{file};
 	
 	if (not $in_fh)
 	{
@@ -454,7 +449,7 @@ sub save_file_to_disk
 	else
 	{
 		# TODO: Make sure characters like spaces and whatnot don't need to be escaped.
-		my $out_file =  "$conf->{path}{media}/$conf->{cgi}{file}";
+		my $out_file =  $an->data->{path}{media}."/".$an->data->{cgi}{file};
 		$out_file    =~ s/\/\//\//g;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "out_file", value1 => $out_file,
@@ -472,7 +467,7 @@ sub save_file_to_disk
 		# Tell the user we're starting.
 		print $an->Web->template({file => "media-library.html", template => "save-to-disk-starting"});
 		
-		my ($failed) = upload_to_shared($conf, $node, $out_file);
+		my ($failed) = upload_to_shared($an, $node, $out_file);
 		unlink $out_file if -e $out_file;
 		if ($failed)
 		{
@@ -493,8 +488,7 @@ sub save_file_to_disk
 # This images and uploads a DVD or CD disc
 sub image_and_upload
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "image_and_upload" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Let the user know that this might take a bit.
@@ -502,17 +496,17 @@ sub image_and_upload
 		anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
 	}});
 	
-	my $dev  = $conf->{cgi}{dev};
-	my $name = $conf->{cgi}{name};
+	my $dev  = $an->data->{cgi}{dev};
+	my $name = $an->data->{cgi}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "dev",  value1 => $dev,
 		name2 => "name", value2 => $name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
+	my ($node) = AN::Cluster::read_files_on_shared($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",                   value1 => $node,
-		name2 => "files::shared::${name}", value2 => $conf->{files}{shared}{$name},
+		name2 => "files::shared::${name}", value2 => $an->data->{files}{shared}{$name},
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $name)
 	{
@@ -524,7 +518,7 @@ sub image_and_upload
 		# Tell the user that no name was given.
 		print $an->Web->template({file => "media-library.html", template => "image-and-upload-no-device"});
 	}
-	elsif (exists $conf->{files}{shared}{$name})
+	elsif (exists $an->data->{files}{shared}{$name})
 	{
 		# Tell the user a file with that name already exists. 
 		my $message = $an->String->get({key => "message_0302", variables => { name => $name }});
@@ -536,19 +530,19 @@ sub image_and_upload
 	else
 	{
 		# Now make sure the disc is still in the drive.
-		check_local_dvd($conf);
+		check_local_dvd($an);
 		
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "drive::${dev}",          value1 => $conf->{drive}{$dev},
-			name2 => "drive::${dev}::reload",  value2 => $conf->{drive}{$dev}{reload},
-			name3 => "drive::${dev}::no_disc", value3 => $conf->{drive}{$dev}{no_disc},
+			name1 => "drive::${dev}",          value1 => $an->data->{drive}{$dev},
+			name2 => "drive::${dev}::reload",  value2 => $an->data->{drive}{$dev}{reload},
+			name3 => "drive::${dev}::no_disc", value3 => $an->data->{drive}{$dev}{no_disc},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (not exists $conf->{drive}{$dev})
+		if (not exists $an->data->{drive}{$dev})
 		{
 			# The drive vanished.
 			my $say_missing_drive = $an->String->get({key => "message_0304", variables => { device => $dev }});
 			my $say_try_again     = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
-				button_link	=>	"$conf->{sys}{cgi_string}",
+				button_link	=>	$an->data->{sys}{cgi_string},
 				button_text	=>	"#!string!button_0043!#",
 			}});
 			print $an->Web->template({file => "media-library.html", template => "image-and-upload-drive-gone", replace => { 
@@ -556,12 +550,12 @@ sub image_and_upload
 				try_again	=>	$say_try_again,
 			}});
 		}
-		elsif ($conf->{drive}{$dev}{reload})
+		elsif ($an->data->{drive}{$dev}{reload})
 		{
 			# Need to reload to read the disc.
 			my $say_drive_not_ready = $an->String->get({key => "message_0305", variables => { device => $dev }});
 			my $say_try_again       = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
-					button_link	=>	"$conf->{sys}{cgi_string}",
+					button_link	=>	$an->data->{sys}{cgi_string},
 					button_text	=>	"#!string!button_0043!#",
 				}});
 			print $an->Web->template({file => "media-library.html", template => "image-and-upload-reload-needed", replace => { 
@@ -569,12 +563,12 @@ sub image_and_upload
 				try_again	=>	$say_try_again,
 			}});
 		}
-		elsif ($conf->{drive}{$dev}{no_disc})
+		elsif ($an->data->{drive}{$dev}{no_disc})
 		{
 			# No disc in the drive
 			my $say_no_disc   = $an->String->get({key => "message_0307", variables => { device => $dev }});
 			my $say_try_again = $an->Web->template({file => "common.html", template => "enabled_button_no_class", replace => { 
-					button_link	=>	"$conf->{sys}{cgi_string}",
+					button_link	=>	$an->data->{sys}{cgi_string},
 					button_text	=>	"#!string!button_0043!#",
 				}});
 			print $an->Web->template({file => "media-library.html", template => "image-and-upload-no-disc", replace => { 
@@ -586,25 +580,25 @@ sub image_and_upload
 		{
 			# Ok, we're good to go.
 			# Finally...
-			#my $out_file = $conf->{path}{media}.$name;
-			my $out_file = "'$conf->{path}{media}/$name'";
+			#my $out_file = $an->data->{path}{media}.$name;
+			my $out_file = "'".$an->data->{path}{media}."/$name'";
 			my $in_dev   = $dev;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "dev",       value1 => $dev,
-				name2 => "directory", value2 => $conf->{path}{media},
+				name2 => "directory", value2 => $an->data->{path}{media},
 				name3 => "name",      value3 => $name,
 			}, file => $THIS_FILE, line => __LINE__});
 			my $message = $an->String->get({key => "explain_0059", variables => { 
 					device		=>	$dev,
 					name		=>	$name,
-					directory	=>	$conf->{path}{media},
+					directory	=>	$an->data->{path}{media},
 				}});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "message", value1 => $message,
 			}, file => $THIS_FILE, line => __LINE__});
 			print $an->Web->template({file => "media-library.html", template => "image-and-upload-proceed-header", replace => { message => $message }});
 			
-			my $shell_call = "$conf->{path}{do_dd} if=$in_dev of=$out_file bs=$conf->{sys}{dd_block_size}";
+			my $shell_call = $an->data->{path}{do_dd}." if=$in_dev of=$out_file bs=".$an->data->{sys}{dd_block_size};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "Calling", value1 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -647,11 +641,11 @@ sub image_and_upload
 				# Starting to upload now.
 				my $explain = $an->String->get({key => "explain_0052", variables => { 
 					name	=>	$name,
-					anvil	=>	$conf->{cgi}{cluster},
+					anvil	=>	$an->data->{cgi}{cluster},
 				}});
 				print $an->Web->template({file => "media-library.html", template => "image-and-upload-proceed-uploading", replace => { explain => $explain }});
 
-				my ($failed) = upload_to_shared($conf, $node, $out_file);
+				my ($failed) = upload_to_shared($an, $node, $out_file);
 				unlink $out_file if -e $out_file;
 				if ($failed)
 				{
@@ -675,8 +669,7 @@ sub image_and_upload
 # /shared/files/ folder.
 sub upload_to_shared
 {
-	my ($conf, $node, $source) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $source) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "upload_to_shared" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "source", value1 => $source, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -713,8 +706,8 @@ sub upload_to_shared
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$conf->{sys}{root_password},
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$an->data->{sys}{root_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
@@ -737,14 +730,13 @@ sub upload_to_shared
 # image before upload.
 sub confirm_image_and_upload
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_image_and_upload" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $dev  = $conf->{cgi}{dev};
-	my $name = $conf->{cgi}{name};
+	my $dev  = $an->data->{cgi}{dev};
+	my $name = $an->data->{cgi}{name};
 	
-	my $say_title  = $an->String->get({key => "title_0132", variables => { anvil => $conf->{cgi}{cluster} }});
+	my $say_title  = $an->String->get({key => "title_0132", variables => { anvil => $an->data->{cgi}{cluster} }});
 	my $input_name = $an->Web->template({file => "common.html", template => "form-input-no-class-defined-width", replace => { 
 			type	=>	"text",
 			name	=>	"name",
@@ -763,7 +755,7 @@ sub confirm_image_and_upload
 			type	=>	"hidden",
 			name	=>	"cluster",
 			id	=>	"cluster",
-			value	=>	"$conf->{cgi}{cluster}",
+			value	=>	$an->data->{cgi}{cluster},
 		}});
 	$hidden_inputs .= "\n";
 	$hidden_inputs .= $an->Web->template({file => "common.html", template => "form-input-no-class", replace => { 
@@ -805,24 +797,23 @@ sub confirm_image_and_upload
 # This asks the user to confirm that s/he wants to delete the image.
 sub confirm_delete_file
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_delete_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cluster = $conf->{cgi}{cluster};
-	my $name    = $conf->{cgi}{name};
+	my $cluster = $an->data->{cgi}{cluster};
+	my $name    = $an->data->{cgi}{name};
 	
 	my $say_title = $an->String->get({key => "title_0134", variables => { 
 			name	=>	$name,
-			anvil	=>	$conf->{cgi}{cluster},
+			anvil	=>	$an->data->{cgi}{cluster},
 		}});
 	my $say_delete = $an->String->get({key => "message_0316", variables => { 
 			name	=>	$name,
-			anvil	=>	$conf->{cgi}{cluster},
+			anvil	=>	$an->data->{cgi}{cluster},
 		}});
 	my $confirm_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 			button_class	=>	"bold_button",
-			button_link	=>	"$conf->{sys}{cgi_string}&confirm=true",
+			button_link	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 			button_text	=>	"#!string!button_0004!#",
 			id		=>	"delete_file_confirmed",
 		}});
@@ -840,30 +831,29 @@ sub confirm_delete_file
 # This deletes a file from the cluster.
 sub delete_file
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "delete_file" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make sure to unmount from (and rewrite definition files of)
 	###       VMs currently using the file being deleted.
-	my $cluster = $conf->{cgi}{cluster};
-	my $name    = $conf->{cgi}{name};
-	my ($node) = AN::Cluster::read_files_on_shared($conf);
-	if (exists $conf->{files}{shared}{$name})
+	my $cluster = $an->data->{cgi}{cluster};
+	my $name    = $an->data->{cgi}{name};
+	my ($node) = AN::Cluster::read_files_on_shared($an);
+	if (exists $an->data->{files}{shared}{$name})
 	{
 		# Do the delete.
 		my $say_title = $an->String->get({key => "title_0135", variables => { name => $name }});
 		print $an->Web->template({file => "media-library.html", template => "file-delete-header", replace => { title => $say_title }});
 		
 		my $shell_call = "rm -f \"/shared/files/$name\"";
-		my $password   = $conf->{sys}{root_password};
+		my $password   = $an->data->{sys}{root_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -903,12 +893,11 @@ sub delete_file
 # local drive at all).
 sub check_local_dvd
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_local_dvd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $dev        = "";
-	my $shell_call = "$conf->{path}{check_dvd} $conf->{args}{check_dvd}";
+	my $shell_call = $an->data->{path}{check_dvd}." ".$an->data->{args}{check_dvd};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "Calling", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -927,32 +916,32 @@ sub check_local_dvd
 		elsif ($line =~ /Volume\s+:\s+(.*)/i)
 		{
 			my $volume = $1;
-			$conf->{drive}{$dev}{volume} = $volume;
+			$an->data->{drive}{$dev}{volume} = $volume;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive::${dev}::volume", value1 => $conf->{drive}{$dev}{volume},
+				name1 => "drive::${dev}::volume", value1 => $an->data->{drive}{$dev}{volume},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /Volume Set\s+:\s+(.*)/i)
 		{
 			my $volume_set = $1;
-			$conf->{drive}{$dev}{volume_set} = $volume_set;
+			$an->data->{drive}{$dev}{volume_set} = $volume_set;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive::${dev}::volume_set", value1 => $conf->{drive}{$dev}{volume_set},
+				name1 => "drive::${dev}::volume_set", value1 => $an->data->{drive}{$dev}{volume_set},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /No medium found/i)
 		{
-			$conf->{drive}{$dev}{no_disc} = 1;
+			$an->data->{drive}{$dev}{no_disc} = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive::${dev}::no_disc", value1 => $conf->{drive}{$dev}{no_disc},
+				name1 => "drive::${dev}::no_disc", value1 => $an->data->{drive}{$dev}{no_disc},
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
 		elsif ($line =~ /unknown filesystem/i)
 		{
-			$conf->{drive}{$dev}{reload} = 1;
+			$an->data->{drive}{$dev}{reload} = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "drive::${dev}::reload", value1 => $conf->{drive}{$dev}{reload},
+				name1 => "drive::${dev}::reload", value1 => $an->data->{drive}{$dev}{reload},
 			}, file => $THIS_FILE, line => __LINE__});
 			last;
 		}
@@ -971,25 +960,24 @@ sub check_local_dvd
 # This prints a small header with the current status of any background running jobs
 sub check_status
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_status" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "path::status", value1 => $conf->{path}{status},
+		name1 => "path::status", value1 => $an->data->{path}{status},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not -e $conf->{path}{status})
+	if (not -e $an->data->{path}{status})
 	{
 		# Directory doesn't exist...
-		my $say_message = $an->String->get({key => "message_0319", variables => { directory => $conf->{path}{status} }});
+		my $say_message = $an->String->get({key => "message_0319", variables => { directory => $an->data->{path}{status} }});
 		print $an->Web->template({file => "media-library.html", template => "check-status-config-error", replace => { message => $say_message }});
 	}
-	elsif (not -r $conf->{path}{status})
+	elsif (not -r $an->data->{path}{status})
 	{
 		# Can't read the directory
 		my $user        = getpwuid($<);
 		my $say_message = $an->String->get({key => "message_0320", variables => { 
-				directory	=>	$conf->{path}{status},
+				directory	=>	$an->data->{path}{status},
 				user		=>	$user,
 			}});
 		print $an->Web->template({file => "media-library.html", template => "check-status-config-error", replace => { message => $say_message }});
@@ -1003,17 +991,16 @@ sub check_status
 # compiles a list of which  VMs are on each node.
 sub read_shared
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_shared" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Look for info on running jobs (not implemented yet)
-	#check_status($conf);
+	#check_status($an);
 	
 	my $connected = 0;
 	
 	# What node should I use?
-	my $cluster = $conf->{cgi}{cluster};
+	my $cluster = $an->data->{cgi}{cluster};
 	my $node    = $an->data->{sys}{use_node};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "cluster", value1 => $cluster,
@@ -1026,7 +1013,7 @@ sub read_shared
 		# Get the shared partition info and the list of files.
 		my ($files, $partition) = $an->Get->shared_files({
 			password	=>	$an->data->{sys}{root_password},
-			port		=>	$conf->{node}{$node}{port},
+			port		=>	$an->data->{node}{$node}{port},
 			target		=>	$node,
 		});
 		
@@ -1116,38 +1103,38 @@ sub read_shared
 		# Read from the DVD drive(s), if found.
 		print $an->Web->template({file => "media-library.html", template => "read-shared-optical-drive-header"});
 
-		check_local_dvd($conf);
-		foreach my $dev (sort {$a cmp $b} keys %{$conf->{drive}})
+		check_local_dvd($an);
+		foreach my $dev (sort {$a cmp $b} keys %{$an->data->{drive}})
 		{
-			my $cluster   = $conf->{cgi}{cluster};
+			my $cluster   = $an->data->{cgi}{cluster};
 			my $disc_name = "";
 			my $upload    = "--";
-			if ($conf->{drive}{$dev}{reload})
+			if ($an->data->{drive}{$dev}{reload})
 			{
 				# Drive wasn't ready, rescan needed.
 				$disc_name = "#!string!message_0322!#";
 			}
-			elsif ($conf->{drive}{$dev}{no_disc})
+			elsif ($an->data->{drive}{$dev}{no_disc})
 			{
 				# No disc found
 				$disc_name = "#!string!message_0323!#";
 			}
-			elsif ($conf->{drive}{$dev}{volume})
+			elsif ($an->data->{drive}{$dev}{volume})
 			{
-				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume}</span>";
+				$disc_name = "<span class=\"fixed_width\">".$an->data->{drive}{$dev}{volume}."</span>";
 				$upload    = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume}.iso",
+					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=".$an->data->{drive}{$dev}{volume}.".iso",
 					button_text	=>	"#!string!button_0042!#",
 					id		=>	"image_and_upload_$dev",
 				}});
 			}
-			elsif ($conf->{drive}{$dev}{volume_set})
+			elsif ($an->data->{drive}{$dev}{volume_set})
 			{
-				$disc_name = "<span class=\"fixed_width\">$conf->{drive}{$dev}{volume_set}</span>";
+				$disc_name = "<span class=\"fixed_width\">".$an->data->{drive}{$dev}{volume_set}."</span>";
 				$upload    = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"bold_button",
-					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=$conf->{drive}{$dev}{volume_set}.iso",
+					button_link	=>	"?cluster=$cluster&task=image_and_upload&dev=$dev&name=".$an->data->{drive}{$dev}{volume_set}.".iso",
 					button_text	=>	"#!string!button_0042!#",
 					id		=>	"image_and_upload_$dev",
 				}});
@@ -1170,7 +1157,7 @@ sub read_shared
 				type	=>	"hidden",
 				name	=>	"cluster",
 				id	=>	"cluster",
-				value	=>	"$conf->{cgi}{cluster}",
+				value	=>	$an->data->{cgi}{cluster},
 			}});
 		$hidden_inputs .= "\n";
 		$hidden_inputs .= $an->Web->template({file => "common.html", template => "form-input-no-class", replace => { 
@@ -1212,7 +1199,7 @@ sub read_shared
 				type	=>	"hidden",
 				name	=>	"cluster",
 				id	=>	"cluster",
-				value	=>	"$conf->{cgi}{cluster}",
+				value	=>	$an->data->{cgi}{cluster},
 			}});
 		$hidden_inputs .= "\n";
 		$hidden_inputs .= $an->Web->template({file => "common.html", template => "form-input-no-class", replace => { 

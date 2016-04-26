@@ -30,9 +30,6 @@ package AN::InstallManifest;
 # 
 # - When assembling DRBD, watch syslog for "Sep 28 23:44:34 node2 kernel: block drbd0: The peer's disk size is too small!"
 #   This is likely caused by the replacement machine having a smaller disk.
-# - 
-# 
-# NOTE: The '$an' file handle has been added to all functions to enable the transition to using AN::Tools.
 # 
 
 use strict;
@@ -47,8 +44,7 @@ my $THIS_FILE = "AN::InstallManifest.pm";
 # This runs the install manifest against both nodes.
 sub run_new_install_manifest
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "run_new_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
@@ -57,7 +53,7 @@ sub run_new_install_manifest
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-header"});
 	
 	# Some variables we'll need.
-	$conf->{packages}{to_install} = {
+	$an->data->{packages}{to_install} = {
 		acpid				=>	0,
 		'alteeve-repo'			=>	0,
 		'bash-completion'		=>	0,
@@ -135,16 +131,16 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 		storcli				=>	0,
 	};
-	$conf->{path}{'anvil-map-network'} = "/sbin/striker/anvil-map-network";
+	$an->data->{path}{'anvil-map-network'} = "/sbin/striker/anvil-map-network";
 	
-	if ($conf->{perform_install})
+	if ($an->data->{perform_install})
 	{
 		# OK, GO!
 		print $an->Web->template({file => "install-manifest.html", template => "install-beginning"});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::update_manifest", value1 => $conf->{cgi}{update_manifest},
+			name1 => "cgi::update_manifest", value1 => $an->data->{cgi}{update_manifest},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{update_manifest})
+		if ($an->data->{cgi}{update_manifest})
 		{
 			# Write the updated manifest and reload it.
 			$an->ScanCore->save_install_manifest();
@@ -155,30 +151,30 @@ sub run_new_install_manifest
 	
 	# If the node(s) are not online, we'll set up a repo pointing at this maching *if* we're configured
 	# to be a repo.
-	check_local_repo($conf);
+	check_local_repo($an);
 	
 	# Make sure we can log into both nodes.
-	check_connection($conf) or return(1);
+	check_connection($an) or return(1);
 	
 	# Make sure both nodes can get online. We'll try to install even without Internet access.
-	verify_internet_access($conf);
+	verify_internet_access($an);
 	
 	# Make sure both nodes are EL6 nodes.
-	verify_os($conf) or return(1);
+	verify_os($an) or return(1);
 	
 	### NOTE: I might want to move the addition of the an-repo up here.
 	# Beyond here, perl is needed.
-	verify_perl_is_installed($conf);
+	verify_perl_is_installed($an);
 	
 	# This checks the disks out and selects the largest disk on each node. It doesn't sanity check much
 	# yet.
-	check_storage($conf);
+	check_storage($an);
 	
 	# See if the node is in a cluster already. If so, we'll set a flag to block reboots if needed.
-	check_if_in_cluster($conf);
+	check_if_in_cluster($an);
 	
 	# Get a map of the physical network interfaces for later remapping to device names.
-	my ($node1_remap_required, $node2_remap_required) = map_network($conf);
+	my ($node1_remap_required, $node2_remap_required) = map_network($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_remap_required", value1 => $node1_remap_required,
 		name2 => "node2_remap_required", value2 => $node2_remap_required,
@@ -189,11 +185,11 @@ sub run_new_install_manifest
 	my $node2_rc = 0;
 	if ($node1_remap_required)
 	{
-		($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+		($node1_rc) = map_network_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
 	}
 	if ($node2_remap_required)
 	{
-		($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
+		($node2_rc) = map_network_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, 1, "#!string!device_0006!#");
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_rc", value1 => $node1_rc,
@@ -239,12 +235,12 @@ sub run_new_install_manifest
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::perform_install", value1 => $conf->{cgi}{perform_install},
+		name1 => "cgi::perform_install", value1 => $an->data->{cgi}{perform_install},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $conf->{cgi}{perform_install})
+	if (not $an->data->{cgi}{perform_install})
 	{
 		# Now summarize and ask the user to confirm.
-		summarize_build_plan($conf);
+		summarize_build_plan($an);
 		return(0);
 	}
 	else
@@ -254,107 +250,107 @@ sub run_new_install_manifest
 		
 		# Rewrite the install manifest if need be.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::update_manifest", value1 => $conf->{cgi}{update_manifest},
+			name1 => "cgi::update_manifest", value1 => $an->data->{cgi}{update_manifest},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{update_manifest})
+		if ($an->data->{cgi}{update_manifest})
 		{
 			# Update the running install manifest to record the MAC
 			# addresses the user selected.
-			update_install_manifest($conf);
+			update_install_manifest($an);
 		}
 		
 		# Back things up.
-		backup_files($conf);
+		backup_files($an);
 		
 		# Register the nodes with RHN, if needed.
-		register_with_rhn($conf);
+		register_with_rhn($an);
 		
 		# Configure the network
-		configure_network($conf) or return(1);
+		configure_network($an) or return(1);
 		
 		# Configure the NTP on the servers, if set.
-		configure_ntp($conf) or return(1);
+		configure_ntp($an) or return(1);
 		
 		# Add user-specified repos
-		#add_user_repositories($conf);
+		#add_user_repositories($an);
 		
 		# Install needed RPMs.
-		install_programs($conf) or return(1);
+		install_programs($an) or return(1);
 		
 		# Update the OS on each node.
-		update_nodes($conf);
+		update_nodes($an);
 		
 		# Configure daemons
-		configure_daemons($conf) or return(1);
+		configure_daemons($an) or return(1);
 		
 		# Set the ricci password
-		set_ricci_password($conf) or return(1);
+		set_ricci_password($an) or return(1);
 		
 		# Write out the cluster configuration file
-		configure_cman($conf) or return(1);
+		configure_cman($an) or return(1);
 		
 		# Write out the clustered LVM configuration files
-		configure_clvmd($conf) or return(1);
+		configure_clvmd($an) or return(1);
 		
 		# This configures IPMI, if IPMI is set as a fence device.
-		if ($conf->{cgi}{anvil_fence_order} =~ /ipmi/)
+		if ($an->data->{cgi}{anvil_fence_order} =~ /ipmi/)
 		{
-			configure_ipmi($conf) or return(1);
+			configure_ipmi($an) or return(1);
 		}
 		
 		# Configure storage stage 1 (partitioning).
-		configure_storage_stage1($conf) or return(1);
+		configure_storage_stage1($an) or return(1);
 		
 		# This handles configuring SELinux.
-		configure_selinux($conf) or return(1); 
+		configure_selinux($an) or return(1); 
 		
 		# Set the root user's passwords as the last step to ensure reloading the browser works for 
 		# as long as possible.
-		set_root_password($conf) or return(1);
+		set_root_password($an) or return(1);
 		
 		# This sets up the various Striker tools and ScanCore. It must run before storage stage2 
 		# because DRBD will need it.
-		configure_striker_tools($conf) or return(1);
+		configure_striker_tools($an) or return(1);
 		
 		# If a reboot is needed, now is the time to do it. This will switch the CGI nodeX IPs to the 
 		# new ones, too.
-		reboot_nodes($conf) or return(1);
+		reboot_nodes($an) or return(1);
 		
 		# Configure storage stage 2 (drbd)
-		configure_storage_stage2($conf) or return(1);
+		configure_storage_stage2($an) or return(1);
 		
 		# Start cman up
-		start_cman($conf) or return(1);
+		start_cman($an) or return(1);
 		
 		# Live migration won't work until we've populated ~/.ssh/known_hosts, so do so now.
-		configure_ssh($conf) or return(1);
+		configure_ssh($an) or return(1);
 		
 		# This manually starts DRBD, forcing one to primary if needed, configures clvmd, sets up the 
 		# PVs and VGs, creates the /shared LV, creates the GFS2 partition and configures fstab.
-		configure_storage_stage3($conf) or return(1);
+		configure_storage_stage3($an) or return(1);
 		
 		# Enable (or disable) tools.
-		enable_tools($conf) or return(1);
+		enable_tools($an) or return(1);
 		
 		### If we're not dead, it's time to celebrate!
 		# Is this Anvil! already in the config file?
-		my ($anvil_configured) = check_config_for_anvil($conf);
+		my ($anvil_configured) = check_config_for_anvil($an);
 		
 		# If the 'anvil_configured' is 1, run 'configure_ssh_local()'
 		if ($anvil_configured)
 		{
 			# Setup ssh locally
-			AN::Cluster::configure_ssh_local($conf, $conf->{cgi}{anvil_name});
+			AN::Cluster::configure_ssh_local($an, $an->data->{cgi}{anvil_name});
 			
 			# Sync with the peer, if we can.
-			my $peer = AN::Cluster::sync_with_peer($conf);
+			my $peer = AN::Cluster::sync_with_peer($an);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "peer", value1 => $peer,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Do we need to show the link for adding the Anvil! to the config?
-		my $message = $an->String->get({key => "message_0286", variables => { url => "?cluster=$conf->{cgi}{cluster}" }});
+		my $message = $an->String->get({key => "message_0286", variables => { url => "?cluster=".$an->data->{cgi}{cluster} }});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "message", value1 => $message,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -365,13 +361,13 @@ sub run_new_install_manifest
 			   $url .= "&anvil_id=new";
 			   $url .= "&config=new";
 			   $url .= "&section=global";
-			   $url .= "&cluster__new__name=$conf->{cgi}{anvil_name}";
-			   $url .= "&cluster__new__ricci_pw=$conf->{cgi}{anvil_password}";
-			   $url .= "&cluster__new__root_pw=$conf->{cgi}{anvil_password}";
-			   $url .= "&cluster__new__nodes_1_name=$conf->{cgi}{anvil_node1_name}";
-			   $url .= "&cluster__new__nodes_1_ip=$conf->{cgi}{anvil_node1_bcn_ip}";
-			   $url .= "&cluster__new__nodes_2_name=$conf->{cgi}{anvil_node2_name}";
-			   $url .= "&cluster__new__nodes_2_ip=$conf->{cgi}{anvil_node2_bcn_ip}";
+			   $url .= "&cluster__new__name=".$an->data->{cgi}{anvil_name};
+			   $url .= "&cluster__new__ricci_pw=".$an->data->{cgi}{anvil_password};
+			   $url .= "&cluster__new__root_pw=".$an->data->{cgi}{anvil_password};
+			   $url .= "&cluster__new__nodes_1_name=".$an->data->{cgi}{anvil_node1_name};
+			   $url .= "&cluster__new__nodes_1_ip=".$an->data->{cgi}{anvil_node1_bcn_ip};
+			   $url .= "&cluster__new__nodes_2_name=".$an->data->{cgi}{anvil_node2_name};
+			   $url .= "&cluster__new__nodes_2_ip=".$an->data->{cgi}{anvil_node2_bcn_ip};
 			# see what these value are, relative to global values.
 			
 			# Now the string.
@@ -389,14 +385,13 @@ sub run_new_install_manifest
 # This enables (or disables) selected tools by flipping their enable variables to '1' (or '0') i striker.conf.
 sub enable_tools
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# sas_rc  == anvil-safe-start, return code
 	# akau_rc == anvil-kick-apc-ups, return code
-	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
-	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = enable_tools_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	my ($node1_sas_rc, $node1_akau_rc, $node1_sc_rc) = enable_tools_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_name});
+	my ($node2_sas_rc, $node2_akau_rc, $node2_sc_rc) = enable_tools_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_name});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "node1_sas_rc",  value1 => $node1_sas_rc,
 		name2 => "node1_akau_rc", value2 => $node1_akau_rc,
@@ -642,8 +637,7 @@ sub enable_tools
 # This handles enabling/disabling tools on a given node.
 sub enable_tools_on_node
 {
-	my ($conf, $node, $password, $node_name) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $node_name) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",      value1 => $node, 
 		name2 => "node_name", value2 => $node_name, 
@@ -652,16 +646,16 @@ sub enable_tools_on_node
 	### anvil-safe-start
 	# If requested, enable anvil-safe-start, otherwise, disable it.
 	my $sas_rc     = 0;
-	my $shell_call = "$conf->{path}{nodes}{'anvil-safe-start'} --disable\n";
+	my $shell_call = $an->data->{path}{nodes}{'anvil-safe-start'}." --disable\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::install_manifest::use_anvil-safe-start", value1 => $conf->{sys}{install_manifest}{'use_anvil-safe-start'},
+		name1 => "sys::install_manifest::use_anvil-safe-start", value1 => $an->data->{sys}{install_manifest}{'use_anvil-safe-start'},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
+	if ($an->data->{sys}{install_manifest}{'use_anvil-safe-start'})
 	{
-		$shell_call = "$conf->{path}{nodes}{'anvil-safe-start'} --enable\n";
+		$shell_call = $an->data->{path}{nodes}{'anvil-safe-start'}." --enable\n";
 	}
 	$shell_call .= "
-if [ -e $conf->{path}{nodes}{'anvil-safe-start_link'} ];
+if [ -e $an->data->{path}{nodes}{'anvil-safe-start_link'} ];
 then 
     echo enabled; 
 else 
@@ -674,7 +668,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -688,7 +682,7 @@ fi
 		
 		if ($line eq "enabled")
 		{
-			if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
+			if ($an->data->{sys}{install_manifest}{'use_anvil-safe-start'})
 			{
 				# Good.
 				$sas_rc = 1;
@@ -701,7 +695,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{sys}{install_manifest}{'use_anvil-safe-start'})
+			if ($an->data->{sys}{install_manifest}{'use_anvil-safe-start'})
 			{
 				# Not good, should have been disabled
 				$sas_rc = 4;
@@ -717,13 +711,13 @@ fi
 	### anvil-kick-apc-ups
 	# If requested, enable anvil-kick-apc-ups, otherwise, disable it.
 	my $akau_rc    = 0;
-	   $shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --disable\n";
+	   $shell_call = $an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --disable\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
+		name1 => "sys::install_manifest::use_anvil-kick-apc-ups", value1 => $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
+	if ($an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 	{
-		$shell_call = "$conf->{path}{nodes}{'anvil-kick-apc-ups'} --enable\n";
+		$shell_call = $an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --enable\n";
 	}
 	$shell_call .= "
 if \$(grep -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
@@ -739,7 +733,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -753,7 +747,7 @@ fi
 
 		if ($line eq "enabled")
 		{
-			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
+			if ($an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
 				# Good.
 				$akau_rc = 1;
@@ -766,7 +760,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
+			if ($an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'})
 			{
 				# Not good, should have been disabled
 				$akau_rc = 4;
@@ -782,13 +776,13 @@ fi
 	### ScanCore
 	# If requested, enable ScanCore, otherwise, disable it.
 	my $sc_rc      = 0;
-	   $shell_call = "$conf->{path}{nodes}{scancore} --disable\n";
+	   $shell_call = $an->data->{path}{nodes}{scancore}." --disable\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::install_manifest::use_scancore", value1 => $conf->{sys}{install_manifest}{use_scancore},
+		name1 => "sys::install_manifest::use_scancore", value1 => $an->data->{sys}{install_manifest}{use_scancore},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{sys}{install_manifest}{use_scancore})
+	if ($an->data->{sys}{install_manifest}{use_scancore})
 	{
-		$shell_call = "$conf->{path}{nodes}{scancore} --enable\n";
+		$shell_call = $an->data->{path}{nodes}{scancore}." --enable\n";
 	}
 	$shell_call .= "
 if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
@@ -804,7 +798,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -818,7 +812,7 @@ fi
 		
 		if ($line eq "enabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_scancore})
+			if ($an->data->{sys}{install_manifest}{use_scancore})
 			{
 				# Good.
 				$sc_rc = 1;
@@ -831,7 +825,7 @@ fi
 		}
 		elsif ($line eq "disabled")
 		{
-			if ($conf->{sys}{install_manifest}{use_scancore})
+			if ($an->data->{sys}{install_manifest}{use_scancore})
 			{
 				# Not good, should have been disabled
 				$sc_rc = 4;
@@ -858,7 +852,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -888,12 +882,11 @@ fi
 # copies them (Striker tools and ScanCore) into place.
 sub configure_striker_tools
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_striker_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Configure Striker tools and Scancore.
-	my ($ok) = configure_scancore($conf);
+	my ($ok) = configure_scancore($an);
 	
 	return($ok);
 }
@@ -901,8 +894,7 @@ sub configure_striker_tools
 # This does the actual work of configuring ScanCore on a given node.
 sub configure_scancore_on_node
 {
-	my ($conf, $node, $password, $node_name) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $node_name) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",      value1 => $node, 
 		name2 => "node_name", value2 => $node_name, 
@@ -914,52 +906,52 @@ sub configure_scancore_on_node
 	my $uuid = "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node",                        value1 => $node,
-		name2 => "cgi::anvil_node1_current_ip", value2 => $conf->{cgi}{anvil_node1_current_ip},
+		name2 => "cgi::anvil_node1_current_ip", value2 => $an->data->{cgi}{anvil_node1_current_ip},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($node eq $conf->{cgi}{anvil_node1_current_ip})
+	if ($node eq $an->data->{cgi}{anvil_node1_current_ip})
 	{
-		$uuid = $conf->{cgi}{anvil_node1_uuid} ? $conf->{cgi}{anvil_node1_uuid} : AN::Cluster::generate_uuid($conf);
+		$uuid = $an->data->{cgi}{anvil_node1_uuid} ? $an->data->{cgi}{anvil_node1_uuid} : $an->Get->uuid();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "uuid",                  value1 => $uuid,
-			name2 => "cgi::anvil_node1_uuid", value2 => $conf->{cgi}{anvil_node1_uuid},
+			name2 => "cgi::anvil_node1_uuid", value2 => $an->data->{cgi}{anvil_node1_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
-		$uuid = $conf->{cgi}{anvil_node2_uuid} ? $conf->{cgi}{anvil_node2_uuid} : AN::Cluster::generate_uuid($conf);
+		$uuid = $an->data->{cgi}{anvil_node2_uuid} ? $an->data->{cgi}{anvil_node2_uuid} : $an->Get->uuid();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "uuid",                  value1 => $uuid,
-			name2 => "cgi::anvil_node2_uuid", value2 => $conf->{cgi}{anvil_node2_uuid},
+			name2 => "cgi::anvil_node2_uuid", value2 => $an->data->{cgi}{anvil_node2_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# First, copy the ScanCore files into place. Create the striker config
 	# directory if needed, as well.
 	my $generate_config  = 0;
-	my ($path, $tarball) = ($conf->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
-	my $download_1       = "http://$conf->{cgi}{anvil_striker1_bcn_ip}/files/$tarball";
-	my $download_2       = "http://$conf->{cgi}{anvil_striker2_bcn_ip}/files/$tarball";
+	my ($path, $tarball) = ($an->data->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
+	my $download_1       = "http://$an->data->{cgi}{anvil_striker1_bcn_ip}/files/$tarball";
+	my $download_2       = "http://$an->data->{cgi}{anvil_striker2_bcn_ip}/files/$tarball";
 	my $shell_call       = "
-if [ ! -e '$conf->{path}{nodes}{striker_tarball}' ]; 
+if [ ! -e '".$an->data->{path}{nodes}{striker_tarball}."' ]; 
 then 
     echo download needed;
     if [ ! -e '$path' ];
     then
         mkdir -p $path
     fi
-    wget -c $download_1 -O $conf->{path}{nodes}{striker_tarball}
-    if [ -s '$conf->{path}{nodes}{striker_tarball}' ];
+    wget -c $download_1 -O $an->data->{path}{nodes}{striker_tarball}
+    if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
     then
         echo 'downloaded from $download_1 successfully'
     else
         echo 'download from $download_1 failed, trying alternate.'
-        if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+        if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
         then
             echo 'Deleting zero-size file'
-            rm -f $conf->{path}{nodes}{striker_tarball}
+            rm -f $an->data->{path}{nodes}{striker_tarball}
         fi;
-        wget -c $download_2 -O $conf->{path}{nodes}{striker_tarball}
-        if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+        wget -c $download_2 -O $an->data->{path}{nodes}{striker_tarball}
+        if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
         then
             echo 'downloaded from $download_2 successfully'
         else
@@ -968,16 +960,16 @@ then
     fi;
 fi;
 
-if [ -e '$conf->{path}{nodes}{striker_tarball}' ];
+if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
 then
     if [ -e '$path/ScanCore/ScanCore' ];
     then
         echo 'install already completed'
     else
         echo 'Extracting tarball'
-        $conf->{path}{nodes}{tar} -xvjf $conf->{path}{nodes}{striker_tarball} -C $path/ .
+        $an->data->{path}{nodes}{tar} -xvjf $an->data->{path}{nodes}{striker_tarball} -C $path/ .
         mv $path/Data $path/
-        mv $path/AN $conf->{path}{nodes}{perl_library}/
+        mv $path/AN $an->data->{path}{nodes}{perl_library}/
         if [ -e '$path/ScanCore/ScanCore' ];
         then
             echo 'install succeeded'
@@ -993,18 +985,18 @@ then
     echo 'Striker configuration directory created.'
 fi;
 
-if [ -e '$conf->{path}{nodes}{striker_config}' ];
+if [ -e '".$an->data->{path}{nodes}{striker_config}."' ];
 then
     echo 'striker config exists'
 else
     echo 'striker config needs to be generated'
 fi;
 
-if [ ! -e '$conf->{path}{nodes}{host_uuid}' ]
+if [ ! -e '".$an->data->{path}{nodes}{host_uuid}."' ]
 then
     echo 'Recording the host UUID'
-    echo $uuid > $conf->{path}{nodes}{host_uuid}
-    if [ -e '$conf->{path}{nodes}{host_uuid}' ]
+    echo $uuid > ".$an->data->{path}{nodes}{host_uuid}."
+    if [ -e '".$an->data->{path}{nodes}{host_uuid}."' ]
     then
         echo -n 'host_uuid = '; cat /etc/striker/host.uuid 
     else
@@ -1018,7 +1010,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -1087,7 +1079,7 @@ fi
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -1114,11 +1106,11 @@ fi
 				{
 					my $db_id   = $1;
 					my $db_host = $2;
-					$conf->{used_db_id}{$db_id}     = $db_host;
-					$conf->{used_db_host}{$db_host} = $db_id;
+					$an->data->{used_db_id}{$db_id}     = $db_host;
+					$an->data->{used_db_host}{$db_host} = $db_id;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "used_db_id::$db_id",     value1 => $conf->{used_db_id}{$db_id},
-						name2 => "used_db_host::$db_host", value2 => $conf->{used_db_host}{$db_host},
+						name1 => "used_db_id::$db_id",     value1 => $an->data->{used_db_id}{$db_id},
+						name2 => "used_db_host::$db_host", value2 => $an->data->{used_db_host}{$db_host},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				
@@ -1126,19 +1118,19 @@ fi
 			}
 			
 			# Loop through again and inject the striker DBs.
-			my $striker_1_bcn_ip = $conf->{cgi}{anvil_striker1_bcn_ip};
+			my $striker_1_bcn_ip = $an->data->{cgi}{anvil_striker1_bcn_ip};
 			my $striker_1_db_id  = 0;
 			my $add_striker_1    = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "used_db_host::$striker_1_bcn_ip", value1 => $conf->{used_db_host}{$striker_1_bcn_ip},
+				name1 => "used_db_host::$striker_1_bcn_ip", value1 => $an->data->{used_db_host}{$striker_1_bcn_ip},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $conf->{used_db_host}{$striker_1_bcn_ip})
+			if (not $an->data->{used_db_host}{$striker_1_bcn_ip})
 			{
 				# Find the first free DB ID.
 				my $id = 1;
 				while (not $striker_1_db_id)
 				{
-					if ($conf->{used_db_id}{$id})
+					if ($an->data->{used_db_id}{$id})
 					{
 						$id++;
 					}
@@ -1146,11 +1138,11 @@ fi
 					{
 						$striker_1_db_id                         = $id;
 						$add_striker_1                           = 1;
-						$conf->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
-						$conf->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id; 
+						$an->data->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
+						$an->data->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id; 
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "used_db_id::$striker_1_db_id",    value1 => $conf->{used_db_id}{$striker_1_db_id},
-							name2 => "used_db_host::$striker_1_bcn_ip", value2 => $conf->{used_db_host}{$striker_1_bcn_ip},
+							name1 => "used_db_id::$striker_1_db_id",    value1 => $an->data->{used_db_id}{$striker_1_db_id},
+							name2 => "used_db_host::$striker_1_bcn_ip", value2 => $an->data->{used_db_host}{$striker_1_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1158,19 +1150,19 @@ fi
 					name1 => "striker_1_db_id", value1 => $striker_1_db_id,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			my $striker_2_bcn_ip = $conf->{cgi}{anvil_striker2_bcn_ip};
+			my $striker_2_bcn_ip = $an->data->{cgi}{anvil_striker2_bcn_ip};
 			my $striker_2_db_id  = 0;
 			my $add_striker_2    = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "used_db_host::$striker_2_bcn_ip", value1 => $conf->{used_db_host}{$striker_2_bcn_ip},
+				name1 => "used_db_host::$striker_2_bcn_ip", value1 => $an->data->{used_db_host}{$striker_2_bcn_ip},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $conf->{used_db_host}{$striker_2_bcn_ip})
+			if (not $an->data->{used_db_host}{$striker_2_bcn_ip})
 			{
 				# Find the first free DB ID.
 				my $id = 1;
 				while (not $striker_2_db_id)
 				{
-					if ($conf->{used_db_id}{$id})
+					if ($an->data->{used_db_id}{$id})
 					{
 						$id++;
 					}
@@ -1178,11 +1170,11 @@ fi
 					{
 						$striker_2_db_id                         = $id;
 						$add_striker_2                           = 1;
-						$conf->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
-						$conf->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id;
+						$an->data->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
+						$an->data->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id;
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-							name1 => "used_db_id::$striker_2_db_id",    value1 => $conf->{used_db_id}{$striker_2_db_id},
-							name2 => "used_db_host::$striker_2_bcn_ip", value2 => $conf->{used_db_host}{$striker_2_bcn_ip},
+							name1 => "used_db_id::$striker_2_db_id",    value1 => $an->data->{used_db_id}{$striker_2_db_id},
+							name2 => "used_db_host::$striker_2_bcn_ip", value2 => $an->data->{used_db_host}{$striker_2_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
@@ -1219,9 +1211,9 @@ fi
 							}, file => $THIS_FILE, line => __LINE__});
 							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
-							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
-							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
+							$new_striker_config .= "scancore::db::${db_id}::name			=	$an->data->{sys}{scancore_database}\n";
+							$new_striker_config .= "scancore::db::${db_id}::user			=	$an->data->{sys}{striker_user}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$an->data->{cgi}{anvil_password}\n\n";
 						}
 						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 							name1 => "add_striker_2", value1 => $add_striker_2,
@@ -1236,9 +1228,9 @@ fi
 							}, file => $THIS_FILE, line => __LINE__});
 							$new_striker_config .= "scancore::db::${db_id}::host			=	$db_host\n";
 							$new_striker_config .= "scancore::db::${db_id}::port			=	5432\n";
-							$new_striker_config .= "scancore::db::${db_id}::name			=	$conf->{sys}{scancore_database}\n";
-							$new_striker_config .= "scancore::db::${db_id}::user			=	$conf->{sys}{striker_user}\n";
-							$new_striker_config .= "scancore::db::${db_id}::password		=	$conf->{cgi}{anvil_password}\n\n";
+							$new_striker_config .= "scancore::db::${db_id}::name			=	$an->data->{sys}{scancore_database}\n";
+							$new_striker_config .= "scancore::db::${db_id}::user			=	$an->data->{sys}{striker_user}\n";
+							$new_striker_config .= "scancore::db::${db_id}::password		=	$an->data->{cgi}{anvil_password}\n\n";
 						}
 					}
 				}
@@ -1270,7 +1262,7 @@ fi
 				target		=>	$node,
 				password	=>	$an->data->{sys}{root_password},
 				destination	=>	"root\@$node:".$an->data->{path}{striker_config},
-				switches	=>	$conf->{args}{rsync},
+				switches	=>	$an->data->{args}{rsync},
 			});
 			
 			if (not $return_code)
@@ -1278,7 +1270,7 @@ fi
 				# Write out the striker.conf file now.
 				my $generated_ok = 0;
 				   $shell_call   = "
-if [ -s '$conf->{path}{striker_config}' ];
+if [ -s '".$an->data->{path}{striker_config}."' ];
 then
     echo 'config exists'
 else
@@ -1291,7 +1283,7 @@ fi
 				}, file => $THIS_FILE, line => __LINE__});
 				($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -1311,7 +1303,7 @@ fi
 				if ($generated_ok)
 				{
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "path::striker_config", value1 => $conf->{path}{striker_config},
+						name1 => "path::striker_config", value1 => $an->data->{path}{striker_config},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
@@ -1339,45 +1331,45 @@ fi
 	{
 		# Add it to root's crontab.
 		my $shell_call = "
-if [ ! -e '$conf->{path}{nodes}{cron_root}' ]
+if [ ! -e '".$an->data->{path}{nodes}{cron_root}."' ]
 then
     echo 'creating empty crontab for root.'
-    echo 'MAILTO=\"\"' > $conf->{path}{nodes}{cron_root}
+    echo 'MAILTO=\"\"' > ".$an->data->{path}{nodes}{cron_root}."
     echo \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
-    chown root:root $conf->{path}{nodes}{cron_root}
-    chmod 600 $conf->{path}{nodes}{cron_root}
+    chown root:root $an->data->{path}{nodes}{cron_root}
+    chmod 600 $an->data->{path}{nodes}{cron_root}
 fi
-grep -q ScanCore $conf->{path}{nodes}{cron_root}
+grep -q ScanCore $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
     echo 'ScanCore exits'
 else
     echo \"Adding ScanCore to root's cron table.\"
-    echo '*/1 * * * * $conf->{path}{nodes}{scancore}' >> $conf->{path}{nodes}{cron_root}
+    echo '*/1 * * * * $an->data->{path}{nodes}{scancore}' >> $an->data->{path}{nodes}{cron_root}
 fi
-grep -q anvil-safe-start $conf->{path}{nodes}{cron_root}
+grep -q anvil-safe-start $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
     echo 'anvil-safe-start exits'
 else
     echo \"Adding 'anvil-safe-start' to root's cron table.\"
-    echo '*/1 * * * * $conf->{path}{nodes}{'anvil-safe-start'}' >> $conf->{path}{nodes}{cron_root}
+    echo '*/1 * * * * $an->data->{path}{nodes}{'anvil-safe-start'}' >> $an->data->{path}{nodes}{cron_root}
 fi
-grep -q anvil-kick-apc-ups $conf->{path}{nodes}{cron_root}
+grep -q anvil-kick-apc-ups $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
     echo 'anvil-kick-apc-ups exits'
 else
     echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
-    echo '*/1 * * * * $conf->{path}{nodes}{'anvil-kick-apc-ups'}' >> $conf->{path}{nodes}{cron_root}
+    echo '*/1 * * * * $an->data->{path}{nodes}{'anvil-kick-apc-ups'}' >> $an->data->{path}{nodes}{cron_root}
 fi
-grep -q anvil-run-jobs $conf->{path}{nodes}{cron_root}
+grep -q anvil-run-jobs $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
     echo 'anvil-run-jobs exits'
 else
     echo \"Adding 'anvil-run-jobs' to root's cron table.\"
-    echo '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $conf->{path}{nodes}{cron_root}
+    echo '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $an->data->{path}{nodes}{cron_root}
 fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -1386,7 +1378,7 @@ fi
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -1401,7 +1393,7 @@ fi
 	}
 	
 	# Delete this so it doesn't interfere with node2
-	delete $conf->{used_db_host};
+	delete $an->data->{used_db_host};
 	
 	# 0 == Success
 	# 1 == Failed to download
@@ -1424,12 +1416,11 @@ fi
 # on the node(s).
 sub configure_scancore
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
-	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	my ($node1_rc, $node1_rc_message) = configure_scancore_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_name});
+	my ($node2_rc, $node2_rc_message) = configure_scancore_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_name});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_rc",         value1 => $node1_rc,
 		name2 => "node2_rc",         value2 => $node2_rc,
@@ -1586,24 +1577,23 @@ sub configure_scancore
 # the network remap.
 sub update_install_manifest
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node1           = $conf->{cgi}{anvil_node1_current_ip};
-	my $node1_bcn_link1 = $conf->{conf}{node}{$node1}{set_nic}{bcn_link1};
-	my $node1_bcn_link2 = $conf->{conf}{node}{$node1}{set_nic}{bcn_link2};
-	my $node1_sn_link1  = $conf->{conf}{node}{$node1}{set_nic}{sn_link1};
-	my $node1_sn_link2  = $conf->{conf}{node}{$node1}{set_nic}{sn_link2};
-	my $node1_ifn_link1 = $conf->{conf}{node}{$node1}{set_nic}{ifn_link1};
-	my $node1_ifn_link2 = $conf->{conf}{node}{$node1}{set_nic}{ifn_link2};
-	my $node2           = $conf->{cgi}{anvil_node2_current_ip};
-	my $node2_bcn_link1 = $conf->{conf}{node}{$node2}{set_nic}{bcn_link1};
-	my $node2_bcn_link2 = $conf->{conf}{node}{$node2}{set_nic}{bcn_link2};
-	my $node2_sn_link1  = $conf->{conf}{node}{$node2}{set_nic}{sn_link1};
-	my $node2_sn_link2  = $conf->{conf}{node}{$node2}{set_nic}{sn_link2};
-	my $node2_ifn_link1 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link1};
-	my $node2_ifn_link2 = $conf->{conf}{node}{$node2}{set_nic}{ifn_link2};
+	my $node1           = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node1_bcn_link1 = $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1};
+	my $node1_bcn_link2 = $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2};
+	my $node1_sn_link1  = $an->data->{conf}{node}{$node1}{set_nic}{sn_link1};
+	my $node1_sn_link2  = $an->data->{conf}{node}{$node1}{set_nic}{sn_link2};
+	my $node1_ifn_link1 = $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1};
+	my $node1_ifn_link2 = $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2};
+	my $node2           = $an->data->{cgi}{anvil_node2_current_ip};
+	my $node2_bcn_link1 = $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1};
+	my $node2_bcn_link2 = $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2};
+	my $node2_sn_link1  = $an->data->{conf}{node}{$node2}{set_nic}{sn_link1};
+	my $node2_sn_link2  = $an->data->{conf}{node}{$node2}{set_nic}{sn_link2};
+	my $node2_ifn_link1 = $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1};
+	my $node2_ifn_link2 = $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 		name1 => "node1",           value1 => $node1,
 		name2 => "node1_bcn_link2", value2 => $node1_bcn_link1,
@@ -1627,7 +1617,7 @@ sub update_install_manifest
 	my $in_node1   = 0;
 	my $in_node2   = 0;
 	my $raw_file   = "";
-	my $shell_call = "$conf->{path}{apache_manifests_dir}/$conf->{cgi}{run}";
+	my $shell_call = $an->data->{path}{apache_manifests_dir}."/".$an->data->{cgi}{run};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1928,17 +1918,15 @@ sub update_install_manifest
 	return(0);
 }
 
-# This checks to see if we're configured to be a repo for RHEL and/or CentOS.
-# If so, it gets the local IPs to be used later when setting up the repos on
-# the nodes.
+# This checks to see if we're configured to be a repo for RHEL and/or CentOS. If so, it gets the local IPs to
+# be used later when setting up the repos on the nodes.
 sub check_local_repo
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Call the gather system info tool to get the BCN and IFN IPs.
-	my $shell_call = "$conf->{path}{'call_gather-system-info'}";
+	my $shell_call = $an->data->{path}{'call_gather-system-info'};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "sc", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1952,9 +1940,9 @@ sub check_local_repo
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /hostname,(.*)$/)
 		{
-			$conf->{sys}{'local'}{hostname} = $1;
+			$an->data->{sys}{'local'}{hostname} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "hostname", value1 => $conf->{sys}{'local'}{hostname},
+				name1 => "hostname", value1 => $an->data->{sys}{'local'}{hostname},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($line =~ /interface,(.*?),(.*?),(.*?)$/)
@@ -1973,17 +1961,17 @@ sub check_local_repo
 			if (($variable eq "ip") && ($interface =~ /ifn/))
 			{
 				next if $value eq "?";
-				$conf->{sys}{'local'}{ifn}{ip} = $value;
+				$an->data->{sys}{'local'}{ifn}{ip} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "Found IFN IP", value1 => $conf->{sys}{'local'}{ifn}{ip},
+					name1 => "Found IFN IP", value1 => $an->data->{sys}{'local'}{ifn}{ip},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if (($variable eq "ip") && ($interface =~ /bcn/))
 			{
 				next if $value eq "?";
-				$conf->{sys}{'local'}{bcn}{ip} = $value;
+				$an->data->{sys}{'local'}{bcn}{ip} = $value;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "Found BCN IP", value1 => $conf->{sys}{'local'}{bcn}{ip},
+					name1 => "Found BCN IP", value1 => $an->data->{sys}{'local'}{bcn}{ip},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1991,35 +1979,35 @@ sub check_local_repo
 	close $file_handle;
 	
 	# Now see if we have RHEL, CentOS and/or generic repos setup.
-	$conf->{sys}{'local'}{repo}{centos}  = 0;
-	$conf->{sys}{'local'}{repo}{generic} = 0;
-	$conf->{sys}{'local'}{repo}{rhel}    = 0;
+	$an->data->{sys}{'local'}{repo}{centos}  = 0;
+	$an->data->{sys}{'local'}{repo}{generic} = 0;
+	$an->data->{sys}{'local'}{repo}{rhel}    = 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "Looking for", value1 => $conf->{path}{repo_centos},
+		name1 => "Looking for", value1 => $an->data->{path}{repo_centos},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $conf->{path}{repo_centos})
+	if (-e $an->data->{path}{repo_centos})
 	{
-		$conf->{sys}{'local'}{repo}{centos} = 1;
+		$an->data->{sys}{'local'}{repo}{centos} = 1;
 		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
 			type => "CentOS", 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "Looking for", value1 => $conf->{path}{repo_generic},
+		name1 => "Looking for", value1 => $an->data->{path}{repo_generic},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $conf->{path}{repo_generic})
+	if (-e $an->data->{path}{repo_generic})
 	{
-		$conf->{sys}{'local'}{repo}{generic} = 1;
+		$an->data->{sys}{'local'}{repo}{generic} = 1;
 		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
 			type => "generic", 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "Looking for", value1 => $conf->{path}{repo_rhel},
+		name1 => "Looking for", value1 => $an->data->{path}{repo_rhel},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (-e $conf->{path}{repo_rhel})
+	if (-e $an->data->{path}{repo_rhel})
 	{
-		$conf->{sys}{'local'}{repo}{rhel} = 1;
+		$an->data->{sys}{'local'}{repo}{rhel} = 1;
 		$an->Log->entry({log_level => 3, message_key => "log_0040", message_variables => {
 			type => "RHEL", 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2031,8 +2019,7 @@ sub check_local_repo
 # See if the node is in a cluster already. If so, we'll set a flag to block reboots if needed.
 sub check_if_in_cluster
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "
@@ -2047,16 +2034,16 @@ fi";
 	# Node 1
 	if (1)
 	{
-		my $node                            = $conf->{cgi}{anvil_node1_current_ip};
-		   $conf->{node}{$node}{in_cluster} = 0;
+		my $node                            = $an->data->{cgi}{anvil_node1_current_ip};
+		   $an->data->{node}{$node}{in_cluster} = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call",                  value1 => $shell_call,
-			name2 => "cgi::anvil_node1_current_ip", value2 => $conf->{cgi}{anvil_node1_current_ip},
+			name2 => "cgi::anvil_node1_current_ip", value2 => $an->data->{cgi}{anvil_node1_current_ip},
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$conf->{cgi}{anvil_node1_current_ip},
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$conf->{cgi}{anvil_node1_current_password},
+			target		=>	$an->data->{cgi}{anvil_node1_current_ip},
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$an->data->{cgi}{anvil_node1_current_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
@@ -2071,19 +2058,19 @@ fi";
 			{
 				my $rc = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $conf->{cgi}{anvil_node1_current_ip},
+					name1 => "node", value1 => $an->data->{cgi}{anvil_node1_current_ip},
 					name2 => "rc",   value2 => $rc,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "0")
 				{
 					# It's in a cluster.
-					$conf->{node}{$node}{in_cluster} = 1;
+					$an->data->{node}{$node}{in_cluster} = 1;
 				}
 			}
 			else
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $conf->{cgi}{anvil_node1_current_ip},
+					name1 => "node", value1 => $an->data->{cgi}{anvil_node1_current_ip},
 					name2 => "line", value2 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2092,16 +2079,16 @@ fi";
 	# Node 2
 	if (1)
 	{
-		my $node                            = $conf->{cgi}{anvil_node2_current_ip};
-		   $conf->{node}{$node}{in_cluster} = 0;
+		my $node                            = $an->data->{cgi}{anvil_node2_current_ip};
+		   $an->data->{node}{$node}{in_cluster} = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call",                  value1 => $shell_call,
-			name2 => "cgi::anvil_node2_current_ip", value2 => $conf->{cgi}{anvil_node2_current_ip},
+			name2 => "cgi::anvil_node2_current_ip", value2 => $an->data->{cgi}{anvil_node2_current_ip},
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$conf->{cgi}{anvil_node2_current_ip},
-			port		=>	$conf->{node}{$node}{port}, 
-			password	=>	$conf->{cgi}{anvil_node2_current_password},
+			target		=>	$an->data->{cgi}{anvil_node2_current_ip},
+			port		=>	$an->data->{node}{$node}{port}, 
+			password	=>	$an->data->{cgi}{anvil_node2_current_password},
 			ssh_fh		=>	"",
 			'close'		=>	0,
 			shell_call	=>	$shell_call,
@@ -2116,19 +2103,19 @@ fi";
 			{
 				my $rc = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $conf->{cgi}{anvil_node2_current_ip},
+					name1 => "node", value1 => $an->data->{cgi}{anvil_node2_current_ip},
 					name2 => "rc",   value2 => $rc,
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($rc eq "0")
 				{
 					# It's in a cluster.
-					$conf->{node}{$node}{in_cluster} = 1;
+					$an->data->{node}{$node}{in_cluster} = 1;
 				}
 			}
 			else
 			{
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $conf->{cgi}{anvil_node2_current_ip},
+					name1 => "node", value1 => $an->data->{cgi}{anvil_node2_current_ip},
 					name2 => "line", value2 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -2141,18 +2128,17 @@ fi";
 # Check to see if the created Anvil! is in the configuration yet.
 sub check_config_for_anvil
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_config_for_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_configured = 0;
-	foreach my $cluster (sort {$a cmp $b} keys %{$conf->{cluster}})
+	foreach my $cluster (sort {$a cmp $b} keys %{$an->data->{cluster}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "cgi::anvil_name",           value1 => $conf->{cgi}{anvil_name},
-			name2 => "cluster::${cluster}::name", value2 => $conf->{cluster}{$cluster}{name},
+			name1 => "cgi::anvil_name",           value1 => $an->data->{cgi}{anvil_name},
+			name2 => "cluster::${cluster}::name", value2 => $an->data->{cluster}{$cluster}{name},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{cgi}{anvil_name} eq $conf->{cluster}{$cluster}{name})
+		if ($an->data->{cgi}{anvil_name} eq $an->data->{cluster}{$cluster}{name})
 		{
 			# Match!
 			$anvil_configured = 1;
@@ -2171,14 +2157,13 @@ sub check_config_for_anvil
 # creates the /shared LV, creates the GFS2 partition and configures fstab.
 sub configure_storage_stage3
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage3" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	
 	# Bring up DRBD
-	my ($drbd_ok) = drbd_first_start($conf);
+	my ($drbd_ok) = drbd_first_start($an);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "drbd_ok", value1 => $drbd_ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2189,7 +2174,7 @@ sub configure_storage_stage3
 	{
 		# This will create the /dev/drbd{0,1} PVs and create the VGs on
 		# them, if needed.
-		($lvm_ok) = setup_lvm_pv_and_vgs($conf);
+		($lvm_ok) = setup_lvm_pv_and_vgs($an);
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "lvm_ok", value1 => $lvm_ok,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2198,7 +2183,7 @@ sub configure_storage_stage3
 		my $gfs2_ok = 0;
 		if ($lvm_ok)
 		{
-			($gfs2_ok) = setup_gfs2($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			($gfs2_ok) = setup_gfs2($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "gfs2_ok", value1 => $gfs2_ok,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2211,30 +2196,30 @@ sub configure_storage_stage3
 				# Start gfs2 on both nodes, including
 				# subdirectories and SELinux contexts on
 				# /shared.
-				my ($configure_ok) = configure_gfs2($conf);
+				my ($configure_ok) = configure_gfs2($an);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "configure_ok", value1 => $configure_ok,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				### Stop everything now.
 				# gfs2
-				my $gfs2_node1_rc = stop_service_on_node($conf, "gfs2", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-				my $gfs2_node2_rc = stop_service_on_node($conf, "gfs2", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+				my $gfs2_node1_rc = stop_service_on_node($an, "gfs2", $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+				my $gfs2_node2_rc = stop_service_on_node($an, "gfs2", $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "gfs2_node1_rc", value1 => $gfs2_node1_rc, 
 					name2 => "gfs2_node2_rc", value2 => $gfs2_node2_rc, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# clvmd
-				my $clvmd_node1_rc = stop_service_on_node($conf, "clvmd", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-				my $clvmd_node2_rc = stop_service_on_node($conf, "clvmd", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+				my $clvmd_node1_rc = stop_service_on_node($an, "clvmd", $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+				my $clvmd_node2_rc = stop_service_on_node($an, "clvmd", $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "clvmd_node1_rc", value1 => $clvmd_node1_rc, 
 					name2 => "clvmd_node2_rc", value2 => $clvmd_node2_rc, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# This looks at the Disk State and stops the resources intelligently.
-				$ok = stop_drbd($conf);
+				$ok = stop_drbd($an);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "ok", value1 => $ok, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2271,8 +2256,8 @@ sub configure_storage_stage3
 	if ($ok)
 	{
 		# Start rgmanager, making sure it comes up
-		my ($node1_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		my ($node2_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my ($node1_rc) = start_rgmanager_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		my ($node2_rc) = start_rgmanager_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_rc", value1 => $node1_rc,
 			name2 => "node2_rc", value2 => $node2_rc,
@@ -2280,23 +2265,23 @@ sub configure_storage_stage3
 		
 		# Go into a loop waiting for the rgmanager services to either
 		# start or fail.
-		my ($clustat_ok) = watch_clustat($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($clustat_ok) = watch_clustat($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "clustat_ok", value1 => $clustat_ok,
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $clustat_ok)
 		{
 			$an->Log->entry({log_level => 1, message_key => "log_0268", file => $THIS_FILE, line => __LINE__});
-			my $rgmanager_node1_rc = stop_service_on_node($conf, "rgmanager", $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-			my $rgmanager_node2_rc = stop_service_on_node($conf, "rgmanager", $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			my $rgmanager_node1_rc = stop_service_on_node($an, "rgmanager", $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+			my $rgmanager_node2_rc = stop_service_on_node($an, "rgmanager", $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "rgmanager_node1_rc", value1 => $rgmanager_node1_rc, 
 				name2 => "rgmanager_node2_rc", value2 => $rgmanager_node2_rc, 
 			}, file => $THIS_FILE, line => __LINE__});
 			sleep 10;
 				
-			my ($node1_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-			my ($node2_rc) = start_rgmanager_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			my ($node1_rc) = start_rgmanager_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+			my ($node2_rc) = start_rgmanager_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node1_rc", value1 => $node1_rc,
 				name2 => "node2_rc", value2 => $node2_rc,
@@ -2304,7 +2289,7 @@ sub configure_storage_stage3
 			
 			# Go into a loop waiting for the rgmanager services to either
 			# start or fail.
-			my ($clustat_ok) = watch_clustat($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			my ($clustat_ok) = watch_clustat($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "clustat_ok", value1 => $clustat_ok,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2330,8 +2315,7 @@ sub configure_storage_stage3
 # This watches clustat for up to 300 seconds for the storage and libvirt services to start (or fail).
 sub watch_clustat
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "watch_clustat" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2349,7 +2333,7 @@ sub watch_clustat
 	my $n02_storage   = "";
 	my $n01_libvirtd  = "";
 	my $n02_libvirtd  = "";
-	my $abort_time    = time + $conf->{sys}{clustat_timeout};
+	my $abort_time    = time + $an->data->{sys}{clustat_timeout};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "abort_time", value2 => $abort_time,
@@ -2364,7 +2348,7 @@ sub watch_clustat
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -2396,7 +2380,7 @@ sub watch_clustat
 						name1 => "service", value1 => $service, 
 						name2 => "node",    value2 => $node, 
 					}, file => $THIS_FILE, line => __LINE__});
-					restart_rgmanager_service($conf, $node, $password, $service, "start"); 
+					restart_rgmanager_service($an, $node, $password, $service, "start"); 
 				}
 				elsif ($service eq "libvirtd_n01")
 				{
@@ -2408,12 +2392,12 @@ sub watch_clustat
 					if (($state eq "failed") && (not $restarted_n01_libvirtd))
 					{
 						$restarted_n01_libvirtd = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+						restart_rgmanager_service($an, $node, $password, $service, "restart");
 					}
 					elsif (($state eq "disabled") && (not $restarted_n01_libvirtd))
 					{
 						$restarted_n01_libvirtd = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "start");
+						restart_rgmanager_service($an, $node, $password, $service, "start");
 					}
 					elsif (($state eq "started") || ($restarted_n01_libvirtd))
 					{
@@ -2433,12 +2417,12 @@ sub watch_clustat
 					if (($state eq "failed") && (not $restarted_n02_libvirtd))
 					{
 						$restarted_n02_libvirtd = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+						restart_rgmanager_service($an, $node, $password, $service, "restart");
 					}
 					elsif (($state eq "disabled") && (not $restarted_n02_libvirtd))
 					{
 						$restarted_n02_libvirtd = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "start");
+						restart_rgmanager_service($an, $node, $password, $service, "start");
 					}
 					elsif (($state eq "started") || ($restarted_n02_libvirtd))
 					{
@@ -2458,12 +2442,12 @@ sub watch_clustat
 					if (($state eq "failed") && (not $restarted_n01_storage))
 					{
 						$restarted_n01_storage = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+						restart_rgmanager_service($an, $node, $password, $service, "restart");
 					}
 					elsif (($state eq "disabled") && (not $restarted_n01_storage))
 					{
 						$restarted_n01_storage = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "start");
+						restart_rgmanager_service($an, $node, $password, $service, "start");
 					}
 					elsif (($state eq "started") || ($restarted_n01_storage))
 					{
@@ -2483,12 +2467,12 @@ sub watch_clustat
 					if (($state eq "failed") && (not $restarted_n02_storage))
 					{
 						$restarted_n02_storage = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "restart");
+						restart_rgmanager_service($an, $node, $password, $service, "restart");
 					}
 					elsif (($state eq "disabled") && (not $restarted_n02_storage))
 					{
 						$restarted_n02_storage = 1;
-						restart_rgmanager_service($conf, $node, $password, $service, "start");
+						restart_rgmanager_service($an, $node, $password, $service, "start");
 					}
 					elsif (($state eq "started") || ($restarted_n02_storage))
 					{
@@ -2610,8 +2594,7 @@ sub watch_clustat
 # This will call disable -> enable on a given service to try and recover if from a 'failed' state.
 sub restart_rgmanager_service
 {
-	my ($conf, $node, $password, $service, $do) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $service, $do) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "restart_rgmanager_service" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node",    value1 => $node, 
 		name2 => "service", value2 => $service, 
@@ -2631,7 +2614,7 @@ sub restart_rgmanager_service
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2651,14 +2634,13 @@ sub restart_rgmanager_service
 # stop node 1, then node 2.
 sub stop_drbd
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# get the current disk states from node 1's perspective.
 	my $stop_first = "node1";
-	my $node       = $conf->{cgi}{anvil_node1_current_ip};
-	my $password   = $conf->{cgi}{anvil_node1_current_password};
+	my $node       = $an->data->{cgi}{anvil_node1_current_ip};
+	my $password   = $an->data->{cgi}{anvil_node1_current_password};
 	my $shell_call = "cat /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -2666,7 +2648,7 @@ sub stop_drbd
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2703,8 +2685,8 @@ sub stop_drbd
 	if ($stop_first eq "node2")
 	{
 		# Stop 2 -> 1
-		my $drbd_node2_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-		my $drbd_node1_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my $drbd_node2_ok = stop_drbd_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+		my $drbd_node1_ok = stop_drbd_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
 			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
@@ -2717,8 +2699,8 @@ sub stop_drbd
 	else
 	{
 		# Stop 1 -> 2
-		my $drbd_node1_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		my $drbd_node2_ok = stop_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my $drbd_node1_ok = stop_drbd_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		my $drbd_node2_ok = stop_drbd_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "drbd_node1_ok", value1 => $drbd_node1_ok, 
 			name2 => "drbd_node2_ok", value2 => $drbd_node2_ok, 
@@ -2736,8 +2718,7 @@ sub stop_drbd
 # daemon itself.
 sub stop_drbd_on_node
 {
-	my ($conf, $service, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $service, $node, $password) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_drbd_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2751,7 +2732,7 @@ sub stop_drbd_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2783,7 +2764,7 @@ sub stop_drbd_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -2808,7 +2789,7 @@ sub stop_drbd_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2843,7 +2824,7 @@ sub stop_drbd_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -2867,7 +2848,7 @@ sub stop_drbd_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -2888,8 +2869,7 @@ sub stop_drbd_on_node
 # This stops the named service on the named node.
 sub stop_service_on_node
 {
-	my ($conf, $service, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $service, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_rgmanager_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "service", value1 => $service, 
 		name2 => "node",    value2 => $node, 
@@ -2903,7 +2883,7 @@ sub stop_service_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2933,8 +2913,7 @@ sub stop_service_on_node
 # This starts rgmanager on both a node
 sub start_rgmanager_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_rgmanager_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2947,7 +2926,7 @@ sub start_rgmanager_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -2988,13 +2967,12 @@ sub start_rgmanager_on_node
 # This handles starting (and configuring) GFS2 on the nodes.
 sub configure_gfs2
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	my ($node1_rc) = setup_gfs2_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = setup_gfs2_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_rc) = setup_gfs2_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = setup_gfs2_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_rc", value1 => $node1_rc,
 		name2 => "node2_rc", value2 => $node2_rc,
@@ -3109,8 +3087,7 @@ sub configure_gfs2
 # This will manually mount the GFS2 partition on the node, configuring /etc/fstab in the process if needed.
 sub setup_gfs2_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3133,7 +3110,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -3147,10 +3124,10 @@ fi";
 	}
 
 	# Append the gfs2 partition to /etc/fstab if needed.
-	if ($conf->{sys}{shared_fs_uuid})
+	if ($an->data->{sys}{shared_fs_uuid})
 	{
 		my $append_ok    = 0;
-		my $fstab_string = "UUID=$conf->{sys}{shared_fs_uuid} /shared gfs2 defaults,noatime,nodiratime 0 0";
+		my $fstab_string = "UUID=".$an->data->{sys}{shared_fs_uuid}." /shared gfs2 defaults,noatime,nodiratime 0 0";
 		$shell_call   = "
 if \$(grep -q shared /etc/fstab)
 then
@@ -3170,7 +3147,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3202,7 +3179,7 @@ fi";
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3243,7 +3220,7 @@ fi";
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -3282,7 +3259,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $return_code)
 		{
-			foreach my $directory (@{$conf->{path}{nodes}{shared_subdirectories}})
+			foreach my $directory (@{$an->data->{path}{nodes}{shared_subdirectories}})
 			{
 				next if not $directory;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -3301,7 +3278,7 @@ fi";
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -3362,7 +3339,7 @@ fi";
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3415,13 +3392,12 @@ fi";
 # This checks for and creates the GFS2 /shared partition if necessary
 sub setup_gfs2
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my ($lv_ok) = create_shared_lv($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+	my ($lv_ok) = create_shared_lv($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "lv_ok", value1 => $lv_ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3433,14 +3409,14 @@ sub setup_gfs2
 	if ($lv_ok)
 	{
 		# Check if the LV already has a GFS2 FS
-		my $shell_call = "gfs2_tool sb /dev/$conf->{sys}{vg_pool1_name}/shared uuid; echo rc:\$?";
+		my $shell_call = "gfs2_tool sb /dev/$an->data->{sys}{vg_pool1_name}/shared uuid; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3456,11 +3432,11 @@ sub setup_gfs2
 			if ($line =~ /current uuid = (.*)$/)
 			{
 				# This will be useful later in the fstab stage
-				$conf->{sys}{shared_fs_uuid} = $1;
-				$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
+				$an->data->{sys}{shared_fs_uuid} = $1;
+				$an->data->{sys}{shared_fs_uuid} = lc($an->data->{sys}{shared_fs_uuid});
 				$an->Log->entry({log_level => 2, message_key => "log_0056", message_variables => {
-					device => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
-					uuid   => "$conf->{sys}{shared_fs_uuid}", 
+					device => "/dev/".$an->data->{sys}{vg_pool1_name}."/shared", 
+					uuid   => $an->data->{sys}{shared_fs_uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$create_gfs2 = 0;
 				$return_code = 1;
@@ -3484,16 +3460,16 @@ sub setup_gfs2
 		}
 		
 		# Create the partition if needed.
-		if (($create_gfs2) && (not $conf->{sys}{shared_fs_uuid}))
+		if (($create_gfs2) && (not $an->data->{sys}{shared_fs_uuid}))
 		{
-			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $conf->{cgi}{anvil_name}:shared /dev/$conf->{sys}{vg_pool1_name}/shared -O; echo rc:\$?";
+			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $an->data->{cgi}{anvil_name}:shared /dev/$an->data->{sys}{vg_pool1_name}/shared -O; echo rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -3511,11 +3487,11 @@ sub setup_gfs2
 				if ($line =~ /UUID:\s+(.*)$/)
 				{
 					# This will be useful later in the fstab stage
-					$conf->{sys}{shared_fs_uuid} = $1;
-					$conf->{sys}{shared_fs_uuid} = lc($conf->{sys}{shared_fs_uuid});
+					$an->data->{sys}{shared_fs_uuid} = $1;
+					$an->data->{sys}{shared_fs_uuid} = lc($an->data->{sys}{shared_fs_uuid});
 					$an->Log->entry({log_level => 2, message_key => "log_0059", message_variables => {
-						device => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
-						uuid   => "$conf->{sys}{shared_fs_uuid}", 
+						device => "/dev/".$an->data->{sys}{vg_pool1_name}."/shared", 
+						uuid   => $an->data->{sys}{shared_fs_uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$create_gfs2 = 0;
 				}
@@ -3531,7 +3507,7 @@ sub setup_gfs2
 					{
 						# Format appears to have failed.
 						$an->Log->entry({log_level => 1, message_key => "log_0061", message_variables => {
-							device      => "/dev/$conf->{sys}{vg_pool1_name}/shared", 
+							device      => "/dev/$an->data->{sys}{vg_pool1_name}/shared", 
 							return_code => $rc, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 2;
@@ -3582,8 +3558,7 @@ sub setup_gfs2
 # The checks and, if needed, creates the LV for the GFS2 /shared partition
 sub create_shared_lv
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_shared_lv" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3597,7 +3572,7 @@ sub create_shared_lv
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -3627,11 +3602,11 @@ sub create_shared_lv
 		if ($line =~ /^shared,/)
 		{
 			# Found the LV, pull out the VG
-			$conf->{sys}{vg_pool1_name} = ($line =~ /^shared,(.*?),/)[0];
+			$an->data->{sys}{vg_pool1_name} = ($line =~ /^shared,(.*?),/)[0];
 			$create_lv   = 0;
 			$return_code = 1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "The LV for the shared GFS2 partition already exists on VG", value1 => $conf->{sys}{vg_pool1_name},
+				name1 => "The LV for the shared GFS2 partition already exists on VG", value1 => $an->data->{sys}{vg_pool1_name},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -3643,16 +3618,16 @@ sub create_shared_lv
 	if (($return_code ne "2") && ($create_lv))
 	{
 		# Create the LV
-		my $lv_size    =  $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} });
+		my $lv_size    =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} });
 		   $lv_size    =~ s/ //;
-		my $shell_call = "lvcreate -L $lv_size -n shared $conf->{sys}{vg_pool1_name}; echo rc:\$?";
+		my $shell_call = "lvcreate -L $lv_size -n shared $an->data->{sys}{vg_pool1_name}; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3718,14 +3693,13 @@ sub create_shared_lv
 # needed.
 sub setup_lvm_pv_and_vgs
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_lvm_pv_and_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Start 'clvmd' on both nodes.
 	my $return_code = 0;
-	my ($node1_rc) = start_clvmd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = start_clvmd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_rc) = start_clvmd_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = start_clvmd_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_rc", value1 => $node1_rc,
 		name2 => "node2_rc", value2 => $node2_rc,
@@ -3776,7 +3750,7 @@ sub setup_lvm_pv_and_vgs
 	if (($node1_rc ne "2") && ($node2_rc ne "2"))
 	{
 		# Excellent, create the PVs if needed.
-		my ($pv_rc) = create_lvm_pvs($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+		my ($pv_rc) = create_lvm_pvs($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "pv_rc", value1 => $pv_rc,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3809,7 +3783,7 @@ sub setup_lvm_pv_and_vgs
 		if ($pv_rc ne "2")
 		{
 			# Create the VGs
-			($vg_rc) = create_lvm_vgs($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			($vg_rc) = create_lvm_vgs($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "vg_rc", value1 => $vg_rc,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -3849,23 +3823,22 @@ sub setup_lvm_pv_and_vgs
 # This creates the VGs if needed
 sub create_lvm_vgs
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_vgs" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If a VG name exists, use it. Otherwise, use the generated names
 	# below.
-	my ($node1_short_name)      = ($conf->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
-	my ($node2_short_name)      = ($conf->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
-	$conf->{sys}{vg_pool1_name} = "${node1_short_name}_vg0";
-	$conf->{sys}{vg_pool2_name} = "${node2_short_name}_vg0";
+	my ($node1_short_name)      = ($an->data->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
+	my ($node2_short_name)      = ($an->data->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
+	$an->data->{sys}{vg_pool1_name} = "${node1_short_name}_vg0";
+	$an->data->{sys}{vg_pool2_name} = "${node2_short_name}_vg0";
 	
 	# Check which, if any, VGs exist.
 	my $return_code = 0;
 	my $create_vg0  = 1;
-	my $create_vg1  = $conf->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
+	my $create_vg1  = $an->data->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
 	
 	# Calling 'pvs' again, but this time we're digging out the VG name
 	my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
@@ -3875,7 +3848,7 @@ sub create_lvm_vgs
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -3916,11 +3889,11 @@ sub create_lvm_vgs
 			elsif ($line =~ /\/dev\/drbd0,(.*?),/)
 			{
 				# VG on r0 doesn't exist, create it.
-				$conf->{sys}{vg_pool1_name} = $1;
+				$an->data->{sys}{vg_pool1_name} = $1;
 				$create_vg0                 = 0;
 				$an->Log->entry({log_level => 2, message_key => "log_0065", message_variables => {
 					pool   => "1",
-					device => $conf->{sys}{vg_pool1_name}, 
+					device => $an->data->{sys}{vg_pool1_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			if ($line =~ /\/dev\/drbd1,,/)
@@ -3934,11 +3907,11 @@ sub create_lvm_vgs
 			elsif ($line =~ /\/dev\/drbd1,(.*?),/)
 			{
 				# VG on r0 doesn't exist, create it.
-				$conf->{sys}{vg_pool2_name} = $1;
+				$an->data->{sys}{vg_pool2_name} = $1;
 				$create_vg1                 = 0;
 				$an->Log->entry({log_level => 2, message_key => "log_0065", message_variables => {
 					pool   => "2",
-					device => $conf->{sys}{vg_pool1_name}, 
+					device => $an->data->{sys}{vg_pool1_name}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -3952,14 +3925,14 @@ sub create_lvm_vgs
 	# PV for pool 1
 	if ($create_vg0)
 	{
-		my $shell_call = "vgcreate $conf->{sys}{vg_pool1_name} /dev/drbd0; echo rc:\$?";
+		my $shell_call = "vgcreate $an->data->{sys}{vg_pool1_name} /dev/drbd0; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -3979,7 +3952,7 @@ sub create_lvm_vgs
 					# Success
 					$an->Log->entry({log_level => 2, message_key => "log_0066", message_variables => {
 						pool   => "1", 
-						device => $conf->{sys}{vg_pool1_name}, 
+						device => $an->data->{sys}{vg_pool1_name}, 
 						pv     => "/dev/drbd0",
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -3988,7 +3961,7 @@ sub create_lvm_vgs
 					# Failed
 					$an->Log->entry({log_level => 1, message_key => "log_0067", message_variables => {
 						pool        => "1", 
-						device      => $conf->{sys}{vg_pool1_name}, 
+						device      => $an->data->{sys}{vg_pool1_name}, 
 						pv          => "/dev/drbd0",
 						return_code => $rc, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -3998,16 +3971,16 @@ sub create_lvm_vgs
 		}
 	}
 	# PV for pool 2
-	if (($conf->{cgi}{anvil_storage_pool2_byte_size}) && ($create_vg1))
+	if (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && ($create_vg1))
 	{
-		my $shell_call = "vgcreate $conf->{sys}{vg_pool2_name} /dev/drbd1; echo rc:\$?";
+		my $shell_call = "vgcreate $an->data->{sys}{vg_pool2_name} /dev/drbd1; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -4027,7 +4000,7 @@ sub create_lvm_vgs
 					# Success
 					$an->Log->entry({log_level => 2, message_key => "log_0066", message_variables => {
 						pool   => "2", 
-						device => $conf->{sys}{vg_pool1_name}, 
+						device => $an->data->{sys}{vg_pool1_name}, 
 						pv     => "/dev/drbd1",
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -4036,7 +4009,7 @@ sub create_lvm_vgs
 					# Failed
 					$an->Log->entry({log_level => 1, message_key => "log_0067", message_variables => {
 						pool        => "2", 
-						device      => $conf->{sys}{vg_pool1_name}, 
+						device      => $an->data->{sys}{vg_pool1_name}, 
 						pv          => "/dev/drbd1",
 						return_code => $rc, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -4065,8 +4038,7 @@ sub create_lvm_vgs
 # This creates the PVs if needed
 sub create_lvm_pvs
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_pvs" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4078,7 +4050,7 @@ sub create_lvm_pvs
 	my $found_drbd0  = 0;
 	my $create_drbd0 = 1;
 	my $found_drbd1  = 0;
-	my $create_drbd1 = $conf->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
+	my $create_drbd1 = $an->data->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
 
 	#my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
 	my $shell_call   = "pvscan; echo rc:\$?";
@@ -4088,7 +4060,7 @@ sub create_lvm_pvs
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4151,7 +4123,7 @@ sub create_lvm_pvs
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -4186,7 +4158,7 @@ sub create_lvm_pvs
 		}
 	}
 	# PV for pool 2
-	if (($conf->{cgi}{anvil_storage_pool2_byte_size}) && ($create_drbd1))
+	if (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && ($create_drbd1))
 	{
 		my $shell_call = "pvcreate /dev/drbd1; echo rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4195,7 +4167,7 @@ sub create_lvm_pvs
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -4235,7 +4207,7 @@ sub create_lvm_pvs
 		$an->Log->entry({log_level => 2, message_key => "log_0072", file => $THIS_FILE, line => __LINE__});
 		$return_code = 1;
 	}
-	elsif (($found_drbd0) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
+	elsif (($found_drbd0) && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 	{
 		# Pool 1 already exists and pool 2 isn't used.
 		$an->Log->entry({log_level => 2, message_key => "log_0073", file => $THIS_FILE, line => __LINE__});
@@ -4255,8 +4227,7 @@ sub create_lvm_pvs
 # This starts 'clvmd' on a node if it's not already running.
 sub start_clvmd_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_clvmd_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4276,7 +4247,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4328,16 +4299,15 @@ fi";
 # This is used by the stage-3 storage function to bring up DRBD
 sub drbd_first_start
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "drbd_first_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	
 	# Start DRBD manually and if both nodes are Inconsistent for a given resource, run;
 	# drbdadm -- --overwrite-data-of-peer primary <res>
-	my ($node1_attach_rc, $node1_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_attach_rc, $node2_attach_message) = do_drbd_attach_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_attach_rc, $node1_attach_message) = do_drbd_attach_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_attach_rc, $node2_attach_message) = do_drbd_attach_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_attach_rc",      value1 => $node1_attach_rc,
 		name2 => "node1_attach_message", value2 => $node1_attach_message,
@@ -4351,16 +4321,16 @@ sub drbd_first_start
 	# 4 == Failed to install 'wait-for-drbd'
 	
 	# Call 'wait-for-drbd' on node 1 so that we don't move on to clvmd before DRBD (its PV) is ready.
-	my $node       = $conf->{cgi}{anvil_node1_current_ip};
-	my $password   = $conf->{cgi}{anvil_node1_current_password};
-	my $shell_call = "$conf->{path}{nodes}{'wait-for-drbd_initd'} start";
+	my $node       = $an->data->{cgi}{anvil_node1_current_ip};
+	my $password   = $an->data->{cgi}{anvil_node1_current_password};
+	my $shell_call = $an->data->{path}{nodes}{'wait-for-drbd_initd'}." start";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4393,8 +4363,8 @@ sub drbd_first_start
 	if (($node1_attach_rc eq "0") && ($node2_attach_rc eq "0"))
 	{
 		# Make sure we can ping the peer node over the SN
-		($node1_ping_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node2_sn_ip});
-		($node2_ping_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node1_sn_ip});
+		($node1_ping_ok) = ping_node_from_other($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node2_sn_ip});
+		($node2_ping_ok) = ping_node_from_other($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node1_sn_ip});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_ping_ok", value1 => $node1_ping_ok,
 			name2 => "node2_ping_ok", value2 => $node2_ping_ok,
@@ -4403,8 +4373,8 @@ sub drbd_first_start
 		{
 			# Both nodes have both of their resources attached and are pingable on the SN, 
 			# Make sure they're not 'StandAlone' and, if so, tell them to connect.
-			($node1_connect_rc, $node1_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-			($node2_connect_rc, $node2_connect_message) = do_drbd_connect_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			($node1_connect_rc, $node1_connect_message) = do_drbd_connect_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+			($node2_connect_rc, $node2_connect_message) = do_drbd_connect_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node1_connect_rc",      value1 => $node1_connect_rc,
 				name2 => "node1_connect_message", value2 => $node1_connect_message,
@@ -4418,7 +4388,7 @@ sub drbd_first_start
 			if ((not $node1_connect_rc) || (not $node2_connect_rc))
 			{
 				# Make sure both nodes are, indeed, connected.
-				my ($rc) = verify_drbd_resources_are_connected($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+				my ($rc) = verify_drbd_resources_are_connected($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "rc", value1 => $rc,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -4429,7 +4399,7 @@ sub drbd_first_start
 				{
 					# Check to see if both nodes are 'Inconsistent'. If so, force node 1
 					# to be primary to begin the initial sync.
-					my ($rc, $force_node1_r0, $force_node1_r1) = check_drbd_if_force_primary_is_needed($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+					my ($rc, $force_node1_r0, $force_node1_r1) = check_drbd_if_force_primary_is_needed($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 						name1 => "rc",             value1 => $rc,
 						name2 => "force_node1_r0", value2 => $force_node1_r0,
@@ -4443,8 +4413,8 @@ sub drbd_first_start
 					if (not $rc)
 					{
 						# Promote to primary!
-						($node1_primary_rc, $node1_primary_message) = do_drbd_primary_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $force_node1_r0, $force_node1_r1);
-						($node2_primary_rc, $node2_primary_message) = do_drbd_primary_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "0", "0");
+						($node1_primary_rc, $node1_primary_message) = do_drbd_primary_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $force_node1_r0, $force_node1_r1);
+						($node2_primary_rc, $node2_primary_message) = do_drbd_primary_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "0", "0");
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 							name1 => "node1_primary_rc",      value1 => $node1_primary_rc,
 							name2 => "node1_primary_message", value2 => $node1_primary_message,
@@ -4453,7 +4423,7 @@ sub drbd_first_start
 						}, file => $THIS_FILE, line => __LINE__});
 						# 0 == OK
 						# 1 == Failed to make primary
-						if ((not $node1_primary_rc) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $node2_primary_rc)))
+						if ((not $node1_primary_rc) || (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && (not $node2_primary_rc)))
 						{
 							# Woohoo!
 							$an->Log->entry({log_level => 2, message_key => "log_0074", file => $THIS_FILE, line => __LINE__});
@@ -4655,8 +4625,7 @@ sub drbd_first_start
 # This connects to node 1 and checks to ensure both resource are in the 'Connected' state.
 sub verify_drbd_resources_are_connected
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_drbd_resources_are_connected" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4675,7 +4644,7 @@ sub verify_drbd_resources_are_connected
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4734,7 +4703,7 @@ sub verify_drbd_resources_are_connected
 		name1 => "r0_connected", value1 => $r0_connected,
 		name2 => "r1_connected", value2 => $r1_connected,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $r0_connected) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $r1_connected)))
+	if ((not $r0_connected) || (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && (not $r1_connected)))
 	{
 		# Something isn't connected.
 		$return_code = 1;
@@ -4752,8 +4721,7 @@ sub verify_drbd_resources_are_connected
 # This promotes the DRBD resources to Primary, forcing if needed.
 sub do_drbd_primary_on_node
 {
-	my ($conf, $node, $password, $force_r0, $force_r1) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $force_r0, $force_r1) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_primary_on_node" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node",     value1 => $node, 
 		name2 => "force_r0", value2 => $force_r0, 
@@ -4763,13 +4731,13 @@ sub do_drbd_primary_on_node
 	# Resource 0
 	my $return_code = 0;
 	my $message     = "";
-	my $shell_call  = "$conf->{path}{nodes}{drbdadm} primary r0; echo rc:\$?";
+	my $shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r0; echo rc:\$?";
 	if ($force_r0)
 	{
 		$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
 			resource => "r0", 
 		}, file => $THIS_FILE, line => __LINE__});
-		$shell_call = "$conf->{path}{nodes}{drbdadm} primary r0 --force; echo rc:\$?";
+		$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r0 --force; echo rc:\$?";
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -4777,7 +4745,7 @@ sub do_drbd_primary_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -4814,15 +4782,15 @@ sub do_drbd_primary_on_node
 	}
 	
 	# Resource 1
-	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
+	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		$shell_call  = "$conf->{path}{nodes}{drbdadm} primary r1; echo rc:\$?";
+		$shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r1; echo rc:\$?";
 		if ($force_r0)
 		{
 			$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
 				resource => "r1", 
 			}, file => $THIS_FILE, line => __LINE__});
-			$shell_call = "$conf->{path}{nodes}{drbdadm} primary r1 --force; echo rc:\$?";
+			$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r1 --force; echo rc:\$?";
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -4830,7 +4798,7 @@ sub do_drbd_primary_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -4874,14 +4842,14 @@ sub do_drbd_primary_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $return_code)
 	{
-		my $shell_call = "$conf->{path}{nodes}{drbdadm} adjust all";
+		my $shell_call = $an->data->{path}{nodes}{drbdadm}." adjust all";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -4907,8 +4875,7 @@ sub do_drbd_primary_on_node
 # This uses node 1 to check the Connected disk states of the resources are both Inconsistent.
 sub check_drbd_if_force_primary_is_needed
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_drbd_if_force_primary_is_needed" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -4925,7 +4892,7 @@ sub check_drbd_if_force_primary_is_needed
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5008,7 +4975,7 @@ sub check_drbd_if_force_primary_is_needed
 		name1 => "found_r0", value1 => $found_r0,
 		name2 => "found_r1", value2 => $found_r1,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $found_r0) || (($conf->{cgi}{anvil_storage_pool2_byte_size}) && (not $found_r1)))
+	if ((not $found_r0) || (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && (not $found_r1)))
 	{
 		# One or both of the resources was not found.
 		$return_code = 1;
@@ -5027,8 +4994,7 @@ sub check_drbd_if_force_primary_is_needed
 # This calls 'connect' of each resource on a node.
 sub do_drbd_connect_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_connect_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5038,7 +5004,7 @@ sub do_drbd_connect_on_node
 	foreach my $resource ("0", "1")
 	{
 		# Skip r1 if no pool 2.
-		if (($resource eq "1") && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
+		if (($resource eq "1") && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 		{
 			next;
 		}
@@ -5051,7 +5017,7 @@ sub do_drbd_connect_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5103,14 +5069,14 @@ sub do_drbd_connect_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $connected)
 		{
-			my $shell_call = "$conf->{path}{nodes}{drbdadm} connect r$resource; echo rc:\$?";
+			my $shell_call = $an->data->{path}{nodes}{drbdadm}." connect r$resource; echo rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -5150,9 +5116,9 @@ sub do_drbd_connect_on_node
 		# If requested by 'sys::install_manifest::default::immediate-uptodate', and if both nodes are
 		# 'Inconsistent', force both nodes to be UpToDate/UpToDate.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "sys::install_manifest::default::immediate-uptodate", value1 => $conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'},
+			name1 => "sys::install_manifest::default::immediate-uptodate", value1 => $an->data->{sys}{install_manifest}{'default'}{'immediate-uptodate'},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{sys}{install_manifest}{'default'}{'immediate-uptodate'})
+		if ($an->data->{sys}{install_manifest}{'default'}{'immediate-uptodate'})
 		{
 			# This will loop for a maximum of 30 seconds waiting for the peer to connect. Once 
 			# connected, it will check the disk state and decide it if can force both nodes to
@@ -5174,7 +5140,7 @@ sub do_drbd_connect_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -5243,9 +5209,9 @@ sub do_drbd_connect_on_node
 			{
 				my $shell_call = "
 echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
-$conf->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
+$an->data->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
 sleep 2
-if \$(cat /proc/drbd | $conf->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $conf->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
+if \$(cat /proc/drbd | $an->data->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $an->data->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
 then 
     echo success
 else
@@ -5258,7 +5224,7 @@ fi
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -5288,8 +5254,7 @@ fi
 # This attaches the backing devices on each node, modprobe'ing drbd if needed.
 sub do_drbd_attach_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_attach_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5311,20 +5276,20 @@ else
         echo 'failed to load drbd' 
     fi;
 fi;
-if [ ! -e '$conf->{path}{nodes}{'wait-for-drbd_initd'}' ];
+if [ ! -e '".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."' ];
 then
-    if [ -e '$conf->{path}{nodes}{'wait-for-drbd'}' ];
+    if [ -e '".$an->data->{path}{nodes}{'wait-for-drbd'}."' ];
     then
         echo \"need to copy 'wait-for-drbd'\"
-        cp $conf->{path}{nodes}{'wait-for-drbd'} $conf->{path}{nodes}{'wait-for-drbd_initd'};
-        if [ ! -e '$conf->{path}{nodes}{'wait-for-drbd_initd'}' ];
+        cp ".$an->data->{path}{nodes}{'wait-for-drbd'}." ".$an->data->{path}{nodes}{'wait-for-drbd_initd'}.";
+        if [ ! -e '".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."' ];
         then
-           echo \"Failed to copy 'wait-for-drbd' from: [$conf->{path}{nodes}{'wait-for-drbd'}] to: [$conf->{path}{nodes}{'wait-for-drbd_initd'}]\"
+           echo \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."] to: [".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."]\"
         else
            echo \"copied 'wait-for-drbd' successfully.\"
         fi
     else
-        echo \"Failed to copy 'wait-for-drbd' from: [$conf->{path}{nodes}{'wait-for-drbd'}], source doesn't exist.\"
+        echo \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."], source doesn't exist.\"
     fi
 fi;
 ";
@@ -5334,7 +5299,7 @@ fi;
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -5382,7 +5347,7 @@ fi;
 	{
 		foreach my $resource ("0", "1")
 		{
-			if (($resource eq "1") && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
+			if (($resource eq "1") && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 			{
 				next;
 			}
@@ -5397,7 +5362,7 @@ fi;
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -5453,14 +5418,14 @@ fi;
 			if (not $attached)
 			{
 				my $no_metadata = 0;
-				my $shell_call  = "$conf->{path}{nodes}{drbdadm} up r$resource; echo rc:\$?";
+				my $shell_call  = $an->data->{path}{nodes}{drbdadm}." up r$resource; echo rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -5476,7 +5441,7 @@ fi;
 					{
 						# No metadata found
 						my $pool     = $resource eq "0" ? "pool1" : "pool2";
-						my $device   = $conf->{node}{$node}{$pool}{device};
+						my $device   = $an->data->{node}{$node}{$pool}{device};
 						$an->Log->entry({log_level => 1, message_key => "log_0100", message_variables => {
 							node     => $node, 
 							resource => "r$resource",
@@ -5530,8 +5495,7 @@ fi;
 # ~/.ssh/known_hosts on both nodes.
 sub configure_ssh
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Three steps; 
@@ -5540,12 +5504,12 @@ sub configure_ssh
 	# 3. Add RSA keys to authorized_keys
 	
 	# Get/Generate RSA keys
-	my ($node1_rsa) = get_node_rsa_public_key($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rsa) = get_node_rsa_public_key($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_rsa) = get_node_rsa_public_key($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_rsa) = get_node_rsa_public_key($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# Populate known_hosts
-	my ($node1_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_kh_ok) = populate_known_hosts_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_kh_ok) = populate_known_hosts_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_kh_ok) = populate_known_hosts_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# Add the rsa keys to the node's root user's authorized_keys file.
 	my $node1_ak_ok = 255;
@@ -5554,8 +5518,8 @@ sub configure_ssh
 	{
 		# Have RSA keys, check nodes.
 		$an->Log->entry({log_level => 2, message_key => "log_0103", file => $THIS_FILE, line => __LINE__});
-		($node1_ak_ok) = populate_authorized_keys_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_rsa, $node2_rsa);
-		($node2_ak_ok) = populate_authorized_keys_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node1_rsa, $node2_rsa);
+		($node1_ak_ok) = populate_authorized_keys_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $node1_rsa, $node2_rsa);
+		($node2_ak_ok) = populate_authorized_keys_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $node1_rsa, $node2_rsa);
 	}
 	
 	my $ok = 1;
@@ -5624,8 +5588,7 @@ sub configure_ssh
 # This adds each node's RSA public key to the node's ~/.ssh/authorized_keys file if needed.
 sub populate_authorized_keys_on_node
 {
-	my ($conf, $node, $password, $node1_rsa, $node2_rsa) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $node1_rsa, $node2_rsa) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_authorized_keys_on_node" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node",      value1 => $node, 
 		name2 => "node1_rsa", value2 => $node1_rsa, 
@@ -5635,7 +5598,7 @@ sub populate_authorized_keys_on_node
 	# If a node is being rebuilt, it's old keys will no longer be valid. To
 	# deal with this, we simply remove existing keys and re-add them.
 	my $ok = 1;
-	foreach my $name (@{$conf->{sys}{node_names}})
+	foreach my $name (@{$an->data->{sys}{node_names}})
 	{
 		my $shell_call = "
 if [ -e '/root/.ssh/authorized_keys' ]
@@ -5661,7 +5624,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5688,7 +5651,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5730,7 +5693,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5757,7 +5720,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5795,14 +5758,13 @@ fi";
 # This adds any missing ssh fingerprints to a node
 sub populate_known_hosts_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_known_hosts_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	foreach my $name (@{$conf->{sys}{node_names}})
+	foreach my $name (@{$an->data->{sys}{node_names}})
 	{
 		# If a node is being replaced, the old entries will no longer
 		# match. So as a precaution, existing keys are removed if
@@ -5831,7 +5793,7 @@ fi;";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -5888,7 +5850,7 @@ fi;";
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -5940,8 +5902,7 @@ fi;";
 # Read in the RSA public key from a node, creating the RSA keys if needed.
 sub get_node_rsa_public_key
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_rsa_public_key" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5949,13 +5910,13 @@ sub get_node_rsa_public_key
 	my $rsa_key = "";
 	#ssh-keygen -t rsa -N "" -b 8191 -f ~/.ssh/id_rsa
 	#ssh-keygen -l -f ~/.ssh/id_rsa
-	$conf->{cgi}{anvil_ssh_keysize} = "8191" if not $conf->{cgi}{anvil_ssh_keysize};
+	$an->data->{cgi}{anvil_ssh_keysize} = "8191" if not $an->data->{cgi}{anvil_ssh_keysize};
 	my $shell_call = "
 if [ -e '/root/.ssh/id_rsa.pub' ]; 
 then 
     cat /root/.ssh/id_rsa.pub; 
 else 
-    ssh-keygen -t rsa -N \"\" -b $conf->{cgi}{anvil_ssh_keysize} -f ~/.ssh/id_rsa;
+    ssh-keygen -t rsa -N \"\" -b $an->data->{cgi}{anvil_ssh_keysize} -f ~/.ssh/id_rsa;
     if [ -e '/root/.ssh/id_rsa.pub' ];
     then 
         cat /root/.ssh/id_rsa.pub; 
@@ -5969,7 +5930,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6007,15 +5968,14 @@ fi";
 # This checks that the nodes are ready to start cman and, if so, does so.
 sub start_cman
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1_rc = 0;
 	my $node2_rc = 0;
 	# See if cman is running already.
-	my ($node1_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "cman");
-	my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
+	my ($node1_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, "cman");
+	my ($node2_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "cman");
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_cman_state", value1 => $node1_cman_state,
 		name2 => "node2_cman_state", value2 => $node2_cman_state,
@@ -6023,8 +5983,8 @@ sub start_cman
 	# 1 == running, 0 == stopped.
 
 	# First thing, make sure each node can talk to the other on the BCN.
-	my ($node1_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node2_bcn_ip});
-	my ($node2_ok) = ping_node_from_other($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node1_bcn_ip});
+	my ($node1_ok) = ping_node_from_other($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node2_bcn_ip});
+	my ($node2_ok) = ping_node_from_other($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node1_bcn_ip});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_ok", value1 => $node1_ok,
 		name2 => "node2_ok", value2 => $node2_ok,
@@ -6043,24 +6003,24 @@ sub start_cman
 		# Start cman on both nodes at the same time. We use node1's password as it has to be the same
 		# on both at this point.
 		my $command  = "/etc/init.d/cman start";
-		my $password = $conf->{cgi}{anvil_node1_current_password};
+		my $password = $an->data->{cgi}{anvil_node1_current_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command",                     value1 => $command,
-			name2 => "cgi::anvil_node1_current_ip", value2 => $conf->{cgi}{anvil_node1_current_ip},
-			name3 => "cgi::anvil_node2_current_ip", value2 => $conf->{cgi}{anvil_node2_current_ip},
+			name2 => "cgi::anvil_node1_current_ip", value2 => $an->data->{cgi}{anvil_node1_current_ip},
+			name3 => "cgi::anvil_node2_current_ip", value2 => $an->data->{cgi}{anvil_node2_current_ip},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->synchronous_command_run({
 			command		=>	$command, 
-			node1		=>	$conf->{cgi}{anvil_node1_current_ip}, 
-			node2		=>	$conf->{cgi}{anvil_node2_current_ip}, 
+			node1		=>	$an->data->{cgi}{anvil_node1_current_ip}, 
+			node2		=>	$an->data->{cgi}{anvil_node2_current_ip}, 
 			delay		=>	30,
 			password	=>	$password, 
 		});
 		
 		# Now see if that succeeded.
 		$an->Log->entry({log_level => 2, message_key => "log_0110", file => $THIS_FILE, line => __LINE__});
-		my ($node1_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "cman");
-		my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
+		my ($node1_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, "cman");
+		my ($node2_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "cman");
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_cman_state", value1 => $node1_cman_state,
 			name2 => "node2_cman_state", value2 => $node2_cman_state,
@@ -6080,8 +6040,8 @@ sub start_cman
 			$node1_rc = 2;
 			$node2_rc = 4;
 			$an->Log->entry({log_level => 1, message_key => "log_0112", message_variables => {
-				node1 => $conf->{cgi}{anvil_node1_current_ip}, 
-				node2 => $conf->{cgi}{anvil_node2_current_ip}, 
+				node1 => $an->data->{cgi}{anvil_node1_current_ip}, 
+				node2 => $an->data->{cgi}{anvil_node2_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($node2_cman_state)
@@ -6090,8 +6050,8 @@ sub start_cman
 			$node1_rc = 4;
 			$node2_rc = 2;
 			$an->Log->entry({log_level => 1, message_key => "log_0113", message_variables => {
-				node1 => $conf->{cgi}{anvil_node1_current_ip}, 
-				node2 => $conf->{cgi}{anvil_node2_current_ip}, 
+				node1 => $an->data->{cgi}{anvil_node1_current_ip}, 
+				node2 => $an->data->{cgi}{anvil_node2_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -6105,8 +6065,8 @@ sub start_cman
 	elsif (not $node1_cman_state)
 	{
 		# Node 2 is running, node 1 isn't, start it.
-		start_cman_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		my ($node1_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "cman");
+		start_cman_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		my ($node1_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, "cman");
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_cman_state", value1 => $node1_cman_state,
 			name2 => "node2_cman_state", value2 => $node2_cman_state,
@@ -6117,7 +6077,7 @@ sub start_cman
 			$node2_rc = 2;
 			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
 				node_number  => "1", 
-				node_address => $conf->{cgi}{anvil_node1_current_ip}, 
+				node_address => $an->data->{cgi}{anvil_node1_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -6126,15 +6086,15 @@ sub start_cman
 			$node1_rc = 4;
 			$an->Log->entry({log_level => 1, message_key => "log_0116", message_variables => {
 				node_number  => "1", 
-				node_address => $conf->{cgi}{anvil_node1_current_ip}, 
+				node_address => $an->data->{cgi}{anvil_node1_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif (not $node2_cman_state)
 	{
 		# Node 1 is running, node 2 isn't, start it.
-		start_cman_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-		my ($node2_cman_state) = get_daemon_state($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "cman");
+		start_cman_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+		my ($node2_cman_state) = get_daemon_state($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "cman");
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node2_cman_state", value1 => $node2_cman_state,
 			name2 => "node2_cman_state", value2 => $node2_cman_state,
@@ -6145,7 +6105,7 @@ sub start_cman
 			$node2_rc = 2;
 			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
 				node_number  => "2", 
-				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+				node_address => $an->data->{cgi}{anvil_node2_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -6154,7 +6114,7 @@ sub start_cman
 			$node2_rc = 4;
 			$an->Log->entry({log_level => 1, message_key => "log_0116", message_variables => {
 				node_number  => "2", 
-				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+				node_address => $an->data->{cgi}{anvil_node2_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -6173,8 +6133,8 @@ sub start_cman
 	my $node2_return_message = "";
 	if ((($node1_rc eq "2") || ($node1_rc eq "3")) && (($node2_rc eq "2") || ($node2_rc eq "3")))
 	{
-		($node1_fence_ok, $node1_return_message) = check_fencing_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		($node2_fence_ok, $node2_return_message) = check_fencing_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		($node1_fence_ok, $node1_return_message) = check_fencing_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		($node2_fence_ok, $node2_return_message) = check_fencing_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_fence_ok", value1 => $node1_fence_ok,
 			name2 => "node2_fence_ok", value2 => $node2_fence_ok,
@@ -6264,8 +6224,7 @@ sub start_cman
 # This calls 'check_fence' on the node to verify if fencing is working.
 sub check_fencing_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fencing_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6279,7 +6238,7 @@ sub check_fencing_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6326,8 +6285,7 @@ sub check_fencing_on_node
 # Start cluster communications on a single node.
 sub start_cman_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6339,7 +6297,7 @@ sub start_cman_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6358,8 +6316,7 @@ sub start_cman_on_node
 # This doesn a simple ping test from one node to the other.
 sub ping_node_from_other
 {
-	my ($conf, $node, $password, $target_ip) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $target_ip) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_node_from_other" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node",      value1 => $node, 
 		name2 => "target_ip", value2 => $target_ip, 
@@ -6374,7 +6331,7 @@ sub ping_node_from_other
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6403,7 +6360,7 @@ sub ping_node_from_other
 			$ping_rc = $1;
 			$an->Log->entry({log_level => 2, message_key => "log_0115", message_variables => {
 				node_number  => "2", 
-				node_address => $conf->{cgi}{anvil_node2_current_ip}, 
+				node_address => $an->data->{cgi}{anvil_node2_current_ip}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "ping_rc", value1 => $ping_rc,
@@ -6421,8 +6378,7 @@ sub ping_node_from_other
 # This sets the 'ricci' user's passwords.
 sub set_ricci_password
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_ricci_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
@@ -6430,16 +6386,16 @@ sub set_ricci_password
 	###       support different passwords.
 	# Set the passwords on the nodes.
 	my $ok = 1;
-	my ($node1_ricci_pw) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "ricci", $conf->{cgi}{anvil_password});
-	my ($node2_ricci_pw) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "ricci", $conf->{cgi}{anvil_password});
+	my ($node1_ricci_pw) = set_password_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, "ricci", $an->data->{cgi}{anvil_password});
+	my ($node2_ricci_pw) = set_password_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "ricci", $an->data->{cgi}{anvil_password});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_ricci_pw", value1 => $node1_ricci_pw,
 		name2 => "node2_ricci_pw", value2 => $node2_ricci_pw,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Test the new password.
-	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -6479,13 +6435,12 @@ sub set_ricci_password
 # This does any needed SELinux configuration that is needed.
 sub configure_selinux
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# For now, this always returns "success".
-	my ($node1_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = configure_selinux_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_rc) = configure_selinux_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = configure_selinux_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_rc", value1 => $node1_rc,
 		name2 => "node2_rc", value2 => $node2_rc,
@@ -6527,8 +6482,7 @@ sub configure_selinux
 # This does the work of actually configuring SELinux on a node.
 sub configure_selinux_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6536,13 +6490,13 @@ sub configure_selinux_on_node
 	# Create the backup directory if it doesn't exist yet.
 	my $return_code = 0;
 	my $shell_call  = "
-if \$($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
 then 
     echo 'Already allowed';
 else 
     echo \"Off, enabling 'fenced_can_ssh' now...\";
-    $conf->{path}{nodes}{setsebool} -P fenced_can_ssh on
-    if \$($conf->{path}{nodes}{getsebool} fenced_can_ssh | $conf->{path}{nodes}{grep} -q on); 
+    $an->data->{path}{nodes}{setsebool} -P fenced_can_ssh on
+    if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
     then 
         echo 'Now allowed.'
     else
@@ -6556,7 +6510,7 @@ fi
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6585,8 +6539,7 @@ fi
 # This sets the 'root' user's passwords.
 sub set_root_password
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_root_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing.
@@ -6595,19 +6548,19 @@ sub set_root_password
 	# Set the passwords on the nodes.
 	my $ok = 1;
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
-		name2 => "cgi::anvil_node2_current_password",    value2 => $conf->{cgi}{anvil_node2_current_password},
+		name1 => "cgi::anvil_node1_current_password", value1 => $an->data->{cgi}{anvil_node1_current_password},
+		name2 => "cgi::anvil_node2_current_password",    value2 => $an->data->{cgi}{anvil_node2_current_password},
 	}, file => $THIS_FILE, line => __LINE__});
-	($conf->{cgi}{anvil_node1_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, "root", $conf->{cgi}{anvil_password});
-	($conf->{cgi}{anvil_node2_current_password}) = set_password_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, "root", $conf->{cgi}{anvil_password});
+	($an->data->{cgi}{anvil_node1_current_password}) = set_password_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, "root", $an->data->{cgi}{anvil_password});
+	($an->data->{cgi}{anvil_node2_current_password}) = set_password_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, "root", $an->data->{cgi}{anvil_password});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_node1_current_password", value1 => $conf->{cgi}{anvil_node1_current_password},
-		name2 => "cgi::anvil_node2_current_password",    value2 => $conf->{cgi}{anvil_node2_current_password},
+		name1 => "cgi::anvil_node1_current_password", value1 => $an->data->{cgi}{anvil_node1_current_password},
+		name2 => "cgi::anvil_node2_current_password",    value2 => $an->data->{cgi}{anvil_node2_current_password},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Test the new password.
-	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -6648,8 +6601,7 @@ sub set_root_password
 # function, the next login will be a new one.
 sub set_password_on_node
 {
-	my ($conf, $node, $password, $user, $new_password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $user, $new_password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_password_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "user", value2 => $user, 
@@ -6663,7 +6615,7 @@ sub set_password_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6687,12 +6639,11 @@ sub set_password_on_node
 # cman config files
 sub backup_files
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	backup_files_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	backup_files_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	backup_files_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	backup_files_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# There are no failure modes yet.
 	my $node1_class   = "highlight_good_bold";
@@ -6713,19 +6664,18 @@ sub backup_files
 # This does the work of actually backing up files on a node.
 sub backup_files_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Create the backup directory if it doesn't exist yet.
 	my $shell_call = "
-if [ -e '$conf->{path}{nodes}{backups}' ];
+if [ -e '".$an->data->{path}{nodes}{backups}."' ];
 then 
     echo \"Backup directory exist\";
 else 
-    mkdir -p $conf->{path}{nodes}{backups}; 
+    mkdir -p $an->data->{path}{nodes}{backups}; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6733,7 +6683,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6748,11 +6698,11 @@ fi";
 	
 	# Backup the original network config
 	$shell_call = "
-if [ -e '$conf->{path}{nodes}{backups}/network-scripts' ];
+if [ -e '".$an->data->{path}{nodes}{backups}."/network-scripts' ];
 then 
     echo \"Network configuration files previously backed up\";
 else 
-    rsync -av $conf->{path}{nodes}{network_scripts} $conf->{path}{nodes}{backups}/;
+    rsync -av $an->data->{path}{nodes}{network_scripts} $an->data->{path}{nodes}{backups}/;
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6760,7 +6710,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6775,11 +6725,11 @@ fi";
 	
 	# Backup the original SSH config
 	$shell_call = "
-if [ -e '$conf->{path}{nodes}{backups}/.ssh' ];
+if [ -e '".$an->data->{path}{nodes}{backups}."/.ssh' ];
 then 
     echo \"SSH configuration files previously backed up\";
 else 
-    rsync -av /root/.ssh $conf->{path}{nodes}{backups}/;
+    rsync -av /root/.ssh $an->data->{path}{nodes}{backups}/;
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6787,7 +6737,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6802,9 +6752,9 @@ fi";
 	
 	# Backup DRBD if it exists.
 	$shell_call = "
-if [ -e '$conf->{path}{nodes}{drbd}' ] && [ ! -e '$conf->{path}{nodes}{backups}/drbd.d' ];
+if [ -e '".$an->data->{path}{nodes}{drbd}."' ] && [ ! -e '".$an->data->{path}{nodes}{backups}."/drbd.d' ];
 then 
-    rsync -av $conf->{path}{nodes}{drbd} $conf->{path}{nodes}{backups}/; 
+    rsync -av ".$an->data->{path}{nodes}{drbd}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     echo \"DRBD backup not needed\"; 
 fi";
@@ -6814,7 +6764,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6829,9 +6779,9 @@ fi";
 	
 	# Backup lvm.conf.
 	$shell_call = "
-if [ ! -e '$conf->{path}{nodes}{backups}/lvm.conf' ];
+if [ ! -e '".$an->data->{path}{nodes}{backups}."/lvm.conf' ];
 then 
-    rsync -av $conf->{path}{nodes}{lvm_conf} $conf->{path}{nodes}{backups}/; 
+    rsync -av ".$an->data->{path}{nodes}{lvm_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     echo \"LVM previously backed up, skipping.\"; 
 fi";
@@ -6841,7 +6791,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6856,9 +6806,9 @@ fi";
 	
 	# Backup cluster.conf.
 	$shell_call = "
-if [ ! -e '$conf->{path}{nodes}{backups}/cluster.conf' ];
+if [ ! -e '".$an->data->{path}{nodes}{backups}."/cluster.conf' ];
 then 
-    rsync -av $conf->{path}{nodes}{cluster_conf} $conf->{path}{nodes}{backups}/; 
+    rsync -av ".$an->data->{path}{nodes}{cluster_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     echo \"cman previously backed up, skipping.\"; 
 fi";
@@ -6868,7 +6818,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6883,9 +6833,9 @@ fi";
 	
 	# Backup fstab.
 	$shell_call = "
-if [ ! -e '$conf->{path}{nodes}{backups}/fstab' ];
+if [ ! -e '".$an->data->{path}{nodes}{backups}."/fstab' ];
 then 
-    rsync -av $conf->{path}{nodes}{fstab} $conf->{path}{nodes}{backups}/; 
+    rsync -av ".$an->data->{path}{nodes}{fstab}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     echo \"fstab previously backed up, skipping.\"; 
 fi";
@@ -6895,7 +6845,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6910,9 +6860,9 @@ fi";
 	
 	# Backup shadow.
 	$shell_call = "
-if [ ! -e '$conf->{path}{nodes}{backups}/shadow' ];
+if [ ! -e '".$an->data->{path}{nodes}{backups}."/shadow' ];
 then 
-    rsync -av $conf->{path}{nodes}{shadow} $conf->{path}{nodes}{backups}/; 
+    rsync -av ".$an->data->{path}{nodes}{shadow}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     echo \"shadow previously backed up, skipping.\"; 
 fi";
@@ -6922,7 +6872,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -6941,13 +6891,12 @@ fi";
 # This configures IPMI
 sub configure_ipmi
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	my ($node1_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_ipmi_ip}, $conf->{cgi}{anvil_node1_ipmi_netmask}, $conf->{cgi}{anvil_node1_ipmi_password}, $conf->{cgi}{anvil_node1_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
-	my ($node2_rc) = configure_ipmi_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_ipmi_ip}, $conf->{cgi}{anvil_node2_ipmi_netmask}, $conf->{cgi}{anvil_node2_ipmi_password}, $conf->{cgi}{anvil_node2_ipmi_user}, $conf->{cgi}{anvil_node1_ipmi_gateway});
+	my ($node1_rc) = configure_ipmi_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_ipmi_ip}, $an->data->{cgi}{anvil_node1_ipmi_netmask}, $an->data->{cgi}{anvil_node1_ipmi_password}, $an->data->{cgi}{anvil_node1_ipmi_user}, $an->data->{cgi}{anvil_node1_ipmi_gateway});
+	my ($node2_rc) = configure_ipmi_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_ipmi_ip}, $an->data->{cgi}{anvil_node2_ipmi_netmask}, $an->data->{cgi}{anvil_node2_ipmi_password}, $an->data->{cgi}{anvil_node2_ipmi_user}, $an->data->{cgi}{anvil_node1_ipmi_gateway});
 	# 0 = Configured
 	# 1 = Failed to set the IPMI user password
 	# 2 = No IPMI device found
@@ -6987,7 +6936,7 @@ sub configure_ipmi
 	{
 		# User ID not found
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = $an->String->get({key => "state_0067", variables => { user => $conf->{cgi}{anvil_node1_ipmi_user} }});
+		$node1_message = $an->String->get({key => "state_0067", variables => { user => $an->data->{cgi}{anvil_node1_ipmi_user} }});
 		$ok            = 0;
 	}
 	elsif ($node1_rc eq "5")
@@ -7037,7 +6986,7 @@ sub configure_ipmi
 	{
 		# User ID not found
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = $an->String->get({key => "state_0067", variables => { user => $conf->{cgi}{anvil_node2_ipmi_user} }});
+		$node2_message = $an->String->get({key => "state_0067", variables => { user => $an->data->{cgi}{anvil_node2_ipmi_user} }});
 		$ok            = 0;
 	}
 	elsif ($node2_rc eq "5")
@@ -7076,8 +7025,7 @@ sub configure_ipmi
 # This does the work of actually configuring IPMI on a node
 sub configure_ipmi_on_node
 {
-	my ($conf, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $ipmi_ip, $ipmi_netmask, $ipmi_password, $ipmi_user, $ipmi_gateway) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi_on_node" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "node",         value1 => $node, 
 		name2 => "ipmi_netmask", value2 => $ipmi_netmask, 
@@ -7096,7 +7044,7 @@ sub configure_ipmi_on_node
 	# 7 = IPMI subnet is not correct
 	
 	# Is there an IPMI device?
-	my ($state) = get_daemon_state($conf, $node, $password, "ipmi");
+	my ($state) = get_daemon_state($an, $node, $password, "ipmi");
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "state", value1 => $state,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -7135,7 +7083,7 @@ sub configure_ipmi_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7195,7 +7143,7 @@ sub configure_ipmi_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7234,7 +7182,7 @@ sub configure_ipmi_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7258,7 +7206,7 @@ sub configure_ipmi_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7301,7 +7249,7 @@ sub configure_ipmi_on_node
 					}, file => $THIS_FILE, line => __LINE__});
 					my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 						target		=>	$node,
-						port		=>	$conf->{node}{$node}{port}, 
+						port		=>	$an->data->{node}{$node}{port}, 
 						password	=>	$password,
 						ssh_fh		=>	"",
 						'close'		=>	0,
@@ -7353,7 +7301,7 @@ sub configure_ipmi_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7374,7 +7322,7 @@ sub configure_ipmi_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7395,7 +7343,7 @@ sub configure_ipmi_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7418,7 +7366,7 @@ sub configure_ipmi_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -7441,7 +7389,7 @@ sub configure_ipmi_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -7530,13 +7478,12 @@ sub configure_ipmi_on_node
 # This sets nodes to start or stop on boot.
 sub configure_daemons
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO:
-	my ($node1_ok, $node1_messages) = configure_daemons_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_ok, $node2_messages) = configure_daemons_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_ok, $node1_messages) = configure_daemons_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_ok, $node2_messages) = configure_daemons_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# If there was a problem on either node, the message will be set.
 	my $ok            = 1;
@@ -7621,8 +7568,7 @@ sub configure_daemons
 # This enables and disables daemons on boot for a node.
 sub configure_daemons_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -7631,14 +7577,14 @@ sub configure_daemons_on_node
 	my $return = "";
 	
 	# Enable daemons
-	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{enable}})
+	foreach my $daemon (sort {$a cmp $b} @{$an->data->{sys}{daemons}{enable}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",   value1 => $node,
 			name2 => "daemon", value2 => $daemon,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+		my ($init3, $init5) = get_chkconfig_data($an, $node, $password, $daemon);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "init3", value1 => $init3,
 			name2 => "init5", value2 => $init5,
@@ -7654,8 +7600,8 @@ sub configure_daemons_on_node
 		else
 		{
 			# Enable it.
-			set_chkconfig($conf, $node, $password, $daemon, "on");
-			my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+			set_chkconfig($an, $node, $password, $daemon, "on");
+			my ($init3, $init5) = get_chkconfig_data($an, $node, $password, $daemon);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "init3", value1 => $init3,
 				name2 => "init5", value2 => $init5,
@@ -7687,7 +7633,7 @@ sub configure_daemons_on_node
 		if ($ok)
 		{
 			
-			my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+			my ($state) = get_daemon_state($an, $node, $password, $daemon);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",   value1 => $node,
 				name2 => "daemon", value2 => $daemon,
@@ -7704,8 +7650,8 @@ sub configure_daemons_on_node
 			elsif ($state eq "0")
 			{
 				# Enable it.
-				set_daemon_state($conf, $node, $password, $daemon, "start");
-				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+				set_daemon_state($an, $node, $password, $daemon, "start");
+				my ($state) = get_daemon_state($an, $node, $password, $daemon);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node",   value1 => $node,
 					name2 => "daemon", value2 => $daemon,
@@ -7733,14 +7679,14 @@ sub configure_daemons_on_node
 	}
 	
 	# Now disable daemons.
-	foreach my $daemon (sort {$a cmp $b} @{$conf->{sys}{daemons}{disable}})
+	foreach my $daemon (sort {$a cmp $b} @{$an->data->{sys}{daemons}{disable}})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node",   value1 => $node,
 			name2 => "daemon", value2 => $daemon,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+		my ($init3, $init5) = get_chkconfig_data($an, $node, $password, $daemon);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "init3", value1 => $init3,
 			name2 => "init5", value2 => $init5,
@@ -7756,8 +7702,8 @@ sub configure_daemons_on_node
 		else
 		{
 			# Enable it.
-			set_chkconfig($conf, $node, $password, $daemon, "off");
-			my ($init3, $init5) = get_chkconfig_data($conf, $node, $password, $daemon);
+			set_chkconfig($an, $node, $password, $daemon, "off");
+			my ($init3, $init5) = get_chkconfig_data($an, $node, $password, $daemon);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "init3", value1 => $init3,
 				name2 => "init5", value2 => $init5,
@@ -7788,7 +7734,7 @@ sub configure_daemons_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($ok)
 		{
-			my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+			my ($state) = get_daemon_state($an, $node, $password, $daemon);
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "node",   value1 => $node,
 				name2 => "daemon", value2 => $daemon,
@@ -7805,8 +7751,8 @@ sub configure_daemons_on_node
 			elsif ($state eq "0")
 			{
 				# Enable it.
-				set_daemon_state($conf, $node, $password, $daemon, "stop");
-				my ($state) = get_daemon_state($conf, $node, $password, $daemon);
+				set_daemon_state($an, $node, $password, $daemon, "stop");
+				my ($state) = get_daemon_state($an, $node, $password, $daemon);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "node",   value1 => $node,
 					name2 => "daemon", value2 => $daemon,
@@ -7843,8 +7789,7 @@ sub configure_daemons_on_node
 # This starts or stops a daemon on a node.
 sub set_daemon_state
 {
-	my ($conf, $node, $password, $daemon, $state) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $daemon, $state) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_daemon_state" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "daemon", value2 => $daemon, 
@@ -7859,7 +7804,7 @@ sub set_daemon_state
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -7889,8 +7834,7 @@ sub set_daemon_state
 # This checks to see if a daemon is running or not.
 sub get_daemon_state
 {
-	my ($conf, $node, $password, $daemon) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $daemon) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "daemon", value2 => $daemon, 
@@ -7929,7 +7873,7 @@ sub get_daemon_state
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -7987,8 +7931,7 @@ sub get_daemon_state
 # This calls 'chkconfig' and enables or disables the daemon on boot.
 sub set_chkconfig
 {
-	my ($conf, $node, $password, $daemon, $state) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $daemon, $state) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_chkconfig" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "daemon", value2 => $daemon, 
@@ -8002,7 +7945,7 @@ sub set_chkconfig
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -8021,8 +7964,7 @@ sub set_chkconfig
 # This calls 'chkconfig' and return '1' or '0' based on whether the daemon is set to run on boot or not.
 sub get_chkconfig_data
 {
-	my ($conf, $node, $password, $daemon) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $daemon) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_chkconfig_data" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "daemon", value2 => $daemon, 
@@ -8038,7 +7980,7 @@ sub get_chkconfig_data
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -8087,8 +8029,7 @@ sub get_chkconfig_data
 # This configures clustered LVM on each node.
 sub configure_clvmd
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_clvmd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will read in the existing lvm.conf on both nodes and, if either
@@ -8096,7 +8037,7 @@ sub configure_clvmd
 	# '1', then a custom filter was found on both nodes and the do not
 	# match.
 	my $ok = 1;
-	my ($generate_rc) = generate_lvm_conf($conf);
+	my ($generate_rc) = generate_lvm_conf($an);
 	# Return codes:
 	# 0 = OK
 	# 1 = Both nodes have different and custom filter lines.
@@ -8105,7 +8046,7 @@ sub configure_clvmd
 		name1 => "generate_rc", value1 => $generate_rc,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "lvm.conf", value1 => $conf->{sys}{lvm_conf},
+		name1 => "lvm.conf", value1 => $an->data->{sys}{lvm_conf},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now we'll write out the config.
@@ -8113,8 +8054,8 @@ sub configure_clvmd
 	my $node2_rc = 255;
 	if (not $generate_rc)
 	{
-		($node1_rc) = write_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		($node2_rc) = write_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		($node1_rc) = write_lvm_conf_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		($node2_rc) = write_lvm_conf_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node1_rc", value1 => $node1_rc,
 			name2 => "node2_rc", value2 => $node2_rc,
@@ -8158,8 +8099,7 @@ sub configure_clvmd
 # This reads in node 1's lvm.conf, makes sure it's configured for clvmd and stores in.
 sub generate_lvm_conf
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_lvm_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom filter line. The rest of the 
@@ -8167,30 +8107,30 @@ sub generate_lvm_conf
 	# used to on the other node. If neither have a custom filter, then node 1's base config will be 
 	# modified and loaded on both nodes.
 	my $return_code = 0;
-	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	read_lvm_conf_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	read_lvm_conf_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	read_lvm_conf_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# Now decide what lvm.conf to use.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::filter", value1 => $conf->{sys}{lvm_filter},
+		name1 => "sys::filter", value1 => $an->data->{sys}{lvm_filter},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1",  value1 => $node1,
-		name2 => "filter", value2 => $conf->{node}{$node1}{lvm_filter},
+		name2 => "filter", value2 => $an->data->{node}{$node1}{lvm_filter},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node2",  value1 => $node2,
-		name2 => "filter", value2 => $conf->{node}{$node2}{lvm_filter},
+		name2 => "filter", value2 => $an->data->{node}{$node2}{lvm_filter},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter}) && ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter}))
+	if (($an->data->{node}{$node1}{lvm_filter} ne $an->data->{sys}{lvm_filter}) && ($an->data->{node}{$node2}{lvm_filter} ne $an->data->{sys}{lvm_filter}))
 	{
 		# Both are custom, do they match?
-		if ($conf->{node}{$node1}{lvm_filter} eq $conf->{node}{$node2}{lvm_filter})
+		if ($an->data->{node}{$node1}{lvm_filter} eq $an->data->{node}{$node2}{lvm_filter})
 		{
 			# We're good. We'll use node 1
-			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+			$an->data->{sys}{lvm_conf} = $an->data->{node}{$node1}{lvm_conf};
 			$an->Log->entry({log_level => 2, message_key => "log_0152", file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -8200,18 +8140,18 @@ sub generate_lvm_conf
 			$an->Log->entry({log_level => 1, message_key => "log_0153", file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	elsif ($conf->{node}{$node1}{lvm_filter} ne $conf->{sys}{lvm_filter})
+	elsif ($an->data->{node}{$node1}{lvm_filter} ne $an->data->{sys}{lvm_filter})
 	{
 		# Node 1 has a custom filter, we'll use it
-		$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+		$an->data->{sys}{lvm_conf} = $an->data->{node}{$node1}{lvm_conf};
 		$an->Log->entry({log_level => 2, message_key => "log_0154", message_variables => {
 			node => $node1, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($conf->{node}{$node2}{lvm_filter} ne $conf->{sys}{lvm_filter})
+	elsif ($an->data->{node}{$node2}{lvm_filter} ne $an->data->{sys}{lvm_filter})
 	{
 		# Node 2 has a custom filter, we'll use it
-		$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
+		$an->data->{sys}{lvm_conf} = $an->data->{node}{$node2}{lvm_conf};
 		$an->Log->entry({log_level => 2, message_key => "log_0154", message_variables => {
 			node => $node2, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -8219,18 +8159,18 @@ sub generate_lvm_conf
 	else
 	{
 		# Neither are custom, so pick one that looks sane.
-		if (length($conf->{node}{$node1}{lvm_conf}) > 256)
+		if (length($an->data->{node}{$node1}{lvm_conf}) > 256)
 		{
 			# Node 1's copy seems sane, use it.
-			$conf->{sys}{lvm_conf} = $conf->{node}{$node1}{lvm_conf};
+			$an->data->{sys}{lvm_conf} = $an->data->{node}{$node1}{lvm_conf};
 			$an->Log->entry({log_level => 2, message_key => "log_0155", message_variables => {
 				node => $node1,  
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif (length($conf->{node}{$node1}{lvm_conf}) > 256)
+		elsif (length($an->data->{node}{$node1}{lvm_conf}) > 256)
 		{
 			# Node 2's copy seems sane, use it.
-			$conf->{sys}{lvm_conf} = $conf->{node}{$node2}{lvm_conf};
+			$an->data->{sys}{lvm_conf} = $an->data->{node}{$node2}{lvm_conf};
 			$an->Log->entry({log_level => 2, message_key => "log_0155", message_variables => {
 				node => $node2, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -8245,7 +8185,7 @@ sub generate_lvm_conf
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "length(sys::lvm_conf)", value1 => length($conf->{sys}{lvm_conf}),
+		name1 => "length(sys::lvm_conf)", value1 => length($an->data->{sys}{lvm_conf}),
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Return codes:
@@ -8261,15 +8201,14 @@ sub generate_lvm_conf
 # This (re)writes the lvm.conf file on a node.
 sub write_lvm_conf_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_lvm_conf_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc = 0;
-	my $shell_call =  "cat > $conf->{path}{nodes}{lvm_conf} << EOF\n";
-	   $shell_call .= "$conf->{sys}{lvm_conf}\n";
+	my $shell_call =  "cat > ".$an->data->{path}{nodes}{lvm_conf}." << EOF\n";
+	   $shell_call .= $an->data->{sys}{lvm_conf}."\n";
 	   $shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -8277,7 +8216,7 @@ sub write_lvm_conf_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -8297,21 +8236,20 @@ sub write_lvm_conf_on_node
 # suitable for clustered LVM.
 sub read_lvm_conf_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_lvm_conf_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# I need to read this in two passes. The first pass looks for an existing 'filter = []' rule and,
 	# if found, uses it.
-	$conf->{node}{$node}{lvm_filter} = $conf->{sys}{lvm_filter};
+	$an->data->{node}{$node}{lvm_filter} = $an->data->{sys}{lvm_filter};
 	
 	# Read it in
 	my $shell_call = "
-if [ -e '$conf->{path}{nodes}{lvm_conf}' ]
+if [ -e '".$an->data->{path}{nodes}{lvm_conf}."' ]
 then
-    cat $conf->{path}{nodes}{lvm_conf}
+    cat ".$an->data->{path}{nodes}{lvm_conf}."
 else
     echo \"not found\"
 fi";
@@ -8321,7 +8259,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -8335,11 +8273,11 @@ fi";
 		
 		if (($line =~ /^filter = \[.*\]/) || ($line =~ /^\s+filter = \[.*\]/))
 		{
-			$conf->{node}{$node}{lvm_filter} = $line;
-			$conf->{node}{$node}{lvm_filter} =~ s/^\s+//;
-			$conf->{node}{$node}{lvm_filter} =~ s/\s+$//;
+			$an->data->{node}{$node}{lvm_filter} = $line;
+			$an->data->{node}{$node}{lvm_filter} =~ s/^\s+//;
+			$an->data->{node}{$node}{lvm_filter} =~ s/\s+$//;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node}::lvm_filter", value1 => $conf->{node}{$node}{lvm_filter},
+				name1 => "node::${node}::lvm_filter", value1 => $an->data->{node}{$node}{lvm_filter},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -8349,10 +8287,10 @@ fi";
 	# There is no default filter entry, but it is referenced as comments many times. So we'll inject it 
 	# when we see the first comment and then skip any 
 	my $filter_injected = 0;
-	$conf->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
-	$conf->{node}{$node}{lvm_conf} .= "# Sorry for the lack of comments... Ran into a buffer issue with Net::SSH2 that\n";
-	$conf->{node}{$node}{lvm_conf} .= "# I wasn't able to fix in time. Fixing it is on the TODO though, and patches\n";
-	$conf->{node}{$node}{lvm_conf} .= "# are welcomed. :)\n\n";
+	$an->data->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
+	$an->data->{node}{$node}{lvm_conf} .= "# Sorry for the lack of comments... Ran into a buffer issue with Net::SSH2 that\n";
+	$an->data->{node}{$node}{lvm_conf} .= "# I wasn't able to fix in time. Fixing it is on the TODO though, and patches\n";
+	$an->data->{node}{$node}{lvm_conf} .= "# are welcomed. :)\n\n";
 	foreach my $line (@{$return})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -8363,11 +8301,11 @@ fi";
 		# Any line that starts with a '#' is passed on as-is.
 		if ((not $filter_injected) && ($line =~ /filter = \[/))
 		{
-			#$conf->{node}{$node}{lvm_conf} .= "$line\n";
-			$conf->{node}{$node}{lvm_conf} .= "    $conf->{node}{$node}{lvm_filter}\n";
+			#$an->data->{node}{$node}{lvm_conf} .= "$line\n";
+			$an->data->{node}{$node}{lvm_conf} .= "    $an->data->{node}{$node}{lvm_filter}\n";
 			$filter_injected               =  1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "Filter injected", value1 => $conf->{node}{$node}{lvm_filter},
+				name1 => "Filter injected", value1 => $an->data->{node}{$node}{lvm_filter},
 			}, file => $THIS_FILE, line => __LINE__});
 			next;
 		}
@@ -8402,11 +8340,11 @@ fi";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node}{lvm_conf} .= "$line\n";
+		$an->data->{node}{$node}{lvm_conf} .= "$line\n";
 		if ($line eq "}")
 		{
 			# Add an extra blank line to make things more readible.
-			$conf->{node}{$node}{lvm_conf} .= "\n";
+			$an->data->{node}{$node}{lvm_conf} .= "\n";
 		}
 	}
 	
@@ -8417,18 +8355,17 @@ fi";
 # needed.
 sub reboot_nodes
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "reboot_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If neither node needs a reboot, don't print the lengthy message.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	if ((($conf->{node}{$node1}{reboot_needed}) && (not $conf->{node}{$node1}{in_cluster})) || 
-	    (($conf->{node}{$node2}{reboot_needed}) && (not $conf->{node}{$node2}{in_cluster})))
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
+	if ((($an->data->{node}{$node1}{reboot_needed}) && (not $an->data->{node}{$node1}{in_cluster})) || 
+	    (($an->data->{node}{$node2}{reboot_needed}) && (not $an->data->{node}{$node2}{in_cluster})))
 	{
 		# This could take a while
-		my $message = $an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=$conf->{cgi}{run}&task=create-install-manifest" }});
+		my $message = $an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=".$an->data->{cgi}{run}."&task=create-install-manifest" }});
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => $message }});
 	}
 	
@@ -8436,11 +8373,11 @@ sub reboot_nodes
 	# should still be up and hopefully provide a route into the lost one
 	# for debugging.
 	my $ok         = 1;
-	my ($node1_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_bcn_ip});
+	my ($node1_rc) = do_node_reboot($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_bcn_ip});
 	my $node2_rc   = 255;
 	if ((not $node1_rc) || ($node1_rc eq "1") || ($node1_rc eq "5"))
 	{
-		($node2_rc) = do_node_reboot($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_bcn_ip});
+		($node2_rc) = do_node_reboot($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_bcn_ip});
 	}
 	# Return codes:
 	# 0 = Node was rebooted successfully.
@@ -8458,7 +8395,7 @@ sub reboot_nodes
 	if (not $node1_rc)
 	{
 		# Node rebooted, change the IP we're using for it now.
-		$conf->{cgi}{anvil_node1_current_ip} = $conf->{cgi}{anvil_node1_bcn_ip};
+		$an->data->{cgi}{anvil_node1_current_ip} = $an->data->{cgi}{anvil_node1_bcn_ip};
 	}
 	elsif ($node1_rc eq "1")
 	{
@@ -8498,7 +8435,7 @@ sub reboot_nodes
 	elsif (not $node2_rc)
 	{
 		# Node rebooted, change the IP we're using for it now.
-		$conf->{cgi}{anvil_node2_current_ip} = $conf->{cgi}{anvil_node2_bcn_ip};
+		$an->data->{cgi}{anvil_node2_current_ip} = $an->data->{cgi}{anvil_node2_bcn_ip};
 	}
 	elsif ($node2_rc eq "1")
 	{
@@ -8541,8 +8478,7 @@ sub reboot_nodes
 # This handles the actual rebooting of the node
 sub do_node_reboot
 {
-	my ($conf, $node, $password, $new_bcn_ip) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $new_bcn_ip) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_node_reboot" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",       value1 => $node, 
 		name2 => "new_bcn_ip", value2 => $new_bcn_ip, 
@@ -8550,16 +8486,16 @@ sub do_node_reboot
 	
 	my $return_code = 255;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node::${node}::reboot_needed", value1 => $conf->{node}{$node}{reboot_needed},
+		name1 => "node::${node}::reboot_needed", value1 => $an->data->{node}{$node}{reboot_needed},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $conf->{node}{$node}{reboot_needed})
+	if (not $an->data->{node}{$node}{reboot_needed})
 	{
 		$return_code = 1;
 		$an->Log->entry({log_level => 2, message_key => "log_0157", message_variables => {
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ($conf->{node}{$node}{in_cluster})
+	elsif ($an->data->{node}{$node}{in_cluster})
 	{
 		# Reboot needed, but the user has to do it.
 		$return_code = 5;
@@ -8580,7 +8516,7 @@ sub do_node_reboot
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	1,
@@ -8626,7 +8562,7 @@ sub do_node_reboot
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	1,
@@ -8670,14 +8606,14 @@ sub do_node_reboot
 			sleep 3;
 		}
 		
-		# Now loop for $conf->{sys}{reboot_timeout} seconds waiting to
+		# Now loop for $an->data->{sys}{reboot_timeout} seconds waiting to
 		# see if the node recovers.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "has_shutdown", value1 => $has_shutdown,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($has_shutdown)
 		{
-			my $give_up_time = time + $conf->{sys}{reboot_timeout};
+			my $give_up_time = time + $an->data->{sys}{reboot_timeout};
 			my $wait         = 1;
 			my $rc           = 255;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8697,7 +8633,7 @@ sub do_node_reboot
 				{
 					last;
 				}
-				($rc) = connect_to_node($conf, $new_bcn_ip, $password);
+				($rc) = connect_to_node($an, $new_bcn_ip, $password);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "new_bcn_ip", value1 => $new_bcn_ip,
 					name2 => "rc",         value2 => $rc,
@@ -8713,7 +8649,7 @@ sub do_node_reboot
 					if ($node ne $new_bcn_ip)
 					{
 						# Copy the hash reference to the new IP.
-						$conf->{node}{$new_bcn_ip} = $conf->{node}{$node};
+						$an->data->{node}{$new_bcn_ip} = $an->data->{node}{$node};
 						$an->Log->entry({log_level => 2, message_key => "log_0160", message_variables => {
 							node   => $node, 
 							bcn_ip => $new_bcn_ip, 
@@ -8733,7 +8669,7 @@ sub do_node_reboot
 				$an->Log->entry({log_level => 2, message_key => "log_0161", file => $THIS_FILE, line => __LINE__});
 				
 				# Rescan it's (new) partition data.
-				my ($node_disk) = get_partition_data($conf, $new_bcn_ip, $password);
+				my ($node_disk) = get_partition_data($an, $new_bcn_ip, $password);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node", value1 => $new_bcn_ip,
 					name2 => "disk", value2 => $node_disk,
@@ -8759,8 +8695,7 @@ sub do_node_reboot
 # This function first tries to ping a node. If the ping is successful, it will try to log into the node..
 sub connect_to_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "connect_to_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -8779,7 +8714,7 @@ sub connect_to_node
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$rc = 1;
-		if (check_node_access($conf, $node, $password))
+		if (check_node_access($an, $node, $password))
 		{
 			# We're in!
 			$rc = 0;
@@ -8805,8 +8740,7 @@ sub connect_to_node
 # This does the work of adding a specific repo to a node.
 sub add_repo_to_node
 {
-	my ($conf, $node, $password, $url) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $url) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_repo_to_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "url",  value2 => $url, 
@@ -8853,7 +8787,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -8878,20 +8812,19 @@ fi";
 # This downloads user-specified repositories to the nodes
 sub add_user_repositories
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "add_user_repositories" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "anvil_repositories", value1 => $conf->{cgi}{anvil_repositories},
+		name1 => "anvil_repositories", value1 => $an->data->{cgi}{anvil_repositories},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{anvil_repositories})
+	if ($an->data->{cgi}{anvil_repositories})
 	{
 		# Add repos to nodes
-		foreach my $url (split/,/, $conf->{cgi}{anvil_repositories})
+		foreach my $url (split/,/, $an->data->{cgi}{anvil_repositories})
 		{
-			my ($node1_rc, $repo_file) = add_repo_to_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $url);
-			my ($node2_rc)             = add_repo_to_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $url);
+			my ($node1_rc, $repo_file) = add_repo_to_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $url);
+			my ($node2_rc)             = add_repo_to_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $url);
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "node1_rc",  value1 => $node1_rc,
 				name2 => "node2_rc",  value2 => $node2_rc,
@@ -8983,8 +8916,7 @@ sub add_user_repositories
 # This performs an actual partition creation
 sub create_partition_on_node
 {
-	my ($conf, $node, $password, $disk, $type, $partition_size) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $disk, $type, $partition_size) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "an_variables_0004", message_variables => { 
 		name1 => "node",           value1 => $node, 
 		name2 => "disk",           value2 => $disk, 
@@ -9006,7 +8938,7 @@ sub create_partition_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -9129,7 +9061,7 @@ sub create_partition_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -9192,7 +9124,7 @@ sub create_partition_on_node
 				$an->Log->entry({log_level => 2, message_key => "log_0159", message_variables => {
 					node => $node, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$conf->{node}{$node}{reboot_needed} = 1;
+				$an->data->{node}{$node}{reboot_needed} = 1;
 			}
 		}
 		$created = 1 if $ok;
@@ -9213,8 +9145,7 @@ sub create_partition_on_node
 # This looks on a given device for DRBD metadata
 sub check_device_for_drbd_metadata
 {
-	my ($conf, $node, $password, $device) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $device) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_device_for_drbd_metadata" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "device", value2 => $device, 
@@ -9228,7 +9159,7 @@ sub check_device_for_drbd_metadata
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -9271,8 +9202,7 @@ sub check_device_for_drbd_metadata
 # This calls 'blkid' and parses the output for the given device, if returned.
 sub check_blkid_partition
 {
-	my ($conf, $node, $password, $device) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $device) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_blkid_partition" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "device", value2 => $device, 
@@ -9287,7 +9217,7 @@ sub check_blkid_partition
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -9319,8 +9249,7 @@ sub check_blkid_partition
 # This checks the disk for DRBD metadata
 sub check_for_drbd_metadata
 {
-	my ($conf, $node, $password, $device) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $device) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_drbd_metadata" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",   value1 => $node, 
 		name2 => "device", value2 => $device, 
@@ -9332,8 +9261,8 @@ sub check_for_drbd_metadata
 	# if there is something on top of DRBD, it will report that instead, so
 	# it can't be entirely trusted. If the 'blkid' returns type
 	# 'LVM2_member' but it is also 'is_drbd', then it is already setup.
-	my ($type)    = check_blkid_partition($conf, $node, $password, $device);
-	my ($is_drbd) = check_device_for_drbd_metadata($conf, $node, $password, $device);
+	my ($type)    = check_blkid_partition($an, $node, $password, $device);
+	my ($is_drbd) = check_device_for_drbd_metadata($an, $node, $password, $device);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "type",    value1 => $type,
 		name2 => "is_drbd", value2 => $is_drbd,
@@ -9370,18 +9299,18 @@ sub check_for_drbd_metadata
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "disk",                                                        value1 => $disk,
 			name2 => "partition",                                                   value2 => $partition,
-			name3 => "node::${node}::disk::${disk}::partition::${partition}::size", value3 => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
+			name3 => "node::${node}::disk::${disk}::partition::${partition}::size", value3 => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
+		if ($an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size})
 		{
 			# It exists, so we can assume it has no DRBD metadata or anything else.
 			$an->Log->entry({log_level => 2, message_key => "log_0168", file => $THIS_FILE, line => __LINE__});
 			my $resource = "";
-			if ($device eq $conf->{node}{$node}{pool1}{device})
+			if ($device eq $an->data->{node}{$node}{pool1}{device})
 			{
 				$resource = "r0";
 			}
-			elsif ($device eq $conf->{node}{$node}{pool2}{device})
+			elsif ($device eq $an->data->{node}{$node}{pool2}{device})
 			{
 				$resource = "r1";
 			}
@@ -9398,14 +9327,14 @@ sub check_for_drbd_metadata
 					resource => $resource, 
 				}, file => $THIS_FILE, line => __LINE__});
 				my $rc         = 255;
-				my $shell_call = "$conf->{path}{nodes}{drbdadm} -- --force create-md $resource; echo rc:\$?";
+				my $shell_call = $an->data->{path}{nodes}{drbdadm}." -- --force create-md $resource; echo rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 					target		=>	$node,
-					port		=>	$conf->{node}{$node}{port}, 
+					port		=>	$an->data->{node}{$node}{port}, 
 					password	=>	$password,
 					ssh_fh		=>	"",
 					'close'		=>	0,
@@ -9473,8 +9402,7 @@ sub check_for_drbd_metadata
 # This uses 'parted' to gather the existing partition data on a node.
 sub get_partition_data_from_node
 {
-	my ($conf, $node, $disk, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $disk, $password) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "disk", value2 => $disk, 
@@ -9488,7 +9416,7 @@ sub get_partition_data_from_node
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -9525,9 +9453,9 @@ sub get_partition_data_from_node
 			
 			### NOTE: This will miss multiple sizable free chunks.
 			# Record the free space info.
-			$conf->{node}{$node}{partition}{free_space}{start} = $start;
-			$conf->{node}{$node}{partition}{free_space}{end}   = $end;
-			$conf->{node}{$node}{partition}{free_space}{size}  = $size;
+			$an->data->{node}{$node}{partition}{free_space}{start} = $start;
+			$an->data->{node}{$node}{partition}{free_space}{end}   = $end;
+			$an->data->{node}{$node}{partition}{free_space}{size}  = $size;
 		}
 		elsif ($line =~ /(\d+) ([\d\.]+)GiB ([\d\.]+)GiB ([\d\.]+)GiB(.*)$/)
 		{
@@ -9554,15 +9482,15 @@ sub get_partition_data_from_node
 				name1 => "type", value1 => $type,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$conf->{node}{$node}{partition}{$partition}{start} = $start;
-			$conf->{node}{$node}{partition}{$partition}{end}   = $end;
-			$conf->{node}{$node}{partition}{$partition}{size}  = $size;
-			$conf->{node}{$node}{partition}{$partition}{type}  = $type;
+			$an->data->{node}{$node}{partition}{$partition}{start} = $start;
+			$an->data->{node}{$node}{partition}{$partition}{end}   = $end;
+			$an->data->{node}{$node}{partition}{$partition}{size}  = $size;
+			$an->data->{node}{$node}{partition}{$partition}{type}  = $type;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-				name1 => "node::${node}::partition::${partition}::start", value1 => $conf->{node}{$node}{partition}{$partition}{start},
-				name2 => "node::${node}::partition::${partition}::end",   value2 => $conf->{node}{$node}{partition}{$partition}{end},
-				name3 => "node::${node}::partition::${partition}::size",  value3 => $conf->{node}{$node}{partition}{$partition}{size},
-				name4 => "node::${node}::partition::${partition}::type",  value4 => $conf->{node}{$node}{partition}{$partition}{type},
+				name1 => "node::${node}::partition::${partition}::start", value1 => $an->data->{node}{$node}{partition}{$partition}{start},
+				name2 => "node::${node}::partition::${partition}::end",   value2 => $an->data->{node}{$node}{partition}{$partition}{end},
+				name3 => "node::${node}::partition::${partition}::size",  value3 => $an->data->{node}{$node}{partition}{$partition}{size},
+				name4 => "node::${node}::partition::${partition}::type",  value4 => $an->data->{node}{$node}{partition}{$partition}{type},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -9574,23 +9502,22 @@ sub get_partition_data_from_node
 # partitions the drives. Systems using one disk will need to reboot after this.
 sub configure_storage_stage1
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage1" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	
 	# Make things a little easier to follow...
-	my $node1_pool1_disk      = $conf->{node}{$node1}{pool1}{disk};
-	my $node1_pool1_partition = $conf->{node}{$node1}{pool1}{partition};
-	my $node1_pool2_disk      = $conf->{node}{$node1}{pool2}{disk};
-	my $node1_pool2_partition = $conf->{node}{$node1}{pool2}{partition};
-	my $node2_pool1_disk      = $conf->{node}{$node2}{pool1}{disk};
-	my $node2_pool1_partition = $conf->{node}{$node2}{pool1}{partition};
-	my $node2_pool2_disk      = $conf->{node}{$node2}{pool2}{disk};
-	my $node2_pool2_partition = $conf->{node}{$node2}{pool2}{partition};
+	my $node1_pool1_disk      = $an->data->{node}{$node1}{pool1}{disk};
+	my $node1_pool1_partition = $an->data->{node}{$node1}{pool1}{partition};
+	my $node1_pool2_disk      = $an->data->{node}{$node1}{pool2}{disk};
+	my $node1_pool2_partition = $an->data->{node}{$node1}{pool2}{partition};
+	my $node2_pool1_disk      = $an->data->{node}{$node2}{pool1}{disk};
+	my $node2_pool1_partition = $an->data->{node}{$node2}{pool1}{partition};
+	my $node2_pool2_disk      = $an->data->{node}{$node2}{pool2}{disk};
+	my $node2_pool2_partition = $an->data->{node}{$node2}{pool2}{partition};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "node1_pool1_disk",      value1 => $node1_pool1_disk,
 		name2 => "node1_pool1_partition", value2 => $node1_pool1_partition,
@@ -9604,24 +9531,24 @@ sub configure_storage_stage1
 	
 	# Before I start, I need to know if the partitions I plan to create already exist or not. They may
 	# well exist if the install was restarted.
-	my $node1_partition_data = get_partition_data_from_node($conf, $node1, $node1_pool1_disk, $conf->{cgi}{anvil_node1_current_password});
-	my $node2_partition_data = get_partition_data_from_node($conf, $node2, $node2_pool1_disk, $conf->{cgi}{anvil_node2_current_password});
+	my $node1_partition_data = get_partition_data_from_node($an, $node1, $node1_pool1_disk, $an->data->{cgi}{anvil_node1_current_password});
+	my $node2_partition_data = get_partition_data_from_node($an, $node2, $node2_pool1_disk, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# If an extended partition is needed on either node, create it/them now.
 	my $node1_partition_type = "primary";
 	my $node2_partition_type = "primary";
 	# Node 1 extended.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node::${node1}::pool1::create_extended", value1 => $conf->{node}{$node1}{pool1}{create_extended},
+		name1 => "node::${node1}::pool1::create_extended", value1 => $an->data->{node}{$node1}{pool1}{create_extended},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{node}{$node1}{pool1}{create_extended})
+	if ($an->data->{node}{$node1}{pool1}{create_extended})
 	{
 		$node1_partition_type = "logical";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node::${node1}::disk::${node1_pool1_disk}::partition::4::type", value1 => $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type},
-			name2 => "node::${node1}::partition::4::type",                            value2 => $conf->{node}{$node1}{partition}{4}{type},
+			name1 => "node::${node1}::disk::${node1_pool1_disk}::partition::4::type", value1 => $an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type},
+			name2 => "node::${node1}::partition::4::type",                            value2 => $an->data->{node}{$node1}{partition}{4}{type},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type}) && ($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type} eq "extended"))
+		if (($an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type}) && ($an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{4}{type} eq "extended"))
 		{
 			# Already exists.
 			$an->Log->entry({log_level => 2, message_key => "log_0173", message_variables => {
@@ -9629,14 +9556,14 @@ sub configure_storage_stage1
 				disk => $node1_pool1_disk, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif (($conf->{node}{$node1}{partition}{4}{type}) && ($conf->{node}{$node1}{partition}{4}{type} eq "extended"))
+		elsif (($an->data->{node}{$node1}{partition}{4}{type}) && ($an->data->{node}{$node1}{partition}{4}{type} eq "extended"))
 		{
 			# Extended partition already exists
 			$an->Log->entry({log_level => 2, message_key => "log_0174", file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_pool1_disk, "extended", "all");
+			my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $node1_pool1_disk, "extended", "all");
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "rc", value1 => $rc,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -9660,14 +9587,14 @@ sub configure_storage_stage1
 		}
 	}
 	# Node 2 extended.
-	if ($conf->{node}{$node2}{pool1}{create_extended})
+	if ($an->data->{node}{$node2}{pool1}{create_extended})
 	{
 		$node2_partition_type = "logical";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node::${node2}::disk::${node2_pool1_disk}::partition::4::type", value1 => $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type},
-			name2 => "node::${node2}::partition::4::type",                            value2 => $conf->{node}{$node2}{partition}{4}{type},
+			name1 => "node::${node2}::disk::${node2_pool1_disk}::partition::4::type", value1 => $an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type},
+			name2 => "node::${node2}::partition::4::type",                            value2 => $an->data->{node}{$node2}{partition}{4}{type},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type}) && ($conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type} eq "extended"))
+		if (($an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type}) && ($an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{4}{type} eq "extended"))
 		{
 			# Already exists.
 			$an->Log->entry({log_level => 2, message_key => "log_0173", message_variables => {
@@ -9675,14 +9602,14 @@ sub configure_storage_stage1
 				disk => $node2_pool1_disk, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif (($conf->{node}{$node2}{partition}{4}{type}) && ($conf->{node}{$node2}{partition}{4}{type} eq "extended"))
+		elsif (($an->data->{node}{$node2}{partition}{4}{type}) && ($an->data->{node}{$node2}{partition}{4}{type} eq "extended"))
 		{
 			# Extended partition already exists
 			$an->Log->entry({log_level => 2, message_key => "log_0174", file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool1_disk, "extended", "all");
+			my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $node2_pool1_disk, "extended", "all");
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "rc", value1 => $rc,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -9713,7 +9640,7 @@ sub configure_storage_stage1
 	my $node2_pool1_created = 0;
 	my $node2_pool2_created = 0;
 	# Node 1, Pool 1.
-	if ($conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size})
+	if ($an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size})
 	{
 		# Already exists
 		$node1_pool1_created = 2;
@@ -9721,7 +9648,7 @@ sub configure_storage_stage1
 	else
 	{
 		# Create node 1, pool 1.
-		my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_pool1_disk, $node1_partition_type, $conf->{cgi}{anvil_storage_pool1_byte_size});
+		my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $node1_pool1_disk, $node1_partition_type, $an->data->{cgi}{anvil_storage_pool1_byte_size});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "rc", value1 => $rc,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9734,8 +9661,8 @@ sub configure_storage_stage1
 				pool    => "1", 
 				node    => $node1, 
 				disk    => $node1_pool1_disk, 
-				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
+				size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
@@ -9747,15 +9674,15 @@ sub configure_storage_stage1
 				pool    => "1", 
 				node    => $node1, 
 				disk    => $node1_pool1_disk, 
-				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
+				size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Node 1, Pool 2.
-	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
+	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		if ($conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size})
+		if ($an->data->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size})
 		{
 			# Already exists
 			$node1_pool2_created = 2;
@@ -9764,7 +9691,7 @@ sub configure_storage_stage1
 		{
 			### TODO: Determine if it's better to always make the size of pool 2 "all".
 			# Create node 1, pool 2.
-			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $node1_pool2_disk, $node1_partition_type, $conf->{cgi}{anvil_storage_pool2_byte_size});
+			my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $node1_pool2_disk, $node1_partition_type, $an->data->{cgi}{anvil_storage_pool2_byte_size});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "rc", value1 => $rc,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -9777,8 +9704,8 @@ sub configure_storage_stage1
 					pool    => "2", 
 					node    => $node1, 
 					disk    => $node1_pool2_disk, 
-					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
+					size    => $an->data->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
@@ -9790,8 +9717,8 @@ sub configure_storage_stage1
 					pool    => "2", 
 					node    => $node1, 
 					disk    => $node1_pool2_disk, 
-					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
+					size    => $an->data->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -9801,7 +9728,7 @@ sub configure_storage_stage1
 		$node1_pool2_created = 3;
 	}
 	# Node 2, Pool 1.
-	if ($conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size})
+	if ($an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size})
 	{
 		# Already exists
 		$node2_pool1_created = 2;
@@ -9809,7 +9736,7 @@ sub configure_storage_stage1
 	else
 	{
 		# Create node 2, pool 1.
-		my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool1_disk, $node2_partition_type, $conf->{cgi}{anvil_storage_pool1_byte_size});
+		my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $node2_pool1_disk, $node2_partition_type, $an->data->{cgi}{anvil_storage_pool1_byte_size});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "rc", value1 => $rc,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -9822,8 +9749,8 @@ sub configure_storage_stage1
 				pool    => "1", 
 				node    => $node2, 
 				disk    => $node2_pool1_disk, 
-				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
+				size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($rc eq "2")
@@ -9835,15 +9762,15 @@ sub configure_storage_stage1
 				pool    => "1", 
 				node    => $node2, 
 				disk    => $node2_pool1_disk, 
-				size    => $conf->{cgi}{anvil_storage_pool1_byte_size}, 
-				hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }), 
+				size    => $an->data->{cgi}{anvil_storage_pool1_byte_size}, 
+				hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }), 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Node 2, Pool 2.
-	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
+	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		if ($conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size})
+		if ($an->data->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size})
 		{
 			# Already exists
 			$node2_pool2_created = 2;
@@ -9852,7 +9779,7 @@ sub configure_storage_stage1
 		{
 			### TODO: Determine if it's better to always make the size of pool 2 "all".
 			# Create node 2, pool 2.
-			my ($rc) = create_partition_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $node2_pool2_disk, $node2_partition_type, $conf->{cgi}{anvil_storage_pool2_byte_size});
+			my ($rc) = create_partition_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $node2_pool2_disk, $node2_partition_type, $an->data->{cgi}{anvil_storage_pool2_byte_size});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "rc", value1 => $rc,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -9865,8 +9792,8 @@ sub configure_storage_stage1
 					pool    => "2", 
 					node    => $node2, 
 					disk    => $node2_pool2_disk, 
-					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
+					size    => $an->data->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc eq "2")
@@ -9878,8 +9805,8 @@ sub configure_storage_stage1
 					pool    => "2", 
 					node    => $node2, 
 					disk    => $node2_pool2_disk, 
-					size    => $conf->{cgi}{anvil_storage_pool2_byte_size}, 
-					hr_size => $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }), 
+					size    => $an->data->{cgi}{anvil_storage_pool2_byte_size}, 
+					hr_size => $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }), 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -9932,26 +9859,25 @@ sub configure_storage_stage1
 
 sub configure_storage_stage2
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	# Create the DRBD config files which will be stored in:
-	# * $conf->{drbd}{global_common}
-	# * $conf->{drbd}{r0}
-	# * $conf->{drbd}{r1}
+	# * $an->data->{drbd}{global_common}
+	# * $an->data->{drbd}{r0}
+	# * $an->data->{drbd}{r1}
 	# If the config file(s) exist already on one of the nodes, they will be
 	# used instead.
-	my ($rc) = generate_drbd_config_files($conf);
+	my ($rc) = generate_drbd_config_files($an);
 	# 0 = OK
 	# 1 = Failed to determine the DRBD backing device(s);
 	# 2 = Failed to determine the SN IPs.
 	
 	# Now setup DRBD on the nods.
-	my ($node1_pool1_rc, $node1_pool2_rc) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_pool1_rc, $node2_pool2_rc) = setup_drbd_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_pool1_rc, $node1_pool2_rc) = setup_drbd_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_pool1_rc, $node2_pool2_rc) = setup_drbd_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	# 0 = Created
 	# 1 = Already had meta-data, nothing done
 	# 2 = Partition not found
@@ -9993,7 +9919,7 @@ sub configure_storage_stage2
 	elsif ($node1_pool1_rc eq "2")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = $an->String->get({key => "state_0055", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0055", variables => { device => $an->data->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node1_pool1_rc eq "3")
@@ -10005,14 +9931,14 @@ sub configure_storage_stage2
 	elsif ($node1_pool1_rc eq "4")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = $an->String->get({key => "state_0057", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0057", variables => { device => $an->data->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 		$show_lvm_note = 1;
 	}
 	elsif ($node1_pool1_rc eq "5")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = $an->String->get({key => "state_0058", variables => { device => $conf->{node}{$node1}{pool1}{device} }});
+		$node1_message = $an->String->get({key => "state_0058", variables => { device => $an->data->{node}{$node1}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node1_pool1_rc eq "6")
@@ -10030,7 +9956,7 @@ sub configure_storage_stage2
 	elsif ($node2_pool1_rc eq "2")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = $an->String->get({key => "state_0055", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0055", variables => { device => $an->data->{node}{$node2}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "3")
@@ -10042,14 +9968,14 @@ sub configure_storage_stage2
 	elsif ($node2_pool1_rc eq "4")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = $an->String->get({key => "state_0057", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0057", variables => { device => $an->data->{node}{$node2}{pool1}{device} }});
 		$show_lvm_note = 1;
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "5")
 	{
 		$node2_class   = "highlight_warning_bold";
-		$node2_message = $an->String->get({key => "state_0058", variables => { device => $conf->{node}{$node2}{pool1}{device} }});
+		$node2_message = $an->String->get({key => "state_0058", variables => { device => $an->data->{node}{$node2}{pool1}{device} }});
 		$ok            = 0;
 	}
 	elsif ($node2_pool1_rc eq "6")
@@ -10092,18 +10018,17 @@ sub configure_storage_stage2
 # This generates the DRBD config files to later be written on the nodes.
 sub generate_drbd_config_files
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_drbd_config_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	
 	### TODO: Detect if the SN is on a 10 Gbps network and, if so, bump up
 	###       the resync rate to 300M;
 	# Generate the config files we'll use if we don't find existing configs
 	# on one of the servers.
-	$conf->{drbd}{global_common} = "
+	$an->data->{drbd}{global_common} = "
 # These are options to set for the DRBD daemon sets the default values for
 # resources.
 global {
@@ -10142,11 +10067,11 @@ common {
  
 	options {
 		# cpu-mask on-no-data-accessible\n";
-	if ($conf->{cgi}{'anvil_drbd_options_cpu-mask'})
+	if ($an->data->{cgi}{'anvil_drbd_options_cpu-mask'})
 	{
-		$conf->{drbd}{global_common} .= "		cpu-mask $conf->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
+		$an->data->{drbd}{global_common} .= "		cpu-mask $an->data->{cgi}{'anvil_drbd_options_cpu-mask'};\n";
 	}
-	$conf->{drbd}{global_common} .= "		# Regarding LINBIT Ticket# 2015110642000184; Setting this to 
+	$an->data->{drbd}{global_common} .= "		# Regarding LINBIT Ticket# 2015110642000184; Setting this to 
 		# 'suspend-io' is safest given the risk of data divergence in
 		# some corner cases.
 		on-no-data-accessible suspend-io;
@@ -10158,19 +10083,19 @@ common {
 		# c-plan-ahead c-delay-target c-fill-target c-max-rate
 		# c-min-rate disk-timeout
 		fencing resource-and-stonith;\n";
-	if ($conf->{cgi}{'anvil_drbd_disk_disk-barrier'})
+	if ($an->data->{cgi}{'anvil_drbd_disk_disk-barrier'})
 	{
-		$conf->{drbd}{global_common} .= "		disk-barrier $conf->{cgi}{'anvil_drbd_disk_disk-barrier'};\n";
+		$an->data->{drbd}{global_common} .= "		disk-barrier $an->data->{cgi}{'anvil_drbd_disk_disk-barrier'};\n";
 	}
-	if ($conf->{cgi}{'anvil_drbd_disk_disk-flushes'})
+	if ($an->data->{cgi}{'anvil_drbd_disk_disk-flushes'})
 	{
-		$conf->{drbd}{global_common} .= "		disk-flushes $conf->{cgi}{'anvil_drbd_disk_disk-flushes'};\n";
+		$an->data->{drbd}{global_common} .= "		disk-flushes $an->data->{cgi}{'anvil_drbd_disk_disk-flushes'};\n";
 	}
-	if ($conf->{cgi}{'anvil_drbd_disk_md-flushes'})
+	if ($an->data->{cgi}{'anvil_drbd_disk_md-flushes'})
 	{
-		$conf->{drbd}{global_common} .= "		md-flushes $conf->{cgi}{'anvil_drbd_disk_md-flushes'};\n";
+		$an->data->{drbd}{global_common} .= "		md-flushes $an->data->{cgi}{'anvil_drbd_disk_md-flushes'};\n";
 	}
-	$conf->{drbd}{global_common} .= "	}
+	$an->data->{drbd}{global_common} .= "	}
  
 	net {
 		# protocol timeout max-epoch-size max-buffers unplug-watermark
@@ -10202,28 +10127,28 @@ common {
 		after-sb-0pri discard-zero-changes;
 		after-sb-1pri discard-secondary;
 		after-sb-2pri disconnect;\n";
-	if ($conf->{cgi}{'anvil_drbd_net_max-buffers'})
+	if ($an->data->{cgi}{'anvil_drbd_net_max-buffers'})
 	{
-		$conf->{drbd}{global_common} .= "		max-buffers $conf->{cgi}{'anvil_drbd_net_max-buffers'};\n";
+		$an->data->{drbd}{global_common} .= "		max-buffers $an->data->{cgi}{'anvil_drbd_net_max-buffers'};\n";
 	}
-	if ($conf->{cgi}{'anvil_drbd_net_sndbuf-size'})
+	if ($an->data->{cgi}{'anvil_drbd_net_sndbuf-size'})
 	{
-		$conf->{drbd}{global_common} .= "		sndbuf-size $conf->{cgi}{'anvil_drbd_net_sndbuf-size'};\n";
+		$an->data->{drbd}{global_common} .= "		sndbuf-size $an->data->{cgi}{'anvil_drbd_net_sndbuf-size'};\n";
 	}
-	if ($conf->{cgi}{'anvil_drbd_net_rcvbuf-size'})
+	if ($an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'})
 	{
-		$conf->{drbd}{global_common} .= "		rcvbuf-size $conf->{cgi}{'anvil_drbd_net_rcvbuf-size'};\n";
+		$an->data->{drbd}{global_common} .= "		rcvbuf-size $an->data->{cgi}{'anvil_drbd_net_rcvbuf-size'};\n";
 	}
-	$conf->{drbd}{global_common} .= "	}
+	$an->data->{drbd}{global_common} .= "	}
 }
 ";
 	
 	### TODO: Make sure these are updated if we use a read-in resource
 	###  file.
-	my $node1_pool1_partition = $conf->{node}{$node1}{pool1}{device};
-	my $node1_pool2_partition = $conf->{node}{$node1}{pool2}{device};
-	my $node2_pool1_partition = $conf->{node}{$node2}{pool1}{device};
-	my $node2_pool2_partition = $conf->{node}{$node2}{pool2}{device};
+	my $node1_pool1_partition = $an->data->{node}{$node1}{pool1}{device};
+	my $node1_pool2_partition = $an->data->{node}{$node1}{pool2}{device};
+	my $node2_pool1_partition = $an->data->{node}{$node2}{pool1}{device};
+	my $node2_pool2_partition = $an->data->{node}{$node2}{pool2}{device};
 	if ((not $node1_pool1_partition) ||
 	    (not $node1_pool2_partition) ||
 	    (not $node2_pool1_partition) ||
@@ -10240,8 +10165,8 @@ common {
 	
 	my $node1_sn_ip_key = "anvil_node1_sn_ip";
 	my $node2_sn_ip_key = "anvil_node2_sn_ip";
-	my $node1_sn_ip     = $conf->{cgi}{$node1_sn_ip_key};
-	my $node2_sn_ip     = $conf->{cgi}{$node2_sn_ip_key};
+	my $node1_sn_ip     = $an->data->{cgi}{$node1_sn_ip_key};
+	my $node2_sn_ip     = $an->data->{cgi}{$node2_sn_ip_key};
 	if ((not $node1_sn_ip) || (not $node2_sn_ip))
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -10252,11 +10177,11 @@ common {
 	}
 	
 	# Still alive? Yay us!
-	$conf->{drbd}{r0} = "
+	$an->data->{drbd}{r0} = "
 # This is the first DRBD resource. It will store the shared file systems and
 # the servers designed to run on node 01.
 resource r0 {
-	on $conf->{cgi}{anvil_node1_name} {
+	on $an->data->{cgi}{anvil_node1_name} {
 		volume 0 {
 			# This sets the device name of this DRBD resouce.
 			device       /dev/drbd0 minor 0;
@@ -10279,7 +10204,7 @@ resource r0 {
 		# additional resource. 
 		address          ipv4 $node1_sn_ip:7788;
 	}
-	on $conf->{cgi}{anvil_node2_name} {
+	on $an->data->{cgi}{anvil_node2_name} {
 		volume 0 {
 			device       /dev/drbd0 minor 0;
 			disk         $node1_pool1_partition;
@@ -10302,10 +10227,10 @@ resource r0 {
 }
 ";
 
-	$conf->{drbd}{r1} = "
+	$an->data->{drbd}{r1} = "
 # This is the resource used for the servers designed to run on node 02.
 resource r1 {
-	on $conf->{cgi}{anvil_node1_name} {
+	on $an->data->{cgi}{anvil_node1_name} {
 		volume 0 {
 			# This sets the device name of this DRBD resouce.
 			device       /dev/drbd1 minor 1;
@@ -10328,7 +10253,7 @@ resource r1 {
 		# additional resource. 
 		address          ipv4 $node1_sn_ip:7789;
 	}
-	on $conf->{cgi}{anvil_node2_name} {
+	on $an->data->{cgi}{anvil_node2_name} {
 		volume 0 {
 			device       /dev/drbd1 minor 1;
 			disk         $node1_pool2_partition;
@@ -10354,36 +10279,36 @@ resource r1 {
 	# Unlike 'read_drbd_resource_files()' which only reads the 'rX.res'
 	# files and parses their contents, this function just slurps in the
 	# data from the resource and global common configs.
-	read_drbd_config_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	read_drbd_config_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	read_drbd_config_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	read_drbd_config_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	### Now push over the files I read in, if any.
 	# Global common
-	if ($conf->{node}{$node1}{drbd_file}{global_common})
+	if ($an->data->{node}{$node1}{drbd_file}{global_common})
 	{
-		$conf->{drbd}{global_common} = $conf->{node}{$node1}{drbd_file}{global_common};
+		$an->data->{drbd}{global_common} = $an->data->{node}{$node1}{drbd_file}{global_common};
 	}
-	elsif ($conf->{node}{$node2}{drbd_file}{global_common})
+	elsif ($an->data->{node}{$node2}{drbd_file}{global_common})
 	{
-		$conf->{drbd}{global_common} = $conf->{node}{$node2}{drbd_file}{global_common};
+		$an->data->{drbd}{global_common} = $an->data->{node}{$node2}{drbd_file}{global_common};
 	}
 	# r0.res
-	if ($conf->{node}{$node1}{drbd_file}{r0})
+	if ($an->data->{node}{$node1}{drbd_file}{r0})
 	{
-		$conf->{drbd}{r0} = $conf->{node}{$node1}{drbd_file}{r0};
+		$an->data->{drbd}{r0} = $an->data->{node}{$node1}{drbd_file}{r0};
 	}
-	elsif ($conf->{node}{$node2}{drbd_file}{r0})
+	elsif ($an->data->{node}{$node2}{drbd_file}{r0})
 	{
-		$conf->{drbd}{r0} = $conf->{node}{$node2}{drbd_file}{r0};
+		$an->data->{drbd}{r0} = $an->data->{node}{$node2}{drbd_file}{r0};
 	}
 	# r1.res
-	if ($conf->{node}{$node1}{drbd_file}{r1})
+	if ($an->data->{node}{$node1}{drbd_file}{r1})
 	{
-		$conf->{drbd}{r1} = $conf->{node}{$node1}{drbd_file}{r1};
+		$an->data->{drbd}{r1} = $an->data->{node}{$node1}{drbd_file}{r1};
 	}
-	elsif ($conf->{node}{$node2}{drbd_file}{r1})
+	elsif ($an->data->{node}{$node2}{drbd_file}{r1})
 	{
-		$conf->{drbd}{r1} = $conf->{node}{$node2}{drbd_file}{r1};
+		$an->data->{drbd}{r1} = $an->data->{node}{$node2}{drbd_file}{r1};
 	}
 	
 	return (0);
@@ -10394,8 +10319,7 @@ resource r1 {
 # resource and global common configs.
 sub read_drbd_config_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_config_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -10405,9 +10329,9 @@ sub read_drbd_config_on_node
 	my $generic_global_common = 1;
 	
 	# These will contain the contents of the file.
-	$conf->{node}{$node}{drbd_file}{global_common} = "";
-	$conf->{node}{$node}{drbd_file}{r0}            = "";
-	$conf->{node}{$node}{drbd_file}{r1}            = "";
+	$an->data->{node}{$node}{drbd_file}{global_common} = "";
+	$an->data->{node}{$node}{drbd_file}{r0}            = "";
+	$an->data->{node}{$node}{drbd_file}{r1}            = "";
 	
 	# And these tell us which file we're looking at.
 	my $in_global = 0;
@@ -10415,9 +10339,9 @@ sub read_drbd_config_on_node
 	my $in_r1     = 0;
 	
 	# Some variables to use in the bash call...
-	my $global_common = $conf->{path}{nodes}{drbd_global_common};
-	my $r0            = $conf->{path}{nodes}{drbd_r0};
-	my $r1            = $conf->{path}{nodes}{drbd_r1};
+	my $global_common = $an->data->{path}{nodes}{drbd_global_common};
+	my $r0            = $an->data->{path}{nodes}{drbd_r0};
+	my $r1            = $an->data->{path}{nodes}{drbd_r1};
 	my $shell_call = "
 if [ -e '$global_common' ]; 
 then 
@@ -10449,7 +10373,7 @@ fi;";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -10473,7 +10397,7 @@ fi;";
 		# Record lines if we're in a file.
 		if ($in_global)
 		{
-			$conf->{node}{$node}{drbd_file}{global_common} .= "$line\n";
+			$an->data->{node}{$node}{drbd_file}{global_common} .= "$line\n";
 			my $test_line = $line;
 			   $test_line =~ s/^\s+//;
 			   $test_line =~ s/\s+$//;
@@ -10485,18 +10409,18 @@ fi;";
 				$generic_global_common = 0;
 			}
 		}
-		if ($in_r0) { $conf->{node}{$node}{drbd_file}{r0} .= "$line\n"; }
-		if ($in_r1) { $conf->{node}{$node}{drbd_file}{r1} .= "$line\n"; }
+		if ($in_r0) { $an->data->{node}{$node}{drbd_file}{r0} .= "$line\n"; }
+		if ($in_r1) { $an->data->{node}{$node}{drbd_file}{r1} .= "$line\n"; }
 	}
 	
 	# Wipe out the global_common if it's generic.
-	$conf->{node}{$node}{drbd_file}{global_common} = "" if $generic_global_common;
+	$an->data->{node}{$node}{drbd_file}{global_common} = "" if $generic_global_common;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "node",          value1 => $node,
-		name2 => "global_common", value2 => $conf->{node}{$node}{drbd_file}{global_common}, 
-		name3 => "r0",            value3 => $conf->{node}{$node}{drbd_file}{r0}, 
-		name4 => "r1",            value4 => $conf->{node}{$node}{drbd_file}{r1},
+		name2 => "global_common", value2 => $an->data->{node}{$node}{drbd_file}{global_common}, 
+		name3 => "r0",            value3 => $an->data->{node}{$node}{drbd_file}{r0}, 
+		name4 => "r1",            value4 => $an->data->{node}{$node}{drbd_file}{r1},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
@@ -10506,18 +10430,17 @@ fi;";
 # already is a metadata and, if so, does nothing.
 sub setup_drbd_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_drbd_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Write out the config files if missing.
 	# Global common file
-	if (not $conf->{node}{$node}{drbd_file}{global_common})
+	if (not $an->data->{node}{$node}{drbd_file}{global_common})
 	{
-		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_global_common} << EOF\n";
-		   $shell_call .= "$conf->{drbd}{global_common}\n";
+		my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_global_common}." << EOF\n";
+		   $shell_call .= $an->data->{drbd}{global_common}."\n";
 		   $shell_call .= "EOF";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -10525,7 +10448,7 @@ sub setup_drbd_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -10540,11 +10463,11 @@ sub setup_drbd_on_node
 	}
 	
 	# r0.res
-	if (not $conf->{node}{$node}{drbd_file}{r0})
+	if (not $an->data->{node}{$node}{drbd_file}{r0})
 	{
 		# Resource 0 config
-		my $shell_call =  "cat > $conf->{path}{nodes}{drbd_r0} << EOF\n";
-		   $shell_call .= "$conf->{drbd}{r0}\n";
+		my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_r0}." << EOF\n";
+		   $shell_call .= $an->data->{drbd}{r0}."\n";
 		   $shell_call .= "EOF";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -10552,7 +10475,7 @@ sub setup_drbd_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -10567,13 +10490,13 @@ sub setup_drbd_on_node
 	}
 	
 	# r1.res
-	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
+	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		if (not $conf->{node}{$node}{drbd_file}{r1})
+		if (not $an->data->{node}{$node}{drbd_file}{r1})
 		{
 			# Resource 0 config
-			my $shell_call =  "cat > $conf->{path}{nodes}{drbd_r1} << EOF\n";
-			   $shell_call .= "$conf->{drbd}{r1}\n";
+			my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_r1}." << EOF\n";
+			   $shell_call .= $an->data->{drbd}{r1}."\n";
 			   $shell_call .= "EOF";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -10581,7 +10504,7 @@ sub setup_drbd_on_node
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -10601,14 +10524,14 @@ sub setup_drbd_on_node
 	# Check if the meta-data exists already
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "node",                           value1 => $node,
-		name2 => "node::${node}::pool1_partition", value2 => $conf->{node}{$node}{pool1}{partition},
-		name3 => "node::${node}::pool2_partition", value3 => $conf->{node}{$node}{pool2}{partition},
+		name2 => "node::${node}::pool1_partition", value2 => $an->data->{node}{$node}{pool1}{partition},
+		name3 => "node::${node}::pool2_partition", value3 => $an->data->{node}{$node}{pool2}{partition},
 	}, file => $THIS_FILE, line => __LINE__});
-	my ($pool1_rc) = check_for_drbd_metadata($conf, $node, $password, $conf->{node}{$node}{pool1}{device});
+	my ($pool1_rc) = check_for_drbd_metadata($an, $node, $password, $an->data->{node}{$node}{pool1}{device});
 	my  $pool2_rc  = 7;
-	if ($conf->{cgi}{anvil_storage_pool2_byte_size})
+	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		($pool2_rc) = check_for_drbd_metadata($conf, $node, $password, $conf->{node}{$node}{pool2}{device});
+		($pool2_rc) = check_for_drbd_metadata($an, $node, $password, $an->data->{node}{$node}{pool2}{device});
 	}
 	# 0 = Created
 	# 1 = Already had meta-data, nothing done
@@ -10630,11 +10553,10 @@ sub setup_drbd_on_node
 # without doing anything.
 sub register_with_rhn
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+	if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 	{
 		# User has skipped RHN check
 		$an->Log->entry({log_level => 2, message_key => "log_0179", file => $THIS_FILE, line => __LINE__});
@@ -10642,14 +10564,14 @@ sub register_with_rhn
 	}
 	
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::rhn_user",     value1 => $conf->{cgi}{rhn_user},
-		name2 => "cgi::rhn_password", value2 => $conf->{cgi}{rhn_password},
+		name1 => "cgi::rhn_user",     value1 => $an->data->{cgi}{rhn_user},
+		name2 => "cgi::rhn_password", value2 => $an->data->{cgi}{rhn_password},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	# If I am going to register, I should warn the user of the delay.
-	if ((($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet})) ||
-	    (($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet})))
+	if ((($an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $an->data->{node}{$node1}{os}{registered}) && ($an->data->{node}{$node1}{internet})) ||
+	    (($an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/) && (not $an->data->{node}{$node2}{os}{registered}) && ($an->data->{node}{$node2}{internet})))
 	{
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { 
 			message	=>	"#!string!explain_0138!#",
@@ -10657,16 +10579,16 @@ sub register_with_rhn
 	}
 	
 	# If it's not RHEL, no sense going further.
-	if (($conf->{node}{$node1}{os}{brand} !~ /Red Hat Enterprise Linux Server/) && ($conf->{node}{$node2}{os}{brand} !~ /Red Hat Enterprise Linux Server/))
+	if (($an->data->{node}{$node1}{os}{brand} !~ /Red Hat Enterprise Linux Server/) && ($an->data->{node}{$node2}{os}{brand} !~ /Red Hat Enterprise Linux Server/))
 	{
 		return(1);
 	}
 	
 	# No credentials? No sense going further...
-	if ((not $conf->{cgi}{rhn_user}) || (not $conf->{cgi}{rhn_password}))
+	if ((not $an->data->{cgi}{rhn_user}) || (not $an->data->{cgi}{rhn_password}))
 	{
 		# No sense going further
-		if ((not $conf->{node}{$node1}{os}{registered}) || (not $conf->{node}{$node2}{os}{registered}))
+		if ((not $an->data->{node}{$node1}{os}{registered}) || (not $an->data->{node}{$node2}{os}{registered}))
 		{
 			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 				row	=>	"#!string!row_0242!#",
@@ -10680,20 +10602,20 @@ sub register_with_rhn
 	my $node1_ok = 1;
 	my $node2_ok = 1;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::os::brand", value1 => $conf->{node}{$node1}{os}{brand},
-		name2 => "node::${node2}::os::brand", value2 => $conf->{node}{$node2}{os}{brand},
+		name1 => "node::${node1}::os::brand", value1 => $an->data->{node}{$node1}{os}{brand},
+		name2 => "node::${node2}::os::brand", value2 => $an->data->{node}{$node2}{os}{brand},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	if ($an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
 		# See if it's been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node::${node1}::os::registered", value1 => $conf->{node}{$node1}{os}{registered},
-			name2 => "node::${node1}::internet",       value2 => $conf->{node}{$node1}{internet},
+			name1 => "node::${node1}::os::registered", value1 => $an->data->{node}{$node1}{os}{registered},
+			name2 => "node::${node1}::internet",       value2 => $an->data->{node}{$node1}{internet},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $conf->{node}{$node1}{os}{registered}) && ($conf->{node}{$node1}{internet}))
+		if ((not $an->data->{node}{$node1}{os}{registered}) && ($an->data->{node}{$node1}{internet}))
 		{
 			# We're good.
-			($node1_ok) = register_node_with_rhn($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
+			($node1_ok) = register_node_with_rhn($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_name});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node1_ok", value1 => $node1_ok,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -10713,17 +10635,17 @@ sub register_with_rhn
 			name1 => "node1_ok", value1 => $node1_ok,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	if ($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	if ($an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
 		# See if it's been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node::${node2}::os::registered", value1 => $conf->{node}{$node2}{os}{registered},
-			name2 => "node::${node2}::internet",       value2 => $conf->{node}{$node2}{internet},
+			name1 => "node::${node2}::os::registered", value1 => $an->data->{node}{$node2}{os}{registered},
+			name2 => "node::${node2}::internet",       value2 => $an->data->{node}{$node2}{internet},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $conf->{node}{$node2}{os}{registered}) && ($conf->{node}{$node2}{internet}))
+		if ((not $an->data->{node}{$node2}{os}{registered}) && ($an->data->{node}{$node2}{internet}))
 		{
 			# We're good.
-			($node2_ok) = register_node_with_rhn($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+			($node2_ok) = register_node_with_rhn($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_name});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node2_ok", value1 => $node2_ok,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -10791,8 +10713,7 @@ sub register_with_rhn
 # This does the actual registration
 sub register_node_with_rhn
 {
-	my ($conf, $node, $password, $name) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $name) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_node_with_rhn" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node", value1 => $node, 
 		name2 => "name", value2 => $name, 
@@ -10806,17 +10727,17 @@ sub register_node_with_rhn
 	my $resilient_storage = 0;
 	my $optional          = 0;
 	my $return_code =  0;
-	my $shell_call  =  "rhnreg_ks --username \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --force --profilename \"$name\" && ";
-	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-rs-6 && ";
-	   $shell_call  .= "rhn-channel --add --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\" --channel=rhel-x86_64-server-optional-6 && ";
-	   $shell_call  .= "rhn-channel --list --user \"$conf->{cgi}{rhn_user}\" --password \"$conf->{cgi}{rhn_password}\"";
+	my $shell_call  =  "rhnreg_ks --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --force --profilename \"$name\" && ";
+	   $shell_call  .= "rhn-channel --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-rs-6 && ";
+	   $shell_call  .= "rhn-channel --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-optional-6 && ";
+	   $shell_call  .= "rhn-channel --list --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\"";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -10858,27 +10779,26 @@ sub register_node_with_rhn
 # This summarizes the install plan and gives the use a chance to tweak it or re-run the cable mapping.
 sub summarize_build_plan
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node1                = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2                = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1                = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2                = $an->data->{cgi}{anvil_node2_current_ip};
 	my $say_node1_registered = "#!string!state_0047!#";
 	my $say_node2_registered = "#!string!state_0047!#";
 	my $say_node1_class      = "highlight_detail";
 	my $say_node2_class      = "highlight_detail";
 	my $enable_rhn           = 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node::${node1}::os::brand", value1 => $conf->{node}{$node1}{os}{brand},
+		name1 => "node::${node1}::os::brand", value1 => $an->data->{node}{$node1}{os}{brand},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	if ($an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
 		# See if it's been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node1}::os::registered", value1 => $conf->{node}{$node1}{os}{registered},
+			name1 => "node::${node1}::os::registered", value1 => $an->data->{node}{$node1}{os}{registered},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{node}{$node1}{os}{registered})
+		if ($an->data->{node}{$node1}{os}{registered})
 		{
 			# Already registered.
 			$say_node1_registered = "#!string!state_0105!#";
@@ -10889,15 +10809,15 @@ sub summarize_build_plan
 			# Registration required, but do we have internet
 			# access?
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node1}::internet", value1 => $conf->{node}{$node1}{internet},
+				name1 => "node::${node1}::internet", value1 => $an->data->{node}{$node1}{internet},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+			if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 			{
 				# User has disabled RHN checks/registration.
 				$say_node1_registered = "#!string!state_0102!#";
 				$enable_rhn           = 0;
 			}
-			elsif ($conf->{node}{$node1}{internet})
+			elsif ($an->data->{node}{$node1}{internet})
 			{
 				# We're good.
 				$say_node1_registered = "#!string!state_0103!#";
@@ -10913,15 +10833,15 @@ sub summarize_build_plan
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node::${node2}::os::brand", value1 => $conf->{node}{$node2}{os}{brand},
+		name1 => "node::${node2}::os::brand", value1 => $an->data->{node}{$node2}{os}{brand},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
+	if ($an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/)
 	{
 		# See if it's been registered already.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node2}::os::registered", value1 => $conf->{node}{$node2}{os}{registered},
+			name1 => "node::${node2}::os::registered", value1 => $an->data->{node}{$node2}{os}{registered},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($conf->{node}{$node2}{os}{registered})
+		if ($an->data->{node}{$node2}{os}{registered})
 		{
 			# Already registered.
 			$say_node2_registered = "#!string!state_0105!#";
@@ -10932,15 +10852,15 @@ sub summarize_build_plan
 			# Registration required, but do we have internet
 			# access?
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node2}::internet", value1 => $conf->{node}{$node2}{internet},
+				name1 => "node::${node2}::internet", value1 => $an->data->{node}{$node2}{internet},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (not $conf->{sys}{install_manifest}{show}{rhn_checks})
+			if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 			{
 				# User has disabled RHN checks/registration.
 				$say_node2_registered = "#!string!state_0102!#";
 				$enable_rhn           = 0;
 			}
-			elsif ($conf->{node}{$node2}{internet})
+			elsif ($an->data->{node}{$node2}{internet})
 			{
 				# We're good.
 				$say_node2_registered = "#!string!state_0103!#";
@@ -10956,8 +10876,8 @@ sub summarize_build_plan
 		}
 	}
 	
-	my $say_node1_os = $conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $conf->{node}{$node1}{os}{brand};
-	my $say_node2_os = $conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $conf->{node}{$node2}{os}{brand};
+	my $say_node1_os = $an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $an->data->{node}{$node1}{os}{brand};
+	my $say_node2_os = $an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $an->data->{node}{$node2}{os}{brand};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "say_node1_os", value1 => $say_node1_os,
 		name2 => "say_node2_os", value2 => $say_node2_os,
@@ -10966,8 +10886,8 @@ sub summarize_build_plan
 	if ($enable_rhn)
 	{
 		$rhn_template = $an->Web->template({file => "install-manifest.html", template => "rhn-credential-form", replace => { 
-			rhn_user	=>	$conf->{cgi}{rhn_user},
-			rhn_password	=>	$conf->{cgi}{rhn_password},
+			rhn_user	=>	$an->data->{cgi}{rhn_user},
+			rhn_password	=>	$an->data->{cgi}{rhn_password},
 		}});
 	}
 	
@@ -10977,89 +10897,89 @@ sub summarize_build_plan
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 		name1 => "node1",     value1 => $node1,
-		name2 => "bcn_link1", value2 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
-		name3 => "bcn_link2", value3 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
-		name4 => "sn_link1",  value4 => $conf->{conf}{node}{$node1}{set_nic}{sn_link1},
-		name5 => "sn_link2",  value5 => $conf->{conf}{node}{$node1}{set_nic}{sn_link2},
-		name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
-		name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
+		name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
+		name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
+		name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
+		name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
+		name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
+		name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 		name1 => "node2",     value1 => $node2,
-		name2 => "bcn_link1", value2 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
-		name3 => "bcn_link2", value3 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
-		name4 => "sn_link1",  value4 => $conf->{conf}{node}{$node2}{set_nic}{sn_link1},
-		name5 => "sn_link2",  value5 => $conf->{conf}{node}{$node2}{set_nic}{sn_link2},
-		name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
-		name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
+		name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
+		name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
+		name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
+		name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
+		name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
+		name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $anvil_storage_partition_1_hr_size = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_2_byte_size} });
+	my $anvil_storage_partition_1_hr_size = $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_2_byte_size} });
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_storage_partition_1_byte_size", value1 => $conf->{cgi}{anvil_storage_partition_1_byte_size},
+		name1 => "cgi::anvil_storage_partition_1_byte_size", value1 => $an->data->{cgi}{anvil_storage_partition_1_byte_size},
 		name2 => "anvil_storage_partition_1_hr_size",        value2 => $anvil_storage_partition_1_hr_size,
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $conf->{cgi}{anvil_storage_partition_1_byte_size})
+	if (not $an->data->{cgi}{anvil_storage_partition_1_byte_size})
 	{
-		$conf->{cgi}{anvil_storage_partition_1_byte_size} = $conf->{cgi}{anvil_media_library_byte_size} + $conf->{cgi}{anvil_storage_pool1_byte_size};
+		$an->data->{cgi}{anvil_storage_partition_1_byte_size} = $an->data->{cgi}{anvil_media_library_byte_size} + $an->data->{cgi}{anvil_storage_pool1_byte_size};
 	}
-	if (not $conf->{cgi}{anvil_storage_partition_2_byte_size})
+	if (not $an->data->{cgi}{anvil_storage_partition_2_byte_size})
 	{
-		$conf->{cgi}{anvil_storage_partition_2_byte_size} = $conf->{cgi}{anvil_storage_pool2_byte_size};
+		$an->data->{cgi}{anvil_storage_partition_2_byte_size} = $an->data->{cgi}{anvil_storage_pool2_byte_size};
 	}
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-summary-and-confirm", replace => { 
 		form_file			=>	"/cgi-bin/striker",
 		title				=>	"#!string!title_0177!#",
 		bcn_link1_name			=>	$an->String->get({key => "script_0059", variables => { number => "1" }}),
-		bcn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
-		bcn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
+		bcn_link1_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
+		bcn_link1_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
 		bcn_link2_name			=>	$an->String->get({key => "script_0059", variables => { number => "2" }}),
-		bcn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
-		bcn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
+		bcn_link2_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
+		bcn_link2_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
 		sn_link1_name			=>	$an->String->get({key => "script_0061", variables => { number => "1" }}),
-		sn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link1},
-		sn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link1},
+		sn_link1_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
+		sn_link1_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
 		sn_link2_name			=>	$an->String->get({key => "script_0061", variables => { number => "2" }}),
-		sn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{sn_link2},
-		sn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{sn_link2},
+		sn_link2_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
+		sn_link2_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
 		ifn_link1_name			=>	$an->String->get({key => "script_0063", variables => { number => "1" }}),
-		ifn_link1_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
-		ifn_link1_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
+		ifn_link1_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
+		ifn_link1_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
 		ifn_link2_name			=>	$an->String->get({key => "script_0063", variables => { number => "2" }}),
-		ifn_link2_node1_mac		=>	$conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
-		ifn_link2_node2_mac		=>	$conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
-		media_library_size		=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
-		pool1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
-		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }),
-		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_1_byte_size} }),
-		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_partition_2_byte_size} }),
-		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=$conf->{cgi}{run}",
-		remap_network_url		=>	"$conf->{sys}{cgi_string}&remap_network=true",
-		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
-		anvil_node1_current_ip		=>	$conf->{cgi}{anvil_node1_current_ip},
-		anvil_node1_current_password	=>	$conf->{cgi}{anvil_node1_current_password},
-		anvil_node2_current_ip		=>	$conf->{cgi}{anvil_node2_current_ip},
-		anvil_node2_current_password	=>	$conf->{cgi}{anvil_node2_current_password},
-		config				=>	$conf->{cgi}{config},
-		confirm				=>	$conf->{cgi}{confirm},
-		'do'				=>	$conf->{cgi}{'do'},
-		run				=>	$conf->{cgi}{run},
-		task				=>	$conf->{cgi}{task},
+		ifn_link2_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
+		ifn_link2_node2_mac		=>	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
+		media_library_size		=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
+		pool1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
+		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }),
+		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_1_byte_size} }),
+		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_2_byte_size} }),
+		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=".$an->data->{cgi}{run},
+		remap_network_url		=>	$an->data->{sys}{cgi_string}."&remap_network=true",
+		anvil_node1_current_ip		=>	$an->data->{cgi}{anvil_node1_current_ip},
+		anvil_node1_current_ip		=>	$an->data->{cgi}{anvil_node1_current_ip},
+		anvil_node1_current_password	=>	$an->data->{cgi}{anvil_node1_current_password},
+		anvil_node2_current_ip		=>	$an->data->{cgi}{anvil_node2_current_ip},
+		anvil_node2_current_password	=>	$an->data->{cgi}{anvil_node2_current_password},
+		config				=>	$an->data->{cgi}{config},
+		confirm				=>	$an->data->{cgi}{confirm},
+		'do'				=>	$an->data->{cgi}{'do'},
+		run				=>	$an->data->{cgi}{run},
+		task				=>	$an->data->{cgi}{task},
 		node1_os_name			=>	$say_node1_os,
 		node2_os_name			=>	$say_node2_os,
 		node1_os_registered		=>	$say_node1_registered,
 		node1_os_registered_class	=>	$say_node1_class,
 		node2_os_registered		=>	$say_node2_registered,
 		node2_os_registered_class	=>	$say_node2_class,
-		update_manifest			=>	$conf->{cgi}{update_manifest},
+		update_manifest			=>	$an->data->{cgi}{update_manifest},
 		rhn_template			=>	$rhn_template,
-		striker_user			=>	$conf->{cgi}{striker_user},
-		striker_database		=>	$conf->{cgi}{striker_database},
-		anvil_striker1_user		=>	$conf->{cgi}{anvil_striker1_user},
-		anvil_striker1_password		=>	$conf->{cgi}{anvil_striker1_password},
-		anvil_striker1_database		=>	$conf->{cgi}{anvil_striker1_database},
-		anvil_striker2_user		=>	$conf->{cgi}{anvil_striker2_user},
-		anvil_striker2_password		=>	$conf->{cgi}{anvil_striker2_password},
-		anvil_striker2_database		=>	$conf->{cgi}{anvil_striker2_database},
+		striker_user			=>	$an->data->{cgi}{striker_user},
+		striker_database		=>	$an->data->{cgi}{striker_database},
+		anvil_striker1_user		=>	$an->data->{cgi}{anvil_striker1_user},
+		anvil_striker1_password		=>	$an->data->{cgi}{anvil_striker1_password},
+		anvil_striker1_database		=>	$an->data->{cgi}{anvil_striker1_database},
+		anvil_striker2_user		=>	$an->data->{cgi}{anvil_striker2_user},
+		anvil_striker2_password		=>	$an->data->{cgi}{anvil_striker2_password},
+		anvil_striker2_database		=>	$an->data->{cgi}{anvil_striker2_database},
 	}});
 	
 	return(0);
@@ -11068,8 +10988,7 @@ sub summarize_build_plan
 # This reads in the /etc/ntp.conf file and adds custom NTP server if they aren't already there.
 sub configure_ntp_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -11077,19 +10996,19 @@ sub configure_ntp_on_node
 	# We're going to do a grep for each defined NTP IP and, if the IP isn't found, it will be added.
 	my $return_code = 0;
 	my @ntp_servers;
-	push @ntp_servers, $conf->{cgi}{anvil_ntp1} if $conf->{cgi}{anvil_ntp1};
-	push @ntp_servers, $conf->{cgi}{anvil_ntp2} if $conf->{cgi}{anvil_ntp2};
+	push @ntp_servers, $an->data->{cgi}{anvil_ntp1} if $an->data->{cgi}{anvil_ntp1};
+	push @ntp_servers, $an->data->{cgi}{anvil_ntp2} if $an->data->{cgi}{anvil_ntp2};
 	foreach my $ntp_server (@ntp_servers)
 	{
 		# Look for/add NTP server
 		my $shell_call = "
-if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf}); 
+if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf}); 
 then 
     echo exists; 
 else 
     echo adding $ntp_server;
-    echo 'server $ntp_server iburst' >> $conf->{path}{nodes}{ntp_conf}
-    if \$(grep -q 'server $ntp_server iburst' $conf->{path}{nodes}{ntp_conf});
+    echo 'server $ntp_server iburst' >> $an->data->{path}{nodes}{ntp_conf}
+    if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf});
     then
         echo added OK
     else
@@ -11102,7 +11021,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -11138,8 +11057,7 @@ fi";
 # This handles the actual configuration of the network files.
 sub configure_network_on_node
 {
-	my ($conf, $node, $password, $node_number) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $node_number) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network_on_node" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",        value1 => $node, 
 		name1 => "node_number", value1 => $node_number, 
@@ -11160,10 +11078,10 @@ sub configure_network_on_node
 	
 	# The MTU to use, blanked if 1500 as that is default.
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_mtu_size",                 value1 => $conf->{cgi}{anvil_mtu_size},
-		name2 => "sys::install_manifest::default::mtu", value2 => $conf->{sys}{install_manifest}{'default'}{mtu},
+		name1 => "cgi::anvil_mtu_size",                 value1 => $an->data->{cgi}{anvil_mtu_size},
+		name2 => "sys::install_manifest::default::mtu", value2 => $an->data->{sys}{install_manifest}{'default'}{mtu},
 	}, file => $THIS_FILE, line => __LINE__});
-	my $mtu = $conf->{cgi}{anvil_mtu_size} ? $conf->{cgi}{anvil_mtu_size} : $conf->{sys}{install_manifest}{'default'}{mtu};
+	my $mtu = $an->data->{cgi}{anvil_mtu_size} ? $an->data->{cgi}{anvil_mtu_size} : $an->data->{sys}{install_manifest}{'default'}{mtu};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "mtu", value1 => $mtu,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -11173,40 +11091,30 @@ sub configure_network_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Here we're going to write out all the network and udev configuration details per node.
-	#$conf->{path}{nodes}{hostname};
+	#$an->data->{path}{nodes}{hostname};
 	my $hostname =  "NETWORKING=yes\n";
-	   $hostname .= "HOSTNAME=$conf->{cgi}{$name_key}";
+	   $hostname .= "HOSTNAME=".$an->data->{cgi}{$name_key};
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "bcn_link1_mac_key",       value1 => $bcn_link1_mac_key,
-		name2 => "cgi::$bcn_link1_mac_key", value2 => $conf->{cgi}{$bcn_link1_mac_key},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+		name1  => "bcn_link1_mac_key",       value1  => $bcn_link1_mac_key,
+		name2  => "cgi::$bcn_link1_mac_key", value2  => $an->data->{cgi}{$bcn_link1_mac_key},
+		name3  => "bcn_link2_mac_key",       value3  => $bcn_link2_mac_key,
+		name4  => "cgi::$bcn_link2_mac_key", value4  => $an->data->{cgi}{$bcn_link2_mac_key},
+		name5  => "sn_link1_mac_key",        value5  => $sn_link1_mac_key,
+		name6  => "cgi::$sn_link1_mac_key",  value6  => $an->data->{cgi}{$sn_link1_mac_key},
+		name7  => "sn_link2_mac_key",        value7  => $sn_link2_mac_key,
+		name8  => "cgi::$sn_link2_mac_key",  value8  => $an->data->{cgi}{$sn_link2_mac_key},
+		name9  => "ifn_link1_mac_key",       value9  => $ifn_link1_mac_key,
+		name10 => "cgi::$ifn_link1_mac_key", value10 => $an->data->{cgi}{$ifn_link1_mac_key},
+		name11 => "ifn_link2_mac_key",       value11 => $ifn_link2_mac_key,
+		name12 => "cgi::$ifn_link2_mac_key", value12 => $an->data->{cgi}{$ifn_link2_mac_key},
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "bcn_link2_mac_key",       value1 => $bcn_link2_mac_key,
-		name2 => "cgi::$bcn_link2_mac_key", value2 => $conf->{cgi}{$bcn_link2_mac_key},
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sn_link1_mac_key",       value1 => $sn_link1_mac_key,
-		name2 => "cgi::$sn_link1_mac_key", value2 => $conf->{cgi}{$sn_link1_mac_key},
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sn_link2_mac_key",       value1 => $sn_link2_mac_key,
-		name2 => "cgi::$sn_link2_mac_key", value2 => $conf->{cgi}{$sn_link2_mac_key},
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "ifn_link1_mac_key",       value1 => $ifn_link1_mac_key,
-		name2 => "cgi::$ifn_link1_mac_key", value2 => $conf->{cgi}{$ifn_link1_mac_key},
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "ifn_link2_mac_key",       value1 => $ifn_link2_mac_key,
-		name2 => "cgi::$ifn_link2_mac_key", value2 => $conf->{cgi}{$ifn_link2_mac_key},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $conf->{cgi}{$bcn_link1_mac_key}) || 
-	    (not $conf->{cgi}{$bcn_link2_mac_key}) || 
-	    (not $conf->{cgi}{$sn_link2_mac_key}) || 
-	    (not $conf->{cgi}{$sn_link2_mac_key}) || 
-	    (not $conf->{cgi}{$ifn_link2_mac_key}) || 
-	    (not $conf->{cgi}{$ifn_link2_mac_key}))
+	if ((not $an->data->{cgi}{$bcn_link1_mac_key}) || 
+	    (not $an->data->{cgi}{$bcn_link2_mac_key}) || 
+	    (not $an->data->{cgi}{$sn_link2_mac_key}) || 
+	    (not $an->data->{cgi}{$sn_link2_mac_key}) || 
+	    (not $an->data->{cgi}{$ifn_link2_mac_key}) || 
+	    (not $an->data->{cgi}{$ifn_link2_mac_key}))
 	{
 		# Wtf?
 		$return_code = 1;
@@ -11214,39 +11122,39 @@ sub configure_network_on_node
 	}
 	
 	# Make sure the values are actually MAC addresses
-	if (($conf->{cgi}{$bcn_link1_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
-	    ($conf->{cgi}{$bcn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
-	    ($conf->{cgi}{$sn_link2_mac_key}  !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
-	    ($conf->{cgi}{$sn_link2_mac_key}  !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
-	    ($conf->{cgi}{$ifn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
-	    ($conf->{cgi}{$ifn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i))
+	if (($an->data->{cgi}{$bcn_link1_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
+	    ($an->data->{cgi}{$bcn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
+	    ($an->data->{cgi}{$sn_link2_mac_key}  !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
+	    ($an->data->{cgi}{$sn_link2_mac_key}  !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
+	    ($an->data->{cgi}{$ifn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i) || 
+	    ($an->data->{cgi}{$ifn_link2_mac_key} !~ /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i))
 	{
 		# >_<
 		$return_code = 2;
 		return($return_code);
 	}
 	
-	#$conf->{path}{nodes}{udev_net_rules};
-	my $udev_net_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
+	#$an->data->{path}{nodes}{udev_net_rules};
+	my $udev_net_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
 	   $udev_net_rules .= "# Back-Channel Network, Link 1\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link1_mac_key}\", NAME=\"bcn_link1\"\n\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$bcn_link1_mac_key}."\", NAME=\"bcn_link1\"\n\n";
 	   $udev_net_rules .= "# Back-Channel Network, Link 2\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$bcn_link2_mac_key}\", NAME=\"bcn_link2\"\n\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$bcn_link2_mac_key}."\", NAME=\"bcn_link2\"\n\n";
 	   $udev_net_rules .= "# Storage Network, Link 1\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link1_mac_key}\", NAME=\"sn_link1\"\n\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$sn_link1_mac_key}."\", NAME=\"sn_link1\"\n\n";
 	   $udev_net_rules .= "# Storage Network, Link 2\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$sn_link2_mac_key}\", NAME=\"sn_link2\"\n\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$sn_link2_mac_key}."\", NAME=\"sn_link2\"\n\n";
 	   $udev_net_rules .= "# Internet-Facing Network, Link 1\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link1_mac_key}\", NAME=\"ifn_link1\"\n\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$ifn_link1_mac_key}."\", NAME=\"ifn_link1\"\n\n";
 	   $udev_net_rules .= "# Internet-Facing Network, Link 2\n";
-	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"$conf->{cgi}{$ifn_link2_mac_key}\", NAME=\"ifn_link2\"\n";
+	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$ifn_link2_mac_key}."\", NAME=\"ifn_link2\"\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "udev_net_rules", value1 => $udev_net_rules,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Back-Channel Network
-	#$conf->{path}{nodes}{bcn_link1_config};
-	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{bcn_link1_config};
+	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
 	   $ifcfg_bcn_link1 .= "DEVICE=\"bcn_link1\"\n";
 	   $ifcfg_bcn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11255,13 +11163,13 @@ sub configure_network_on_node
 	   $ifcfg_bcn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_bcn_link1 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_bcn_link1 .= "MASTER=\"bcn_bond1\"";
-	if ($conf->{cgi}{anvil_bcn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_bcn_ethtool_opts})
 	{
-		$ifcfg_bcn_link1 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_bcn_ethtool_opts}\"";
+		$ifcfg_bcn_link1 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_bcn_ethtool_opts}."\"";
 	}
 	
-	#$conf->{path}{nodes}{bcn_link2_config};
-	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{bcn_link2_config};
+	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
 	   $ifcfg_bcn_link2 .= "DEVICE=\"bcn_link2\"\n";
 	   $ifcfg_bcn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11270,26 +11178,26 @@ sub configure_network_on_node
 	   $ifcfg_bcn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_bcn_link2 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_bcn_link2 .= "MASTER=\"bcn_bond1\"";
-	if ($conf->{cgi}{anvil_bcn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_bcn_ethtool_opts})
 	{
-		$ifcfg_bcn_link2 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_bcn_ethtool_opts}\"";
+		$ifcfg_bcn_link2 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_bcn_ethtool_opts}."\"";
 	}
 	
-	#$conf->{path}{nodes}{bcn_bond1_config};
-	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{bcn_bond1_config};
+	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
 	   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn_bond1\"\n";
 	   $ifcfg_bcn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
 	   $ifcfg_bcn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_bcn_bond1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_bcn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=bcn_link1 primary_reselect=always\"\n";
-	   $ifcfg_bcn_bond1 .= "IPADDR=\"$conf->{cgi}{$bcn_ip_key}\"\n";
-	   $ifcfg_bcn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_bcn_subnet}\"\n";
+	   $ifcfg_bcn_bond1 .= "IPADDR=\"".$an->data->{cgi}{$bcn_ip_key}."\"\n";
+	   $ifcfg_bcn_bond1 .= "NETMASK=\"".$an->data->{cgi}{anvil_bcn_subnet}."\"\n";
 	   $ifcfg_bcn_bond1 .= "DEFROUTE=\"no\"";
 	
 	### Storage Network
-	#$conf->{path}{nodes}{sn_link1_config};
-	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{sn_link1_config};
+	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_sn_link1 .= "# Storage Network - Link 1\n";
 	   $ifcfg_sn_link1 .= "DEVICE=\"sn_link1\"\n";
 	   $ifcfg_sn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11298,13 +11206,13 @@ sub configure_network_on_node
 	   $ifcfg_sn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_sn_link1 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_sn_link1 .= "MASTER=\"sn_bond1\"";
-	if ($conf->{cgi}{anvil_sn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_sn_ethtool_opts})
 	{
-		$ifcfg_sn_link1 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_sn_ethtool_opts}\"";
+		$ifcfg_sn_link1 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_sn_ethtool_opts}."\"";
 	}
 	
-	#$conf->{path}{nodes}{sn_link2_config};
-	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{sn_link2_config};
+	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_sn_link2 .= "# Storage Network - Link 2\n";
 	   $ifcfg_sn_link2 .= "DEVICE=\"sn_link2\"\n";
 	   $ifcfg_sn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11313,26 +11221,26 @@ sub configure_network_on_node
 	   $ifcfg_sn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_sn_link2 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_sn_link2 .= "MASTER=\"sn_bond1\"";
-	if ($conf->{cgi}{anvil_sn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_sn_ethtool_opts})
 	{
-		$ifcfg_sn_link2 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_sn_ethtool_opts}\"";
+		$ifcfg_sn_link2 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_sn_ethtool_opts}."\"";
 	}
 	
-	#$conf->{path}{nodes}{sn_bond1_config};
-	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{sn_bond1_config};
+	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_sn_bond1 .= "# Storage Network - Bond 1\n";
 	   $ifcfg_sn_bond1 .= "DEVICE=\"sn_bond1\"\n";
 	   $ifcfg_sn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
 	   $ifcfg_sn_bond1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_sn_bond1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_sn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=sn_link1 primary_reselect=always\"\n";
-	   $ifcfg_sn_bond1 .= "IPADDR=\"$conf->{cgi}{$sn_ip_key}\"\n";
-	   $ifcfg_sn_bond1 .= "NETMASK=\"$conf->{cgi}{anvil_sn_subnet}\"\n";
+	   $ifcfg_sn_bond1 .= "IPADDR=\"".$an->data->{cgi}{$sn_ip_key}."\"\n";
+	   $ifcfg_sn_bond1 .= "NETMASK=\"".$an->data->{cgi}{anvil_sn_subnet}."\"\n";
 	   $ifcfg_sn_bond1 .= "DEFROUTE=\"no\"";
 	
 	### Internet-Facing Network
-	#$conf->{path}{nodes}{ifn_link1_config};
-	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{ifn_link1_config};
+	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
 	   $ifcfg_ifn_link1 .= "DEVICE=\"ifn_link1\"\n";
 	   $ifcfg_ifn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11341,16 +11249,16 @@ sub configure_network_on_node
 	   $ifcfg_ifn_link1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_ifn_link1 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_ifn_link1 .= "MASTER=\"ifn_bond1\"";
-	if ($conf->{cgi}{anvil_ifn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_ifn_ethtool_opts})
 	{
-		$ifcfg_ifn_link1 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_ifn_ethtool_opts}\"";
+		$ifcfg_ifn_link1 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_ifn_ethtool_opts}."\"";
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ifcfg_ifn_link1", value1 => $ifcfg_ifn_link1,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	#$conf->{path}{nodes}{ifn_link2_config};
-	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{ifn_link2_config};
+	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
 	   $ifcfg_ifn_link2 .= "DEVICE=\"ifn_link2\"\n";
 	   $ifcfg_ifn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11359,13 +11267,13 @@ sub configure_network_on_node
 	   $ifcfg_ifn_link2 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_ifn_link2 .= "SLAVE=\"yes\"\n";
 	   $ifcfg_ifn_link2 .= "MASTER=\"ifn_bond1\"";
-	if ($conf->{cgi}{anvil_ifn_ethtool_opts})
+	if ($an->data->{cgi}{anvil_ifn_ethtool_opts})
 	{
-		$ifcfg_ifn_link2 .= "\nETHTOOL_OPTS=\"$conf->{cgi}{anvil_ifn_ethtool_opts}\"";
+		$ifcfg_ifn_link2 .= "\nETHTOOL_OPTS=\"".$an->data->{cgi}{anvil_ifn_ethtool_opts}."\"";
 	}
 	
-	#$conf->{path}{nodes}{ifn_bond1_config};
-	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	#$an->data->{path}{nodes}{ifn_bond1_config};
+	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
 	   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn_bond1\"\n";
 	   $ifcfg_ifn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11374,27 +11282,27 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bond1 .= "ONBOOT=\"yes\"\n";
 	   $ifcfg_ifn_bond1 .= "BONDING_OPTS=\"mode=1 miimon=100 use_carrier=1 updelay=60000 downdelay=0 primary=ifn_link1 primary_reselect=always\"";
 	
-	#$conf->{path}{nodes}{ifn_bridge1_config};
+	#$an->data->{path}{nodes}{ifn_bridge1_config};
 	### NOTE: We don't set the MTU here because the bridge will ignore it. Bridges always take the MTU of
 	###       the connected device with the lowest MTU.
-	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n";
+	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
 	   $ifcfg_ifn_bridge1 .= "# Internet-Facing Network - Bridge 1\n";
 	   $ifcfg_ifn_bridge1 .= "DEVICE=\"ifn_bridge1\"\n";
 	   $ifcfg_ifn_bridge1 .= "TYPE=\"Bridge\"\n";
 	   $ifcfg_ifn_bridge1 .= "BOOTPROTO=\"static\"\n";
-	   $ifcfg_ifn_bridge1 .= "IPADDR=\"$conf->{cgi}{$ifn_ip_key}\"\n";
-	   $ifcfg_ifn_bridge1 .= "NETMASK=\"$conf->{cgi}{anvil_ifn_subnet}\"\n";
-	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"$conf->{cgi}{anvil_ifn_gateway}\"\n";
-	   $ifcfg_ifn_bridge1 .= "DNS1=\"$conf->{cgi}{anvil_dns1}\"\n" if $conf->{cgi}{anvil_dns1};
-	   $ifcfg_ifn_bridge1 .= "DNS2=\"$conf->{cgi}{anvil_dns2}\"\n" if $conf->{cgi}{anvil_dns2};
+	   $ifcfg_ifn_bridge1 .= "IPADDR=\"".$an->data->{cgi}{$ifn_ip_key}."\"\n";
+	   $ifcfg_ifn_bridge1 .= "NETMASK=\"".$an->data->{cgi}{anvil_ifn_subnet}."\"\n";
+	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"".$an->data->{cgi}{anvil_ifn_gateway}."\n";
+	   $ifcfg_ifn_bridge1 .= "DNS1=\"".$an->data->{cgi}{anvil_dns1}."\"\n" if $an->data->{cgi}{anvil_dns1};
+	   $ifcfg_ifn_bridge1 .= "DNS2=\"".$an->data->{cgi}{anvil_dns2}."\"\n" if $an->data->{cgi}{anvil_dns2};
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
 	   
 	# Create the 'anvil-adjust-vnet' udev rules file.
-	#$conf->{path}{nodes}{udev_vnet_rules};
-	my $udev_vnet_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].\n\n";
-	   $udev_vnet_rules .= "# This calls '$conf->{path}{nodes}{'anvil-adjust-vnet'}' when a network devices are created.\n";
+	#$an->data->{path}{nodes}{udev_vnet_rules};
+	my $udev_vnet_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
+	   $udev_vnet_rules .= "# This calls '".$an->data->{path}{nodes}{'anvil-adjust-vnet'}."' when a network devices are created.\n";
 	   $udev_vnet_rules .= "\n";
-	   $udev_vnet_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", RUN+=\"$conf->{path}{nodes}{'anvil-adjust-vnet'}\"\n";
+	   $udev_vnet_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", RUN+=\"".$an->data->{path}{nodes}{'anvil-adjust-vnet'}."\"\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "udev_vnet_rules", value1 => $udev_vnet_rules,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -11404,9 +11312,9 @@ sub configure_network_on_node
 	# Setup the fireall now. (Temporarily; the new multiport based and old state based versions are here.
 	# The old one will be removed once this one is confirmed to be good.)
 	my $iptables  = "";
-	my $vnc_range = 5900 + $conf->{cgi}{anvil_open_vnc_ports};
+	my $vnc_range = 5900 + $an->data->{cgi}{anvil_open_vnc_ports};
 	$iptables .= "
-# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."].
+# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].
 *filter
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
@@ -11416,25 +11324,25 @@ sub configure_network_on_node
 -A INPUT -p tcp -m conntrack --ctstate NEW -m tcp --dport 22 -j ACCEPT
 
 # Allow sctp on the BCN and SN
--A INPUT -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -p sctp -j ACCEPT
--A INPUT -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -p sctp -j ACCEPT
+-A INPUT -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -p sctp -j ACCEPT
+-A INPUT -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -p sctp -j ACCEPT
 
 # Allow UDP-multicast based clusters on the BCN and SN
--I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
--I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
+-I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
+-I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
 
 # Allow UDP-unicast based clusters on the BCN and SN
--A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
--A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
+-A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -d $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
+-A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -d $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
 
 # Allow NTP, VNC, ricci, modclusterd, dlm and KVM live migration on the BCN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} -d $conf->{cgi}{anvil_bcn_network}/$conf->{cgi}{anvil_bcn_subnet} --dports 123,5800,5900:$vnc_range,11111,16851,21064,49152:49216 -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -d $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 123,5800,5900:$vnc_range,11111,16851,21064,49152:49216 -j ACCEPT 
 
 # Allow DRBD (11 resources) and, as backups, ricci, modclusterd and DLM on the SN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} -d $conf->{cgi}{anvil_sn_network}/$conf->{cgi}{anvil_sn_subnet} --dports 7788:7799,11111,16851,21064 -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -d $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 7788:7799,11111,16851,21064 -j ACCEPT 
 
 # Allow NTP and VNC on the IFN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} -d $conf->{cgi}{anvil_ifn_network}/$conf->{cgi}{anvil_ifn_subnet} --dports 123,5800,5900:$vnc_range -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_ifn_network}/$an->data->{cgi}{anvil_ifn_subnet} -d $an->data->{cgi}{anvil_ifn_network}/$an->data->{cgi}{anvil_ifn_subnet} --dports 123,5800,5900:$vnc_range -j ACCEPT 
 
 # Allow IGMP for UDP-multicast based clusters.
 -A INPUT -p igmp -j ACCEPT
@@ -11458,71 +11366,71 @@ COMMIT";
 	###       use that instead of the install manifest contents
 	### Generate the hosts file
 	# Break up hostsnames
-	my ($node1_short_name)    = ($conf->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
-	my ($node2_short_name)    = ($conf->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
-	my ($switch1_short_name)  = ($conf->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
-	my ($switch2_short_name)  = ($conf->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
-	my ($pdu1_short_name)     = ($conf->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
-	my ($pdu2_short_name)     = ($conf->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
-	my ($pdu3_short_name)     = ($conf->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
-	my ($pdu4_short_name)     = ($conf->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
-	my ($pts1_short_name)     = ($conf->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
-	my ($pts2_short_name)     = ($conf->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
-	my ($ups1_short_name)     = ($conf->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
-	my ($ups2_short_name)     = ($conf->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
-	my ($striker1_short_name) = ($conf->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-	my ($striker2_short_name) = ($conf->{cgi}{anvil_striker2_name} =~ /^(.*?)\./);
+	my ($node1_short_name)    = ($an->data->{cgi}{anvil_node1_name}    =~ /^(.*?)\./);
+	my ($node2_short_name)    = ($an->data->{cgi}{anvil_node2_name}    =~ /^(.*?)\./);
+	my ($switch1_short_name)  = ($an->data->{cgi}{anvil_switch1_name}  =~ /^(.*?)\./);
+	my ($switch2_short_name)  = ($an->data->{cgi}{anvil_switch2_name}  =~ /^(.*?)\./);
+	my ($pdu1_short_name)     = ($an->data->{cgi}{anvil_pdu1_name}     =~ /^(.*?)\./);
+	my ($pdu2_short_name)     = ($an->data->{cgi}{anvil_pdu2_name}     =~ /^(.*?)\./);
+	my ($pdu3_short_name)     = ($an->data->{cgi}{anvil_pdu3_name}     =~ /^(.*?)\./);
+	my ($pdu4_short_name)     = ($an->data->{cgi}{anvil_pdu4_name}     =~ /^(.*?)\./);
+	my ($pts1_short_name)     = ($an->data->{cgi}{anvil_pts1_name}     =~ /^(.*?)\./);
+	my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
+	my ($ups1_short_name)     = ($an->data->{cgi}{anvil_ups1_name}     =~ /^(.*?)\./);
+	my ($ups2_short_name)     = ($an->data->{cgi}{anvil_ups2_name}     =~ /^(.*?)\./);
+	my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
+	my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker2_name} =~ /^(.*?)\./);
 	
 	# now generate the hosts body.
-	my $hosts =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($conf)."]\n";
+	my $hosts =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."]\n";
 	   $hosts .= "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4\n";
 	   $hosts .= "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6\n";
 	   $hosts .= "\n";
-	   $hosts .= "# Anvil! $conf->{cgi}{anvil_sequence}, Node 01\n";
-	   $hosts .= "$conf->{cgi}{anvil_node1_bcn_ip}	$node1_short_name.bcn $node1_short_name $conf->{cgi}{anvil_node1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_node1_ipmi_ip}	$node1_short_name.ipmi\n";
-	   $hosts .= "$conf->{cgi}{anvil_node1_sn_ip}	$node1_short_name.sn\n";
-	   $hosts .= "$conf->{cgi}{anvil_node1_ifn_ip}	$node1_short_name.ifn\n";
+	   $hosts .= "# Anvil! $an->data->{cgi}{anvil_sequence}, Node 01\n";
+	   $hosts .= $an->data->{cgi}{anvil_node1_bcn_ip}."	$node1_short_name.bcn $node1_short_name ".$an->data->{cgi}{anvil_node1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_node1_ipmi_ip}."	$node1_short_name.ipmi\n";
+	   $hosts .= $an->data->{cgi}{anvil_node1_sn_ip}."	$node1_short_name.sn\n";
+	   $hosts .= $an->data->{cgi}{anvil_node1_ifn_ip}."	$node1_short_name.ifn\n";
 	   $hosts .= "\n";
-	   $hosts .= "# Anvil! $conf->{cgi}{anvil_sequence}, Node 02\n";
-	   $hosts .= "$conf->{cgi}{anvil_node2_bcn_ip}	$node2_short_name.bcn $node2_short_name $conf->{cgi}{anvil_node2_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_node2_ipmi_ip}	$node2_short_name.ipmi\n";
-	   $hosts .= "$conf->{cgi}{anvil_node2_sn_ip}	$node2_short_name.sn\n";
-	   $hosts .= "$conf->{cgi}{anvil_node2_ifn_ip}	$node2_short_name.ifn\n";
+	   $hosts .= "# Anvil! $an->data->{cgi}{anvil_sequence}, Node 02\n";
+	   $hosts .= $an->data->{cgi}{anvil_node2_bcn_ip}."	$node2_short_name.bcn $node2_short_name ".$an->data->{cgi}{anvil_node2_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_node2_ipmi_ip}."	$node2_short_name.ipmi\n";
+	   $hosts .= $an->data->{cgi}{anvil_node2_sn_ip}."	$node2_short_name.sn\n";
+	   $hosts .= $an->data->{cgi}{anvil_node2_ifn_ip}."	$node2_short_name.ifn\n";
 	   $hosts .= "\n";
 	   $hosts .= "# Network switches\n";
-	   $hosts .= "$conf->{cgi}{anvil_switch1_ip}	$switch1_short_name $conf->{cgi}{anvil_switch1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_switch2_ip}	$switch2_short_name $conf->{cgi}{anvil_switch2_name}\n";
+	   $hosts .= $an->data->{cgi}{anvil_switch1_ip}."	$switch1_short_name ".$an->data->{cgi}{anvil_switch1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_switch2_ip}."	$switch2_short_name ".$an->data->{cgi}{anvil_switch2_name}."\n";
 	   $hosts .= "\n";
 	   $hosts .= "# Switched PDUs\n";
-	   $hosts .= "$conf->{cgi}{anvil_pdu1_ip}	$pdu1_short_name $conf->{cgi}{anvil_pdu1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_pdu2_ip}	$pdu2_short_name $conf->{cgi}{anvil_pdu2_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_pdu3_ip}	$pdu3_short_name $conf->{cgi}{anvil_pdu3_name}\n" if $conf->{cgi}{anvil_pdu3_ip};
-	   $hosts .= "$conf->{cgi}{anvil_pdu4_ip}	$pdu4_short_name $conf->{cgi}{anvil_pdu4_name}\n" if $conf->{cgi}{anvil_pdu4_ip};
+	   $hosts .= $an->data->{cgi}{anvil_pdu1_ip}."	$pdu1_short_name ".$an->data->{cgi}{anvil_pdu1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_pdu2_ip}."	$pdu2_short_name ".$an->data->{cgi}{anvil_pdu2_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_pdu3_ip}."	$pdu3_short_name ".$an->data->{cgi}{anvil_pdu3_name}."\n" if $an->data->{cgi}{anvil_pdu3_ip};
+	   $hosts .= $an->data->{cgi}{anvil_pdu4_ip}."	$pdu4_short_name ".$an->data->{cgi}{anvil_pdu4_name}."\n" if $an->data->{cgi}{anvil_pdu4_ip};
 	   $hosts .= "\n";
 	   $hosts .= "# UPSes\n";
-	   $hosts .= "$conf->{cgi}{anvil_ups1_ip}	$ups1_short_name $conf->{cgi}{anvil_ups1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_ups2_ip}	$ups2_short_name $conf->{cgi}{anvil_ups2_name}\n";
+	   $hosts .= $an->data->{cgi}{anvil_ups1_ip}."	$ups1_short_name ".$an->data->{cgi}{anvil_ups1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_ups2_ip}."	$ups2_short_name ".$an->data->{cgi}{anvil_ups2_name}."\n";
 	   $hosts .= "\n";
 	   $hosts .= "# PTSes\n";
-	   $hosts .= "$conf->{cgi}{anvil_pts1_ip}	$pts1_short_name $conf->{cgi}{anvil_pts1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_pts2_ip}	$pts2_short_name $conf->{cgi}{anvil_pts2_name}\n";
+	   $hosts .= $an->data->{cgi}{anvil_pts1_ip}."	$pts1_short_name ".$an->data->{cgi}{anvil_pts1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_pts2_ip}."	$pts2_short_name ".$an->data->{cgi}{anvil_pts2_name}."\n";
 	   $hosts .= "\n";
 	   $hosts .= "# Striker dashboards\n";
-	   $hosts .= "$conf->{cgi}{anvil_striker1_bcn_ip}	$striker1_short_name.bcn $striker1_short_name $conf->{cgi}{anvil_striker1_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_striker1_ifn_ip}	$striker1_short_name.ifn\n";
-	   $hosts .= "$conf->{cgi}{anvil_striker2_bcn_ip}	$striker2_short_name.bcn $striker2_short_name $conf->{cgi}{anvil_striker2_name}\n";
-	   $hosts .= "$conf->{cgi}{anvil_striker2_ifn_ip}	$striker2_short_name.ifn\n";
+	   $hosts .= $an->data->{cgi}{anvil_striker1_bcn_ip}."	$striker1_short_name.bcn $striker1_short_name ".$an->data->{cgi}{anvil_striker1_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_striker1_ifn_ip}."	$striker1_short_name.ifn\n";
+	   $hosts .= $an->data->{cgi}{anvil_striker2_bcn_ip}."	$striker2_short_name.bcn $striker2_short_name ".$an->data->{cgi}{anvil_striker2_name}."\n";
+	   $hosts .= $an->data->{cgi}{anvil_striker2_ifn_ip}."	$striker2_short_name.ifn\n";
 	   $hosts .= "\n";
 	
 	# This will be used later when populating ~/.ssh/known_hosts
-	$conf->{sys}{node_names} = [
-		"$conf->{cgi}{anvil_node1_name}", 
+	$an->data->{sys}{node_names} = [
+		$an->data->{cgi}{anvil_node1_name}, 
 		"$node1_short_name", 
 		"$node1_short_name.bcn", 
 		"$node1_short_name.sn", 
 		"$node1_short_name.ifn", 
-		"$conf->{cgi}{anvil_node2_name}", 
+		$an->data->{cgi}{anvil_node2_name}, 
 		"$node2_short_name", 
 		"$node2_short_name.bcn", 
 		"$node2_short_name.sn", 
@@ -11536,14 +11444,14 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this smarter so that it deletes everything ***EXCEPT*** ifcfg-lo
-	my $shell_call = "rm -f $conf->{path}{nodes}{ifcfg_directory}/ifcfg-eth*";
+	my $shell_call = "rm -f $an->data->{path}{nodes}{ifcfg_directory}/ifcfg-eth*";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11559,7 +11467,7 @@ COMMIT";
 	### Start writing!
 	### Internet-Facing Network
 	# IFN Bridge 1
-	$shell_call =  "cat > $conf->{path}{nodes}{ifn_bridge1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_bridge1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_bridge1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11568,7 +11476,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11582,7 +11490,7 @@ COMMIT";
 	}
 	
 	# IFN Bond 1
-	$shell_call =  "cat > $conf->{path}{nodes}{ifn_bond1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11591,7 +11499,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11605,7 +11513,7 @@ COMMIT";
 	}
 	
 	# IFN Link 1
-	$shell_call =  "cat > $conf->{path}{nodes}{ifn_link1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11614,7 +11522,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11628,7 +11536,7 @@ COMMIT";
 	}
 	
 	# IFN Link 2
-	$shell_call =  "cat > $conf->{path}{nodes}{ifn_link2_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11637,7 +11545,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11652,7 +11560,7 @@ COMMIT";
 	
 	### Storage Network
 	# SN Bond 1
-	$shell_call =  "cat > $conf->{path}{nodes}{sn_bond1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11661,7 +11569,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11675,7 +11583,7 @@ COMMIT";
 	}
 	
 	# SN Link 1
-	$shell_call =  "cat > $conf->{path}{nodes}{sn_link1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11684,7 +11592,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11698,7 +11606,7 @@ COMMIT";
 	}
 	
 	# SN Link 2
-	$shell_call =  "cat > $conf->{path}{nodes}{sn_link2_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11707,7 +11615,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11722,7 +11630,7 @@ COMMIT";
 	
 	### Back-Channel Network
 	# BCN Bond 1
-	$shell_call =  "cat > $conf->{path}{nodes}{bcn_bond1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11731,7 +11639,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11745,7 +11653,7 @@ COMMIT";
 	}
 	
 	# BCN Link 1
-	$shell_call =  "cat > $conf->{path}{nodes}{bcn_link1_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11754,7 +11662,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11768,7 +11676,7 @@ COMMIT";
 	}
 	
 	# BCN Link 2
-	$shell_call =  "cat > $conf->{path}{nodes}{bcn_link2_config} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11777,7 +11685,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11791,7 +11699,7 @@ COMMIT";
 	}
 	
 	### Now write the net udev rules file.
-	$shell_call = "cat > $conf->{path}{nodes}{udev_net_rules} << EOF\n";
+	$shell_call = "cat > ".$an->data->{path}{nodes}{udev_net_rules}." << EOF\n";
 	$shell_call .= "$udev_net_rules\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11800,7 +11708,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11814,7 +11722,7 @@ COMMIT";
 	}
 	
 	### Now write the vnet udev rules file.
-	$shell_call = "cat > $conf->{path}{nodes}{udev_vnet_rules} << EOF\n";
+	$shell_call = "cat > ".$an->data->{path}{nodes}{udev_vnet_rules}." << EOF\n";
 	$shell_call .= "$udev_vnet_rules\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11823,7 +11731,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11837,7 +11745,7 @@ COMMIT";
 	}
 	
 	# Hosts file.
-	$shell_call =  "cat > $conf->{path}{nodes}{hosts} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{hosts}." << EOF\n";
 	$shell_call .= "$hosts\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11846,7 +11754,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11860,7 +11768,7 @@ COMMIT";
 	}
 	
 	### Now write the hostname file and set the hostname for the current session.
-	$shell_call =  "cat > $conf->{path}{nodes}{hostname} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{hostname}." << EOF\n";
 	$shell_call .= "$hostname\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11869,7 +11777,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11882,14 +11790,14 @@ COMMIT";
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$shell_call = "hostname $conf->{cgi}{$name_key}";
+	$shell_call = "hostname $an->data->{cgi}{$name_key}";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11914,7 +11822,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11936,9 +11844,9 @@ COMMIT";
 					node  => $node, 
 					lines => $lines, 
 				}, file => $THIS_FILE, line => __LINE__});
-				$conf->{node}{$node}{reboot_needed} = 1;
+				$an->data->{node}{$node}{reboot_needed} = 1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "node::${node}::reboot_needed", value1 => $conf->{node}{$node}{reboot_needed},
+					name1 => "node::${node}::reboot_needed", value1 => $an->data->{node}{$node}{reboot_needed},
 				}, file => $THIS_FILE, line => __LINE__}); 
 			}
 			else
@@ -11953,7 +11861,7 @@ COMMIT";
 	}
 	
 	# Now write the new one.
-	$shell_call =  "cat > $conf->{path}{nodes}{iptables} << EOF\n";
+	$shell_call =  "cat > ".$an->data->{path}{nodes}{iptables}." << EOF\n";
 	$shell_call .= "$iptables\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11962,7 +11870,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -11985,7 +11893,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -12005,7 +11913,7 @@ COMMIT";
 	if (not $bridge_found)
 	{
 		# Reboot needed.
-		$conf->{node}{$node}{reboot_needed} = 1;
+		$an->data->{node}{$node}{reboot_needed} = 1;
 		$an->Log->entry({log_level => 2, message_key => "log_0182", message_variables => {
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -12021,16 +11929,15 @@ COMMIT";
 # servers need to be added. It will add any that are missing.
 sub configure_ntp
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
 	# Only proceed if at least one NTP server is defined.
-	if (($conf->{cgi}{anvil_ntp1}) || ($conf->{cgi}{anvil_ntp2}))
+	if (($an->data->{cgi}{anvil_ntp1}) || ($an->data->{cgi}{anvil_ntp2}))
 	{
-		my ($node1_ok) = configure_ntp_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-		my ($node2_ok) = configure_ntp_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+		my ($node1_ok) = configure_ntp_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+		my ($node2_ok) = configure_ntp_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		# 0 = NTP server(s) already defined.
 		# 1 = Added OK
 		# 2 = problem adding NTP server
@@ -12083,23 +11990,22 @@ sub configure_ntp
 # This configures the network.
 sub configure_network
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
+		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $an->data->{cgi}{anvil_ifn_ethtool_opts},
 	}, file => $THIS_FILE, line => __LINE__});
-	$conf->{cgi}{anvil_bcn_ethtool_opts} =~ s/\$/\\\$/g;
-	$conf->{cgi}{anvil_sn_ethtool_opts}  =~ s/\$/\\\$/g;
-	$conf->{cgi}{anvil_ifn_ethtool_opts} =~ s/\$/\\\$/g;
+	$an->data->{cgi}{anvil_bcn_ethtool_opts} =~ s/\$/\\\$/g;
+	$an->data->{cgi}{anvil_sn_ethtool_opts}  =~ s/\$/\\\$/g;
+	$an->data->{cgi}{anvil_ifn_ethtool_opts} =~ s/\$/\\\$/g;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $conf->{cgi}{anvil_ifn_ethtool_opts},
+		name1 => "cgi::anvil_ifn_ethtool_opts", value1 => $an->data->{cgi}{anvil_ifn_ethtool_opts},
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
-	my ($node2_ok) = configure_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 2, "#!string!device_0006!#");
+	my ($node1_ok) = configure_network_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, 1, "#!string!device_0005!#");
+	my ($node2_ok) = configure_network_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, 2, "#!string!device_0006!#");
 	# 0 = OK
 	# 1 = A MAC address was missing when preparing to write udev
 	# 2 = A string (or something) was found in the variable where the MAC should have been.
@@ -12154,8 +12060,7 @@ sub configure_network
 # into the current user's language.
 sub parse_script_line
 {
-	my ($conf, $source, $node, $line) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $source, $node, $line) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_script_line" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "source", value1 => $source, 
 		name2 => "node",   value2 => $node, 
@@ -12170,9 +12075,9 @@ sub parse_script_line
 	{
 		# Program exited, reboot?
 		my $reboot = $1;
-		$conf->{node}{$node}{reboot_needed} = $reboot eq "reboot" ? 1 : 0;
+		$an->data->{node}{$node}{reboot_needed} = $reboot eq "reboot" ? 1 : 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node}::reboot_needed", value1 => $conf->{node}{$node}{reboot_needed},
+			name1 => "node::${node}::reboot_needed", value1 => $an->data->{node}{$node}{reboot_needed},
 		}, file => $THIS_FILE, line => __LINE__});
 		return("<br />\n");
 	}
@@ -12217,17 +12122,16 @@ sub parse_script_line
 # order to map the physical interfaces to MAC addresses.
 sub map_network
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
-	my ($node2_rc) = map_network_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
+	my ($node1_rc) = map_network_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, 0, "#!string!device_0005!#");
+	my ($node2_rc) = map_network_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, 0, "#!string!device_0006!#");
 	
 	# Loop through the MACs seen and see if we've got a match for all
 	# already. If any are missing, we'll need to remap.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	
 	# These will be all populated *if*;
 	# * The MACs seen on each node match MACs passed in from CGI (or 
@@ -12235,85 +12139,85 @@ sub map_network
 	# * If the existing network appears complete already.
 	# If any are missing, a remap will be needed.
 	# Node 1
-	$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{sn_link1}  = "";
-	$conf->{conf}{node}{$node1}{set_nic}{sn_link2}  = "";
-	$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = "";
-	$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1} = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2} = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{sn_link1}  = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{sn_link2}  = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1} = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2} = "";
 	# Node 2
-	$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{sn_link1}  = "";
-	$conf->{conf}{node}{$node2}{set_nic}{sn_link2}  = "";
-	$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = "";
-	$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = "";
-	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node1}{current_nic}})
+	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1} = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2} = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{sn_link1}  = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{sn_link2}  = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1} = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2} = "";
+	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node1}{current_nic}})
 	{
-		my $mac = $conf->{conf}{node}{$node1}{current_nic}{$nic};
+		my $mac = $an->data->{conf}{node}{$node1}{current_nic}{$nic};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node", value1 => $node1,
 			name2 => "nic",  value2 => $nic,
 			name3 => "mac",  value3 => $mac,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link1_mac},
+			name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_bcn_link2_mac", value1 => $conf->{cgi}{anvil_node1_bcn_link2_mac},
+			name1 => "cgi::anvil_node1_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $conf->{cgi}{anvil_node1_sn_link1_mac},
+			name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_sn_link2_mac", value1 => $conf->{cgi}{anvil_node1_sn_link2_mac},
+			name1 => "cgi::anvil_node1_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link1_mac},
+			name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_ifn_link2_mac", value1 => $conf->{cgi}{anvil_node1_ifn_link2_mac},
+			name1 => "cgi::anvil_node1_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($mac eq $conf->{cgi}{anvil_node1_bcn_link1_mac})
+		if ($mac eq $an->data->{cgi}{anvil_node1_bcn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::bcn_link1", value1 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
+				name1 => "conf::node::${node1}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node1_bcn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node1_bcn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::bcn_link2", value1 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
+				name1 => "conf::node::${node1}::set_nic::bcn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link1_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node1_sn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::sn_link1", value1 => $conf->{conf}{node}{$node1}{set_nic}{sn_link1},
+				name1 => "conf::node::${node1}::set_nic::sn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node1_sn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node1_sn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::sn_link2", value1 => $conf->{conf}{node}{$node1}{set_nic}{sn_link2},
+				name1 => "conf::node::${node1}::set_nic::sn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link1_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node1_ifn_link1_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::ifn_link1", value1 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
+				name1 => "conf::node::${node1}::set_nic::ifn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node1_ifn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node1_ifn_link2_mac})
 		{
-			$conf->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
+			$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node1}::set_nic::ifn_link2", value1 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
+				name1 => "conf::node::${node1}::set_nic::ifn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -12324,75 +12228,75 @@ sub map_network
 				nic  => $nic, 
 				mac  => $mac, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{conf}{node}{$node1}{unknown_nic}{$nic} = $mac;
+			$an->data->{conf}{node}{$node1}{unknown_nic}{$nic} = $mac;
 		}
 	}
-	foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node2}{current_nic}})
+	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node2}{current_nic}})
 	{
-		my $mac = $conf->{conf}{node}{$node2}{current_nic}{$nic};
+		my $mac = $an->data->{conf}{node}{$node2}{current_nic}{$nic};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node", value1 => $node2,
 			name2 => "nic",  value2 => $nic,
 			name3 => "mac",  value3 => $mac,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link1_mac},
+			name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_bcn_link2_mac", value1 => $conf->{cgi}{anvil_node2_bcn_link2_mac},
+			name1 => "cgi::anvil_node2_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $conf->{cgi}{anvil_node2_sn_link1_mac},
+			name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_sn_link2_mac", value1 => $conf->{cgi}{anvil_node2_sn_link2_mac},
+			name1 => "cgi::anvil_node2_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link1_mac},
+			name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link1_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_ifn_link2_mac", value1 => $conf->{cgi}{anvil_node2_ifn_link2_mac},
+			name1 => "cgi::anvil_node2_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($mac eq $conf->{cgi}{anvil_node2_bcn_link1_mac})
+		if ($mac eq $an->data->{cgi}{anvil_node2_bcn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::bcn_link1", value1 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
+				name1 => "conf::node::${node2}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node2_bcn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node2_bcn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::bcn_link2", value1 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
+				name1 => "conf::node::${node2}::set_nic::bcn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link1_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node2_sn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::sn_link1", value1 => $conf->{conf}{node}{$node2}{set_nic}{sn_link1},
+				name1 => "conf::node::${node2}::set_nic::sn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node2_sn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node2_sn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::sn_link2", value1 => $conf->{conf}{node}{$node2}{set_nic}{sn_link2},
+				name1 => "conf::node::${node2}::set_nic::sn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link1_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node2_ifn_link1_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::ifn_link1", value1 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
+				name1 => "conf::node::${node2}::set_nic::ifn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($mac eq $conf->{cgi}{anvil_node2_ifn_link2_mac})
+		elsif ($mac eq $an->data->{cgi}{anvil_node2_ifn_link2_mac})
 		{
-			$conf->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
+			$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node2}::set_nic::ifn_link2", value1 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
+				name1 => "conf::node::${node2}::set_nic::ifn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
@@ -12403,7 +12307,7 @@ sub map_network
 				nic  => $nic, 
 				mac  => $mac, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{conf}{node}{$node2}{unknown_nic}{$nic} = $mac;
+			$an->data->{conf}{node}{$node2}{unknown_nic}{$nic} = $mac;
 		}
 	}
 	
@@ -12414,26 +12318,26 @@ sub map_network
 	
 	### TODO: Check *all* devices, not just ifn_bridge1
 	# Check node1
-	if ((exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
+	if ((exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
 		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
-		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
+		foreach my $node (sort {$a cmp $b} keys %{$an->data->{conf}{node}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
+			foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{unknown_nic}})
 			{
-				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
-				$conf->{conf}{node}{$node}{set_nic}{$nic} = $mac;
+				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
+				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "Node", value1 => $node,
 					name2 => "nic",  value2 => $nic,
-					name3 => "mac",  value3 => $conf->{conf}{node}{$node}{set_nic}{$nic},
+					name3 => "mac",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -12442,44 +12346,44 @@ sub map_network
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "node",      value1 => $node1,
-			name2 => "bcn_link1", value2 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link1},
-			name3 => "bcn_link2", value3 => $conf->{conf}{node}{$node1}{set_nic}{bcn_link2},
-			name4 => "sn_link1",  value4 => $conf->{conf}{node}{$node1}{set_nic}{sn_link1},
-			name5 => "sn_link2",  value5 => $conf->{conf}{node}{$node1}{set_nic}{sn_link2},
-			name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link1},
-			name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node1}{set_nic}{ifn_link2},
+			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
+			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
+			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
+			name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
+			name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
+			name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $conf->{conf}{node}{$node1}{set_nic}{bcn_link1}) || 
-		    (not $conf->{conf}{node}{$node1}{set_nic}{bcn_link2}) ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{sn_link1})  ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{sn_link2})  ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{ifn_link1}) ||
-		    (not $conf->{conf}{node}{$node1}{set_nic}{ifn_link2}))
+		if ((not $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1}) || 
+		    (not $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2}) ||
+		    (not $an->data->{conf}{node}{$node1}{set_nic}{sn_link1})  ||
+		    (not $an->data->{conf}{node}{$node1}{set_nic}{sn_link2})  ||
+		    (not $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1}) ||
+		    (not $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2}))
 		{
 			$node1_remap_needed = 1;
 		}
 	}
 	# Check node 2
-	if ((exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}) && (exists $conf->{conf}{node}{$node2}{current_nic}{ifn_bridge1}))
+	if ((exists $an->data->{conf}{node}{$node2}{current_nic}{ifn_bridge1}) && (exists $an->data->{conf}{node}{$node2}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
 		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
 		# To make the summary look better, we'll take the NICs we
 		# thought we didn't recognize and feed them into 'set_nic'.
-		foreach my $node (sort {$a cmp $b} keys %{$conf->{conf}{node}})
+		foreach my $node (sort {$a cmp $b} keys %{$an->data->{conf}{node}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $nic (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{unknown_nic}})
+			foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{unknown_nic}})
 			{
-				my $mac = $conf->{conf}{node}{$node}{unknown_nic}{$nic};
-				$conf->{conf}{node}{$node}{set_nic}{$nic} = $mac;
+				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
+				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "Node", value1 => $node,
 					name2 => "nic",  value2 => $nic,
-					name3 => "mac",  value3 => $conf->{conf}{node}{$node}{set_nic}{$nic},
+					name3 => "mac",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -12488,19 +12392,19 @@ sub map_network
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 			name1 => "node",      value1 => $node2,
-			name2 => "bcn_link1", value2 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link1},
-			name3 => "bcn_link2", value3 => $conf->{conf}{node}{$node2}{set_nic}{bcn_link2},
-			name4 => "sn_link1",  value4 => $conf->{conf}{node}{$node2}{set_nic}{sn_link1},
-			name5 => "sn_link2",  value5 => $conf->{conf}{node}{$node2}{set_nic}{sn_link2},
-			name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link1},
-			name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node2}{set_nic}{ifn_link2},
+			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
+			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
+			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
+			name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
+			name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
+			name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $conf->{conf}{node}{$node2}{set_nic}{bcn_link1}) || 
-		    (not $conf->{conf}{node}{$node2}{set_nic}{bcn_link2}) ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{sn_link1})  ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{sn_link2})  ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{ifn_link1}) ||
-		    (not $conf->{conf}{node}{$node2}{set_nic}{ifn_link2}))
+		if ((not $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1}) || 
+		    (not $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2}) ||
+		    (not $an->data->{conf}{node}{$node2}{set_nic}{sn_link1})  ||
+		    (not $an->data->{conf}{node}{$node2}{set_nic}{sn_link2})  ||
+		    (not $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1}) ||
+		    (not $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2}))
 		{
 			$node2_remap_needed = 1;
 		}
@@ -12523,9 +12427,9 @@ sub map_network
 		$node2_message = "#!string!state_0031!#",
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cgi::remap_network", value1 => $conf->{cgi}{remap_network},
+		name1 => "cgi::remap_network", value1 => $an->data->{cgi}{remap_network},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{cgi}{remap_network})
+	if ($an->data->{cgi}{remap_network})
 	{
 		$node1_class        = "highlight_note_bold";
 		$node1_message      = "#!string!state_0032!#",
@@ -12549,15 +12453,14 @@ sub map_network
 # This downloads and runs the 'anvil-map-network' script
 sub map_network_on_node
 {
-	my ($conf, $node, $password, $remap, $say_node) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $remap, $say_node) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network_on_node" }, message_key => "an_variables_0003", message_variables => { 
 		name1 => "node",     value1 => $node, 
 		name2 => "remap",    value2 => $remap, 
 		name3 => "say_node", value3 => $say_node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$conf->{cgi}{update_manifest} = 0 if not $conf->{cgi}{update_manifest};
+	$an->data->{cgi}{update_manifest} = 0 if not $an->data->{cgi}{update_manifest};
 	if ($remap)
 	{
 		my $title = $an->String->get({key => "title_0174", variables => { node => $say_node }});
@@ -12568,32 +12471,32 @@ sub map_network_on_node
 	# First, make sure the script is downloaded and ready to run.
 	my $proceed    = 0;
 	my $shell_call = "
-if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ];
+if [ ! -e \"".$an->data->{path}{'anvil-map-network'}."\" ];
 then
     echo 'not found'
 else
-    if [ ! -s \"$conf->{path}{'anvil-map-network'}\" ];
+    if [ ! -s \"".$an->data->{path}{'anvil-map-network'}."\" ];
     then
         echo 'blank file';
-        if [ -e \"$conf->{path}{'anvil-map-network'}\" ]; 
+        if [ -e \"".$an->data->{path}{'anvil-map-network'}."\" ]; 
         then
-            rm -f $conf->{path}{'anvil-map-network'};
+            rm -f ".$an->data->{path}{'anvil-map-network'}.";
         fi;
     else
-        chmod 755 $conf->{path}{'anvil-map-network'};
+        chmod 755 ".$an->data->{path}{'anvil-map-network'}.";
         echo ready;
     fi
 fi";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $conf->{node}{$node}{internet_access})
+	if (not $an->data->{node}{$node}{internet_access})
 	{
 		### TODO: figure out a way to see if either dashboard is online
 		###       and, if so, try to download this from them.
 		# No net, so no sense trying to download.
 		$shell_call = "
-if [ ! -e \"$conf->{path}{'anvil-map-network'}\" ];
+if [ ! -e \"".$an->data->{path}{'anvil-map-network'}."\" ];
 then
     echo 'not found'
 else
@@ -12601,7 +12504,7 @@ else
     then
         echo 'directory: [/sbin/striker] not found'
     else
-        chmod 755 $conf->{path}{'anvil-map-network'};
+        chmod 755 $an->data->{path}{'anvil-map-network'};
     fi
 fi";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12614,7 +12517,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -12663,33 +12566,33 @@ fi";
 			print $an->String->get({key => "message_0378"});
 		}
 	}
-	elsif ($conf->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
+	elsif ($an->data->{node}{$node}{ssh_fh} !~ /^Net::SSH2/)
 	{
 		# Invalid or broken SSH handle.
 		$an->Log->entry({log_level => 1, message_key => "log_0186", message_variables => {
 			node   => $node, 
-			ssh_fh => $conf->{node}{$node}{ssh_fh}, 
+			ssh_fh => $an->data->{node}{$node}{ssh_fh}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$return_code = 8;
 	}
 	else
 	{
 		# I need input from the user, so I need to call the client directly
-		my $cluster = $conf->{cgi}{cluster};
+		my $cluster = $an->data->{cgi}{cluster};
 		my $port    = 22;
 		my $user    = "root";
-		my $ssh_fh  = $conf->{node}{$node}{ssh_fh};
+		my $ssh_fh  = $an->data->{node}{$node}{ssh_fh};
 		my $close   = 0;
 		
 		### Build the shell call
 		# Figure out the hash keys to use
 		my $i;
-		if ($node eq $conf->{cgi}{anvil_node1_current_ip})
+		if ($node eq $an->data->{cgi}{anvil_node1_current_ip})
 		{
 			# Node is 1
 			$i = 1;
 		}
-		elsif ($node eq $conf->{cgi}{anvil_node2_current_ip})
+		elsif ($node eq $an->data->{cgi}{anvil_node2_current_ip})
 		{
 			# Node is 2
 			$i = 2;
@@ -12700,18 +12603,18 @@ fi";
 			$return_code = 7;
 		}
 		
-		my $shell_call = "$conf->{path}{'anvil-map-network'} --script --summary";
+		my $shell_call = $an->data->{path}{'anvil-map-network'}." --script --summary";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "remap", value1 => $remap,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($remap)
 		{
-			$conf->{cgi}{update_manifest} = 1;
-			$shell_call = "$conf->{path}{'anvil-map-network'} --script";
+			$an->data->{cgi}{update_manifest} = 1;
+			$shell_call = $an->data->{path}{'anvil-map-network'}." --script";
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call",           value1 => $shell_call,
-			name2 => "cgi::update_manifest", value2 => $conf->{cgi}{update_manifest},
+			name2 => "cgi::update_manifest", value2 => $an->data->{cgi}{update_manifest},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		### Start the call
@@ -12763,15 +12666,15 @@ fi";
 				{
 					my $nic = $1;
 					my $mac = $2;
-					$conf->{conf}{node}{$node}{current_nic}{$nic} = $mac;
+					$an->data->{conf}{node}{$node}{current_nic}{$nic} = $mac;
 					$nics_seen++;
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "conf::node::${node}::current_nics::$nic", value1 => $conf->{conf}{node}{$node}{current_nic}{$nic},
+						name1 => "conf::node::${node}::current_nics::$nic", value1 => $an->data->{conf}{node}{$node}{current_nic}{$nic},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					print parse_script_line($conf, "STDOUT", $node, $line);
+					print parse_script_line($an, "STDOUT", $node, $line);
 				}
 			}
 			
@@ -12786,7 +12689,7 @@ fi";
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "STDERR", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
-				print parse_script_line($conf, "STDERR", $node, $line);
+				print parse_script_line($an, "STDERR", $node, $line);
 			}
 			
 			# Exit when we get the end-of-file.
@@ -12799,20 +12702,20 @@ fi";
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-end-network-config"});
 		
 		# We should now know this info.
-		$conf->{conf}{node}{$node}{set_nic}{bcn_link1} = $conf->{conf}{node}{$node}{current_nic}{bcn_link1};
-		$conf->{conf}{node}{$node}{set_nic}{bcn_link2} = $conf->{conf}{node}{$node}{current_nic}{bcn_link2};
-		$conf->{conf}{node}{$node}{set_nic}{sn_link1}  = $conf->{conf}{node}{$node}{current_nic}{sn_link1};
-		$conf->{conf}{node}{$node}{set_nic}{sn_link2}  = $conf->{conf}{node}{$node}{current_nic}{sn_link2};
-		$conf->{conf}{node}{$node}{set_nic}{ifn_link1} = $conf->{conf}{node}{$node}{current_nic}{ifn_link1};
-		$conf->{conf}{node}{$node}{set_nic}{ifn_link2} = $conf->{conf}{node}{$node}{current_nic}{ifn_link2};
+		$an->data->{conf}{node}{$node}{set_nic}{bcn_link1} = $an->data->{conf}{node}{$node}{current_nic}{bcn_link1};
+		$an->data->{conf}{node}{$node}{set_nic}{bcn_link2} = $an->data->{conf}{node}{$node}{current_nic}{bcn_link2};
+		$an->data->{conf}{node}{$node}{set_nic}{sn_link1}  = $an->data->{conf}{node}{$node}{current_nic}{sn_link1};
+		$an->data->{conf}{node}{$node}{set_nic}{sn_link2}  = $an->data->{conf}{node}{$node}{current_nic}{sn_link2};
+		$an->data->{conf}{node}{$node}{set_nic}{ifn_link1} = $an->data->{conf}{node}{$node}{current_nic}{ifn_link1};
+		$an->data->{conf}{node}{$node}{set_nic}{ifn_link2} = $an->data->{conf}{node}{$node}{current_nic}{ifn_link2};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
 			name1 => "node",      value1 => $node,
-			name2 => "bcn_link1", value2 => $conf->{conf}{node}{$node}{set_nic}{bcn_link1},
-			name3 => "bcn_link2", value3 => $conf->{conf}{node}{$node}{set_nic}{bcn_link2},
-			name4 => "sn_link1",  value4 => $conf->{conf}{node}{$node}{set_nic}{sn_link1},
-			name5 => "sn_link2",  value5 => $conf->{conf}{node}{$node}{set_nic}{sn_link2},
-			name6 => "ifn_link1", value6 => $conf->{conf}{node}{$node}{set_nic}{ifn_link1},
-			name7 => "ifn_link2", value7 => $conf->{conf}{node}{$node}{set_nic}{ifn_link2},
+			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node}{set_nic}{bcn_link1},
+			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node}{set_nic}{bcn_link2},
+			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node}{set_nic}{sn_link1},
+			name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node}{set_nic}{sn_link2},
+			name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node}{set_nic}{ifn_link1},
+			name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node}{set_nic}{ifn_link2},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -12840,18 +12743,17 @@ fi";
 # This checks to see which, if any, packages need to be installed.
 sub install_programs
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_programs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0129!#" }});
 	
 	### TODO: make these run at the same time
-	my ($node1_ok) = install_missing_packages($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_ok) = install_missing_packages($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my ($node1_ok) = install_missing_packages($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_ok) = install_missing_packages($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	
 	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
@@ -12863,7 +12765,7 @@ sub install_programs
 	{
 		$node1_class   = "highlight_bad_bold";
 		$node1_message = $an->String->get({key => "state_0025", variables => { 
-				missing	=>	$conf->{node}{$node1}{missing_rpms},
+				missing	=>	$an->data->{node}{$node1}{missing_rpms},
 				node	=>	$node1,
 			}});
 		$ok            = 0;
@@ -12872,7 +12774,7 @@ sub install_programs
 	{
 		$node2_class   = "highlight_bad_bold";
 		$node2_message = $an->String->get({key => "state_0025", variables => { 
-				missing	=>	$conf->{node}{$node2}{missing_rpms},
+				missing	=>	$an->data->{node}{$node2}{missing_rpms},
 				node	=>	$node2,
 			}});
 		$ok            = 0;
@@ -12888,11 +12790,11 @@ sub install_programs
 	
 	if (not $ok)
 	{
-		if ((not $conf->{node}{$node1}{internet}) || (not $conf->{node}{$node2}{internet}))
+		if ((not $an->data->{node}{$node1}{internet}) || (not $an->data->{node}{$node2}{internet}))
 		{
 			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0370!#" }});
 		}
-		elsif (($conf->{node}{$node1}{os}{brand} =~ /Red Hat/) || ($conf->{node}{$node2}{os}{brand} =~ /Red Hat/))
+		elsif (($an->data->{node}{$node1}{os}{brand} =~ /Red Hat/) || ($an->data->{node}{$node2}{os}{brand} =~ /Red Hat/))
 		{
 			print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed", replace => { message => "#!string!message_0369!#" }});
 		}
@@ -12908,24 +12810,23 @@ sub install_programs
 # This builds a list of missing packages and installs any that are missing.
 sub install_missing_packages
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_missing_packages" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	get_installed_package_list($conf, $node, $password);
+	get_installed_package_list($an, $node, $password);
 	
 	# Figure out which are missing.
 	my $to_install = "";
-	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
+	foreach my $package (sort {$a cmp $b} keys %{$an->data->{packages}{to_install}})
 	{
 		# Watch for autovivication...
-		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
+		if ((exists $an->data->{node}{$node}{packages}{installed}{$package}) && ($an->data->{node}{$node}{packages}{installed}{$package} == 1))
 		{
 			# Already installed
-			$conf->{packages}{to_install}{$package} = 1;
+			$an->data->{packages}{to_install}{$package} = 1;
 			$an->Log->entry({log_level => 3, message_key => "log_0187", message_variables => {
 				node      => $node, 
 				'package' => $package, 
@@ -12934,7 +12835,7 @@ sub install_missing_packages
 		else
 		{
 			# Needed
-			$conf->{packages}{to_install}{$package} = 1;
+			$an->data->{packages}{to_install}{$package} = 1;
 			$an->Log->entry({log_level => 2, message_key => "log_0188", message_variables => {
 				node      => $node, 
 				'package' => $package, 
@@ -12949,14 +12850,14 @@ sub install_missing_packages
 	
 	if ($to_install)
 	{
-		my $shell_call = "yum $conf->{sys}{yum_switches} install $to_install";
+		my $shell_call = "yum $an->data->{sys}{yum_switches} install $to_install";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -12982,16 +12883,16 @@ sub install_missing_packages
 	}
 	
 	# Now make sure everything is installed.
-	get_installed_package_list($conf, $node, $password);
+	get_installed_package_list($an, $node, $password);
 	
 	my $missing = "";
-	foreach my $package (sort {$a cmp $b} keys %{$conf->{packages}{to_install}})
+	foreach my $package (sort {$a cmp $b} keys %{$an->data->{packages}{to_install}})
 	{
 		# Watch for autovivication...
-		if ((exists $conf->{node}{$node}{packages}{installed}{$package}) && ($conf->{node}{$node}{packages}{installed}{$package} == 1))
+		if ((exists $an->data->{node}{$node}{packages}{installed}{$package}) && ($an->data->{node}{$node}{packages}{installed}{$package} == 1))
 		{
 			# Already installed
-			$conf->{packages}{to_install}{$package} = 1;
+			$an->data->{packages}{to_install}{$package} = 1;
 			$an->Log->entry({log_level => 3, message_key => "log_0187", message_variables => {
 				node      => $node, 
 				'package' => $package, 
@@ -13017,7 +12918,7 @@ sub install_missing_packages
 	if ($missing)
 	{
 		$ok = 0;
-		$conf->{node}{$node}{missing_rpms} = $missing;
+		$an->data->{node}{$node}{missing_rpms} = $missing;
 	}
 	else
 	{
@@ -13043,7 +12944,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -13074,13 +12975,13 @@ fi";
 		
 		# If the MegaCli64 binary exists, make sure there is a symlink to it.
 		$shell_call = "
-if [ -e '$conf->{path}{nodes}{MegaCli64}' ]; 
+if [ -e '".$an->data->{path}{nodes}{MegaCli64}."' ]; 
 then 
     if [ -e '/sbin/MegaCli64' ]
     then
         echo '/sbin/MegaCli64 symlink exists';
     else
-        ln -s $conf->{path}{nodes}{MegaCli64} /sbin/
+        ln -s ".$an->data->{path}{nodes}{MegaCli64}." /sbin/
         if [ -e '/sbin/MegaCli64' ]
         then
             echo '/sbin/MegaCli64 symlink created';
@@ -13097,7 +12998,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -13115,7 +13016,7 @@ fi";
 				$ok = 0;
 				$an->Log->entry({log_level => 1, message_key => "log_0191", message_variables => {
 					program => "MegaCli64", 
-					path    => $conf->{path}{nodes}{MegaCli64}, 
+					path    => $an->data->{path}{nodes}{MegaCli64}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /exists/i)
@@ -13136,13 +13037,13 @@ fi";
 		
 		# Now make sure we have the storcli symlink.
 		$shell_call = "
-if [ -e '$conf->{path}{nodes}{storcli64}' ]; 
+if [ -e '".$an->data->{path}{nodes}{storcli64}."' ]; 
 then 
     if [ -e '/sbin/storcli64' ]
     then
         echo '/sbin/storcli64 symlink exists';
     else
-        ln -s $conf->{path}{nodes}{storcli64} /sbin/
+        ln -s ".$an->data->{path}{nodes}{storcli64}." /sbin/
         if [ -e '/sbin/storcli64' ]
         then
             echo '/sbin/storcli64 symlink created';
@@ -13159,7 +13060,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -13177,7 +13078,7 @@ fi";
 				$ok = 0;
 				$an->Log->entry({log_level => 1, message_key => "log_0191", message_variables => {
 					program => "storcli64", 
-					path    => $conf->{path}{nodes}{storcli64}, 
+					path    => $an->data->{path}{nodes}{storcli64}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /exists/i)
@@ -13230,7 +13131,7 @@ fi
 		}, file => $THIS_FILE, line => __LINE__});
 		($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -13251,8 +13152,7 @@ fi
 # needed packages are installed.
 sub get_installed_package_list
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_installed_package_list" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13265,7 +13165,7 @@ sub get_installed_package_list
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13294,8 +13194,8 @@ sub get_installed_package_list
 			my $package_with_arch = "$package.$arch";
 			
 			# NOTE: Someday record the version.
-			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
-			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package}           = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "Package", value1 => $package,
 				name2 => "arch",    value2 => $arch,
@@ -13315,8 +13215,8 @@ sub get_installed_package_list
 			my $package_with_arch = "$package.$arch";
 			
 			# NOTE: Someday record the version.
-			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
-			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package}           = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "Package", value1 => $package,
 				name2 => "arch",    value2 => $arch,
@@ -13334,8 +13234,8 @@ sub get_installed_package_list
 			# we record the package with arch as '1'.
 			my $package_with_arch = "$package.$arch";
 			
-			$conf->{node}{$node}{packages}{installed}{$package}           = 1;
-			$conf->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package}           = 1;
+			$an->data->{node}{$node}{packages}{installed}{$package_with_arch} = 1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "Package", value1 => $package,
 				name2 => "arch",    value2 => $arch,
@@ -13349,26 +13249,25 @@ sub get_installed_package_list
 # This calls yum update against both nodes.
 sub update_nodes
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0130!#" }});
 	
 	# The OS update is good, but not fatal if it fails.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	   $conf->{node}{$node1}{os_updated} = 0;
-	   $conf->{node}{$node2}{os_updated} = 0;
-	my ($node1_rc) = update_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_rc) = update_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvi2_node1_current_password});
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
+	   $an->data->{node}{$node1}{os_updated} = 0;
+	   $an->data->{node}{$node2}{os_updated} = 0;
+	my ($node1_rc) = update_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_rc) = update_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvi2_node1_current_password});
 	# 0 = update attempted
 	# 1 = OS updates disabled in manifest
 	
 	# Remove the priority= from the nodes. We don't care about the output.
-	remove_priority_from_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	remove_priority_from_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvi2_node1_current_password});
+	remove_priority_from_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	remove_priority_from_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvi2_node1_current_password});
 	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0026!#";
@@ -13378,7 +13277,7 @@ sub update_nodes
 	{
 		$node1_message = "#!string!state_0060!#",
 	}
-	elsif (not $conf->{node}{$node1}{os_updated})
+	elsif (not $an->data->{node}{$node1}{os_updated})
 	{
 		$node1_message = "#!string!state_0027!#",
 	}
@@ -13386,7 +13285,7 @@ sub update_nodes
 	{
 		$node2_message = "#!string!state_0060!#",
 	}
-	elsif (not $conf->{node}{$node2}{os_updated})
+	elsif (not $an->data->{node}{$node2}{os_updated})
 	{
 		$node2_message = "#!string!state_0027!#",
 	}
@@ -13404,8 +13303,7 @@ sub update_nodes
 # This sed's out the 'priority=' from the striker repos.
 sub remove_priority_from_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_priority_from_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13423,7 +13321,7 @@ done
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13442,23 +13340,22 @@ done
 # This calls the yum update and flags the node for a reboot if the kernel is updated.
 sub update_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Skip if the user has decided not to run OS updates.
-	return(1) if not $conf->{sys}{update_os};
+	return(1) if not $an->data->{sys}{update_os};
 	
-	my $shell_call = "yum $conf->{sys}{yum_switches} update";
+	my $shell_call = "yum $an->data->{sys}{yum_switches} update";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13475,7 +13372,7 @@ sub update_node
 		if ($line =~ /Installing : kernel/)
 		{
 			# New kernel, we'll need to reboot.
-			$conf->{node}{$node}{reboot_needed} = 1;
+			$an->data->{node}{$node}{reboot_needed} = 1;
 			$an->Log->entry({log_level => 2, message_key => "log_0194", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -13483,7 +13380,7 @@ sub update_node
 		if ($line =~ /Total download size/)
 		{
 			# Updated packages
-			$conf->{node}{$node}{os_updated} = 1;
+			$an->data->{node}{$node}{os_updated} = 1;
 			$an->Log->entry({log_level => 2, message_key => "log_0195", message_variables => {
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -13496,12 +13393,11 @@ sub update_node
 # This checks to see if perl is installed on the nodes and installs it if not.
 sub verify_perl_is_installed
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_ok) = verify_perl_is_installed_on_node($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_ok) = verify_perl_is_installed_on_node($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_ok) = verify_perl_is_installed_on_node($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
@@ -13555,8 +13451,7 @@ sub verify_perl_is_installed
 # This will check to see if perl is installed and, if it's not, it will try to install it.
 sub verify_perl_is_installed_on_node
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed_on_node" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13569,7 +13464,7 @@ if [ -e '/usr/bin/perl' ];
 then
     echo striker:ok
 else
-    yum $conf->{sys}{yum_switches} install perl;
+    yum $an->data->{sys}{yum_switches} install perl;
     if [ -e '/usr/bin/perl' ];
     then
         echo striker:installed
@@ -13583,7 +13478,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13619,39 +13514,38 @@ fi";
 # This pings alteeve.ca to check for internet access.
 sub verify_internet_access
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_internet_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the user knows they will never be online, they may have set to hide the Internet check. In this
 	# case, don't waste time checking.
-	if (not $conf->{sys}{install_manifest}{show}{internet_check})
+	if (not $an->data->{sys}{install_manifest}{show}{internet_check})
 	{
 		# User has disabled checking for an internet connection, mark that there is no connection.
 		$an->Log->entry({log_level => 2, message_key => "log_0196", file => $THIS_FILE, line => __LINE__});
-		my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-		my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-		$conf->{node}{$node1}{internet} = 0;
-		$conf->{node}{$node2}{internet} = 0;
+		my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+		my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
+		$an->data->{node}{$node1}{internet} = 0;
+		$an->data->{node}{$node2}{internet} = 0;
 		return(0);
 	}
 	
-	my ($node1_online) = ping_website($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_online) = ping_website($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_online) = ping_website($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_online) = ping_website($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# If the node is not online, we'll call yum with the switches to  disable all but our local repos.
 	if ((not $node1_online) or (not $node2_online))
 	{
 		# No internet, restrict access to local only.
-		$conf->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
+		$an->data->{sys}{yum_switches} = "-y --disablerepo='*' --enablerepo='striker*'";
 		$an->Log->entry({log_level => 2, message_key => "log_0197", file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# I need to remember if there is Internet access or not for later downloads (web or switch to local).
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
-	$conf->{node}{$node1}{internet_access} = $node1_online;
-	$conf->{node}{$node2}{internet_access} = $node2_online;
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
+	$an->data->{node}{$node1}{internet_access} = $node1_online;
+	$an->data->{node}{$node2}{internet_access} = $node2_online;
 	
 	my $ok            = 1;
 	my $node1_class   = "highlight_good_bold";
@@ -13694,8 +13588,7 @@ sub verify_internet_access
 # default one as well.
 sub ping_website
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_website" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13712,7 +13605,7 @@ sub ping_website
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13739,9 +13632,9 @@ sub ping_website
 			my $network   = $1;
 			my $netmask   = $2;
 			my $interface = $3;
-			$conf->{conf}{node}{$node}{routes}{interface}{$interface} = "$network/$netmask";
+			$an->data->{conf}{node}{$node}{routes}{interface}{$interface} = "$network/$netmask";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $conf->{conf}{node}{$node}{routes}{interface}{$interface},
+				name1 => "conf::node::${node}::routes::interface::${interface}", value1 => $an->data->{conf}{node}{$node}{routes}{interface}{$interface},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -13750,19 +13643,19 @@ sub ping_website
 	$an->Log->entry({log_level => 2, message_key => "log_0198", message_variables => {
 		node => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
-	my ($dg_network, $dg_netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+	my ($dg_network, $dg_netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "dg_device", value1 => $dg_device,
 		name2 => "network",   value2 => $dg_network/$dg_netmask,
 	}, file => $THIS_FILE, line => __LINE__});
-	foreach my $interface (sort {$a cmp $b} keys %{$conf->{conf}{node}{$node}{routes}{interface}})
+	foreach my $interface (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{routes}{interface}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "interface", value1 => $interface,
 			name2 => "dg_device", value2 => $dg_device,
 		}, file => $THIS_FILE, line => __LINE__});
 		next if $interface eq $dg_device;
-		my ($network, $netmask) = ($conf->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
+		my ($network, $netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -13770,14 +13663,14 @@ sub ping_website
 				name2 => "network",                      value2 => $network/$netmask,
 			}, file => $THIS_FILE, line => __LINE__});
 			my $shell_call = "route del -net $network netmask $netmask dev $interface; echo rc:\$?";
-			my $password   = $conf->{sys}{root_password};
+			my $password   = $an->data->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 				target		=>	$node,
-				port		=>	$conf->{node}{$node}{port}, 
+				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
 				ssh_fh		=>	"",
 				'close'		=>	0,
@@ -13826,7 +13719,7 @@ sub ping_website
 	}
 	
 	# Default to no connection
-	$conf->{node}{$node}{internet} = 0;
+	$an->data->{node}{$node}{internet} = 0;
 	
 	### TODO: If a node has two interfaces up on the same subnet, determine which matches the one we're 
 	###       coming in on and down the  other(s).
@@ -13838,14 +13731,14 @@ sub ping_website
 	if ($ping_rc eq "0")
 	{
 		$ok = 1;
-		$conf->{node}{$node}{internet} = 1;
+		$an->data->{node}{$node}{internet} = 1;
 	}
 	
 	# If there is no internet connection, add a yum repo for the cdrom
-	if (not $conf->{node}{$node}{internet})
+	if (not $an->data->{node}{$node}{internet})
 	{
 		# Make sure the DVD repo exists.
-		create_dvd_repo($conf, $node, $password);
+		create_dvd_repo($an, $node, $password);
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -13860,8 +13753,7 @@ sub ping_website
 # DVD.
 sub create_dvd_repo
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_dvd_repo" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -13938,7 +13830,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -13969,30 +13861,29 @@ fi";
 # found.
 sub calculate_storage_pool_sizes
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "calculate_storage_pool_sizes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# These will be set to the lower of the two nodes.
-	my $node1      = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2      = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1      = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2      = $an->data->{cgi}{anvil_node2_current_ip};
 	my $pool1_size = "";
 	my $pool2_size = "";
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::pool1::existing_size", value1 => $conf->{node}{$node1}{pool1}{existing_size},
-		name2 => "node::${node2}::pool1::existing_size", value2 => $conf->{node}{$node2}{pool1}{existing_size},
+		name1 => "node::${node1}::pool1::existing_size", value1 => $an->data->{node}{$node1}{pool1}{existing_size},
+		name2 => "node::${node2}::pool1::existing_size", value2 => $an->data->{node}{$node2}{pool1}{existing_size},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{pool1}{existing_size}) || ($conf->{node}{$node2}{pool1}{existing_size}))
+	if (($an->data->{node}{$node1}{pool1}{existing_size}) || ($an->data->{node}{$node2}{pool1}{existing_size}))
 	{
 		# See which I have.
-		if (($conf->{node}{$node1}{pool1}{existing_size}) && ($conf->{node}{$node2}{pool1}{existing_size}))
+		if (($an->data->{node}{$node1}{pool1}{existing_size}) && ($an->data->{node}{$node2}{pool1}{existing_size}))
 		{
 			# Both, OK. Are they the same?
-			if ($conf->{node}{$node1}{pool1}{existing_size} eq $conf->{node}{$node2}{pool1}{existing_size})
+			if ($an->data->{node}{$node1}{pool1}{existing_size} eq $an->data->{node}{$node2}{pool1}{existing_size})
 			{
 				# Golden
-				$pool1_size = $conf->{node}{$node1}{pool1}{existing_size};
+				$pool1_size = $an->data->{node}{$node1}{pool1}{existing_size};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -14000,24 +13891,24 @@ sub calculate_storage_pool_sizes
 			else
 			{
 				# Nothing we can do but warn the user.
-				$pool1_size = $conf->{node}{$node1}{pool1}{existing_size};
+				$pool1_size = $an->data->{node}{$node1}{pool1}{existing_size};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($conf->{node}{$node1}{pool1}{existing_size} < $conf->{node}{$node2}{pool1}{existing_size})
+				if ($an->data->{node}{$node1}{pool1}{existing_size} < $an->data->{node}{$node2}{pool1}{existing_size})
 				{
-					$pool1_size = $conf->{node}{$node2}{pool1}{existing_size};
+					$pool1_size = $an->data->{node}{$node2}{pool1}{existing_size};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "pool1_size", value1 => $pool1_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				my $message = $an->String->get({key => "message_0394", variables => { 
 						node1		=>	$node1,
-						node1_device	=>	$conf->{node}{$node1}{pool1}{partition},
-						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool1}{existing_size} })." ($conf->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
+						node1_device	=>	$an->data->{node}{$node1}{pool1}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{pool1}{existing_size} })." ($an->data->{node}{$node1}{pool1}{existing_size} #!string!suffix_0009!#)",
 						node2		=>	$node2,
-						node2_device	=>	$conf->{node}{$node1}{pool1}{partition},
-						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool1}{existing_size} })." ($conf->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
+						node2_device	=>	$an->data->{node}{$node1}{pool1}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{pool1}{existing_size} })." ($an->data->{node}{$node2}{pool1}{existing_size} #!string!suffix_0009!#)",
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 					message	=>	$message,
@@ -14025,28 +13916,28 @@ sub calculate_storage_pool_sizes
 				}});
 			}
 		}
-		elsif ($conf->{node}{$node1}{pool1}{existing_size})
+		elsif ($an->data->{node}{$node1}{pool1}{existing_size})
 		{
 			# Node 2 isn't partitioned yet but node 1 is.
-			$pool1_size                                 = $conf->{node}{$node1}{pool1}{existing_size};
-			$conf->{cgi}{anvil_storage_pool1_byte_size} = $conf->{node}{$node1}{pool1}{existing_size};
+			$pool1_size                                 = $an->data->{node}{$node1}{pool1}{existing_size};
+			$an->data->{cgi}{anvil_storage_pool1_byte_size} = $an->data->{node}{$node1}{pool1}{existing_size};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "pool1_size", value1 => $pool1_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($conf->{node}{$node2}{pool1}{existing_size})
+		elsif ($an->data->{node}{$node2}{pool1}{existing_size})
 		{
 			# Node 1 isn't partitioned yet but node 2 is.
-			$pool1_size                                 = $conf->{node}{$node2}{pool1}{existing_size};
-			$conf->{cgi}{anvil_storage_pool1_byte_size} = $conf->{node}{$node2}{pool1}{existing_size};
+			$pool1_size                                 = $an->data->{node}{$node2}{pool1}{existing_size};
+			$an->data->{cgi}{anvil_storage_pool1_byte_size} = $an->data->{node}{$node2}{pool1}{existing_size};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "pool1_size", value1 => $pool1_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
+		$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
+			name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -14058,19 +13949,19 @@ sub calculate_storage_pool_sizes
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1}::pool2::existing_size", value1 => $conf->{node}{$node1}{pool2}{existing_size},
-		name2 => "node::${node2}::pool2::existing_size", value2 => $conf->{node}{$node2}{pool2}{existing_size},
+		name1 => "node::${node1}::pool2::existing_size", value1 => $an->data->{node}{$node1}{pool2}{existing_size},
+		name2 => "node::${node2}::pool2::existing_size", value2 => $an->data->{node}{$node2}{pool2}{existing_size},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($conf->{node}{$node1}{pool2}{existing_size}) || ($conf->{node}{$node2}{pool2}{existing_size}))
+	if (($an->data->{node}{$node1}{pool2}{existing_size}) || ($an->data->{node}{$node2}{pool2}{existing_size}))
 	{
 		# See which I have.
-		if (($conf->{node}{$node1}{pool2}{existing_size}) && ($conf->{node}{$node2}{pool2}{existing_size}))
+		if (($an->data->{node}{$node1}{pool2}{existing_size}) && ($an->data->{node}{$node2}{pool2}{existing_size}))
 		{
 			# Both, OK. Are they the same?
-			if ($conf->{node}{$node1}{pool2}{existing_size} eq $conf->{node}{$node2}{pool2}{existing_size})
+			if ($an->data->{node}{$node1}{pool2}{existing_size} eq $an->data->{node}{$node2}{pool2}{existing_size})
 			{
 				# Golden
-				$pool2_size = $conf->{node}{$node1}{pool2}{existing_size};
+				$pool2_size = $an->data->{node}{$node1}{pool2}{existing_size};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool2_size", value1 => $pool2_size,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -14078,24 +13969,24 @@ sub calculate_storage_pool_sizes
 			else
 			{
 				# Nothing we can do but warn the user.
-				$pool2_size = $conf->{node}{$node1}{pool2}{existing_size};
+				$pool2_size = $an->data->{node}{$node1}{pool2}{existing_size};
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool2_size", value1 => $pool2_size,
 				}, file => $THIS_FILE, line => __LINE__});
-				if ($conf->{node}{$node1}{pool2}{existing_size} < $conf->{node}{$node2}{pool2}{existing_size})
+				if ($an->data->{node}{$node1}{pool2}{existing_size} < $an->data->{node}{$node2}{pool2}{existing_size})
 				{
-					$pool2_size = $conf->{node}{$node2}{pool2}{existing_size};
+					$pool2_size = $an->data->{node}{$node2}{pool2}{existing_size};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 						name1 => "pool2_size", value1 => $pool2_size,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				my $message = $an->String->get({key => "message_0394", variables => { 
 						node1		=>	$node1,
-						node1_device	=>	$conf->{node}{$node1}{pool2}{partition},
-						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node1}{pool2}{existing_size} })." ($conf->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
+						node1_device	=>	$an->data->{node}{$node1}{pool2}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node1}{pool2}{existing_size} })." ($an->data->{node}{$node1}{pool2}{existing_size} #!string!suffix_0009!#)",
 						node2		=>	$node2,
-						node2_device	=>	$conf->{node}{$node1}{pool2}{partition},
-						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node2}{pool2}{existing_size} })." ($conf->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
+						node2_device	=>	$an->data->{node}{$node1}{pool2}{partition},
+						node1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node2}{pool2}{existing_size} })." ($an->data->{node}{$node2}{pool2}{existing_size} #!string!suffix_0009!#)",
 					}});
 				print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 					message	=>	$message,
@@ -14103,28 +13994,28 @@ sub calculate_storage_pool_sizes
 				}});
 			}
 		}
-		elsif ($conf->{node}{$node1}{pool2}{existing_size})
+		elsif ($an->data->{node}{$node1}{pool2}{existing_size})
 		{
 			# Node 2 isn't partitioned yet but node 1 is.
-			$pool2_size                                 = $conf->{node}{$node1}{pool2}{existing_size};
-			$conf->{cgi}{anvil_storage_pool2_byte_size} = $conf->{node}{$node1}{pool2}{existing_size};
+			$pool2_size                                 = $an->data->{node}{$node1}{pool2}{existing_size};
+			$an->data->{cgi}{anvil_storage_pool2_byte_size} = $an->data->{node}{$node1}{pool2}{existing_size};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "pool2_size", value1 => $pool2_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($conf->{node}{$node2}{pool2}{existing_size})
+		elsif ($an->data->{node}{$node2}{pool2}{existing_size})
 		{
 			# Node 1 isn't partitioned yet but node 2 is.
-			$pool2_size                                 = $conf->{node}{$node2}{pool2}{existing_size};
-			$conf->{cgi}{anvil_storage_pool2_byte_size} = $conf->{node}{$node2}{pool2}{existing_size};
+			$pool2_size                                 = $an->data->{node}{$node2}{pool2}{existing_size};
+			$an->data->{cgi}{anvil_storage_pool2_byte_size} = $an->data->{node}{$node2}{pool2}{existing_size};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "pool2_size", value1 => $pool2_size,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_size;
+		$an->data->{cgi}{anvil_storage_pool2_byte_size} = $pool2_size;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_storage_pool2_byte_size", value1 => $conf->{cgi}{anvil_storage_pool2_byte_size},
+			name1 => "cgi::anvil_storage_pool2_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
@@ -14136,8 +14027,8 @@ sub calculate_storage_pool_sizes
 	}
 	
 	# These are my minimums. I'll use these below for final sanity checks.
-	my $media_library_size      = $conf->{cgi}{anvil_media_library_size};
-	my $media_library_unit      = $conf->{cgi}{anvil_media_library_unit};
+	my $media_library_size      = $an->data->{cgi}{anvil_media_library_size};
+	my $media_library_unit      = $an->data->{cgi}{anvil_media_library_unit};
 	my $media_library_byte_size = $an->Readable->hr_to_bytes({size => $media_library_size, type => $media_library_unit });
 	my $minimum_space_needed    = $media_library_byte_size;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -14153,16 +14044,16 @@ sub calculate_storage_pool_sizes
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Knowing the smallest This will be useful in a few places.
-	my $node1_disk = $conf->{node}{$node1}{pool1}{disk};
-	my $node2_disk = $conf->{node}{$node2}{pool1}{disk};
+	my $node1_disk = $an->data->{node}{$node1}{pool1}{disk};
+	my $node2_disk = $an->data->{node}{$node2}{pool1}{disk};
 	
-	my $smallest_free_size = $conf->{node}{$node1}{disk}{$node1_disk}{free_space}{size};
+	my $smallest_free_size = $an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "smallest_free_size", value1 => $smallest_free_size,
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($conf->{node}{$node1}{disk}{$node1_disk}{free_space}{size} > $conf->{node}{$node2}{disk}{$node2_disk}{free_space}{size})
+	if ($an->data->{node}{$node1}{disk}{$node1_disk}{free_space}{size} > $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size})
 	{
-		$smallest_free_size = $conf->{node}{$node2}{disk}{$node2_disk}{free_space}{size};
+		$smallest_free_size = $an->data->{node}{$node2}{disk}{$node2_disk}{free_space}{size};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "smallest_free_size", value1 => $smallest_free_size,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -14187,8 +14078,8 @@ sub calculate_storage_pool_sizes
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Now to start calculating the requested sizes.
-			my $storage_pool1_size = $conf->{cgi}{anvil_storage_pool1_size};
-			my $storage_pool1_unit = $conf->{cgi}{anvil_storage_pool1_unit};
+			my $storage_pool1_size = $an->data->{cgi}{anvil_storage_pool1_size};
+			my $storage_pool1_unit = $an->data->{cgi}{anvil_storage_pool1_unit};
 			
 			### Ok, both are. Then we do our normal math.
 			# If pool1 is '100%', then this is easy.
@@ -14197,8 +14088,8 @@ sub calculate_storage_pool_sizes
 				# All to pool 1.
 				$pool1_size                                 = $smallest_free_size;
 				$pool2_size                                 = 0;
-				$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
-				$conf->{cgi}{anvil_storage_pool2_byte_size} = 0;
+				$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_size;
+				$an->data->{cgi}{anvil_storage_pool2_byte_size} = 0;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "pool1_size", value1 => $pool1_size,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -14257,9 +14148,9 @@ sub calculate_storage_pool_sizes
 						name2 => "media_library_balance",   value2 => $media_library_balance,
 					}, file => $THIS_FILE, line => __LINE__});
 				}
-				$conf->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
+				$an->data->{cgi}{anvil_media_library_byte_size} = $media_library_byte_size;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::anvil_media_library_byte_size", value1 => $conf->{cgi}{anvil_media_library_byte_size},
+					name1 => "cgi::anvil_media_library_byte_size", value1 => $an->data->{cgi}{anvil_media_library_byte_size},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				my $free_space_left = $total_free_space - $media_library_byte_size;
@@ -14407,11 +14298,11 @@ sub calculate_storage_pool_sizes
 					}
 					
 					# Old
-					$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
-					$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
+					$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
+					$an->data->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
-						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $conf->{cgi}{anvil_storage_pool2_byte_size},
+						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
+						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -14444,7 +14335,7 @@ sub calculate_storage_pool_sizes
 							pool_size    => $pool1_byte_size, 
 							hr_pool_size => $an->Readable->bytes_to_hr({'bytes' => $pool1_byte_size }), 
 						}, file => $THIS_FILE, line => __LINE__});
-						$conf->{sys}{pool1_shrunk} = 1;
+						$an->data->{sys}{pool1_shrunk} = 1;
 					}
 						
 					my $pool1_difference = $pool1_byte_size % 1048576;
@@ -14486,11 +14377,11 @@ sub calculate_storage_pool_sizes
 						name1 => "pool2_byte_size", value1 => $pool2_byte_size,
 					}, file => $THIS_FILE, line => __LINE__});
 					
-					$conf->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
-					$conf->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
+					$an->data->{cgi}{anvil_storage_pool1_byte_size} = $pool1_byte_size + $media_library_byte_size;
+					$an->data->{cgi}{anvil_storage_pool2_byte_size} = $pool2_byte_size;
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
-						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $conf->{cgi}{anvil_storage_pool2_byte_size},
+						name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
+						name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
 					}, file => $THIS_FILE, line => __LINE__});
 					
 					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -14505,7 +14396,7 @@ sub calculate_storage_pool_sizes
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "cgi::anvil_media_library_byte_size", value1 => $conf->{cgi}{anvil_media_library_byte_size},
+					name1 => "cgi::anvil_media_library_byte_size", value1 => $an->data->{cgi}{anvil_media_library_byte_size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -14530,15 +14421,14 @@ sub calculate_storage_pool_sizes
 	}
 	
 	# We no longer use pool 2.
-	$conf->{cgi}{anvil_storage_pool2_byte_size} = 0;
+	$an->data->{cgi}{anvil_storage_pool2_byte_size} = 0;
 	return(0);
 }
 
 # This checks to see if both nodes have the same amount of unallocated space.
 sub check_storage
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: When the drive is partitioned, write a file out indicating
@@ -14546,18 +14436,18 @@ sub check_storage
 	###       lack of free space on re-runs on the program.
 	
 	my $ok = 1;
-	my ($node1_disk) = get_partition_data($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_disk) = get_partition_data($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_disk) = get_partition_data($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_disk) = get_partition_data($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_disk", value1 => $node1_disk,
 		name2 => "node2_disk", value2 => $node2_disk,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# How much space do I have?
-	my $node1           = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2           = $conf->{cgi}{anvil_node2_current_ip};
-	my $node1_disk_size = $conf->{node}{$node1}{disk}{$node1_disk}{size};
-	my $node2_disk_size = $conf->{node}{$node2}{disk}{$node2_disk}{size};
+	my $node1           = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2           = $an->data->{cgi}{anvil_node2_current_ip};
+	my $node1_disk_size = $an->data->{node}{$node1}{disk}{$node1_disk}{size};
+	my $node2_disk_size = $an->data->{node}{$node2}{disk}{$node2_disk}{size};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1",           value1 => $node1,
 		name2 => "node2",           value2 => $node2,
@@ -14569,18 +14459,18 @@ sub check_storage
 	# Only then can I sanity check space needed. If one node has the
 	# partitions already in place, then that will determine the other
 	# node's partition size regardless of anything else. This will set:
-	get_storage_pool_partitions($conf);
+	get_storage_pool_partitions($an);
 	
 	# Now we can calculate partition sizes.
-	calculate_storage_pool_sizes($conf);
+	calculate_storage_pool_sizes($an);
 	
-	if ($conf->{sys}{pool1_shrunk})
+	if ($an->data->{sys}{pool1_shrunk})
 	{
-		my $requested_byte_size = $an->Readable->hr_to_bytes({size => $conf->{cgi}{anvil_storage_pool1_size}, type => $conf->{cgi}{anvil_storage_pool1_unit} });
+		my $requested_byte_size = $an->Readable->hr_to_bytes({size => $an->data->{cgi}{anvil_storage_pool1_size}, type => $an->data->{cgi}{anvil_storage_pool1_unit} });
 		my $say_requested_size  = $an->Readable->bytes_to_hr({'bytes' => $requested_byte_size });
-		my $byte_difference     = $requested_byte_size - $conf->{cgi}{anvil_storage_pool1_byte_size};
+		my $byte_difference     = $requested_byte_size - $an->data->{cgi}{anvil_storage_pool1_byte_size};
 		my $say_difference      = $an->Readable->bytes_to_hr({'bytes' => $byte_difference });
-		my $say_new_size        = $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} });
+		my $say_new_size        = $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} });
 		my $message             = $an->String->get({key => "message_0375", variables => { 
 				say_requested_size	=>	$say_requested_size,
 				say_new_size		=>	$say_new_size,
@@ -14592,10 +14482,10 @@ sub check_storage
 		}});
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $conf->{cgi}{anvil_storage_pool1_byte_size},
-		name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $conf->{cgi}{anvil_storage_pool2_byte_size},
+		name1 => "cgi::anvil_storage_pool1_byte_size", value1 => $an->data->{cgi}{anvil_storage_pool1_byte_size},
+		name2 => "cgi::anvil_storage_pool2_byte_size", value2 => $an->data->{cgi}{anvil_storage_pool2_byte_size},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $conf->{cgi}{anvil_storage_pool1_byte_size}) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
+	if ((not $an->data->{cgi}{anvil_storage_pool1_byte_size}) && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 	{
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-warning", replace => { 
 			message	=>	"#!string!message_0397!#",
@@ -14605,25 +14495,25 @@ sub check_storage
 	}
 	
 	# Message stuff
-	if (not $conf->{cgi}{anvil_media_library_byte_size})
+	if (not $an->data->{cgi}{anvil_media_library_byte_size})
 	{
-		$conf->{cgi}{anvil_media_library_byte_size} = $an->Readable->hr_to_bytes({size => $conf->{cgi}{anvil_media_library_size}, type => $conf->{cgi}{anvil_media_library_unit} });
+		$an->data->{cgi}{anvil_media_library_byte_size} = $an->Readable->hr_to_bytes({size => $an->data->{cgi}{anvil_media_library_size}, type => $an->data->{cgi}{anvil_media_library_unit} });
 	}
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = $an->String->get({key => "state_0054", variables => { 
-			pool1_device	=>	"$conf->{node}{$node1}{pool1}{disk}$conf->{node}{$node1}{pool1}{partition}",
-			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
-			pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node1}{pool2}{disk}$conf->{node}{$node1}{pool2}{partition}"  : "--",
-			pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
-			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
+			pool1_device	=>	$an->data->{node}{$node1}{pool1}{disk}.$an->data->{node}{$node1}{pool1}{partition},
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool2_device	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->data->{node}{$node1}{pool2}{disk}.$an->data->{node}{$node1}{pool2}{partition}        : "--",
+			pool2_size	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
+			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
 		}});
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = $an->String->get({key => "state_0054", variables => { 
-			pool1_device	=>	"$conf->{node}{$node2}{pool1}{disk}$conf->{node}{$node2}{pool1}{partition}",
-			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool1_byte_size} }),
-			pool2_device	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? "$conf->{node}{$node2}{pool2}{disk}$conf->{node}{$node2}{pool2}{partition}"  : "--",
-			pool2_size	=>	$conf->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
-			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $conf->{cgi}{anvil_media_library_byte_size} }),
+			pool1_device	=>	$an->data->{node}{$node2}{pool1}{disk}.$an->data->{node}{$node2}{pool1}{partition},
+			pool1_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool1_byte_size} }),
+			pool2_device	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->data->{node}{$node2}{pool2}{disk}.$an->data->{node}{$node2}{pool2}{partition}        : "--",
+			pool2_size	=>	$an->data->{cgi}{anvil_storage_pool2_byte_size} ? $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }) : "--",
+			media_size	=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} }),
 		}});
 	if (not $ok)
 	{
@@ -14645,14 +14535,13 @@ sub check_storage
 # else for determining sizes.
 sub get_storage_pool_partitions
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_pool_partitions" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Determine if I still need this function at all...
 	# First up, check for /etc/drbd.d/r{0,1}.res on both nodes.
-	my ($node1_r0_device, $node1_r1_device) = read_drbd_resource_files($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password}, $conf->{cgi}{anvil_node1_name});
-	my ($node2_r0_device, $node2_r1_device) = read_drbd_resource_files($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password}, $conf->{cgi}{anvil_node2_name});
+	my ($node1_r0_device, $node1_r1_device) = read_drbd_resource_files($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password}, $an->data->{cgi}{anvil_node1_name});
+	my ($node2_r0_device, $node2_r1_device) = read_drbd_resource_files($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password}, $an->data->{cgi}{anvil_node2_name});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "node1_r0_device", value1 => $node1_r0_device,
 		name2 => "node1_r1_device", value2 => $node1_r1_device,
@@ -14661,11 +14550,11 @@ sub get_storage_pool_partitions
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Next, decide what devices I will use if DRBD doesn't exist.
-	foreach my $node ($conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node2_current_ip})
+	foreach my $node ($an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node2_current_ip})
 	{
 		# If the disk to use is 'Xda', skip the first three partitions
 		# as they will be for the OS.
-		my $disk = $conf->{node}{$node}{biggest_disk};
+		my $disk = $an->data->{node}{$node}{biggest_disk};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node", value1 => $node,
 			name2 => "disk", value2 => $disk,
@@ -14676,7 +14565,7 @@ sub get_storage_pool_partitions
 		my $pool1_partition           = 4;
 		my $pool2_partition           = 5;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node::${node}::disk::${disk}::partition_count", value1 => $conf->{node}{$node}{disk}{$disk}{partition_count},
+			name1 => "node::${node}::disk::${disk}::partition_count", value1 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 			name2 => "pool1_partition",                               value2 => $pool1_partition,
 			name3 => "pool2_partition",                               value3 => $pool2_partition,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -14687,21 +14576,21 @@ sub get_storage_pool_partitions
 			#   (4, 5 and 6)
 			# * If it's 'gpt', I just use two logical partition. (4 and 5).
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "node::${node}::disk::${disk}::label", value1 => $conf->{node}{$node}{disk}{$disk}{label},
+				name1 => "node::${node}::disk::${disk}::label", value1 => $an->data->{node}{$node}{disk}{$disk}{label},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($conf->{node}{$node}{disk}{$disk}{label} eq "msdos")
+			if ($an->data->{node}{$node}{disk}{$disk}{label} eq "msdos")
 			{
 				$create_extended_partition = 1;
 				$pool1_partition           = 5;
 				$pool2_partition           = 6;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-					name1 => "node::${node}::disk::${disk}::partition_count", value1 => $conf->{node}{$node}{disk}{$disk}{partition_count},
+					name1 => "node::${node}::disk::${disk}::partition_count", value1 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 					name2 => "create_extended_partition",                     value2 => $create_extended_partition,
 					name3 => "pool1_partition",                               value3 => $pool1_partition,
 					name4 => "pool2_partition",                               value4 => $pool2_partition,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($conf->{node}{$node}{disk}{$disk}{partition_count} >= 4)
+			elsif ($an->data->{node}{$node}{disk}{$disk}{partition_count} >= 4)
 			{
 				### TODO: Actually parse /etc/fstab to confirm...
 				# This is probably a UEFI system, so there will be 4 partitions.
@@ -14725,36 +14614,36 @@ sub get_storage_pool_partitions
 			$pool1_partition           = 1;
 			$pool2_partition           = 2;
 		}
-		$conf->{node}{$node}{pool1}{create_extended} = $create_extended_partition;
-		$conf->{node}{$node}{pool1}{device}          = "/dev/${disk}${pool1_partition}";
-		$conf->{node}{$node}{pool2}{device}          = "/dev/${disk}${pool2_partition}";
+		$an->data->{node}{$node}{pool1}{create_extended} = $create_extended_partition;
+		$an->data->{node}{$node}{pool1}{device}          = "/dev/${disk}${pool1_partition}";
+		$an->data->{node}{$node}{pool2}{device}          = "/dev/${disk}${pool2_partition}";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",                         value1 => $node,
-			name2 => "node::${node}::pool1::device", value2 => $conf->{node}{$node}{pool1}{device},
-			name3 => "node::${node}::pool2::device", value3 => $conf->{node}{$node}{pool2}{device},
+			name2 => "node::${node}::pool1::device", value2 => $an->data->{node}{$node}{pool1}{device},
+			name3 => "node::${node}::pool2::device", value3 => $an->data->{node}{$node}{pool2}{device},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# OK, if we found a device in DRBD, override the values from the loop.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	
-	$conf->{node}{$node1}{pool1}{device} = $node1_r0_device ? $node1_r0_device : $conf->{node}{$node1}{pool1}{device};
-	$conf->{node}{$node1}{pool2}{device} = $node1_r1_device ? $node1_r1_device : $conf->{node}{$node1}{pool2}{device};
-	$conf->{node}{$node2}{pool1}{device} = $node2_r0_device ? $node2_r0_device : $conf->{node}{$node2}{pool1}{device};
-	$conf->{node}{$node2}{pool2}{device} = $node2_r1_device ? $node2_r1_device : $conf->{node}{$node2}{pool2}{device};
+	$an->data->{node}{$node1}{pool1}{device} = $node1_r0_device ? $node1_r0_device : $an->data->{node}{$node1}{pool1}{device};
+	$an->data->{node}{$node1}{pool2}{device} = $node1_r1_device ? $node1_r1_device : $an->data->{node}{$node1}{pool2}{device};
+	$an->data->{node}{$node2}{pool1}{device} = $node2_r0_device ? $node2_r0_device : $an->data->{node}{$node2}{pool1}{device};
+	$an->data->{node}{$node2}{pool2}{device} = $node2_r1_device ? $node2_r1_device : $an->data->{node}{$node2}{pool2}{device};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node::${node1}::pool1::device", value1 => $conf->{node}{$node1}{pool1}{device},
-		name2 => "node::${node1}::pool2::device", value2 => $conf->{node}{$node1}{pool2}{device},
-		name3 => "node::${node2}::pool1::device", value3 => $conf->{node}{$node2}{pool1}{device},
-		name4 => "node::${node2}::pool2::device", value4 => $conf->{node}{$node2}{pool2}{device},
+		name1 => "node::${node1}::pool1::device", value1 => $an->data->{node}{$node1}{pool1}{device},
+		name2 => "node::${node1}::pool2::device", value2 => $an->data->{node}{$node1}{pool2}{device},
+		name3 => "node::${node2}::pool1::device", value3 => $an->data->{node}{$node2}{pool1}{device},
+		name4 => "node::${node2}::pool2::device", value4 => $an->data->{node}{$node2}{pool2}{device},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Now, if either partition exists on either node, use that size to force the other node's size.
-	my ($node1_pool1_disk, $node1_pool1_partition) = ($conf->{node}{$node1}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
-	my ($node1_pool2_disk, $node1_pool2_partition) = ($conf->{node}{$node1}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
-	my ($node2_pool1_disk, $node2_pool1_partition) = ($conf->{node}{$node2}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
-	my ($node2_pool2_disk, $node2_pool2_partition) = ($conf->{node}{$node2}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node1_pool1_disk, $node1_pool1_partition) = ($an->data->{node}{$node1}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node1_pool2_disk, $node1_pool2_partition) = ($an->data->{node}{$node1}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node2_pool1_disk, $node2_pool1_partition) = ($an->data->{node}{$node2}{pool1}{device} =~ /\/dev\/(.*?)(\d)/);
+	my ($node2_pool2_disk, $node2_pool2_partition) = ($an->data->{node}{$node2}{pool2}{device} =~ /\/dev\/(.*?)(\d)/);
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 		name1 => "node1_pool1_disk",      value1 => $node1_pool1_disk,
 		name2 => "node1_pool1_partition", value2 => $node1_pool1_partition,
@@ -14766,34 +14655,34 @@ sub get_storage_pool_partitions
 		name8 => "node2_pool2_partition", value8 => $node2_pool2_partition,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$conf->{node}{$node1}{pool1}{disk}      = $node1_pool1_disk;
-	$conf->{node}{$node1}{pool1}{partition} = $node1_pool1_partition;
-	$conf->{node}{$node1}{pool2}{disk}      = $node1_pool2_disk;
-	$conf->{node}{$node1}{pool2}{partition} = $node1_pool2_partition;
-	$conf->{node}{$node2}{pool1}{disk}      = $node2_pool1_disk;
-	$conf->{node}{$node2}{pool1}{partition} = $node2_pool1_partition;
-	$conf->{node}{$node2}{pool2}{disk}      = $node2_pool2_disk;
-	$conf->{node}{$node2}{pool2}{partition} = $node2_pool2_partition;
+	$an->data->{node}{$node1}{pool1}{disk}      = $node1_pool1_disk;
+	$an->data->{node}{$node1}{pool1}{partition} = $node1_pool1_partition;
+	$an->data->{node}{$node1}{pool2}{disk}      = $node1_pool2_disk;
+	$an->data->{node}{$node1}{pool2}{partition} = $node1_pool2_partition;
+	$an->data->{node}{$node2}{pool1}{disk}      = $node2_pool1_disk;
+	$an->data->{node}{$node2}{pool1}{partition} = $node2_pool1_partition;
+	$an->data->{node}{$node2}{pool2}{disk}      = $node2_pool2_disk;
+	$an->data->{node}{$node2}{pool2}{partition} = $node2_pool2_partition;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-		name1 => "node::${node1}::pool1::disk",      value1 => $conf->{node}{$node1}{pool1}{disk},
-		name2 => "node::${node1}::pool1::partition", value2 => $conf->{node}{$node1}{pool1}{partition},
-		name3 => "node::${node1}::pool2::disk",      value3 => $conf->{node}{$node1}{pool2}{disk},
-		name4 => "node::${node1}::pool2::partition", value4 => $conf->{node}{$node1}{pool2}{partition},
-		name5 => "node::${node2}::pool1::disk",      value5 => $conf->{node}{$node2}{pool1}{disk},
-		name6 => "node::${node2}::pool1::partition", value6 => $conf->{node}{$node2}{pool1}{partition},
-		name7 => "node::${node2}::pool2::disk",      value7 => $conf->{node}{$node2}{pool2}{disk},
-		name8 => "node::${node2}::pool2::partition", value8 => $conf->{node}{$node2}{pool2}{partition},
+		name1 => "node::${node1}::pool1::disk",      value1 => $an->data->{node}{$node1}{pool1}{disk},
+		name2 => "node::${node1}::pool1::partition", value2 => $an->data->{node}{$node1}{pool1}{partition},
+		name3 => "node::${node1}::pool2::disk",      value3 => $an->data->{node}{$node1}{pool2}{disk},
+		name4 => "node::${node1}::pool2::partition", value4 => $an->data->{node}{$node1}{pool2}{partition},
+		name5 => "node::${node2}::pool1::disk",      value5 => $an->data->{node}{$node2}{pool1}{disk},
+		name6 => "node::${node2}::pool1::partition", value6 => $an->data->{node}{$node2}{pool1}{partition},
+		name7 => "node::${node2}::pool2::disk",      value7 => $an->data->{node}{$node2}{pool2}{disk},
+		name8 => "node::${node2}::pool2::partition", value8 => $an->data->{node}{$node2}{pool2}{partition},
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$conf->{node}{$node1}{pool1}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} : 0;
-	$conf->{node}{$node1}{pool2}{existing_size} = $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} ? $conf->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} : 0;
-	$conf->{node}{$node2}{pool1}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} ? $conf->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} : 0;
-	$conf->{node}{$node2}{pool2}{existing_size} = $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} ? $conf->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} : 0;
+	$an->data->{node}{$node1}{pool1}{existing_size} = $an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} ? $an->data->{node}{$node1}{disk}{$node1_pool1_disk}{partition}{$node1_pool1_partition}{size} : 0;
+	$an->data->{node}{$node1}{pool2}{existing_size} = $an->data->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} ? $an->data->{node}{$node1}{disk}{$node1_pool2_disk}{partition}{$node1_pool2_partition}{size} : 0;
+	$an->data->{node}{$node2}{pool1}{existing_size} = $an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} ? $an->data->{node}{$node2}{disk}{$node2_pool1_disk}{partition}{$node2_pool1_partition}{size} : 0;
+	$an->data->{node}{$node2}{pool2}{existing_size} = $an->data->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} ? $an->data->{node}{$node2}{disk}{$node2_pool2_disk}{partition}{$node2_pool2_partition}{size} : 0;
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node::${node1}::pool1::existing_size", value1 => $conf->{node}{$node1}{pool1}{existing_size},
-		name2 => "node::${node1}::pool2::existing_size", value2 => $conf->{node}{$node1}{pool2}{existing_size},
-		name3 => "node::${node2}::pool1::existing_size", value3 => $conf->{node}{$node2}{pool1}{existing_size},
-		name4 => "node::${node2}::pool2::existing_size", value4 => $conf->{node}{$node2}{pool2}{existing_size},
+		name1 => "node::${node1}::pool1::existing_size", value1 => $an->data->{node}{$node1}{pool1}{existing_size},
+		name2 => "node::${node1}::pool2::existing_size", value2 => $an->data->{node}{$node1}{pool2}{existing_size},
+		name3 => "node::${node2}::pool1::existing_size", value3 => $an->data->{node}{$node2}{pool1}{existing_size},
+		name4 => "node::${node2}::pool2::existing_size", value4 => $an->data->{node}{$node2}{pool2}{existing_size},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return(0);
@@ -14802,8 +14691,7 @@ sub get_storage_pool_partitions
 # This looks for the two DRBD resource files and, if found, pulls the partitions to use out of them.
 sub read_drbd_resource_files
 {
-	my ($conf, $node, $password, $hostname) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password, $hostname) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_resource_files" }, message_key => "an_variables_0002", message_variables => { 
 		name1 => "node",     value1 => $node, 
 		name2 => "hostname", value2 => $hostname, 
@@ -14811,10 +14699,10 @@ sub read_drbd_resource_files
 	
 	my $r0_device = "";
 	my $r1_device = "";
-	foreach my $file ($conf->{path}{nodes}{drbd_r0}, $conf->{path}{nodes}{drbd_r1})
+	foreach my $file ($an->data->{path}{nodes}{drbd_r0}, $an->data->{path}{nodes}{drbd_r1})
 	{
 		# Skip if no pool1
-		if (($conf->{path}{nodes}{drbd_r1}) && (not $conf->{cgi}{anvil_storage_pool2_byte_size}))
+		if (($an->data->{path}{nodes}{drbd_r1}) && (not $an->data->{cgi}{anvil_storage_pool2_byte_size}))
 		{
 			next;
 		}
@@ -14835,7 +14723,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -14898,8 +14786,7 @@ fi";
 # This checks for free space on the target node.
 sub get_partition_data
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14915,7 +14802,7 @@ sub get_partition_data
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -14955,11 +14842,11 @@ sub get_partition_data
 	foreach my $disk (@disks)
 	{
 		# We need to count how many existing partitions there are as we go.
-		$conf->{node}{$node}{disk}{$disk}{partition_count} = 0;
+		$an->data->{node}{$node}{disk}{$disk}{partition_count} = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "node",                                          value1 => $node,
 			name2 => "disk",                                          value2 => $disk,
-			name3 => "node::${node}::disk::${disk}::partition_count", value3 => $conf->{node}{$node}{disk}{$disk}{partition_count},
+			name3 => "node::${node}::disk::${disk}::partition_count", value3 => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = "
@@ -14982,7 +14869,7 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -15015,16 +14902,16 @@ fi";
 			}
 			elsif ($line =~ /Disk \/dev\/$disk: (\d+)B/)
 			{
-				$conf->{node}{$node}{disk}{$disk}{size} = $1;
+				$an->data->{node}{$node}{disk}{$disk}{size} = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "node::${node}::disk::${disk}::size", value1 => $conf->{node}{$node}{disk}{$disk}{size},
+					name1 => "node::${node}::disk::${disk}::size", value1 => $an->data->{node}{$node}{disk}{$disk}{size},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($line =~ /Partition Table: (.*)/)
 			{
-				$conf->{node}{$node}{disk}{$disk}{label} = $1;
+				$an->data->{node}{$node}{disk}{$disk}{label} = $1;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "node::${node}::disk::${disk}::label", value1 => $conf->{node}{$node}{disk}{$disk}{label},
+					name1 => "node::${node}::disk::${disk}::label", value1 => $an->data->{node}{$node}{disk}{$disk}{label},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			#              part  start end   size  type  - don't care about the rest.
@@ -15037,24 +14924,24 @@ fi";
 				my $partition_size  =  $4;
 				my $partition_type  =  $5;
 				   $partition_type  =~ s/\s+(\S+).*$/$1/;	# cuts off 'extended lba' to 'extended'
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start} = $partition_start;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
-				$conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
-				$conf->{node}{$node}{disk}{$disk}{partition_count}++;
+				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start} = $partition_start;
+				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}   = $partition_end;
+				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}  = $partition_size;
+				$an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type}  = $partition_type;
+				$an->data->{node}{$node}{disk}{$disk}{partition_count}++;
 				# For our logs...
-				my $say_partition_start = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start}});
-				my $say_partition_end   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end}});
-				my $say_partition_size  = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size}});
+				my $say_partition_start = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start}});
+				my $say_partition_end   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end}});
+				my $say_partition_size  = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size}});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0011", message_variables => {
 					name1  => "node",                                          value1  => $node,
 					name2  => "disk",                                          value2  => $disk,
 					name3  => "partition",                                     value3  => $partition,
-					name4  => "start",                                         value4  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{start},
-					name5  => "end",                                           value5  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{end},
-					name6  => "size",                                          value6  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
-					name7  => "type",                                          value7  => $conf->{node}{$node}{disk}{$disk}{partition}{$partition}{type},
-					name8  => "node::${node}::disk::${disk}::partition_count", value8  => $conf->{node}{$node}{disk}{$disk}{partition_count},
+					name4  => "start",                                         value4  => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{start},
+					name5  => "end",                                           value5  => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{end},
+					name6  => "size",                                          value6  => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{size},
+					name7  => "type",                                          value7  => $an->data->{node}{$node}{disk}{$disk}{partition}{$partition}{type},
+					name8  => "node::${node}::disk::${disk}::partition_count", value8  => $an->data->{node}{$node}{disk}{$disk}{partition_count},
 					name9  => "say_partition_start",                           value9  => $say_partition_start,
 					name10 => "say_partition_end",                             value10 => $say_partition_end,
 					name11 => "say_partition_size",                            value11 => $say_partition_size,
@@ -15067,19 +14954,19 @@ fi";
 				my $free_space_start  = $1;
 				my $free_space_end    = $2;
 				my $free_space_size   = $3;
-				$conf->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
-				$conf->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
-				$conf->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
+				$an->data->{node}{$node}{disk}{$disk}{free_space}{start} = $free_space_start;
+				$an->data->{node}{$node}{disk}{$disk}{free_space}{end}   = $free_space_end;
+				$an->data->{node}{$node}{disk}{$disk}{free_space}{size}  = $free_space_size;
 				# For our logs...
-				my $say_free_space_start = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{start}});
-				my $say_free_space_end   = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{end}});
-				my $say_free_space_size  = $an->Readable->bytes_to_hr({'bytes' => $conf->{node}{$node}{disk}{$disk}{free_space}{size}});
+				my $say_free_space_start = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{start}});
+				my $say_free_space_end   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{end}});
+				my $say_free_space_size  = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{disk}{$disk}{free_space}{size}});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 					name1 => "node",                                            value1 => $node,
 					name2 => "disk",                                            value2 => $disk,
-					name3 => "node::${node}::disk::${disk}::free_space::start", value3 => $conf->{node}{$node}{disk}{$disk}{free_space}{start},
-					name4 => "node::${node}::disk::${disk}::free_space::end",   value4 => $conf->{node}{$node}{disk}{$disk}{free_space}{end},
-					name5 => "node::${node}::disk::${disk}::free_space::size",  value5 => $conf->{node}{$node}{disk}{$disk}{free_space}{size},
+					name3 => "node::${node}::disk::${disk}::free_space::start", value3 => $an->data->{node}{$node}{disk}{$disk}{free_space}{start},
+					name4 => "node::${node}::disk::${disk}::free_space::end",   value4 => $an->data->{node}{$node}{disk}{$disk}{free_space}{end},
+					name5 => "node::${node}::disk::${disk}::free_space::size",  value5 => $an->data->{node}{$node}{disk}{$disk}{free_space}{size},
 					name6 => "say_free_space_start",                            value6 => $say_free_space_start,
 					name7 => "say_free_space_end",                              value7 => $say_free_space_end,
 					name8 => "say_free_space_size",                             value8 => $say_free_space_size,
@@ -15091,20 +14978,20 @@ fi";
 	# Find which disk is bigger
 	my $biggest_disk = "";
 	my $biggest_size = 0;
-	foreach my $disk (sort {$a cmp $b} keys %{$conf->{node}{$node}{disk}})
+	foreach my $disk (sort {$a cmp $b} keys %{$an->data->{node}{$node}{disk}})
 	{
-		my $size = $conf->{node}{$node}{disk}{$disk}{size};
+		my $size = $an->data->{node}{$node}{disk}{$disk}{size};
 		if ($size > $biggest_size)
 		{
 			   $biggest_disk                      = $disk;
 			   $biggest_size                      = $size;
 			my $say_biggest_size                  = $an->Readable->bytes_to_hr({'bytes' => $biggest_size});
-			   $conf->{node}{$node}{biggest_disk} = $biggest_disk;
+			   $an->data->{node}{$node}{biggest_disk} = $biggest_disk;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "node",                        value1 => $node,
 				name2 => "biggest_disk",                value2 => $biggest_disk,
 				name3 => "biggest_size",                value3 => $biggest_size,
-				name4 => "node::${node}::biggest_disk", value4 => $conf->{node}{$node}{biggest_disk},
+				name4 => "node::${node}::biggest_disk", value4 => $an->data->{node}{$node}{biggest_disk},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -15119,14 +15006,13 @@ fi";
 # This generates the default 'cluster.conf' file.
 sub generate_cluster_conf
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_short_name) = ($conf->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
-	my  $node1_full_name   =  $conf->{cgi}{anvil_node1_name};
-	my ($node2_short_name) = ($conf->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
-	my  $node2_full_name   =  $conf->{cgi}{anvil_node2_name};
+	my ($node1_short_name) = ($an->data->{cgi}{anvil_node1_name} =~ /^(.*?)\./);
+	my  $node1_full_name   =  $an->data->{cgi}{anvil_node1_name};
+	my ($node2_short_name) = ($an->data->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
+	my  $node2_full_name   =  $an->data->{cgi}{anvil_node2_name};
 	my  $shared_lv         = "/dev/${node1_short_name}_vg0/shared";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "node1_short_name", value1 => $node1_short_name,
@@ -15146,22 +15032,22 @@ sub generate_cluster_conf
 	#       
 	# NOTE: RRP can't be used because SCTP is not compatible/reliable with DLM.
 	# 
-	$conf->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
-<cluster name=\"$conf->{cgi}{anvil_name}\" config_version=\"1\">
+	$an->data->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
+<cluster name=\"".$an->data->{cgi}{anvil_name}."\" config_version=\"1\">
 	<cman expected_votes=\"1\" two_node=\"1\" transport=\"udpu\" />
 	<clusternodes>
-		<clusternode name=\"$conf->{cgi}{anvil_node1_name}\" nodeid=\"1\">
+		<clusternode name=\"".$an->data->{cgi}{anvil_node1_name}."\" nodeid=\"1\">
 			<fence>\n";
 	# Fence methods for node 1
-	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node1_full_name}{order}})
+	foreach my $i (sort {$a cmp $b} keys %{$an->data->{fence}{node}{$node1_full_name}{order}})
 	{
-		foreach my $method (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}})
+		foreach my $method (keys %{$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}})
 		{
-			$conf->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
+			$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
 			
 			# Count how many devices we have.
 			my $device_count = 0;
-			foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+			foreach my $j (keys %{$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
 			{
 				$device_count++;
 			}
@@ -15171,45 +15057,45 @@ sub generate_cluster_conf
 			if ($device_count == 1)
 			{
 				# Reboot.
-				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
 				}
 			}
 			else
 			{
 				# Off
-				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					my $say_string =  $conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					my $say_string =  $an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
 					   $say_string =~ s/reboot/off/;
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
 				}
 				# On
-				foreach my $j (keys %{$conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					my $say_string =  $conf->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					my $say_string =  $an->data->{fence}{node}{$node1_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
 					   $say_string =~ s/reboot/on/;
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
 				}
 			}
-			$conf->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
+			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$conf->{sys}{cluster_conf} .= "\t\t\t</fence>
+	$an->data->{sys}{cluster_conf} .= "\t\t\t</fence>
 		</clusternode>
-		<clusternode name=\"$conf->{cgi}{anvil_node2_name}\" nodeid=\"2\">
+		<clusternode name=\"".$an->data->{cgi}{anvil_node2_name}."\" nodeid=\"2\">
 			<fence>\n";
 	# Fence methods for node 2
-	foreach my $i (sort {$a cmp $b} keys %{$conf->{fence}{node}{$node2_full_name}{order}})
+	foreach my $i (sort {$a cmp $b} keys %{$an->data->{fence}{node}{$node2_full_name}{order}})
 	{
-		foreach my $method (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}})
+		foreach my $method (keys %{$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}})
 		{
-			$conf->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
+			$an->data->{sys}{cluster_conf} .= "\t\t\t\t<method name=\"$method\">\n";
 			
 			# Count how many devices we have.
 			my $device_count = 0;
-			foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+			foreach my $j (keys %{$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
 			{
 				$device_count++;
 			}
@@ -15219,44 +15105,44 @@ sub generate_cluster_conf
 			if ($device_count == 1)
 			{
 				# Reboot.
-				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string}\n";
 				}
 			}
 			else
 			{
 				# Off
-				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					my $say_string =  $conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					my $say_string =  $an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
 					   $say_string =~ s/reboot/off/;
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
 				}
 				# On
-				foreach my $j (keys %{$conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
+				foreach my $j (keys %{$an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}})
 				{
-					my $say_string =  $conf->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
+					my $say_string =  $an->data->{fence}{node}{$node2_full_name}{order}{$i}{method}{$method}{device}{$j}{string};
 					   $say_string =~ s/reboot/on/;
-					$conf->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
+					$an->data->{sys}{cluster_conf} .= "\t\t\t\t\t$say_string\n";
 				}
 			}
-			$conf->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
+			$an->data->{sys}{cluster_conf} .= "\t\t\t\t</method>\n";
 		}
 	}
-	$conf->{sys}{cluster_conf} .= "\t\t\t</fence>
+	$an->data->{sys}{cluster_conf} .= "\t\t\t</fence>
 		</clusternode>
 	</clusternodes>
 	<fencedevices>\n";
-	foreach my $device (sort {$a cmp $b} keys %{$conf->{fence}{device}})
+	foreach my $device (sort {$a cmp $b} keys %{$an->data->{fence}{device}})
 	{
-		foreach my $name (sort {$a cmp $b} keys %{$conf->{fence}{device}{$device}{name}})
+		foreach my $name (sort {$a cmp $b} keys %{$an->data->{fence}{device}{$device}{name}})
 		{
-			$conf->{sys}{cluster_conf} .= "\t\t$conf->{fence}{device}{$device}{name}{$name}{string}\n";
+			$an->data->{sys}{cluster_conf} .= "\t\t$an->data->{fence}{device}{$device}{name}{$name}{string}\n";
 		}
 	}
-	$conf->{sys}{cluster_conf} .= "\t</fencedevices>
-	<fence_daemon post_join_delay=\"$conf->{sys}{post_join_delay}\" />
+	$an->data->{sys}{cluster_conf} .= "\t</fencedevices>
+	<fence_daemon post_join_delay=\"".$an->data->{sys}{post_join_delay}."\" />
 	<totem rrp_mode=\"none\" secauth=\"off\"/>
 	<rm log_level=\"5\">
 		<resources>
@@ -15268,18 +15154,18 @@ sub generate_cluster_conf
 		</resources>
 		<failoverdomains>
 			<failoverdomain name=\"only_n01\" nofailback=\"1\" ordered=\"0\" restricted=\"1\">
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node1_name}\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node1_name}."\"/>
 			</failoverdomain>
 			<failoverdomain name=\"only_n02\" nofailback=\"1\" ordered=\"0\" restricted=\"1\">
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node2_name}\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node2_name}."\"/>
 			</failoverdomain>
 			<failoverdomain name=\"primary_n01\" nofailback=\"1\" ordered=\"1\" restricted=\"1\">
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node1_name}\" priority=\"1\"/>
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node2_name}\" priority=\"2\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node1_name}."\" priority=\"1\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node2_name}."\" priority=\"2\"/>
 			</failoverdomain>
 			<failoverdomain name=\"primary_n02\" nofailback=\"1\" ordered=\"1\" restricted=\"1\">
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node1_name}\" priority=\"2\"/>
-				<failoverdomainnode name=\"$conf->{cgi}{anvil_node2_name}\" priority=\"1\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node1_name}."\" priority=\"2\"/>
+				<failoverdomainnode name=\"".$an->data->{cgi}{anvil_node2_name}."\" priority=\"1\"/>
 			</failoverdomain>
 		</failoverdomains>
 		<service name=\"storage_n01\" autostart=\"1\" domain=\"only_n01\" exclusive=\"0\" recovery=\"restart\">
@@ -15310,7 +15196,7 @@ sub generate_cluster_conf
 </cluster>";
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::cluster_conf", value1 => $conf->{sys}{cluster_conf},
+		name1 => "sys::cluster_conf", value1 => $an->data->{sys}{cluster_conf},
 	}, file => $THIS_FILE, line => __LINE__});
 	return(0);
 }
@@ -15318,22 +15204,21 @@ sub generate_cluster_conf
 # This checks to see if /etc/cluster/cluster.conf is available and aborts if so.
 sub configure_cman
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Generate a new cluster.conf, then check to see if one already exists.
-	generate_cluster_conf($conf);
-	my ($node1_cluster_conf_version) = read_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_cluster_conf_version) = read_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	generate_cluster_conf($an);
+	my ($node1_cluster_conf_version) = read_cluster_conf($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_cluster_conf_version) = read_cluster_conf($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_cluster_conf_version", value1 => $node1_cluster_conf_version,
 		name2 => "node2_cluster_conf_version", value2 => $node2_cluster_conf_version,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If one of the nodes has an existing cluster.conf, use it.
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	my $ok    = 1;
 	
 	# This will set if a node's cluster.conf is (re)written or not.
@@ -15360,7 +15245,7 @@ sub configure_cman
 				newer => "1", 
 				older => "2", 
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{node}{$node2}{cluster_conf} = $conf->{node}{$node1}{cluster_conf};
+			$an->data->{node}{$node2}{cluster_conf} = $an->data->{node}{$node1}{cluster_conf};
 			$write_node2                        = 1;
 		}
 		elsif ($node1_cluster_conf_version < $node2_cluster_conf_version)
@@ -15370,7 +15255,7 @@ sub configure_cman
 				newer => "2", 
 				older => "1", 
 			}, file => $THIS_FILE, line => __LINE__});
-			$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+			$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
 			$write_node1                        = 1;
 		}
 	}
@@ -15381,36 +15266,36 @@ sub configure_cman
 			newer => "2 (v. $node2_cluster_conf_version)", 
 			older => "1 (v. $node1_cluster_conf_version)", 
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+		$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
 		$write_node1                        = 1;
 	}
-	elsif ((not $conf->{node}{$node1}{cluster_conf}) && (not $conf->{node}{$node2}{cluster_conf}))
+	elsif ((not $an->data->{node}{$node1}{cluster_conf}) && (not $an->data->{node}{$node2}{cluster_conf}))
 	{
 		# Neither node has an existing cluster.conf, using the default generated one.
 		$an->Log->entry({log_level => 2, message_key => "log_0210", file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node1}{cluster_conf} = $conf->{sys}{cluster_conf};
-		$conf->{node}{$node2}{cluster_conf} = $conf->{sys}{cluster_conf};
+		$an->data->{node}{$node1}{cluster_conf} = $an->data->{sys}{cluster_conf};
+		$an->data->{node}{$node2}{cluster_conf} = $an->data->{sys}{cluster_conf};
 		$write_node1                        = 1;
 		$write_node2                        = 1;
 	}
-	elsif ($conf->{node}{$node1}{cluster_conf})
+	elsif ($an->data->{node}{$node1}{cluster_conf})
 	{
 		# Node 1 has a cluster.conf, node 2 doesn't.
 		$an->Log->entry({log_level => 2, message_key => "log_0211", message_variables => {
 			newer => "1", 
 			older => "2", 
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node2}{cluster_conf} = $conf->{node}{$node1}{cluster_conf};
+		$an->data->{node}{$node2}{cluster_conf} = $an->data->{node}{$node1}{cluster_conf};
 		$write_node2                        = 1;
 	}
-	elsif ($conf->{node}{$node2}{cluster_conf})
+	elsif ($an->data->{node}{$node2}{cluster_conf})
 	{
 		# Node 2 has a cluster.conf, node 1 doesn't.
 		$an->Log->entry({log_level => 2, message_key => "log_0211", message_variables => {
 			newer => "2", 
 			older => "1", 
 		}, file => $THIS_FILE, line => __LINE__});
-		$conf->{node}{$node1}{cluster_conf} = $conf->{node}{$node2}{cluster_conf};
+		$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
 		$write_node1                        = 1;
 	}
 	else
@@ -15432,11 +15317,11 @@ sub configure_cman
 	{
 		if ($write_node1)
 		{
-			($node1_rc, $node1_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
+			($node1_rc, $node1_return_message) = write_cluster_conf($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
 		}
 		if ($write_node2)
 		{
-			($node2_rc, $node2_return_message) = write_cluster_conf($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+			($node2_rc, $node2_return_message) = write_cluster_conf($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 		}
 		# 0 = Written and validated
 		# 1 = ccs_config_validate failed
@@ -15499,16 +15384,15 @@ sub configure_cman
 # This writes out the cluster configuration file
 sub write_cluster_conf
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $message     = "";
 	my $return_code = 255;
-	my $shell_call  =  "cat > $conf->{path}{nodes}{cluster_conf} << EOF\n";
-	   $shell_call  .= "$conf->{node}{$node}{cluster_conf}\n";
+	my $shell_call  =  "cat > ".$an->data->{path}{nodes}{cluster_conf}." << EOF\n";
+	   $shell_call  .= $an->data->{node}{$node}{cluster_conf}."\n";
 	   $shell_call  .= "EOF\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -15516,7 +15400,7 @@ sub write_cluster_conf
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -15537,7 +15421,7 @@ sub write_cluster_conf
 	}, file => $THIS_FILE, line => __LINE__});
 	($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -15581,20 +15465,19 @@ sub write_cluster_conf
 # This reads in /etc/cluster/cluster.conf and returns '0' if not found.
 sub read_cluster_conf
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_cluster_conf" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I only care if the file exists at 
 	# all.
-	$conf->{node}{$node}{cluster_conf_version} = 0;
-	$conf->{node}{$node}{cluster_conf}         = "";
+	$an->data->{node}{$node}{cluster_conf_version} = 0;
+	$an->data->{node}{$node}{cluster_conf}         = "";
 	my $shell_call = "
-if [ -e '$conf->{path}{nodes}{cluster_conf}' ]
+if [ -e '".$an->data->{path}{nodes}{cluster_conf}."' ]
 then
-    cat $conf->{path}{nodes}{cluster_conf}
+    cat $an->data->{path}{nodes}{cluster_conf}
 else
     echo not found
 fi";
@@ -15604,7 +15487,7 @@ fi";
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -15617,48 +15500,47 @@ fi";
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		last if $line eq "not found";
-		$conf->{node}{$node}{cluster_conf} .= "$line\n";
+		$an->data->{node}{$node}{cluster_conf} .= "$line\n";
 		
 		# If the version is > 1, we'll use it no matter what.
 		if ($line =~ /config_version="(\d+)"/)
 		{
-			$conf->{node}{$node}{cluster_conf_version} = $1;
+			$an->data->{node}{$node}{cluster_conf_version} = $1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node",                 value1 => $node,
-				name2 => "cluster.conf version", value2 => $conf->{node}{$node}{cluster_conf_version},
+				name2 => "cluster.conf version", value2 => $an->data->{node}{$node}{cluster_conf_version},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "cluster.conf version", value1 => $conf->{node}{$node}{cluster_conf_version},
+		name1 => "cluster.conf version", value1 => $an->data->{node}{$node}{cluster_conf_version},
 	}, file => $THIS_FILE, line => __LINE__});
-	return($conf->{node}{$node}{cluster_conf_version})
+	return($an->data->{node}{$node}{cluster_conf_version})
 }
 
 # This checks to make sure both nodes have a compatible OS installed.
 sub verify_os
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_os" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	my ($node1_major_version, $node1_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_major_version, $node2_minor_version) = get_node_os_version($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
-	my $node1 = $conf->{cgi}{anvil_node1_current_ip};
-	my $node2 = $conf->{cgi}{anvil_node2_current_ip};
+	my ($node1_major_version, $node1_minor_version) = get_node_os_version($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_major_version, $node2_minor_version) = get_node_os_version($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my $node1 = $an->data->{cgi}{anvil_node1_current_ip};
+	my $node2 = $an->data->{cgi}{anvil_node2_current_ip};
 	$node1_major_version = 0 if not defined $node1_major_version;
 	$node1_minor_version = 0 if not defined $node1_minor_version;
 	$node2_major_version = 0 if not defined $node2_major_version;
 	$node2_minor_version = 0 if not defined $node2_minor_version;
 	
-	my $say_node1_os = $conf->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $conf->{node}{$node1}{os}{brand};
-	my $say_node2_os = $conf->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $conf->{node}{$node2}{os}{brand};
+	my $say_node1_os = $an->data->{node}{$node1}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $an->data->{node}{$node1}{os}{brand};
+	my $say_node2_os = $an->data->{node}{$node2}{os}{brand} =~ /Red Hat Enterprise Linux Server/ ? "RHEL" : $an->data->{node}{$node2}{os}{brand};
 	my $node1_class   = "highlight_good_bold";
-	my $node1_message = "$say_node1_os $conf->{node}{$node1}{os}{version}";
+	my $node1_message = "$say_node1_os $an->data->{node}{$node1}{os}{version}";
 	my $node2_class   = "highlight_good_bold";
-	my $node2_message = "$say_node2_os $conf->{node}{$node2}{os}{version}";
+	my $node2_message = "$say_node2_os $an->data->{node}{$node2}{os}{version}";
 	if ($node1_major_version != 6)
 	{
 		$node1_class   = "highlight_bad_bold";
@@ -15690,8 +15572,7 @@ sub verify_os
 # This calls the specified node and (tries to) read and parse '/etc/redhat-release'
 sub get_node_os_version
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_os_version" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -15706,7 +15587,7 @@ sub get_node_os_version
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -15730,8 +15611,8 @@ sub get_node_os_version
 			
 			# Some have 'x.y (Final)', this strips that last bit off.
 			$minor =~ s/\ \(.*?\)$//;
-			$conf->{node}{$node}{os}{brand}   = $brand;
-			$conf->{node}{$node}{os}{version} = "$major.$minor";
+			$an->data->{node}{$node}{os}{brand}   = $brand;
+			$an->data->{node}{$node}{os}{version} = "$major.$minor";
 		}
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -15741,10 +15622,10 @@ sub get_node_os_version
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If it's RHEL, see if it's registered.
-	if ($conf->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/i)
+	if ($an->data->{node}{$node}{os}{brand} =~ /Red Hat Enterprise Linux Server/i)
 	{
 		# See if it's been registered already.
-		$conf->{node}{$node}{os}{registered} = 0;
+		$an->data->{node}{$node}{os}{registered} = 0;
 		my $shell_call = "rhn_check; echo exit:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -15752,7 +15633,7 @@ sub get_node_os_version
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$node,
-			port		=>	$conf->{node}{$node}{port}, 
+			port		=>	$an->data->{node}{$node}{port}, 
 			password	=>	$password,
 			ssh_fh		=>	"",
 			'close'		=>	0,
@@ -15769,7 +15650,7 @@ sub get_node_os_version
 				my $rc = $1;
 				if ($rc eq "0")
 				{
-					$conf->{node}{$node}{os}{registered} = 1;
+					$an->data->{node}{$node}{os}{registered} = 1;
 				}
 			}
 		}
@@ -15783,12 +15664,11 @@ sub get_node_os_version
 # This makes sure we have access to both nodes.
 sub check_connection
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_access) = check_node_access($conf, $conf->{cgi}{anvil_node1_current_ip}, $conf->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($conf, $conf->{cgi}{anvil_node2_current_ip}, $conf->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -15824,7 +15704,7 @@ sub check_connection
 		
 		# Copy the tools the nodes will need into docroot and update
 		# the URLs we will tell the nodes to download from.
-		#copy_tools_to_docroot($conf);
+		#copy_tools_to_docroot($an);
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -15836,8 +15716,7 @@ sub check_connection
 # This does nothing more than call 'echo 1' to see if the target is reachable.
 sub check_node_access
 {
-	my ($conf, $node, $password) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an, $node, $password) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_access" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
@@ -15850,7 +15729,7 @@ sub check_node_access
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$node,
-		port		=>	$conf->{node}{$node}{port}, 
+		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
 		ssh_fh		=>	"",
 		'close'		=>	0,
@@ -15862,7 +15741,7 @@ sub check_node_access
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	$conf->{node}{$node}{ssh_fh} = $ssh_fh;
+	$an->data->{node}{$node}{ssh_fh} = $ssh_fh;
 	$access = $return->[0] ? $return->[0] : 0;
  	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
  		name1 => "node",   value1 => $node,

@@ -38,6 +38,7 @@ use AN::Tools::Readable;
 use AN::Tools::Remote;
 use AN::Tools::ScanCore;
 use AN::Tools::Storage;
+use AN::Tools::Striker;
 use AN::Tools::String;
 use AN::Tools::System;
 use AN::Tools::Validate;
@@ -62,6 +63,7 @@ sub new
 			REMOTE				=>	AN::Tools::Remote->new(),
 			SCANCORE			=>	AN::Tools::ScanCore->new(),
 			STORAGE				=>	AN::Tools::Storage->new(),
+			STRIKER				=>	AN::Tools::Striker->new(),
 			STRING				=>	AN::Tools::String->new(),
 			SYSTEM				=>	AN::Tools::System->new(),
 			VALIDATE			=>	AN::Tools::Validate->new(),
@@ -111,6 +113,7 @@ sub new
 	$an->Remote->parent($an);
 	$an->ScanCore->parent($an);
 	$an->Storage->parent($an);
+	$an->Striker->parent($an);
 	$an->String->parent($an);
 	$an->System->parent($an);
 	$an->Validate->parent($an);
@@ -433,6 +436,14 @@ sub Storage
 	my $self = shift;
 	
 	return ($self->{HANDLE}{STORAGE});
+}
+
+# Makes my handle to AN::Tools::Striker clearer when using this module to access it's methods.
+sub Striker
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{STRIKER});
 }
 
 # Makes my handle to AN::Tools::String clearer when using this module to access it's methods.

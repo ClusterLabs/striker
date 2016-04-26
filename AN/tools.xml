@@ -604,7 +604,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0088"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_notifications()' method was called without passing in a target or UUID.]]></key>
 		<key name="error_message_0089"><![CDATA[The 'AN::Tools::Storage' module's 'read_words()' method was called without passing in a file to read.]]></key>
 		<key name="error_message_0090"><![CDATA[The 'AN::Tools::Get' module's 'recipient_data()' method was called but no recipient, anvil or notification target UUID was passed in.]]></key>
-		<key name="error_message_0091"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an Anvil! and/or notification UUID.]]></key>
+		<key name="error_message_0091"><![CDATA[The 'AN::Tools::Web' module's 'insert_or_update_recipients()' method was called without passing in an #!string!an_brand_0003!# and/or notification UUID.]]></key>
 		<key name="error_message_0092"><![CDATA[The 'AN::Tools::Get' module's 'server_data()' method failed to find the requested server's XML definition data.]]></key>
 		<key name="error_message_0093"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method was not passed a manifest (XML format) to parse.]]></key>
 		<key name="error_message_0094"><![CDATA[The 'AN::Tools::ScanCore' module's 'parse_install_manifest()' method failed to find the install manifest XML data for the manifest UUID: [#!variable!uuid!#].]]></key>
@@ -615,6 +615,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0099"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which could not be translated to a host UUID.]]></key>
 		<key name="error_message_0100"><![CDATA[The 'AN::Tools::ScanCore' module's 'host_state()' method was passes in the target: [#!variable!target!#] which does not exist in the 'nodes' database table.]]></key>
 		<key name="error_message_0101"><![CDATA[The 'AN::Tools::ScanCore' module's 'get_migration_target()' method was called without passing in a server name.]]></key>
+		<key name="error_message_0102"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called without passing in a UUID.]]></key>
+		<key name="error_message_0103"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
+		<key name="error_message_0104"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known #!string!an_brand_0003!# systems.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

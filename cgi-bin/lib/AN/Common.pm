@@ -24,7 +24,7 @@ my $THIS_FILE = 'AN::Common.pm';
 # 'die'. This should be used as rarely as possible as translations can't be used.
 sub hard_die
 {
-	my ($conf, $file, $line, $exit_code, $message) = @_;
+	my ($an, $file, $line, $exit_code, $message) = @_;
 	
 	$file      = "--" if not defined $file;
 	$line      = 0    if not defined $line;
@@ -49,11 +49,7 @@ sub initialize
 	my ($caller, $initialize_http) = @_;
 	
 	# Set default configuration variable values
-	my ($conf) = initialize_conf();
-	
-	# Open my handle to AN::Tools, use the $conf hash ref for $an->data and set '$an's default log file.
-	my $an = AN::Tools->new({data => $conf});
-	$conf->{handle}{an} = $an;
+	my ($an) = initialize_conf();
 	
 	# First thing first, initialize the web session.
 	$an->Web->initialize_http() if $initialize_http;
@@ -66,14 +62,14 @@ sub initialize
 	# Read in the configuration file. If the file doesn't exist, initial setup will be triggered.
 	$an->Storage->read_conf({file => $an->data->{path}{striker_config}});
 	
-	return($conf);
+	return($an);
 }
 
 # Set default configuration variable values. In this function, '$an' is not yet defined.
 sub initialize_conf
 {
 	# Setup (sane) defaults
-	my $conf = {
+	my $an = AN::Tools->new({data => {
 		nodes			=>	"",
 		check_using_node	=>	"",
 		up_nodes		=>	[],
@@ -626,30 +622,29 @@ sub initialize_conf
 			skins				=>	"/skins",
 			cgi				=>	"/cgi-bin",
 		},
-	};
+	}});
 	
-	return($conf);
+	return($an);
 }
 
 # Check to see if the global settings have been setup.
 sub check_global_settings
 {
-	my ($conf) = @_;
-	my $an = $conf->{handle}{an};
+	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_global_settings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $global_set = 1;
 	
 	# Pull out the current config.
-	my $smtp__server              = $conf->{smtp}{server}; 			# mail.alteeve.ca
-	my $smtp__port                = $conf->{smtp}{port};			# 587
-	my $smtp__username            = $conf->{smtp}{username};		# example@alteeve.ca
-	my $smtp__password            = $conf->{smtp}{password};		# Initial1
-	my $smtp__security            = $conf->{smtp}{security};		# STARTTLS
-	my $smtp__encrypt_pass        = $conf->{smtp}{encrypt_pass};		# 1
-	my $smtp__helo_domain         = $conf->{smtp}{helo_domain};		# example.com
-	my $mail_data__to             = $conf->{mail_data}{to};			# you@example.com
-	my $mail_data__sending_domain = $conf->{mail_data}{sending_domain};	# example.com
+	my $smtp__server              = $an->data->{smtp}{server}; 			# mail.alteeve.ca
+	my $smtp__port                = $an->data->{smtp}{port};			# 587
+	my $smtp__username            = $an->data->{smtp}{username};		# example@alteeve.ca
+	my $smtp__password            = $an->data->{smtp}{password};		# Initial1
+	my $smtp__security            = $an->data->{smtp}{security};		# STARTTLS
+	my $smtp__encrypt_pass        = $an->data->{smtp}{encrypt_pass};		# 1
+	my $smtp__helo_domain         = $an->data->{smtp}{helo_domain};		# example.com
+	my $mail_data__to             = $an->data->{mail_data}{to};			# you@example.com
+	my $mail_data__sending_domain = $an->data->{mail_data}{sending_domain};	# example.com
 	
 	# TODO: Make this smarter... For now, just check the SMTP username to see if it is default.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
