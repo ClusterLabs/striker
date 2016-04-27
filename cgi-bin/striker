@@ -155,6 +155,8 @@ elsif ($an->data->{cgi}{'system'})
 elsif ($an->data->{cgi}{anvil_uuid})
 {
 	$an->Striker->load_anvil();
+	AN::Cluster::scan_cluster($an);
+	AN::Striker::display_details($an);
 }
 elsif ($an->data->{cgi}{cluster})
 {

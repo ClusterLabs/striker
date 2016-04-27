@@ -9619,8 +9619,7 @@ sub scan_cluster
 	return(0);
 }
 
-# This attempts to gather all information about a node in one SSH call. It's
-# done to minimize the ssh overhead on slow links.
+# This attempts to gather all information about a node.
 sub check_node_status
 {
 	my ($an) = @_;

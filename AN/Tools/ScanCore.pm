@@ -16,6 +16,7 @@ my $THIS_FILE = "ScanCore.pm";
 # get_manifests
 # get_migration_target
 # get_nodes
+# get_nodes_cache
 # get_notifications
 # get_owners
 # get_recipients
@@ -24,6 +25,7 @@ my $THIS_FILE = "ScanCore.pm";
 # host_state
 # insert_or_update_anvils
 # insert_or_update_nodes
+# insert_or_update_nodes_cache
 # insert_or_update_notifications
 # insert_or_update_owners
 # insert_or_update_recipients
@@ -378,6 +380,73 @@ WHERE
 			node_ifn		=>	$node_ifn, 
 			host_name		=>	$host_name, 
 			node_password		=>	$node_password, 
+			modified_date		=>	$modified_date, 
+		};
+	}
+	
+	return($return);
+}
+
+# Get a list of node's cache as an array of hash references
+sub get_nodes_cache
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# Clear any prior errors as I may set one here.
+	$an->Alert->_set_error;
+	
+	### NOTE: This is NOT restricted to the host because if this host doesn't have cache data for a given
+	###       node, it might be able to use data cached by another host.
+	my $query = "
+SELECT 
+    node_cache_uuid, 
+    node_cache_host_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note, 
+    modified_date 
+FROM 
+    nodes_cache 
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return  = [];
+	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+	my $count   = @{$results};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "results", value1 => $results, 
+		name2 => "count",   value2 => $count
+	}, file => $THIS_FILE, line => __LINE__});
+	foreach my $row (@{$results})
+	{
+		my $node_cache_uuid      = $row->[0];
+		my $node_cache_host_uuid = $row->[1];
+		my $node_cache_node_uuid = $row->[2];
+		my $node_cache_name      = $row->[3];
+		my $node_cache_data      = $row->[4] ? $row->[4] : "";
+		my $node_cache_note      = $row->[5] ? $row->[5] : "";
+		my $modified_date        = $row->[6];
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
+			name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
+			name3 => "node_cache_node_uuid", value3 => $node_cache_node_uuid, 
+			name4 => "node_cache_name",      value4 => $node_cache_name, 
+			name5 => "node_cache_data",      value5 => $node_cache_data, 
+			name6 => "node_cache_note",      value6 => $node_cache_note, 
+			name7 => "modified_date",        value7 => $modified_date, 
+		}, file => $THIS_FILE, line => __LINE__});
+		push @{$return}, {
+			node_cache_uuid		=>	$node_cache_uuid, 
+			node_cache_host_uuid	=>	$node_cache_host_uuid, 
+			node_cache_node_uuid	=>	$node_cache_node_uuid, 
+			node_cache_name		=>	$node_cache_name, 
+			node_cache_data		=>	$node_cache_data, 
+			node_cache_note		=>	$node_cache_note, 
 			modified_date		=>	$modified_date, 
 		};
 	}
@@ -883,6 +952,7 @@ sub insert_or_update_anvils
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0079", code => 79, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we don't have a UUID, see if we can find one for the given Anvil! name.
@@ -922,10 +992,12 @@ WHERE
 		if (not $anvil_owner_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0080", code => 80, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 		if (not $anvil_smtp_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0081", code => 81, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 		   $anvil_uuid = $an->Get->uuid();
 		my $query      = "
@@ -1104,10 +1176,12 @@ WHERE
 		if (not $node_anvil_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 		if (not $node_host_uuid)
 		{
 			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 		   $node_uuid = $an->Get->uuid();
 		my $query      = "
@@ -1238,6 +1312,188 @@ WHERE
 	return($node_uuid);
 }
 
+# This updates (or inserts) a record in the 'nodes_cache' table.
+sub insert_or_update_nodes_cache
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $node_cache_uuid      = $parameter->{node_cache_uuid}      ? $parameter->{node_cache_uuid}      : "";
+	my $node_cache_host_uuid = $parameter->{node_cache_host_uuid} ? $parameter->{node_cache_host_uuid} : "";
+	my $node_cache_node_uuid = $parameter->{node_cache_node_uuid} ? $parameter->{node_cache_node_uuid} : "";
+	my $node_cache_name      = $parameter->{node_cache_name}      ? $parameter->{node_cache_name}      : "";
+	my $node_cache_data      = $parameter->{node_cache_data}      ? $parameter->{node_cache_data}      : "NULL";
+	my $node_cache_note      = $parameter->{node_cache_note}      ? $parameter->{node_cache_note}      : "NULL";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
+		name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
+		name3 => "node_cache_node_uuid", value3 => $node_cache_node_uuid, 
+		name4 => "node_cache_name",      value4 => $node_cache_name, 
+		name5 => "node_cache_data",      value5 => $node_cache_data, 
+		name6 => "node_cache_note",      value6 => $node_cache_note, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# We need a host_uuid, node_uuid and name
+	if (not $node_cache_host_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0082", code => 82, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $node_cache_node_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $node_cache_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0083", code => 83, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# If we don't have a UUID, see if we can find one for the given host UUID.
+	if (not $node_cache_uuid)
+	{
+		my $query = "
+SELECT 
+    node_cache_uuid 
+FROM 
+    nodes_cache 
+WHERE 
+    node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_host_uuid)." 
+AND 
+    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid)." 
+AND 
+    node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			$node_cache_uuid = $row->[0];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_cache_uuid", value1 => $node_cache_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	# If I still don't have an anvil_uuid, we're INSERT'ing .
+	if (not $node_cache_uuid)
+	{
+		   $node_cache_uuid = $an->Get->uuid();
+		my $query           = "
+INSERT INTO 
+    nodes_cache 
+(
+    node_cache_uuid, 
+    node_cache_host_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note, 
+    modified_date 
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_host_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_data).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+);
+";
+		$query =~ s/'NULL'/NULL/g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Query the rest of the values and see if anything changed.
+		my $query = "
+SELECT 
+    node_cache_uuid, 
+    node_cache_host_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note 
+FROM 
+    nodes_cache 
+WHERE 
+    node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
+		my $count   = @{$results};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "results", value1 => $results, 
+			name2 => "count",   value2 => $count
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $old_node_cache_uuid      = $row->[0];
+			my $old_node_cache_host_uuid = $row->[1];
+			my $old_node_cache_node_uuid = $row->[2];
+			my $old_node_cache_name      = $row->[3];
+			my $old_node_cache_data      = $row->[4] ? $row->[4] : "NULL";
+			my $old_node_cache_note      = $row->[5] ? $row->[5] : "NULL";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "old_node_cache_uuid",      value1 => $old_node_cache_uuid, 
+				name2 => "old_node_cache_host_uuid", value2 => $old_node_cache_host_uuid, 
+				name3 => "old_node_cache_node_uuid", value3 => $old_node_cache_node_uuid, 
+				name4 => "old_node_cache_name",      value4 => $old_node_cache_name, 
+				name5 => "old_node_cache_data",      value5 => $old_node_cache_data, 
+				name6 => "old_node_cache_note",      value6 => $old_node_cache_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Anything change?
+			if (($old_node_cache_uuid      ne $node_cache_uuid)      or 
+			    ($old_node_cache_host_uuid ne $node_cache_host_uuid) or 
+			    ($old_node_cache_node_uuid ne $node_cache_node_uuid) or 
+			    ($old_node_cache_name      ne $node_cache_name)      or 
+			    ($old_node_cache_data      ne $node_cache_data)      or 
+			    ($old_node_cache_note      ne $node_cache_note))
+			{
+				# Something changed, save.
+				my $query = "
+UPDATE 
+    nodes_cache 
+SET 
+    node_cache_uuid      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid).", 
+    node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_host_uuid).", 
+    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).", 
+    node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name).", 
+    node_cache_data      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_data).", 
+    node_cache_note      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_note).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    node_cache_uuid      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query, 
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return($node_cache_uuid);
+}
+
 # This updates (or inserts) a record in the 'notifications' table.
 sub insert_or_update_notifications
 {
@@ -1256,6 +1512,7 @@ sub insert_or_update_notifications
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0088", code => 88, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we don't have a UUID, see if we can find one for the given notify server name.
@@ -1414,6 +1671,7 @@ sub insert_or_update_owners
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0078", code => 78, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we don't have a UUID, see if we can find one for the given owner server name.
@@ -1546,6 +1804,7 @@ sub insert_or_update_recipients
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0091", code => 91, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we don't have a UUID, see if we can find one for the given recipient server name.
@@ -1698,6 +1957,7 @@ sub insert_or_update_smtp
 	{
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0077", code => 77, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
 	
 	# If we don't have a UUID, see if we can find one for the given SMTP server name.
@@ -2079,9 +2339,13 @@ sub parse_anvil_data
 				health         => $an->data->{db}{nodes}{$node_uuid}{health}, 
 				emergency_stop => $an->data->{db}{nodes}{$node_uuid}{emergency_stop}, 
 				stop_reason    => $an->data->{db}{nodes}{$node_uuid}{stop_reason}, 
+				use_ip         => "",        # This will be set to the IP/name we successfully connect to the node with.
+				use_port       => 22,        # This will switch to the remote_port if we use the remote_ip to access.
+				online         => 0,         # This will be set to '1' if we successfully access the node
+				power          => "unknown", # This will be set to 'on' or 'off' when we access it or based on the 'power check command' output
 				password       => $an->data->{db}{nodes}{$node_uuid}{password} ? $an->data->{db}{nodes}{$node_uuid}{password} : $an->data->{anvils}{$anvil_uuid}{password}, 
 			};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
 				name1  => "anvils::${anvil_uuid}::${node_key}::uuid",           value1  => $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid}, 
 				name2  => "anvils::${anvil_uuid}::${node_key}::name",           value2  => $an->data->{anvils}{$anvil_uuid}{$node_key}{name}, 
 				name3  => "anvils::${anvil_uuid}::${node_key}::remote_ip",      value3  => $an->data->{anvils}{$anvil_uuid}{$node_key}{remote_ip}, 
@@ -2094,6 +2358,10 @@ sub parse_anvil_data
 				name10 => "anvils::${anvil_uuid}::${node_key}::health",         value10 => $an->data->{anvils}{$anvil_uuid}{$node_key}{health}, 
 				name11 => "anvils::${anvil_uuid}::${node_key}::emergency_stop", value11 => $an->data->{anvils}{$anvil_uuid}{$node_key}{emergency_stop}, 
 				name12 => "anvils::${anvil_uuid}::${node_key}::stop_reason",    value12 => $an->data->{anvils}{$anvil_uuid}{$node_key}{stop_reason}, 
+				name13 => "anvils::${anvil_uuid}::${node_key}::use_ip",         value13 => $an->data->{anvils}{$anvil_uuid}{$node_key}{use_ip}, 
+				name14 => "anvils::${anvil_uuid}::${node_key}::use_port",       value14 => $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port}, 
+				name15 => "anvils::${anvil_uuid}::${node_key}::online",         value15 => $an->data->{anvils}{$anvil_uuid}{$node_key}{online}, 
+				name16 => "anvils::${anvil_uuid}::${node_key}::power",          value16 => $an->data->{anvils}{$anvil_uuid}{$node_key}{power}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvils::${anvil_uuid}::${node_key}::password", value1 => $an->data->{anvils}{$anvil_uuid}{$node_key}{password}, 
@@ -2156,7 +2424,7 @@ sub parse_install_manifest
 	if (not $parameter->{uuid})
 	{
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0093", code => 93, file => "$THIS_FILE", line => __LINE__});
-		return(1);
+		return("");
 	}
 	
 	my $manifest_data = "";
@@ -2176,7 +2444,7 @@ sub parse_install_manifest
 	if (not $manifest_data)
 	{
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0094", message_variables => { uuid => $parameter->{uuid} }, code => 94, file => "$THIS_FILE", line => __LINE__});
-		return(1);
+		return("");
 	}
 	
 	my $uuid = $parameter->{uuid};

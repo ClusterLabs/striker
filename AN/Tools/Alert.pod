@@ -656,6 +656,30 @@ The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID
 
 The 'AN::Tools::Striker' module's 'load_anvil()' method was called with a valid format UUID, but it did not appear to match any known Anvil! systems.
 
+=head2 C<105>
+
+The 'AN::Tools::Striker' module's 'scan_node()' method was called without passing in a UUID.
+
+=head2 C<106>
+
+The 'AN::Tools::Striker' module's 'scan_node()' method was called with the UUID set but it did not appear to be a properly formatted UUID.
+
+=head2 C<107>
+
+The 'AN::Tools::Striker' module's 'scan_node()' method was called with a valid format UUID, but it did not appear to match any known nodes.
+
+=head2 C<108>
+
+The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a host UUID.
+
+=head2 C<109>
+
+The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a node UUID.
+
+=head2 C<110>
+
+The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a cache item name.
+
 
 =head1 SEE ALSO
 

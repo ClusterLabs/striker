@@ -618,6 +618,12 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0102"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called without passing in a UUID.]]></key>
 		<key name="error_message_0103"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
 		<key name="error_message_0104"><![CDATA[The 'AN::Tools::Striker' module's 'load_anvil()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known #!string!an_brand_0003!# systems.]]></key>
+		<key name="error_message_0105"><![CDATA[The 'AN::Tools::Striker' module's 'scan_node()' method was called without passing in a UUID.]]></key>
+		<key name="error_message_0106"><![CDATA[The 'AN::Tools::Striker' module's 'scan_node()' method was called with the UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
+		<key name="error_message_0107"><![CDATA[The 'AN::Tools::Striker' module's 'scan_node()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known nodes.]]></key>
+		<key name="error_message_0108"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a host UUID.]]></key>
+		<key name="error_message_0109"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a node UUID.]]></key>
+		<key name="error_message_0110"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a cache item name.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

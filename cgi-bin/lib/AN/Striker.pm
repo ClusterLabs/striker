@@ -1509,8 +1509,8 @@ sub lsi_control_disk_id_led
 	return ($success);
 }
 
-# This reads the sensor values of a given node and displays them. Some sensors
-# will be controllable; like failing/adding a hard drive.
+# This reads the sensor values of a given node and displays them. Some sensors will be controllable; like 
+# failing/adding a hard drive.
 sub display_node_health
 {
 	my ($an) = @_;

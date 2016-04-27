@@ -2533,7 +2533,7 @@ sub send_email
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "alert_agent_name", value1 => $alert_agent_name, 
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $alert_uuid (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}})
+		foreach my $alert_uuid (keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_uuid", value1 => $alert_uuid, 
@@ -2809,7 +2809,7 @@ sub record_alert_to_file
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "alert_agent_name", value1 => $alert_agent_name, 
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $alert_uuid (sort {$a cmp $b} keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}})
+		foreach my $alert_uuid (keys %{$an->data->{db}{alerts}{agent_name}{$alert_agent_name}{alert_uuid}})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "alert_uuid", value1 => $alert_uuid, 
@@ -3629,8 +3629,13 @@ sub update_db
 		# Something somewhere is out of sync. So start with updating the core tables. The agents will
 		# take care of their own.
 		
-		### NOTE: Don't bother with COUNT(*) checks, that is not a good indication of being up to 
-		###       date or not.
+		### TODO: Verify that disabling triggers is the right approach.
+		# Disable triggers.
+		my $query = "SET session_replication_role = replica;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
 		
 		# Update (and commit) the hosts table
 		update_db_hosts($an);
@@ -3642,6 +3647,7 @@ sub update_db
 		update_db_temperature($an);
 		update_db_power($an);
 		update_db_shared($an);
+		update_db_nodes_cache($an);
 		
 		# These tables don't link to a specific host_uuid.
 		update_db_servers($an);
@@ -3658,6 +3664,251 @@ sub update_db
 		
 		# Record the time
 		$an->DB->update_time({file => $THIS_FILE});
+
+		# Re-enable triggers
+		my $query = "SET session_replication_role = DEFAULT;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	
+	}
+	
+	return(0);
+}
+
+# Update the nodes_cache table, which is bound the the host_uuid.
+sub update_db_nodes_cache
+{
+	my ($an) = @_;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_db_nodes_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Now read in all the 'nodes_cache' table records that came from us.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# These will store the INSERTs for this DB, if needed.
+		$an->data->{db_resync}{$id}{sql}          = [];
+		$an->data->{db_resync}{$id}{public}{sql}  = [];
+		$an->data->{db_resync}{$id}{history}{sql} = [];
+		
+		# Read in the history schema
+		my $query = "
+SELECT 
+    node_cache_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note, 
+    modified_date 
+FROM 
+    history.nodes_cache
+WHERE
+    node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "id",    value1 => $id, 
+			name2 => "query", value2 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		# Do the query against the source DB and loop through the results.
+		my $results = $an->DB->do_db_query({id => $id, query => $query, source => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "results", value1 => $results
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $row (@{$results})
+		{
+			my $node_cache_uuid      = $row->[0];
+			my $node_cache_node_uuid = $row->[1];
+			my $node_cache_name      = $row->[2];
+			my $node_cache_data      = $row->[3] ? $row->[3] : "NULL";
+			my $node_cache_note      = $row->[4] ? $row->[4] : "NULL";
+			my $modified_date        = $row->[5];
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+				name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
+				name2 => "node_cache_node_uuid", value2 => $node_cache_node_uuid, 
+				name3 => "node_cache_name",      value3 => $node_cache_name, 
+				name4 => "node_cache_data",      value4 => $node_cache_data, 
+				name5 => "node_cache_note",      value5 => $node_cache_note, 
+				name6 => "modified_date",        value6 => $modified_date
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			### TODO: Sort out how to loop this given that we need to match the name and the node_uuid...
+			# Record this in the unified and local hashes.
+			$an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid} = {
+				node_cache_node_uuid	=>	$node_cache_node_uuid, 
+				node_cache_name		=>	$node_cache_name, 
+				node_cache_data		=>	$node_cache_data, 
+				node_cache_note		=>	$node_cache_note, 
+			};
+			$an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{'exists'} = 1;
+			$an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen}     = 0;
+			$an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid} = {
+				node_cache_node_uuid	=>	$node_cache_node_uuid, 
+				node_cache_name		=>	$node_cache_name, 
+				node_cache_data		=>	$node_cache_data, 
+				node_cache_note		=>	$node_cache_note, 
+			};
+		}
+	}
+	
+	### NOTE: Sort '$b cmp $a' on the modified date.
+	# Now, loop through each record from the unified table and see if it 
+	# needs to be added to any DBs.
+	foreach my $modified_date (sort {$b cmp $a} keys %{$an->data->{db_data}{unified}{nodes_cache}{modified_date}})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "modified_date", value1 => $modified_date,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $node_cache_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}})
+		{
+			my $node_cache_node_uuid = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_node_uuid};
+			my $node_cache_name      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_name};
+			my $node_cache_data      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_data};
+			my $node_cache_note      = $an->data->{db_data}{unified}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}{node_cache_note};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "node_cache_node_uuid", value1 => $node_cache_node_uuid, 
+				name2 => "node_cache_name",      value2 => $node_cache_name, 
+				name3 => "node_cache_data",      value3 => $node_cache_data, 
+				name4 => "node_cache_note",      value4 => $node_cache_note, 
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+			{
+				# For each 'node_cache_uuid' we see;
+				# - Check if we've *seen* it before
+				#   |- If not; See if it *exists* in the public schema yet.
+				#   |  |- If so, check to see if the entry in the public schema is up to date.
+				#   |  |  \- If not, _UPDATE_ public schema.
+				#   |  \- If not, do an _INSERT_ into public schema.
+				#   \- If we have, see if it exists at the current timestamp.
+				#      \- If not, _INSERT_ it into history schema.
+				#
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "db_data::${id}::nodes_cache::node_cache_uuid::${node_cache_uuid}::seen", value1 => $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen}, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if (not $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen})
+				{
+					# Mark this record as now having been seen.
+					$an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{seen} = 1;
+					
+					# Never seen it. Check if it exists.
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "db_data::${id}::nodes_cache::node_cache_uuid::${node_cache_uuid}::exists", value1 => $an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{'exists'}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($an->data->{db_data}{$id}{nodes_cache}{node_cache_uuid}{$node_cache_uuid}{'exists'})
+					{
+						# It exists, but does it exist at this time stamp?
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1  => "db_data::${id}::nodes_cache::modified_date::${modified_date}::node_cache_uuid::${node_cache_uuid}", value1 => $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid}, 
+						}, file => $THIS_FILE, line => __LINE__});
+						if (not $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid})
+						{
+							# No, so UPDATE it.
+							my $query = "
+UPDATE 
+    public.nodes_cache
+SET
+    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).", 
+    node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name).", 
+    node_cache_data      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_data).", 
+    node_cache_note      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_note).", 
+    modified_date        = ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+WHERE 
+    node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
+AND 
+    node_cache_uuid      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
+;";
+							# Now record the query in the array
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+								name1 => "id",    value1 => $id, 
+								name2 => "query", value2 => $query
+							}, file => $THIS_FILE, line => __LINE__});
+							push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+						}
+					}
+					else
+					{
+						# It doesn't exist, so INSERT it.
+						my $query = "
+INSERT INTO 
+    public.nodes_cache
+(
+    node_cache_uuid, 
+    node_cache_host_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_data).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{public}{sql}}, $query;
+					}
+				}
+				else
+				{
+					# We've seen this 'node_cache_uuid' before, so it's just a question
+					# of whether the entry for the current timestamp exists in the 
+					# history schema.
+					if (not $an->data->{db_data}{$id}{nodes_cache}{modified_date}{$modified_date}{node_cache_uuid}{$node_cache_uuid})
+					{
+						# It doesn't, INSERT it.
+						my $query = "
+INSERT INTO 
+    history.nodes_cache
+(
+    node_cache_uuid, 
+    node_cache_host_uuid, 
+    node_cache_node_uuid, 
+    node_cache_name, 
+    node_cache_data, 
+    node_cache_note, 
+    modified_date
+) VALUES (
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid}).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_node_uuid).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_name).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_data).", 
+    ".$an->data->{sys}{use_db_fh}->quote($node_cache_note).", 
+    ".$an->data->{sys}{use_db_fh}->quote($modified_date)."
+);";
+						# Now record the query in the array
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+							name1 => "id",    value1 => $id, 
+							name2 => "query", value2 => $query
+						}, file => $THIS_FILE, line => __LINE__});
+						push @{$an->data->{db_resync}{$id}{history}{sql}}, $query;
+					} # Exist in history at timestamp?
+				} # Seen node_cache_uuid?
+			} # foreach my $id 
+		} # foreach my $node_cache_uuid ...
+	} # foreach $modified_date ...
+	
+	# Free up memory by deleting the DB data from the main hash.
+	delete $an->data->{db_data};
+	
+	# Do the INSERTs now and then release the memory.
+	foreach my $id (sort {$a cmp $b} keys %{$an->data->{dbh}})
+	{
+		# Merge the queries with public schema queries being first.
+		@{$an->data->{db_resync}{$id}{sql}} = (@{$an->data->{db_resync}{$id}{public}{sql}}, @{$an->data->{db_resync}{$id}{history}{sql}});
+		if (@{$an->data->{db_resync}{$id}{sql}} > 0)
+		{
+			$an->DB->do_db_write({id => $id, query => $an->data->{db_resync}{$id}{sql}, source => $THIS_FILE, line => __LINE__});
+			delete $an->data->{db_resync}{$id}{sql};
+		}
 	}
 	
 	return(0);
@@ -3765,7 +4016,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $smtp_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}})
+		foreach my $smtp_uuid (keys %{$an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}})
 		{
 			my $smtp_server         = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_server}; 
 			my $smtp_port           = $an->data->{db_data}{unified}{smtp}{modified_date}{$modified_date}{smtp_uuid}{$smtp_uuid}{smtp_port}; 
@@ -4015,7 +4266,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $manifest_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}})
+		foreach my $manifest_uuid (keys %{$an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}})
 		{
 			my $manifest_data = $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_data}; 
 			my $manifest_note = $an->data->{db_data}{unified}{manifests}{modified_date}{$modified_date}{manifest_uuid}{$manifest_uuid}{manifest_note};
@@ -4231,7 +4482,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $recipient_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}})
+		foreach my $recipient_uuid (keys %{$an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}})
 		{
 			my $recipient_anvil_uuid   = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_anvil_uuid}; 
 			my $recipient_notify_uuid  = $an->data->{db_data}{unified}{recipients}{modified_date}{$modified_date}{recipient_uuid}{$recipient_uuid}{recipient_notify_uuid}; 
@@ -4486,7 +4737,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $node_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}})
+		foreach my $node_uuid (keys %{$an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}})
 		{
 			my $node_name        = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_name}; 
 			my $node_anvil_uuid  = $an->data->{db_data}{unified}{nodes}{modified_date}{$modified_date}{node_uuid}{$node_uuid}{node_anvil_uuid}; 
@@ -4766,7 +5017,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $anvil_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}})
+		foreach my $anvil_uuid (keys %{$an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}})
 		{
 			my $anvil_owner_uuid  = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_owner_uuid}, 
 			my $anvil_smtp_uuid   = $an->data->{db_data}{unified}{anvils}{modified_date}{$modified_date}{anvil_uuid}{$anvil_uuid}{anvil_smtp_uuid}, 
@@ -5002,7 +5253,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $owner_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}})
+		foreach my $owner_uuid (keys %{$an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}})
 		{
 			my $owner_name = $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_name}; 
 			my $owner_note = $an->data->{db_data}{unified}{owners}{modified_date}{$modified_date}{owner_uuid}{$owner_uuid}{owner_note};
@@ -5213,7 +5464,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $state_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}})
+		foreach my $state_uuid (keys %{$an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}})
 		{
 			my $state_name      = $an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}{state_name}; 
 			my $state_host_uuid = $an->data->{db_data}{unified}{states}{modified_date}{$modified_date}{state_uuid}{$state_uuid}{state_host_uuid}; 
@@ -5957,7 +6208,7 @@ FROM
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $server_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}})
+		foreach my $server_uuid (keys %{$an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}})
 		{
 			my $server_name                     = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_name}; 
 			my $server_stop_reason              = $an->data->{db_data}{unified}{servers}{modified_date}{$modified_date}{server_uuid}{$server_uuid}{server_stop_reason};
@@ -6250,7 +6501,7 @@ FROM
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $shared_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}})
+		foreach my $shared_uuid (keys %{$an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}})
 		{
 			my $shared_uuid           = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_uuid};
 			my $shared_record_locator = $an->data->{db_data}{unified}{shared}{modified_date}{$modified_date}{shared_uuid}{$shared_uuid}{shared_record_locator};
@@ -6753,7 +7004,7 @@ WHERE
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $alert_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_uuid}})
+		foreach my $alert_uuid (keys %{$an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_uuid}})
 		{
 			my $alert_agent_name        = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_uuid}{$alert_uuid}{alert_agent_name};
 			my $alert_level             = $an->data->{db_data}{unified}{alerts}{modified_date}{$modified_date}{alert_uuid}{$alert_uuid}{alert_level};
@@ -7156,7 +7407,7 @@ FROM
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "modified_date", value1 => $modified_date,
 		}, file => $THIS_FILE, line => __LINE__});
-		foreach my $host_uuid (sort {$a cmp $b} keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
+		foreach my $host_uuid (keys %{$an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}})
 		{
 			my $host_name           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_name};
 			my $host_type           = $an->data->{db_data}{unified}{hosts}{modified_date}{$modified_date}{host_uuid}{$host_uuid}{host_type};

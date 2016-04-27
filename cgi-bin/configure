@@ -1806,6 +1806,7 @@ sub delete_anvil
 	my $anvil_data     = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid}});
 	my $notice_message = "";
 	
+	### TODO: Delete any cached data for the nodes before deleting the actual node.
 	# Send the queries as an array
 	my $queries = [];
 	push @{$queries}, "

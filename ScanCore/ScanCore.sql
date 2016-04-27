@@ -583,6 +583,69 @@ CREATE TRIGGER trigger_states
 	FOR EACH ROW EXECUTE PROCEDURE history_states();
 
 
+-- TODO: Create a 'node_cache' table here that stores things like power check commands, default network to 
+--       use for access, hosts and sshd data and so on. Link it to a host_uuid because some dashboards will
+--       record different data, like what network to use to talk to the dashboard.
+CREATE TABLE nodes_cache (
+	node_cache_uuid		uuid				primary key,
+	node_cache_host_uuid	uuid				not null,			-- The UUID of the machine recording this cache. Note that other dashboards may use this if they have no cache of their own.
+	node_cache_node_uuid	uuid				not null,			-- The UUID of the node that the cached data applies to.
+	node_cache_name		text				not null,			-- This is the name of the cached data. Like 'hosts', 'power_control', 'ssh_config', etc.
+	node_cache_data		text,								-- This is a the actual cached data.
+	node_cache_note		text,								-- This is a free form note area for this cache entry, likely only to be ever used by Striker itself.
+	modified_date		timestamp with time zone	not null,
+	
+	FOREIGN KEY(node_cache_host_uuid) REFERENCES hosts(host_uuid), 
+	FOREIGN KEY(node_cache_node_uuid) REFERENCES nodess(node_uuid)
+);
+ALTER TABLE nodes_cache OWNER TO #!variable!user!#;
+
+CREATE TABLE history.nodes_cache (
+	history_id		bigserial,
+	node_cache_uuid		uuid,
+	node_cache_host_uuid	uuid,
+	node_cache_node_uuid	uuid,
+	node_cache_name		text,
+	node_cache_data		text,
+	node_cache_note		text,
+	modified_date		timestamp with time zone	not null
+);
+ALTER TABLE history.nodes_cache OWNER TO #!variable!user!#;
+
+CREATE FUNCTION history_nodes_cache() RETURNS trigger
+AS $$
+DECLARE
+	history_nodes_cache RECORD;
+BEGIN
+	SELECT INTO history_nodes_cache * FROM nodes_cache WHERE node_cache_uuid = new.node_cache_uuid;
+	INSERT INTO history.nodes_cache
+		(node_cache_uuid,
+		 node_cache_host_uuid, 
+		 node_cache_node_uuid, 
+		 node_cache_name, 
+		 node_cache_data, 
+		 node_cache_note, 
+		 modified_date)
+	VALUES
+		(history_nodes_cache.node_cache_uuid,
+		 history_nodes_cache.node_cache_host_uuid, 
+		 history_nodes_cache.node_cache_node_uuid, 
+		 history_nodes_cache.node_cache_name, 
+		 history_nodes_cache.node_cache_data, 
+		 history_nodes_cache.node_cache_note, 
+		 history_nodes_cache.modified_date);
+	RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_nodes_cache() OWNER TO #!variable!user!#;
+
+CREATE TRIGGER trigger_nodes_cache
+	AFTER INSERT OR UPDATE ON nodes_cache
+	FOR EACH ROW EXECUTE PROCEDURE history_nodes_cache();
+
+
+
 -- This stores alerts coming in from various agents
 CREATE TABLE alerts (
 	alert_uuid		uuid				primary key,
