@@ -12101,8 +12101,7 @@ sub parse_cluster_conf
 		# This will contain possible fence methods.
 		$an->data->{node}{$this_node}{info}{fence_methods} = "";
 		
-		# This will contain the command needed to check the node's
-		# power.
+		# This will contain the command needed to check the node's power.
 		$an->data->{node}{$this_node}{info}{power_check_command} = "";
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {

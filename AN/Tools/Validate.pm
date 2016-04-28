@@ -311,7 +311,7 @@ sub is_uuid
 	
 	my $valid = 0;
 	my $uuid  = $parameter->{uuid} ? $parameter->{uuid} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "uuid", value1 => $uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if (($uuid) && ($uuid =~ /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/))
@@ -319,7 +319,7 @@ sub is_uuid
 		$valid = 1;
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);

@@ -514,6 +514,7 @@ sub _set_paths
 	### TODO: Use '$an->Storage->find()' to locate these in case they aren't found at the set location
 	###       below.
 	# Executables
+	$an->data->{path}{awk}                = "/bin/awk";
 	$an->data->{path}{cat}                = "/bin/cat";
 	$an->data->{path}{'chmod'}            = "/bin/chmod";
 	$an->data->{path}{'chown'}            = "/bin/chown";
@@ -521,6 +522,8 @@ sub _set_paths
 	$an->data->{path}{clustat}            = "/usr/sbin/clustat";
 	$an->data->{path}{clusvcadm}          = "/usr/sbin/clusvcadm";
 	$an->data->{path}{df}                 = "/bin/df";
+	$an->data->{path}{dmesg}              = "/bin/dmesage";
+	$an->data->{path}{dmidecode}          = "/usr/sbin/dmidecode";
 	$an->data->{path}{drbdadm}            = "/sbin/drbdadm";
 	$an->data->{path}{'drbd-overview'}    = "/usr/sbin/drbd-overview";
 	$an->data->{path}{echo}               = "/bin/echo";
@@ -548,6 +551,7 @@ sub _set_paths
 	$an->data->{path}{postmap}            = "/usr/sbin/postmap";
 	$an->data->{path}{pgrep}              = "/usr/bin/pgrep";
 	$an->data->{path}{proc_drbd}          = "/proc/drbd";
+	$an->data->{path}{proc_meminfo}       = "/proc/meminfo";
 	$an->data->{path}{psql}               = "/usr/bin/psql";
 	$an->data->{path}{pmap}               = "/usr/bin/pmap";
 	$an->data->{path}{poweroff}           = "/sbin/poweroff";
@@ -576,6 +580,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
 	$an->data->{path}{cman_config}     = "/etc/cluster/cluster.conf";
 	$an->data->{path}{dhcpd_conf}      = "/etc/dhcp/dhcpd.conf";
+	$an->data->{path}{etc_fstab}       = "/etc/fstab";
 	$an->data->{path}{etc_hosts}       = "/etc/hosts";
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
@@ -590,6 +595,7 @@ sub _set_paths
 	$an->data->{path}{definitions}     = "/shared/definitions";
 	$an->data->{path}{fence_agents}    = "/usr/sbin";
 	$an->data->{path}{initd}           = "/etc/init.d";
+	$an->data->{path}{proc_bonding}    = "/proc/net/bonding";
 	$an->data->{path}{shared}          = "/shared";
 	$an->data->{path}{shared_files}    = "/shared/files";
 	$an->data->{path}{skins}           = "/var/www/html/skins";

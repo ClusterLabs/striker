@@ -32,8 +32,9 @@ my $THIS_FILE = "ScanCore.pm";
 # insert_or_update_smtp
 # parse_anvil_data
 # parse_install_manifest
+# read_cache
 # save_install_manifest
-
+# target_power
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -197,6 +198,9 @@ FROM
 			host_health		=>	$host_health, 
 			modified_date		=>	$modified_date, 
 		};
+		
+		# Record the host_uuid in a hash so that the name can be easily retrieved.
+		$an->data->{sys}{uuid_to_name}{$host_uuid} = $host_name;
 	}
 	
 	return($return);
@@ -1366,13 +1370,13 @@ AND
 AND 
     node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($node_cache_name)." 
 ;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
 		my $count   = @{$results};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "results", value1 => $results, 
 			name2 => "count",   value2 => $count
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1430,7 +1434,7 @@ SELECT
 FROM 
     nodes_cache 
 WHERE 
-    node_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
+    node_cache_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_cache_uuid)." 
 ;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
@@ -2326,7 +2330,8 @@ sub parse_anvil_data
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Store this so that we can later access the data as 'node1' or 'node2'
-			$an->data->{anvils}{$anvil_uuid}{$node_key} = {
+			$an->data->{db}{nodes}{$node_uuid}{node_key} = $node_key;
+			$an->data->{anvils}{$anvil_uuid}{$node_key}  = {
 				uuid           => $node_uuid,
 				name           => $an->data->{db}{nodes}{$node_uuid}{name}, 
 				remote_ip      => $an->data->{db}{nodes}{$node_uuid}{remote_ip}, 
@@ -3805,6 +3810,52 @@ sub parse_install_manifest
 	return(0);
 }
 
+# This reads a cache type for the given target for the requesting host and returns the data, if found.
+sub read_cache
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $target = $parameter->{target} ? $parameter->{target} : "";
+	my $type   = $parameter->{type}   ? $parameter->{type}   : "";
+	my $source = $parameter->{source} ? $parameter->{source} : $an->data->{sys}{host_uuid};
+	
+	my $query = "
+SELECT 
+    node_cache_data 
+FROM 
+    nodes_cache 
+WHERE 
+    node_cache_name      = ".$an->data->{sys}{use_db_fh}->quote($type)."
+AND 
+    node_cache_node_uuid = ".$an->data->{sys}{use_db_fh}->quote($target);
+    
+	if ($source eq "any")
+	{
+		$query .= "
+LIMIT 1
+;";
+	}
+	else
+	{
+		$query .= "
+AND 
+    node_cache_host_uuid = ".$an->data->{sys}{use_db_fh}->quote($source)."
+;";
+	}
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "data", value1 => $data, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($data);
+}
+
 # This generates an Install Manifest and records it in the 'manifests' table.
 sub save_install_manifest
 {
@@ -4137,6 +4188,102 @@ WHERE
 		name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	return($an->data->{cgi}{manifest_uuid});
+}
+
+# This reads in the cache for the target and checks or sets the power state of the target UUID, if possible.
+sub target_power
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $task   = $parameter->{task}   ? $parameter->{task}   : "status";
+	my $target = $parameter->{target} ? $parameter->{target} : "";
+	my $state  = "unknown";
+	
+	if (($task ne "status") && ($task ne "on") && ($task ne "off"))
+	{
+		# Bad task.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0111", message_variables => { task => $task }, code => 111, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $target)
+	{
+		# No target UUID
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0112", code => 112, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	elsif (not $an->Validate->is_uuid({uuid => $target}))
+	{
+		# Not a valid UUID.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0113", message_variables => { target => $target }, code => 113, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Check the power state.
+	my $power_check = $an->ScanCore->read_cache({target => $target, type => "power_check"});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "power_check", value1 => $power_check, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If I don't have a power_check, see if anyone else does.
+	if (not $power_check)
+	{
+		$power_check = $an->ScanCore->read_cache({target => $target, type => "power_check", source => "any"});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "power_check", value1 => $power_check, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Now check, if we can.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "power_check", value1 => $power_check, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($power_check)
+	{
+		my $shell_call = $power_check." -o $task";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($line =~ / On$/i)
+			{
+				$state = "on";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($line =~ / Off$/i)
+			{
+				$state = "off";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "state", value1 => $state,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		close $file_handle;
+	}
+	else
+	{
+		# Couldn't find a power_check comman in the cache.
+		$an->Log->entry({log_level => 1, message_key => "warning_message_0017", message_variables => {
+			name => $an->data->{sys}{uuid_to_name}{$target},
+			uuid => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# Set to 'unknown', 'on' or 'off'.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "state", value1 => $state,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($state);
 }
 
 

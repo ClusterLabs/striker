@@ -680,6 +680,17 @@ The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was c
 
 The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a cache item name.
 
+=head2 C<111>
+
+The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an invalid task. Valid tasks are 'status', 'on' and 'off'.
+
+=head2 C<112>
+
+The 'AN::Tools::ScanCore' module's 'target_power()' method was called without a target UUID.
+
+=head2 C<111>
+
+The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an target UUID that wasn't mapped to a host.
 
 =head1 SEE ALSO
 

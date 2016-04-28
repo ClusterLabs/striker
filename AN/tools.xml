@@ -47,6 +47,9 @@ This is the AN::Tools master 'words' file.
 		<key name="an_brand_0004">APC</key>
 		<key name="an_brand_0005">Raritan</key>
 		
+		<!-- States -->
+		<key name="an_state_0001">Unknown</key>
+		
 		<!-- Titles -->
 		<key name="tools_title_0001">Debug</key>
 		<key name="tools_title_0002">Warning</key>
@@ -455,6 +458,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="warning_message_0014">The connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] failed because the name could not be translated to an IP address. Is this database setup in '/etc/hosts'?</key>
 		<key name="warning_message_0015">Unable to ping the database host: [#!variable!host!#] accessible from this dashboard?</key>
 		<key name="warning_message_0016">The host with the UUID: [#!variable!uuid!#] does not have a health state. Assuming it is OK.</key>
+		<key name="warning_message_0017">No 'power_check' command found in cache for the target: [#!variable!name!# (#!variable!uuid!#)]. Unable to check the power status.</key>
 		
 		<!-- notice messages -->
 		<key name="notice_message_0001">The database: [#!variable!name!#] on the host: [#!variable!host!#] has been initialized. If there is existing data on other databases, it should now be loaded on this new database.</key>
@@ -624,6 +628,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0108"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a host UUID.]]></key>
 		<key name="error_message_0109"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a node UUID.]]></key>
 		<key name="error_message_0110"><![CDATA[The 'AN::Tools::ScanCore' module's 'insert_or_update_nodes_cache()' method was called without a cache item name.]]></key>
+		<key name="error_message_0111"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an invalid task: [#!variable!task!#]. Valid tasks are 'status', 'on' and 'off'.]]></key>
+		<key name="error_message_0112"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called without a target UUID.]]></key>
+		<key name="error_message_0113"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an target UUID: [#!variable!uuid!#] that wasn't mapped to a host.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

@@ -596,7 +596,7 @@ CREATE TABLE nodes_cache (
 	modified_date		timestamp with time zone	not null,
 	
 	FOREIGN KEY(node_cache_host_uuid) REFERENCES hosts(host_uuid), 
-	FOREIGN KEY(node_cache_node_uuid) REFERENCES nodess(node_uuid)
+	FOREIGN KEY(node_cache_node_uuid) REFERENCES nodes(node_uuid)
 );
 ALTER TABLE nodes_cache OWNER TO #!variable!user!#;
 
