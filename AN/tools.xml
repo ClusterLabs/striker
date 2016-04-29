@@ -49,6 +49,9 @@ This is the AN::Tools master 'words' file.
 		
 		<!-- States -->
 		<key name="an_state_0001">Unknown</key>
+		<key name="an_state_0002">Stopped</key>
+		<key name="an_state_0003">Running</key>
+		<key name="an_state_0004">Offline</key>
 		
 		<!-- Titles -->
 		<key name="tools_title_0001">Debug</key>

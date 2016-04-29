@@ -11947,7 +11947,7 @@ sub parse_cluster_conf
 			}
 			else
 			{
-				$this_node = AN::Striker::get_peer_node($an, $node);
+				$this_node = $an->Cman->peer_hostname({node => $node});
 				if (not $an->data->{node}{$this_node}{host_name})
 				{
 					$an->data->{node}{$this_node}{info}{host_name}       = $this_host_name;
@@ -12091,7 +12091,7 @@ sub parse_cluster_conf
 	}
 	
 	# See if I got the fence details for both nodes.
-	my $peer = AN::Striker::get_peer_node($an, $node);
+	my $peer = $an->Cman->peer_hostname({node => $node});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node", value1 => $node,
 		name2 => "peer", value2 => $peer,

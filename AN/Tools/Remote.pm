@@ -572,16 +572,17 @@ sub remote_call
 	my $user       = $parameter->{user}             ? $parameter->{user}     : "root";
 	my $password   = $parameter->{password}         ? $parameter->{password} : $an->data->{sys}{root_password};
 	my $ssh_fh     = $parameter->{ssh_fh}           ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
-	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 1;
+	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 0;
 	my $shell_call = $parameter->{shell_call};
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "target",     value1 => $target,
-		name2 => "port",       value2 => $port,
-		name3 => "user",       value3 => $user,
-		name4 => "ssh_fh",     value4 => $ssh_fh,
-		name5 => "close",      value5 => $close,
- 		name6 => "shell_call", value6 => $shell_call,
+		name1 => "time",       value1 => time,
+		name2 => "target",     value2 => $target,
+		name3 => "port",       value3 => $port,
+		name4 => "user",       value4 => $user,
+		name5 => "ssh_fh",     value5 => $ssh_fh,
+		name6 => "close",      value6 => $close,
+ 		name7 => "shell_call", value7 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
@@ -736,6 +737,10 @@ sub remote_call
 				{
 					# We're in! Record the file handle for this target.
 					$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+						name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
 					$an->Log->entry({log_level => 3, message_key => "notice_message_0014", message_variables => {
 						target => $target, 
 					}, file => $THIS_FILE, line => __LINE__});
@@ -757,6 +762,9 @@ sub remote_call
 			{
 				# We're in! Record the file handle for this target.
 				$an->data->{target}{$target}{ssh_fh} = $ssh_fh;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+				}, file => $THIS_FILE, line => __LINE__});
 				$an->Log->entry({log_level => 3, message_key => "notice_message_0004", message_variables => {
 					target => $target, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -886,6 +894,9 @@ sub remote_call
 		# For good measure, blank both variables.
 		$an->data->{target}{$target}{ssh_fh} = "";
 		$ssh_fh                              = "";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target::${target}::ssh_fh", value1 => $an->data->{target}{$target}{ssh_fh}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	$error = "" if not defined $error;

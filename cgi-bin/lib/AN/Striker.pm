@@ -8959,7 +8959,7 @@ sub fence_node
 	# Make sure no VMs are running.
 	my $node              = $an->data->{cgi}{node};
 	my $node_cluster_name = $an->data->{cgi}{node_cluster_name};
-	my $peer              = get_peer_node($an, $node);
+	my $peer              = $an->Cman->peer_hostname({node => $node});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "in poweron_node(), node", value1 => $node,
 		name2 => "peer",                    value2 => $peer,

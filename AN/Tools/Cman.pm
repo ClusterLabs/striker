@@ -1033,29 +1033,37 @@ sub get_cluster_server_list
 # This looks takes the local hostname and the cluster.conf data to figure out what the peer's host name is.
 sub peer_hostname
 {
-	my $self = shift;
-	my $an   = $self->parent;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	
 	my $peer_hostname = "";
-	my $hostname      = $an->hostname();
+	my $hostname      = $parameter->{node} ? $parameter->{node} : $an->hostname();
 	#print "$THIS_FILE ".__LINE__."; hostname: [$hostname]\n";
 	
-	# Read in cluster.conf. if necessary
-	$an->Cman->_read_cluster_conf();
-	
+	# If I've parsed the active Anvil! data, use that. Otherwise read in cluster.conf.
 	my $nodes = [];
-	foreach my $index1 (@{$an->data->{cman_config}{data}{clusternodes}})
+	if ($an->data->{cgi}{anvil_uuid})
 	{
-		#print "$THIS_FILE ".__LINE__."; index1: [$index1]\n";
-		foreach my $key (sort {$a cmp $b} keys %{$index1})
+		push @{$nodes}, $an->data->{sys}{anvil}{node1}{name};
+		push @{$nodes}, $an->data->{sys}{anvil}{node2}{name}; 
+	}
+	else
+	{
+		$an->Cman->_read_cluster_conf();
+		foreach my $index1 (@{$an->data->{cman_config}{data}{clusternodes}})
 		{
-			#print "$THIS_FILE ".__LINE__."; key: [$key]\n";
-			if ($key eq "clusternode")
+			#print "$THIS_FILE ".__LINE__."; index1: [$index1]\n";
+			foreach my $key (sort {$a cmp $b} keys %{$index1})
 			{
-				foreach my $node (sort {$a cmp $b} keys %{$index1->{$key}})
+				#print "$THIS_FILE ".__LINE__."; key: [$key]\n";
+				if ($key eq "clusternode")
 				{
-					#print "$THIS_FILE ".__LINE__."; node: [$node]\n";
-					push @{$nodes}, $node;
+					foreach my $node (sort {$a cmp $b} keys %{$index1->{$key}})
+					{
+						#print "$THIS_FILE ".__LINE__."; node: [$node]\n";
+						push @{$nodes}, $node;
+					}
 				}
 			}
 		}
