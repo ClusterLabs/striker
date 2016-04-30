@@ -166,9 +166,7 @@ if ((not $an->data->{switches}{force}) && (not $an->data->{tools}{'anvil-safe-st
 }
 
 # Log our startup
-$an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => {
-	this_file	=>	$THIS_FILE, 
-}, file => $THIS_FILE, line => __LINE__});
+$an->Log->entry({log_level => 1, message_key => "asst_log_0001", message_variables => { this_file => $THIS_FILE }, file => $THIS_FILE, line => __LINE__});
 
 
 ### Process
@@ -199,8 +197,8 @@ update_striker_conf($an, "disable");
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
-# If our 'health' is 'shutdown', change it to 'ok'.
-update_health($an);
+# Mark the node as clean on now.
+$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid});
 
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
@@ -228,51 +226,6 @@ exit(0);
 #############################################################################################################
 # Functions                                                                                                 #
 #############################################################################################################
-
-# If our 'health' is 'shutdown', change it to 'ok'.
-sub update_health
-{
-	my ($an) = @_;
-	
-	# Get the current health.
-	my $query = "
-SELECT 
-    host_health 
-FROM 
-    hosts 
-WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
-;";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	my $old_health = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "old_health", value1 => $old_health, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if ($old_health eq "shutdown")
-	{
-		# Update it. Don't worry for now if the node is not actually OK, ScanCore will update it in 
-		# the next pass if appropriate
-		my $query = "
-UPDATE 
-    hosts 
-SET 
-    host_health   = 'ok', 
-    modified_date = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-WHERE 
-    host_uuid     = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})." 
-";
-		$query =~ s/'NULL'/NULL/g;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
 
 # This updates the tools::anvil-safe-start::enabled value in striker.conf
 sub update_striker_conf
@@ -2123,9 +2076,9 @@ sub wait_for_access
 		my $ifn_access = 0;
 		
 		# Test access now. RC == 0; pinged. 1 == no response.
-		my $bcn_return_code = $an->Check->ping({target => $peer_bcn});
-		my $sn_return_code  = $an->Check->ping({target => $peer_sn});
-		my $ifn_return_code = $an->Check->ping({target => $peer_ifn});
+		my $bcn_return_code = $an->Check->ping({ping => $peer_bcn});
+		my $sn_return_code  = $an->Check->ping({ping => $peer_sn});
+		my $ifn_return_code = $an->Check->ping({ping => $peer_ifn});
 		$an->Log->entry({log_level => 1, message_key => "an_variables_0003", message_variables => {
 			name1 => "bcn_return_code", value1 => $bcn_return_code, 
 			name2 => "sn_return_code",  value2 => $sn_return_code, 

@@ -50,177 +50,6 @@ $ENV{'PERL_UNICODE'} = 1;
 my $THIS_FILE = "AN::Striker.pm";
 
 
-# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = 'clean') so that they don't
-# just turn right back on.
-sub mark_node_as_clean_off
-{
-	my ($an, $node, $delay) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_off" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "node",  value1 => $node, 
-		name2 => "delay", value2 => $delay, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Connect to the databases.
-	my $connections = $an->DB->connect_to_databases({
-		file	=>	$THIS_FILE,
-		quiet	=>	1
-	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "connections", value1 => $connections,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($connections)
-	{
-		# Update the hosts entry.
-		if (-e $an->data->{path}{host_uuid})
-		{
-			# Now read in the UUID.
-			$an->Get->uuid({get => 'host_uuid'});
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "path::host_uuid", value1 => ".$an->data->{path}{host_uuid}.",
-			name2 => "delay",           value2 => $delay,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $say_off = "clean";
-		if ($delay)
-		{
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::power_off_delay", value1 => $an->data->{sys}{power_off_delay},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{sys}{power_off_delay} = 300 if not $an->data->{sys}{power_off_delay};
-			$say_off = time + $an->data->{sys}{power_off_delay};
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "say_off", value1 => $say_off,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $query = "
-UPDATE 
-    hosts 
-SET 
-    host_emergency_stop = FALSE, 
-    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($say_off).", 
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE ";
-		# If the node's host name is short, use 'ILIKE'.
-		if ($node =~ /\./)
-		{
-			$query .= "
-    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
-;";
-		}
-		else
-		{
-			### TODO: This should be smarted and actually try to find the full host name by 
-			###       checking cluster.conf on one of the nodes.
-			$node  .= "%";
-			$query .= "
-    host_name ILIKE ".$an->data->{sys}{use_db_fh}->quote($node)."
-;";
-		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-		
-		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
-		###       node...
-		# Disconnect from databases.
-		$an->DB->disconnect_from_databases();
-	}
-	else
-	{
-		# Tell the user we failed to connect to the database and not marking this node as cleanly off.
-		$an->Log->entry({log_level => 2, message_key => "log_0215", message_variables => {
-			node => $node, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = NULL) so that they turn on
-# if they're suddenly found to be off.
-sub mark_node_as_clean_on
-{
-	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# Connect to the databases.
-	my $connections = $an->DB->connect_to_databases({
-		file	=>	$THIS_FILE,
-		quiet	=>	1
-	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "connections", value1 => $connections,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($connections)
-	{
-		# Update the hosts entry.
-		if (-e $an->data->{path}{host_uuid})
-		{
-			# Now read in the UUID.
-			$an->Get->uuid({get => 'host_uuid'});
-		}
-		
-		my $query = "
-UPDATE 
-    hosts 
-SET 
-    host_emergency_stop = FALSE, 
-    host_stop_reason    = NULL, 
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
-WHERE 
-    host_name = ".$an->data->{sys}{use_db_fh}->quote($node)."
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-		
-		### TODO: Move the connect/disconnect to outside here so that we don't connect for each 
-		###       node...
-		# Disconnect from databases.
-		$an->DB->disconnect_from_databases();
-	}
-	else
-	{
-		# Tell the user we failed to connect to the database.
-		$an->Log->entry({log_level => 2, message_key => "log_0215", message_variables => {
-			node => $node, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return(0);
-}
-
-# This takes a node name and returns the peer node.
-sub get_peer_node
-{
-	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_peer_node" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $peer    = "";
-	my $cluster = $an->data->{cgi}{cluster};
-	foreach my $this_node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
-	{
-		next if $node eq $this_node;
-		$peer = $this_node;
-		last;
-	}
-	
-	if (not $peer)
-	{
-		AN::Cluster::error($an, "I was asked to find the peer to: [$node], but failed. This is likely a program error.\n");
-	}
-	
-	return($peer);
-}
-
 # This sorts out what needs to happen if 'task' was set.
 sub process_task
 {
@@ -7160,83 +6989,32 @@ sub migrate_vm
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "migrate_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $target = $an->data->{cgi}{target};
-	my $vm     = $an->data->{cgi}{vm};
-	my $node   = long_host_name_to_node_name($an, $target);
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "vm",     value1 => $vm,
-		name2 => "node",   value2 => $node,
-		name3 => "target", value3 => $target,
+	my $server = $an->data->{cgi}{vm};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server", value1 => $server,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	# Make sure the node is still ready to take this VM.
-	AN::Cluster::scan_cluster($an);
-	my $vm_key = "vm:$vm";
-	my $ready = check_node_readiness($an, $vm_key, $node);
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "node",  value1 => $node,
-		name2 => "ready", value2 => $ready,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($ready)
+	my $output = $an->Cman->migrate_server({server => $server});
+	
+	foreach my $line (split/\n/, $output)
 	{
-		my $say_title = $an->String->get({key => "title_0049", variables => { 
-				server	=>	$vm,
-				target	=>	$target,
-			}});
-		print $an->Web->template({file => "server.html", template => "migrate-server-header", replace => { title => $say_title }});
-		my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $vm";
-		my $password   = $an->data->{sys}{root_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "node",       value2 => $node,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
-		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$node,
-			port		=>	$an->data->{node}{$node}{port}, 
-			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
-			shell_call	=>	$shell_call,
-		});
-		foreach my $line (@{$return})
+		
+		$line = parse_text_line($an, $line);
+		my $message = ($line =~ /^(.*)\[/)[0];
+		my $status  = ($line =~ /(\[.*)$/)[0];
+		if (not $message)
 		{
-			$line =~ s/^\s+//;
-			$line =~ s/\s+$//;
-			$line =~ s/\s+/ /g;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$line = parse_text_line($an, $line);
-			my $message = ($line =~ /^(.*)\[/)[0];
-			my $status  = ($line =~ /(\[.*)$/)[0];
-			if (not $message)
-			{
-				$message = $line;
-				$status  = "";
-			}
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
-				status	=>	$status,
-				message	=>	$message,
-			}});
+			$message = $line;
+			$status  = "";
 		}
-		print $an->Web->template({file => "server.html", template => "migrate-server-footer"});
-	}
-	else
-	{
-		# Target not ready
-		my $say_title = $an->String->get({key => "title_0050", variables => { 
-				server	=>	$vm,
-				target	=>	$target,
-			}});
-		my $say_message = $an->String->get({key => "message_0187", variables => { 
-				server	=>	$vm,
-				target	=>	$target,
-			}});
-		print $an->Web->template({file => "server.html", template => "migrate-server-target-not-ready", replace => { 
-			title	=>	$say_title,
-			message	=>	$say_message,
+		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			status	=>	$status,
+			message	=>	$message,
 		}});
+		
 	}
 	
 	return(0);
@@ -7248,19 +7026,9 @@ sub stop_vm
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_vm" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node    = $an->data->{cgi}{node};
-	my $vm      = $an->data->{cgi}{vm};
-	my $cluster = $an->data->{cgi}{cluster};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",   value1 => $vm,
-		name2 => "node", value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
+	my $server = $an->data->{cgi}{vm};
+	my $reason = $an->data->{sys}{stop_reason} ? $an->data->{sys}{stop_reason} : "";
 	
-	# Has the timer expired?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "time",        value1 => time,
-		name2 => "cgi::expire", value2 => $an->data->{cgi}{expire},
-	}, file => $THIS_FILE, line => __LINE__});
 	if (time > $an->data->{cgi}{expire})
 	{
 		# Abort!
@@ -7273,18 +7041,16 @@ sub stop_vm
 		return(1);
 	}
 	
-	AN::Cluster::scan_cluster($an);
-	my $say_title = $an->String->get({key => "title_0051", variables => { server => $vm }});
-	print $an->Web->template({file => "server.html", template => "stop-server-header", replace => { title => $say_title }});
-	my $say_node = node_name_to_long_host_name($an, $node);
-	my $return   = $an->Cman->stop_server({
-		server		=>	$vm,
-		target		=>	$node, 
-		port		=>	$an->data->{node}{$node}{port}, 
-		password	=>	$an->data->{sys}{root_password},
-	});
-	foreach my $line (split/\n/, $return)
+	my $output = $an->Cman->stop_server({
+			server => $server, 
+			reason => $reason,
+		});
+	foreach my $line (split/\n/, $output)
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
@@ -7307,33 +7073,6 @@ sub stop_vm
 		}});
 	}
 	print $an->Web->template({file => "server.html", template => "stop-server-footer"});
-		
-	# Set the 'clean' off state if we have a DB connection.
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "sys::db_connections", value1 => $an->data->{sys}{db_connections},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{sys}{db_connections})
-	{
-		my $return = $an->Get->server_data({
-			server => $vm, 
-			anvil  => $cluster, 
-		});
-		my $server_uuid = $return->{uuid};
-		
-		my $query = "
-UPDATE 
-    servers 
-SET 
-    server_stop_reason = 'clean', 
-    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
-WHERE 
-    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
-;";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "query", value1 => $query
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
-	}
 	
 	return(0);
 }
@@ -8115,8 +7854,8 @@ sub poweroff_node
 			message	=>	$say_message,
 		}});
 		
-		# The ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
-		mark_node_as_clean_off($an, $node, 0);	# 0 == no delay reboot time
+		# Tell ScanCore that we're cleanly shutting down so we don't auto-reboot the node.
+		$an->Striker->mark_node_as_clean_off({node_uuid => $an->data->{sys}{name_to_uuid}{$node}});
 		
 		my $shell_call = "poweroff && echo \"Power down initiated. Please return to the main page now.\"";
 		my $password   = $an->data->{sys}{root_password};
@@ -8437,7 +8176,8 @@ sub cold_stop_anvil
 				### Yup!
 				# Tell ScanCore that we're cleanly shutting down so we don't auto-reboot the 
 				# node. If we're powering off or power cycling the system, tell 
-				# mark_node_as_clean_off()' to set a delay instead of "clean" (off).
+				# $an->Striker->mark_node_as_clean_off()' to set a delay instead of "clean"
+				# (off).
 				my $delay = 0;
 				if (($an->data->{cgi}{subtask} eq "power_cycle") or ($an->data->{cgi}{subtask} eq "power_off"))
 				{
@@ -8461,7 +8201,7 @@ sub cold_stop_anvil
 						node  => $node, 
 						delay => $delay, 
 					}, file => $THIS_FILE, line => __LINE__});
-					mark_node_as_clean_off($an, $node, $delay);
+					$an->Striker->mark_node_as_clean_off({node_uuid => $an->data->{sys}{name_to_uuid}{$node}, delay => $delay});
 					
 					# Power it off
 					$an->Log->entry({log_level => 1, message_key => "log_0251", message_variables => {
@@ -8750,7 +8490,7 @@ sub dual_boot
 		# Update ScanCore to tell it that the nodes should now be booted if they're found to be off.
 		foreach my $node (sort {$a cmp $b} @{$booted_nodes})
 		{
-			mark_node_as_clean_on($an, $node);
+			$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{name_to_uuid}{$node}});
 		}
 		
 		print $an->Web->template({file => "server.html", template => "dual-boot-footer"});
@@ -8874,7 +8614,7 @@ sub poweron_node
 			}
 			
 			# Update ScanCore to tell it that the nodes should now be booted.
-			mark_node_as_clean_on($an, $node);
+			$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{name_to_uuid}{$node}});
 			print $an->Web->template({file => "server.html", template => "poweron-node-close-tr"});
 		}
 		else
@@ -9738,9 +9478,8 @@ sub display_details
 	# Display the status of each node's daemons
 	my $up_nodes = @{$an->data->{up_nodes}};
 	
-	# TODO: Rework this, I always show nodes now so that the 'fence_...' 
-	# calls are available. IE: enable this when the cache exists and the
-	# fence command addresses are reachable.
+	# TODO: Rework this, I always show nodes now so that the 'fence_...' calls are available. IE: enable 
+	#       this when the cache exists and the fence command addresses are reachable.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::show_nodes", value1 => $an->data->{sys}{show_nodes},
 		name2 => "sys::up_nodes",   value2 => $an->data->{sys}{up_nodes},
@@ -10352,140 +10091,6 @@ sub display_vm_details
 	return ($server_details_panel);
 }
 
-# This checks the daemons running on a node and returns '1' if all are running.
-sub check_node_daemons
-{
-	my ($an, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_daemons" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	if (not $node)
-	{
-		AN::Cluster::error($an, "I was asked to check the daemons for a node, but was not passed a node name. This is likely a program error.\n");
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "in check_node_daemons(), node", value1 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	my $ready = 1;
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-		name1 => "node",                value1 => $node,
-		name2 => "node::${node}::daemon::rgmanager::exit_code", value2 => $an->data->{node}{$node}{daemon}{rgmanager}{exit_code},
-		name3 => "node::${node}::daemon::cman::exit_code",      value3 => $an->data->{node}{$node}{daemon}{cman}{exit_code},
-		name4 => "node::${node}::daemon::drbd::exit_code",      value4 => $an->data->{node}{$node}{daemon}{drbd}{exit_code},
-		name5 => "node::${node}::daemon::clvmd::exit_code",     value5 => $an->data->{node}{$node}{daemon}{clvmd}{exit_code},
-		name6 => "node::${node}::daemon::gfs2::exit_code",      value6 => $an->data->{node}{$node}{daemon}{gfs2}{exit_code},
-		name7 => "node::${node}::daemon::libvirtd::exit_code",  value7 => $an->data->{node}{$node}{daemon}{libvirtd}{exit_code},
-	}, file => $THIS_FILE, line => __LINE__});
-	if (($an->data->{node}{$node}{daemon}{cman}{exit_code} ne "0") ||
-	($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} ne "0") ||
-	($an->data->{node}{$node}{daemon}{drbd}{exit_code} ne "0") ||
-	($an->data->{node}{$node}{daemon}{clvmd}{exit_code} ne "0") ||
-	($an->data->{node}{$node}{daemon}{gfs2}{exit_code} ne "0") ||
-	($an->data->{node}{$node}{daemon}{libvirtd}{exit_code} ne "0"))
-	{
-		$ready = 0;
-	}
-	
-	return($ready);
-}
-
-# This checks a node to see if it's ready to run a given VM.
-sub check_node_readiness
-{
-	my ($an, $vm, $node) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_readiness" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "vm",   value1 => $vm, 
-		name2 => "node", value2 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $node)
-	{
-		AN::Cluster::error($an, "I was asked to check the node readiness to run the $vm server, but was not passed a node name. This is likely a program error.\n");
-	}
-
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "in check_node_readiness(); vm", value1 => $vm,
-		name2 => "node",                          value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# This will get negated if something isn't ready.
-	my $ready = check_node_daemons($an, $node);
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "1. vm", value1 => $vm,
-		name2 => "node",  value2 => $node,
-		name3 => "ready", value3 => $ready,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# TODO: Add split-brain detection. If both nodes are 
-	# Primary/StandAlone, shut the whole cluster down.
-	
-	# Make sure the storage is ready.
-	if ($ready)
-	{
-		# Still alive, find out what storage backs this VM and ensure that the LV is 'active' and 
-		# that the DRBD resource(s) they sit on are Primary and UpToDate.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "node", value1 => $node,
-			name2 => "vm",   value2 => $vm,
-		}, file => $THIS_FILE, line => __LINE__});
-		read_vm_definition($an, $node, $vm);
-		
-		foreach my $lv (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}})
-		{
-			# Make sure the LV is active.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::node::${node}::lv::${lv}::active", value1 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active},
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active})
-			{
-				# It's active, so now check the backing storage.
-				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}})
-				{
-					# For easier reading...
-					my $connection_state = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{connection_state};
-					my $role             = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{role};
-					my $disk_state       = $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$resource}{disk_state};
-					
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-						name1 => "resource",         value1 => $resource,
-						name2 => "connection_state", value2 => $connection_state,
-						name3 => "role",             value3 => $role,
-						name4 => "disk_state",       value4 => $disk_state,
-					}, file => $THIS_FILE, line => __LINE__});
-					
-					# I consider a node "ready" if it is UpToDate and Primary.
-					if (($role ne "Primary") or ($disk_state ne "UpToDate"))
-					{
-						$ready = 0;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-							name1 => "ready", value1 => $ready,
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-				}
-			}
-			else
-			{
-				# The LV is inactive.
-				# TODO: Try to change the LV to active.
-				$ready = 0;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "vm",    value1 => $vm,
-					name2 => "node",  value2 => $node,
-					name3 => "ready", value3 => $ready,
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "vm",   value1 => $vm,
-		name2 => "node",  value2 => $node,
-		name3 => "ready", value3 => $ready,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return ($ready);
-}
-
 # This reads a VM's definition file and pulls out information about the system.
 sub read_vm_definition
 {
@@ -10748,409 +10353,6 @@ sub read_vm_definition
 	my $xml_line_count = @{$an->data->{vm}{$vm}{raw_xml}};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "xml_line_count", value1 => $xml_line_count,
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return (0);
-}
-
-# This takes a node name and an LV and checks the DRBD resources to see if they are Primary and UpToDate.
-sub check_lv
-{
-	my ($an, $node, $vm, $lv) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_lv" }, message_key => "an_variables_0003", message_variables => { 
-		name1 => "node", value1 => $node, 
-		name2 => "vm",   value2 => $vm, 
-		name3 => "lv",   value3 => $lv, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If this node is down, just return.
-	if ($an->data->{node}{$node}{daemon}{clvmd}{exit_code} ne "0")
-	{
-		# Node is down, skip LV check.
-		$an->Log->entry({log_level => 3, message_key => "log_0258", message_variables => {
-			node           => $node, 
-			logical_volume => $lv,
-			server         => $vm, 
-		}, file => $THIS_FILE, line => __LINE__});
-		return(0);
-	}
-	
-	$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{active} = $an->data->{node}{$node}{lvm}{lv}{$lv}{active};
-	$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node}{lvm}{lv}{$lv}{total_size} });
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "node",         value1 => $node,
-		name2 => "VM",           value2 => $vm,
-		name3 => "LV",           value3 => $lv,
-		name4 => "active",       value4 => $an->data->{node}{$node}{lvm}{lv}{$lv}{active},
-		name5 => "size",         value5 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size},
-		name6 => "on device(s)", value6 => $an->data->{node}{$node}{lvm}{lv}{$lv}{on_devices},
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# If there is a comman in the devices, the LV spans multiple devices.
-	foreach my $device (split/,/, $an->data->{node}{$node}{lvm}{lv}{$lv}{on_devices})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "device", value1 => $device,
-		}, file => $THIS_FILE, line => __LINE__});
-		# Find the resource name.
-		my $on_res;
-		foreach my $res (sort {$a cmp $b} keys %{$an->data->{drbd}})
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "res", value1 => $res,
-			}, file => $THIS_FILE, line => __LINE__});
-			my $res_device = $an->data->{drbd}{$res}{node}{$node}{device};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "res",         value1 => $res,
-				name2 => "device",      value2 => $device,
-				name3 => "res. device", value3 => $res_device,
-			}, file => $THIS_FILE, line => __LINE__});
-			if ($device eq $res_device)
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "match! Recording res as", value1 => $res,
-				}, file => $THIS_FILE, line => __LINE__});
-				$on_res = $res;
-				last;
-			}
-		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",     value1 => $vm,
-			name2 => "node",   value2 => $node,
-			name3 => "lv",     value3 => $lv,
-			name4 => "on_res", value4 => $on_res,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state} = $an->data->{drbd}{$on_res}{node}{$node}{connection_state};
-		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role}             = $an->data->{drbd}{$on_res}{node}{$node}{role};
-		$an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $an->data->{drbd}{$on_res}{node}{$node}{disk_state};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{connection_state},
-			name2 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::role",             value2 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{role},
-			name3 => "vm::${vm}::node::${node}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{drbd}{$on_res}{disk_state},
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	
-	return (0);
-}
-
-# Check the status of servers.
-sub check_vms
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_vms" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Make it a little easier to print the name of each node
-	my $node1 = $an->data->{sys}{cluster}{node1_name};
-	my $node2 = $an->data->{sys}{cluster}{node2_name};
-	
-	$an->data->{node}{$node1}{info}{short_host_name} = $an->data->{node}{$node1}{info}{host_name} if not $an->data->{node}{$node1}{info}{short_host_name};
-	$an->data->{node}{$node2}{info}{short_host_name} = $an->data->{node}{$node2}{info}{host_name} if not $an->data->{node}{$node2}{info}{short_host_name};
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "node1",                                 value1 => $node1,
-		name2 => "node::${node1}::info::short_host_name", value2 => $an->data->{node}{$node1}{info}{short_host_name},
-		name3 => "node::${node1}::info::host_name",       value3 => $an->data->{node}{$node1}{info}{host_name},
-		name4 => "node2",                                 value4 => $node2,
-		name5 => "node::${node2}::info::short_host_name", value5 => $an->data->{node}{$node2}{info}{short_host_name},
-		name6 => "node::${node2}::info::host_name",       value6 => $an->data->{node}{$node2}{info}{host_name},
-	}, file => $THIS_FILE, line => __LINE__});
-	my $short_node1 = $an->data->{node}{$node1}{info}{short_host_name};
-	my $short_node2 = $an->data->{node}{$node2}{info}{short_host_name};
-	my $long_node1  = $an->data->{node}{$node1}{info}{host_name};
-	my $long_node2  = $an->data->{node}{$node2}{info}{host_name};
-	my $say_node1   = "<span class=\"fixed_width\">".$an->data->{node}{$node1}{info}{short_host_name}."</span>";
-	my $say_node2   = "<span class=\"fixed_width\">".$an->data->{node}{$node2}{info}{short_host_name}."</span>";
-	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
-	{
-		my $say_vm;
-		if ($vm =~ /^vm:(.*)/)
-		{
-			$say_vm = $1;
-		}
-		else
-		{
-			AN::Cluster::error($an, "I was asked to check on a VM that didn't have the <span class=\"code\">vm:</span> prefix. I got the name: <span class=\"code\">$vm</span>. This is likely a programming error.\n");
-		}
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",     value1 => $vm,
-			name2 => "say_vm", value2 => $say_vm,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# This will control the buttons.
-		$an->data->{vm}{$vm}{can_start}        = 0;
-		$an->data->{vm}{$vm}{can_stop}         = 0;
-		$an->data->{vm}{$vm}{can_migrate}      = 0;
-		$an->data->{vm}{$vm}{current_host}     = 0;
-		$an->data->{vm}{$vm}{migration_target} = "";
-		
-		# Find out who, if anyone, is running this VM and who *can* run
-		# it. 2 == Running, 1 == Can run, 0 == Can't run.
-		$an->data->{vm}{$vm}{say_node1}        = $an->data->{node}{$node1}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$an->data->{vm}{$vm}{node1_ready}      = 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1",                    value1 => $an->data->{vm}{$vm}{say_node1},
-			name2 => "node::${node1}::daemon::cman::exit_code", value2 => $an->data->{node}{$node1}{daemon}{cman}{exit_code},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{vm}{$vm}{say_node2}        = $an->data->{node}{$node2}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$an->data->{vm}{$vm}{node2_ready}      = 0;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node2",                    value1 => $an->data->{vm}{$vm}{say_node2},
-			name2 => "node::${node2}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2}{daemon}{cman}{exit_code},
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# If a VM's XML definition file is found but there is no host,
-		# the user probably forgot to define it.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",   value1 => $vm,
-			name2 => "host", value2 => $an->data->{vm}{$vm}{host},
-		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $an->data->{vm}{$vm}{host}) && (not $an->data->{sys}{ignore_missing_vm}))
-		{
-			# Pull the host node and current state out of the hash.
-			my $host_node = "";
-			my $vm_state  = "";
-			foreach my $node (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}})
-			{
-				$host_node = $node;
-				foreach my $key (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{virsh}})
-				{
-					if ($key eq "state") 
-					{
-						$vm_state = $an->data->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
-					}
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-						name1 => "vm",           value1 => $vm,
-						name2 => "node",         value2 => $node,
-						name3 => "virsh '$key'", value3 => $an->data->{vm}{$vm}{node}{$node}{virsh}{$key},
-					}, file => $THIS_FILE, line => __LINE__});
-				}
-			}
-			$an->data->{vm}{$vm}{say_node1} = "--";
-			$an->data->{vm}{$vm}{say_node2} = "--";
-			my $say_error = $an->String->get({key => "message_0271", variables => { 
-					server	=>	$say_vm,
-					url	=>	"?cluster=".$an->data->{cgi}{cluster}."&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
-				}});
-			AN::Cluster::error($an, "$say_error", 0);
-			next;
-		}
-		
-		$an->data->{vm}{$vm}{host} = "" if not defined $an->data->{vm}{$vm}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",              value1 => $vm,
-			name2 => "vm::${vm}::host", value2 => $an->data->{vm}{$vm}{host},
-			name3 => "short_node1",     value3 => $short_node1,
-			name4 => "short_node2",     value4 => $short_node2,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{vm}{$vm}{host} =~ /$short_node1/)
-		{
-			# Even though I know the host is ready, this function
-			# loads some data, like LV details, which I will need
-			# later.
-			check_node_readiness($an, $vm, $node1);
-			$an->data->{vm}{$vm}{can_start}     = 0;
-			$an->data->{vm}{$vm}{can_stop}      = 1;
-			$an->data->{vm}{$vm}{current_host}  = $node1;
-			$an->data->{vm}{$vm}{node1_ready}   = 2;
-			($an->data->{vm}{$vm}{node2_ready}) = check_node_readiness($an, $vm, $node2);
-			if ($an->data->{vm}{$vm}{node2_ready})
-			{
-				$an->data->{vm}{$vm}{migration_target} = $long_node2;
-				$an->data->{vm}{$vm}{can_migrate}      = 1;
-			}
-			# Disable cluster withdrawl of this node.
-			$an->data->{node}{$node1}{enable_withdraw} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "vm",               value1 => $vm,
-				name2 => "node1",            value2 => $node1,
-				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($an->data->{vm}{$vm}{host} =~ /$short_node2/)
-		{
-			# Even though I know the host is ready, this function
-			# loads some data, like LV details, which I will need
-			# later.
-			check_node_readiness($an, $vm, $node2);
-			$an->data->{vm}{$vm}{can_start}     = 0;
-			$an->data->{vm}{$vm}{can_stop}      = 1;
-			$an->data->{vm}{$vm}{current_host}  = $node2;
-			($an->data->{vm}{$vm}{node1_ready}) = check_node_readiness($an, $vm, $node1);
-			$an->data->{vm}{$vm}{node2_ready}   = 2;
-			if ($an->data->{vm}{$vm}{node1_ready})
-			{
-				$an->data->{vm}{$vm}{migration_target} = $long_node1;
-				$an->data->{vm}{$vm}{can_migrate}      = 1;
-			}
-			# Disable withdrawl of this node.
-			$an->data->{node}{$node2}{enable_withdraw} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "vm",               value1 => $vm,
-				name2 => "node1",            value2 => $node1,
-				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		else
-		{
-			$an->data->{vm}{$vm}{can_stop}      = 0;
-			($an->data->{vm}{$vm}{node1_ready}) = check_node_readiness($an, $vm, $node1);
-			($an->data->{vm}{$vm}{node2_ready}) = check_node_readiness($an, $vm, $node2);
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm",          value1 => $vm,
-				name2 => "node1_ready", value2 => $an->data->{vm}{$vm}{node1_ready},
-				name3 => "node2_ready", value3 => $an->data->{vm}{$vm}{node2_ready},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",           value1 => $vm,
-			name2 => "current host", value2 => $an->data->{vm}{$vm}{current_host},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{vm}{$vm}{boot_target} = "";
-		if ($an->data->{vm}{$vm}{current_host})
-		{
-			# This is a bit expensive, but read the VM's running
-			# definition.
-			my $node       =  $an->data->{vm}{$vm}{current_host};
-			my $say_vm     =  $vm;
-			   $say_vm     =~ s/^vm://;
-			my $shell_call =  "/usr/bin/virsh dumpxml $say_vm";
-			my $password   =  $an->data->{sys}{root_password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call", value1 => $shell_call,
-				name2 => "node",       value2 => $node,
-			}, file => $THIS_FILE, line => __LINE__});
-			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
-				port		=>	$an->data->{node}{$node}{port}, 
-				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
-				shell_call	=>	$shell_call,
-			});
-			foreach my $line (@{$return})
-			{
-				$line =~ s/^\s+//;
-				$line =~ s/\s+$//;
-				$line =~ s/\s+/ /g;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "line", value1 => $line, 
-				}, file => $THIS_FILE, line => __LINE__});
-				
-				push @{$an->data->{vm}{$vm}{xml}}, $line;
-			}
-		}
-		else
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm",          value1 => $vm,
-				name2 => "node1_ready", value2 => $an->data->{vm}{$vm}{node1_ready},
-				name3 => "node2_ready", value3 => $an->data->{vm}{$vm}{node2_ready},
-			}, file => $THIS_FILE, line => __LINE__});
-			if (($an->data->{vm}{$vm}{node1_ready}) && ($an->data->{vm}{$vm}{node2_ready}))
-			{
-				# I can boot on either node, so choose the 
-				# first one in the VM's failover domain.
-				$an->data->{vm}{$vm}{boot_target} = find_prefered_host($an, $vm);
-				$an->data->{vm}{$vm}{can_start}   = 1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "vm",                   value1 => $vm,
-					name2 => "boot target",          value2 => $an->data->{vm}{$vm}{boot_target},
-					name3 => "vm::${vm}::can_start", value3 => $an->data->{vm}{$vm}{can_start},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($an->data->{vm}{$vm}{node1_ready})
-			{
-				$an->data->{vm}{$vm}{boot_target} = $node1;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",          value1 => $vm,
-					name2 => "boot target", value2 => $an->data->{vm}{$vm}{boot_target},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			elsif ($an->data->{vm}{$vm}{node2_ready})
-			{
-				$an->data->{vm}{$vm}{boot_target} = $node2;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",          value1 => $vm,
-					name2 => "boot target", value2 => $an->data->{vm}{$vm}{boot_target},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-			else
-			{
-				$an->data->{vm}{$vm}{can_start} = 0;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",        value1 => $vm,
-					name2 => "can_start", value2 => $an->data->{vm}{$vm}{can_start},
-				}, file => $THIS_FILE, line => __LINE__});
-			}
-		}
-	}
-	
-	return (0);
-}
-
-### NOTE: Yes, I know 'prefered' is spelled wrong...
-# This looks through the failover domain for a VM and returns the prefered host.
-sub find_prefered_host
-{
-	my ($an, $vm) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "find_prefered_host" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "vm", value1 => $vm, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $prefered_host = "";
-	
-	my $failover_domain = $an->data->{vm}{$vm}{failover_domain};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",              value1 => $vm,
-		name2 => "failover_domain", value2 => $failover_domain,
-	}, file => $THIS_FILE, line => __LINE__});
-	if (not $failover_domain)
-	{
-		# Not yet defined in the cluster.
-		return("--");
-	}
-	
-	# TODO: Check to see if I need to use <=> instead of cmp.
-	foreach my $priority (sort {$a cmp $b} keys %{$an->data->{failoverdomain}{$failover_domain}{priority}})
-	{
-		# I only care about the first entry, so I will
-		# exit the loop as soon as I analyze it.
-		$prefered_host = $an->data->{failoverdomain}{$failover_domain}{priority}{$priority}{node};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",            value1 => $vm,
-			name2 => "prefered host", value2 => $prefered_host,
-		}, file => $THIS_FILE, line => __LINE__});
-		last;
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",            value1 => $vm,
-		name2 => "prefered host", value2 => $prefered_host,
-	}, file => $THIS_FILE, line => __LINE__});
-	return ($prefered_host);
-}
-
-# This function simply sets a couple variables using the node names as set in
-# the $conf hash declaration
-sub set_node_names
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_node_names" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# First pull the names into easier to follow variables.
-	my $this_cluster = $an->data->{cgi}{cluster};
-	$an->data->{sys}{cluster}{node1_name} = $an->data->{clusters}{$this_cluster}{nodes}[0];
-	$an->data->{sys}{cluster}{node2_name} = $an->data->{clusters}{$this_cluster}{nodes}[1];
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "this_cluster", value1 => $this_cluster,
-		name2 => "node1",        value2 => $an->data->{sys}{cluster}{node1_name},
-		name3 => "node2",        value3 => $an->data->{sys}{cluster}{node2_name},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return (0);

@@ -2433,7 +2433,7 @@ sub parse_install_manifest
 	}
 	
 	my $manifest_data = "";
-	my $return        = $an->ScanCore->get_manifests($an);
+	my $return        = $an->ScanCore->get_manifests();
 	foreach my $hash_ref (@{$return})
 	{
 		if ($parameter->{uuid} eq $hash_ref->{manifest_uuid})
@@ -4143,7 +4143,7 @@ Striker Version: ".$an->data->{sys}{version}."
 	# Record it to the database.
 	if (not $an->data->{cgi}{manifest_uuid})
 	{
-		# Unsert it.
+		# Insert it.
 		   $an->data->{cgi}{manifest_uuid} = $an->Get->uuid();
 		my $query = "
 INSERT INTO 

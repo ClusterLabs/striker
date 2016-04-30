@@ -2249,7 +2249,7 @@ sub query_ipmi_targets
 	foreach my $machine (sort {$a cmp $b} keys %{$an->data->{'scan-ipmitool'}{machine}})
 	{
 		# Now, make sure I can ping the targets I found.
-		if ($an->Check->ping({target => $machine}))
+		if ($an->Check->ping({ping => $machine}))
 		{
 			# Can't ping it.
 			$an->data->{ipmi}{$machine}{access} = 0;

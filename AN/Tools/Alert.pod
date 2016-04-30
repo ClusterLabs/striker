@@ -688,9 +688,42 @@ The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an in
 
 The 'AN::Tools::ScanCore' module's 'target_power()' method was called without a target UUID.
 
-=head2 C<111>
+=head2 C<113>
 
 The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an target UUID that wasn't mapped to a host.
+
+=head2 C<114>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called without passing in a node UUID.
+
+=head2 C<115>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called with a node UUID that does not appear to be a properly formatted UUID.
+
+=head2 C<116>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called with a UUID which does not appear to match any known nodes.
+
+=head2 C<117>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called without passing in a node UUID.
+
+=head2 C<118>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called with a node UUID that does not appear to be a properly formatted UUID.
+
+=head2 C<119>
+
+The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called with a UUID which does not appear to match any known nodes.
+
+=head2 C<120>
+
+The 'AN::Tools::Cman' module's 'migrate_server()' method was called without passing the name of a server to migrate.
+
+=head2 C<121>
+
+The 'AN::Tools::Get' module's 'manifest_data()' method was called without passing in a manifest UUID.
+
 
 =head1 SEE ALSO
 

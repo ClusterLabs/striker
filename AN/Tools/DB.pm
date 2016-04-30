@@ -133,7 +133,7 @@ sub connect_to_databases
 		### TODO: Note that it's possible some time in the future, a server might be available but 
 		###       not pingable. Add a switch to ignore pings.
 		# Before I try to connect, verify that I can ping.
-# 		my $ping_rc = $an->Check->ping({target => $host, count => 3});
+# 		my $ping_rc = $an->Check->ping({ping => $host, count => 3});
 # 		$an->Log->entry({log_level => 1, message_key => "an_variables_0001", message_variables => {
 # 			name1 => "ping_rc", value1 => $ping_rc
 # 		}, file => $THIS_FILE, line => __LINE__});

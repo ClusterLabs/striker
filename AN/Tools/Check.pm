@@ -70,20 +70,18 @@ sub access
 	
 	my $access     = 0;
 	my $target     = $parameter->{target};
-	my $port       = $parameter->{port}     ? $parameter->{port}     : "";
+	my $port       = $parameter->{port}     ? $parameter->{port}     : 22;
 	my $password   = $parameter->{password} ? $parameter->{password} : "";
 	my $shell_call = $an->data->{path}{echo}." 1";
 
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "target",     value2 => $target,
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
 		target		=>	$target,
 		port		=>	$port, 
 		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
 	foreach my $line (@{$return})
@@ -571,18 +569,41 @@ sub ping
 		return(2);
 	}
 	
-	my $target   = $parameter->{target};
-	# How many times to try to ping it? Will exit as soon as it succeeds
-	my $count    = $parameter->{count}    ? $parameter->{count}    : 1;
-	# Allow fragmented packets? Set to '0' to check MTU.
-	my $fragment = $parameter->{fragment} ? $parameter->{fragment} : 0;
-	# The size of the ping payload. Use when checking MTU.
-	my $payload  = $parameter->{payload}  ? $parameter->{payload}  : 0;
+	# If we were passed a target, try pinging from it instead of locally
+	my $ping     = $parameter->{ping};
+	my $count    = $parameter->{count}    ? $parameter->{count}    : 1;	# How many times to try to ping it? Will exit as soon as one succeeds
+	my $fragment = $parameter->{fragment} ? $parameter->{fragment} : 1;	# Allow fragmented packets? Set to '0' to check MTU.
+	my $payload  = $parameter->{payload}  ? $parameter->{payload}  : 0;	# The size of the ping payload. Use when checking MTU.
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "ping",     value1 => $ping, 
+		name2 => "count",    value2 => $count, 
+		name3 => "fragment", value3 => $fragment, 
+		name4 => "payload",  value4 => $payload, 
+		name5 => "target",   value5 => $target, 
+		name6 => "port",     value6 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the payload was set, take 28 bytes off to account for ICMP overhead.
 	if ($payload)
 	{
 		$payload -= 28;
+	}
+	
+	# Build the call
+	my $shell_call = $an->data->{path}{'ping'}." -n $ping -c 1";
+	if (not $fragment)
+	{
+		$shell_call .= " -M do";
+	}
+	if ($payload)
+	{
+		$shell_call .= " -s $payload";
 	}
 	
 	my $pinged = 0;
@@ -592,27 +613,53 @@ sub ping
 			name1 => "try",    value1 => $try,
 			name2 => "pinged", value2 => $pinged
 		}, file => $THIS_FILE, line => __LINE__});
-		next if $pinged;
+		last if $pinged;
 		
-		my $shell_call  = $an->data->{path}{'ping'}." -n $target -c 1";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "shell_call", value1 => $shell_call, 
-		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
-		while(<$file_handle>)
+		my $return = [];
+		
+		# If the 'target' is set, we'll call over SSH unless 'target' is 'local' or our hostname.
+		if (($target) && ($target ne "local") && ($target ne $an->hostname) && ($target ne $an->short_hostname))
 		{
-			chomp;
-			my $line = $_;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "line", value1 => $line, 
+			### Remote calls
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
+			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+		}
+		else
+		{
+			### Local calls
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_call", value1 => $shell_call, 
+			}, file => $THIS_FILE, line => __LINE__});
+			open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0014", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
+			while(<$file_handle>)
+			{
+				chomp;
+				my $line = $_;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				push @{$return}, "$line\n";
+			}
+			close $file_handle;
+		}
+		
+		foreach my $line (@{$return})
+		{
 			if ($line =~ /(\d+) packets transmitted, (\d+) received/)
 			{
 				# This isn't really needed, but might help folks watching the logs.
 				my $pings_sent     = $1;
 				my $pings_received = $2;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "target",         value1 => $target, 
+					name1 => "ping",           value1 => $ping, 
 					name2 => "pings_sent",     value2 => $pings_sent, 
 					name3 => "pings_received", value3 => $pings_received, 
 				}, file => $THIS_FILE, line => __LINE__});
@@ -630,7 +677,6 @@ sub ping
 				}
 			}
 		}
-		close $file_handle;
 	}
 	my $return_code = $pinged ? 0 : 1;
 	

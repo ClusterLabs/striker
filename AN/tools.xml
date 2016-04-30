@@ -634,6 +634,15 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0111"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an invalid task: [#!variable!task!#]. Valid tasks are 'status', 'on' and 'off'.]]></key>
 		<key name="error_message_0112"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called without a target UUID.]]></key>
 		<key name="error_message_0113"><![CDATA[The 'AN::Tools::ScanCore' module's 'target_power()' method was called with an target UUID: [#!variable!uuid!#] that wasn't mapped to a host.]]></key>
+		<key name="error_message_0114"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called without passing in a node UUID.]]></key>
+		<key name="error_message_0115"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called with the node UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
+		<key name="error_message_0116"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_off()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known nodes.]]></key>
+		<key name="error_message_0117"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called without passing in a node UUID.]]></key>
+		<key name="error_message_0118"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called with the node UUID set to: [#!variable!uuid!#], but this does not appear to be a properly formatted UUID.]]></key>
+		<key name="error_message_0119"><![CDATA[The 'AN::Tools::Striker' module's 'mark_node_as_clean_on()' method was called with the UUID: [#!variable!uuid!#], but does not appear to match any known nodes.]]></key>
+		<key name="error_message_0120"><![CDATA[The 'AN::Tools::Cman' module's 'migrate_server()' method was called without passing the name of a server to migrate.]]></key>
+		<key name="error_message_0121"><![CDATA[The 'AN::Tools::Get' module's 'manifest_data()' method was called without passing in a manifest UUID.]]></key>
+		<key name="error_message_0122"><![CDATA[The 'AN::Tools::Get' module's 'manifest_data()' method was called with the manifest UUID: [#!variable!uuid!#] which isn't a valid UUID.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

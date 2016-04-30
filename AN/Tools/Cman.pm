@@ -16,6 +16,7 @@ my $THIS_FILE = "Cman.pm";
 # cluster_name
 # get_clustat_data
 # get_cluster_server_list
+# migrate_server
 # peer_hostname
 # peer_short_hostname
 # stop_server
@@ -1028,6 +1029,36 @@ sub get_cluster_server_list
 	close $file_handle;
 	
 	return($servers, $state);
+}
+
+# This migrates the server.
+sub migrate_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	my $server    = $parameter->{server} ? $parameter->{server} : "";
+	if (not $server)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0003", message_key => "error_message_0120", code => 120, file => $THIS_FILE, line => __LINE__});
+		return ("");
+	}
+	
+	my $return     = "";
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call, 
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line   =  $_;
+		   $return .= "$line\n";
+	}
+	close $file_handle;
+	
+	return($return);
 }
 
 # This looks takes the local hostname and the cluster.conf data to figure out what the peer's host name is.

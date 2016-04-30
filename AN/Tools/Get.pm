@@ -23,6 +23,7 @@ my $THIS_FILE = "Get.pm";
 # local_users
 # lvm_data
 # recipient_data
+# manifest_data
 # netmask_from_ip
 # node_info
 # notify_data
@@ -1691,6 +1692,46 @@ sub lvm_data
 	}
 	
 	return($data);
+}
+
+# This returns an Install Manifest for the given manifest_uuid.
+sub manifest_data
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $manifest_uuid = $parameter->{manifest_uuid} ? $parameter->{manifest_uuid} : "";
+	if (not $manifest_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0121", code => 121, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	elsif (not $an->Validate->is_uuid($manifest_uuid))
+	{
+		# Not a valid UUID.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0122", message_variables => { uuid => $manifest_uuid }, code => 122, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	
+	my $query = "
+SELECT 
+    manifest_data 
+FROM 
+    manifests 
+WHERE 
+    manifest_uuid = ".$an->data->{sys}{use_db_fh}->quote($manifest_uuid)." 
+;";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $manifest_data = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "manifest_data", value1 => $manifest_data, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($manifest_data);
 }
 
 # This takes an IP, compares it to the BCN, SN and IFN networks and returns the netmask from the matched 

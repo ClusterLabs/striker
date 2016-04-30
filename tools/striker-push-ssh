@@ -185,7 +185,7 @@ sub push_ssh_keys
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node", value1 => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->Check->ping({target => $node, count => 3}))
+			if ($an->Check->ping({ping => $node, count => 3}))
 			{
 				# Failed to reach it.
 				$an->Alert->warning({message_key => "sps_warning_0003", message_variables => {

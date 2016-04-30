@@ -131,7 +131,6 @@ sub run_new_install_manifest
 		MegaCli				=>	0,
 		storcli				=>	0,
 	};
-	$an->data->{path}{'anvil-map-network'} = "/sbin/striker/anvil-map-network";
 	
 	if ($an->data->{perform_install})
 	{
@@ -657,9 +656,9 @@ sub enable_tools_on_node
 	$shell_call .= "
 if [ -e $an->data->{path}{nodes}{'anvil-safe-start_link'} ];
 then 
-    echo enabled; 
+    ".$an->data->{path}{echo}." enabled; 
 else 
-    echo disabled;
+    ".$an->data->{path}{echo}." disabled;
 fi
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -722,9 +721,9 @@ fi
 	$shell_call .= "
 if \$(grep -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
 then 
-    echo enabled; 
+    ".$an->data->{path}{echo}." enabled; 
 else 
-    echo disabled;
+    ".$an->data->{path}{echo}." disabled;
 fi
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -787,9 +786,9 @@ fi
 	$shell_call .= "
 if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
 then 
-    echo enabled; 
+    ".$an->data->{path}{echo}." enabled; 
 else 
-    echo disabled;
+    ".$an->data->{path}{echo}." disabled;
 fi
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -934,7 +933,7 @@ sub configure_scancore_on_node
 	my $shell_call       = "
 if [ ! -e '".$an->data->{path}{nodes}{striker_tarball}."' ]; 
 then 
-    echo download needed;
+    ".$an->data->{path}{echo}." download needed;
     if [ ! -e '$path' ];
     then
         mkdir -p $path
@@ -942,20 +941,20 @@ then
     wget -c $download_1 -O $an->data->{path}{nodes}{striker_tarball}
     if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
     then
-        echo 'downloaded from $download_1 successfully'
+        ".$an->data->{path}{echo}." 'downloaded from $download_1 successfully'
     else
-        echo 'download from $download_1 failed, trying alternate.'
+        ".$an->data->{path}{echo}." 'download from $download_1 failed, trying alternate.'
         if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
         then
-            echo 'Deleting zero-size file'
-            rm -f $an->data->{path}{nodes}{striker_tarball}
+            ".$an->data->{path}{echo}." 'Deleting zero-size file'
+            ".$an->data->{path}{rm}." -f $an->data->{path}{nodes}{striker_tarball}
         fi;
         wget -c $download_2 -O $an->data->{path}{nodes}{striker_tarball}
         if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
         then
-            echo 'downloaded from $download_2 successfully'
+            ".$an->data->{path}{echo}." 'downloaded from $download_2 successfully'
         else
-            echo 'download from $download_2 failed, giving up.'
+            ".$an->data->{path}{echo}." 'download from $download_2 failed, giving up.'
         fi;
     fi;
 fi;
@@ -964,17 +963,17 @@ if [ -e '".$an->data->{path}{nodes}{striker_tarball}."' ];
 then
     if [ -e '$path/ScanCore/ScanCore' ];
     then
-        echo 'install already completed'
+        ".$an->data->{path}{echo}." 'install already completed'
     else
-        echo 'Extracting tarball'
+        ".$an->data->{path}{echo}." 'Extracting tarball'
         $an->data->{path}{nodes}{tar} -xvjf $an->data->{path}{nodes}{striker_tarball} -C $path/ .
-        mv $path/Data $path/
-        mv $path/AN $an->data->{path}{nodes}{perl_library}/
+        ".$an->data->{path}{mv}." $path/Data $path/
+        ".$an->data->{path}{mv}." $path/AN $an->data->{path}{nodes}{perl_library}/
         if [ -e '$path/ScanCore/ScanCore' ];
         then
-            echo 'install succeeded'
+            ".$an->data->{path}{echo}." 'install succeeded'
         else
-            echo 'install failed'
+            ".$an->data->{path}{echo}." 'install failed'
         fi;
     fi;
 fi;
@@ -982,25 +981,25 @@ fi;
 if [ ! -e '/etc/striker' ];
 then
     mkdir /etc/striker
-    echo 'Striker configuration directory created.'
+    ".$an->data->{path}{echo}." 'Striker configuration directory created.'
 fi;
 
 if [ -e '".$an->data->{path}{nodes}{striker_config}."' ];
 then
-    echo 'striker config exists'
+    ".$an->data->{path}{echo}." 'striker config exists'
 else
-    echo 'striker config needs to be generated'
+    ".$an->data->{path}{echo}." 'striker config needs to be generated'
 fi;
 
 if [ ! -e '".$an->data->{path}{nodes}{host_uuid}."' ]
 then
-    echo 'Recording the host UUID'
-    echo $uuid > ".$an->data->{path}{nodes}{host_uuid}."
+    ".$an->data->{path}{echo}." 'Recording the host UUID'
+    ".$an->data->{path}{echo}." $uuid > ".$an->data->{path}{nodes}{host_uuid}."
     if [ -e '".$an->data->{path}{nodes}{host_uuid}."' ]
     then
-        echo -n 'host_uuid = '; cat /etc/striker/host.uuid 
+        ".$an->data->{path}{echo}." -n 'host_uuid = '; ".$an->data->{path}{cat}." /etc/striker/host.uuid 
     else
-        echo 'failed to create host uuid file'
+        ".$an->data->{path}{echo}." 'failed to create host uuid file'
     fi
 fi
 ";
@@ -1072,7 +1071,7 @@ fi
 		if (-e $base_striker_config_file)
 		{
 			# Excellent, read it in.
-			my $shell_call = "cat $base_striker_config_file";
+			my $shell_call = $an->data->{path}{cat}." $base_striker_config_file";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -1272,9 +1271,9 @@ fi
 				   $shell_call   = "
 if [ -s '".$an->data->{path}{striker_config}."' ];
 then
-    echo 'config exists'
+    ".$an->data->{path}{echo}." 'config exists'
 else
-    echo 'config does not exist'
+    ".$an->data->{path}{echo}." 'config does not exist'
 fi
 ";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -1333,43 +1332,43 @@ fi
 		my $shell_call = "
 if [ ! -e '".$an->data->{path}{nodes}{cron_root}."' ]
 then
-    echo 'creating empty crontab for root.'
-    echo 'MAILTO=\"\"' > ".$an->data->{path}{nodes}{cron_root}."
-    echo \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
+    ".$an->data->{path}{echo}." 'creating empty crontab for root.'
+    ".$an->data->{path}{echo}." 'MAILTO=\"\"' > ".$an->data->{path}{nodes}{cron_root}."
+    ".$an->data->{path}{echo}." \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
     chown root:root $an->data->{path}{nodes}{cron_root}
-    chmod 600 $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{'chmod'}." 600 $an->data->{path}{nodes}{cron_root}
 fi
 grep -q ScanCore $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-    echo 'ScanCore exits'
+    ".$an->data->{path}{echo}." 'ScanCore exits'
 else
-    echo \"Adding ScanCore to root's cron table.\"
-    echo '*/1 * * * * $an->data->{path}{nodes}{scancore}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." \"Adding ScanCore to root's cron table.\"
+    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{scancore}' >> $an->data->{path}{nodes}{cron_root}
 fi
 grep -q anvil-safe-start $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-    echo 'anvil-safe-start exits'
+    ".$an->data->{path}{echo}." 'anvil-safe-start exits'
 else
-    echo \"Adding 'anvil-safe-start' to root's cron table.\"
-    echo '*/1 * * * * $an->data->{path}{nodes}{'anvil-safe-start'}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." \"Adding 'anvil-safe-start' to root's cron table.\"
+    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{'anvil-safe-start'}' >> $an->data->{path}{nodes}{cron_root}
 fi
 grep -q anvil-kick-apc-ups $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-    echo 'anvil-kick-apc-ups exits'
+    ".$an->data->{path}{echo}." 'anvil-kick-apc-ups exits'
 else
-    echo \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
-    echo '*/1 * * * * $an->data->{path}{nodes}{'anvil-kick-apc-ups'}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
+    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{'anvil-kick-apc-ups'}' >> $an->data->{path}{nodes}{cron_root}
 fi
 grep -q anvil-run-jobs $an->data->{path}{nodes}{cron_root}
 if [ \"\$?\" -eq '0' ];
 then
-    echo 'anvil-run-jobs exits'
+    ".$an->data->{path}{echo}." 'anvil-run-jobs exits'
 else
-    echo \"Adding 'anvil-run-jobs' to root's cron table.\"
-    echo '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." \"Adding 'anvil-run-jobs' to root's cron table.\"
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $an->data->{path}{nodes}{cron_root}
 fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2023,11 +2022,11 @@ sub check_if_in_cluster
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "
-if [ -e '/etc/init.d/cman' ];
+if [ -e '".$an->data->{path}{initd}."/cman' ];
 then 
-    /etc/init.d/cman status; echo rc:\$?; 
+    ".$an->data->{path}{initd}."/cman status; ".$an->data->{path}{echo}." rc:\$?; 
 else 
-    echo 'not in a cluster'; 
+    ".$an->data->{path}{echo}." 'not in a cluster'; 
 fi";
 	# rc == 0; in a cluster
 	# rc == 3; NOT in a cluster
@@ -2641,7 +2640,7 @@ sub stop_drbd
 	my $stop_first = "node1";
 	my $node       = $an->data->{cgi}{anvil_node1_current_ip};
 	my $password   = $an->data->{cgi}{anvil_node1_current_password};
-	my $shell_call = "cat /proc/drbd";
+	my $shell_call = $an->data->{path}{cat}." /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2725,7 +2724,7 @@ sub stop_drbd_on_node
 	
 	# Find the up resources
 	my $stop = {};
-	my $shell_call = "cat /proc/drbd";
+	my $shell_call = $an->data->{path}{cat}." /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2757,7 +2756,7 @@ sub stop_drbd_on_node
 	# Demote.
 	foreach my $resource (sort {$a cmp $b} keys %{$stop})
 	{
-		my $shell_call  = "drbdadm secondary $resource; echo rc:\$?";
+		my $shell_call  = "drbdadm secondary $resource; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -2782,7 +2781,7 @@ sub stop_drbd_on_node
 	my $ok = 1;
 	
 	# Verify they're all Secondary
-	$shell_call = "cat /proc/drbd";
+	$shell_call = $an->data->{path}{cat}." /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2817,7 +2816,7 @@ sub stop_drbd_on_node
 		# Down
 		foreach my $resource (sort {$a cmp $b} keys %{$stop})
 		{
-			my $shell_call  = "drbdadm down $resource; echo rc:\$?";
+			my $shell_call  = "drbdadm down $resource; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -2841,7 +2840,7 @@ sub stop_drbd_on_node
 		# Stop
 		foreach my $resource (sort {$a cmp $b} keys %{$stop})
 		{
-			my $shell_call  = "/etc/init.d/drbd stop; echo rc:\$?";
+			my $shell_call  = $an->data->{path}{initd}."/drbd stop; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -2876,7 +2875,7 @@ sub stop_service_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 127;
-	my $shell_call  = "/etc/init.d/".$service." stop; echo rc:\$?";
+	my $shell_call  = $an->data->{path}{initd}."/".$service." stop; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2919,7 +2918,7 @@ sub start_rgmanager_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok = 1;
-	my $shell_call = "/etc/init.d/rgmanager start; echo rc:\$?";
+	my $shell_call = $an->data->{path}{initd}."/rgmanager start; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -3099,10 +3098,10 @@ sub setup_gfs2_on_node
 	my $shell_call = "
 if [ -e '/shared' ];
 then 
-	echo '/shared exists';
+	".$an->data->{path}{echo}." '/shared exists';
 else 
 	mkdir /shared;
-	echo '/shared created'
+	".$an->data->{path}{echo}." '/shared created'
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -3131,14 +3130,14 @@ fi";
 		$shell_call   = "
 if \$(grep -q shared /etc/fstab)
 then
-    echo 'shared exists'
+    ".$an->data->{path}{echo}." 'shared exists'
 else
-    echo \"$fstab_string\" >> /etc/fstab
+    ".$an->data->{path}{echo}." \"$fstab_string\" >> /etc/fstab
     if \$(grep -q shared /etc/fstab)
     then
-        echo 'shared added'
+        ".$an->data->{path}{echo}." 'shared added'
     else
-        echo 'failed to add shared'
+        ".$an->data->{path}{echo}." 'failed to add shared'
     fi
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -3172,7 +3171,7 @@ fi";
 		# Test mount using the 'mount' command
 		if ($return_code ne "1")
 		{
-			my $shell_call = "mount /shared; echo \$?";
+			my $shell_call = "mount /shared; ".$an->data->{path}{echo}." \$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -3213,7 +3212,7 @@ fi";
 			# Finally, test '/etc/init.d/gfs2 status'
 			if ($return_code ne "2")
 			{
-				my $shell_call = "/etc/init.d/gfs2 status; echo \$?";
+				my $shell_call = $an->data->{path}{initd}."/gfs2 status; ".$an->data->{path}{echo}." \$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -3268,9 +3267,9 @@ fi";
 				my $shell_call = "
 if [ -e '/shared/$directory' ]
 then
-    echo '/shared/$directory already exists'
+    ".$an->data->{path}{echo}." '/shared/$directory already exists'
 else
-    mkdir /shared/$directory; echo rc:\$?
+    mkdir /shared/$directory; ".$an->data->{path}{echo}." rc:\$?
 fi";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
@@ -3326,12 +3325,12 @@ then
     context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
     if [ \$context == 'virt_etc_t' ];
     then
-        echo 'context updated'
+        ".$an->data->{path}{echo}." 'context updated'
     else
-        echo \"context failed to update, still: \$context.\"
+        ".$an->data->{path}{echo}." \"context failed to update, still: \$context.\"
     fi
 else 
-    echo 'context ok';
+    ".$an->data->{path}{echo}." 'context ok';
 fi";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -3409,7 +3408,7 @@ sub setup_gfs2
 	if ($lv_ok)
 	{
 		# Check if the LV already has a GFS2 FS
-		my $shell_call = "gfs2_tool sb /dev/$an->data->{sys}{vg_pool1_name}/shared uuid; echo rc:\$?";
+		my $shell_call = "gfs2_tool sb /dev/$an->data->{sys}{vg_pool1_name}/shared uuid; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -3462,7 +3461,7 @@ sub setup_gfs2
 		# Create the partition if needed.
 		if (($create_gfs2) && (not $an->data->{sys}{shared_fs_uuid}))
 		{
-			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $an->data->{cgi}{anvil_name}:shared /dev/$an->data->{sys}{vg_pool1_name}/shared -O; echo rc:\$?";
+			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $an->data->{cgi}{anvil_name}:shared /dev/$an->data->{sys}{vg_pool1_name}/shared -O; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -3565,7 +3564,7 @@ sub create_shared_lv
 	
 	my $return_code = 0;
 	my $create_lv   = 1;
-	my $shell_call  = "lvs --noheadings --separator ,; echo rc:\$?";
+	my $shell_call  = "lvs --noheadings --separator ,; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -3620,7 +3619,7 @@ sub create_shared_lv
 		# Create the LV
 		my $lv_size    =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} });
 		   $lv_size    =~ s/ //;
-		my $shell_call = "lvcreate -L $lv_size -n shared $an->data->{sys}{vg_pool1_name}; echo rc:\$?";
+		my $shell_call = "lvcreate -L $lv_size -n shared $an->data->{sys}{vg_pool1_name}; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -3841,7 +3840,7 @@ sub create_lvm_vgs
 	my $create_vg1  = $an->data->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
 	
 	# Calling 'pvs' again, but this time we're digging out the VG name
-	my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
+	my $shell_call   = "pvs --noheadings --separator ,; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -3925,7 +3924,7 @@ sub create_lvm_vgs
 	# PV for pool 1
 	if ($create_vg0)
 	{
-		my $shell_call = "vgcreate $an->data->{sys}{vg_pool1_name} /dev/drbd0; echo rc:\$?";
+		my $shell_call = "vgcreate $an->data->{sys}{vg_pool1_name} /dev/drbd0; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -3973,7 +3972,7 @@ sub create_lvm_vgs
 	# PV for pool 2
 	if (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && ($create_vg1))
 	{
-		my $shell_call = "vgcreate $an->data->{sys}{vg_pool2_name} /dev/drbd1; echo rc:\$?";
+		my $shell_call = "vgcreate $an->data->{sys}{vg_pool2_name} /dev/drbd1; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -4052,8 +4051,8 @@ sub create_lvm_pvs
 	my $found_drbd1  = 0;
 	my $create_drbd1 = $an->data->{cgi}{anvil_storage_pool2_byte_size} ? 1 : 0;
 
-	#my $shell_call   = "pvs --noheadings --separator ,; echo rc:\$?";
-	my $shell_call   = "pvscan; echo rc:\$?";
+	#my $shell_call   = "pvs --noheadings --separator ,; ".$an->data->{path}{echo}." rc:\$?";
+	my $shell_call   = "pvscan; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -4116,7 +4115,7 @@ sub create_lvm_pvs
 	# PV for pool 1
 	if ($create_drbd0)
 	{
-		my $shell_call = "pvcreate /dev/drbd0; echo rc:\$?";
+		my $shell_call = "pvcreate /dev/drbd0; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -4160,7 +4159,7 @@ sub create_lvm_pvs
 	# PV for pool 2
 	if (($an->data->{cgi}{anvil_storage_pool2_byte_size}) && ($create_drbd1))
 	{
-		my $shell_call = "pvcreate /dev/drbd1; echo rc:\$?";
+		my $shell_call = "pvcreate /dev/drbd1; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -4234,12 +4233,12 @@ sub start_clvmd_on_node
 	
 	my $return_code = 255;
 	my $shell_call  = "
-/etc/init.d/clvmd status &>/dev/null; 
+".$an->data->{path}{initd}."/clvmd status &>/dev/null; 
 if [ \$? == 3 ];
 then 
-    /etc/init.d/clvmd start; echo rc:\$?;
+    ".$an->data->{path}{initd}."/clvmd start; ".$an->data->{path}{echo}." rc:\$?;
 else 
-    echo 'clvmd already running';
+    ".$an->data->{path}{echo}." 'clvmd already running';
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -4637,7 +4636,7 @@ sub verify_drbd_resources_are_connected
 	my $return_code  = 0;
 	my $r0_connected = 0;
 	my $r1_connected = 0;
-	my $shell_call   = "cat /proc/drbd";
+	my $shell_call   = $an->data->{path}{cat}." /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -4731,13 +4730,13 @@ sub do_drbd_primary_on_node
 	# Resource 0
 	my $return_code = 0;
 	my $message     = "";
-	my $shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r0; echo rc:\$?";
+	my $shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r0; ".$an->data->{path}{echo}." rc:\$?";
 	if ($force_r0)
 	{
 		$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
 			resource => "r0", 
 		}, file => $THIS_FILE, line => __LINE__});
-		$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r0 --force; echo rc:\$?";
+		$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r0 --force; ".$an->data->{path}{echo}." rc:\$?";
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -4784,13 +4783,13 @@ sub do_drbd_primary_on_node
 	# Resource 1
 	if ($an->data->{cgi}{anvil_storage_pool2_byte_size})
 	{
-		$shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r1; echo rc:\$?";
+		$shell_call  = $an->data->{path}{nodes}{drbdadm}." primary r1; ".$an->data->{path}{echo}." rc:\$?";
 		if ($force_r0)
 		{
 			$an->Log->entry({log_level => 2, message_key => "log_0084", message_variables => {
 				resource => "r1", 
 			}, file => $THIS_FILE, line => __LINE__});
-			$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r1 --force; echo rc:\$?";
+			$shell_call = $an->data->{path}{nodes}{drbdadm}." primary r1 --force; ".$an->data->{path}{echo}." rc:\$?";
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -4885,7 +4884,7 @@ sub check_drbd_if_force_primary_is_needed
 	my $force_r0    = 0;
 	my $force_r1    = 0;
 	my $found_r1    = 0;
-	my $shell_call  = "cat /proc/drbd";
+	my $shell_call  = $an->data->{path}{cat}." /proc/drbd";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -5010,7 +5009,7 @@ sub do_drbd_connect_on_node
 		}
 		# See if the resource is already 'Connected' or 'WFConnection'
 		my $connected  = 0;
-		my $shell_call = "cat /proc/drbd";
+		my $shell_call = $an->data->{path}{cat}." /proc/drbd";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -5069,7 +5068,7 @@ sub do_drbd_connect_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $connected)
 		{
-			my $shell_call = $an->data->{path}{nodes}{drbdadm}." connect r$resource; echo rc:\$?";
+			my $shell_call = $an->data->{path}{nodes}{drbdadm}." connect r$resource; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -5133,7 +5132,7 @@ sub do_drbd_connect_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				last if $ready;
 				sleep 5;
-				my $shell_call = "cat /proc/drbd";
+				my $shell_call = $an->data->{path}{cat}." /proc/drbd";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -5208,14 +5207,14 @@ sub do_drbd_connect_on_node
 			elsif ($force_uptodate)
 			{
 				my $shell_call = "
-echo \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
+".$an->data->{path}{echo}." \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
 $an->data->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
 sleep 2
-if \$(cat /proc/drbd | $an->data->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $an->data->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
+if \$(".$an->data->{path}{cat}." /proc/drbd | $an->data->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $an->data->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
 then 
-    echo success
+    ".$an->data->{path}{echo}." success
 else
-    echo failed.
+    ".$an->data->{path}{echo}." failed.
 fi
 ";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -5266,30 +5265,30 @@ sub do_drbd_attach_on_node
 	my $shell_call = "
 if [ -e '/proc/drbd' ]; 
 then 
-    echo 'DRBD already loaded'; 
+    ".$an->data->{path}{echo}." 'DRBD already loaded'; 
 else 
     modprobe drbd; 
     if [ -e '/proc/drbd' ]; 
     then 
-        echo 'loaded DRBD kernel module'; 
+        ".$an->data->{path}{echo}." 'loaded DRBD kernel module'; 
     else 
-        echo 'failed to load drbd' 
+        ".$an->data->{path}{echo}." 'failed to load drbd' 
     fi;
 fi;
 if [ ! -e '".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."' ];
 then
     if [ -e '".$an->data->{path}{nodes}{'wait-for-drbd'}."' ];
     then
-        echo \"need to copy 'wait-for-drbd'\"
+        ".$an->data->{path}{echo}." \"need to copy 'wait-for-drbd'\"
         cp ".$an->data->{path}{nodes}{'wait-for-drbd'}." ".$an->data->{path}{nodes}{'wait-for-drbd_initd'}.";
         if [ ! -e '".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."' ];
         then
-           echo \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."] to: [".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."]\"
+           ".$an->data->{path}{echo}." \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."] to: [".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."]\"
         else
-           echo \"copied 'wait-for-drbd' successfully.\"
+           ".$an->data->{path}{echo}." \"copied 'wait-for-drbd' successfully.\"
         fi
     else
-        echo \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."], source doesn't exist.\"
+        ".$an->data->{path}{echo}." \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."], source doesn't exist.\"
     fi
 fi;
 ";
@@ -5355,7 +5354,7 @@ fi;
 			# We may not find the resource in /proc/drbd is the
 			# resource wasn't started before.
 			my $attached = 0;
-			my $shell_call = "cat /proc/drbd";
+			my $shell_call = $an->data->{path}{cat}." /proc/drbd";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -5418,7 +5417,7 @@ fi;
 			if (not $attached)
 			{
 				my $no_metadata = 0;
-				my $shell_call  = $an->data->{path}{nodes}{drbdadm}." up r$resource; echo rc:\$?";
+				my $shell_call  = $an->data->{path}{nodes}{drbdadm}." up r$resource; ".$an->data->{path}{echo}." rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -5605,11 +5604,11 @@ if [ -e '/root/.ssh/authorized_keys' ]
 then
     if \$(grep -q $name ~/.ssh/authorized_keys);
     then 
-        echo 'RSA key exists, removing it.'
+        ".$an->data->{path}{echo}." 'RSA key exists, removing it.'
         sed -i '/ root\@$name$/d' /root/.ssh/authorized_keys
     fi;
 else
-    echo 'no file'
+    ".$an->data->{path}{echo}." 'no file'
 fi";
 	}
 	
@@ -5617,7 +5616,7 @@ fi";
 	# Node 1
 	if (1)
 	{
-		my $shell_call = "echo \"$node1_rsa\" >> /root/.ssh/authorized_keys";
+		my $shell_call = $an->data->{path}{echo}." \"$node1_rsa\" >> /root/.ssh/authorized_keys";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -5641,9 +5640,9 @@ fi";
 		$shell_call = "
 if \$(grep -q \"$node1_rsa\" /root/.ssh/authorized_keys)
 then
-    echo added
+    ".$an->data->{path}{echo}." added
 else
-    echo failed
+    ".$an->data->{path}{echo}." failed
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -5686,7 +5685,7 @@ fi";
 	# Node 2.
 	if (1)
 	{
-		my $shell_call = "echo \"$node2_rsa\" >> /root/.ssh/authorized_keys";
+		my $shell_call = $an->data->{path}{echo}." \"$node2_rsa\" >> /root/.ssh/authorized_keys";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -5710,9 +5709,9 @@ fi";
 		$shell_call = "
 if \$(grep -q \"$node2_rsa\" /root/.ssh/authorized_keys)
 then
-    echo added
+    ".$an->data->{path}{echo}." added
 else
-    echo failed
+    ".$an->data->{path}{echo}." failed
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -5777,15 +5776,15 @@ sub populate_known_hosts_on_node
 		my $shell_call = "
 if \$(grep -q $name ~/.ssh/known_hosts);
 then 
-    echo 'fingerprint exists, removing it.'
+    ".$an->data->{path}{echo}." 'fingerprint exists, removing it.'
     sed -i '/^$name /d' /root/.ssh/known_hosts
 fi
 ssh-keyscan $name >> ~/.ssh/known_hosts;
 if \$(grep -q $name ~/.ssh/known_hosts);
 then 
-    echo 'fingerprint added';
+    ".$an->data->{path}{echo}." 'fingerprint added';
 else
-    echo 'failed to record fingerprint for $node.';
+    ".$an->data->{path}{echo}." 'failed to record fingerprint for $node.';
 fi;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -5914,14 +5913,14 @@ sub get_node_rsa_public_key
 	my $shell_call = "
 if [ -e '/root/.ssh/id_rsa.pub' ]; 
 then 
-    cat /root/.ssh/id_rsa.pub; 
+    ".$an->data->{path}{cat}." /root/.ssh/id_rsa.pub; 
 else 
     ssh-keygen -t rsa -N \"\" -b $an->data->{cgi}{anvil_ssh_keysize} -f ~/.ssh/id_rsa;
     if [ -e '/root/.ssh/id_rsa.pub' ];
     then 
-        cat /root/.ssh/id_rsa.pub; 
+        ".$an->data->{path}{cat}." /root/.ssh/id_rsa.pub; 
     else 
-        echo 'keygen failed';
+        ".$an->data->{path}{echo}." 'keygen failed';
     fi;
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -6002,7 +6001,7 @@ sub start_cman
 	{
 		# Start cman on both nodes at the same time. We use node1's password as it has to be the same
 		# on both at this point.
-		my $command  = "/etc/init.d/cman start";
+		my $command  = $an->data->{path}{initd}."/cman start";
 		my $password = $an->data->{cgi}{anvil_node1_current_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "command",                     value1 => $command,
@@ -6231,7 +6230,7 @@ sub check_fencing_on_node
 	
 	my $message = "";
 	my $ok      = 1;
-	my $shell_call = "fence_check -f; echo rc:\$?";
+	my $shell_call = "fence_check -f; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -6290,7 +6289,7 @@ sub start_cman_on_node
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $shell_call = "/etc/init.d/cman start";
+	my $shell_call = $an->data->{path}{initd}."/cman start";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -6324,7 +6323,7 @@ sub ping_node_from_other
 	
 	my $success    = 0;
 	my $ping_rc    = 255;
-	my $shell_call = "ping -n $target_ip -c 1; echo ping:\$?";
+	my $shell_call = "ping -n $target_ip -c 1; ".$an->data->{path}{echo}." ping:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -6394,8 +6393,8 @@ sub set_ricci_password
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Test the new password.
-	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node1_current_ip}, password => $an->data->{cgi}{anvil_node1_current_password}});
+	my ($node2_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node2_current_ip}, password => $an->data->{cgi}{anvil_node2_current_password}});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -6492,15 +6491,15 @@ sub configure_selinux_on_node
 	my $shell_call  = "
 if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
 then 
-    echo 'Already allowed';
+    ".$an->data->{path}{echo}." 'Already allowed';
 else 
-    echo \"Off, enabling 'fenced_can_ssh' now...\";
+    ".$an->data->{path}{echo}." \"Off, enabling 'fenced_can_ssh' now...\";
     $an->data->{path}{nodes}{setsebool} -P fenced_can_ssh on
     if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
     then 
-        echo 'Now allowed.'
+        ".$an->data->{path}{echo}." 'Now allowed.'
     else
-        echo \"Failed to allowe 'fenced_can_ssh'.\"
+        ".$an->data->{path}{echo}." \"Failed to allowe 'fenced_can_ssh'.\"
     fi
 fi
 ";
@@ -6559,8 +6558,8 @@ sub set_root_password
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Test the new password.
-	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node1_current_ip}, password => $an->data->{cgi}{anvil_node1_current_password}});
+	my ($node2_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node2_current_ip}, password => $an->data->{cgi}{anvil_node2_current_password}});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -6608,7 +6607,7 @@ sub set_password_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Set the 'ricci' password first.
-	my $shell_call = "echo '$new_password' | passwd $user --stdin";
+	my $shell_call = $an->data->{path}{echo}." '$new_password' | passwd $user --stdin";
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -6673,9 +6672,9 @@ sub backup_files_on_node
 	my $shell_call = "
 if [ -e '".$an->data->{path}{nodes}{backups}."' ];
 then 
-    echo \"Backup directory exist\";
+    ".$an->data->{path}{echo}." \"Backup directory exist\";
 else 
-    mkdir -p $an->data->{path}{nodes}{backups}; 
+    mkdir -p ".$an->data->{path}{nodes}{backups}."; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6700,7 +6699,7 @@ fi";
 	$shell_call = "
 if [ -e '".$an->data->{path}{nodes}{backups}."/network-scripts' ];
 then 
-    echo \"Network configuration files previously backed up\";
+    ".$an->data->{path}{echo}." \"Network configuration files previously backed up\";
 else 
     rsync -av $an->data->{path}{nodes}{network_scripts} $an->data->{path}{nodes}{backups}/;
 fi";
@@ -6727,7 +6726,7 @@ fi";
 	$shell_call = "
 if [ -e '".$an->data->{path}{nodes}{backups}."/.ssh' ];
 then 
-    echo \"SSH configuration files previously backed up\";
+    ".$an->data->{path}{echo}." \"SSH configuration files previously backed up\";
 else 
     rsync -av /root/.ssh $an->data->{path}{nodes}{backups}/;
 fi";
@@ -6756,7 +6755,7 @@ if [ -e '".$an->data->{path}{nodes}{drbd}."' ] && [ ! -e '".$an->data->{path}{no
 then 
     rsync -av ".$an->data->{path}{nodes}{drbd}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
-    echo \"DRBD backup not needed\"; 
+    ".$an->data->{path}{echo}." \"DRBD backup not needed\"; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6783,7 +6782,7 @@ if [ ! -e '".$an->data->{path}{nodes}{backups}."/lvm.conf' ];
 then 
     rsync -av ".$an->data->{path}{nodes}{lvm_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
-    echo \"LVM previously backed up, skipping.\"; 
+    ".$an->data->{path}{echo}." \"LVM previously backed up, skipping.\"; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6810,7 +6809,7 @@ if [ ! -e '".$an->data->{path}{nodes}{backups}."/cluster.conf' ];
 then 
     rsync -av ".$an->data->{path}{nodes}{cluster_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
-    echo \"cman previously backed up, skipping.\"; 
+    ".$an->data->{path}{echo}." \"cman previously backed up, skipping.\"; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6837,7 +6836,7 @@ if [ ! -e '".$an->data->{path}{nodes}{backups}."/fstab' ];
 then 
     rsync -av ".$an->data->{path}{nodes}{fstab}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
-    echo \"fstab previously backed up, skipping.\"; 
+    ".$an->data->{path}{echo}." \"fstab previously backed up, skipping.\"; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6864,7 +6863,7 @@ if [ ! -e '".$an->data->{path}{nodes}{backups}."/shadow' ];
 then 
     rsync -av ".$an->data->{path}{nodes}{shadow}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
-    echo \"shadow previously backed up, skipping.\"; 
+    ".$an->data->{path}{echo}." \"shadow previously backed up, skipping.\"; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -7076,7 +7075,7 @@ sub configure_ipmi_on_node
 			
 			# check to see if this is the write channel
 			my $rc         = "";
-			my $shell_call = "ipmitool lan print $channel; echo rc:\$?";
+			my $shell_call = "ipmitool lan print $channel; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -7797,7 +7796,7 @@ sub set_daemon_state
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc         = "";
-	my $shell_call = "/etc/init.d/$daemon $state; echo rc:\$?";
+	my $shell_call = $an->data->{path}{initd}."/$daemon $state; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -7866,7 +7865,7 @@ sub get_daemon_state
 		node   => $node, 
 		daemon => $daemon,
 	}, file => $THIS_FILE, line => __LINE__});
-	my $shell_call = "/etc/init.d/$daemon status; echo rc:\$?";
+	my $shell_call = $an->data->{path}{initd}."/$daemon status; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -8207,7 +8206,7 @@ sub write_lvm_conf_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rc = 0;
-	my $shell_call =  "cat > ".$an->data->{path}{nodes}{lvm_conf}." << EOF\n";
+	my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{lvm_conf}." << EOF\n";
 	   $shell_call .= $an->data->{sys}{lvm_conf}."\n";
 	   $shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8249,9 +8248,9 @@ sub read_lvm_conf_on_node
 	my $shell_call = "
 if [ -e '".$an->data->{path}{nodes}{lvm_conf}."' ]
 then
-    cat ".$an->data->{path}{nodes}{lvm_conf}."
+    ".$an->data->{path}{cat}." ".$an->data->{path}{nodes}{lvm_conf}."
 else
-    echo \"not found\"
+    ".$an->data->{path}{echo}." \"not found\"
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -8543,7 +8542,7 @@ sub do_node_reboot
 		while (not $has_shutdown)
 		{
 			# 0 == pinged, 1 == failed.
-			my $ping_rc = $an->Check->ping({target => $node, count => 3});
+			my $ping_rc = $an->Check->ping({ping => $node, count => 3});
 			if ($ping_rc eq "1")
 			{
 				$has_shutdown = 1;
@@ -8706,7 +8705,7 @@ sub connect_to_node
 	my $rc = 2;
 	
 	# 0 == pinged, 1 == failed.
-	my $ping_rc = $an->Check->ping({target => $node, count => 3});
+	my $ping_rc = $an->Check->ping({ping => $node, count => 3});
 	if ($ping_rc eq "0")
 	{
 		# Pingable! Can we log in?
@@ -8714,7 +8713,7 @@ sub connect_to_node
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$rc = 1;
-		if (check_node_access($an, $node, $password))
+		if ($an->Check->access({target => $node, password => $password}))
 		{
 			# We're in!
 			$rc = 0;
@@ -8762,15 +8761,15 @@ sub add_repo_to_node
 		my $shell_call = "
 if [ -e '/etc/yum.repos.d/$repo_file' ];
 then
-    echo 1;
+    ".$an->data->{path}{echo}." 1;
 else
     curl --silent $url --output /etc/yum.repos.d/$repo_file;
     if [ -e '/etc/yum.repos.d/$repo_file' ];
     then
-        yum clean all --quiet;
-        echo 2;
+        ".$an->data->{path}{yum}." clean all --quiet;
+        ".$an->data->{path}{echo}." 2;
     else
-        echo 9;
+        ".$an->data->{path}{echo}." 9;
     fi;
 fi
 if grep -q gpgcheck=1 /etc/yum.repos.d/$repo_file;
@@ -8778,7 +8777,7 @@ then
     local_file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
     file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
     url=\$(grep baseurl /etc/yum.repos.d/$repo_file | sed 's/baseurl=//');
-    echo 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
+    ".$an->data->{path}{echo}." 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
     curl \$url/\$file > \$local_file
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -8931,7 +8930,7 @@ sub create_partition_on_node
 	my $size    = 0;
 	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
 	#my $shell_call = "parted --machine /dev/$disk unit GiB print free";
-	my $shell_call = "parted /dev/$disk unit GiB print free";
+	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit GiB print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -9050,10 +9049,10 @@ sub create_partition_on_node
 			name5 => "end (GiB)",   value5 => $end,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $shell_call = "parted -a opt /dev/$disk mkpart $type ${start}GiB ${use_end}GiB";
+		my $shell_call = $an->data->{path}{parted}." -a opt /dev/$disk mkpart $type ${start}GiB ${use_end}GiB";
 		if ($use_end eq "100%")
 		{
-			$shell_call = "parted -a opt /dev/$disk mkpart $type ${start}GiB 100%";
+			$shell_call = $an->data->{path}{parted}." -a opt /dev/$disk mkpart $type ${start}GiB 100%";
 		}
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -9152,7 +9151,7 @@ sub check_device_for_drbd_metadata
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $is_drbd    = 0;
-	my $shell_call = "drbdmeta --force 0 v08 $device internal dump-md; echo rc:\$?";
+	my $shell_call = "drbdmeta --force 0 v08 $device internal dump-md; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -9327,7 +9326,7 @@ sub check_for_drbd_metadata
 					resource => $resource, 
 				}, file => $THIS_FILE, line => __LINE__});
 				my $rc         = 255;
-				my $shell_call = $an->data->{path}{nodes}{drbdadm}." -- --force create-md $resource; echo rc:\$?";
+				my $shell_call = $an->data->{path}{nodes}{drbdadm}." -- --force create-md $resource; ".$an->data->{path}{echo}." rc:\$?";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -9409,7 +9408,7 @@ sub get_partition_data_from_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: Parted, in it's infinite wisdom, doesn't show the partition type when called with --machine
-	my $shell_call = "parted /dev/$disk unit GiB print free";
+	my $shell_call = $an->data->{path}{parted}." /dev/$disk unit GiB print free";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -10043,16 +10042,16 @@ global {
  
 common {
 	handlers {
-		# pri-on-incon-degr \"/usr/lib/drbd/notify-pri-on-incon-degr.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
-		# pri-lost-after-sb \"/usr/lib/drbd/notify-pri-lost-after-sb.sh; /usr/lib/drbd/notify-emergency-reboot.sh; echo b > /proc/sysrq-trigger ; reboot -f\";
-		# local-io-error \"/usr/lib/drbd/notify-io-error.sh; /usr/lib/drbd/notify-emergency-shutdown.sh; echo o > /proc/sysrq-trigger ; halt -f\";
+		# pri-on-incon-degr \"/usr/lib/drbd/notify-pri-on-incon-degr.sh; /usr/lib/drbd/notify-emergency-reboot.sh; ".$an->data->{path}{echo}." b > /proc/sysrq-trigger ; reboot -f\";
+		# pri-lost-after-sb \"/usr/lib/drbd/notify-pri-lost-after-sb.sh; /usr/lib/drbd/notify-emergency-reboot.sh; ".$an->data->{path}{echo}." b > /proc/sysrq-trigger ; reboot -f\";
+		# local-io-error \"/usr/lib/drbd/notify-io-error.sh; /usr/lib/drbd/notify-emergency-shutdown.sh; ".$an->data->{path}{echo}." o > /proc/sysrq-trigger ; halt -f\";
 		# split-brain \"/usr/lib/drbd/notify-split-brain.sh root\";
 		# out-of-sync \"/usr/lib/drbd/notify-out-of-sync.sh root\";
 		# before-resync-target \"/usr/lib/drbd/snapshot-resync-target-lvm.sh -p 15 -- -c 16k\";
 		# after-resync-target /usr/lib/drbd/unsnapshot-resync-target-lvm.sh;
  
 		# Hook into cman's fencing.
-		fence-peer \"/sbin/striker/rhcs_fence\";
+		fence-peer \"".$an->data->{path}{striker_tools}."/rhcs_fence\";
 	}
  
 	# NOTE: this is not required or even recommended with pacemaker. remove
@@ -10345,27 +10344,27 @@ sub read_drbd_config_on_node
 	my $shell_call = "
 if [ -e '$global_common' ]; 
 then 
-    echo start:$global_common; 
-    cat $global_common; 
-    echo end:$global_common; 
+    ".$an->data->{path}{echo}." start:$global_common; 
+    ".$an->data->{path}{cat}." $global_common; 
+    ".$an->data->{path}{echo}." end:$global_common; 
 else 
-    echo not_found:$global_common; 
+    ".$an->data->{path}{echo}." not_found:$global_common; 
 fi;
 if [ -e '$r0' ]; 
 then 
-    echo start:$r0; 
-    cat $r0; 
-    echo end:$r0; 
+    ".$an->data->{path}{echo}." start:$r0; 
+    ".$an->data->{path}{cat}." $r0; 
+    ".$an->data->{path}{echo}." end:$r0; 
 else 
-    echo not_found:$r0; 
+    ".$an->data->{path}{echo}." not_found:$r0; 
 fi;
 if [ -e '$r1' ]; 
 then 
-    echo start:$r1; 
-    cat $r1; 
-    echo end:$r1; 
+    ".$an->data->{path}{echo}." start:$r1; 
+    ".$an->data->{path}{cat}." $r1; 
+    ".$an->data->{path}{echo}." end:$r1; 
 else 
-    echo not_found:$r1; 
+    ".$an->data->{path}{echo}." not_found:$r1; 
 fi;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -10439,7 +10438,7 @@ sub setup_drbd_on_node
 	# Global common file
 	if (not $an->data->{node}{$node}{drbd_file}{global_common})
 	{
-		my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_global_common}." << EOF\n";
+		my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_global_common}." << EOF\n";
 		   $shell_call .= $an->data->{drbd}{global_common}."\n";
 		   $shell_call .= "EOF";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -10466,7 +10465,7 @@ sub setup_drbd_on_node
 	if (not $an->data->{node}{$node}{drbd_file}{r0})
 	{
 		# Resource 0 config
-		my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_r0}." << EOF\n";
+		my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_r0}." << EOF\n";
 		   $shell_call .= $an->data->{drbd}{r0}."\n";
 		   $shell_call .= "EOF";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -10495,7 +10494,7 @@ sub setup_drbd_on_node
 		if (not $an->data->{node}{$node}{drbd_file}{r1})
 		{
 			# Resource 0 config
-			my $shell_call =  "cat > ".$an->data->{path}{nodes}{drbd_r1}." << EOF\n";
+			my $shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{drbd_r1}." << EOF\n";
 			   $shell_call .= $an->data->{drbd}{r1}."\n";
 			   $shell_call .= "EOF";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11004,15 +11003,15 @@ sub configure_ntp_on_node
 		my $shell_call = "
 if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf}); 
 then 
-    echo exists; 
+    ".$an->data->{path}{echo}." exists; 
 else 
-    echo adding $ntp_server;
-    echo 'server $ntp_server iburst' >> $an->data->{path}{nodes}{ntp_conf}
+    ".$an->data->{path}{echo}." adding $ntp_server;
+    ".$an->data->{path}{echo}." 'server $ntp_server iburst' >> $an->data->{path}{nodes}{ntp_conf}
     if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf});
     then
-        echo added OK
+        ".$an->data->{path}{echo}." added OK
     else
-        echo failed to add!
+        ".$an->data->{path}{echo}." failed to add!
     fi;
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11444,7 +11443,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this smarter so that it deletes everything ***EXCEPT*** ifcfg-lo
-	my $shell_call = "rm -f $an->data->{path}{nodes}{ifcfg_directory}/ifcfg-eth*";
+	my $shell_call = $an->data->{path}{rm}." -f $an->data->{path}{nodes}{ifcfg_directory}/ifcfg-eth*";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -11467,7 +11466,7 @@ COMMIT";
 	### Start writing!
 	### Internet-Facing Network
 	# IFN Bridge 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_bridge1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{ifn_bridge1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_bridge1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11490,7 +11489,7 @@ COMMIT";
 	}
 	
 	# IFN Bond 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_bond1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{ifn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11513,7 +11512,7 @@ COMMIT";
 	}
 	
 	# IFN Link 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_link1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{ifn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11536,7 +11535,7 @@ COMMIT";
 	}
 	
 	# IFN Link 2
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{ifn_link2_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{ifn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_ifn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11560,7 +11559,7 @@ COMMIT";
 	
 	### Storage Network
 	# SN Bond 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_bond1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{sn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11583,7 +11582,7 @@ COMMIT";
 	}
 	
 	# SN Link 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_link1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{sn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11606,7 +11605,7 @@ COMMIT";
 	}
 	
 	# SN Link 2
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{sn_link2_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{sn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_sn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11630,7 +11629,7 @@ COMMIT";
 	
 	### Back-Channel Network
 	# BCN Bond 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_bond1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{bcn_bond1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_bond1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11653,7 +11652,7 @@ COMMIT";
 	}
 	
 	# BCN Link 1
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_link1_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{bcn_link1_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_link1\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11676,7 +11675,7 @@ COMMIT";
 	}
 	
 	# BCN Link 2
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{bcn_link2_config}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{bcn_link2_config}." << EOF\n";
 	$shell_call .= "$ifcfg_bcn_link2\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11699,7 +11698,7 @@ COMMIT";
 	}
 	
 	### Now write the net udev rules file.
-	$shell_call = "cat > ".$an->data->{path}{nodes}{udev_net_rules}." << EOF\n";
+	$shell_call = $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{udev_net_rules}." << EOF\n";
 	$shell_call .= "$udev_net_rules\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11722,7 +11721,7 @@ COMMIT";
 	}
 	
 	### Now write the vnet udev rules file.
-	$shell_call = "cat > ".$an->data->{path}{nodes}{udev_vnet_rules}." << EOF\n";
+	$shell_call = $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{udev_vnet_rules}." << EOF\n";
 	$shell_call .= "$udev_vnet_rules\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11745,7 +11744,7 @@ COMMIT";
 	}
 	
 	# Hosts file.
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{hosts}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{hosts}." << EOF\n";
 	$shell_call .= "$hosts\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11768,7 +11767,7 @@ COMMIT";
 	}
 	
 	### Now write the hostname file and set the hostname for the current session.
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{hostname}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{hostname}." << EOF\n";
 	$shell_call .= "$hostname\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -11815,7 +11814,7 @@ COMMIT";
 	###       config, which may differ from the active one.
 	# First, get a word count on the current iptables in-memory config. If it's smaller than 13 lines,
 	# it's probably the original one and we'll need a reboot.
-	$shell_call = "echo \"lines:\$(iptables-save | wc -l)\"\n";
+	$shell_call = $an->data->{path}{echo}." \"lines:\$(iptables-save | wc -l)\"\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -11861,7 +11860,7 @@ COMMIT";
 	}
 	
 	# Now write the new one.
-	$shell_call =  "cat > ".$an->data->{path}{nodes}{iptables}." << EOF\n";
+	$shell_call =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{iptables}." << EOF\n";
 	$shell_call .= "$iptables\n";
 	$shell_call .= "EOF";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -12155,28 +12154,16 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $an->data->{conf}{node}{$node1}{current_nic}{$nic};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node", value1 => $node1,
-			name2 => "nic",  value2 => $nic,
-			name3 => "mac",  value3 => $mac,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_sn_link2_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node1_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node1_ifn_link2_mac},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+			name1 => "node",                           value1 => $node1,
+			name2 => "nic",                            value2 => $nic,
+			name3 => "mac",                            value3 => $mac,
+			name4 => "cgi::anvil_node1_bcn_link1_mac", value4 => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
+			name5 => "cgi::anvil_node1_bcn_link2_mac", value5 => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
+			name6 => "cgi::anvil_node1_sn_link1_mac",  value6 => $an->data->{cgi}{anvil_node1_sn_link1_mac},
+			name7 => "cgi::anvil_node1_sn_link2_mac",  value7 => $an->data->{cgi}{anvil_node1_sn_link2_mac},
+			name8 => "cgi::anvil_node1_ifn_link1_mac", value8 => $an->data->{cgi}{anvil_node1_ifn_link1_mac},
+			name9 => "cgi::anvil_node1_ifn_link2_mac", value9 => $an->data->{cgi}{anvil_node1_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($mac eq $an->data->{cgi}{anvil_node1_bcn_link1_mac})
 		{
@@ -12234,28 +12221,16 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $an->data->{conf}{node}{$node2}{current_nic}{$nic};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "node", value1 => $node2,
-			name2 => "nic",  value2 => $nic,
-			name3 => "mac",  value3 => $mac,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_bcn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_bcn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_bcn_link2_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_sn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_sn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_sn_link2_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_ifn_link1_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link1_mac},
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "cgi::anvil_node2_ifn_link2_mac", value1 => $an->data->{cgi}{anvil_node2_ifn_link2_mac},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+			name1 => "node",                           value1 => $node2,
+			name2 => "nic",                            value2 => $nic,
+			name3 => "mac",                            value3 => $mac,
+			name4 => "cgi::anvil_node2_bcn_link1_mac", value4 => $an->data->{cgi}{anvil_node2_bcn_link1_mac},
+			name5 => "cgi::anvil_node2_bcn_link2_mac", value5 => $an->data->{cgi}{anvil_node2_bcn_link2_mac},
+			name6 => "cgi::anvil_node2_sn_link1_mac",  value6 => $an->data->{cgi}{anvil_node2_sn_link1_mac},
+			name7 => "cgi::anvil_node2_sn_link2_mac",  value7 => $an->data->{cgi}{anvil_node2_sn_link2_mac},
+			name8 => "cgi::anvil_node2_ifn_link1_mac", value8 => $an->data->{cgi}{anvil_node2_ifn_link1_mac},
+			name9 => "cgi::anvil_node2_ifn_link2_mac", value9 => $an->data->{cgi}{anvil_node2_ifn_link2_mac},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($mac eq $an->data->{cgi}{anvil_node2_bcn_link1_mac})
 		{
@@ -12311,33 +12286,27 @@ sub map_network
 		}
 	}
 	
-	# Now determine if a remap is needed. If ifn_bridge1 exists, assume
-	# it's configured and skip.
+	# Now determine if a remap is needed. If ifn_bridge1 exists, assume it's configured and skip.
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
 	
-	### TODO: Check *all* devices, not just ifn_bridge1
 	# Check node1
 	if ((exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
 	{
 		# Remap not needed, system already configured.
 		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
-		# To make the summary look better, we'll take the NICs we
-		# thought we didn't recognize and feed them into 'set_nic'.
+		# To make the summary look better, we'll take the NICs we thought we didn't recognize and 
+		# feed them into 'set_nic'.
 		foreach my $node (sort {$a cmp $b} keys %{$an->data->{conf}{node}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 			foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{unknown_nic}})
 			{
 				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
 				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "Node", value1 => $node,
-					name2 => "nic",  value2 => $nic,
-					name3 => "mac",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
+					name1 => "conf::node::${node}::set_nic::${nic}",  value1 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -12345,7 +12314,7 @@ sub map_network
 	else
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "node",      value1 => $node1,
+			name1 => "node1",     value1 => $node1,
 			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
 			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
 			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
@@ -12369,21 +12338,17 @@ sub map_network
 		# Remap not needed, system already configured.
 		$an->Log->entry({log_level => 2, message_key => "log_0184", file => $THIS_FILE, line => __LINE__});
 		
-		# To make the summary look better, we'll take the NICs we
-		# thought we didn't recognize and feed them into 'set_nic'.
+		# To make the summary look better, we'll take the NICs we thought we didn't recognize and 
+		# feed them into 'set_nic'.
 		foreach my $node (sort {$a cmp $b} keys %{$an->data->{conf}{node}})
 		{
-			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => {
-				node => $node, 
-			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 2, message_key => "log_0185", message_variables => { node => $node }, file => $THIS_FILE, line => __LINE__});
 			foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{unknown_nic}})
 			{
 				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
 				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name1 => "Node", value1 => $node,
-					name2 => "nic",  value2 => $nic,
-					name3 => "mac",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
+					name3 => "conf::node::${node}::set_nic::${nic}",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -12391,7 +12356,7 @@ sub map_network
 	else
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "node",      value1 => $node2,
+			name1 => "node2",     value1 => $node2,
 			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
 			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
 			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
@@ -12473,18 +12438,18 @@ sub map_network_on_node
 	my $shell_call = "
 if [ ! -e \"".$an->data->{path}{'anvil-map-network'}."\" ];
 then
-    echo 'not found'
+    ".$an->data->{path}{echo}." 'not found'
 else
     if [ ! -s \"".$an->data->{path}{'anvil-map-network'}."\" ];
     then
-        echo 'blank file';
+        ".$an->data->{path}{echo}." 'blank file';
         if [ -e \"".$an->data->{path}{'anvil-map-network'}."\" ]; 
         then
-            rm -f ".$an->data->{path}{'anvil-map-network'}.";
+            ".$an->data->{path}{rm}." -f ".$an->data->{path}{'anvil-map-network'}.";
         fi;
     else
-        chmod 755 ".$an->data->{path}{'anvil-map-network'}.";
-        echo ready;
+        ".$an->data->{path}{'chmod'}." 755 ".$an->data->{path}{'anvil-map-network'}.";
+        ".$an->data->{path}{echo}." ready;
     fi
 fi";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12498,13 +12463,13 @@ fi";
 		$shell_call = "
 if [ ! -e \"".$an->data->{path}{'anvil-map-network'}."\" ];
 then
-    echo 'not found'
+    ".$an->data->{path}{echo}." 'not found'
 else
-    if [ ! -e '/sbin/striker' ]
+    if [ ! -e '".$an->data->{path}{striker_tools}."' ]
     then
-        echo 'directory: [/sbin/striker] not found'
+        ".$an->data->{path}{echo}." 'directory: [".$an->data->{path}{striker_tools}."] not found'
     else
-        chmod 755 $an->data->{path}{'anvil-map-network'};
+        ".$an->data->{path}{'chmod'}." 755 $an->data->{path}{'anvil-map-network'};
     fi
 fi";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -12850,7 +12815,7 @@ sub install_missing_packages
 	
 	if ($to_install)
 	{
-		my $shell_call = "yum $an->data->{sys}{yum_switches} install $to_install";
+		my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." install $to_install";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -12930,13 +12895,13 @@ then
     virsh net-autostart default --disable;
     virsh net-undefine default;
 else 
-    cat /dev/null >/etc/libvirt/qemu/networks/default.xml;
+    ".$an->data->{path}{cat}." /dev/null >/etc/libvirt/qemu/networks/default.xml;
 fi;
 if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
 then 
-    echo failed;
+    ".$an->data->{path}{echo}." failed;
 else
-    echo bridge gone;
+    ".$an->data->{path}{echo}." bridge gone;
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -12979,18 +12944,18 @@ if [ -e '".$an->data->{path}{nodes}{MegaCli64}."' ];
 then 
     if [ -e '/sbin/MegaCli64' ]
     then
-        echo '/sbin/MegaCli64 symlink exists';
+        ".$an->data->{path}{echo}." '/sbin/MegaCli64 symlink exists';
     else
         ln -s ".$an->data->{path}{nodes}{MegaCli64}." /sbin/
         if [ -e '/sbin/MegaCli64' ]
         then
-            echo '/sbin/MegaCli64 symlink created';
+            ".$an->data->{path}{echo}." '/sbin/MegaCli64 symlink created';
         else
-            echo 'Failed to create /sbin/MegaCli64 symlink';
+            ".$an->data->{path}{echo}." 'Failed to create /sbin/MegaCli64 symlink';
         fi
     fi
 else
-    echo 'MegaCli64 not installed.'
+    ".$an->data->{path}{echo}." 'MegaCli64 not installed.'
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -13041,18 +13006,18 @@ if [ -e '".$an->data->{path}{nodes}{storcli64}."' ];
 then 
     if [ -e '/sbin/storcli64' ]
     then
-        echo '/sbin/storcli64 symlink exists';
+        ".$an->data->{path}{echo}." '/sbin/storcli64 symlink exists';
     else
         ln -s ".$an->data->{path}{nodes}{storcli64}." /sbin/
         if [ -e '/sbin/storcli64' ]
         then
-            echo '/sbin/storcli64 symlink created';
+            ".$an->data->{path}{echo}." '/sbin/storcli64 symlink created';
         else
-            echo 'Failed to create /sbin/storcli64 symlink';
+            ".$an->data->{path}{echo}." 'Failed to create /sbin/storcli64 symlink';
         fi
     fi
 else
-    echo 'storcli64 not installed.'
+    ".$an->data->{path}{echo}." 'storcli64 not installed.'
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -13103,26 +13068,26 @@ fi";
 		$shell_call .= "
 if [ -e '/root/vm.sh' ];
 then 
-    echo \"# Fix for rhbz#1285921\"
-    echo \"copying fixed vm.sh to /usr/share/cluster/\"
+    ".$an->data->{path}{echo}." \"# Fix for rhbz#1285921\"
+    ".$an->data->{path}{echo}." \"copying fixed vm.sh to /usr/share/cluster/\"
     if [ -e '/usr/share/cluster/vm.sh' ];
     then
         if [ -e '/root/vm.sh.anvil' ];
         then
-            echo \"Backup of vm.sh already exists at /root/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
-            rm -f /usr/share/cluster/vm.sh
+            ".$an->data->{path}{echo}." \"Backup of vm.sh already exists at /root/vm.sh.anvil. Deleting /usr/share/cluster/vm.sh\"
+            ".$an->data->{path}{rm}." -f /usr/share/cluster/vm.sh
         else
-            echo \"Backing up /usr/share/cluster/vm.sh to /root/vm.sh.anvil\"
-            mv /usr/share/cluster/vm.sh /root/vm.sh.anvil
+            ".$an->data->{path}{echo}." \"Backing up /usr/share/cluster/vm.sh to /root/vm.sh.anvil\"
+            ".$an->data->{path}{mv}." /usr/share/cluster/vm.sh /root/vm.sh.anvil
         fi
     fi
     cp /root/vm.sh /usr/share/cluster/vm.sh 
     chown root:root /usr/share/cluster/vm.sh
-    chmod 755 /usr/share/cluster/vm.sh
+    ".$an->data->{path}{'chmod'}." 755 /usr/share/cluster/vm.sh
     sleep 5
-    /etc/init.d/ricci restart
+    ".$an->data->{path}{initd}."/ricci restart
 else
-    echo \"/root/vm.sh doesn't exist.\"
+    ".$an->data->{path}{echo}." \"/root/vm.sh doesn't exist.\"
 fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -13158,7 +13123,7 @@ sub get_installed_package_list
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok         = 0;
-	my $shell_call = "yum list installed";
+	my $shell_call = $an->data->{path}{yum}." list installed";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -13348,7 +13313,7 @@ sub update_node
 	# Skip if the user has decided not to run OS updates.
 	return(1) if not $an->data->{sys}{update_os};
 	
-	my $shell_call = "yum $an->data->{sys}{yum_switches} update";
+	my $shell_call = $an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." update";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -13460,16 +13425,16 @@ sub verify_perl_is_installed_on_node
 	# installed, set to '2' if installed successfully.
 	my $ok = 1;
 	my $shell_call = "
-if [ -e '/usr/bin/perl' ]; 
+if [ -e '".$an->data->{path}{perl}."' ]; 
 then
-    echo striker:ok
+    ".$an->data->{path}{echo}." striker:ok
 else
-    yum $an->data->{sys}{yum_switches} install perl;
-    if [ -e '/usr/bin/perl' ];
+    ".$an->data->{path}{yum}." ".$an->data->{sys}{yum_switches}." install perl;
+    if [ -e '".$an->data->{path}{perl}."' ];
     then
-        echo striker:installed
+        ".$an->data->{path}{echo}." striker:installed
     else
-        echo striker:failed
+        ".$an->data->{path}{echo}." striker:failed
     fi
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -13530,8 +13495,8 @@ sub verify_internet_access
 		return(0);
 	}
 	
-	my ($node1_online) = ping_website($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
-	my ($node2_online) = ping_website($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my ($node1_online) = test_internet_connection($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
+	my ($node2_online) = test_internet_connection($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
 	
 	# If the node is not online, we'll call yum with the switches to  disable all but our local repos.
 	if ((not $node1_online) or (not $node2_online))
@@ -13584,12 +13549,12 @@ sub verify_internet_access
 	return(1);
 }
 
-# This pings as website to check for an internet connection. Will clean up routes that conflict with the
+# This pings a website to check for an internet connection. Will clean up routes that conflict with the 
 # default one as well.
-sub ping_website
+sub test_internet_connection
 {
 	my ($an, $node, $password) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "ping_website" }, message_key => "an_variables_0001", message_variables => { 
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "test_internet_connection" }, message_key => "an_variables_0001", message_variables => { 
 		name1 => "node", value1 => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -13598,7 +13563,7 @@ sub ping_website
 	# we're using to connect is on, see it's subnet and see if anything else is on the same subnet. If 
 	# so, delete the other interface(s) from the route table.
 	my $dg_device  = "";
-	my $shell_call = "route -n";
+	my $shell_call = $an->data->{path}{route}." -n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -13607,8 +13572,6 @@ sub ping_website
 		target		=>	$node,
 		port		=>	$an->data->{node}{$node}{port}, 
 		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
 		shell_call	=>	$shell_call,
 	});
 	foreach my $line (@{$return})
@@ -13643,11 +13606,13 @@ sub ping_website
 	$an->Log->entry({log_level => 2, message_key => "log_0198", message_variables => {
 		node => $node, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	my ($dg_network, $dg_netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$dg_device} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "dg_device", value1 => $dg_device,
 		name2 => "network",   value2 => $dg_network/$dg_netmask,
 	}, file => $THIS_FILE, line => __LINE__});
+	
 	foreach my $interface (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node}{routes}{interface}})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -13655,14 +13620,18 @@ sub ping_website
 			name2 => "dg_device", value2 => $dg_device,
 		}, file => $THIS_FILE, line => __LINE__});
 		next if $interface eq $dg_device;
+		
 		my ($network, $netmask) = ($an->data->{conf}{node}{$node}{routes}{interface}{$interface} =~ /^(\d+\.\d+\.\d+\.\d+)\/(\d+\.\d+\.\d+\.\d+)/);
 		if (($dg_network eq $network) && ($dg_netmask eq $netmask))
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "Conflicting route! interface", value1 => $interface,
-				name2 => "network",                      value2 => $network/$netmask,
+			# Conflicting route
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "interface", value1 => $interface,
+				name2 => "network",   value2 => $network,
+				name3 => "netmask",   value3 => $netmask,
 			}, file => $THIS_FILE, line => __LINE__});
-			my $shell_call = "route del -net $network netmask $netmask dev $interface; echo rc:\$?";
+			
+			my $shell_call = $an->data->{path}{route}." del -net $network netmask $netmask dev $interface; ".$an->data->{path}{echo}." rc:\$?";
 			my $password   = $an->data->{sys}{root_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
@@ -13672,8 +13641,6 @@ sub ping_website
 				target		=>	$node,
 				port		=>	$an->data->{node}{$node}{port}, 
 				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -13721,24 +13688,19 @@ sub ping_website
 	# Default to no connection
 	$an->data->{node}{$node}{internet} = 0;
 	
-	### TODO: If a node has two interfaces up on the same subnet, determine which matches the one we're 
-	###       coming in on and down the  other(s).
-	my $ok = 0;
-	
-	# Ya, I know 8.8.8.8 isn't a website...
 	# 0 == pingable, 1 == failed.
-	my $ping_rc = $an->Check->ping({target => "8.8.8.8", count => 3});
+	my $ping_rc = $an->Check->ping({
+		ping		=>	"8.8.8.8", 
+		count		=>	3,
+		target		=>	$node,
+		port		=>	$an->data->{node}{$node}{port}, 
+		password	=>	$password,
+	});
+	my $ok = 0;
 	if ($ping_rc eq "0")
 	{
 		$ok = 1;
 		$an->data->{node}{$node}{internet} = 1;
-	}
-	
-	# If there is no internet connection, add a yum repo for the cdrom
-	if (not $an->data->{node}{$node}{internet})
-	{
-		# Make sure the DVD repo exists.
-		create_dvd_repo($an, $node, $password);
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -13746,115 +13708,6 @@ sub ping_website
 		name2 => "ok",   value2 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($ok);
-}
-
-# This checks to see if the DVD repo has been added to the node yet. If not, and if there is a disk in the
-# drive, it will mount sr0, check that it's got RPMs and, if so, create the repo. If not, it unmounts the 
-# DVD.
-sub create_dvd_repo
-{
-	my ($an, $node, $password) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_dvd_repo" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	# A wee bit of bash in this one...
-	my $return_code = -1;
-	my $mount_name  = "optical";
-	my $shell_call  = "
-if [ -e \"/dev/sr0\" ];
-then
-    echo \"DVD drive exists.\"
-    if [ -e \"/mnt/$mount_name\" ]
-    then
-        echo \"Optical drive mount point exists.\"
-    else
-        echo \"Optical drive mount point does not exist yet.\"
-        mkdir /mnt/$mount_name
-        if [ ! -e \"/mnt/$mount_name\" ]
-        then
-            echo \"Creating mountpoint failed.\"
-            echo \"exit:2\"
-            exit 2
-        fi
-    fi
-    if \$(mount | grep -q sr0)
-    then
-        echo \"Optical drive already mounted.\"
-    else
-        echo \"Optical drive not mounted.\"
-        mount /dev/sr0 /mnt/$mount_name
-        if ! \$(mount | grep -q sr0)
-        then
-            echo \"Mount failed.\"
-            echo \"exit:3\"
-            exit 3
-        fi
-    fi
-    if [ -e \"/mnt/$mount_name/Packages\" ]
-    then
-        echo \"Install media found.\"
-    else
-        echo \"Install media not found, ejecting disk.\"
-        umount /mnt/$mount_name
-        echo \"exit:4\"
-        exit 4
-    fi
-    if [ -e \"/etc/yum.repos.d/$mount_name.repo\" ]
-    then
-        echo \"Repo already exists, skipping.\"
-        echo \"exit:0\"
-        exit 0
-    else
-        echo \"Creating optical media repo.\"
-        cat > /etc/yum.repos.d/$mount_name.repo << EOF
-[$mount_name]
-baseurl=file:///mnt/$mount_name/
-enabled=1
-gpgcheck=0
-skip_if_unavailable=1
-EOF
-        echo \"Cleaning repo data\"
-        yum clean all
-        echo \"exit:0\"
-        exit 0
-    fi
-else
-    echo \"No optical drive found, exiting\"
-    echo \"exit:1\"
-    exit 1
-fi";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		port		=>	$an->data->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($line =~ /exit:(\d+)/)
-		{
-			$return_code = $1;
-		}
-		else
-		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "return line", value1 => $line,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	return($return_code);
 }
 
 # This calculates the sizes of the partitions to create, or selects the size based on existing partitions if 
@@ -14713,9 +14566,9 @@ sub read_drbd_resource_files
 		my $shell_call = "
 if [ -e '$file' ];
 then
-    cat $file;
+    ".$an->data->{path}{cat}." $file;
 else
-    echo \"not found\"
+    ".$an->data->{path}{echo}." \"not found\"
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -14795,7 +14648,7 @@ sub get_partition_data
 	my $name       = "";
 	my $type       = "";
 	my $device     = "";
-	my $shell_call = "lsblk --all --bytes --noheadings --pairs";
+	my $shell_call = $an->data->{path}{lsblk}." --all --bytes --noheadings --pairs";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -14850,18 +14703,18 @@ sub get_partition_data
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		my $shell_call = "
-if [ ! -e /sbin/parted ]; 
+if [ ! -e ".$an->data->{path}{parted}." ]; 
 then 
-    yum --quiet -y install parted;
-    if [ ! -e /sbin/parted ]; 
+    ".$an->data->{path}{yum}." --quiet -y install parted;
+    if [ ! -e ".$an->data->{path}{parted}." ]; 
     then 
-        echo parted not installed
+        ".$an->data->{path}{echo}." parted not installed
     else
-        echo parted installed;
-        parted /dev/$disk unit B print free;
+        ".$an->data->{path}{echo}." parted installed;
+        ".$an->data->{path}{parted}." /dev/$disk unit B print free;
     fi
 else
-    parted /dev/$disk unit B print free
+    ".$an->data->{path}{parted}." /dev/$disk unit B print free
 fi";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
@@ -15146,11 +14999,11 @@ sub generate_cluster_conf
 	<totem rrp_mode=\"none\" secauth=\"off\"/>
 	<rm log_level=\"5\">
 		<resources>
-			<script file=\"/etc/init.d/drbd\" name=\"drbd\"/>
-			<script file=\"/etc/init.d/wait-for-drbd\" name=\"wait-for-drbd\"/>
-			<script file=\"/etc/init.d/clvmd\" name=\"clvmd\"/>
+			<script file=\"".$an->data->{path}{initd}."/drbd\" name=\"drbd\"/>
+			<script file=\"".$an->data->{path}{initd}."/wait-for-drbd\" name=\"wait-for-drbd\"/>
+			<script file=\"".$an->data->{path}{initd}."/clvmd\" name=\"clvmd\"/>
 			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" fstype=\"gfs2\" mountpoint=\"/shared\" name=\"sharedfs\" />
-			<script file=\"/etc/init.d/libvirtd\" name=\"libvirtd\"/>
+			<script file=\"".$an->data->{path}{initd}."/libvirtd\" name=\"libvirtd\"/>
 		</resources>
 		<failoverdomains>
 			<failoverdomain name=\"only_n01\" nofailback=\"1\" ordered=\"0\" restricted=\"1\">
@@ -15391,7 +15244,7 @@ sub write_cluster_conf
 	
 	my $message     = "";
 	my $return_code = 255;
-	my $shell_call  =  "cat > ".$an->data->{path}{nodes}{cluster_conf}." << EOF\n";
+	my $shell_call  =  $an->data->{path}{cat}." > ".$an->data->{path}{nodes}{cluster_conf}." << EOF\n";
 	   $shell_call  .= $an->data->{node}{$node}{cluster_conf}."\n";
 	   $shell_call  .= "EOF\n";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -15414,7 +15267,7 @@ sub write_cluster_conf
 	}
 	
 	# Now run 'ccs_config_validate' to ensure it is sane.
-	$shell_call  = "ccs_config_validate; echo rc:\$?";
+	$shell_call  = "ccs_config_validate; ".$an->data->{path}{echo}." rc:\$?";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -15477,9 +15330,9 @@ sub read_cluster_conf
 	my $shell_call = "
 if [ -e '".$an->data->{path}{nodes}{cluster_conf}."' ]
 then
-    cat $an->data->{path}{nodes}{cluster_conf}
+    ".$an->data->{path}{cat}." ".$an->data->{path}{nodes}{cluster_conf}."
 else
-    echo not found
+    ".$an->data->{path}{echo}." not found
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -15580,7 +15433,7 @@ sub get_node_os_version
 	my $brand      = "";
 	my $major      = 0;
 	my $minor      = 0;
-	my $shell_call = "cat /etc/redhat-release";
+	my $shell_call = $an->data->{path}{cat}." /etc/redhat-release";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -15626,7 +15479,7 @@ sub get_node_os_version
 	{
 		# See if it's been registered already.
 		$an->data->{node}{$node}{os}{registered} = 0;
-		my $shell_call = "rhn_check; echo exit:\$?";
+		my $shell_call = $an->data->{path}{rhn_check}."; ".$an->data->{path}{echo}." exit:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -15667,8 +15520,8 @@ sub check_connection
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my ($node1_access) = check_node_access($an, $an->data->{cgi}{anvil_node1_current_ip}, $an->data->{cgi}{anvil_node1_current_password});
-	my ($node2_access) = check_node_access($an, $an->data->{cgi}{anvil_node2_current_ip}, $an->data->{cgi}{anvil_node2_current_password});
+	my ($node1_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node1_current_ip}, password => $an->data->{cgi}{anvil_node1_current_password}});
+	my ($node2_access) = $an->Check->access({target => $an->data->{cgi}{anvil_node2_current_ip}, password => $an->data->{cgi}{anvil_node2_current_password}});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node1_access", value1 => $node1_access,
 		name2 => "node2_access", value2 => $node2_access,
@@ -15710,44 +15563,6 @@ sub check_connection
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "access", value1 => $access,
 	}, file => $THIS_FILE, line => __LINE__});
-	return($access);
-}
-
-# This does nothing more than call 'echo 1' to see if the target is reachable.
-sub check_node_access
-{
-	my ($an, $node, $password) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_node_access" }, message_key => "an_variables_0001", message_variables => { 
-		name1 => "node", value1 => $node, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $access     = 0;
-	my $shell_call = "echo 1";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "shell_call", value1 => $shell_call,
-		name2 => "node",       value2 => $node,
-	}, file => $THIS_FILE, line => __LINE__});
-	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-		target		=>	$node,
-		port		=>	$an->data->{node}{$node}{port}, 
-		password	=>	$password,
-		ssh_fh		=>	"",
-		'close'		=>	0,
-		shell_call	=>	$shell_call,
-	});
-	foreach my $line (@{$return})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line, 
-		}, file => $THIS_FILE, line => __LINE__});
-	}
-	$an->data->{node}{$node}{ssh_fh} = $ssh_fh;
-	$access = $return->[0] ? $return->[0] : 0;
- 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
- 		name1 => "node",   value1 => $node,
- 		name2 => "access", value2 => $access,
- 	}, file => $THIS_FILE, line => __LINE__});
-	
 	return($access);
 }
 

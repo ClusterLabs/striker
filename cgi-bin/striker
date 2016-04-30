@@ -148,18 +148,11 @@ elsif ($an->data->{cgi}{config})
 {
 	AN::Cluster::configure_dashboard($an);
 }
-elsif ($an->data->{cgi}{'system'})
-{
-	AN::Cluster::configure_local_system($an);
-}
 elsif ($an->data->{cgi}{anvil_uuid})
 {
 	$an->Striker->load_anvil();
 	$an->Striker->scan_anvil();
-	
-	die "$THIS_FILE ".__LINE__."; testing...\n";
-	#AN::Cluster::scan_cluster($an);
-	#AN::Striker::display_details($an);
+	AN::Striker::display_details($an);
 }
 elsif ($an->data->{cgi}{cluster})
 {

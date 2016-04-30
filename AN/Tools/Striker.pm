@@ -13,6 +13,8 @@ my $THIS_FILE = "Striker.pm";
 ### Methods;
 # configure
 # load_anvil
+# mark_node_as_clean_off
+# mark_node_as_clean_on
 # scan_anvil
 # scan_node
 # scan_servers
@@ -25,6 +27,7 @@ my $THIS_FILE = "Striker.pm";
 # _find_preferred_host
 # _gather_node_details
 # _parse_anvil_safe_start
+# _parse_clustat
 # _parse_cluster_conf
 # _parse_daemons
 # _parse_drbdadm_dumpxml
@@ -207,6 +210,159 @@ sub load_anvil
 	return(0);
 }
 
+# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = 'clean') so that they don't
+# just turn right back on.
+sub mark_node_as_clean_off
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
+	my $delay     = $parameter->{delay}     ? $parameter->{delay}     : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid,
+		name2 => "delay",     value2 => $delay,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $node_uuid)
+	{
+		# Nothing passed in or set in CGI
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0114", code => 114, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+	elsif (not $an->Validate->is_uuid({uuid => $node_uuid}))
+	{
+		# Value read, but it isn't a UUID.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0115", message_variables => { uuid => $node_uuid }, code => 115, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+	
+	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil     = $an->data->{sys}{anvil}{name};
+	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	if (not $node_name)
+	{
+		# Valid UUID, but it doesn't match a known Anvil!.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0116", message_variables => { uuid => $node_uuid }, code => 116, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+
+	# Update the hosts entry.
+	my $say_off = "clean";
+	if ($delay)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::power_off_delay", value1 => $an->data->{sys}{power_off_delay},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->data->{sys}{power_off_delay} = 300 if not $an->data->{sys}{power_off_delay};
+		$say_off = time + $an->data->{sys}{power_off_delay};
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "say_off", value1 => $say_off,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason    = ".$an->data->{sys}{use_db_fh}->quote($say_off).", 
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
+# Update the ScanCore database(s) to mark the node's (hosts -> host_stop_reason = NULL) so that they turn on
+# if they're suddenly found to be off.
+sub mark_node_as_clean_on
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $node_uuid)
+	{
+		# Nothing passed in or set in CGI
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0117", code => 117, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+	elsif (not $an->Validate->is_uuid({uuid => $node_uuid}))
+	{
+		# Value read, but it isn't a UUID.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0118", message_variables => { uuid => $node_uuid }, code => 118, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+	
+	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil     = $an->data->{sys}{anvil}{name};
+	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	if (not $node_name)
+	{
+		# Valid UUID, but it doesn't match a known Anvil!.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0119", message_variables => { uuid => $node_uuid }, code => 119, file => "$THIS_FILE", line => __LINE__});
+		return(1);
+	}
+	
+	# Get the current health.
+	my $query = "
+SELECT 
+    host_health 
+FROM 
+    hosts 
+WHERE 
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query, 
+	}, file => $THIS_FILE, line => __LINE__});
+	my $old_health = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "old_health", value1 => $old_health, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Update the hosts entry.
+	$query = "
+UPDATE 
+    hosts 
+SET 
+    host_emergency_stop = FALSE, 
+    host_stop_reason    = NULL, 
+";
+	# Update the health to 'ok' if it was 'shutdown' before.
+	if ($old_health eq "shutdown")
+	{
+		$query .= "    host_health         = 'ok', ";
+	}
+	$query .= "
+    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+WHERE 
+    host_name = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+;";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "query", value1 => $query
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+	
+	return(0);
+}
+
 # This does a full manual scan of an Anvil! system.
 sub scan_anvil
 {
@@ -230,7 +386,6 @@ sub scan_anvil
 	{
 		$an->Striker->scan_servers();
 	}
-	die "$THIS_FILE ".__LINE__."; testing...\n";
 
 	return(0);
 }
@@ -529,7 +684,7 @@ sub scan_node
 		}
 	}
 	
-	push @{$an->data->{online_nodes}}, $node_name if $an->Striker->_check_node_daemons({node => $node_name});
+	push @{$an->data->{online_nodes}}, $node_name if $an->Striker->_check_node_daemons({node => $node_uuid});
 	
 	# If I have no nodes up, exit.
 	my $anvil                         = $an->data->{sys}{anvil}{name};
@@ -951,6 +1106,14 @@ sub _check_node_daemons
 	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
 	my $data      = $parameter->{data};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid,
+		name2 => "node_key",  value2 => $node_key,
+		name3 => "anvil",     value3 => $anvil,
+		name4 => "node_name", value4 => $node_name,
+		name5 => "target",    value5 => $target,
+		name6 => "port",      value6 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $node_name)
 	{
@@ -995,6 +1158,15 @@ sub _check_node_readiness
 	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
 	my $vm        = $parameter->{server};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+		name1 => "node_uuid", value1 => $node_uuid,
+		name2 => "node_key",  value2 => $node_key,
+		name3 => "anvil",     value3 => $anvil,
+		name4 => "node_name", value4 => $node_name,
+		name5 => "target",    value5 => $target,
+		name6 => "port",      value6 => $port,
+		name7 => "vm",        value7 => $vm,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $node_name)
 	{
@@ -1003,7 +1175,7 @@ sub _check_node_readiness
 	}
 	
 	# This will get negated if something isn't ready.
-	my $ready = $an->Striker->_check_node_daemons({node => $node_name});
+	my $ready = $an->Striker->_check_node_daemons({node => $node_uuid});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "vm",        value1 => $vm,
 		name2 => "node_name", value2 => $node_name,
@@ -3777,7 +3949,7 @@ sub _write_node_cache
 }
 
 # This sorts out some stuff after both nodes have been scanned.
-sub post_scan_calculations
+sub _post_scan_calculations
 {
 	my $self      = shift;
 	my $parameter = shift;

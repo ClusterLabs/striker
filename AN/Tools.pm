@@ -32,6 +32,7 @@ use AN::Tools::Cman;
 use AN::Tools::Convert;
 use AN::Tools::DB;
 use AN::Tools::Get;
+use AN::Tools::InstallManifest;
 use AN::Tools::Log;
 use AN::Tools::Math;
 use AN::Tools::Readable;
@@ -57,6 +58,7 @@ sub new
 			CONVERT				=>	AN::Tools::Convert->new(),
 			DB				=>	AN::Tools::DB->new(),
 			GET				=>	AN::Tools::Get->new(),
+			INSTALLMANIFEST			=>	AN::Tools::InstallManifest->new(),
 			LOG				=>	AN::Tools::Log->new(),
 			MATH				=>	AN::Tools::Math->new(),
 			READABLE			=>	AN::Tools::Readable->new(),
@@ -107,6 +109,7 @@ sub new
 	$an->Convert->parent($an);
 	$an->DB->parent($an);
 	$an->Get->parent($an);
+	$an->InstallManifest->parent($an);
 	$an->Log->parent($an);
 	$an->Math->parent($an);
 	$an->Readable->parent($an);
@@ -375,6 +378,14 @@ sub Get
 	return ($self->{HANDLE}{GET});
 }
 
+# Makes my handle to AN::Tools::InstallManifest clearer when using this module to access it's methods.
+sub InstallManifest
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{INSTALLMANIFEST});
+}
+
 # This is the method used to access the main hash reference that all user-accessible values are stored in. 
 # This includes words, configuration file variables and so forth.
 sub data
@@ -535,6 +546,7 @@ sub _set_paths
 	$an->data->{path}{'less'}             = "/usr/bin/less";
 	$an->data->{path}{ln}                 = "/bin/ln";
 	$an->data->{path}{ls}                 = "/bin/ls";
+	$an->data->{path}{lsblk}              = "/bin/lsblk";
 	$an->data->{path}{lsmod}              = "/sbin/lsmod";
 	$an->data->{path}{lvchange}           = "/sbin/lvchange";
 	$an->data->{path}{lvs}                = "/sbin/lvs";
@@ -543,6 +555,9 @@ sub _set_paths
 	$an->data->{path}{modprobe}           = "/sbin/modprobe";
 	$an->data->{path}{mount}              = "/bin/mount";
 	$an->data->{path}{'mkdir'}            = "/bin/mkdir";
+	$an->data->{path}{mv}                 = "/bin/mv";
+	$an->data->{path}{parted}             = "/sbin/parted";
+	$an->data->{path}{perl}               = "/usr/bin/perl";
 	$an->data->{path}{pg_dump}            = "/usr/bin/pg_dump";
 	$an->data->{path}{'ping'}             = "/bin/ping";
 	$an->data->{path}{postfix_init}       = "/etc/init.d/postfix";
@@ -560,7 +575,9 @@ sub _set_paths
 	$an->data->{path}{pvscan}             = "/sbin/pvscan";
 	$an->data->{path}{pvs}                = "/sbin/pvs";
 	$an->data->{path}{reboot}             = "/sbin/reboot";
+	$an->data->{path}{rhn_check}          = "/usr/sbin/rhn_check";
 	$an->data->{path}{rm}                 = "/bin/rm";
+	$an->data->{path}{route}              = "/sbin/route";
 	$an->data->{path}{rsync}              = "/usr/bin/rsync";
 	$an->data->{path}{sed}                = "/bin/sed";
 	$an->data->{path}{ssh}                = "/usr/bin/ssh";
@@ -575,6 +592,7 @@ sub _set_paths
 	$an->data->{path}{vgs}                = "/sbin/vgs";
 	$an->data->{path}{virsh}              = "/usr/bin/virsh";
 	$an->data->{path}{wget}               = "/usr/bin/wget";
+	$an->data->{path}{yum}                = "/usr/bin/yum";
 	
 	# Text files
 	$an->data->{path}{'anvil-jobs'}    = "/tmp/anvil.jobs";
@@ -599,10 +617,12 @@ sub _set_paths
 	$an->data->{path}{shared}          = "/shared";
 	$an->data->{path}{shared_files}    = "/shared/files";
 	$an->data->{path}{skins}           = "/var/www/html/skins";
+	$an->data->{path}{striker_tools}   = "/sbin/striker";
 	
 	# Tools
 	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups";
 	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs";
+	$an->data->{path}{'anvil-map-network'}    = "/sbin/striker/anvil-map-network";
 	$an->data->{path}{'anvil-migrate-server'} = "/sbin/striker/anvil-migrate-server";
 	$an->data->{path}{'anvil-report-memory'}  = "/sbin/striker/anvil-report-memory";
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";

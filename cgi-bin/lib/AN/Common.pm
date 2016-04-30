@@ -627,39 +627,4 @@ sub initialize_conf
 	return($an);
 }
 
-# Check to see if the global settings have been setup.
-sub check_global_settings
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_global_settings" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $global_set = 1;
-	
-	# Pull out the current config.
-	my $smtp__server              = $an->data->{smtp}{server}; 			# mail.alteeve.ca
-	my $smtp__port                = $an->data->{smtp}{port};			# 587
-	my $smtp__username            = $an->data->{smtp}{username};		# example@alteeve.ca
-	my $smtp__password            = $an->data->{smtp}{password};		# Initial1
-	my $smtp__security            = $an->data->{smtp}{security};		# STARTTLS
-	my $smtp__encrypt_pass        = $an->data->{smtp}{encrypt_pass};		# 1
-	my $smtp__helo_domain         = $an->data->{smtp}{helo_domain};		# example.com
-	my $mail_data__to             = $an->data->{mail_data}{to};			# you@example.com
-	my $mail_data__sending_domain = $an->data->{mail_data}{sending_domain};	# example.com
-	
-	# TODO: Make this smarter... For now, just check the SMTP username to see if it is default.
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "smtp__username", value1 => $smtp__username,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $smtp__username) or ($smtp__username =~ /example\.com/))
-	{
-		# Not configured yet.
-		$global_set = 0;
-	}
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "global_set", value1 => $global_set,
-	}, file => $THIS_FILE, line => __LINE__});
-	return($global_set);
-}
-
 1;
