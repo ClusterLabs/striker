@@ -31,7 +31,6 @@ use IO::Handle;
 use Net::SSH2;
 
 use AN::Common;
-use AN::InstallManifest;
 use AN::Striker;
 
 # Setup for UTF-8 mode.

@@ -39,7 +39,7 @@ use warnings;
 use IO::Handle;
 use CGI;
 use Encode;
-use CGI::Carp "fatalsToBrowser";
+#use CGI::Carp "fatalsToBrowser";
 
 use AN::Cluster;
 use AN::Common;
@@ -7054,7 +7054,7 @@ sub stop_vm
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$line =~ s/Local machine/$say_node/;
+		#$line =~ s/Local machine/$say_node/;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line, 
 		}, file => $THIS_FILE, line => __LINE__});

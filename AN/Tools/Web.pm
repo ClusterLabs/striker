@@ -7,7 +7,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use CGI;
-use CGI::Carp qw(fatalsToBrowser);
+#use CGI::Carp qw(fatalsToBrowser);
 use Encode;
 
 our $VERSION  = "0.1.001";

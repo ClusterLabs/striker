@@ -24,7 +24,7 @@ use warnings;
 use IO::Handle;
 use CGI;
 use Encode;
-use CGI::Carp "fatalsToBrowser";
+#use CGI::Carp "fatalsToBrowser";
 
 # Setup for UTF-8 mode.
 binmode STDOUT, ":utf8:";

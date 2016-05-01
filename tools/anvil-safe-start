@@ -198,7 +198,7 @@ update_striker_conf($an, "disable");
 wait_for_scancore_database($an);
 
 # Mark the node as clean on now.
-$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid});
+$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid}});
 
 # Who am I and what Anvil! do I belong to?
 find_myself($an);

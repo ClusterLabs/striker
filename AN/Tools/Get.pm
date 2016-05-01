@@ -218,16 +218,13 @@ sub date_and_time
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# Set default values then check for passed parameters to over-write them with.
-	my ($offset, $use_time, $require_weekday, $skip_weekends);
-	
-	$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
-	$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
-	$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
-	$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
-	$split_date_time = $parameter->{split_date_time} ? $parameter->{split_date_time} : 1;
-	$no_spaces       = $parameter->{no_spaces}       ? $parameter->{no_spaces}       : 0;
-	$time_only       = $parameter->{time_only}       ? $parameter->{time_only}       : 0;
+	my $offset          = $parameter->{offset}          ? $parameter->{offset}          : 0;
+	my $use_time        = $parameter->{use_time}        ? $parameter->{use_time}        : time;
+	my $require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
+	my $skip_weekends   = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
+	my $split_date_time = $parameter->{split_date_time} ? $parameter->{split_date_time} : 1;
+	my $no_spaces       = $parameter->{no_spaces}       ? $parameter->{no_spaces}       : 0;
+	my $time_only       = $parameter->{time_only}       ? $parameter->{time_only}       : 0;
 	
 	# Do my initial calculation.
 	my %time          = ();

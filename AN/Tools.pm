@@ -32,6 +32,7 @@ use AN::Tools::Cman;
 use AN::Tools::Convert;
 use AN::Tools::DB;
 use AN::Tools::Get;
+use AN::Tools::HardwareLSI;
 use AN::Tools::InstallManifest;
 use AN::Tools::Log;
 use AN::Tools::Math;
@@ -58,6 +59,7 @@ sub new
 			CONVERT				=>	AN::Tools::Convert->new(),
 			DB				=>	AN::Tools::DB->new(),
 			GET				=>	AN::Tools::Get->new(),
+			HARDWARELSI			=>	AN::Tools::HardwareLSI->new(),
 			INSTALLMANIFEST			=>	AN::Tools::InstallManifest->new(),
 			LOG				=>	AN::Tools::Log->new(),
 			MATH				=>	AN::Tools::Math->new(),
@@ -109,6 +111,7 @@ sub new
 	$an->Convert->parent($an);
 	$an->DB->parent($an);
 	$an->Get->parent($an);
+	$an->HardwareLSI->parent($an);
 	$an->InstallManifest->parent($an);
 	$an->Log->parent($an);
 	$an->Math->parent($an);
@@ -378,6 +381,14 @@ sub Get
 	return ($self->{HANDLE}{GET});
 }
 
+# Makes my handle to AN::Tools::HardwareLSI clearer when using this module to access it's methods.
+sub HardwareLSI
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{HARDWARELSI});
+}
+
 # Makes my handle to AN::Tools::InstallManifest clearer when using this module to access it's methods.
 sub InstallManifest
 {
@@ -604,6 +615,7 @@ sub _set_paths
 	$an->data->{path}{timeout}             = "/usr/bin/timeout";
 	$an->data->{path}{uuidgen}             = "/usr/bin/uuidgen";
 	$an->data->{path}{touch}               = "/bin/touch";
+	$an->data->{path}{'virt-manager'}      = "/usr/bin/virt-manager";
 	$an->data->{path}{vgchange}            = "/sbin/vgchange";
 	$an->data->{path}{vgcreate}            = "/sbin/vgcreate";
 	$an->data->{path}{vgscan}              = "/sbin/vgscan";
@@ -621,6 +633,7 @@ sub _set_paths
 	$an->data->{path}{etc_hosts}       = "/etc/hosts";
 	$an->data->{path}{etc_passwd}      = "/etc/passwd";
 	$an->data->{path}{etc_virbr0}      = "/etc/libvirt/qemu/networks/default.xml";
+	$an->data->{path}{gdm_presession}  = "/etc/gdm/PreSession/Default";
 	$an->data->{path}{host_uuid}       = "/etc/striker/host.uuid";
 	$an->data->{path}{ssh_config}      = "/etc/ssh/ssh_config";
 	$an->data->{path}{root_crontab}    = "/var/spool/cron/root";
@@ -657,7 +670,6 @@ sub _set_paths
 	
 	# setuid tools
 	$an->data->{path}{'call_striker-manage-install-target'} = "/sbin/striker/call_striker-manage-install-target";
-	
 	
 	# Lock files
 	$an->data->{path}{gfs2_lock} = "/var/lock/subsys/gfs2";

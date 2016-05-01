@@ -93,23 +93,17 @@ $an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variable
 	anvil	=>	$an->data->{switches}{anvil},
 }, file => $THIS_FILE, line => __LINE__});
 
-### TODO: Switch this to use ScanCore's DB
 # Find the login details
-foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+my $anvil_data = $an->ScanCore->parse_anvil_data();
+foreach my $anvil_uuid (keys %{$an->data->{anvils}})
 {
-	if ($an->data->{cluster}{$id}{name} eq $an->data->{switches}{anvil})
+	if ($an->data->{anvils}{$anvil_uuid}{name} eq $an->data->{switches}{anvil})
 	{
-		# Split out the node names.
-		my ($node1, $node2) = (split/,/, $an->data->{cluster}{$id}{nodes});
-		$node1 =~ s/^\s+//g;
-		$node1 =~ s/\s+$//g;
-		$node2 =~ s/^\s+//g;
-		$node2 =~ s/\s+$//g;
-		
-		$an->data->{anvil}{id}       = $id;
-		$an->data->{anvil}{node1}    = $node1;
-		$an->data->{anvil}{node2}    = $node2;
-		$an->data->{anvil}{password} = $an->data->{cluster}{$id}{root_pw} ? $an->data->{cluster}{$id}{root_pw} : $an->data->{cluster}{$id}{ricci_pw};
+		# Found it.
+		$an->data->{anvil}{uuid}     = $anvil_uuid;
+		$an->data->{anvil}{node1}    = $an->data->{anvils}{$anvil_uuid}{node1}{name};
+		$an->data->{anvil}{node2}    = $an->data->{anvils}{$anvil_uuid}{node2}{name};
+		$an->data->{anvil}{password} = $an->data->{anvils}{$anvil_uuid}{password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 			name1 => "anvil::id",       value1 => $an->data->{anvil}{id}, 
 			name2 => "anvil::node1",    value2 => $an->data->{anvil}{node1}, 
@@ -120,7 +114,7 @@ foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 }
 
 # If I didn't find an Anvil!, exit.
-if ($an->data->{anvil}{id})
+if ($an->data->{anvil}{uuid})
 {
 	# Woot!
 	$an->Log->entry({log_level => 2, message_key => "sps_log_0003", message_variables => {
