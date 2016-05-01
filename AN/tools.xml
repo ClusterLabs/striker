@@ -643,6 +643,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0120"><![CDATA[The 'AN::Tools::Cman' module's 'migrate_server()' method was called without passing the name of a server to migrate.]]></key>
 		<key name="error_message_0121"><![CDATA[The 'AN::Tools::Get' module's 'manifest_data()' method was called without passing in a manifest UUID.]]></key>
 		<key name="error_message_0122"><![CDATA[The 'AN::Tools::Get' module's 'manifest_data()' method was called with the manifest UUID: [#!variable!uuid!#] which isn't a valid UUID.]]></key>
+		<key name="error_message_0123"><![CDATA[The 'AN::Tools::Striker' module's 'configure_ssh_local()' method was called without passing in an Anvil! name.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

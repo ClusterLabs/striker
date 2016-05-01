@@ -218,49 +218,35 @@ sub date_and_time
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
 	
-	# Set default values then check for passed parameters to over-write
-	# them with.
+	# Set default values then check for passed parameters to over-write them with.
 	my ($offset, $use_time, $require_weekday, $skip_weekends);
 	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	if (ref($parameter) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
-		$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
-		$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
-		$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$offset		 = defined $parameter ? $parameter : 0;
-		$use_time	 = defined $_[0] ? $_[0] : time;
-		$require_weekday = defined $_[1] ? $_[1] : "";
-		$skip_weekends	 = defined $_[2] ? $_[2] : "";
-	}
+	$offset		 = $parameter->{offset}          ? $parameter->{offset}          : 0;
+	$use_time	 = $parameter->{use_time}        ? $parameter->{use_time}        : time;
+	$require_weekday = $parameter->{require_weekday} ? $parameter->{require_weekday} : 0;
+	$skip_weekends	 = $parameter->{skip_weekends}   ? $parameter->{skip_weekends}   : 0;
+	$split_date_time = $parameter->{split_date_time} ? $parameter->{split_date_time} : 1;
+	$no_spaces       = $parameter->{no_spaces}       ? $parameter->{no_spaces}       : 0;
+	$time_only       = $parameter->{time_only}       ? $parameter->{time_only}       : 0;
 	
 	# Do my initial calculation.
 	my %time          = ();
 	my $adjusted_time = $use_time+$offset;
 	($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 
-	# If I am set to skip weekends and I land on a weekend, simply add 48
-	# hours. This is useful when you need to move X-weekdays.
+	# If I am set to skip weekends and I land on a weekend, simply add 48 hours. This is useful when you 
+	# need to move X-weekdays.
 	if (($skip_weekends) && ($offset))
 	{
-		# First thing I need to know is how many weekends pass between
-		# now and the requested date. So to start, how many days are we
-		# talking about?
+		# First thing I need to know is how many weekends pass between now and the requested date. 
+		# So to start, how many days are we talking about?
 		my $difference   = 0;			# Hold the accumulated days in seconds.
 		my $local_offset = $offset;		# Local offset I can mess with.
 		my $day          = 24 * 60 * 60;	# For clarity.
 		my $week         = $day * 7;		# For clarity.
 		
-		# As I proceed, 'local_time' will be subtracted as I account
-		# for time and 'difference' will increase to account for known
-		# weekend days.
+		# As I proceed, 'local_time' will be subtracted as I account for time and 'difference' will 
+		# increase to account for known weekend days.
 		if ($local_offset =~ /^-/)
 		{
 			### Go back in time...
@@ -269,18 +255,16 @@ sub date_and_time
 			# First, how many seconds have passed today?
 			my $seconds_passed_today = $time{sec} + ($time{min}*60) + ($time{hour}*60*60);
 			
-			# Now, get the number of seconds in the offset beyond
-			# an even day. This is compared to the seconds passed
-			# in this day. If greater, I count an extra day.
+			# Now, get the number of seconds in the offset beyond an even day. This is compared 
+			# to the seconds passed in this day. If greater, I count an extra day.
 			my $local_offset_second_over_day =  $local_offset % $day;
 			$local_offset                    -= $local_offset_second_over_day;
 			my $local_offset_days            =  $local_offset / $day;
 			$local_offset_days++ if $local_offset_second_over_day > $seconds_passed_today;
 			
-			# If the number of days is greater than one week, add
-			# two days to the 'difference' for every seven days and
-			# reduce 'local_offset_days' to the number of days
-			# beyond the given number of weeks.
+			# If the number of days is greater than one week, add two days to the 'difference' 
+			# for every seven days and reduce 'local_offset_days' to the number of days beyond 
+			# the given number of weeks.
 			my $local_offset_remaining_days = $local_offset_days;
 			if ($local_offset_days > 7)
 			{
@@ -298,10 +282,8 @@ sub date_and_time
 			}
 			else
 			{
-				# Compare 'local_offset_remaining_days' to
-				# today's day. If greater, I've passed a
-				# weekend and need to add two days to
-				# 'difference'.
+				# Compare 'local_offset_remaining_days' to today's day. If greater, I've 
+				# passed a weekend and need to add two days to 'difference'.
 				my $today_day = (localtime())[6];
 				if ($local_offset_remaining_days > $today_day)
 				{
@@ -326,18 +308,16 @@ sub date_and_time
 			my $left_seconds          = 59 - $time{sec};
 			my $seconds_left_in_today = $left_seconds + ($left_minutes*60) + ($left_hours*60*60);
 			
-			# Now, get the number of seconds in the offset beyond
-			# an even day. This is compared to the seconds left in
-			# this day. If greater, I count an extra day.
+			# Now, get the number of seconds in the offset beyond an even day. This is compared 
+			# to the seconds left in this day. If greater, I count an extra day.
 			my $local_offset_second_over_day =  $local_offset % $day;
 			$local_offset                    -= $local_offset_second_over_day;
 			my $local_offset_days            =  $local_offset / $day;
 			$local_offset_days++ if $local_offset_second_over_day > $seconds_left_in_today;
 			
-			# If the number of days is greater than one week, add
-			# two days to the 'difference' for every seven days and
-			# reduce 'local_offset_days' to the number of days
-			# beyond the given number of weeks.
+			# If the number of days is greater than one week, add two days to the 'difference'
+			# for every seven days and reduce 'local_offset_days' to the number of days beyond 
+			# the given number of weeks.
 			my $local_offset_remaining_days = $local_offset_days;
 			if ($local_offset_days > 7)
 			{
@@ -355,11 +335,9 @@ sub date_and_time
 			}
 			else
 			{
-				# Compare 'local_offset_remaining_days' to
-				# 5 minus today's day to get the number of days
-				# until the weekend. If greater, I've crossed a
-				# weekend and need to add two days to
-				# 'difference'.
+				# Compare 'local_offset_remaining_days' to 5 minus today's day to get the 
+				# number of days until the weekend. If greater, I've crossed a weekend and 
+				# need to add two days to 'difference'.
 				my $today_day=(localtime())[6];
 				my $days_to_weekend=5 - $today_day;
 				if ($local_offset_remaining_days > $days_to_weekend)
@@ -378,17 +356,16 @@ sub date_and_time
 		}
 	}
 
-	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or
-	# 6 (Saturday), set or increase the offset by 24 or 48 hours.
+	# If the 'require_weekday' is set and if 'time{wday}' is 0 (Sunday) or 6 (Saturday), set or increase 
+	# the offset by 24 or 48 hours.
 	if (($require_weekday) && (( $time{wday} == 0 ) || ( $time{wday} == 6 )))
 	{
-		# The resulting day is a weekend and the require weekday was
-		# set.
+		# The resulting day is a weekend and the require weekday was set.
 		$adjusted_time = $use_time + ($offset + (24 * 60 * 60));
 		($time{sec}, $time{min}, $time{hour}, $time{mday}, $time{mon}, $time{year}, $time{wday}, $time{yday}, $time{isdst}) = localtime($adjusted_time);
 		
-		# I don't check for the date and adjust automatically because I
-		# don't know if I am going forward or backwards in the calander.
+		# I don't check for the date and adjust automatically because I don't know if I am going 
+		# forward or backwards in the calander.
 		if (( $time{wday} == 0 ) || ( $time{wday} == 6 ))
 		{
 			# Am I still ending on a weekday?
@@ -439,7 +416,31 @@ sub date_and_time
 	my $date = $time{year}.$self->date_seperator.$time{pad_mon}.$self->date_seperator.$time{pad_mday};
 	my $time = $time{pad_hour}.$self->time_seperator.$time{pad_min}.$self->time_seperator.$time{pad_sec}.$time{suffix};
 	
-	return ($date, $time);
+	if ($split_date_time)
+	{
+		if ($time_only)
+		{
+			return ($time);
+		}
+		else
+		{
+			return ($date, $time);
+		}
+	}
+	else
+	{
+		my $return = "$date, $time";
+		if ($time_only)
+		{
+			$return = $time;
+		}
+		if ($no_spaces)
+		{
+			$return =~ s/,//g;
+			$return =~ s/ /_/g;
+		}
+		return ($return);
+	}
 }
 
 # Sets/returns the date separator.

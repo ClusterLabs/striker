@@ -680,6 +680,8 @@ sub ping
 	}
 	my $return_code = $pinged ? 0 : 1;
 	
+	# 0 == Ping success
+	# 1 == Ping failed
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "return_code", value1 => $return_code, 
 	}, file => $THIS_FILE, line => __LINE__});

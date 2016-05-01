@@ -2668,7 +2668,7 @@ sub send_email
 	check_email_configuration($an);
 	
 	# Select a known_free email file name.
-	my $email_file = $an->data->{path}{alert_emails}."/".get_date($an).".1";
+	my $email_file = $an->data->{path}{alert_emails}."/".$an->Get->date_and_time({split_date_time => 0, no_spaces => 1}).".1";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "email_file", value1 => $email_file,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -2729,26 +2729,6 @@ sub send_email
 	close $file_handle;
 	
 	return(0);
-}
-
-# This gets the current date and time from one of the databases.
-sub get_date
-{
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $query = "SELECT now();";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "query", value1 => $query, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my $date =  $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__})->[0]->[0];
-	   $date =~ s/ /_/g;
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "date", value1 => $date
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	return($date);
 }
 
 # This records entries from alerts to a file, if applicable.

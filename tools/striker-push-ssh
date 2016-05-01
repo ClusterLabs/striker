@@ -93,6 +93,7 @@ $an->Log->entry({log_level => 2, message_key => "sps_log_0002", message_variable
 	anvil	=>	$an->data->{switches}{anvil},
 }, file => $THIS_FILE, line => __LINE__});
 
+### TODO: Switch this to use ScanCore's DB
 # Find the login details
 foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
 {

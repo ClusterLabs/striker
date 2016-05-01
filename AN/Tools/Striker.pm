@@ -12,6 +12,7 @@ my $THIS_FILE = "Striker.pm";
 
 ### Methods;
 # configure
+# configure_ssh_local
 # load_anvil
 # mark_node_as_clean_off
 # mark_node_as_clean_on
@@ -88,6 +89,42 @@ sub configure
 	
 	
 	return(0);
+}
+
+# This calls 'striker-push-ssh'
+sub configure_ssh_local
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	if (not $parameter->{anvil_name})
+	{
+		# Nothing passed in or set in CGI
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0123", code => 123, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	my $anvil_name = $parameter->{anvil_name} ? $parameter->{anvil_name} : "";
+	my $output     = "";
+	
+	# Add the user's SSH keys to the new anvil! (will simply exit if disabled in striker.conf).
+	my $shell_call = $an->data->{path}{'call_striker-push-ssh'}." --anvil $anvil_name";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "Calling", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		$output .= "$line\n";
+	}
+	close $file_handle;
+	
+	return($output);
 }
 
 # This uses the 'cgi::anvil_uuid' to load the anvil data into the active system variables.

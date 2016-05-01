@@ -1110,7 +1110,7 @@ sub save_dashboard_configure
 	if ($save eq "1")
 	{
 		# Get the current date and time.
-		my ($say_date) =  get_date($an, time);
+		my ($say_date) =  $an->Get->date_and_time({split_date_time => 0});
 		my $date       =  $say_date;
 		   $date       =~ s/ /_/g;
 		   $date       =~ s/:/-/g;
@@ -1821,7 +1821,7 @@ sub push_config_to_anvil
 		}
 		
 		# We're going to want to backup each file before pushing the updates.
-		my ($say_date) =  get_date($an, time);
+		my ($say_date) =  $an->Get->date_and_time({split_date_time => 0});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "say_date", value1 => $say_date,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1973,7 +1973,7 @@ sub create_backup_file
 	
 	my $config_data =  "<!-- Striker Backup -->\n";
 	   $config_data .= "<!-- Striker version $an->data->{sys}{version} -->\n";
-	   $config_data .= "<!-- Backup created ".get_date($an, time)." -->\n\n";
+	   $config_data .= "<!-- Backup created ".$an->Get->date_and_time({split_date_time => 0})." -->\n\n";
 	
 	# Get a list of install manifests on this machine.
 	my @manifests;
@@ -2023,12 +2023,11 @@ sub create_backup_file
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Modify the backup file and URL file names to insert this dashboard's hostname.
-	my $date                    =  get_date($an);
-	   $date                    =~ s/ /_/;
-	my $backup_file             =  $an->data->{path}{backup_config};
-	my $hostname                =  $an->hostname();
-	   $backup_file             =~ s/#!hostname!#/$hostname/;
-	   $backup_file             =~ s/#!date!#/$date/;
+	my $date                        =  $an->Get->date_and_time({split_date_time => 0, no_spaces => 1});
+	my $backup_file                 =  $an->data->{path}{backup_config};
+	my $hostname                    =  $an->hostname();
+	   $backup_file                 =~ s/#!hostname!#/$hostname/;
+	   $backup_file                 =~ s/#!date!#/$date/;
 	   $an->data->{sys}{backup_url} =~ s/#!hostname!#/$hostname/;
 	   $an->data->{sys}{backup_url} =~ s/#!date!#/$date/;
 	
@@ -5719,7 +5718,7 @@ sub generate_install_manifest
 	my ($pts2_short_name)     = ($an->data->{cgi}{anvil_pts2_name}     =~ /^(.*?)\./);
 	my ($striker1_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
 	my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker1_name} =~ /^(.*?)\./);
-	my $date      =  get_date($an);
+	my $date      =  $an->Get->date_and_time({split_date_time => 0});
 	my $file_date =  $date;
 	   $file_date =~ s/ /_/g;
 	
@@ -9115,31 +9114,6 @@ sub header
 	
 	
 	return (0);
-}
-
-# This returns a 'YY-MM-DD_hh:mm:ss' formatted string based on the given time stamp
-sub get_date
-{
-	my ($an, $time, $time_only) = @_;
-	$time      = time if not defined $time;
-	$time_only = 0 if not $time_only;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_date" }, message_key => "an_variables_0002", message_variables => { 
-		name1 => "time",      value1 => $time, 
-		name2 => "time_only", value2 => $time_only, 
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	my @time   = localtime($time);
-	my $year   = ($time[5] + 1900);
-	my $month  = sprintf("%.2d", ($time[4] + 1));
-	my $day    = sprintf("%.2d", $time[3]);
-	my $hour   = sprintf("%.2d", $time[2]);
-	my $minute = sprintf("%.2d", $time[1]);
-	my $second = sprintf("%.2d", $time[0]);
-	
-	# this returns "yyyy-mm-dd_hh:mm:ss".
-	my $date = $time_only ? "$hour:$minute:$second" : "$year-$month-$day $hour:$minute:$second";
-	
-	return ($date);
 }
 
 # This builds an HTML select field.

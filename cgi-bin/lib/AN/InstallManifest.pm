@@ -719,7 +719,7 @@ fi
 		$shell_call = $an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --enable\n";
 	}
 	$shell_call .= "
-if \$(grep -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+if \$(".$an->data->{path}{'grep'}." -q '^tools::anvil-kick-apc-ups::enabled\\s*=\\s*1' /etc/striker/striker.conf);
 then 
     ".$an->data->{path}{echo}." enabled; 
 else 
@@ -784,7 +784,7 @@ fi
 		$shell_call = $an->data->{path}{nodes}{scancore}." --enable\n";
 	}
 	$shell_call .= "
-if \$(grep -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
+if \$(".$an->data->{path}{'grep'}." -q '^scancore::enabled\\s*=\\s*1' /etc/striker/striker.conf);
 then 
     ".$an->data->{path}{echo}." enabled; 
 else 
@@ -928,15 +928,15 @@ sub configure_scancore_on_node
 	# directory if needed, as well.
 	my $generate_config  = 0;
 	my ($path, $tarball) = ($an->data->{path}{nodes}{striker_tarball} =~ /^(.*)\/(.*)/);
-	my $download_1       = "http://$an->data->{cgi}{anvil_striker1_bcn_ip}/files/$tarball";
-	my $download_2       = "http://$an->data->{cgi}{anvil_striker2_bcn_ip}/files/$tarball";
+	my $download_1       = "http://".$an->data->{cgi}{anvil_striker1_bcn_ip}."/files/$tarball";
+	my $download_2       = "http://".$an->data->{cgi}{anvil_striker2_bcn_ip}."/files/$tarball";
 	my $shell_call       = "
 if [ ! -e '".$an->data->{path}{nodes}{striker_tarball}."' ]; 
 then 
     ".$an->data->{path}{echo}." download needed;
     if [ ! -e '$path' ];
     then
-        mkdir -p $path
+        ".$an->data->{path}{'mkdir'}." -p $path
     fi
     wget -c $download_1 -O $an->data->{path}{nodes}{striker_tarball}
     if [ -s '".$an->data->{path}{nodes}{striker_tarball}."' ];
@@ -980,7 +980,7 @@ fi;
 
 if [ ! -e '/etc/striker' ];
 then
-    mkdir /etc/striker
+    ".$an->data->{path}{'mkdir'}." /etc/striker
     ".$an->data->{path}{echo}." 'Striker configuration directory created.'
 fi;
 
@@ -1335,40 +1335,43 @@ then
     ".$an->data->{path}{echo}." 'creating empty crontab for root.'
     ".$an->data->{path}{echo}." 'MAILTO=\"\"' > ".$an->data->{path}{nodes}{cron_root}."
     ".$an->data->{path}{echo}." \"# Disable these by calling them with the '--disable' switch. Do not comment them out.\"
-    chown root:root $an->data->{path}{nodes}{cron_root}
-    ".$an->data->{path}{'chmod'}." 600 $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{'chown'}." root:root $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{'chmod'}." 600 ".$an->data->{path}{nodes}{cron_root}."
 fi
-grep -q ScanCore $an->data->{path}{nodes}{cron_root}
+
+".$an->data->{path}{'grep'}." -q ScanCore ".$an->data->{path}{nodes}{cron_root}."
 if [ \"\$?\" -eq '0' ];
 then
     ".$an->data->{path}{echo}." 'ScanCore exits'
 else
     ".$an->data->{path}{echo}." \"Adding ScanCore to root's cron table.\"
-    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{scancore}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{nodes}{scancore}."' >> ".$an->data->{path}{nodes}{cron_root}."
 fi
-grep -q anvil-safe-start $an->data->{path}{nodes}{cron_root}
+
+".$an->data->{path}{'grep'}." -q anvil-safe-start ".$an->data->{path}{nodes}{cron_root}."
 if [ \"\$?\" -eq '0' ];
 then
     ".$an->data->{path}{echo}." 'anvil-safe-start exits'
 else
     ".$an->data->{path}{echo}." \"Adding 'anvil-safe-start' to root's cron table.\"
-    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{'anvil-safe-start'}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{nodes}{'anvil-safe-start'}."' >> ".$an->data->{path}{nodes}{cron_root}."
 fi
-grep -q anvil-kick-apc-ups $an->data->{path}{nodes}{cron_root}
+
+".$an->data->{path}{'grep'}." -q anvil-kick-apc-ups ".$an->data->{path}{nodes}{cron_root}."
 if [ \"\$?\" -eq '0' ];
 then
     ".$an->data->{path}{echo}." 'anvil-kick-apc-ups exits'
 else
     ".$an->data->{path}{echo}." \"Adding 'anvil-kick-apc-ups' to root's cron table.\"
-    ".$an->data->{path}{echo}." '*/1 * * * * $an->data->{path}{nodes}{'anvil-kick-apc-ups'}' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}."' >> ".$an->data->{path}{nodes}{cron_root}."
 fi
-grep -q anvil-run-jobs $an->data->{path}{nodes}{cron_root}
+".$an->data->{path}{'grep'}." -q anvil-run-jobs ".$an->data->{path}{nodes}{cron_root}."
 if [ \"\$?\" -eq '0' ];
 then
     ".$an->data->{path}{echo}." 'anvil-run-jobs exits'
 else
     ".$an->data->{path}{echo}." \"Adding 'anvil-run-jobs' to root's cron table.\"
-    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> $an->data->{path}{nodes}{cron_root}
+    ".$an->data->{path}{echo}." '*/1 * * * * ".$an->data->{path}{'anvil-run-jobs'}."' >> ".$an->data->{path}{nodes}{cron_root}."
 fi
 ";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2186,14 +2189,12 @@ sub configure_storage_stage3
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "gfs2_ok", value1 => $gfs2_ok,
 			}, file => $THIS_FILE, line => __LINE__});
-			# Create /shared, mount partition
-			# Appeand gfs2 entry to fstab
-			# Check that /etc/init.d/gfs2 status works
+			# Create /shared, mount partition Appeand gfs2 entry to fstab Check that 
+			# /etc/init.d/gfs2 status works
 			
 			if ($gfs2_ok)
 			{
-				# Start gfs2 on both nodes, including
-				# subdirectories and SELinux contexts on
+				# Start gfs2 on both nodes, including subdirectories and SELinux contexts on
 				# /shared.
 				my ($configure_ok) = configure_gfs2($an);
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -2340,7 +2341,7 @@ sub watch_clustat
 	until ($services_seen)
 	{
 		# Call and parse 'clustat'
-		my $shell_call = "clustat | grep service";
+		my $shell_call = "clustat | ".$an->data->{path}{'grep'}." service";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -2602,7 +2603,7 @@ sub restart_rgmanager_service
 	
 	# This is something of a 'hail mary' pass, so not much sanity checking
 	# is done (yet).
-	my $shell_call = "clusvcadm -d $service && sleep 2 && clusvcadm -F -e $service";
+	my $shell_call = "clusvcadm -d $service && ".$an->data->{path}{'sleep'}." 2 && clusvcadm -F -e $service";
 	if ($do eq "start")
 	{
 		$shell_call = "clusvcadm -F -e $service";
@@ -2640,7 +2641,7 @@ sub stop_drbd
 	my $stop_first = "node1";
 	my $node       = $an->data->{cgi}{anvil_node1_current_ip};
 	my $password   = $an->data->{cgi}{anvil_node1_current_password};
-	my $shell_call = $an->data->{path}{cat}." /proc/drbd";
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2724,7 +2725,7 @@ sub stop_drbd_on_node
 	
 	# Find the up resources
 	my $stop = {};
-	my $shell_call = $an->data->{path}{cat}." /proc/drbd";
+	my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -2781,7 +2782,7 @@ sub stop_drbd_on_node
 	my $ok = 1;
 	
 	# Verify they're all Secondary
-	$shell_call = $an->data->{path}{cat}." /proc/drbd";
+	$shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -3096,12 +3097,12 @@ sub setup_gfs2_on_node
 	
 	# Make sure the '/shared' directory exists.
 	my $shell_call = "
-if [ -e '/shared' ];
+if [ -e '".$an->data->{path}{shared}."' ];
 then 
-	".$an->data->{path}{echo}." '/shared exists';
+	".$an->data->{path}{echo}." '".$an->data->{path}{shared}." exists';
 else 
-	mkdir /shared;
-	".$an->data->{path}{echo}." '/shared created'
+	".$an->data->{path}{'mkdir'}." ".$an->data->{path}{shared}.";
+	".$an->data->{path}{echo}." '".$an->data->{path}{shared}." created'
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -3126,14 +3127,14 @@ fi";
 	if ($an->data->{sys}{shared_fs_uuid})
 	{
 		my $append_ok    = 0;
-		my $fstab_string = "UUID=".$an->data->{sys}{shared_fs_uuid}." /shared gfs2 defaults,noatime,nodiratime 0 0";
+		my $fstab_string = "UUID=".$an->data->{sys}{shared_fs_uuid}." ".$an->data->{path}{shared}." gfs2 defaults,noatime,nodiratime 0 0";
 		$shell_call   = "
-if \$(grep -q shared /etc/fstab)
+if \$(".$an->data->{path}{'grep'}." -q shared /etc/fstab)
 then
     ".$an->data->{path}{echo}." 'shared exists'
 else
     ".$an->data->{path}{echo}." \"$fstab_string\" >> /etc/fstab
-    if \$(grep -q shared /etc/fstab)
+    if \$(".$an->data->{path}{'grep'}." -q shared /etc/fstab)
     then
         ".$an->data->{path}{echo}." 'shared added'
     else
@@ -3171,7 +3172,7 @@ fi";
 		# Test mount using the 'mount' command
 		if ($return_code ne "1")
 		{
-			my $shell_call = "mount /shared; ".$an->data->{path}{echo}." \$?";
+			my $shell_call = "mount ".$an->data->{path}{shared}."; ".$an->data->{path}{echo}." \$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -3265,11 +3266,11 @@ fi";
 					name1 => "directory", value1 => $directory,
 				}, file => $THIS_FILE, line => __LINE__});
 				my $shell_call = "
-if [ -e '/shared/$directory' ]
+if [ -e '".$an->data->{path}{shared}."/$directory' ]
 then
-    ".$an->data->{path}{echo}." '/shared/$directory already exists'
+    ".$an->data->{path}{echo}." '".$an->data->{path}{shared}."/$directory already exists'
 else
-    mkdir /shared/$directory; ".$an->data->{path}{echo}." rc:\$?
+    ".$an->data->{path}{'mkdir'}." ".$an->data->{path}{shared}."/$directory; ".$an->data->{path}{echo}." rc:\$?
 fi";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
@@ -3317,12 +3318,12 @@ fi";
 		if (not $return_code)
 		{
 			my $shell_call = "
-context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+context=\$(".$an->data->{path}{ls}." -laZ ".$an->data->{path}{shared}." | ".$an->data->{path}{'grep'}." ' .\$' | ".$an->data->{path}{awk}." '{print \$4}' | ".$an->data->{path}{awk}." -F : '{print \$3}');
 if [ \$context == 'file_t' ];
 then
-    semanage fcontext -a -t virt_etc_t '/shared(/.*)?' 
-    restorecon -r /shared
-    context=\$(ls -laZ /shared | grep ' .\$' | awk '{print \$4}' | awk -F : '{print \$3}');
+    semanage fcontext -a -t virt_etc_t '".$an->data->{path}{shared}."(/.*)?' 
+    restorecon -r ".$an->data->{path}{shared}."
+    context=\$(".$an->data->{path}{ls}." -laZ ".$an->data->{path}{shared}." | ".$an->data->{path}{'grep'}." ' .\$' | ".$an->data->{path}{awk}." '{print \$4}' | ".$an->data->{path}{awk}." -F : '{print \$3}');
     if [ \$context == 'virt_etc_t' ];
     then
         ".$an->data->{path}{echo}." 'context updated'
@@ -3408,7 +3409,7 @@ sub setup_gfs2
 	if ($lv_ok)
 	{
 		# Check if the LV already has a GFS2 FS
-		my $shell_call = "gfs2_tool sb /dev/$an->data->{sys}{vg_pool1_name}/shared uuid; ".$an->data->{path}{echo}." rc:\$?";
+		my $shell_call = "gfs2_tool sb /dev/".$an->data->{sys}{vg_pool1_name}.$an->data->{path}{shared}." uuid; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -3434,7 +3435,7 @@ sub setup_gfs2
 				$an->data->{sys}{shared_fs_uuid} = $1;
 				$an->data->{sys}{shared_fs_uuid} = lc($an->data->{sys}{shared_fs_uuid});
 				$an->Log->entry({log_level => 2, message_key => "log_0056", message_variables => {
-					device => "/dev/".$an->data->{sys}{vg_pool1_name}."/shared", 
+					device => "/dev/".$an->data->{sys}{vg_pool1_name}$an->data->{path}{shared}, 
 					uuid   => $an->data->{sys}{shared_fs_uuid}, 
 				}, file => $THIS_FILE, line => __LINE__});
 				$create_gfs2 = 0;
@@ -3461,7 +3462,7 @@ sub setup_gfs2
 		# Create the partition if needed.
 		if (($create_gfs2) && (not $an->data->{sys}{shared_fs_uuid}))
 		{
-			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t $an->data->{cgi}{anvil_name}:shared /dev/$an->data->{sys}{vg_pool1_name}/shared -O; ".$an->data->{path}{echo}." rc:\$?";
+			my $shell_call = "mkfs.gfs2 -p lock_dlm -j 2 -t ".$an->data->{cgi}{anvil_name}.":shared /dev/".$an->data->{sys}{vg_pool1_name}$an->data->{path}{shared}." -O; ".$an->data->{path}{echo}." rc:\$?";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -3489,7 +3490,7 @@ sub setup_gfs2
 					$an->data->{sys}{shared_fs_uuid} = $1;
 					$an->data->{sys}{shared_fs_uuid} = lc($an->data->{sys}{shared_fs_uuid});
 					$an->Log->entry({log_level => 2, message_key => "log_0059", message_variables => {
-						device => "/dev/".$an->data->{sys}{vg_pool1_name}."/shared", 
+						device => "/dev/".$an->data->{sys}{vg_pool1_name}.$an->data->{path}{shared}, 
 						uuid   => $an->data->{sys}{shared_fs_uuid}, 
 					}, file => $THIS_FILE, line => __LINE__});
 					$create_gfs2 = 0;
@@ -3506,7 +3507,7 @@ sub setup_gfs2
 					{
 						# Format appears to have failed.
 						$an->Log->entry({log_level => 1, message_key => "log_0061", message_variables => {
-							device      => "/dev/$an->data->{sys}{vg_pool1_name}/shared", 
+							device      => "/dev/".$an->data->{sys}{vg_pool1_name}$an->data->{path}{shared}, 
 							return_code => $rc, 
 						}, file => $THIS_FILE, line => __LINE__});
 						$return_code = 2;
@@ -4636,7 +4637,7 @@ sub verify_drbd_resources_are_connected
 	my $return_code  = 0;
 	my $r0_connected = 0;
 	my $r1_connected = 0;
-	my $shell_call   = $an->data->{path}{cat}." /proc/drbd";
+	my $shell_call   = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -4884,7 +4885,7 @@ sub check_drbd_if_force_primary_is_needed
 	my $force_r0    = 0;
 	my $force_r1    = 0;
 	my $found_r1    = 0;
-	my $shell_call  = $an->data->{path}{cat}." /proc/drbd";
+	my $shell_call  = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -5009,7 +5010,7 @@ sub do_drbd_connect_on_node
 		}
 		# See if the resource is already 'Connected' or 'WFConnection'
 		my $connected  = 0;
-		my $shell_call = $an->data->{path}{cat}." /proc/drbd";
+		my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 			name2 => "node",       value2 => $node,
@@ -5132,7 +5133,7 @@ sub do_drbd_connect_on_node
 				}, file => $THIS_FILE, line => __LINE__});
 				last if $ready;
 				sleep 5;
-				my $shell_call = $an->data->{path}{cat}." /proc/drbd";
+				my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "shell_call", value1 => $shell_call,
 					name2 => "node",       value2 => $node,
@@ -5208,9 +5209,9 @@ sub do_drbd_connect_on_node
 			{
 				my $shell_call = "
 ".$an->data->{path}{echo}." \"Forcing r$resource to 'UpToDate' on both nodes; 'sys::install_manifest::default::immediate-uptodate' set and both are currently Inconsistent.\"
-$an->data->{path}{nodes}{drbdadm} new-current-uuid --clear-bitmap r$resource/0
-sleep 2
-if \$(".$an->data->{path}{cat}." /proc/drbd | $an->data->{path}{nodes}{grep} '$resource: cs' | awk '{print \$4}' | $an->data->{path}{nodes}{grep} -q 'UpToDate/UpToDate'); 
+".$an->data->{path}{nodes}{drbdadm}." new-current-uuid --clear-bitmap r$resource/0
+".$an->data->{path}{'sleep'}." 2
+if \$(".$an->data->{path}{cat}." ".$an->data->{path}{proc_drbd}." | ".$an->data->{path}{nodes}{'grep'}." '$resource: cs' | ".$an->data->{path}{awk}." '{print \$4}' | ".$an->data->{path}{nodes}{'grep'}." -q 'UpToDate/UpToDate'); 
 then 
     ".$an->data->{path}{echo}." success
 else
@@ -5263,12 +5264,12 @@ sub do_drbd_attach_on_node
 	# First up, is the DRBD kernel module loaded and is the wait init.d
 	# script in place?
 	my $shell_call = "
-if [ -e '/proc/drbd' ]; 
+if [ -e '".$an->data->{path}{proc_drbd}."' ]; 
 then 
     ".$an->data->{path}{echo}." 'DRBD already loaded'; 
 else 
     modprobe drbd; 
-    if [ -e '/proc/drbd' ]; 
+    if [ -e '".$an->data->{path}{proc_drbd}."' ]; 
     then 
         ".$an->data->{path}{echo}." 'loaded DRBD kernel module'; 
     else 
@@ -5280,7 +5281,7 @@ then
     if [ -e '".$an->data->{path}{nodes}{'wait-for-drbd'}."' ];
     then
         ".$an->data->{path}{echo}." \"need to copy 'wait-for-drbd'\"
-        cp ".$an->data->{path}{nodes}{'wait-for-drbd'}." ".$an->data->{path}{nodes}{'wait-for-drbd_initd'}.";
+        ".$an->data->{path}{cp}." ".$an->data->{path}{nodes}{'wait-for-drbd'}." ".$an->data->{path}{nodes}{'wait-for-drbd_initd'}.";
         if [ ! -e '".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."' ];
         then
            ".$an->data->{path}{echo}." \"Failed to copy 'wait-for-drbd' from: [".$an->data->{path}{nodes}{'wait-for-drbd'}."] to: [".$an->data->{path}{nodes}{'wait-for-drbd_initd'}."]\"
@@ -5354,7 +5355,7 @@ fi;
 			# We may not find the resource in /proc/drbd is the
 			# resource wasn't started before.
 			my $attached = 0;
-			my $shell_call = $an->data->{path}{cat}." /proc/drbd";
+			my $shell_call = $an->data->{path}{cat}." ".$an->data->{path}{proc_drbd};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "shell_call", value1 => $shell_call,
 				name2 => "node",       value2 => $node,
@@ -5602,10 +5603,10 @@ sub populate_authorized_keys_on_node
 		my $shell_call = "
 if [ -e '/root/.ssh/authorized_keys' ]
 then
-    if \$(grep -q $name ~/.ssh/authorized_keys);
+    if \$(".$an->data->{path}{'grep'}." -q $name ~/.ssh/authorized_keys);
     then 
         ".$an->data->{path}{echo}." 'RSA key exists, removing it.'
-        sed -i '/ root\@$name$/d' /root/.ssh/authorized_keys
+        ".$an->data->{path}{sed}." -i '/ root\@$name$/d' /root/.ssh/authorized_keys
     fi;
 else
     ".$an->data->{path}{echo}." 'no file'
@@ -5638,7 +5639,7 @@ fi";
 		
 		# Verify it was added.
 		$shell_call = "
-if \$(grep -q \"$node1_rsa\" /root/.ssh/authorized_keys)
+if \$(".$an->data->{path}{'grep'}." -q \"$node1_rsa\" /root/.ssh/authorized_keys)
 then
     ".$an->data->{path}{echo}." added
 else
@@ -5707,7 +5708,7 @@ fi";
 		
 		# Verify it was added.
 		$shell_call = "
-if \$(grep -q \"$node2_rsa\" /root/.ssh/authorized_keys)
+if \$(".$an->data->{path}{'grep'}." -q \"$node2_rsa\" /root/.ssh/authorized_keys)
 then
     ".$an->data->{path}{echo}." added
 else
@@ -5774,13 +5775,13 @@ sub populate_known_hosts_on_node
 		}, file => $THIS_FILE, line => __LINE__});
 		my $try_again  = 0;
 		my $shell_call = "
-if \$(grep -q $name ~/.ssh/known_hosts);
+if \$(".$an->data->{path}{'grep'}." -q $name ~/.ssh/known_hosts);
 then 
     ".$an->data->{path}{echo}." 'fingerprint exists, removing it.'
-    sed -i '/^$name /d' /root/.ssh/known_hosts
+    ".$an->data->{path}{sed}." -i '/^$name /d' /root/.ssh/known_hosts
 fi
 ssh-keyscan $name >> ~/.ssh/known_hosts;
-if \$(grep -q $name ~/.ssh/known_hosts);
+if \$(".$an->data->{path}{'grep'}." -q $name ~/.ssh/known_hosts);
 then 
     ".$an->data->{path}{echo}." 'fingerprint added';
 else
@@ -6489,13 +6490,13 @@ sub configure_selinux_on_node
 	# Create the backup directory if it doesn't exist yet.
 	my $return_code = 0;
 	my $shell_call  = "
-if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
+if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | ".$an->data->{path}{nodes}{'grep'}." -q on); 
 then 
     ".$an->data->{path}{echo}." 'Already allowed';
 else 
     ".$an->data->{path}{echo}." \"Off, enabling 'fenced_can_ssh' now...\";
-    $an->data->{path}{nodes}{setsebool} -P fenced_can_ssh on
-    if \$($an->data->{path}{nodes}{getsebool} fenced_can_ssh | $an->data->{path}{nodes}{grep} -q on); 
+    ".$an->data->{path}{nodes}{setsebool}." -P fenced_can_ssh on
+    if \$(".$an->data->{path}{nodes}{getsebool}." fenced_can_ssh | ".$an->data->{path}{nodes}{'grep'}." -q on); 
     then 
         ".$an->data->{path}{echo}." 'Now allowed.'
     else
@@ -6607,7 +6608,7 @@ sub set_password_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Set the 'ricci' password first.
-	my $shell_call = $an->data->{path}{echo}." '$new_password' | passwd $user --stdin";
+	my $shell_call = $an->data->{path}{echo}." '$new_password' | ".$an->data->{path}{passwd}." $user --stdin";
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -6674,7 +6675,7 @@ if [ -e '".$an->data->{path}{nodes}{backups}."' ];
 then 
     ".$an->data->{path}{echo}." \"Backup directory exist\";
 else 
-    mkdir -p ".$an->data->{path}{nodes}{backups}."; 
+    ".$an->data->{path}{'mkdir'}." -p ".$an->data->{path}{nodes}{backups}."; 
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6701,7 +6702,7 @@ if [ -e '".$an->data->{path}{nodes}{backups}."/network-scripts' ];
 then 
     ".$an->data->{path}{echo}." \"Network configuration files previously backed up\";
 else 
-    rsync -av $an->data->{path}{nodes}{network_scripts} $an->data->{path}{nodes}{backups}/;
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{network_scripts}." ".$an->data->{path}{nodes}{backups}."/;
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6728,7 +6729,7 @@ if [ -e '".$an->data->{path}{nodes}{backups}."/.ssh' ];
 then 
     ".$an->data->{path}{echo}." \"SSH configuration files previously backed up\";
 else 
-    rsync -av /root/.ssh $an->data->{path}{nodes}{backups}/;
+    ".$an->data->{path}{rsync}." -av /root/.ssh ".$an->data->{path}{nodes}{backups}."/;
 fi";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
@@ -6753,7 +6754,7 @@ fi";
 	$shell_call = "
 if [ -e '".$an->data->{path}{nodes}{drbd}."' ] && [ ! -e '".$an->data->{path}{nodes}{backups}."/drbd.d' ];
 then 
-    rsync -av ".$an->data->{path}{nodes}{drbd}." ".$an->data->{path}{nodes}{backups}."/; 
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{drbd}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     ".$an->data->{path}{echo}." \"DRBD backup not needed\"; 
 fi";
@@ -6780,7 +6781,7 @@ fi";
 	$shell_call = "
 if [ ! -e '".$an->data->{path}{nodes}{backups}."/lvm.conf' ];
 then 
-    rsync -av ".$an->data->{path}{nodes}{lvm_conf}." ".$an->data->{path}{nodes}{backups}."/; 
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{lvm_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     ".$an->data->{path}{echo}." \"LVM previously backed up, skipping.\"; 
 fi";
@@ -6807,7 +6808,7 @@ fi";
 	$shell_call = "
 if [ ! -e '".$an->data->{path}{nodes}{backups}."/cluster.conf' ];
 then 
-    rsync -av ".$an->data->{path}{nodes}{cluster_conf}." ".$an->data->{path}{nodes}{backups}."/; 
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{cluster_conf}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     ".$an->data->{path}{echo}." \"cman previously backed up, skipping.\"; 
 fi";
@@ -6834,7 +6835,7 @@ fi";
 	$shell_call = "
 if [ ! -e '".$an->data->{path}{nodes}{backups}."/fstab' ];
 then 
-    rsync -av ".$an->data->{path}{nodes}{fstab}." ".$an->data->{path}{nodes}{backups}."/; 
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{fstab}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     ".$an->data->{path}{echo}." \"fstab previously backed up, skipping.\"; 
 fi";
@@ -6861,7 +6862,7 @@ fi";
 	$shell_call = "
 if [ ! -e '".$an->data->{path}{nodes}{backups}."/shadow' ];
 then 
-    rsync -av ".$an->data->{path}{nodes}{shadow}." ".$an->data->{path}{nodes}{backups}."/; 
+    ".$an->data->{path}{rsync}." -av ".$an->data->{path}{nodes}{shadow}." ".$an->data->{path}{nodes}{backups}."/; 
 else 
     ".$an->data->{path}{echo}." \"shadow previously backed up, skipping.\"; 
 fi";
@@ -7937,7 +7938,7 @@ sub set_chkconfig
 		name3 => "state",  value3 => $state, 
 	}, file => $THIS_FILE, line => __LINE__});
 
-	my $shell_call = "chkconfig $daemon $state";
+	my $shell_call = $an->data->{path}{chkconfig}." $daemon $state";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -7972,7 +7973,7 @@ sub get_chkconfig_data
 	my $init3 = 255;
 	my $init5 = 255;
 
-	my $shell_call = "chkconfig --list $daemon";
+	my $shell_call = $an->data->{path}{chkconfig}." --list $daemon";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -8286,7 +8287,7 @@ fi";
 	# There is no default filter entry, but it is referenced as comments many times. So we'll inject it 
 	# when we see the first comment and then skip any 
 	my $filter_injected = 0;
-	$an->data->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
+	$an->data->{node}{$node}{lvm_conf} =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n\n";
 	$an->data->{node}{$node}{lvm_conf} .= "# Sorry for the lack of comments... Ran into a buffer issue with Net::SSH2 that\n";
 	$an->data->{node}{$node}{lvm_conf} .= "# I wasn't able to fix in time. Fixing it is on the TODO though, and patches\n";
 	$an->data->{node}{$node}{lvm_conf} .= "# are welcomed. :)\n\n";
@@ -8759,12 +8760,12 @@ sub add_repo_to_node
 	{
 		# Now call the client.
 		my $shell_call = "
-if [ -e '/etc/yum.repos.d/$repo_file' ];
+if [ -e '".$an->data->{path}{yum_repos}."/$repo_file' ];
 then
     ".$an->data->{path}{echo}." 1;
 else
-    curl --silent $url --output /etc/yum.repos.d/$repo_file;
-    if [ -e '/etc/yum.repos.d/$repo_file' ];
+    curl --silent $url --output ".$an->data->{path}{yum_repos}."/$repo_file;
+    if [ -e '".$an->data->{path}{yum_repos}."/$repo_file' ];
     then
         ".$an->data->{path}{yum}." clean all --quiet;
         ".$an->data->{path}{echo}." 2;
@@ -8772,11 +8773,11 @@ else
         ".$an->data->{path}{echo}." 9;
     fi;
 fi
-if grep -q gpgcheck=1 /etc/yum.repos.d/$repo_file;
+if ".$an->data->{path}{'grep'}." -q gpgcheck=1 ".$an->data->{path}{yum_repos}."/$repo_file;
 then 
-    local_file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
-    file=\$(grep gpgkey /etc/yum.repos.d/$repo_file | sed 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
-    url=\$(grep baseurl /etc/yum.repos.d/$repo_file | sed 's/baseurl=//');
+    local_file=\$(".$an->data->{path}{'grep'}." gpgkey ".$an->data->{path}{yum_repos}."/$repo_file | ".$an->data->{path}{sed}." 's/gpgkey=file:\\/\\/\\(.*\\)/\\1/');
+    file=\$(".$an->data->{path}{'grep'}." gpgkey ".$an->data->{path}{yum_repos}."/$repo_file | ".$an->data->{path}{sed}." 's/gpgkey=file:\\/\\/\\/etc\\/pki\\/rpm-gpg\\/\\(.*\\)/\\1/')
+    url=\$(".$an->data->{path}{'grep'}." baseurl ".$an->data->{path}{yum_repos}."/$repo_file | ".$an->data->{path}{sed}." 's/baseurl=//');
     ".$an->data->{path}{echo}." 'Downloading the GPG key: [curl \$url/\$file > \$local_file]'
     curl \$url/\$file > \$local_file
 fi";
@@ -10726,10 +10727,10 @@ sub register_node_with_rhn
 	my $resilient_storage = 0;
 	my $optional          = 0;
 	my $return_code =  0;
-	my $shell_call  =  "rhnreg_ks --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --force --profilename \"$name\" && ";
-	   $shell_call  .= "rhn-channel --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-rs-6 && ";
-	   $shell_call  .= "rhn-channel --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-optional-6 && ";
-	   $shell_call  .= "rhn-channel --list --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\"";
+	my $shell_call  =  $an->data->{path}{rhnreg_ks}." --username \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --force --profilename \"$name\" && ";
+	   $shell_call  .= $an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-rs-6 && ";
+	   $shell_call  .= $an->data->{path}{'rhn-channel'}." --add --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\" --channel=rhel-x86_64-server-optional-6 && ";
+	   $shell_call  .= $an->data->{path}{'rhn-channel'}." --list --user \"".$an->data->{cgi}{rhn_user}."\" --password \"".$an->data->{cgi}{rhn_password}."\"";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 		name2 => "node",       value2 => $node,
@@ -11001,13 +11002,13 @@ sub configure_ntp_on_node
 	{
 		# Look for/add NTP server
 		my $shell_call = "
-if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf}); 
+if \$(".$an->data->{path}{'grep'}." -q 'server $ntp_server iburst' ".$an->data->{path}{nodes}{ntp_conf}."); 
 then 
     ".$an->data->{path}{echo}." exists; 
 else 
     ".$an->data->{path}{echo}." adding $ntp_server;
-    ".$an->data->{path}{echo}." 'server $ntp_server iburst' >> $an->data->{path}{nodes}{ntp_conf}
-    if \$(grep -q 'server $ntp_server iburst' $an->data->{path}{nodes}{ntp_conf});
+    ".$an->data->{path}{echo}." 'server $ntp_server iburst' >> ".$an->data->{path}{nodes}{ntp_conf}."
+    if \$(".$an->data->{path}{'grep'}." -q 'server $ntp_server iburst' ".$an->data->{path}{nodes}{ntp_conf}.");
     then
         ".$an->data->{path}{echo}." added OK
     else
@@ -11134,7 +11135,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{udev_net_rules};
-	my $udev_net_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
+	my $udev_net_rules =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n\n";
 	   $udev_net_rules .= "# Back-Channel Network, Link 1\n";
 	   $udev_net_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", DRIVERS==\"?*\", ATTR{address}==\"".$an->data->{cgi}{$bcn_link1_mac_key}."\", NAME=\"bcn_link1\"\n\n";
 	   $udev_net_rules .= "# Back-Channel Network, Link 2\n";
@@ -11153,7 +11154,7 @@ sub configure_network_on_node
 	
 	### Back-Channel Network
 	#$an->data->{path}{nodes}{bcn_link1_config};
-	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_bcn_link1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_bcn_link1 .= "# Back-Channel Network - Link 1\n";
 	   $ifcfg_bcn_link1 .= "DEVICE=\"bcn_link1\"\n";
 	   $ifcfg_bcn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11168,7 +11169,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{bcn_link2_config};
-	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_bcn_link2 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_bcn_link2 .= "# Back-Channel Network - Link 2\n";
 	   $ifcfg_bcn_link2 .= "DEVICE=\"bcn_link2\"\n";
 	   $ifcfg_bcn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11183,7 +11184,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{bcn_bond1_config};
-	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_bcn_bond1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_bcn_bond1 .= "# Back-Channel Network - Bond 1\n";
 	   $ifcfg_bcn_bond1 .= "DEVICE=\"bcn_bond1\"\n";
 	   $ifcfg_bcn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11196,7 +11197,7 @@ sub configure_network_on_node
 	
 	### Storage Network
 	#$an->data->{path}{nodes}{sn_link1_config};
-	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_sn_link1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_sn_link1 .= "# Storage Network - Link 1\n";
 	   $ifcfg_sn_link1 .= "DEVICE=\"sn_link1\"\n";
 	   $ifcfg_sn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11211,7 +11212,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{sn_link2_config};
-	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_sn_link2 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_sn_link2 .= "# Storage Network - Link 2\n";
 	   $ifcfg_sn_link2 .= "DEVICE=\"sn_link2\"\n";
 	   $ifcfg_sn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11226,7 +11227,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{sn_bond1_config};
-	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_sn_bond1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_sn_bond1 .= "# Storage Network - Bond 1\n";
 	   $ifcfg_sn_bond1 .= "DEVICE=\"sn_bond1\"\n";
 	   $ifcfg_sn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11239,7 +11240,7 @@ sub configure_network_on_node
 	
 	### Internet-Facing Network
 	#$an->data->{path}{nodes}{ifn_link1_config};
-	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_ifn_link1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_ifn_link1 .= "# Internet-Facing Network - Link 1\n";
 	   $ifcfg_ifn_link1 .= "DEVICE=\"ifn_link1\"\n";
 	   $ifcfg_ifn_link1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11257,7 +11258,7 @@ sub configure_network_on_node
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	#$an->data->{path}{nodes}{ifn_link2_config};
-	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_ifn_link2 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_ifn_link2 .= "# Internet-Facing Network - Link 2\n";
 	   $ifcfg_ifn_link2 .= "DEVICE=\"ifn_link2\"\n";
 	   $ifcfg_ifn_link2 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11272,7 +11273,7 @@ sub configure_network_on_node
 	}
 	
 	#$an->data->{path}{nodes}{ifn_bond1_config};
-	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_ifn_bond1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_ifn_bond1 .= "# Internet-Facing Network - Bond 1\n";
 	   $ifcfg_ifn_bond1 .= "DEVICE=\"ifn_bond1\"\n";
 	   $ifcfg_ifn_bond1 .= "MTU=\"$mtu\"\n" if $mtu;
@@ -11284,7 +11285,7 @@ sub configure_network_on_node
 	#$an->data->{path}{nodes}{ifn_bridge1_config};
 	### NOTE: We don't set the MTU here because the bridge will ignore it. Bridges always take the MTU of
 	###       the connected device with the lowest MTU.
-	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n";
+	my $ifcfg_ifn_bridge1 =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n";
 	   $ifcfg_ifn_bridge1 .= "# Internet-Facing Network - Bridge 1\n";
 	   $ifcfg_ifn_bridge1 .= "DEVICE=\"ifn_bridge1\"\n";
 	   $ifcfg_ifn_bridge1 .= "TYPE=\"Bridge\"\n";
@@ -11298,7 +11299,7 @@ sub configure_network_on_node
 	   
 	# Create the 'anvil-adjust-vnet' udev rules file.
 	#$an->data->{path}{nodes}{udev_vnet_rules};
-	my $udev_vnet_rules =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].\n\n";
+	my $udev_vnet_rules =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].\n\n";
 	   $udev_vnet_rules .= "# This calls '".$an->data->{path}{nodes}{'anvil-adjust-vnet'}."' when a network devices are created.\n";
 	   $udev_vnet_rules .= "\n";
 	   $udev_vnet_rules .= "SUBSYSTEM==\"net\", ACTION==\"add\", RUN+=\"".$an->data->{path}{nodes}{'anvil-adjust-vnet'}."\"\n";
@@ -11313,7 +11314,7 @@ sub configure_network_on_node
 	my $iptables  = "";
 	my $vnc_range = 5900 + $an->data->{cgi}{anvil_open_vnc_ports};
 	$iptables .= "
-# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."].
+# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."].
 *filter
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
@@ -11323,25 +11324,25 @@ sub configure_network_on_node
 -A INPUT -p tcp -m conntrack --ctstate NEW -m tcp --dport 22 -j ACCEPT
 
 # Allow sctp on the BCN and SN
--A INPUT -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -p sctp -j ACCEPT
--A INPUT -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -p sctp -j ACCEPT
+-A INPUT -s ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." -p sctp -j ACCEPT
+-A INPUT -s ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." -p sctp -j ACCEPT
 
 # Allow UDP-multicast based clusters on the BCN and SN
--I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
--I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
+-I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." --dports 5404,5405 -j ACCEPT
+-I INPUT -m addrtype --dst-type MULTICAST -m conntrack --ctstate NEW -m multiport -p udp -s ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." --dports 5404,5405 -j ACCEPT
 
 # Allow UDP-unicast based clusters on the BCN and SN
--A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -d $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 5404,5405 -j ACCEPT
--A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -d $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 5404,5405 -j ACCEPT
+-A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." -d ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." --dports 5404,5405 -j ACCEPT
+-A INPUT -m conntrack --ctstate NEW -m multiport -p udp -s ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." -d ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." --dports 5404,5405 -j ACCEPT
 
 # Allow NTP, VNC, ricci, modclusterd, dlm and KVM live migration on the BCN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} -d $an->data->{cgi}{anvil_bcn_network}/$an->data->{cgi}{anvil_bcn_subnet} --dports 123,5800,5900:$vnc_range,11111,16851,21064,49152:49216 -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." -d ".$an->data->{cgi}{anvil_bcn_network}."/".$an->data->{cgi}{anvil_bcn_subnet}." --dports 123,5800,5900:$vnc_range,11111,16851,21064,49152:49216 -j ACCEPT 
 
 # Allow DRBD (11 resources) and, as backups, ricci, modclusterd and DLM on the SN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} -d $an->data->{cgi}{anvil_sn_network}/$an->data->{cgi}{anvil_sn_subnet} --dports 7788:7799,11111,16851,21064 -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." -d ".$an->data->{cgi}{anvil_sn_network}."/".$an->data->{cgi}{anvil_sn_subnet}." --dports 7788:7799,11111,16851,21064 -j ACCEPT 
 
 # Allow NTP and VNC on the IFN
--A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s $an->data->{cgi}{anvil_ifn_network}/$an->data->{cgi}{anvil_ifn_subnet} -d $an->data->{cgi}{anvil_ifn_network}/$an->data->{cgi}{anvil_ifn_subnet} --dports 123,5800,5900:$vnc_range -j ACCEPT 
+-A INPUT -m conntrack --ctstate NEW -m multiport -p tcp -s ".$an->data->{cgi}{anvil_ifn_network}."/".$an->data->{cgi}{anvil_ifn_subnet}." -d ".$an->data->{cgi}{anvil_ifn_network}."/".$an->data->{cgi}{anvil_ifn_subnet}." --dports 123,5800,5900:$vnc_range -j ACCEPT 
 
 # Allow IGMP for UDP-multicast based clusters.
 -A INPUT -p igmp -j ACCEPT
@@ -11381,7 +11382,7 @@ COMMIT";
 	my ($striker2_short_name) = ($an->data->{cgi}{anvil_striker2_name} =~ /^(.*?)\./);
 	
 	# now generate the hosts body.
-	my $hosts =  "# Generated by: [$THIS_FILE] on: [".AN::Cluster::get_date($an)."]\n";
+	my $hosts =  "# Generated by: [$THIS_FILE] on: [".$an->Get->date_and_time({split_date_time => 0})."]\n";
 	   $hosts .= "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4\n";
 	   $hosts .= "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6\n";
 	   $hosts .= "\n";
@@ -12891,11 +12892,11 @@ sub install_missing_packages
 		my $shell_call = "
 if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
 then 
-    virsh net-destroy default;
-    virsh net-autostart default --disable;
-    virsh net-undefine default;
+    ".$an->data->{path}{virsh}." net-destroy default;
+    ".$an->data->{path}{virsh}." net-autostart default --disable;
+    ".$an->data->{path}{virsh}." net-undefine default;
 else 
-    ".$an->data->{path}{cat}." /dev/null >/etc/libvirt/qemu/networks/default.xml;
+    ".$an->data->{path}{cat}." /dev/null > ".$an->data->{path}{etc_virbr0}.";
 fi;
 if [ -e /proc/sys/net/ipv4/conf/virbr0 ]; 
 then 
@@ -13081,10 +13082,10 @@ then
             ".$an->data->{path}{mv}." /usr/share/cluster/vm.sh /root/vm.sh.anvil
         fi
     fi
-    cp /root/vm.sh /usr/share/cluster/vm.sh 
-    chown root:root /usr/share/cluster/vm.sh
+    ".$an->data->{path}{cp}." /root/vm.sh /usr/share/cluster/vm.sh 
+    ".$an->data->{path}{'chown'}." root:root /usr/share/cluster/vm.sh
     ".$an->data->{path}{'chmod'}." 755 /usr/share/cluster/vm.sh
-    sleep 5
+    ".$an->data->{path}{'sleep'}." 5
     ".$an->data->{path}{initd}."/ricci restart
 else
     ".$an->data->{path}{echo}." \"/root/vm.sh doesn't exist.\"
@@ -13275,9 +13276,9 @@ sub remove_priority_from_node
 	
 	# Remove the 'priority=' line from our repos so that the update hits the web.
 	my $shell_call = "
-for repo in \$(ls /etc/yum.repos.d/);
+for repo in \$(".$an->data->{path}{ls}." ".$an->data->{path}{yum_repos}."/);
 do 
-    sed -i '/priority=/d' /etc/yum.repos.d/\${repo};
+    ".$an->data->{path}{sed}." -i '/priority=/d' ".$an->data->{path}{yum_repos}."/\${repo};
 done
 ";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -14866,7 +14867,7 @@ sub generate_cluster_conf
 	my  $node1_full_name   =  $an->data->{cgi}{anvil_node1_name};
 	my ($node2_short_name) = ($an->data->{cgi}{anvil_node2_name} =~ /^(.*?)\./);
 	my  $node2_full_name   =  $an->data->{cgi}{anvil_node2_name};
-	my  $shared_lv         = "/dev/${node1_short_name}_vg0/shared";
+	my  $shared_lv         = "/dev/${node1_short_name}_vg0".$an->data->{path}{shared};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "node1_short_name", value1 => $node1_short_name,
 		name2 => "node1_full_name",  value2 => $node1_full_name,
@@ -15002,7 +15003,7 @@ sub generate_cluster_conf
 			<script file=\"".$an->data->{path}{initd}."/drbd\" name=\"drbd\"/>
 			<script file=\"".$an->data->{path}{initd}."/wait-for-drbd\" name=\"wait-for-drbd\"/>
 			<script file=\"".$an->data->{path}{initd}."/clvmd\" name=\"clvmd\"/>
-			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" fstype=\"gfs2\" mountpoint=\"/shared\" name=\"sharedfs\" />
+			<clusterfs device=\"$shared_lv\" force_unmount=\"1\" fstype=\"gfs2\" mountpoint=\"".$an->data->{path}{shared}."\" name=\"sharedfs\" />
 			<script file=\"".$an->data->{path}{initd}."/libvirtd\" name=\"libvirtd\"/>
 		</resources>
 		<failoverdomains>

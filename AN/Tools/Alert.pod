@@ -724,6 +724,14 @@ The 'AN::Tools::Cman' module's 'migrate_server()' method was called without pass
 
 The 'AN::Tools::Get' module's 'manifest_data()' method was called without passing in a manifest UUID.
 
+=head2 C<122>
+
+The 'AN::Tools::Get' module's 'manifest_data()' method was called with an invalid manifest UUID.
+
+=head2 C<123>
+
+The 'AN::Tools::Striker' module's 'configure_ssh_local()' method was called without passing in an Anvil! name.
+
 
 =head1 SEE ALSO
 

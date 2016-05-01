@@ -5654,14 +5654,14 @@ sub provision_vm
 		for (my $i = 0; $i < @{$an->data->{new_vm}{vg}{$vg}{lvcreate_size}}; $i++)
 		{
 			my $lv_size   = $an->data->{new_vm}{vg}{$vg}{lvcreate_size}->[$i];
-			my $lv_device = "/dev/$vg/$an->data->{new_vm}{name}_$i";
+			my $lv_device = "/dev/$vg/".$an->data->{new_vm}{name}."_$i";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 				name1 => "i",         value1 => $i,
 				name2 => "vg",        value2 => $vg,
 				name3 => "lv_size",   value3 => $lv_size,
 				name4 => "lv_device", value4 => $lv_device,
 			}, file => $THIS_FILE, line => __LINE__});
-			$provision .= "if [ ! -e '/dev/$vg/$an->data->{new_vm}{name}_$i' ];\n";
+			$provision .= "if [ ! -e '/dev/$vg/".$an->data->{new_vm}{name}."_$i' ];\n";
 			$provision .= "then\n";
 			if (lc($lv_size) eq "all")
 			{
@@ -5683,18 +5683,18 @@ sub provision_vm
 	
 	# Setup the 'virt-install' call.
 	$provision .= "virt-install --connect qemu:///system \\\\\n";
-	$provision .= "  --name $an->data->{new_vm}{name} \\\\\n";
-	$provision .= "  --ram $an->data->{new_vm}{ram} \\\\\n";
+	$provision .= "  --name ".$an->data->{new_vm}{name}." \\\\\n";
+	$provision .= "  --ram ".$an->data->{new_vm}{ram}." \\\\\n";
 	$provision .= "  --arch x86_64 \\\\\n";
-	$provision .= "  --vcpus $an->data->{new_vm}{cpu_cores} \\\\\n";
+	$provision .= "  --vcpus ".$an->data->{new_vm}{cpu_cores}." \\\\\n";
 	$provision .= "  --cpu host \\\\\n";
-	$provision .= "  --cdrom '/shared/files/$an->data->{new_vm}{install_iso}' \\\\\n";
+	$provision .= "  --cdrom '/shared/files/".$an->data->{new_vm}{install_iso}."' \\\\\n";
 	$provision .= "  --boot menu=on \\\\\n";
 	if ($an->data->{cgi}{driver_iso})
 	{
-		$provision .= "  --disk path='/shared/files/$an->data->{new_vm}{driver_iso}',device=cdrom --force\\\\\n";
+		$provision .= "  --disk path='/shared/files/".$an->data->{new_vm}{driver_iso}."',device=cdrom --force\\\\\n";
 	}
-	$provision .= "  --os-variant $an->data->{cgi}{os_variant} \\\\\n";
+	$provision .= "  --os-variant ".$an->data->{cgi}{os_variant}." \\\\\n";
 	
 	# Connect to the discovered bridge
 	my $nic_driver = "virtio";
@@ -5735,7 +5735,7 @@ sub provision_vm
 	### TODO: Make sure the desired node is up and, if not, use the one good node.
 	
 	# Push the provision script into a file.
-	my $shell_script = "/shared/provision/$an->data->{new_vm}{name}.sh";
+	my $shell_script = "/shared/provision/".$an->data->{new_vm}{name}.".sh";
 	my $message      = $an->String->get({key => "message_0118", variables => { script => $shell_script }});
 	print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
 	
@@ -7711,7 +7711,7 @@ sub archive_file
 	### TODO: Check/create the archive directory.
 	
 	my ($directory, $file_name) =  ($file =~ /^(.*)\/(.*?)$/);
-	my ($date)                  =  AN::Cluster::get_date($an, time);
+	my ($date)                  =  $an->Get->date_and_time({split_date_time => 0});
 	my $destination             =  "/shared/archive/$file_name.$date";
 	   $destination             =~ s/ /_/;
 
