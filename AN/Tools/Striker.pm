@@ -25,6 +25,7 @@ my $THIS_FILE = "Striker.pm";
 # _check_lv
 # _check_node_daemons
 # _check_node_readiness
+# _confirm_start_server
 # _display_anvil_safe_start_notice
 # _display_details
 # _display_drbd_details
@@ -33,13 +34,12 @@ my $THIS_FILE = "Striker.pm";
 # _display_node_controls
 # _display_node_details
 # _display_server_details
-# _display_vm_state_and_controls
+# _display_server_state_and_controls
 # _display_watchdog_panel
 # _error
 # _find_preferred_host
 # _gather_node_details
 # _header
-# _initialize_an
 # _parse_anvil_safe_start
 # _parse_clustat
 # _parse_cluster_conf
@@ -52,12 +52,14 @@ my $THIS_FILE = "Striker.pm";
 # _parse_lvm_scan
 # _parse_meminfo
 # _parse_proc_drbd
+# _parse_server_defs
+# _parse_server_defs_in_mem
 # _parse_virsh
-# _parse_vm_defs
-# _parse_vm_defs_in_mem
 # _post_node_calculations
 # _post_scan_calculations
-# _read_vm_definition
+# _process_tasks
+# _read_server_definition
+# _start_server
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -188,7 +190,7 @@ sub load_anvil
 	$an->data->{sys}{anvil}{smtp}{security}       = $an->data->{anvils}{$anvil_uuid}{smtp}{security};
 	$an->data->{sys}{anvil}{smtp}{authentication} = $an->data->{anvils}{$anvil_uuid}{smtp}{authentication};
 	$an->data->{sys}{anvil}{smtp}{helo_domain}    = $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 		name1  => "sys::anvil::uuid",                 value1  => $an->data->{sys}{anvil}{uuid}, 
 		name2  => "sys::anvil::name",                 value2  => $an->data->{sys}{anvil}{name}, 
 		name3  => "sys::anvil::description",          value3  => $an->data->{sys}{anvil}{description}, 
@@ -231,7 +233,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{use_port}       =  $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0017", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -258,9 +260,9 @@ sub load_anvil
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Make the node UUID easy to get from the node name.
-		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
-		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
-		$an->data->{sys}{name_to_uuid}{$node_name} = $node_uuid;
+		my $node_uuid                                 = $an->data->{sys}{anvil}{$node_key}{uuid};
+		my $node_name                                 = $an->data->{sys}{anvil}{$node_key}{name};
+		   $an->data->{sys}{name_to_uuid}{$node_name} = $node_uuid;
 	}
 	
 	return(0);
@@ -294,12 +296,12 @@ sub mark_node_as_clean_off
 		return(1);
 	}
 	
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	if (not $node_name)
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
@@ -365,12 +367,12 @@ sub mark_node_as_clean_on
 		return(1);
 	}
 	
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	if (not $node_name)
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
@@ -767,11 +769,11 @@ sub scan_node
 	push @{$an->data->{online_nodes}}, $node_name if $an->Striker->_check_node_daemons({node => $node_uuid});
 	
 	# If I have no nodes up, exit.
-	my $anvil                         = $an->data->{sys}{anvil}{name};
+	my $anvil_name                    = $an->data->{sys}{anvil}{name};
 	   $an->data->{sys}{up_nodes}     = @{$an->data->{up_nodes}};
 	   $an->data->{sys}{online_nodes} = @{$an->data->{online_nodes}};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",             value1 => $anvil,
+		name1 => "anvil_name",        value1 => $anvil_name,
 		name2 => "sys::up_nodes",     value2 => $an->data->{sys}{up_nodes},
 		name3 => "sys::online_nodes", value3 => $an->data->{sys}{online_nodes},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -781,7 +783,7 @@ sub scan_node
 		# power up.
 		if (not $an->data->{sys}{online_nodes})
 		{
-			if ($an->data->{clusters}{$anvil}{cache_exists})
+			if ($an->data->{clusters}{$anvil_name}{cache_exists})
 			{
 				print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
 					anvil	=>	$an->data->{sys}{anvil}{name},
@@ -839,159 +841,160 @@ sub scan_servers
 	my $long_node2  = $an->data->{sys}{anvil}{node2}{name};
 	my $say_node1   = "<span class=\"fixed_width\">".$an->data->{sys}{anvil}{node1}{short_name}."</span>";
 	my $say_node2   = "<span class=\"fixed_width\">".$an->data->{sys}{anvil}{node2}{short_name}."</span>";
-	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
-		my $say_vm;
-		if ($vm =~ /^vm:(.*)/)
+		my $say_server;
+		if ($server =~ /^vm:(.*)/)
 		{
-			$say_vm = $1;
+			$say_server = $1;
 		}
 		else
 		{
-			my $say_message = $an->String->get({key => "message_0467", variables => { server => $vm }});
+			my $say_message = $an->String->get({key => "message_0467", variables => { server => $server }});
 			$an->Striker->_error({message => $say_message});
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",     value1 => $vm,
-			name2 => "say_vm", value2 => $say_vm,
+			name1 => "server",     value1 => $server,
+			name2 => "say_server", value2 => $say_server,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# This will control the buttons.
-		$an->data->{vm}{$vm}{can_start}        = 0;
-		$an->data->{vm}{$vm}{can_stop}         = 0;
-		$an->data->{vm}{$vm}{can_migrate}      = 0;
-		$an->data->{vm}{$vm}{current_host}     = 0;
-		$an->data->{vm}{$vm}{migration_target} = "";
+		$an->data->{server}{$server}{can_start}        = 0;
+		$an->data->{server}{$server}{can_stop}         = 0;
+		$an->data->{server}{$server}{can_migrate}      = 0;
+		$an->data->{server}{$server}{current_host}     = 0;
+		$an->data->{server}{$server}{migration_target} = "";
 		
-		# Find out who, if anyone, is running this VM and who *can* run it. 
+		# Find out who, if anyone, is running this server and who *can* run it. 
 		# 2 == Running
 		# 1 == Can run 
 		# 0 == Can't run
-		$an->data->{vm}{$vm}{say_node1}   = $an->data->{node}{$node1_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$an->data->{vm}{$vm}{node1_ready} = 0;
+		$an->data->{server}{$server}{say_node1}   = $an->data->{node}{$node1_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
+		$an->data->{server}{$server}{node1_ready} = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1",                    value1 => $an->data->{vm}{$vm}{say_node1},
+			name1 => "server::${server}::say_node1",                    value1 => $an->data->{server}{$server}{say_node1},
 			name2 => "node::${node1_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node1_name}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{vm}{$vm}{say_node2}   = $an->data->{node}{$node2_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
-		$an->data->{vm}{$vm}{node2_ready} = 0;
+		$an->data->{server}{$server}{say_node2}   = $an->data->{node}{$node2_name}{daemon}{cman}{exit_code} eq "0" ? "<span class=\"highlight_warning\">#!string!state_0006!#</span>" : "<span class=\"code\">--</span>";
+		$an->data->{server}{$server}{node2_ready} = 0;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node2",                    value1 => $an->data->{vm}{$vm}{say_node2},
+			name1 => "server::${server}::say_node2",                    value1 => $an->data->{server}{$server}{say_node2},
 			name2 => "node::${node2_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{cman}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# If a VM's XML definition file is found but there is no host, the user probably forgot to define it.
+		# If a server's XML definition file is found but there is no host, the user probably forgot 
+		# to define it.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "vm::${vm}::host", value1 => $an->data->{vm}{$vm}{host},
+			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $an->data->{vm}{$vm}{host}) && (not $an->data->{sys}{ignore_missing_vm}))
+		if ((not $an->data->{server}{$server}{host}) && (not $an->data->{sys}{ignore_missing_server}))
 		{
 			# Pull the host node and current state out of the hash.
-			my $host_node = "";
-			my $vm_state  = "";
-			foreach my $node_name (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}})
+			my $host_node    = "";
+			my $server_state = "";
+			foreach my $node_name (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}})
 			{
 				$host_node = $node_name;
-				foreach my $key (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node_name}{virsh}})
+				foreach my $key (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node_name}{virsh}})
 				{
 					if ($key eq "state") 
 					{
-						$vm_state = $an->data->{vm}{$vm}{node}{$host_node}{virsh}{'state'};
+						$server_state = $an->data->{server}{$server}{node}{$host_node}{virsh}{'state'};
 					}
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-						name1 => "vm::${vm}::node::${node_name}::virsh::${key}", value1 => $an->data->{vm}{$vm}{node}{$node_name}{virsh}{$key},
+						name1 => "server::${server}::node::${node_name}::virsh::${key}", value1 => $an->data->{server}{$server}{node}{$node_name}{virsh}{$key},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
-			$an->data->{vm}{$vm}{say_node1} = "--";
-			$an->data->{vm}{$vm}{say_node2} = "--";
+			$an->data->{server}{$server}{say_node1} = "--";
+			$an->data->{server}{$server}{say_node2} = "--";
 			my $say_error = $an->String->get({key => "message_0271", variables => { 
-					server	=>	$say_vm,
-					url	=>	"?cluster=".$an->data->{sys}{anvil}{name}."&task=add_vm&name=$say_vm&node=$host_node&state=$vm_state",
+					server	=>	$say_server,
+					url	=>	"?cluster=".$an->data->{sys}{anvil}{name}."&task=add_server&name=$say_server&node=$host_node&state=$server_state",
 				}});
 			$an->Striker->_error({message => $say_error, fatal => 0});
 			next;
 		}
 		
-		$an->data->{vm}{$vm}{host} = "" if not defined $an->data->{vm}{$vm}{host};
+		$an->data->{server}{$server}{host} = "" if not defined $an->data->{server}{$server}{host};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm::${vm}::host", value1 => $an->data->{vm}{$vm}{host},
+			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 			name2 => "short_node1",     value2 => $short_node1,
 			name3 => "short_node2",     value3 => $short_node2,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{vm}{$vm}{host} =~ /$short_node1/)
+		if ($an->data->{server}{$server}{host} =~ /$short_node1/)
 		{
 			# Even though I know the host is ready, this function loads some data, like LV 
 			# details, which I will need later.
-			$an->Striker->_check_node_readiness({server => $vm, node => $node1_uuid});
-			$an->data->{vm}{$vm}{can_start}     = 0;
-			$an->data->{vm}{$vm}{can_stop}      = 1;
-			$an->data->{vm}{$vm}{current_host}  = $node1_name;
-			$an->data->{vm}{$vm}{node1_ready}   = 2;
-			($an->data->{vm}{$vm}{node2_ready}) = $an->Striker->_check_node_readiness({server => $vm, node => $node2_uuid});
-			if ($an->data->{vm}{$vm}{node2_ready})
+			$an->Striker->_check_node_readiness({server => $server, node => $node1_uuid});
+			$an->data->{server}{$server}{can_start}     = 0;
+			$an->data->{server}{$server}{can_stop}      = 1;
+			$an->data->{server}{$server}{current_host}  = $node1_name;
+			$an->data->{server}{$server}{node1_ready}   = 2;
+			($an->data->{server}{$server}{node2_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node2_uuid});
+			if ($an->data->{server}{$server}{node2_ready})
 			{
-				$an->data->{vm}{$vm}{migration_target} = $long_node2;
-				$an->data->{vm}{$vm}{can_migrate}      = 1;
+				$an->data->{server}{$server}{migration_target} = $long_node2;
+				$an->data->{server}{$server}{can_migrate}      = 1;
 			}
 			
 			# Disable cluster withdrawl of this node.
 			$an->data->{node}{$node1_name}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "vm",               value1 => $vm,
+				name1 => "server",               value1 => $server,
 				name2 => "node1_name",            value2 => $node1_name,
-				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
+				name3 => "node2 ready",      value3 => $an->data->{server}{$server}{node2_ready},
+				name4 => "can migrate",      value4 => $an->data->{server}{$server}{can_migrate},
+				name5 => "migration target", value5 => $an->data->{server}{$server}{migration_target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
-		elsif ($an->data->{vm}{$vm}{host} =~ /$short_node2/)
+		elsif ($an->data->{server}{$server}{host} =~ /$short_node2/)
 		{
 			# Even though I know the host is ready, this function loads some data, like LV 
 			# details, which I will need later.
-			$an->Striker->_check_node_readiness({server => $vm, node => $node2_uuid});
-			$an->data->{vm}{$vm}{can_start}     = 0;
-			$an->data->{vm}{$vm}{can_stop}      = 1;
-			$an->data->{vm}{$vm}{current_host}  = $node2_name;
-			($an->data->{vm}{$vm}{node1_ready}) = $an->Striker->_check_node_readiness({server => $vm, node => $node1_uuid});
-			$an->data->{vm}{$vm}{node2_ready}   = 2;
-			if ($an->data->{vm}{$vm}{node1_ready})
+			$an->Striker->_check_node_readiness({server => $server, node => $node2_uuid});
+			$an->data->{server}{$server}{can_start}     = 0;
+			$an->data->{server}{$server}{can_stop}      = 1;
+			$an->data->{server}{$server}{current_host}  = $node2_name;
+			($an->data->{server}{$server}{node1_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node1_uuid});
+			$an->data->{server}{$server}{node2_ready}   = 2;
+			if ($an->data->{server}{$server}{node1_ready})
 			{
-				$an->data->{vm}{$vm}{migration_target} = $long_node1;
-				$an->data->{vm}{$vm}{can_migrate}      = 1;
+				$an->data->{server}{$server}{migration_target} = $long_node1;
+				$an->data->{server}{$server}{can_migrate}      = 1;
 			}
 			
 			# Disable withdrawl of this node.
 			$an->data->{node}{$node2_name}{enable_withdraw} = 0;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name1 => "vm",               value1 => $vm,
+				name1 => "server",               value1 => $server,
 				name2 => "node1_name",            value2 => $node1_name,
-				name3 => "node2 ready",      value3 => $an->data->{vm}{$vm}{node2_ready},
-				name4 => "can migrate",      value4 => $an->data->{vm}{$vm}{can_migrate},
-				name5 => "migration target", value5 => $an->data->{vm}{$vm}{migration_target},
+				name3 => "node2 ready",      value3 => $an->data->{server}{$server}{node2_ready},
+				name4 => "can migrate",      value4 => $an->data->{server}{$server}{can_migrate},
+				name5 => "migration target", value5 => $an->data->{server}{$server}{migration_target},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
-			$an->data->{vm}{$vm}{can_stop}      = 0;
-			($an->data->{vm}{$vm}{node1_ready}) = $an->Striker->_check_node_readiness({server => $vm, node => $node1_uuid});
-			($an->data->{vm}{$vm}{node2_ready}) = $an->Striker->_check_node_readiness({server => $vm, node => $node2_uuid});
+			$an->data->{server}{$server}{can_stop}      = 0;
+			($an->data->{server}{$server}{node1_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node1_uuid});
+			($an->data->{server}{$server}{node2_ready}) = $an->Striker->_check_node_readiness({server => $server, node => $node2_uuid});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm",          value1 => $vm,
-				name2 => "node1_ready", value2 => $an->data->{vm}{$vm}{node1_ready},
-				name3 => "node2_ready", value3 => $an->data->{vm}{$vm}{node2_ready},
+				name1 => "server",          value1 => $server,
+				name2 => "node1_ready", value2 => $an->data->{server}{$server}{node1_ready},
+				name3 => "node2_ready", value3 => $an->data->{server}{$server}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "vm::${vm}::current_host", value1 => $an->data->{vm}{$vm}{current_host},
+			name1 => "server::${server}::current_host", value1 => $an->data->{server}{$server}{current_host},
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{vm}{$vm}{boot_target} = "";
-		if ($an->data->{vm}{$vm}{current_host})
+		$an->data->{server}{$server}{boot_target} = "";
+		if ($an->data->{server}{$server}{current_host})
 		{
 			# Get the current host's details
-			my $this_host     = $an->data->{vm}{$vm}{current_host};
+			my $this_host     = $an->data->{server}{$server}{current_host};
 			my $target_uuid   = $an->data->{sys}{name_to_uuid}{$this_host};
 			my $this_node_key = $an->data->{db}{nodes}{$target_uuid}{node_key};
 			my $this_target   = $an->data->{sys}{anvil}{$this_node_key}{use_ip};
@@ -1008,10 +1011,10 @@ sub scan_servers
 				name1 => "this_password", value1 => $this_password,
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# This is a bit expensive, but read the VM's running definition.
-			my $say_vm        =  $vm;
-			   $say_vm        =~ s/^vm://;
-			my $shell_call    =  $an->data->{path}{virsh}." dumpxml $say_vm";
+			# This is a bit expensive, but read the server's running definition.
+			my $say_server =  $server;
+			   $say_server =~ s/^vm://;
+			my $shell_call =  $an->data->{path}{virsh}." dumpxml $say_server";
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "node_target", value1 => $this_target,
 				name2 => "shell_call",  value2 => $shell_call,
@@ -1031,45 +1034,45 @@ sub scan_servers
 					name1 => "line", value1 => $line, 
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				push @{$an->data->{vm}{$vm}{xml}}, $line;
+				push @{$an->data->{server}{$server}{xml}}, $line;
 			}
 		}
 		else
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm::${vm}::node1_ready", value1 => $an->data->{vm}{$vm}{node1_ready},
-				name2 => "vm::${vm}::node2_ready", value2 => $an->data->{vm}{$vm}{node2_ready},
+				name1 => "server::${server}::node1_ready", value1 => $an->data->{server}{$server}{node1_ready},
+				name2 => "server::${server}::node2_ready", value2 => $an->data->{server}{$server}{node2_ready},
 			}, file => $THIS_FILE, line => __LINE__});
-			if (($an->data->{vm}{$vm}{node1_ready}) && ($an->data->{vm}{$vm}{node2_ready}))
+			if (($an->data->{server}{$server}{node1_ready}) && ($an->data->{server}{$server}{node2_ready}))
 			{
-				# I can boot on either node, so choose the first one in the VM's failover 
+				# I can boot on either node, so choose the first one in the server's failover
 				# domain.
-				$an->data->{vm}{$vm}{boot_target} = $an->Striker->_find_preferred_host({server => $vm});
-				$an->data->{vm}{$vm}{can_start}   = 1;
+				$an->data->{server}{$server}{boot_target} = $an->Striker->_find_preferred_host({server => $server});
+				$an->data->{server}{$server}{can_start}   = 1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm::${vm}::boot_target", value1 => $an->data->{vm}{$vm}{boot_target},
-					name2 => "vm::${vm}::can_start",   value2 => $an->data->{vm}{$vm}{can_start},
+					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
+					name2 => "server::${server}::can_start",   value2 => $an->data->{server}{$server}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($an->data->{vm}{$vm}{node1_ready})
+			elsif ($an->data->{server}{$server}{node1_ready})
 			{
-				$an->data->{vm}{$vm}{boot_target} = $node1_name;
+				$an->data->{server}{$server}{boot_target} = $node1_name;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "vm::${vm}::boot_target", value1 => $an->data->{vm}{$vm}{boot_target},
+					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			elsif ($an->data->{vm}{$vm}{node2_ready})
+			elsif ($an->data->{server}{$server}{node2_ready})
 			{
-				$an->data->{vm}{$vm}{boot_target} = $node2_name;
+				$an->data->{server}{$server}{boot_target} = $node2_name;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "vm::${vm}::boot_target", value1 => $an->data->{vm}{$vm}{boot_target},
+					name1 => "server::${server}::boot_target", value1 => $an->data->{server}{$server}{boot_target},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
-				$an->data->{vm}{$vm}{can_start} = 0;
+				$an->data->{server}{$server}{can_start} = 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "vm::${vm}::can_start", value1 => $an->data->{vm}{$vm}{can_start},
+					name1 => "server::${server}::can_start", value1 => $an->data->{server}{$server}{can_start},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
@@ -1209,24 +1212,24 @@ sub _check_lv
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_lv" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $vm        = $parameter->{server};
-	my $lv        = $parameter->{logical_volume};
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	my $server     = $parameter->{server};
+	my $lv         = $parameter->{logical_volume};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
-		name1 => "vm",        value1 => $vm,
-		name2 => "lv",        value2 => $lv,
-		name3 => "node_uuid", value3 => $node_uuid,
-		name4 => "node_key",  value4 => $node_key,
-		name5 => "anvil",     value5 => $anvil,
-		name6 => "node_name", value6 => $node_name,
-		name7 => "target",    value7 => $target,
-		name8 => "port",      value8 => $port,
+		name1 => "server",     value1 => $server,
+		name2 => "lv",         value2 => $lv,
+		name3 => "node_uuid",  value3 => $node_uuid,
+		name4 => "node_key",   value4 => $node_key,
+		name5 => "anvil_name", value5 => $anvil_name,
+		name6 => "node_name",  value6 => $node_name,
+		name7 => "target",     value7 => $target,
+		name8 => "port",       value8 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
@@ -1239,17 +1242,17 @@ sub _check_lv
 		$an->Log->entry({log_level => 3, message_key => "log_0258", message_variables => {
 			node           => $node_name, 
 			logical_volume => $lv,
-			server         => $vm, 
+			server         => $server, 
 		}, file => $THIS_FILE, line => __LINE__});
 		return(0);
 	}
 	
-	$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{active} = $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active};
-	$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{total_size} });
+	$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{active} = $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active};
+	$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{size}   = $an->Readable->bytes_to_hr({'bytes' => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{total_size} });
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "node::${node_name}::lvm::lv::${lv}::active",     value1 => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{active},
 		name2 => "node::${node_name}::lvm::lv::${lv}::on_devices", value2 => $an->data->{node}{$node_name}{lvm}{lv}{$lv}{on_devices},
-		name3 => "vm::${vm}::node::${node_name}::lv::${lv}::size", value3 => $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{size},
+		name3 => "server::${server}::node::${node_name}::lv::${lv}::size", value3 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{size},
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If there is a comman in the devices, the LV spans multiple devices.
@@ -1283,19 +1286,19 @@ sub _check_lv
 			}
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "vm",        value1 => $vm,
+			name1 => "server",        value1 => $server,
 			name2 => "node_name", value2 => $node_name,
 			name3 => "lv",        value3 => $lv,
 			name4 => "on_res",    value4 => $on_res,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state} = $an->data->{drbd}{$on_res}{node}{$node_name}{connection_state};
-		$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role}             = $an->data->{drbd}{$on_res}{node}{$node_name}{role};
-		$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $an->data->{drbd}{$on_res}{node}{$node_name}{disk_state};
+		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state} = $an->data->{drbd}{$on_res}{node}{$node_name}{connection_state};
+		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role}             = $an->data->{drbd}{$on_res}{node}{$node_name}{role};
+		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $an->data->{drbd}{$on_res}{node}{$node_name}{disk_state};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "vm::${vm}::node::${node_name}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state},
-			name2 => "vm::${vm}::node::${node_name}::lv::${lv}::drbd::${on_res}::role",             value2 => $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role},
-			name3 => "vm::${vm}::node::${node_name}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state},
+			name1 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state},
+			name2 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::role",             value2 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role},
+			name3 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
@@ -1310,21 +1313,21 @@ sub _check_node_daemons
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_node_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
-		name2 => "node_key",  value2 => $node_key,
-		name3 => "anvil",     value3 => $anvil,
-		name4 => "node_name", value4 => $node_name,
-		name5 => "target",    value5 => $target,
-		name6 => "port",      value6 => $port,
+		name1 => "node_uuid",  value1 => $node_uuid,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "anvil_name", value3 => $anvil_name,
+		name4 => "node_name",  value4 => $node_name,
+		name5 => "target",     value5 => $target,
+		name6 => "port",       value6 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $node_name)
@@ -1342,12 +1345,12 @@ sub _check_node_daemons
 		name5 => "node::${node_name}::daemon::gfs2::exit_code",      value5 => $an->data->{node}{$node_name}{daemon}{gfs2}{exit_code},
 		name6 => "node::${node_name}::daemon::libvirtd::exit_code",  value6 => $an->data->{node}{$node_name}{daemon}{libvirtd}{exit_code},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (($an->data->{node}{$node_name}{daemon}{cman}{exit_code}  ne "0") or
-	($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} ne "0") or
-	($an->data->{node}{$node_name}{daemon}{drbd}{exit_code}      ne "0") or
-	($an->data->{node}{$node_name}{daemon}{clvmd}{exit_code}     ne "0") or
-	($an->data->{node}{$node_name}{daemon}{gfs2}{exit_code}      ne "0") or
-	($an->data->{node}{$node_name}{daemon}{libvirtd}{exit_code}  ne "0"))
+	if (($an->data->{node}{$node_name}{daemon}{cman}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{drbd}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{clvmd}{exit_code}     ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{gfs2}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{libvirtd}{exit_code}  ne "0"))
 	{
 		$ready = 0;
 	}
@@ -1355,7 +1358,7 @@ sub _check_node_daemons
 	return($ready);
 }
 
-# This checks a node to see if it's ready to run a given VM.
+# This checks a node to see if it's ready to run a given server.
 sub _check_node_readiness
 {
 	my $self      = shift;
@@ -1363,34 +1366,34 @@ sub _check_node_readiness
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_check_node_readiness" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $vm        = $parameter->{server};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $server     = $parameter->{server};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
-		name2 => "node_key",  value2 => $node_key,
-		name3 => "anvil",     value3 => $anvil,
-		name4 => "node_name", value4 => $node_name,
-		name5 => "target",    value5 => $target,
-		name6 => "port",      value6 => $port,
-		name7 => "vm",        value7 => $vm,
+		name1 => "node_uuid",  value1 => $node_uuid,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "anvil_name", value3 => $anvil_name,
+		name4 => "node_name",  value4 => $node_name,
+		name5 => "target",     value5 => $target,
+		name6 => "port",       value6 => $port,
+		name7 => "server",     value7 => $server,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $node_name)
 	{
-		my $say_message = $an->String->get({key => "message_0468", variables => { server => $vm }});
+		my $say_message = $an->String->get({key => "message_0468", variables => { server => $server }});
 		$an->Striker->_error({message => $say_message});
 	}
 	
 	# This will get negated if something isn't ready.
 	my $ready = $an->Striker->_check_node_daemons({node => $node_uuid});
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "vm",        value1 => $vm,
+		name1 => "server",        value1 => $server,
 		name2 => "node_name", value2 => $node_name,
 		name3 => "ready",     value3 => $ready,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -1398,29 +1401,29 @@ sub _check_node_readiness
 	# Make sure the storage is ready.
 	if ($ready)
 	{
-		# Still alive, find out what storage backs this VM and ensure that the LV is 'active' and 
+		# Still alive, find out what storage backs this server and ensure that the LV is 'active' and
 		# that the DRBD resource(s) they sit on are Primary and UpToDate.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "node_name", value1 => $node_name,
-			name2 => "vm",        value2 => $vm,
+			name2 => "server",        value2 => $server,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Striker->_read_vm_definition({node => $node_uuid, server => $vm});
+		$an->Striker->_read_server_definition({node => $node_uuid, server => $server});
 		
-		foreach my $lv (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node_name}{lv}})
+		foreach my $lv (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node_name}{lv}})
 		{
 			# Make sure the LV is active.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::node::${node_name}::lv::${lv}::active", value1 => $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{active},
+				name1 => "server::${server}::node::${node_name}::lv::${lv}::active", value1 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{active},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{active})
+			if ($an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{active})
 			{
 				# It's active, so now check the backing storage.
-				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}})
+				foreach my $resource (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}})
 				{
 					# For easier reading...
-					my $connection_state = $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{connection_state};
-					my $role             = $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{role};
-					my $disk_state       = $an->data->{vm}{$vm}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{disk_state};
+					my $connection_state = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{connection_state};
+					my $role             = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{role};
+					my $disk_state       = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{disk_state};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "resource",         value1 => $resource,
 						name2 => "connection_state", value2 => $connection_state,
@@ -1443,7 +1446,7 @@ sub _check_node_readiness
 				# The LV is inactive.
 				$ready = 0;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "vm",        value1 => $vm,
+					name1 => "server",        value1 => $server,
 					name2 => "node_name", value2 => $node_name,
 					name3 => "ready",     value3 => $ready,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -1451,13 +1454,39 @@ sub _check_node_readiness
 		}
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-		name1 => "vm",        value1 => $vm,
+		name1 => "server",        value1 => $server,
 		name2 => "node_name", value2 => $node_name,
 		name3 => "ready",     value3 => $ready,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($ready);
 }
+
+# Confirm that the user wants to start a server.
+sub _confirm_start_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_start_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_title = $an->String->get({key => "title_0042", variables => { 
+			server		=>	$an->data->{cgi}{server},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+		}});
+	my $say_message = $an->String->get({key => "message_0163", variables => { 
+			server		=>	$an->data->{cgi}{server},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+		}});
+	print $an->Web->template({file => "server.html", template => "confirm-start-server", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+
+	return (0);
+}	
 
 # This shows a banner asking for patience in anvil-safe-start is running on either node.
 sub _display_anvil_safe_start_notice
@@ -1519,15 +1548,15 @@ sub _display_details
 		my $node_control_panel = $an->Striker->_display_node_controls();
 		#print $node_control_panel;
 		
-		my $anvil_safe_start_notice    = "";
-		my $vm_state_and_control_panel = "";
-		my $node_details_panel         = "";
-		my $server_details_panel       = "";
-		my $gfs2_details_panel         = "";
-		my $drbd_details_panel         = "";
-		my $free_resources_panel       = "";
-		my $no_access_panel            = "";
-		my $watchdog_panel             = "";
+		my $anvil_safe_start_notice        = "";
+		my $server_state_and_control_panel = "";
+		my $node_details_panel             = "";
+		my $server_details_panel           = "";
+		my $gfs2_details_panel             = "";
+		my $drbd_details_panel             = "";
+		my $free_resources_panel           = "";
+		my $no_access_panel                = "";
+		my $watchdog_panel                 = "";
 
 		# I don't show below here unless at least one node is up.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -1539,13 +1568,13 @@ sub _display_details
 			# Displays a notice if anvil-safe-start is running on either node.
 			$anvil_safe_start_notice = $an->Striker->_display_anvil_safe_start_notice();
 			
-			# Show the user the current VM states and the control buttons.
-			$vm_state_and_control_panel = $an->Striker->_display_vm_state_and_controls();
+			# Show the user the current server states and the control buttons.
+			$server_state_and_control_panel = $an->Striker->_display_server_state_and_controls();
 			
 			# Show the state of the daemons.
 			$node_details_panel = $an->Striker->_display_node_details();
 			
-			# Show the details about each VM.
+			# Show the details about each server.
 			$server_details_panel = $an->Striker->_display_server_details();
 			
 			# Show the status of each node's GFS2 share(s)
@@ -1554,7 +1583,7 @@ sub _display_details
 			# This shows the status of each DRBD resource in the cluster.
 			$drbd_details_panel = $an->Striker->_display_drbd_details();
 			
-			# Show the free resources available for new VMs.
+			# Show the free resources available for new servers.
 			$free_resources_panel = $an->Striker->_display_free_resources();
 			
 			# This generates a panel below 'Available Resources' 
@@ -1574,7 +1603,7 @@ sub _display_details
 		print $an->Web->template({file => "server.html", template => "main-page", replace => { 
 			anvil_safe_start_notice		=>	$anvil_safe_start_notice, 
 			node_control_panel		=>	$node_control_panel,
-			vm_state_and_control_panel	=>	$vm_state_and_control_panel,
+			server_state_and_control_panel	=>	$server_state_and_control_panel,
 			node_details_panel		=>	$node_details_panel,
 			server_details_panel		=>	$server_details_panel,
 			gfs2_details_panel		=>	$gfs2_details_panel,
@@ -1723,7 +1752,7 @@ sub _display_drbd_details
 	return ($drbd_details_panel);
 }
 
-# This shows the free resources available to be assigned to new VMs.
+# This shows the free resources available to be assigned to new servers.
 sub _display_free_resources
 {
 	my $self      = shift;
@@ -1735,13 +1764,15 @@ sub _display_free_resources
 	my $free_resources_panel .= $an->Web->template({file => "server.html", template => "display-details-free-resources-header"});
 	
 	# Load some data
-	my $anvil        = $an->data->{sys}{anvil}{name};
-	my $node1_name   = $an->data->{sys}{anvil}{node1}{name};
-	my $node2_name   = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node2_name", value4 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# I only show one row for CPU and RAM, but usually have two or more VGs. So the first step is to put 
@@ -1786,9 +1817,9 @@ sub _display_free_resources
 	# Count how much RAM and CPU cores have been allocated.
 	my $allocated_cores = 0;
 	my $allocated_ram   = 0;
-	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
-		next if $vm !~ /^vm/;
+		next if $server !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
 		if ($an->data->{sys}{gfs2_down})
 		{
@@ -1797,12 +1828,12 @@ sub _display_free_resources
 		}
 		else
 		{
-			$allocated_ram   += $an->data->{vm}{$vm}{details}{ram};
-			$allocated_cores += $an->data->{vm}{$vm}{details}{cpu_count};
+			$allocated_ram   += $an->data->{server}{$server}{details}{ram};
+			$allocated_cores += $an->data->{server}{$server}{details}{cpu_count};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 				name1 => "allocated_ram",           value1 => $allocated_ram,
 				name2 => "allocated_cores",         value2 => $allocated_cores,
-				name3 => "vm::${vm}::details::ram", value3 => $an->data->{vm}{$vm}{details}{ram},
+				name3 => "server::${server}::details::ram", value3 => $an->data->{server}{$server}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -1884,7 +1915,7 @@ sub _display_free_resources
 		if (($enough_storage) && ($free_ram > $an->data->{sys}{server}{minimum_ram}))
 		{
 			$say_bns = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil=$anvil&task=provision&max_ram=$free_ram&max_cores=".$an->data->{resources}{total_cores}."&max_storage=$vg_link",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&task=provision&max_ram=$free_ram&max_cores=".$an->data->{resources}{total_cores}."&max_storage=$vg_link",
 					button_text	=>	"#!string!button_0022!#",
 					id		=>	"provision",
 				}});
@@ -2051,13 +2082,15 @@ sub _display_node_controls
 	# I want to map storage service to nodes for the "Withdraw" buttons.
 	my $expire_time  = time + $an->data->{sys}{actime_timeout};
 	my $disable_join = 0;
-	my $anvil        = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid   = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name   = $an->data->{sys}{anvil}{name};
 	my $node1_name   = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name   = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node2_name", value4 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $rowspan    = 2;
@@ -2081,7 +2114,7 @@ sub _display_node_controls
 		### TODO: See if the peer is online already and, if so, add 'confirm=true' as the join is safe.
 		my $say_join_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?anvil=$anvil&task=join_cluster&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=join_cluster&node=$node",
 				button_text	=>	"#!string!button_0031!#",
 				id		=>	"join_cluster_$node",
 			}});
@@ -2091,7 +2124,7 @@ sub _display_node_controls
 		# Withdraw button
 		my $say_withdraw_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0032!#" }});
 		my $say_withdraw_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?anvil=$anvil&task=withdraw&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=withdraw&node=$node",
 				button_text	=>	"#!string!button_0032!#",
 				id		=>	"withdraw_$node",
 			}});
@@ -2100,7 +2133,7 @@ sub _display_node_controls
 		# Shutdown button
 		my $say_shutdown_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
 		my $say_shutdown_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?anvil=$anvil&expire=$expire_time&task=poweroff_node&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=poweroff_node&node=$node",
 				button_text	=>	"#!string!button_0033!#",
 				id		=>	"poweroff_node_$node",
 			}});
@@ -2110,7 +2143,7 @@ sub _display_node_controls
 		my $say_boot_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0034!#" }});
 		my $say_boot_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?anvil=$anvil&task=poweron_node&node=$node&confirm=true",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=poweron_node&node=$node&confirm=true",
 				button_text	=>	"#!string!button_0034!#",
 				id		=>	"poweron_node_$node",
 			}});
@@ -2123,7 +2156,7 @@ sub _display_node_controls
 		# &expire=$expire_time
 		my $say_fence_node_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"highlight_dangerous",
-				button_link	=>	"?anvil=$anvil&expire=$expire_time&task=fence_node&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=fence_node&node=$node",
 				button_text	=>	"#!string!button_0037!#",
 				id		=>	"fence_node_$node",
 			}});
@@ -2151,7 +2184,7 @@ sub _display_node_controls
 				my $expire_time      = time + $an->data->{sys}{actime_timeout};
 				   $say_boot_or_stop = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 						button_class	=>	"bold_button",
-						button_link	=>	"?anvil=$anvil&expire=$expire_time&task=cold_stop",
+						button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop",
 						button_text	=>	"#!string!button_0062!#",
 						id		=>	"dual_boot",
 					}});
@@ -2172,7 +2205,7 @@ sub _display_node_controls
 				{
 					$say_boot_or_stop = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 							button_class	=>	"bold_button",
-							button_link	=>	"?anvil=$anvil&task=dual_boot&confirm=true",
+							button_link	=>	"?anvil_uuid=$anvil_uuid&task=dual_boot&confirm=true",
 							button_text	=>	"#!string!button_0035!#",
 							id		=>	"dual_boot",
 						}});
@@ -2185,7 +2218,7 @@ sub _display_node_controls
 				{
 					$say_dual_join = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 							button_class	=>	"bold_button",
-							button_link	=>	"?anvil=$anvil&task=dual_join&confirm=true",
+							button_link	=>	"?anvil_uuid=$anvil_uuid&task=dual_join&confirm=true",
 							button_text	=>	"#!string!button_0036!#",
 							id		=>	"dual_join",
 						}});
@@ -2207,7 +2240,7 @@ sub _display_node_controls
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "enabled-button-new-tab", replace => { 
 					button_class	=>	"fixed_width_button",
-					button_link	=>	"?anvil=$anvil&task=display_health&node=$node",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&task=display_health&node=$node",
 					button_text	=>	$an->data->{node}{$node}{info}{host_name},
 					id		=>	"display_health_$node",
 				}});
@@ -2266,7 +2299,7 @@ sub _display_node_controls
 			say_node2_fence		=>	$say_fence[1],
 		}});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_control_panel", value1 => $node_control_panel,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($node_control_panel);
@@ -2280,13 +2313,15 @@ sub _display_node_details
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_display_node_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil        = $an->data->{sys}{anvil}{name};
-	my $node1_name   = $an->data->{sys}{anvil}{node1}{name};
-	my $node2_name   = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node2_name", value4 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $i = 0;
@@ -2342,36 +2377,38 @@ sub _display_server_details
 	my $server_details_panel = $an->Web->template({file => "server.html", template => "display-server-details-header"});
 	
 	# Gather some details
-	my $anvil      = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node1_uuid = $an->data->{sys}{anvil}{node1}{uuid};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
 	my $node2_uuid = $an->data->{sys}{anvil}{node2}{uuid};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node1_uuid", value3 => $node1_uuid,
-		name4 => "node2_name", value4 => $node2_name,
-		name5 => "node2_uuid", value5 => $node2_uuid,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "anvil_name", value2 => $anvil_name,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node1_uuid", value4 => $node1_uuid,
+		name5 => "node2_name", value5 => $node2_name,
+		name6 => "node2_uuid", value6 => $node2_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Pull up the server details.
-	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
-		next if $vm !~ /^vm/;
+		next if $server !~ /^vm/;
 		
-		my $say_vm  = ($vm =~ /^vm:(.*)/)[0];
-		my $say_ram = $an->data->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $an->data->{vm}{$vm}{details}{ram} });
+		my $say_server  = ($server =~ /^vm:(.*)/)[0];
+		my $say_ram = $an->data->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$server}{details}{ram} });
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "vm",      value1 => $vm,
+			name1 => "server",      value1 => $server,
 			name2 => "say_ram", value2 => $say_ram,
-			name3 => "ram",     value3 => $an->data->{vm}{$vm}{details}{ram},
+			name3 => "ram",     value3 => $an->data->{server}{$server}{details}{ram},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the LV arrays populated.
 		my @lv_path;
 		my @lv_size;
-		my $host = $an->data->{vm}{$vm}{host};
+		my $host = $an->data->{server}{$server}{host};
 		
 		# If the host is "none", read the details from one of the "up" nodes.
 		if ($host eq "none")
@@ -2399,37 +2436,37 @@ sub _display_server_details
 		if ($host)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm",   value1 => $vm,
+				name1 => "server",   value1 => $server,
 				name2 => "host", value2 => $host,
 				name3 => "node", value3 => $node,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name4 => "vm::${vm}::node::${node1_name}::lv", value4 => $an->data->{vm}{$vm}{node}{$node1_name}{lv},
-				name5 => "vm::${vm}::node::${node2_name}::lv", value5 => $an->data->{vm}{$vm}{node}{$node2_name}{lv},
+				name4 => "server::${server}::node::${node1_name}::lv", value4 => $an->data->{server}{$server}{node}{$node1_name}{lv},
+				name5 => "server::${server}::node::${node2_name}::lv", value5 => $an->data->{server}{$server}{node}{$node2_name}{lv},
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $lv (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{node}{$node}{lv}})
+			foreach my $lv (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node}{lv}})
 			{
 				push @lv_path, $lv;
-				push @lv_size, $an->data->{vm}{$vm}{node}{$node}{lv}{$lv}{size};
+				push @lv_size, $an->data->{server}{$server}{node}{$node}{lv}{$lv}{size};
 			}
 			
 			# Get the network arrays built.
-			foreach my $current_bridge (sort {$a cmp $b} keys %{$an->data->{vm}{$vm}{details}{bridge}})
+			foreach my $current_bridge (sort {$a cmp $b} keys %{$an->data->{server}{$server}{details}{bridge}})
 			{
 				push @bridge, $current_bridge;
-				push @device, $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device};
-				push @mac,    uc($an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac});
-				push @type,   $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type};
+				push @device, $an->data->{server}{$server}{details}{bridge}{$current_bridge}{device};
+				push @mac,    uc($an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac});
+				push @type,   $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type};
 			}
 			
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm",   value1 => $vm,
-				name2 => "host", value2 => $an->data->{vm}{$vm}{host},
+				name1 => "server",   value1 => $server,
+				name2 => "host", value2 => $an->data->{server}{$server}{host},
 			}, file => $THIS_FILE, line => __LINE__});
-			if ($an->data->{vm}{$vm}{host} ne "none")
+			if ($an->data->{server}{$server}{host} ne "none")
 			{
-				$say_host     =  $an->data->{vm}{$vm}{host};
+				$say_host     =  $an->data->{server}{$server}{host};
 				$say_host     =~ s/\..*//;
 				$say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-network-entry", replace => { 
 						host	=>	$say_host,
@@ -2440,20 +2477,20 @@ sub _display_server_details
 		}
 		
 		# If there is no host, only the device type and MAC address are valid.
-		$an->data->{vm}{$vm}{details}{cpu_count} = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$an->data->{server}{$server}{details}{cpu_count} = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
 		$lv_path[0]                              = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
 		$lv_size[0]                              = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
 		$type[0]                                 = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
 		$mac[0]                                  = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
-		$an->data->{vm}{$vm}{details}{cpu_count} = "--" if not defined $an->data->{vm}{$vm}{details}{cpu_count};
+		$an->data->{server}{$server}{details}{cpu_count} = "--" if not defined $an->data->{server}{$server}{details}{cpu_count};
 		$say_ram                                 = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
 		$lv_path[0]                              = "--" if not defined $lv_path[0];
 		$lv_size[0]                              = "--" if not defined $lv_size[0];
 		$type[0]                                 = "--" if not defined $type[0];
 		$mac[0]                                  = "--" if not defined $mac[0];
 		$server_details_panel .= $an->Web->template({file => "server.html", template => "display-server-details-resources", replace => { 
-				say_vm		=>	$say_vm,
-				cpu_count	=>	$an->data->{vm}{$vm}{details}{cpu_count},
+				say_server		=>	$say_server,
+				cpu_count	=>	$an->data->{server}{$server}{details}{cpu_count},
 				say_ram		=>	$say_ram,
 				lv_path		=>	$lv_path[0],
 				lv_size		=>	$lv_size[0],
@@ -2470,7 +2507,7 @@ sub _display_server_details
 			for (my $i=1; $loop_count > $i; $i++)
 			{
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "vm",          value1 => $vm,
+					name1 => "server",          value1 => $server,
 					name2 => "lv_path[$i]", value2 => $lv_path[$i],
 					name3 => "lv_size[$i]", value3 => $lv_size[$i],
 				}, file => $THIS_FILE, line => __LINE__});
@@ -2481,12 +2518,12 @@ sub _display_server_details
 				{
 					my $say_net_host = "";
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "vm",   value1 => $vm,
-						name2 => "host", value2 => $an->data->{vm}{$vm}{host},
+						name1 => "server",   value1 => $server,
+						name2 => "host", value2 => $an->data->{server}{$server}{host},
 					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{vm}{$vm}{host} ne "none")
+					if ($an->data->{server}{$server}{host} ne "none")
 					{
-						my $say_host     =  $an->data->{vm}{$vm}{host};
+						my $say_host     =  $an->data->{server}{$server}{host};
 						   $say_host     =~ s/\..*//;
 						   $say_net_host =  $an->Web->template({file => "server.html", template => "display-server-details-entra-nics", replace => { 
 								say_host	=>	$say_host,
@@ -2511,59 +2548,61 @@ sub _display_server_details
 	return ($server_details_panel);
 }
 
-# This shows the current state of the VMs as well as the available control buttons.
-sub _display_vm_state_and_controls
+# This shows the current state of the servers as well as the available control buttons.
+sub _display_server_state_and_controls
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_display_vm_state_and_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_display_server_state_and_controls" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Make it a little easier to print the name of each node
-	my $anvil      = $an->data->{sys}{anvil}{name};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "anvil_uuid", value2 => $anvil_uuid,
+		name3 => "node1_name", value3 => $node1_name,
+		name4 => "node2_name", value4 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my $vm_state_and_control_panel = $an->Web->template({file => "server.html", template => "display-server-state-and-control-header", replace => { 
+	my $server_state_and_control_panel = $an->Web->template({file => "server.html", template => "display-server-state-and-control-header", replace => { 
 			anvil			=>	$an->data->{cgi}{anvil},
 			node1_short_host_name	=>	$an->data->{sys}{anvil}{node1}{short_name},
 			node2_short_host_name	=>	$an->data->{sys}{anvil}{node2}{short_name},
 		}});
 
-	foreach my $vm (sort {$a cmp $b} keys %{$an->data->{vm}})
+	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
 		# Break the name out of the hash key.
-		my ($say_vm) = ($vm =~ /^vm:(.*)/);
+		my ($say_server) = ($server =~ /^vm:(.*)/);
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm",     value1 => $vm,
-			name2 => "say vm", value2 => $say_vm,
+			name1 => "server",     value1 => $server,
+			name2 => "say_server", value2 => $say_server,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Use the node's short name for the buttons.
-		my $say_start_target     =  $an->data->{vm}{$vm}{boot_target} ? $an->data->{vm}{$vm}{boot_target} : "--";
+		my $say_start_target     =  $an->data->{server}{$server}{boot_target} ? $an->data->{server}{$server}{boot_target} : "--";
 		   $say_start_target     =~ s/\..*?$//;
 		my $start_target_long    =  $node1_name =~ /$say_start_target/ ? $an->data->{node}{$node1_name}{info}{host_name} : $an->data->{node}{$node2_name}{info}{host_name};
 		my $start_target_name    =  $node1_name =~ /$say_start_target/ ? $node1_name : $node2_name;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "say_start_target",       value1 => $say_start_target,
-			name2 => "vm::${vm}::boot_target", value2 => $an->data->{vm}{$vm}{boot_target},
-			name3 => "start_target_long",      value3 => $start_target_long,
+			name1 => "say_start_target",           value1 => $say_start_target,
+			name2 => "server::${server}::boot_target", value2 => $an->data->{server}{$server}{boot_target},
+			name3 => "start_target_long",          value3 => $start_target_long,
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		my $prefered_host =  $an->Striker->_find_preferred_host({server => $vm});
+		my $prefered_host =  $an->Striker->_find_preferred_host({server => $server});
 		   $prefered_host =~ s/\..*$//;
-		if ($an->data->{vm}{$vm}{boot_target})
+		if ($an->data->{server}{$server}{boot_target})
 		{
 			$prefered_host = "<span class=\"highlight_ready\">$prefered_host</span>";
 		}
 		else
 		{
-			my $on_host =  $an->data->{vm}{$vm}{host};
+			my $on_host =  $an->data->{server}{$server}{host};
 			   $on_host =~ s/\..*$//;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "on_host",       value1 => $on_host,
@@ -2582,17 +2621,17 @@ sub _display_vm_state_and_controls
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		my $say_migration_target =  $an->data->{vm}{$vm}{migration_target};
+		my $say_migration_target =  $an->data->{server}{$server}{migration_target};
 		$say_migration_target    =~ s/\..*?$//;
 		#my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
 		my $migrate_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
-		if ($an->data->{vm}{$vm}{can_migrate})
+		if ($an->data->{server}{$server}{can_migrate})
 		{
 			# If we're doing a cold migration, ask for confirmation. If this would be a live 
 			# migration, just do it.
-			my $button_link = "?anvil=$anvil&vm=$say_vm&task=migrate_vm&target=".$an->data->{vm}{$vm}{migration_target}."&vm_ram=".$an->data->{vm}{$vm}{details}{ram};
+			my $button_link = "?anvil_uuid=$anvil_uuid&server=$say_server&task=migrate_server";
 			my $server_data = $an->Get->server_data({
-				server   => $say_vm, 
+				server   => $say_server, 
 				anvil    => $an->data->{cgi}{anvil}, 
 			});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -2611,47 +2650,47 @@ sub _display_vm_state_and_controls
 			   $migrate_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 					button_link	=>	$button_link,
 					button_text	=>	$say_target,
-					id		=>	"migrate_vm_$vm",
+					id		=>	"migrate_server_$server",
 				}});
 		}
-		my $host_node        = $an->data->{vm}{$vm}{host};
+		my $host_node        = $an->data->{server}{$server}{host};
 		my $stop_button      = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
 		my $force_off_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0027!#" }});
-		if ($an->data->{vm}{$vm}{can_stop})
+		if ($an->data->{server}{$server}{can_stop})
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "host node",       value1 => $host_node,
-				name2 => "vm::${vm}::host", value2 => $an->data->{vm}{$vm}{host},
+				name1 => "host node",           value1 => $host_node,
+				name2 => "server::${server}::host", value2 => $an->data->{server}{$server}{host},
 			}, file => $THIS_FILE, line => __LINE__});
 			my $expire_time = time + $an->data->{sys}{actime_timeout};
 			   $stop_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil=$anvil&expire=$expire_time&task=stop_vm&vm=$say_vm&node=$host_node",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&server=$say_server&task=stop_server",
 					button_text	=>	"#!string!button_0028!#",
-					id		=>	"stop_vm_$vm",
+					id		=>	"stop_server_$server",
 				}});
 			$force_off_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"highlight_dangerous",
-					button_link	=>	"?anvil=$anvil&expire=$expire_time&task=force_off_vm&vm=$say_vm&node=$host_node&host=".$an->data->{vm}{$vm}{host},
+					button_link	=>	"?anvil_uuid=$anvil_uuid&server=$say_server&task=force_off_server&expire=$expire_time",
 					button_text	=>	"#!string!button_0027!#",
-					id		=>	"force_off_vm_$say_vm",
+					id		=>	"force_off_server_$say_server",
 				}});
 		}
 		my $start_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0029!#" }});
 
-		if ($an->data->{vm}{$vm}{boot_target})
+		if ($an->data->{server}{$server}{boot_target})
 		{
 			$start_button = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil=$anvil&task=start_vm&vm=$say_vm&node=$start_target_name&node_cluster_name=$start_target_long&confirm=true",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&server=$say_server&task=start_server&confirm=true",
 					button_text	=>	"#!string!button_0029!#",
-					id		=>	"start_vm_$vm",
+					id		=>	"start_server_$server",
 				}});
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "start_button",           value1 => $start_button,
-			name2 => "vm::${vm}::boot_target", value2 => $an->data->{vm}{$vm}{boot_target},
+			name1 => "start_button",               value1 => $start_button,
+			name2 => "server::${server}::boot_target", value2 => $an->data->{server}{$server}{boot_target},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# I need both nodes up to delete a VM.
+		# I need both nodes up to delete a server.
 		my $say_delete_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0030!#" }});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node::${node1_name}::daemon::cman::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{cman}{exit_code},
@@ -2662,56 +2701,55 @@ sub _display_vm_state_and_controls
 		{
 			$say_delete_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 					button_class	=>	"highlight_dangerous",
-					button_link	=>	"?anvil=$anvil&vm=$say_vm&task=delete_vm",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&server=$say_server&task=delete_server",
 					button_text	=>	"#!string!button_0030!#",
-					id		=>	"delete_vm_$say_vm",
+					id		=>	"delete_server_$say_server",
 				}});
 		}
 		
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1", value1 => $an->data->{vm}{$vm}{say_node1},
-			name2 => "vm::${vm}::say_node2", value2 => $an->data->{vm}{$vm}{say_node2},
+			name1 => "server::${server}::say_node1", value1 => $an->data->{server}{$server}{say_node1},
+			name2 => "server::${server}::say_node2", value2 => $an->data->{server}{$server}{say_node2},
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{vm}{$vm}{node1_ready} == 2)
+		if ($an->data->{server}{$server}{node1_ready} == 2)
 		{
-			$an->data->{vm}{$vm}{say_node1} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
+			$an->data->{server}{$server}{say_node1} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
 		}
-		elsif ($an->data->{vm}{$vm}{node1_ready} == 1)
+		elsif ($an->data->{server}{$server}{node1_ready} == 1)
 		{
-			$an->data->{vm}{$vm}{say_node1} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
+			$an->data->{server}{$server}{say_node1} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
 		}
-		if ($an->data->{vm}{$vm}{node2_ready} == 2)
+		if ($an->data->{server}{$server}{node2_ready} == 2)
 		{
-			$an->data->{vm}{$vm}{say_node2} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
+			$an->data->{server}{$server}{say_node2} = "<span class=\"highlight_good\">#!string!state_0003!#</span>";
 		}
-		elsif ($an->data->{vm}{$vm}{node2_ready} == 1)
+		elsif ($an->data->{server}{$server}{node2_ready} == 1)
 		{
-			$an->data->{vm}{$vm}{say_node2} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
+			$an->data->{server}{$server}{say_node2} = "<span class=\"highlight_ready\">#!string!state_0009!#</span>";
 		}
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "vm::${vm}::say_node1", value1 => $an->data->{vm}{$vm}{say_node1},
-			name2 => "vm::${vm}::say_node2", value2 => $an->data->{vm}{$vm}{say_node2},
+			name1 => "server::${server}::say_node1", value1 => $an->data->{server}{$server}{say_node1},
+			name2 => "server::${server}::say_node2", value2 => $an->data->{server}{$server}{say_node2},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# I don't want to make the VM editable until the cluster is
-		# runnong on at least one node.
-		my $dual_join   = (($an->data->{node}{$node1_name}{enable_join}) && ($an->data->{node}{$node2_name}{enable_join})) ? 1 : 0;
-		my $say_vm_link = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
+		# I don't want to make the server editable until the cluster is running on at least one node.
+		my $dual_join       = (($an->data->{node}{$node1_name}{enable_join}) && ($an->data->{node}{$node2_name}{enable_join})) ? 1 : 0;
+		my $say_server_link = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 			button_class	=>	"fixed_width_button",
-			button_link	=>	"?anvil=$anvil&vm=$vm&task=manage_vm",
-			button_text	=>	"$say_vm",
-			id		=>	"manage_vm_$say_vm",
+			button_link	=>	"?anvil_uuid=$anvil_uuid&server=$server&task=manage_server",
+			button_text	=>	"$say_server",
+			id		=>	"manage_server_$say_server",
 		}});
 		if ($dual_join)
 		{
-			my $say_vm_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => $say_vm }});
-			   $say_vm_link            = $say_vm_disabled_button;
+			my $say_server_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => $say_server }});
+			   $say_server_link            = $say_server_disabled_button;
 		}
 		
-		$vm_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entry", replace => { 
-				vm_link			=>	$say_vm_link,
-				say_node1		=>	$an->data->{vm}{$vm}{say_node1},
-				say_node2		=>	$an->data->{vm}{$vm}{say_node2},
+		$server_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-details-entry", replace => { 
+				server_link		=>	$say_server_link,
+				say_node1		=>	$an->data->{server}{$server}{say_node1},
+				say_node2		=>	$an->data->{server}{$server}{say_node2},
 				prefered_host		=>	$prefered_host,
 				start_button		=>	$start_button,
 				migrate_button		=>	$migrate_button,
@@ -2723,9 +2761,9 @@ sub _display_vm_state_and_controls
 	
 	# When enabling the "Start" button, be sure to start on the highest 
 	# priority host in the failover domain, when possible.
-	$vm_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-state-and-control-footer"});
+	$server_state_and_control_panel .= $an->Web->template({file => "server.html", template => "display-server-state-and-control-footer"});
 	
-	return ($vm_state_and_control_panel);
+	return ($server_state_and_control_panel);
 }
 
 # This returns a panel for controlling hard-resets via the 'APC UPS Watchdog' tools
@@ -2736,19 +2774,21 @@ sub _display_watchdog_panel
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_display_watchdog_panel" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $anvil      = $an->data->{sys}{anvil}{name};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name1 => "anvil_name", value1 => $anvil_name,
 		name2 => "node1_name", value2 => $node1_name,
 		name3 => "node2_name", value3 => $node2_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $note             = $parameter->{note} ? $parameter->{note} : "";
 	my $expire_time      = time + $an->data->{sys}{actime_timeout};
-	my $power_cycle_link = "?anvil=$anvil&expire=$expire_time&task=cold_stop&subtask=power_cycle";
-	my $power_off_link   = "?anvil=$anvil&expire=$expire_time&task=cold_stop&subtask=power_off";
+	my $power_cycle_link = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_cycle";
+	my $power_off_link   = "?anvil_uuid=$anvil_uuid&expire=$expire_time&task=cold_stop&subtask=power_off";
 	my $watchdog_panel   = "";
 	my $use_node         = "";
 	my $enable           = 0;
@@ -2924,7 +2964,7 @@ sub _footer
 	return (0);
 }
 
-# This looks through the failover domain for a VM and returns the prefered host.
+# This looks through the failover domain for a server and returns the prefered host.
 sub _find_preferred_host
 {
 	my $self      = shift;
@@ -2932,12 +2972,12 @@ sub _find_preferred_host
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_find_preferred_host" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $vm = $parameter->{server};
+	my $server = $parameter->{server};
 	
 	my $prefered_host   = "";
-	my $failover_domain = $an->data->{vm}{$vm}{failover_domain};
+	my $failover_domain = $an->data->{server}{$server}{failover_domain};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",              value1 => $vm,
+		name1 => "server",              value1 => $server,
 		name2 => "failover_domain", value2 => $failover_domain,
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $failover_domain)
@@ -2958,7 +2998,7 @@ sub _find_preferred_host
 	}
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",            value1 => $vm,
+		name1 => "server",            value1 => $server,
 		name2 => "prefered_host", value2 => $prefered_host,
 	}, file => $THIS_FILE, line => __LINE__});
 	return ($prefered_host);
@@ -2973,21 +3013,22 @@ sub _gather_node_details
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_gather_node_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
-		name2 => "node_key",  value2 => $node_key,
-		name3 => "anvil",     value3 => $anvil,
-		name4 => "node_name", value4 => $node_name,
-		name5 => "target",    value5 => $target,
-		name6 => "port",      value6 => $port,
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		name1 => "node_uuid",  value1 => $node_uuid,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "anvil_uuid", value3 => $anvil_uuid,
+		name4 => "anvil_name", value4 => $anvil_name,
+		name5 => "node_name",  value5 => $node_name,
+		name6 => "target",     value6 => $target,
+		name7 => "port",       value7 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
@@ -3171,20 +3212,20 @@ fi";
 		shell_call	=>	$shell_call,
 	});
 	
-	# VM definitions - from file
+	# server definitions - from file
 	$shell_call = $an->data->{path}{cat}." ".$an->data->{path}{definitions}."/*";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	($error, $ssh_fh, my $vm_defs) = $an->Remote->remote_call({
+	($error, $ssh_fh, my $server_defs) = $an->Remote->remote_call({
 		target		=>	$target,
 		port		=>	$port, 
 		password	=>	$password,
 		shell_call	=>	$shell_call,
 	});
 	
-	# VM definitions - in memory
+	# server definitions - in memory
 	$shell_call = "
 for server in \$(".$an->data->{path}{virsh}." list | ".$an->data->{path}{'grep'}." running | ".$an->data->{path}{awk}." '{print \$2}'); 
 do 
@@ -3195,7 +3236,7 @@ done
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	($error, $ssh_fh, my $vm_defs_in_mem) = $an->Remote->remote_call({
+	($error, $ssh_fh, my $server_defs_in_mem) = $an->Remote->remote_call({
 		target		=>	$target,
 		port		=>	$port, 
 		password	=>	$password,
@@ -3235,21 +3276,21 @@ done
 		shell_call	=>	$shell_call,
 	});
 	
-	$an->Striker->_parse_anvil_safe_start({node => $node_uuid, data => $anvil_safe_start});
-	$an->Striker->_parse_clustat         ({node => $node_uuid, data => $clustat});
-	$an->Striker->_parse_cluster_conf    ({node => $node_uuid, data => $cluster_conf});
-	$an->Striker->_parse_daemons         ({node => $node_uuid, data => $daemons});
-	$an->Striker->_parse_drbdadm_dumpxml ({node => $node_uuid, data => $parse_drbdadm_dumpxml});
-	$an->Striker->_parse_dmidecode       ({node => $node_uuid, data => $dmidecode});
-	$an->Striker->_parse_gfs2            ({node => $node_uuid, data => $gfs2});
-	$an->Striker->_parse_hosts           ({node => $node_uuid, data => $hosts});
-	$an->Striker->_parse_lvm_data        ({node => $node_uuid, data => $lvm_data});
-	$an->Striker->_parse_lvm_scan        ({node => $node_uuid, data => $lvm_scan});
-	$an->Striker->_parse_meminfo         ({node => $node_uuid, data => $meminfo});
-	$an->Striker->_parse_proc_drbd       ({node => $node_uuid, data => $proc_drbd});
-	$an->Striker->_parse_virsh           ({node => $node_uuid, data => $virsh});
-	$an->Striker->_parse_vm_defs         ({node => $node_uuid, data => $vm_defs});
-	$an->Striker->_parse_vm_defs_in_mem  ({node => $node_uuid, data => $vm_defs_in_mem});	# Always parse this after 'parse_vm_defs()' so that we overwrite it.
+	$an->Striker->_parse_anvil_safe_start  ({node => $node_uuid, data => $anvil_safe_start});
+	$an->Striker->_parse_clustat           ({node => $node_uuid, data => $clustat});
+	$an->Striker->_parse_cluster_conf      ({node => $node_uuid, data => $cluster_conf});
+	$an->Striker->_parse_daemons           ({node => $node_uuid, data => $daemons});
+	$an->Striker->_parse_drbdadm_dumpxml   ({node => $node_uuid, data => $parse_drbdadm_dumpxml});
+	$an->Striker->_parse_dmidecode         ({node => $node_uuid, data => $dmidecode});
+	$an->Striker->_parse_gfs2              ({node => $node_uuid, data => $gfs2});
+	$an->Striker->_parse_hosts             ({node => $node_uuid, data => $hosts});
+	$an->Striker->_parse_lvm_data          ({node => $node_uuid, data => $lvm_data});
+	$an->Striker->_parse_lvm_scan          ({node => $node_uuid, data => $lvm_scan});
+	$an->Striker->_parse_meminfo           ({node => $node_uuid, data => $meminfo});
+	$an->Striker->_parse_proc_drbd         ({node => $node_uuid, data => $proc_drbd});
+	$an->Striker->_parse_virsh             ({node => $node_uuid, data => $virsh});
+	$an->Striker->_parse_server_defs       ({node => $node_uuid, data => $server_defs});
+	$an->Striker->_parse_server_defs_in_mem({node => $node_uuid, data => $server_defs_in_mem});	# Always parse this after 'parse_server_defs()' so that we overwrite it.
 
 	# Some stuff, like setting the system memory, needs some post-scan math.
 	$an->Striker->_post_node_calculations({node => $node_uuid});
@@ -3271,14 +3312,24 @@ sub _header
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Load some data
-	my $anvil        = $an->data->{sys}{anvil}{name};
-	my $node1_name   = $an->data->{sys}{anvil}{node1}{name};
-	my $node2_name   = $an->data->{sys}{anvil}{node2}{name};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil",      value1 => $anvil,
-		name2 => "node1_name", value2 => $node1_name,
-		name3 => "node2_name", value3 => $node2_name,
-	}, file => $THIS_FILE, line => __LINE__});
+	my $anvil_name = "";
+	my $anvil_uuid = "";
+	my $node1_name = "";
+	my $node2_name = "";
+	if ($an->data->{cgi}{anvil_uuid})
+	{
+		$an->Striker->load_anvil();
+		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
+		$anvil_name = $an->data->{sys}{anvil}{name};
+		$node1_name = $an->data->{sys}{anvil}{node1}{name};
+		$node2_name = $an->data->{sys}{anvil}{node2}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "anvil_uuid", value1 => $anvil_uuid,
+			name2 => "anvil_name", value2 => $anvil_name,
+			name3 => "node1_name", value3 => $node1_name,
+			name4 => "node2_name", value4 => $node2_name,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Header buttons.
 	my $say_back        = "&nbsp;";
@@ -3501,13 +3552,13 @@ sub _header
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}});
-		if ($an->data->{cgi}{task} eq "manage_vm")
+		if ($an->data->{cgi}{task} eq "manage_server")
 		{
 			if ($an->data->{cgi}{change})
 			{
 				$say_refresh = "";
 				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-						button_link	=>	"?anvil=$anvil&vm=".$an->data->{cgi}{vm}."&task=manage_vm",
+						button_link	=>	"?anvil_uuid=$anvil_uuid&server=".$an->data->{cgi}{server}."&task=manage_server",
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}});
@@ -3515,7 +3566,7 @@ sub _header
 			else
 			{
 				$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-						button_link	=>	"?anvil=$anvil&vm=".$an->data->{cgi}{vm}."&task=manage_vm",
+						button_link	=>	"?anvil_uuid=$anvil_uuid&server=".$an->data->{cgi}{server}."&task=manage_server",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
 					}});
@@ -3524,7 +3575,7 @@ sub _header
 		elsif ($an->data->{cgi}{task} eq "display_health")
 		{
 			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil=$anvil&node=".$an->data->{cgi}{node}."&node_cluster_name=".$an->data->{cgi}{node_cluster_name}."&task=display_health",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&node=".$an->data->{cgi}{node}."&task=display_health",
 					button_text	=>	"$refresh_image",
 					id		=>	"refresh",
 				}});
@@ -3641,14 +3692,15 @@ sub _parse_anvil_safe_start
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_anvil_safe_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	$an->data->{node}{$node_name}{'anvil-safe-start'} = 0;
 	foreach my $line (@{$data})
@@ -3678,14 +3730,15 @@ sub _parse_cluster_conf
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	my $in_failover_domain      = 0;
 	my $current_failover_domain = "";
@@ -3869,32 +3922,32 @@ sub _parse_cluster_conf
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
-		# Find VMs.
+		# Find servers.
 		if ($line =~ /<vm.*?name="(.*?)"/)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "node_name", value1 => $node_name,
 				name2 => "line",      value2 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
-			my $vm         = $1;
-			my $vm_key     = "vm:$vm";
-			my $definition = ($line =~ /path="(.*?)"/)[0].$vm.".xml";
+			my $server     = $1;
+			my $server_key = "vm:$server";
+			my $definition = ($line =~ /path="(.*?)"/)[0].$server.".xml";
 			my $domain     = ($line =~ /domain="(.*?)"/)[0];
 			# I need to set the host to 'none' to avoid triggering the error caused by seeing and
-			# foo.xml VM definition outside of here.
+			# foo.xml server definition outside of here.
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm_key", value1 => $vm_key,
-				name2 => "definition",    value2 => $definition,
-				name3 => "domain", value3 => $domain,
+				name1 => "server_key", value1 => $server_key,
+				name2 => "definition", value2 => $definition,
+				name3 => "domain",     value3 => $domain,
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{vm}{$vm_key}{definition_file} = $definition;
-			$an->data->{vm}{$vm_key}{failover_domain} = $domain;
-			$an->data->{vm}{$vm_key}{host}            = "none" if not $an->data->{vm}{$vm_key}{host};
+			$an->data->{server}{$server_key}{definition_file} = $definition;
+			$an->data->{server}{$server_key}{failover_domain} = $domain;
+			$an->data->{server}{$server_key}{host}            = "none" if not $an->data->{server}{$server_key}{host};
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 				name1 => "node_name",  value1 => $node_name,
-				name2 => "vm_key",     value2 => $vm_key,
-				name3 => "definition", value3 => $an->data->{vm}{$vm_key}{definition_file},
-				name4 => "host",       value4 => $an->data->{vm}{$vm_key}{host},
+				name2 => "server_key", value2 => $server_key,
+				name3 => "definition", value3 => $an->data->{server}{$server_key}{definition_file},
+				name4 => "host",       value4 => $an->data->{server}{$server_key}{host},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
@@ -4059,14 +4112,15 @@ sub _parse_clustat
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	# Setup some variables.
 	my $in_member  = 0;
@@ -4171,9 +4225,9 @@ sub _parse_clustat
 		{
 			if ($line =~ /^vm:/)
 			{
-				my ($vm, $host, $state) = split/ /, $line, 3;
+				my ($server, $host, $state) = split/ /, $line, 3;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "vm",    value1 => $vm,
+					name1 => "server",    value1 => $server,
 					name2 => "host",  value2 => $host,
 					name3 => "state", value3 => $state,
 				}, file => $THIS_FILE, line => __LINE__});
@@ -4196,16 +4250,16 @@ sub _parse_clustat
 				$host =~ s/^\((.*?)\)$/$1/g;
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",   value1 => $vm,
+					name1 => "server",   value1 => $server,
 					name2 => "host", value2 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$host                         = "none" if not $host;
-				$an->data->{vm}{$vm}{host}    = $host;
-				$an->data->{vm}{$vm}{'state'} = $state;
+				$an->data->{server}{$server}{host}    = $host;
+				$an->data->{server}{$server}{'state'} = $state;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm::${vm}::host",  value1 => $an->data->{vm}{$vm}{host},
-					name2 => "vm::${vm}::state", value2 => $an->data->{vm}{$vm}{'state'},
+					name1 => "server::${server}::host",  value1 => $an->data->{server}{$server}{host},
+					name2 => "server::${server}::state", value2 => $an->data->{server}{$server}{'state'},
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				# Pick out who the peer node is.
@@ -4215,18 +4269,18 @@ sub _parse_clustat
 				}, file => $THIS_FILE, line => __LINE__});
 				if ($host eq $an->data->{node}{$node_name}{me}{name})
 				{
-					$an->data->{vm}{$vm}{peer} = $an->data->{node}{$node_name}{peer}{name};
+					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{peer}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",       value1 => $node_name,
-						name2 => "vm::${vm}::peer", value2 => $an->data->{vm}{$vm}{peer},
+						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 				else
 				{
-					$an->data->{vm}{$vm}{peer} = $an->data->{node}{$node_name}{me}{name};
+					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{me}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 						name1 => "node_name",       value1 => $node_name,
-						name2 => "vm::${vm}::peer", value2 => $an->data->{vm}{$vm}{peer},
+						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
@@ -4367,16 +4421,18 @@ sub _parse_daemons
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
-	# If all daemons are down, record here that I can shut down this VM. If any are up, enable withdrawl.
+	# If all daemons are down, record here that I can shut down this server. If any are up, enable 
+	# withdrawl.
 	$an->data->{node}{$node_name}{enable_poweroff} = 0;
 	$an->data->{node}{$node_name}{enable_withdraw} = 0;
 	
@@ -4479,7 +4535,8 @@ sub _parse_drbdadm_dumpxml
 	
 	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
 	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
 	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
@@ -4703,14 +4760,15 @@ sub _parse_dmidecode
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_dmidecode" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	# Some variables I will need.
 	my $in_cpu           = 0;
@@ -4746,9 +4804,9 @@ sub _parse_dmidecode
 	$an->data->{resources}{total_cores}   = 0;
 	$an->data->{resources}{total_threads} = 0;
 	$an->data->{resources}{total_ram}     = 0;
-	# In some cases, like in VMs, the CPU core count is not provided. So this keeps a running tally of 
-	# how many times we've gone in and out of 'in_cpu' and will be used as the core count if, when it's
-	# all done, we have 0 cores listed.
+	# In some cases, like in servers, the CPU core count is not provided. So this keeps a running tally 
+	# of how many times we've gone in and out of 'in_cpu' and will be used as the core count if, when 
+	# it's all done, we have 0 cores listed.
 	$an->data->{resources}{total_cpus} = 0;
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -4994,14 +5052,15 @@ sub _parse_gfs2
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	my $in_filesystem = 0;
 	foreach my $line (@{$data})
@@ -5090,14 +5149,15 @@ sub _parse_hosts
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_hosts" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	my $hosts_file = "";
 	foreach my $line (@{$data})
@@ -5159,14 +5219,15 @@ sub _parse_lvm_data
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_lvm_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	my $in_pvs = 0;
 	my $in_vgs = 0;
@@ -5342,14 +5403,15 @@ sub _parse_lvm_scan
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_lvm_scan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	foreach my $line (@{$data})
 	{
@@ -5422,14 +5484,15 @@ sub _parse_meminfo
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_meminfo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	foreach my $line (@{$data})
 	{
@@ -5457,14 +5520,15 @@ sub _parse_proc_drbd
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_proc_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	my $resource     = "";
 	my $minor_number = "";
@@ -5692,84 +5756,27 @@ sub _parse_proc_drbd
 	return(0);
 }
 
-# Parse the virsh data.
-sub _parse_virsh
+# This (tries to) parse the server definitions files.
+sub _parse_server_defs
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_virsh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
-	foreach my $line (@{$data})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		$line =~ s/^\s+//;
-		$line =~ s/\s+$//;
-		$line =~ s/\s+/ /g;
-		next if $line !~ /^\d/;
-		
-		my ($id, $say_vm, $state) = split/ /, $line, 3;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "id",     value1 => $id,
-			name2 => "saw_vm", value2 => $say_vm,
-			name3 => "state",  value3 => $state,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		my $vm = "vm:$say_vm";
-		$an->data->{vm}{$vm}{node}{$node_name}{virsh}{'state'} = $state;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "vm::${vm}::node::${node_name}::virsh::state", value1 => $an->data->{vm}{$vm}{node}{$node_name}{virsh}{'state'},
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		if ($state eq "paused")
-		{
-			# This VM is being migrated here, disable withdrawl of this node and migration of 
-			# this VM.
-			$an->data->{node}{$node_name}{enable_withdraw} = 0;
-			$an->data->{vm}{$vm}{can_migrate}              = 0;
-			$an->data->{node}{$node_name}{enable_poweroff} = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "node::${node_name}::enable_withdraw", value1 => $an->data->{node}{$node_name}{enable_withdraw},
-				name2 => "vm::${vm}::can_migrate",              value2 => $an->data->{vm}{$vm}{can_migrate},
-				name3 => "node::${node_name}::enable_poweroff", value3 => $an->data->{node}{$node_name}{enable_poweroff},
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
-	return(0);
-}
-
-# This (tries to) parse the VM definitions files.
-sub _parse_vm_defs
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_vm_defs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
-	
-	my $this_vm    = "";
-	my $in_domain  = 0;
-	my $this_array = [];
+	my $this_server = "";
+	my $in_domain   = 0;
+	my $this_array  = [];
 	foreach my $line (@{$data})
 	{
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -5785,7 +5792,7 @@ sub _parse_vm_defs
 		# Get this name of the current domain
 		if ($line =~ /<name>(.*?)<\/name>/)
 		{
-			$this_vm = $1;
+			$this_server = $1;
 		}
 		
 		# Push all lines into the current domain array.
@@ -5798,13 +5805,13 @@ sub _parse_vm_defs
 		my $lines = @{$this_array};
 		if ($line =~ /<\/domain>/)
 		{
-			my $vm_key = "vm:$this_vm";
+			my $server_key = "vm:$this_server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "this_vm",    value1 => $this_vm,
-				name2 => "this_array", value2 => $this_array,
-				name3 => "lines",      value3 => $lines,
+				name1 => "this_server", value1 => $this_server,
+				name2 => "this_array",  value2 => $this_array,
+				name3 => "lines",       value3 => $lines,
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{vm}{$vm_key}{xml} = $this_array;
+			$an->data->{server}{$server_key}{xml} = $this_array;
 			$in_domain  = 0;
 			$this_array = [];
 		}
@@ -5813,26 +5820,27 @@ sub _parse_vm_defs
 	return (0);
 }
 
-# This (tries to) parse the VM definitions as they are in memory.
-sub _parse_vm_defs_in_mem
+# This (tries to) parse the server definitions as they are in memory.
+sub _parse_server_defs_in_mem
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_vm_defs_in_mem" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs_in_mem" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
-	my $this_vm    = "";
-	my $in_domain  = 0;
-	my $this_array = [];
+	my $this_server = "";
+	my $in_domain   = 0;
+	my $this_array  = [];
 	foreach my $line (@{$data})
 	{
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -5848,7 +5856,7 @@ sub _parse_vm_defs_in_mem
 		# Get this name of the current domain
 		if ($line =~ /<name>(.*?)<\/name>/)
 		{
-			$this_vm = $1;
+			$this_server = $1;
 		}
 		
 		# Push all lines into the current domain array.
@@ -5860,19 +5868,78 @@ sub _parse_vm_defs_in_mem
 		# When the end of a domain is found, push the array over to $an->data.
 		if ($line =~ /<\/domain>/)
 		{
-			my $vm_key = "vm:$this_vm";
+			my $server_key = "vm:$this_server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "this_vm",    value1 => $this_vm,
-				name2 => "this_array", value2 => $this_array,
-				name3 => "lines",      value3 => @{$this_array},
+				name1 => "this_server", value1 => $this_server,
+				name2 => "this_array",  value2 => $this_array,
+				name3 => "lines",       value3 => @{$this_array},
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{vm}{$vm_key}{xml} = $this_array;
+			$an->data->{server}{$server_key}{xml} = $this_array;
 			$in_domain  = 0;
 			$this_array = [];
 		}
 	}
 	
 	return (0);
+}
+
+# Parse the virsh data.
+sub _parse_virsh
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_virsh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
+	
+	foreach my $line (@{$data})
+	{
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		next if $line !~ /^\d/;
+		
+		my ($id, $say_server, $state) = split/ /, $line, 3;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			name1 => "id",         value1 => $id,
+			name2 => "say_server", value2 => $say_server,
+			name3 => "state",      value3 => $state,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $server                                                        = "vm:$say_server";
+		   $an->data->{server}{$server}{node}{$node_name}{virsh}{'state'} = $state;
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			name1 => "server::${server}::node::${node_name}::virsh::state", value1 => $an->data->{server}{$server}{node}{$node_name}{virsh}{'state'},
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($state eq "paused")
+		{
+			# This server is being migrated here, disable withdrawl of this node and migration of
+			# this server.
+			$an->data->{node}{$node_name}{enable_withdraw} = 0;
+			$an->data->{server}{$server}{can_migrate}      = 0;
+			$an->data->{node}{$node_name}{enable_poweroff} = 0;
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+				name1 => "node::${node_name}::enable_withdraw", value1 => $an->data->{node}{$node_name}{enable_withdraw},
+				name2 => "server::${server}::can_migrate",      value2 => $an->data->{server}{$server}{can_migrate},
+				name3 => "node::${node_name}::enable_poweroff", value3 => $an->data->{node}{$node_name}{enable_poweroff},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return(0);
 }
 
 # This sorts out some values once the parsing is collected.
@@ -5883,13 +5950,14 @@ sub _post_node_calculations
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_post_node_calculations" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
 	
 	# If I have no $an->data->{node}{$node_name}{hardware}{total_memory} value, use the 'meminfo' size.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -5922,20 +5990,22 @@ sub _write_node_cache
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_write_node_cache" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
-		name2 => "node_key",  value2 => $node_key,
-		name3 => "anvil",     value3 => $anvil,
-		name4 => "node_name", value4 => $node_name,
-		name5 => "target",    value5 => $target,
-		name6 => "port",      value6 => $port,
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
+		name1 => "node_uuid",  value1 => $node_uuid,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "anvil_uuid", value3 => $anvil_uuid,
+		name4 => "anvil_name", value4 => $anvil_name,
+		name5 => "node_name",  value5 => $node_name,
+		name6 => "target",     value6 => $target,
+		name7 => "port",       value7 => $port,
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password,
@@ -5943,7 +6013,7 @@ sub _write_node_cache
 	
 	# It's a program error to try and write the cache file when the node is down.
 	my @lines;
-	my $cache_file = $an->data->{path}{'striker_cache'}."/cache_".$anvil."_".$node_name.".striker";
+	my $cache_file = $an->data->{path}{'striker_cache'}."/cache_".$anvil_name."_".$node_name.".striker";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::info::host_name",           value1 => $an->data->{node}{$node_name}{info}{host_name},
 		name2 => "node::${node_name}::info::power_check_command", value2 => $an->data->{node}{$node_name}{info}{power_check_command},
@@ -6100,7 +6170,8 @@ sub _post_scan_calculations
 	
 	# If both nodes have a given daemon down, then some data may be unavailable. This saves logic when 
 	# such checks are needed.
-	my $anvil                      = $an->data->{sys}{anvil}{name};
+	my $anvil_uuid                 = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name                 = $an->data->{sys}{anvil}{name};
 	my $node1_name                 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2_name                 = $an->data->{sys}{anvil}{node2}{name};
 	   $an->data->{sys}{gfs2_down} = 0;
@@ -6153,60 +6224,371 @@ sub _post_scan_calculations
 	return (0);
 }
 
-# This reads a VM's definition file and pulls out information about the system.
-sub _read_vm_definition
+# This sorts out what needs to happen if 'task' was set.
+sub _process_task
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_read_vm_definition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "process_task" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil     = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $vm        = $parameter->{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
+		name2 => "cgi::confirm", value2 => $an->data->{cgi}{confirm}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{task} eq "withdraw")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+#			withdraw_node($an);
+		}
+		else
+		{
+#			confirm_withdraw_node($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "join_cluster")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+#			join_cluster($an);
+		}
+		else
+		{
+#			confirm_join_cluster($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "dual_join")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			dual_join($an);
+		}
+		else
+		{
+# 			confirm_dual_join($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "fence_node")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			fence_node($an);
+		}
+		else
+		{
+# 			confirm_fence_node($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "poweroff_node")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			poweroff_node($an);
+		}
+		else
+		{
+# 			confirm_poweroff_node($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "poweron_node")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			poweron_node($an);
+		}
+		else
+		{
+# 			confirm_poweron_node($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "dual_boot")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			dual_boot($an);
+		}
+		else
+		{
+# 			confirm_dual_boot($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "cold_stop")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+			# The '1' cancels the APC UPS watchdog timer, if used.
+# 			cold_stop_anvil($an, 1);
+		}
+		else
+		{
+# 			confirm_cold_stop_anvil($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "start_server")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+			$an->Striker->_start_server();
+		}
+		else
+		{
+			$an->Striker->_confirm_start_server();
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "stop_server")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			stop_server($an);
+		}
+		else
+		{
+# 			confirm_stop_server($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "force_off_server")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			force_off_server($an);
+		}
+		else
+		{
+# 			confirm_force_off_server($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "delete_server")
+	{
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+# 			delete_server($an);
+		}
+		else
+		{
+			confirm_delete_server($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "migrate_server")
+	{
+		if ($an->data->{cgi}{confirm})
+		{
+# 			migrate_server($an);
+		}
+		else
+		{
+# 			confirm_migrate_server($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "provision")
+	{
+		### TODO: If '$an->data->{cgi}{os_variant}' is "generic", warn the
+		###       user and ask them to confirm that they really want to
+		###       do this.
+		# Confirmed yet?
+		if ($an->data->{cgi}{confirm})
+		{
+			if (verify_server_config($an))
+			{
+				# We're golden
+				$an->Log->entry({log_level => 2, message_key => "log_0216", file => $THIS_FILE, line => __LINE__});
+# 				provision_server($an);
+			}
+			else
+			{
+				# Something wasn't sane.
+				$an->Log->entry({log_level => 2, message_key => "log_0217", file => $THIS_FILE, line => __LINE__});
+# 				confirm_provision_server($an);
+			}
+		}
+		else
+		{
+# 			confirm_provision_server($an);
+		}
+	}
+	elsif ($an->data->{cgi}{task} eq "add_server")
+	{
+		# This is called after provisioning a server usually, so no need to confirm
+# 		add_server_to_cluster($an, 0);
+	}
+	elsif ($an->data->{cgi}{task} eq "manage_server")
+	{
+# 		manage_server($an);
+	}
+	elsif ($an->data->{cgi}{task} eq "display_health")
+	{
+		print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
+			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+		}});
+# 		get_storage_data($an, $an->data->{cgi}{node});
+		
+		if ((not $an->data->{storage}{is}{lsi}) && 
+		    (not $an->data->{storage}{is}{hp})  &&
+		    (not $an->data->{storage}{is}{mdadm}))
+		{
+			# No managers found
+			my $say_title = $an->String->get({key => "title_0016", variables => { node => $an->data->{cgi}{node} }});
+			my $say_message = $an->String->get({key => "message_0051", variables => { node_cluster_name => $an->data->{cgi}{node_cluster_name} }});
+			print $an->Web->template({file => "lsi-storage.html", template => "no-managers-found", replace => { 
+				title	=>	$say_title,
+				message	=>	$say_message,
+			}});
+		}
+		else
+		{
+			my $display_details = 1;
+			if ($an->data->{cgi}{'do'})
+			{
+				if ($an->data->{cgi}{'do'} eq "start_id_disk")
+				{
+# 					lsi_control_disk_id_led($an, "start");
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "stop_id_disk")
+				{
+# 					lsi_control_disk_id_led($an, "stop");
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "make_disk_good")
+				{
+# 					lsi_control_make_disk_good($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "add_disk_to_array")
+				{
+# 					lsi_control_add_disk_to_array($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "put_disk_online")
+				{
+# 					lsi_control_put_disk_online($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "put_disk_offline")
+				{
+# 					lsi_control_put_disk_offline($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "mark_disk_missing")
+				{
+# 					lsi_control_mark_disk_missing($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "spin_disk_down")
+				{
+# 					lsi_control_spin_disk_down($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "spin_disk_up")
+				{
+# 					lsi_control_spin_disk_up($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "make_disk_hot_spare")
+				{
+# 					lsi_control_make_disk_hot_spare($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
+				{
+# 					lsi_control_unmake_disk_as_hot_spare($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				elsif ($an->data->{cgi}{'do'} eq "clear_foreign_state")
+				{
+# 					lsi_control_clear_foreign_state($an);
+# 					get_storage_data($an, $an->data->{cgi}{node});
+				}
+				### Prepare Unconfigured drives for removal
+				# MegaCli64 AdpSetProp AlarmDsbl aN|a0,1,2|aALL 
+			}
+			if ($display_details)
+			{
+# 				display_node_health($an);
+			}
+		}
+	}
+	else
+	{
+		# Dirty debugging...
+		print "<pre>\n";
+		foreach my $var (sort {$a cmp $b} keys %{$an->data->{cgi}})
+		{
+			print "var: [$var] -> [$an->data->{cgi}{$var}]\n" if $an->data->{cgi}{$var};
+		}
+		print "</pre>";
+	}
 	
-	if (not $vm)
+	return(0);
+}
+
+# This reads a server's definition file and pulls out information about the system.
+sub _read_server_definition
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_read_server_definition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $server     = $parameter->{server};
+	
+	if (not $server)
 	{
 		my $say_message = $an->String->get({key => "message_0469"});
 		$an->Striker->_error({message => $say_message});
 	}
 	
-	my $say_vm = $vm;
-	if ($vm =~ /vm:(.*)/)
+	my $say_server = $server;
+	if ($server =~ /vm:(.*)/)
 	{
-		$say_vm = $1;
+		$say_server = $1;
 	}
 	else
 	{
-		$vm = "vm:$vm";
+		$server = "vm:$server";
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm",     value1 => $vm,
-		name2 => "say_vm", value2 => $say_vm,
+		name1 => "server",     value1 => $server,
+		name2 => "say_server", value2 => $say_server,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->data->{vm}{$vm}{definition_file} = "" if not defined $an->data->{vm}{$vm}{definition_file};
-	$an->data->{vm}{$vm}{xml}             = "" if not defined $an->data->{vm}{$vm}{xml};
+	$an->data->{server}{$server}{definition_file} = "" if not defined $an->data->{server}{$server}{definition_file};
+	$an->data->{server}{$server}{xml}             = "" if not defined $an->data->{server}{$server}{xml};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name2 => "vm::${vm}::definition_file", value1 => $an->data->{vm}{$vm}{definition_file},
+		name2 => "server::${server}::definition_file", value1 => $an->data->{server}{$server}{definition_file},
 	}, file => $THIS_FILE, line => __LINE__});
 
-	# Here I want to parse the VM definition XML. Hopefully it was already read in, but if not, I'll go
-	# get it.
+	# Here I want to parse the server definition XML. Hopefully it was already read in, but if not, I'll
+	# go get it.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "vm::${vm}::xml",             value1 => $an->data->{vm}{$vm}{xml},
-		name2 => "vm::${vm}::definition_file", value2 => $an->data->{vm}{$vm}{definition_file},
+		name1 => "server::${server}::xml",             value1 => $an->data->{server}{$server}{xml},
+		name2 => "server::${server}::definition_file", value2 => $an->data->{server}{$server}{definition_file},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not ref($an->data->{vm}{$vm}{xml}) eq "ARRAY") && ($an->data->{vm}{$vm}{definition_file}))
+	if ((not ref($an->data->{server}{$server}{xml}) eq "ARRAY") && ($an->data->{server}{$server}{definition_file}))
 	{
-		$an->data->{vm}{$vm}{raw_xml} = [];
-		$an->data->{vm}{$vm}{xml}     = [];
-		my $shell_call = $an->data->{path}{cat}." ".$an->data->{vm}{$vm}{definition_file};
+		$an->data->{server}{$server}{raw_xml} = [];
+		$an->data->{server}{$server}{xml}     = [];
+		my $shell_call = $an->data->{path}{cat}." ".$an->data->{server}{$server}{definition_file};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -6219,7 +6601,7 @@ sub _read_vm_definition
 		});
 		foreach my $line (@{$return})
 		{
-			push @{$an->data->{vm}{$vm}{raw_xml}}, $line;
+			push @{$an->data->{server}{$server}{raw_xml}}, $line;
 			$line =~ s/^\s+//;
 			$line =~ s/\s+$//;
 			$line =~ s/\s+/ /g;
@@ -6227,7 +6609,7 @@ sub _read_vm_definition
 				name1 => "line", value1 => $line, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			push @{$an->data->{vm}{$vm}{xml}}, $line;
+			push @{$an->data->{server}{$server}{xml}}, $line;
 		}
 	}
 	
@@ -6238,41 +6620,41 @@ sub _read_vm_definition
 	my $current_device;
 	my $current_mac_address;
 	my $current_interface_type;
-	if (not $an->data->{vm}{$vm}{xml})
+	if (not $an->data->{server}{$server}{xml})
 	{
 		# XML definition not found on the node.
 		$an->Log->entry({log_level => 2, message_key => "log_0257", message_variables => {
 			node   => $node_name, 
-			server => $vm, 
+			server => $server, 
 		}, file => $THIS_FILE, line => __LINE__});
 		return (0);
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "vm::${vm}::raw_xml", value1 => $an->data->{vm}{$vm}{raw_xml},
+		name1 => "server::${server}::raw_xml", value1 => $an->data->{server}{$server}{raw_xml},
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not ref($an->data->{vm}{$vm}{raw_xml}) eq "ARRAY")
+	if (not ref($an->data->{server}{$server}{raw_xml}) eq "ARRAY")
 	{
-		$an->data->{vm}{$vm}{raw_xml} = [];
+		$an->data->{server}{$server}{raw_xml} = [];
 		$fill_raw_xml                 = 1;
 	}
-	foreach my $line (@{$an->data->{vm}{$vm}{xml}})
+	foreach my $line (@{$an->data->{server}{$server}{xml}})
 	{
 		next if not $line;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "vm",           value1 => $vm,
+			name1 => "server",           value1 => $server,
 			name2 => "line",         value2 => $line,
 			name3 => "fill_raw_xml", value3 => $fill_raw_xml,
 		}, file => $THIS_FILE, line => __LINE__});
-		push @{$an->data->{vm}{$vm}{raw_xml}}, $line if $fill_raw_xml;
+		push @{$an->data->{server}{$server}{raw_xml}}, $line if $fill_raw_xml;
 		
 		# Pull out RAM amount.
 		if ($line =~ /<memory>(\d+)<\/memory>/)
 		{
 			# Record the memory, multiple by 1024 to get bytes.
-			$an->data->{vm}{$vm}{details}{ram} =  $1;
-			$an->data->{vm}{$vm}{details}{ram} *= 1024;
+			$an->data->{server}{$server}{details}{ram} =  $1;
+			$an->data->{server}{$server}{details}{ram} *= 1024;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::details::ram", value1 => $an->data->{vm}{$vm}{details}{ram},
+				name1 => "server::${server}::details::ram", value1 => $an->data->{server}{$server}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /<memory unit='(.*?)'>(\d+)<\/memory>/)
@@ -6280,26 +6662,26 @@ sub _read_vm_definition
 			# Record the memory, multiple by 1024 to get bytes.
 			my $units                             = $1;
 			my $ram                               = $2;
-			   $an->data->{vm}{$vm}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
+			   $an->data->{server}{$server}{details}{ram} = $an->Readable->hr_to_bytes({size => $ram, type => $units });
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name2 => "vm::${vm}::details::ram", value2 => $an->data->{vm}{$vm}{details}{ram},
+				name2 => "server::${server}::details::ram", value2 => $an->data->{server}{$server}{details}{ram},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		
 		# Pull out the CPU details
 		if ($line =~ /<vcpu>(\d+)<\/vcpu>/)
 		{
-			$an->data->{vm}{$vm}{details}{cpu_count} = $1;
+			$an->data->{server}{$server}{details}{cpu_count} = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "vm::${vm}::details::cpu_count", value1 => $an->data->{vm}{$vm}{details}{cpu_count},
+				name1 => "server::${server}::details::cpu_count", value1 => $an->data->{server}{$server}{details}{cpu_count},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		if ($line =~ /<vcpu placement='(.*?)'>(\d+)<\/vcpu>/)
 		{
 			my $cpu_type                                = $1;
-			   $an->data->{vm}{$vm}{details}{cpu_count} = $2;
+			   $an->data->{server}{$server}{details}{cpu_count} = $2;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm::${vm}::details::cpu_count", value1 => $an->data->{vm}{$vm}{details}{cpu_count},
+				name1 => "server::${server}::details::cpu_count", value1 => $an->data->{server}{$server}{details}{cpu_count},
 				name2 => "type",                          value2 => $cpu_type,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -6313,13 +6695,13 @@ sub _read_vm_definition
 		elsif ($line =~ /<\/interface/)
 		{
 			# Record the values I found
-			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
-			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
-			$an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
+			$an->data->{server}{$server}{details}{bridge}{$current_bridge}{device} = $current_device         ? $current_device         : "unknown";
+			$an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac}    = $current_mac_address    ? $current_mac_address    : "unknown";
+			$an->data->{server}{$server}{details}{bridge}{$current_bridge}{type}   = $current_interface_type ? $current_interface_type : "unknown";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "vm::${vm}::details::bridge::${current_bridge}::device", value1 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{device},
-				name2 => "vm::${vm}::details::bridge::${current_bridge}::mac",    value2 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{mac},
-				name3 => "vm::${vm}::details::bridge::${current_bridge}::type",   value3 => $an->data->{vm}{$vm}{details}{bridge}{$current_bridge}{type},
+				name1 => "server::${server}::details::bridge::${current_bridge}::device", value1 => $an->data->{server}{$server}{details}{bridge}{$current_bridge}{device},
+				name2 => "server::${server}::details::bridge::${current_bridge}::mac",    value2 => $an->data->{server}{$server}{details}{bridge}{$current_bridge}{mac},
+				name3 => "server::${server}::details::bridge::${current_bridge}::type",   value3 => $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type},
 			}, file => $THIS_FILE, line => __LINE__});
 			$current_bridge         = "";
 			$current_device         = "";
@@ -6331,14 +6713,14 @@ sub _read_vm_definition
 		if ($in_interface)
 		{
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "vm",             value1 => $vm,
+				name1 => "server",             value1 => $server,
 				name2 => "interface line", value2 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($line =~ /source bridge='(.*?)'/)
 			{
 				$current_bridge = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",             value1 => $vm,
+					name1 => "server",             value1 => $server,
 					name2 => "current_bridge", value2 => $current_bridge,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -6346,7 +6728,7 @@ sub _read_vm_definition
 			{
 				$current_mac_address = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",                  value1 => $vm,
+					name1 => "server",                  value1 => $server,
 					name2 => "current_mac_address", value2 => $current_mac_address,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -6354,7 +6736,7 @@ sub _read_vm_definition
 			{
 				$current_device = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",             value1 => $vm,
+					name1 => "server",             value1 => $server,
 					name2 => "current_device", value2 => $current_device,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -6362,7 +6744,7 @@ sub _read_vm_definition
 			{
 				$current_interface_type = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm",                     value1 => $vm,
+					name1 => "server",                     value1 => $server,
 					name2 => "current_interface_type", value2 => $current_interface_type,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -6385,10 +6767,10 @@ sub _read_vm_definition
 			{
 				my $lv = $1;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "vm", value1 => $vm,
+					name1 => "server", value1 => $server,
 					name2 => "lv", value2 => $lv,
 				}, file => $THIS_FILE, line => __LINE__});
-				$an->Striker->_check_lv({node => $node_uuid, server => $vm, logical_volume => $lv});
+				$an->Striker->_check_lv({node => $node_uuid, server => $server, logical_volume => $lv});
 			}
 		}
 		
@@ -6399,22 +6781,152 @@ sub _read_vm_definition
 			my ($type)   = ($line =~ / type='(.*?)'/);
 			my ($listen) = ($line =~ / listen='(.*?)'/);
 			$an->Log->entry({log_level => 2, message_key => "log_0230", message_variables => {
-				server  => $say_vm, 
+				server  => $say_server, 
 				type    => $type,
 				address => $listen, 
 				port    => $port, 
 			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{vm}{$vm}{graphics}{type}     = $type;
-			$an->data->{vm}{$vm}{graphics}{port}     = $port;
-			$an->data->{vm}{$vm}{graphics}{'listen'} = $listen;
+			$an->data->{server}{$server}{graphics}{type}     = $type;
+			$an->data->{server}{$server}{graphics}{port}     = $port;
+			$an->data->{server}{$server}{graphics}{'listen'} = $listen;
 		}
 	}
-	my $xml_line_count = @{$an->data->{vm}{$vm}{raw_xml}};
+	my $xml_line_count = @{$an->data->{server}{$server}{raw_xml}};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "xml_line_count", value1 => $xml_line_count,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return (0);
+}
+
+# This boots a server on a target node.
+sub _start_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_start_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Update our view of the Anvil! before we proceed.
+	$an->Striker->scan_anvil();
+	
+	# This simply calls '$an->Cman->boot_server()' and processes the output.
+	my $anvil_name = $an->data->{cgi}{anvil_uuid};
+	my $server     = $an->data->{cgi}{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "server",     value2 => $server,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $server)
+	{
+		# Error...
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0125", code => 125, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $say_title = $an->String->get({key => "title_0046", variables => { server =>	$server }});
+	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
+	
+	# Which node to use?
+	my $target   = "";
+	my $port     = "";
+	my $password = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
+		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{anvil}{node1}{online})
+	{
+		my $node_name = $an->data->{sys}{anvil}{node1}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
+		{
+			# Use this node.
+			$target   = $an->data->{sys}{anvil}{node1}{use_ip};
+			$port     = $an->data->{sys}{anvil}{node1}{use_port};
+			$password = $an->data->{sys}{anvil}{node1}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "port",   value2 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ($an->data->{sys}{anvil}{node2}{online})
+	{
+		my $node_name = $an->data->{sys}{anvil}{node2}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
+		{
+			# Use this node.
+			$target   = $an->data->{sys}{anvil}{node2}{use_ip};
+			$port     = $an->data->{sys}{anvil}{node2}{use_port};
+			$password = $an->data->{sys}{anvil}{node2}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "port",   value2 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $target)
+	{
+		# Couldn't log into either node.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Call 'anvil-boot-server'
+	my $shell_call = $an->data->{path}{'anvil-boot-server'}." --server $server";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	if (@{$return} > 0)
+	{
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+
+			   $line    = $an->Web->parse_text_line({line => $line});
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	$status,
+				message	=>	$message,
+			}});
+		}
+		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
+	}
+	print $an->Web->template({file => "server.html", template => "start-server-footer"});
+	
+	return(0);
 }
 
 1;

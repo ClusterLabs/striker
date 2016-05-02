@@ -1241,7 +1241,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0043"><![CDATA[About to shut down the server <span class="fixed_width">#!variable!server!#</span>!]]></key>
 		<key name="title_0044"><![CDATA[About to forcefully power off <span class="fixed_width">#!variable!server!#</span>!]]></key>
 		<key name="title_0045"><![CDATA[About to <span class="highlight_dangerous"><b>delete</b></span> the <b>#!variable!server!#</b> server!]]></key>
-		<key name="title_0046"><![CDATA[Booting <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
+		<key name="title_0046"><![CDATA[Booting: [<span class="fixed_width">#!variable!server!#</span>] now...]]></key>
 		<key name="title_0047"><![CDATA[About to <span class="highlight_dangerous">cold migrate</span> the server <span class="fixed_width">#!variable!server!#</span> to <b><span class="fixed_width">#!variable!target!#</span></b>.]]></key>
 		<key name="title_0048"><![CDATA[Booting of <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> failed!]]></key>
 		<key name="title_0049"><![CDATA[Migrating <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!target!#</span> now...]]></key>
@@ -3162,6 +3162,45 @@ SUPPORT
 		<key name="smit_message_0006">Install target is now disabled.</key>
 		<key name="smit_message_0007">Successfully started: [#!variable!daemon!#].</key>
 		<key name="smit_message_0008">Successfully stopped: [#!variable!daemon!#].</key>
+		
+		<!-- Anvil! boot servers -->
+		<!-- logs -->
+		<key name="abs_log_0001">#!variable!this_file!# has started.</key>
+		<key name="abs_log_0002">The run is finished.</key>
+		
+		<!-- errors -->
+		<key name="abs_error_0001"><![CDATA[The server you wish to boot must be specified via '--server <name>'. See --help for more information.]]></key>
+		<key name="abs_error_0002"><![CDATA[Failed to connect to any #!string!brand_0019!# databases. Please (carefully) boot using the 'clusvcadm' command directly.]]></key>
+		
+		<!-- messages -->
+		<key name="abs_message_0001"><![CDATA[
+ -=] #!string!brand_0004!# - #!string!brand_0002!#
+
+DESCRIPTION
+
+This program boots the requested server. It uses the logic in 
+AN::Tools::Cman->boot_server() to determine where, and if, to actually boot 
+the server. It does nothing more on it's own.
+
+
+SWITCHES
+
+ --server <name>
+
+	This is the name of the server to boot.
+
+ -h, -?, --help
+
+	Show this dialoge and exit.
+
+                  
+SUPPORT
+
+#!string!brand_0012!#
+
+                                                          #!string!brand_0001!#
+]]>
+		</key>
 	</lang>
 
 	<!-- Japanese -->

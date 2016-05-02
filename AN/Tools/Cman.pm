@@ -58,7 +58,7 @@ sub parent
 # Provided methods                                                                                          #
 #############################################################################################################
 
-### TODO: For now, this requires being invoked on the node.
+### NOTE: For now, this requires being invoked on the node.
 # This boots a server and tries to handle common errors. It will boot on the healthiest node if one host is
 # not ready (ie: The VM's backing storage is on a DRBD resource that is Inconsistent on one of the nodes).
 # Returns:
@@ -1194,15 +1194,13 @@ sub stop_server
 	{
 		### Remote calls
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}

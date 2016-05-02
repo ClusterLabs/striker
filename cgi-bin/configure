@@ -48,14 +48,6 @@ my $an = AN::Tools->new({data => {
 # Initialize.
 $an->Web->initialize_http();
 
-# print "<pre>\n";
-# foreach my $key (sort {$a cmp $b} keys %ENV)
-# {
-# 	print "$key\t->\t[".$ENV{$key}."]\n";
-# }
-# print "</pre>\n";
-# die;
-
 $an->default_language    ($an->data->{sys}{language});
 $an->default_log_language($an->data->{'log'}{language});
 $an->default_log_file    ($an->data->{'log'}{file});

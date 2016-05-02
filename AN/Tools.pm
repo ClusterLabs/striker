@@ -659,6 +659,7 @@ sub _set_paths
 	$an->data->{path}{yum_repos}       = "/etc/yum.repos.d";
 	
 	# Tools
+	$an->data->{path}{'anvil-boot-server'}    = "/sbin/striker/anvil-boot-server";
 	$an->data->{path}{'anvil-kick-apc-ups'}   = "/sbin/striker/anvil-kick-apc-ups";
 	$an->data->{path}{'anvil-run-jobs'}       = "/sbin/striker/anvil-run-jobs";
 	$an->data->{path}{'anvil-map-network'}    = "/sbin/striker/anvil-map-network";

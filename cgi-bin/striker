@@ -22,8 +22,6 @@
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 # TODO:
-# - Make it so that the backup from one Striker can be loaded into another without changing it's host 
-#   name/IPs/etc. A "Don't alter system" checkbox?
 # - Adding a VM that is running on the "wrong" node gets it added to the wrong failover domain.
 # - Check to see if a VM is running outside of clustat and, if so, auto-enable it on the appropriate node.
 # - Add a "Cancel" button to each "Confirm" box.
@@ -34,10 +32,6 @@
 # - Make "Bond -> Down" be a warning
 # - Enable an administrative LOCK OUT switch to prevent reboots during things like firmware updates.
 # - Add ability to "unplug" a server's network cable.
-#   
-# - Pass a timestamp with all CGI commands for five minutes in the future and abort any actions that are 
-#   older than that.
-# - Pass $THIS_FILE and __LINE__ on all 'error()' calls.
 # 
 # BUG:
 # - [root@rm-a01n01 ~]# virsh destroy vm07-newmas
@@ -51,7 +45,6 @@ use warnings;
 use lib 'lib';
 
 my $THIS_FILE = "striker";
-use AN::Common;
 use AN::Cluster;
 use AN::Striker;
 use AN::Tools;
@@ -150,8 +143,16 @@ elsif ($an->data->{cgi}{config})
 elsif ($an->data->{cgi}{anvil_uuid})
 {
 	$an->Striker->load_anvil();
-	$an->Striker->scan_anvil();
-	$an->Striker->_display_details();
+	if ($an->data->{cgi}{task})
+	{
+		$an->data->{sys}{show_refresh} = 0;
+		$an->Striker->_process_task();
+	}
+	else
+	{
+		$an->Striker->scan_anvil();
+		$an->Striker->_display_details();
+	}
 }
 elsif ($an->data->{cgi}{cluster})
 {
@@ -179,7 +180,7 @@ elsif ($an->data->{cgi}{cluster})
 		if ($an->data->{cgi}{task})
 		{
 			$an->data->{sys}{show_refresh} = 0;
-			AN::Striker::process_task($an);
+			$an->Striker->_process_task();
 		}
 		else
 		{

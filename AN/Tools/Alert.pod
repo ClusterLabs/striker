@@ -736,6 +736,14 @@ The 'AN::Tools::Striker' module's 'configure_ssh_local()' method was called with
 
 The 'AN::Tools::Striker' module's 'update_peers()' method was called without passing in an Anvil! name.
 
+=head2 C<125>
+
+The 'AN::Tools::Striker' module's '_start_server()' method was called without passing in an server name to boot.
+
+=head2 C<126>
+
+The 'AN::Tools::Striker' module's '_start_server()' failed to find a node that was online and running the cluster software.
+
 
 =head1 SEE ALSO
 

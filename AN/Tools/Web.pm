@@ -20,6 +20,7 @@ my $THIS_FILE = "Web.pm";
 # get_cgi
 # more_info_link
 # no_db_access
+# parse_text_line
 # template
 
 
@@ -403,6 +404,7 @@ sub check_all_cgi
 		"save",
 		"script", 
 		"section",
+		"server",
 		"server_migration_type",
 		"server_note",
 		"server_post_migration_arguments",
@@ -678,6 +680,35 @@ sub no_db_access
 	
 	
 	return(0);
+}
+
+# This tries to parse lines coming back from a shell call to add highlighting and what-not.
+sub parse_text_line
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $line = $parameter->{line} ? $parameter->{line} : "";
+	
+	# 'Da good ^_^
+	$line =~ s/(success)/<span class="highlight_good">$1<\/span>/ig;
+	$line =~ s/\[\s+(ok)\s+\]/[ <span class="highlight_good">$1<\/span> ]/ig;
+	
+	# Informational.
+	$line =~ s/(done)/<span class="highlight_ready">$1<\/span>/ig;
+	$line =~ s/(Starting Cluster):/<span class="highlight_ready">$1<\/span>:/ig;
+	$line =~ s/(Stopping Cluster):/<span class="highlight_ready">$1<\/span>:/ig;
+	$line =~ s/(shut down)/<span class="highlight_ready">$1<\/span>/ig;
+	
+	# 'Da bad. ;_;
+	$line =~ s/(failed)/<span class="highlight_bad">$1<\/span>/ig;
+	$line =~ s/\[\s+(failed)\s+\]/[ <span class="highlight_bad">$1<\/span> ]/ig;
+	
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		name1 => "line", value1 => $line,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($line);
 }
 
 # This takes the name of a template file, the name of a template section within the file, an optional hash
