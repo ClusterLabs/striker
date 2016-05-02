@@ -563,7 +563,7 @@ sub ping
 	$an->Alert->_set_error;
 	$an->Log->entry({log_level => 3, message_key => "tools_log_0001", message_variables => { function => "AN::Tools::Check->ping()" }, file => $THIS_FILE, line => __LINE__});
 	
-	if (not $parameter->{target})
+	if (not $parameter->{ping})
 	{
 		$an->Alert->warning({title_key => "warning_title_0004", message_key => "warning_title_0003", file => "$THIS_FILE", line => __LINE__});
 		return(2);

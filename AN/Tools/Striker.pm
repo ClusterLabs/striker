@@ -26,6 +26,7 @@ my $THIS_FILE = "Striker.pm";
 # _check_node_daemons
 # _check_node_readiness
 # _confirm_start_server
+# _confirm_stop_server
 # _display_anvil_safe_start_notice
 # _display_details
 # _display_drbd_details
@@ -60,6 +61,7 @@ my $THIS_FILE = "Striker.pm";
 # _process_tasks
 # _read_server_definition
 # _start_server
+# _stop_server
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -150,7 +152,7 @@ sub load_anvil
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "load_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	if ($parameter->{anvil_uuid})
@@ -172,9 +174,17 @@ sub load_anvil
 	}
 	elsif (not $an->data->{anvils}{$anvil_uuid}{name})
 	{
-		# Valid UUID, but it doesn't match a known Anvil!.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0104", message_variables => { uuid => $anvil_uuid }, code => 104, file => "$THIS_FILE", line => __LINE__});
-		return(1);
+		# Load Anvil! data and try again.
+		$an->ScanCore->parse_anvil_data();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "anvils::${anvil_uuid}::name", value1 => $an->data->{anvils}{$anvil_uuid}{name}, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $an->data->{anvils}{$anvil_uuid}{name})
+		{
+			# Valid UUID, but it doesn't match a known Anvil!.
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0104", message_variables => { uuid => $anvil_uuid }, code => 104, file => "$THIS_FILE", line => __LINE__});
+			return(1);
+		}
 	}
 	
 	# Variables
@@ -190,7 +200,7 @@ sub load_anvil
 	$an->data->{sys}{anvil}{smtp}{security}       = $an->data->{anvils}{$anvil_uuid}{smtp}{security};
 	$an->data->{sys}{anvil}{smtp}{authentication} = $an->data->{anvils}{$anvil_uuid}{smtp}{authentication};
 	$an->data->{sys}{anvil}{smtp}{helo_domain}    = $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 		name1  => "sys::anvil::uuid",                 value1  => $an->data->{sys}{anvil}{uuid}, 
 		name2  => "sys::anvil::name",                 value2  => $an->data->{sys}{anvil}{name}, 
 		name3  => "sys::anvil::description",          value3  => $an->data->{sys}{anvil}{description}, 
@@ -210,7 +220,7 @@ sub load_anvil
 	$an->data->{sys}{anvil}{smtp}{password} = $an->data->{anvils}{$anvil_uuid}{smtp}{password};
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::password",       value1 => $an->data->{sys}{anvil}{password}, 
-		name1 => "sys::anvil::smtp::password", value1 => $an->data->{sys}{anvil}{smtp}{password}, 
+		name2 => "sys::anvil::smtp::password", value2 => $an->data->{sys}{anvil}{smtp}{password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	foreach my $node_key ("node1", "node2")
@@ -233,7 +243,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{use_port}       =  $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0017", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -298,7 +308,7 @@ sub mark_node_as_clean_off
 	
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -367,12 +377,29 @@ sub mark_node_as_clean_on
 		return(1);
 	}
 	
-	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
-	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $host_data = $an->ScanCore->get_hosts();
+	my $node_name = "";
+	foreach my $hash_ref (@{$host_data})
+	{
+		my $host_uuid = $hash_ref->{host_uuid};
+		my $host_name = $hash_ref->{host_name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "host_uuid", value1 => $host_uuid, 
+			name2 => "host_name", value2 => $host_name, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($host_uuid eq $node_uuid)
+		{
+			# We're good.
+			$node_name = $host_name;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_name", value1 => $node_name, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_name)
 	{
 		# Valid UUID, but it doesn't match a known Anvil!.
@@ -911,7 +938,7 @@ sub scan_servers
 			$an->data->{server}{$server}{say_node2} = "--";
 			my $say_error = $an->String->get({key => "message_0271", variables => { 
 					server	=>	$say_server,
-					url	=>	"?cluster=".$an->data->{sys}{anvil}{name}."&task=add_server&name=$say_server&node=$host_node&state=$server_state",
+					url	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=add_server&name=$say_server&node=$host_node&state=$server_state",
 				}});
 			$an->Striker->_error({message => $say_error, fatal => 0});
 			next;
@@ -1217,7 +1244,7 @@ sub _check_lv
 	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -1316,7 +1343,7 @@ sub _check_node_daemons
 	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -1369,7 +1396,7 @@ sub _check_node_readiness
 	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -1487,6 +1514,35 @@ sub _confirm_start_server
 
 	return (0);
 }	
+
+# Confirm that the user wants to stop a VM.
+sub _confirm_stop_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_title   = $an->String->get({key => "title_0043", variables => { server => $an->data->{cgi}{vm} }});
+	my $say_message = $an->String->get({key => "message_0165", variables => { 
+			server		=>	$an->data->{cgi}{vm},
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+		}});
+	my $say_warning                 =  $an->String->get({key => "message_0166", variables => { server => $an->data->{cgi}{server} }});
+	my $say_precaution              =  $an->String->get({key => "message_0167"});
+	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	print $an->Web->template({file => "server.html", template => "confirm-stop-server", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		warning		=>	$say_warning,
+		precaution	=>	$say_precaution,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+
+	return (0);
+}
 
 # This shows a banner asking for patience in anvil-safe-start is running on either node.
 sub _display_anvil_safe_start_notice
@@ -1906,7 +1962,7 @@ sub _display_free_resources
 	{
 		# The cluster is running, so enable the media library link.
 		$say_mc = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"/cgi-bin/mediaLibrary?cluster=".$an->data->{cgi}{anvil},
+				button_link	=>	"/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
 				button_text	=>	"#!string!button_0023!#",
 				id		=>	"media_library_".$an->data->{cgi}{anvil},
 			}});
@@ -3017,7 +3073,7 @@ sub _gather_node_details
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -3349,8 +3405,8 @@ sub _header
 	
 	if ($an->data->{cgi}{config})
 	{
-		$an->data->{sys}{cgi_string} =~ s/cluster=(.*?)&//;
-		$an->data->{sys}{cgi_string} =~ s/cluster=(.*)$//;
+		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*?)&//;
+		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*)$//;
 		if ($an->data->{cgi}{save})
 		{
 			$say_refresh = "";
@@ -3548,7 +3604,7 @@ sub _header
 	elsif ($an->data->{cgi}{task})
 	{
 		$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?cluster=".$an->data->{cgi}{anvil},
+				button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}});
@@ -3593,7 +3649,7 @@ sub _header
 	elsif ($caller eq "mediaLibrary")
 	{
 		$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"/cgi-bin/striker?cluster=".$an->data->{cgi}{anvil},
+				button_link	=>	"/cgi-bin/striker?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
 				button_text	=>	"$back_image",
 				id		=>	"back",
 			}});
@@ -3631,7 +3687,7 @@ sub _header
 			name1 => "sys::cgi_string",  value1 => $an->data->{sys}{cgi_string},
 			name2 => "ENV{REQUEST_URI}", value2 => $ENV{REQUEST_URI},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{sys}{cgi_string} eq "?cluster=".$an->data->{cgi}{anvil}) && 
+		if (($an->data->{sys}{cgi_string} eq "?anvil_uuid=".$an->data->{cgi}{anvil_uuid}) && 
 		    ($ENV{REQUEST_URI} !~ /mediaLibrary/i))
 		{
 			# Use refresh
@@ -3643,7 +3699,7 @@ sub _header
 			# Do not use refresh
 			$an->Log->entry({log_level => 3, message_key => "log_0015", file => $THIS_FILE, line => __LINE__});
 		}
-		if ($an->data->{sys}{cgi_string} =~ /\?cluster=.*?&task=display_health&node=.*?&node_cluster_name=(.*)$/)
+		if ($an->data->{sys}{cgi_string} =~ /\?anvil_uuid.*?&task=display_health&node=.*?$/)
 		{
 			my $final = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -3696,7 +3752,7 @@ sub _parse_anvil_safe_start
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -3734,7 +3790,7 @@ sub _parse_cluster_conf
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -4116,7 +4172,7 @@ sub _parse_clustat
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -4425,7 +4481,7 @@ sub _parse_daemons
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -4533,15 +4589,15 @@ sub _parse_drbdadm_dumpxml
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_drbdadm_dumpxml" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node} ? $parameter->{node} : "";
-	my $node_key  = $an->data->{db}{nodes}{$node_uuid}{node_key};
+	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
+	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name = $an->data->{db}{nodes}{$node_uuid}{name};
-	my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password  = $an->data->{sys}{anvil}{$node_key}{password};
-	my $data      = $parameter->{data};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	my $data       = $parameter->{data};
 	
 	# Some variables we will fill later.
 	my $xml_data  = "";
@@ -4764,7 +4820,7 @@ sub _parse_dmidecode
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5056,7 +5112,7 @@ sub _parse_gfs2
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5153,7 +5209,7 @@ sub _parse_hosts
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5223,7 +5279,7 @@ sub _parse_lvm_data
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5407,7 +5463,7 @@ sub _parse_lvm_scan
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5488,7 +5544,7 @@ sub _parse_meminfo
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5524,7 +5580,7 @@ sub _parse_proc_drbd
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5768,7 +5824,7 @@ sub _parse_server_defs
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5832,7 +5888,7 @@ sub _parse_server_defs_in_mem
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5895,7 +5951,7 @@ sub _parse_virsh
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5954,7 +6010,7 @@ sub _post_node_calculations
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -5994,7 +6050,7 @@ sub _write_node_cache
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -6354,7 +6410,7 @@ sub _process_task
 		}
 		else
 		{
-# 			confirm_stop_server($an);
+			confirm_stop_server($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "force_off_server")
@@ -6546,7 +6602,7 @@ sub _read_server_definition
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
 	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_name  = $an->data->{db}{nodes}{$node_uuid}{name};
+	my $node_name  = $an->data->{sys}{anvil}{$node_key}{name};
 	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
 	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
 	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
@@ -6807,9 +6863,6 @@ sub _start_server
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_start_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# Update our view of the Anvil! before we proceed.
-	$an->Striker->scan_anvil();
-	
 	# This simply calls '$an->Cman->boot_server()' and processes the output.
 	my $anvil_name = $an->data->{cgi}{anvil_uuid};
 	my $server     = $an->data->{cgi}{server};
@@ -6829,56 +6882,7 @@ sub _start_server
 	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
 	
 	# Which node to use?
-	my $target   = "";
-	my $port     = "";
-	my $password = "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
-		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{sys}{anvil}{node1}{online})
-	{
-		my $node_name = $an->data->{sys}{anvil}{node1}{name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
-		{
-			# Use this node.
-			$target   = $an->data->{sys}{anvil}{node1}{use_ip};
-			$port     = $an->data->{sys}{anvil}{node1}{use_port};
-			$password = $an->data->{sys}{anvil}{node1}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "target", value1 => $target,
-				name2 => "port",   value2 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	elsif ($an->data->{sys}{anvil}{node2}{online})
-	{
-		my $node_name = $an->data->{sys}{anvil}{node2}{name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
-		{
-			# Use this node.
-			$target   = $an->data->{sys}{anvil}{node2}{use_ip};
-			$port     = $an->data->{sys}{anvil}{node2}{use_port};
-			$password = $an->data->{sys}{anvil}{node2}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "target", value1 => $target,
-				name2 => "port",   value2 => $port,
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $password,
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-	}
-	
+	my ($target, $port, $password) = $an->Cman->find_node_in_cluster();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6908,7 +6912,7 @@ sub _start_server
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "line", value1 => $line,
 			}, file => $THIS_FILE, line => __LINE__});
-
+			
 			   $line    = $an->Web->parse_text_line({line => $line});
 			my $message = ($line =~ /^(.*)\[/)[0];
 			my $status  = ($line =~ /(\[.*)$/)[0];
@@ -6925,6 +6929,92 @@ sub _start_server
 		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
 	}
 	print $an->Web->template({file => "server.html", template => "start-server-footer"});
+	
+	return(0);
+}
+
+# This sttempts to shut down a VM on a target node.
+sub _stop_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $server = $an->data->{cgi}{server};
+	my $reason = $an->data->{sys}{stop_reason} ? $an->data->{sys}{stop_reason} : "clean";
+	
+	if (not $server)
+	{
+		# Error...
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0127", code => 127, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	if (time > $an->data->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = $an->String->get({key => "title_0185"});
+		my $say_message = $an->String->get({key => "message_0444", variables => { server => $an->data->{cgi}{vm} }});
+		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+		return(1);
+	}
+	
+	# Which node to use?
+	my ($target, $port, $password) = $an->Cman->find_node_in_cluster();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $target)
+	{
+		# Couldn't log into either node.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0128", message_variables => { server => $server }, code => 128, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Call 'anvil-boot-server'
+	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		#$line =~ s/Local machine/$say_node/;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		   $line    = $an->Web->parse_text_line({line => $line});
+		my $message = ($line =~ /^(.*)\[/)[0];
+		my $status  = ($line =~ /(\[.*)$/)[0];
+		if (not $message)
+		{
+			$message = $line;
+			$status  = "";
+		}
+		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			status	=>	$status,
+			message	=>	$message,
+		}});
+	}
+	print $an->Web->template({file => "server.html", template => "stop-server-footer"});
 	
 	return(0);
 }

@@ -647,6 +647,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0124"><![CDATA[The 'AN::Tools::Striker' module's 'update_peers()' method was called without passing in an Anvil! name.]]></key>
 		<key name="error_message_0125"><![CDATA[The 'AN::Tools::Striker' module's '_start_server()' method was called without passing in an server name to boot.]]></key>
 		<key name="error_message_0126"><![CDATA[The 'AN::Tools::Striker' module's '_start_server()' method was asked to boot the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
+		<key name="error_message_0127"><![CDATA[The 'AN::Tools::Striker' module's '_start_server()' method was called without passing in an server name to boot.]]></key>
+		<key name="error_message_0128"><![CDATA[The 'AN::Tools::Striker' module's '_stop_server()' method was asked to gracefully shut down the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
+		<key name="error_message_0129"><![CDATA[The 'AN::Tools::Get' module's 'peer_network_details()' failed to find the Anvil! peer for the node.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

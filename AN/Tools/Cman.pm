@@ -14,6 +14,7 @@ my $THIS_FILE = "Cman.pm";
 # boot_server
 # cluster_conf_data
 # cluster_name
+# find_node_in_cluster
 # get_clustat_data
 # get_cluster_server_list
 # migrate_server
@@ -769,6 +770,77 @@ sub cluster_name
 	return($cluster_name);
 }
 
+# This looks at node 1, then is necessary, node 2 checking to see if the node is accessible and, if so, if 
+# rgmanager is running. If one of the nodes is accessible, the name/IP, ssh port and password to access it 
+# are returned.
+sub find_node_in_cluster
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	# If no anvil uuid has been set, return.
+	if (not $an->data->{cgi}{anvil_uuid})
+	{
+		return("", "", "");
+	}
+	
+	# Update our view of the Anvil! before we proceed.
+	$an->Striker->scan_anvil();
+	
+	my $target   = "";
+	my $port     = "";
+	my $password = "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
+		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{sys}{anvil}{node1}{online})
+	{
+		my $node_name = $an->data->{sys}{anvil}{node1}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
+		{
+			# Use this node.
+			$target   = $an->data->{sys}{anvil}{node1}{use_ip};
+			$port     = $an->data->{sys}{anvil}{node1}{use_port};
+			$password = $an->data->{sys}{anvil}{node1}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "port",   value2 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	elsif ($an->data->{sys}{anvil}{node2}{online})
+	{
+		my $node_name = $an->data->{sys}{anvil}{node2}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0")
+		{
+			# Use this node.
+			$target   = $an->data->{sys}{anvil}{node2}{use_ip};
+			$port     = $an->data->{sys}{anvil}{node2}{use_port};
+			$password = $an->data->{sys}{anvil}{node2}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "port",   value2 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	return($target, $port, $password);
+}
+
 # This returns a hash reference containing the cluster information from 'clustat'.
 sub get_clustat_data
 {
@@ -1167,7 +1239,7 @@ sub stop_server
 	my $server   = $parameter->{server}   ? $parameter->{server}   : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
-	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clear";
+	my $reason   = $parameter->{reason}   ? $parameter->{reason}   : "clean";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "server", value1 => $server, 

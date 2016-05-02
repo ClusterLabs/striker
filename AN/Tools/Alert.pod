@@ -744,6 +744,18 @@ The 'AN::Tools::Striker' module's '_start_server()' method was called without pa
 
 The 'AN::Tools::Striker' module's '_start_server()' failed to find a node that was online and running the cluster software.
 
+=head2 C<127>
+
+The 'AN::Tools::Striker' module's '_stop_server()' method was called without passing in an server name to shut down.
+
+=head2 C<128>
+
+The 'AN::Tools::Striker' module's '_stop_server()' failed to find a node that was online and running the cluster software.
+
+=head2 C<129>
+
+The 'AN::Tools::Get' module's 'peer_network_details()' failed to find the Anvil! peer for the node.
+
 
 =head1 SEE ALSO
 

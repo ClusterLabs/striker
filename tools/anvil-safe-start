@@ -197,11 +197,11 @@ update_striker_conf($an, "disable");
 # Now wait for access to a ScanCore database.
 wait_for_scancore_database($an);
 
-# Mark the node as clean on now.
-$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid}});
-
 # Who am I and what Anvil! do I belong to?
 find_myself($an);
+
+# Mark the node as clean on now.
+$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{host_uuid}});
 
 # Wait until I can ping the peer on all three networks. This will not return until access is available on all
 # networks. There is no timeout.
@@ -2059,18 +2059,17 @@ sub wait_for_access
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_for_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Get the node_key for my peer.
+	my ($peer_bcn, $peer_sn, $peer_ifn) = $an->Get->peer_network_details();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "peer_bcn", value1 => $peer_bcn, 
+		name2 => "peer_sn",  value2 => $peer_sn, 
+		name3 => "peer_ifn", value3 => $peer_ifn, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $can_ping = 0;
 	until ($can_ping)
 	{
-		my $peer_bcn = $an->data->{peer}{bcn_name};
-		my $peer_sn  = $an->data->{peer}{sn_name};
-		my $peer_ifn = $an->data->{peer}{ifn_name};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "peer_bcn", value1 => $peer_bcn, 
-			name2 => "peer_sn",  value2 => $peer_sn, 
-			name3 => "peer_ifn", value3 => $peer_ifn, 
-		}, file => $THIS_FILE, line => __LINE__});
-		
 		my $bcn_access = 0;
 		my $sn_access  = 0;
 		my $ifn_access = 0;
@@ -2186,22 +2185,20 @@ sub find_myself
 	$an->data->{sys}{local_node}     = $return->{local_node};
 	$an->data->{sys}{peer_node}      = $return->{peer_node};
 	$an->data->{sys}{anvil_name}     = $return->{anvil_name};
+	$an->data->{sys}{anvil_uuid}     = $return->{anvil_uuid};
 	$an->data->{sys}{anvil_password} = $return->{anvil_password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "sys::local_node", value1 => $an->data->{sys}{local_node}, 
 		name2 => "sys::peer_node",  value2 => $an->data->{sys}{peer_node}, 
 		name3 => "sys::anvil_name", value3 => $an->data->{sys}{anvil_name}, 
+		name4 => "sys::anvil_uuid", value4 => $an->data->{sys}{anvil_uuid}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
 		name1 => "sys::anvil_password", value1 => $an->data->{sys}{anvil_password}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### This should work without a password now.
-	# If I didn't get a password, exit.
-	#if (not $an->data->{sys}{anvil_password})
-	#{
-	#	$an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "asst_error_0011", code => 12, file => "$THIS_FILE", line => __LINE__});
-	#}
+	# Load the Anvil!
+	$an->Striker->load_anvil({anvil_uuid => $an->data->{sys}{anvil_uuid}});
 	
 	# If I am node 2, make note so that we can delay and let node 1 run first.
 	if (($an->data->{sys}{local_node} =~ /n02/) or ($an->data->{sys}{local_node} =~ /node02/) or ($an->data->{sys}{local_node} =~ /node2/))

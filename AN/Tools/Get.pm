@@ -28,6 +28,7 @@ my $THIS_FILE = "Get.pm";
 # node_info
 # notify_data
 # owner_data
+# peer_network_details
 # pids				- Move to System.pm
 # ram_used_by_pid		- Move to System.pm
 # ram_used_by_program		- Move to System.pm
@@ -1155,7 +1156,7 @@ sub local_anvil_details
 	};
 	foreach my $hash_ref (@{$data->{clusternodes}->[0]->{clusternode}})
 	{
-		my $node_name = $hash_ref->{name};
+		my $node_name        = $hash_ref->{name};
 		my $hash_reflt_name  = $hash_ref->{altname}->[0]->{name} ? $hash_ref->{altname}->[0]->{name} : "";
 		if (($hostname_full  eq $node_name) or 
 		    ($hostname_full  eq $hash_reflt_name)  or 
@@ -1204,7 +1205,10 @@ sub local_anvil_details
 			{
 				# Found it.
 				$return->{anvil_password} = $hash_ref->{anvil_password};
-				
+				$return->{anvil_uuid}     = $hash_ref->{anvil_uuid};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return->anvil_uuid", value1 => $return->{anvil_uuid}, 
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		if (ref($an->data->{cluster}) eq "HASH")
@@ -1246,12 +1250,13 @@ sub local_anvil_details
 	$return->{health}{'local'} = $an->ScanCore->host_state();
 	$return->{health}{peer}    = $an->ScanCore->host_state({target => $an->Cman->peer_hostname});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "local_node",    value1 => $return->{local_node}, 
 		name2 => "peer_node",     value2 => $return->{peer_node}, 
 		name3 => "anvil_name",    value3 => $return->{anvil_name}, 
-		name4 => "health::local", value4 => $return->{health}{'local'}, 
-		name5 => "health::peer",  value5 => $return->{health}{peer}, 
+		name4 => "anvil_uuid",    value4 => $return->{anvil_uuid}, 
+		name5 => "health::local", value5 => $return->{health}{'local'}, 
+		name6 => "health::peer",  value6 => $return->{health}{peer}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "anvil_password", value1 => $return->{anvil_password}, 
@@ -2090,6 +2095,48 @@ WHERE
 	return($return);
 }
 
+# This expects $an->Striker->load_anvil() to have been run and that the host node calling this is one of the
+# Anvil! node members.
+sub peer_network_details
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $node_key = "";
+	if ($an->hostname eq $an->data->{sys}{anvil}{node1}{name})
+	{
+		$node_key = "node2";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_key", value1 => $node_key, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($an->hostname eq $an->data->{sys}{anvil}{node2}{name})
+	{
+		$node_key = "node1";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_key", value1 => $node_key, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Failed to find my peer's network details
+		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0090", code => 90, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $peer_bcn = $an->data->{sys}{anvil}{$node_key}{bcn_ip};
+	my $peer_sn  = $an->data->{sys}{anvil}{$node_key}{sn_ip};
+	my $peer_ifn = $an->data->{sys}{anvil}{$node_key}{ifn_ip};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "peer_bcn", value1 => $peer_bcn, 
+		name2 => "peer_sn",  value2 => $peer_sn, 
+		name3 => "peer_ifn", value3 => $peer_ifn, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	return($peer_bcn, $peer_sn, $peer_ifn);
+}
+
 # This returns the PIDs found in 'ps' for a given program name.
 sub pids
 {
@@ -2119,7 +2166,7 @@ sub pids
 		name3 => "target",       value3 => $target, 
 		name4 => "port",         value4 => $port, 
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -2209,8 +2256,11 @@ sub pids
 				}
 				else
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-						name1 => "pid", value1 => $pid,
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+						name1 => "pid",          value1 => $pid,
+						name2 => "target",       value2 => $target, 
+						name3 => "command",      value3 => $command,
+						name4 => "program_name", value4 => $program_name, 
 					}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
 					push @{$pids}, $pid;
 				}
