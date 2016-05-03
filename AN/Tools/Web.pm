@@ -733,7 +733,7 @@ sub template
 	my $file       = $parameter->{file};
 	my $template   = $parameter->{template};
 	my $replace    = $parameter->{replace}    ? $parameter->{replace}    : {};
-	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 0;
+	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 1;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "file",       value1 => $file,
 		name2 => "template",   value2 => $template,

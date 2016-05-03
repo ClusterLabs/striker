@@ -2650,7 +2650,7 @@ sub server_data
 	my $server_name = $parameter->{server} ? $parameter->{server} : "";
 	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
 	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
 		name3 => "anvil",       value3 => $anvil, 
@@ -2669,7 +2669,7 @@ sub server_data
 			server => $server_name, 
 			anvil  => $anvil, 
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($server_uuid !~ /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/)
@@ -2974,9 +2974,9 @@ sub server_uuid
 	my $an        = $self->parent;
 	
 	my $uuid = "";
-	my $server = $parameter->{server};
-	my $anvil  = $parameter->{anvil};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	my $server = $parameter->{server} ? $parameter->{server} : "";
+	my $anvil  = $parameter->{anvil}  ? $parameter->{anvil}  : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "server", value1 => $server, 
 		name2 => "anvil",  value2 => $anvil, 
 	}, file => $THIS_FILE, line => __LINE__});

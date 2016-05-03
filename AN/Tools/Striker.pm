@@ -200,7 +200,7 @@ sub load_anvil
 	$an->data->{sys}{anvil}{smtp}{security}       = $an->data->{anvils}{$anvil_uuid}{smtp}{security};
 	$an->data->{sys}{anvil}{smtp}{authentication} = $an->data->{anvils}{$anvil_uuid}{smtp}{authentication};
 	$an->data->{sys}{anvil}{smtp}{helo_domain}    = $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
 		name1  => "sys::anvil::uuid",                 value1  => $an->data->{sys}{anvil}{uuid}, 
 		name2  => "sys::anvil::name",                 value2  => $an->data->{sys}{anvil}{name}, 
 		name3  => "sys::anvil::description",          value3  => $an->data->{sys}{anvil}{description}, 
@@ -243,7 +243,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{use_port}       =  $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0017", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -1524,21 +1524,18 @@ sub _confirm_stop_server
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
-	my $say_title   = $an->String->get({key => "title_0043", variables => { server => $an->data->{cgi}{vm} }});
-	my $say_message = $an->String->get({key => "message_0165", variables => { 
-			server		=>	$an->data->{cgi}{vm},
-			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
-		}});
-	my $say_warning                 =  $an->String->get({key => "message_0166", variables => { server => $an->data->{cgi}{server} }});
-	my $say_precaution              =  $an->String->get({key => "message_0167"});
-	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	my $say_title      = $an->String->get({key => "title_0043", variables => { server => $an->data->{cgi}{server} }});
+	my $say_message    = $an->String->get({key => "message_0165", variables => { server => $an->data->{cgi}{server} }});
+	my $say_warning    =  $an->String->get({key => "message_0166", variables => { server => $an->data->{cgi}{server} }});
+	my $say_precaution =  $an->String->get({key => "message_0167"});
+	my $expire_time    =  time + $an->data->{sys}{actime_timeout};
 	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
 	print $an->Web->template({file => "server.html", template => "confirm-stop-server", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
 		warning		=>	$say_warning,
 		precaution	=>	$say_precaution,
-		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true&expire=$expire_time",
 	}});
 
 	return (0);
@@ -1554,7 +1551,7 @@ sub _display_anvil_safe_start_notice
 	
 	my $anvil_safe_start_notice = "";
 	my $display_notice          = 0;
-	my $this_cluster            = $an->data->{cgi}{anvil};
+	my $this_cluster            = $an->data->{cgi}{anvil_uuid};
 	foreach my $node ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
 	{
 		$display_notice = 1 if $an->data->{node}{$node}{'anvil-safe-start'};
@@ -1964,7 +1961,7 @@ sub _display_free_resources
 		$say_mc = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 				button_link	=>	"/cgi-bin/mediaLibrary?anvil_uuid=".$an->data->{cgi}{anvil_uuid},
 				button_text	=>	"#!string!button_0023!#",
-				id		=>	"media_library_".$an->data->{cgi}{anvil},
+				id		=>	"media_library_".$an->data->{cgi}{anvil_uuid},
 			}});
 		
 		# Enable the "New Server" button if there is enough free memory and storage space.
@@ -2455,10 +2452,9 @@ sub _display_server_details
 		
 		my $say_server  = ($server =~ /^vm:(.*)/)[0];
 		my $say_ram = $an->data->{sys}{gfs2_down} ? "#!string!symbol_0011!#" : $an->Readable->bytes_to_hr({'bytes' => $an->data->{server}{$server}{details}{ram} });
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "server",      value1 => $server,
-			name2 => "say_ram", value2 => $say_ram,
-			name3 => "ram",     value3 => $an->data->{server}{$server}{details}{ram},
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+			name1 => "say_ram",                         value1 => $say_ram,
+			name2 => "server::${server}::details::ram", value2 => $an->data->{server}{$server}{details}{ram},
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Get the LV arrays populated.
@@ -2467,18 +2463,31 @@ sub _display_server_details
 		my $host = $an->data->{server}{$server}{host};
 		
 		# If the host is "none", read the details from one of the "up" nodes.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "host", value1 => $host,
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($host eq "none")
 		{
 			# If the first node is running, use it. Otherwise use the second node.
 			my $node1_daemons_running = $an->Striker->_check_node_daemons({node => $node1_uuid});
 			my $node2_daemons_running = $an->Striker->_check_node_daemons({node => $node2_uuid});
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				name1 => "node1_daemons_running", value1 => $node1_daemons_running,
+				name2 => "node2_daemons_running", value2 => $node2_daemons_running,
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($node1_daemons_running)
 			{
 				$host = $node1_name;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($node2_daemons_running)
 			{
 				$host = $node2_name;
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+					name1 => "host", value1 => $host,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 		
@@ -2491,20 +2500,17 @@ sub _display_server_details
 		my $say_host     = "--";
 		if ($host)
 		{
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "server",   value1 => $server,
-				name2 => "host", value2 => $host,
-				name3 => "node", value3 => $node,
-			}, file => $THIS_FILE, line => __LINE__});
-			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-				name4 => "server::${server}::node::${node1_name}::lv", value4 => $an->data->{server}{$server}{node}{$node1_name}{lv},
-				name5 => "server::${server}::node::${node2_name}::lv", value5 => $an->data->{server}{$server}{node}{$node2_name}{lv},
+			my $node = $host;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server::${server}::node::${node}::lv", value1 => $an->data->{server}{$server}{node}{$node}{lv},
 			}, file => $THIS_FILE, line => __LINE__});
 			foreach my $lv (sort {$a cmp $b} keys %{$an->data->{server}{$server}{node}{$node}{lv}})
 			{
 				push @lv_path, $lv;
 				push @lv_size, $an->data->{server}{$server}{node}{$node}{lv}{$lv}{size};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "server::${server}::node::${node}::lv::${lv}::size", value1 => $an->data->{server}{$server}{node}{$node}{lv}{$lv}{size},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			
 			# Get the network arrays built.
@@ -2516,9 +2522,8 @@ sub _display_server_details
 				push @type,   $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type};
 			}
 			
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "server",   value1 => $server,
-				name2 => "host", value2 => $an->data->{server}{$server}{host},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
 			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{server}{$server}{host} ne "none")
 			{
@@ -2534,18 +2539,28 @@ sub _display_server_details
 		
 		# If there is no host, only the device type and MAC address are valid.
 		$an->data->{server}{$server}{details}{cpu_count} = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
-		$lv_path[0]                              = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
-		$lv_size[0]                              = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
-		$type[0]                                 = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
-		$mac[0]                                  = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$lv_path[0]                                      = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$lv_size[0]                                      = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$type[0]                                         = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
+		$mac[0]                                          = "#!string!symbol_0011!#" if $an->data->{sys}{gfs2_down};
 		$an->data->{server}{$server}{details}{cpu_count} = "--" if not defined $an->data->{server}{$server}{details}{cpu_count};
-		$say_ram                                 = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
-		$lv_path[0]                              = "--" if not defined $lv_path[0];
-		$lv_size[0]                              = "--" if not defined $lv_size[0];
-		$type[0]                                 = "--" if not defined $type[0];
-		$mac[0]                                  = "--" if not defined $mac[0];
+		$say_ram                                         = "--" if ((not $say_ram) or ($say_ram =~ /^0 /));
+		$lv_path[0]                                      = "--" if not defined $lv_path[0];
+		$lv_size[0]                                      = "--" if not defined $lv_size[0];
+		$type[0]                                         = "--" if not defined $type[0];
+		$mac[0]                                          = "--" if not defined $mac[0];
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+			name1 => "say_server",                            value1 => $say_server,
+			name2 => "server::${server}::details::cpu_count", value2 => $an->data->{server}{$server}{details}{cpu_count},
+			name3 => "say_ram",                               value3 => $say_ram,
+			name4 => "lv_path[0]",                            value4 => $lv_path[0],
+			name5 => "lv_size[0]",                            value5 => $lv_size[0],
+			name6 => "say_net_host",                          value6 => $say_net_host,
+			name7 => "type[0]",                               value7 => $type[0],
+			name8 => "mac[0]",                                value8 => $mac[0],
+		}, file => $THIS_FILE, line => __LINE__});
 		$server_details_panel .= $an->Web->template({file => "server.html", template => "display-server-details-resources", replace => { 
-				say_server		=>	$say_server,
+				say_server	=>	$say_server,
 				cpu_count	=>	$an->data->{server}{$server}{details}{cpu_count},
 				say_ram		=>	$say_ram,
 				lv_path		=>	$lv_path[0],
@@ -2558,6 +2573,12 @@ sub _display_server_details
 		my $lv_count   = @lv_path;
 		my $nic_count  = @bridge;
 		my $loop_count = $lv_count >= $nic_count ? $lv_count : $nic_count;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "lv_count",   value1 => $lv_count,
+			name2 => "nic_count",  value2 => $nic_count,
+			name3 => "loop_count", value3 => $loop_count,
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($loop_count > 0)
 		{
 			for (my $i=1; $loop_count > $i; $i++)
@@ -2625,7 +2646,7 @@ sub _display_server_state_and_controls
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $server_state_and_control_panel = $an->Web->template({file => "server.html", template => "display-server-state-and-control-header", replace => { 
-			anvil			=>	$an->data->{cgi}{anvil},
+			anvil			=>	$an->data->{cgi}{anvil_uuid},
 			node1_short_host_name	=>	$an->data->{sys}{anvil}{node1}{short_name},
 			node2_short_host_name	=>	$an->data->{sys}{anvil}{node2}{short_name},
 		}});
@@ -2634,7 +2655,7 @@ sub _display_server_state_and_controls
 	{
 		# Break the name out of the hash key.
 		my ($say_server) = ($server =~ /^vm:(.*)/);
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "server",     value1 => $server,
 			name2 => "say_server", value2 => $say_server,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2678,9 +2699,8 @@ sub _display_server_state_and_controls
 		}
 		
 		my $say_migration_target =  $an->data->{server}{$server}{migration_target};
-		$say_migration_target    =~ s/\..*?$//;
-		#my $migrate_button = "<span class=\"disabled_button\">#!string!button_0024!#</span>";
-		my $migrate_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
+		   $say_migration_target =~ s/\..*?$//;
+		my $migrate_button       =  $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0024!#" }});
 		if ($an->data->{server}{$server}{can_migrate})
 		{
 			# If we're doing a cold migration, ask for confirmation. If this would be a live 
@@ -2688,7 +2708,7 @@ sub _display_server_state_and_controls
 			my $button_link = "?anvil_uuid=$anvil_uuid&server=$say_server&task=migrate_server";
 			my $server_data = $an->Get->server_data({
 				server   => $say_server, 
-				anvil    => $an->data->{cgi}{anvil}, 
+				anvil    => $an->data->{cgi}{anvil_uuid}, 
 			});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 				name1 => "button_link",                 value1 => $button_link,
@@ -3415,14 +3435,14 @@ sub _header
 					button_text	=>	"$back_image",
 					id		=>	"back",
 				}});
-			if (($an->data->{cgi}{anvil} eq "new") && ($an->data->{cgi}{cluster__new__name}))
+			if (($an->data->{cgi}{anvil_uuid} eq "new") && ($an->data->{cgi}{cluster__new__name}))
 			{
-				$an->data->{cgi}{anvil} = $an->data->{cgi}{cluster__new__name};
+				$an->data->{cgi}{anvil_uuid} = $an->data->{cgi}{cluster__new__name};
 			}
-			if (($an->data->{cgi}{anvil}) && ($an->data->{cgi}{anvil} ne "new"))
+			if (($an->data->{cgi}{anvil_uuid}) && ($an->data->{cgi}{anvil_uuid} ne "new"))
 			{
 				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-						button_link	=>	"?anvil=".$an->data->{cgi}{anvil}."&config=true",
+						button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&config=true",
 						button_text	=>	"$back_image",
 						id		=>	"back",
 					}});
@@ -3445,9 +3465,9 @@ sub _header
 			{
 				$say_refresh = "";
 				my $back = "/cgi-bin/configure";
-				if ($an->data->{cgi}{anvil})
+				if ($an->data->{cgi}{anvil_uuid})
 				{
-					$back = "?anvil=".$an->data->{cgi}{anvil}."&config=true";
+					$back = "?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&config=true";
 				}
 				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 						button_link	=>	$back,
@@ -3570,10 +3590,10 @@ sub _header
 						}});
 				}
 			}
-			elsif ($an->data->{cgi}{anvil})
+			elsif ($an->data->{cgi}{anvil_uuid})
 			{
 				$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-						button_link	=>	"?anvil=".$an->data->{cgi}{anvil}."&config=true",
+						button_link	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&config=true",
 						button_text	=>	"$refresh_image",
 						id		=>	"refresh",
 					}});
@@ -3591,7 +3611,7 @@ sub _header
 					button_text	=>	"$back_image",
 					id		=>	"back",
 				}});
-			if ($an->data->{cgi}{anvil})
+			if ($an->data->{cgi}{anvil_uuid})
 			{
 				$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
 						button_link	=>	"?config=true",
@@ -4140,7 +4160,7 @@ sub _parse_cluster_conf
 		$an->data->{node}{$this_node}{info}{fence_methods} =~ s/\s+$//;
 	}
 	### NOTE: These expose passwords!
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::info::fence_methods", value1 => $an->data->{node}{$node_name}{info}{fence_methods},
 		name2 => "node::${peer}::info::fence_methods",      value2 => $an->data->{node}{$peer}{info}{fence_methods},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -5293,11 +5313,10 @@ sub _parse_lvm_data
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "in_pvs", value1 => $in_pvs,
-			name2 => "in_vgs", value2 => $in_vgs,
-			name3 => "in_lvs", value3 => $in_lvs,
-			name4 => "line",   value4 => $line,
+		# This is a little odd but it makes reading the logs cleaner
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "in_pvs/in_vgs/in_lvs", value1 => "$in_pvs/$in_vgs/$in_lvs",
+			name2 => "line",                 value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^PV/)
 		{
@@ -5348,7 +5367,7 @@ sub _parse_lvm_data
 			$an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{free_size}  = $free_size;
 			$an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{used_size}  = $used_size;
 			$an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{uuid}       = $uuid;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "node::${node_name}::lvm::pv::${this_pv}::used_by_vg", value1 => $an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{used_by_vg},
 				name2 => "node::${node_name}::lvm::pv::${this_pv}::attributes", value2 => $an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{attributes},
 				name3 => "node::${node_name}::lvm::pv::${this_pv}::total_size", value3 => $an->data->{node}{$node_name}{lvm}{pv}{$this_pv}{total_size},
@@ -5398,7 +5417,7 @@ sub _parse_lvm_data
 			$an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{free_pe}    = $free_pe;
 			$an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{free_space} = $vg_free;
 			$an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{pv_name}    = $pv_name;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0010", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0010", message_variables => {
 				name1  => "node::${node_name}::hardware::lvm::vg::${this_vg}::clustered",  value1  => $an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{clustered},
 				name2  => "node::${node_name}::hardware::lvm::vg::${this_vg}::pe_size",    value2  => $an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{pe_size},
 				name3  => "node::${node_name}::hardware::lvm::vg::${this_vg}::total_pe",   value3  => $an->data->{node}{$node_name}{hardware}{lvm}{vg}{$this_vg}{total_pe},
@@ -5436,7 +5455,7 @@ sub _parse_lvm_data
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{total_size} = $total_size;
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{uuid}       = $uuid;
 			$an->data->{node}{$node_name}{lvm}{lv}{$path}{on_devices} = $devices;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0007", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
 				name1 => "node::${node_name}::lvm::lv::${path}::name",       value1 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{name},
 				name2 => "node::${node_name}::lvm::lv::${path}::on_vg",      value2 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{on_vg},
 				name3 => "node::${node_name}::lvm::lv::${path}::active",     value3 => $an->data->{node}{$node_name}{lvm}{lv}{$path}{active},
@@ -5474,7 +5493,7 @@ sub _parse_lvm_scan
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /(.*?)\s+'(.*?)'\s+\[(.*?)\]/)
@@ -5484,7 +5503,7 @@ sub _parse_lvm_scan
 			my $size      = $3;
 			my $bytes     = $an->Readable->hr_to_bytes({size => $size });
 			my $vg        = ($lv =~ /^\/dev\/(.*?)\//)[0];
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 				name1 => "node_name", value1 => $node_name,
 				name2 => "state",     value2 => $state,
 				name3 => "vg",        value3 => $vg,
@@ -5521,7 +5540,7 @@ sub _parse_lvm_scan
 			{
 				$an->data->{resources}{lv}{$lv}{on_vg} = $vg;
 				$an->data->{resources}{lv}{$lv}{size}  = $bytes;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "resources::lv::${lv}::on_vg", value1 => $an->data->{resources}{lv}{$lv}{on_vg},
 					name2 => "resources::lv::${lv}::size",  value2 => $an->data->{resources}{lv}{$lv}{size},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -5818,7 +5837,7 @@ sub _parse_server_defs
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
@@ -5858,11 +5877,11 @@ sub _parse_server_defs
 		}
 		
 		# When the end of a domain is found, push the array over to $an->data.
-		my $lines = @{$this_array};
 		if ($line =~ /<\/domain>/)
 		{
 			my $server_key = "vm:$this_server";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			my $lines      = @{$this_array};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_server", value1 => $this_server,
 				name2 => "this_array",  value2 => $this_array,
 				name3 => "lines",       value3 => $lines,
@@ -5882,7 +5901,7 @@ sub _parse_server_defs_in_mem
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs_in_mem" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_parse_server_defs_in_mem" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_uuid  = $parameter->{node} ? $parameter->{node} : "";
 	my $node_key   = $an->data->{db}{nodes}{$node_uuid}{node_key};
@@ -5899,7 +5918,7 @@ sub _parse_server_defs_in_mem
 	my $this_array  = [];
 	foreach my $line (@{$data})
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "line", value1 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		
@@ -5925,10 +5944,11 @@ sub _parse_server_defs_in_mem
 		if ($line =~ /<\/domain>/)
 		{
 			my $server_key = "vm:$this_server";
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+			my $lines      = @{$this_array};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "this_server", value1 => $this_server,
 				name2 => "this_array",  value2 => $this_array,
-				name3 => "lines",       value3 => @{$this_array},
+				name3 => "lines",       value3 => $lines,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{server}{$server_key}{xml} = $this_array;
 			$in_domain  = 0;
@@ -6297,11 +6317,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			withdraw_node($an);
+#			$an->Striker->_withdraw_node($an);
 		}
 		else
 		{
-#			confirm_withdraw_node($an);
+#			$an->Striker->_confirm_withdraw_node($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "join_cluster")
@@ -6309,11 +6329,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			join_cluster($an);
+#			$an->Striker->_join_cluster($an);
 		}
 		else
 		{
-#			confirm_join_cluster($an);
+#			$an->Striker->_confirm_join_cluster($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_join")
@@ -6321,11 +6341,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			dual_join($an);
+# 			$an->Striker->_dual_join($an);
 		}
 		else
 		{
-# 			confirm_dual_join($an);
+# 			$an->Striker->_confirm_dual_join($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "fence_node")
@@ -6333,11 +6353,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			fence_node($an);
+# 			$an->Striker->_fence_node($an);
 		}
 		else
 		{
-# 			confirm_fence_node($an);
+# 			$an->Striker->_confirm_fence_node($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "poweroff_node")
@@ -6345,11 +6365,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			poweroff_node($an);
+# 			$an->Striker->_poweroff_node($an);
 		}
 		else
 		{
-# 			confirm_poweroff_node($an);
+# 			$an->Striker->_confirm_poweroff_node($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "poweron_node")
@@ -6357,11 +6377,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			poweron_node($an);
+# 			$an->Striker->_poweron_node($an);
 		}
 		else
 		{
-# 			confirm_poweron_node($an);
+# 			$an->Striker->_confirm_poweron_node($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_boot")
@@ -6369,11 +6389,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			dual_boot($an);
+# 			$an->Striker->_dual_boot($an);
 		}
 		else
 		{
-# 			confirm_dual_boot($an);
+# 			$an->Striker->_confirm_dual_boot($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "cold_stop")
@@ -6382,11 +6402,11 @@ sub _process_task
 		if ($an->data->{cgi}{confirm})
 		{
 			# The '1' cancels the APC UPS watchdog timer, if used.
-# 			cold_stop_anvil($an, 1);
+# 			$an->Striker->_cold_stop_anvil($an, 1);
 		}
 		else
 		{
-# 			confirm_cold_stop_anvil($an);
+# 			$an->Striker->_confirm_cold_stop_anvil($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "start_server")
@@ -6406,11 +6426,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			stop_server($an);
+			$an->Striker->_stop_server();
 		}
 		else
 		{
-			confirm_stop_server($an);
+			$an->Striker->_confirm_stop_server();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "force_off_server")
@@ -6418,11 +6438,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			force_off_server($an);
+# 			$an->Striker->_force_off_server($an);
 		}
 		else
 		{
-# 			confirm_force_off_server($an);
+# 			$an->Striker->_confirm_force_off_server($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "delete_server")
@@ -6430,29 +6450,28 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			delete_server($an);
+# 			$an->Striker->_delete_server($an);
 		}
 		else
 		{
-			confirm_delete_server($an);
+# 			$an->Striker->_confirm_delete_server($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "migrate_server")
 	{
 		if ($an->data->{cgi}{confirm})
 		{
-# 			migrate_server($an);
+# 			$an->Striker->_migrate_server($an);
 		}
 		else
 		{
-# 			confirm_migrate_server($an);
+# 			$an->Striker->_confirm_migrate_server($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "provision")
 	{
-		### TODO: If '$an->data->{cgi}{os_variant}' is "generic", warn the
-		###       user and ask them to confirm that they really want to
-		###       do this.
+		### TODO: If '$an->data->{cgi}{os_variant}' is "generic", warn the user and ask them to 
+		###       confirm that they really want to do this.
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
@@ -6460,35 +6479,35 @@ sub _process_task
 			{
 				# We're golden
 				$an->Log->entry({log_level => 2, message_key => "log_0216", file => $THIS_FILE, line => __LINE__});
-# 				provision_server($an);
+# 				$an->Striker->_provision_server($an);
 			}
 			else
 			{
 				# Something wasn't sane.
 				$an->Log->entry({log_level => 2, message_key => "log_0217", file => $THIS_FILE, line => __LINE__});
-# 				confirm_provision_server($an);
+# 				$an->Striker->_confirm_provision_server($an);
 			}
 		}
 		else
 		{
-# 			confirm_provision_server($an);
+# 			$an->Striker->_confirm_provision_server($an);
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "add_server")
 	{
 		# This is called after provisioning a server usually, so no need to confirm
-# 		add_server_to_cluster($an, 0);
+# 		$an->Striker->_add_server_to_cluster($an, 0);
 	}
 	elsif ($an->data->{cgi}{task} eq "manage_server")
 	{
-# 		manage_server($an);
+# 		$an->Striker->_manage_server($an);
 	}
 	elsif ($an->data->{cgi}{task} eq "display_health")
 	{
 		print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
 			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
 		}});
-# 		get_storage_data($an, $an->data->{cgi}{node});
+# 		$an->Striker->_get_storage_data($an, $an->data->{cgi}{node});
 		
 		if ((not $an->data->{storage}{is}{lsi}) && 
 		    (not $an->data->{storage}{is}{hp})  &&
@@ -6933,16 +6952,20 @@ sub _start_server
 	return(0);
 }
 
-# This sttempts to shut down a VM on a target node.
+# This sttempts to shut down a server.
 sub _stop_server
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_stop_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $server = $an->data->{cgi}{server};
 	my $reason = $an->data->{sys}{stop_reason} ? $an->data->{sys}{stop_reason} : "clean";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server", value1 => $server, 
+		name2 => "reason", value2 => $reason, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $server)
 	{
@@ -6955,7 +6978,7 @@ sub _stop_server
 	{
 		# Abort!
 		my $say_title   = $an->String->get({key => "title_0185"});
-		my $say_message = $an->String->get({key => "message_0444", variables => { server => $an->data->{cgi}{vm} }});
+		my $say_message = $an->String->get({key => "message_0444", variables => { server => $an->data->{cgi}{server} }});
 		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,
@@ -6975,7 +6998,10 @@ sub _stop_server
 		return("");
 	}
 	
-	# Call 'anvil-boot-server'
+	my $say_title = $an->String->get({key => "title_0046", variables => { server =>	$server }});
+	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
+	
+	# Call 'clusvcadm -d ...'
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,

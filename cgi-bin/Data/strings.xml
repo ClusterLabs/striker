@@ -1225,29 +1225,29 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0027">You need to power off the server for the changes to take effect.</key>
 		<key name="title_0028">There are two ways to do this:</key>
 		<key name="title_0029"><![CDATA[It looks like nothing was changed.<br /><span class="subtle_text"><span class="highlight_note">Note</span>: Arguments without a script are ignored.</span>]]></key>
-		<key name="title_0030"><![CDATA[Inserting <span class="fixed_width">#!variable!media!#</span> into <span class="fixed_width">#!variable!drive!#</span>...]]></key>
-		<key name="title_0031"><![CDATA[Ejecting <span class="fixed_width">#!variable!device!#</span>...]]></key>
-		<key name="title_0032"><![CDATA[Manage <span class="fixed_width">#!variable!server!#</span>.]]></key>
-		<key name="title_0033"><![CDATA[Adding the new <span class="fixed_width">#!variable!server!#</span> server to the #!string!brand_0003!#'s <span class="fixed_width">#!variable!failover_domain!#</span> failover domain.]]></key>
-		<key name="title_0034"><![CDATA[Creating your new <span class="fixed_width">#!variable!server!#</span> server now.]]></key>
-		<key name="title_0035"><![CDATA[About to withdraw <span class="fixed_width">#!variable!node_anvil_name!#</span> from the #!string!brand_0003!# <span class="fixed_width">#!variable!anvil!#</span>]]></key>
-		<key name="title_0036"><![CDATA[About to join <span class="fixed_width">#!variable!node_anvil_name!#</span> to the #!string!brand_0003!# <span class="fixed_width">#!variable!anvil!#</span>.]]></key>
-		<key name="title_0037"><![CDATA[About to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="title_0038"><![CDATA[About to forcefully power off the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span>!]]></key>
-		<key name="title_0039"><![CDATA[About to power down the physical node <span class="fixed_width">#!variable!node_anvil_name!#</span>!]]></key>
-		<key name="title_0040"><![CDATA[About to power on the physical node <span class="fixed_width">#!variable!node_anvil_name!#</span>!]]></key>
-		<key name="title_0041">About to power on both nodes!</key>
-		<key name="title_0042"><![CDATA[About to boot up the server <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span>]]></key>
-		<key name="title_0043"><![CDATA[About to shut down the server <span class="fixed_width">#!variable!server!#</span>!]]></key>
-		<key name="title_0044"><![CDATA[About to forcefully power off <span class="fixed_width">#!variable!server!#</span>!]]></key>
-		<key name="title_0045"><![CDATA[About to <span class="highlight_dangerous"><b>delete</b></span> the <b>#!variable!server!#</b> server!]]></key>
-		<key name="title_0046"><![CDATA[Booting: [<span class="fixed_width">#!variable!server!#</span>] now...]]></key>
-		<key name="title_0047"><![CDATA[About to <span class="highlight_dangerous">cold migrate</span> the server <span class="fixed_width">#!variable!server!#</span> to <b><span class="fixed_width">#!variable!target!#</span></b>.]]></key>
-		<key name="title_0048"><![CDATA[Booting of <span class="fixed_width">#!variable!server!#</span> on <span class="fixed_width">#!variable!node_anvil_name!#</span> failed!]]></key>
-		<key name="title_0049"><![CDATA[Migrating <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!target!#</span> now...]]></key>
-		<key name="title_0050"><![CDATA[Migration of <span class="fixed_width">#!variable!server!#</span> to <span class="fixed_width">#!variable!migration_target!#</span> aborted!]]></key>
-		<key name="title_0051"><![CDATA[Attempting orderly shut down of <span class="fixed_width">#!variable!server!#</span> now...]]></key>
-		<key name="title_0052"><![CDATA[Attempting to join <span class="fixed_width">#!variable!node_anvil_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> now...]]></key>
+		<key name="title_0030"><![CDATA[Inserting: [<span class="highlight_detail">#!variable!media!#</span>] into: [<span class="highlight_detail">#!variable!drive!#</span>]...]]></key>
+		<key name="title_0031"><![CDATA[Ejecting: [<span class="highlight_detail">#!variable!device!#</span>]...]]></key>
+		<key name="title_0032"><![CDATA[Manage: [<span class="highlight_detail">#!variable!server!#</span>].]]></key>
+		<key name="title_0033"><![CDATA[Adding the new: [<span class="highlight_detail">#!variable!server!#</span>] server to the #!string!brand_0003!#'s: [<span class="highlight_detail">#!variable!failover_domain!#</span>] failover domain.]]></key>
+		<key name="title_0034"><![CDATA[Creating your new: [<span class="highlight_detail">#!variable!server!#</span>] server now.]]></key>
+		<key name="title_0035"><![CDATA[About to withdraw: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] from the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
+		<key name="title_0036"><![CDATA[About to join: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] to the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
+		<key name="title_0037"><![CDATA[About to join both nodes to the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#.]]></key>
+		<key name="title_0038"><![CDATA[About to forcefully power off the #!string!brand_0003!# node: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>]!]]></key>
+		<key name="title_0039"><![CDATA[About to power down the physical node: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>]!]]></key>
+		<key name="title_0040"><![CDATA[About to power on the node: <span class="highlight_detail">#!variable!node_anvil_name!#</span>].]]></key>
+		<key name="title_0041">About to power on both nodes.</key>
+		<key name="title_0042"><![CDATA[About to boot up the server: [<span class="highlight_detail">#!variable!server!#</span>].]]></key>
+		<key name="title_0043"><![CDATA[About to shut down the server: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
+		<key name="title_0044"><![CDATA[About to forcefully power off: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
+		<key name="title_0045"><![CDATA[About to <span class="highlight_dangerous"><b>delete</b></span> the: [<b><span class="highlight_detail">#!variable!server!#</span></b>] server!]]></key>
+		<key name="title_0046"><![CDATA[Booting: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
+		<key name="title_0047"><![CDATA[About to <span class="highlight_dangerous">cold migrate</span> the server: [<span class="highlight_detail">#!variable!server!#</span>] to: [<b><span class="highlight_detail">#!variable!target!#</span></b>].]]></key>
+		<key name="title_0048"><![CDATA[Booting of: [<span class="highlight_detail">#!variable!server!#</span>] failed!]]></key>
+		<key name="title_0049"><![CDATA[Migrating: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!target!#</span>] now...]]></key>
+		<key name="title_0050"><![CDATA[Migration of: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!migration_target!#</span>] aborted!]]></key>
+		<key name="title_0051"><![CDATA[Attempting graceful shut down of: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
+		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil!#</span>] now...]]></key>
 		<key name="title_0053"><![CDATA[Joining of <span class="fixed_width">#!variable!node_anvil_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> aborted!]]></key>
 		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
 		<key name="title_0055"><![CDATA[Joining of both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>
@@ -1576,7 +1576,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0162">Please be patient, it can take a few minutes for the nodes to become accessible.</key>
 		<key name="message_0163"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be booted on the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
 		<key name="message_0164">The node was selected because it is either the preferred host or the only host ready to run this server.</key>
-		<key name="message_0165"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span>, running on the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span>, is about to be shut down.]]></key>
+		<key name="message_0165"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be shut down.]]></key>
 		<key name="message_0166"><![CDATA[If <span class="fixed_width">#!variable!server!#</span> is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />Make sure that Linux machines are running <span class="fixed_width">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be <span class="highlight_dangerous"><b>forced off</b></span>!]]></key>
 		<key name="message_0167"><![CDATA[Before proceeding, it is <b>strongly advised</b> that you connect to the server.<br />If there are updates pending, please <b>reboot</b> the server first.<br />This will ensure that server shuts down cleanly.]]></key>
 		<key name="message_0168"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span>, running on the #!string!brand_0003!# node <span class="fixed_width">#!variable!host!#</span>, is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>

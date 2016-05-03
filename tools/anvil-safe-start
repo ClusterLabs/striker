@@ -2308,7 +2308,7 @@ sub report_state
 	# Is it running now?
 	my $pids  = $an->Get->pids({program_name => $an->data->{sys}{program_name}});
 	my $count = @{$pids};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "count", value1 => $count, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($count)
@@ -2326,7 +2326,7 @@ sub report_state
 	}
 	
 	# Is it queued?
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "tools::anvil-safe-start::enabled", value1 => $an->data->{tools}{'anvil-safe-start'}{enabled}, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{tools}{'anvil-safe-start'}{enabled})

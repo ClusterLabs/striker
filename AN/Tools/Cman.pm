@@ -770,7 +770,7 @@ sub cluster_name
 	return($cluster_name);
 }
 
-# This looks at node 1, then is necessary, node 2 checking to see if the node is accessible and, if so, if 
+# This looks at node 1, then if necessary, node 2 checking to see if the node is accessible and, if so, if 
 # rgmanager is running. If one of the nodes is accessible, the name/IP, ssh port and password to access it 
 # are returned.
 sub find_node_in_cluster
