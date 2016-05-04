@@ -1211,39 +1211,6 @@ sub local_anvil_details
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		if (ref($an->data->{cluster}) eq "HASH")
-		{
-			foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
-			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "id",                   value1 => $id, 
-					name2 => "cluster::${id}::name", value2 => $an->data->{cluster}{$id}{name}, 
-					name3 => "anvil_name",           value3 => $return->{anvil_name}, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($an->data->{cluster}{$id}{name} eq $return->{anvil_name})
-				{
-					$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
-						name1 => "cluster::${id}::root_pw",  value1 => $an->data->{cluster}{$id}{root_pw}, 
-						name2 => "cluster::${id}::ricci_pw", value2 => $an->data->{cluster}{$id}{ricci_pw}, 
-					}, file => $THIS_FILE, line => __LINE__});
-					if ($an->data->{cluster}{$id}{root_pw})
-					{
-						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-							name1 => "anvil_password", value1 => $return->{anvil_password}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					elsif ($an->data->{cluster}{$id}{ricci_pw})
-					{
-						$return->{anvil_password} = $an->data->{cluster}{$id}{root_pw};
-						$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-							name1 => "anvil_password", value1 => $return->{anvil_password}, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
-					last;
-				}
-			}
-		}
 	}
 	
 	# Read in the node health files, if I can access them.
@@ -1839,86 +1806,65 @@ sub netmask_from_ip
 	return($netmask);
 }
 
-### TODO: Switch this to pull from ScanCore once the majority of striker.conf is deprecated.
 # This gathers up information on a node, given the passed-in node name
 sub node_info
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
 	
 	# If no host name is passed in, use this machine's host name.
-	my $node = $parameter->{node} ? $parameter->{node} : $an->hostname;
+	my $node_name = $parameter->{name} ? $parameter->{name} : $an->hostname;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_name", value1 => $node_name,
+	}, file => $THIS_FILE, line => __LINE__});
 	
-	# First, run through the configured Anvil! systems from the striker.conf file.
-	my $return = {};
-	foreach my $id (sort {$a cmp $b} keys %{$an->data->{cluster}})
+	# First, run through the configured Anvil! systems from the ScanCore database.
+	my $return    = {};
+	my $node_data = $an->ScanCore->get_nodes();
+	foreach my $hash_ref (@{$node_data})
 	{
-		my $company         =  $an->data->{cluster}{$id}{company};		#	=	Alteeve's Niche!
-		my $description     =  $an->data->{cluster}{$id}{description};		#	=	Alteeve Development VM Anvil! (CentOS)
-		my $name            =  $an->data->{cluster}{$id}{name};			#	=	an-anvil-03
-		my ($node1, $node2) =  (split/,/, $an->data->{cluster}{$id}{nodes});	#	=	an-a03n01.alteeve.ca, an-a03n02.alteeve.ca
-		my $password        =  $an->data->{cluster}{$id}{root_pw};
-		   $password        =  $an->data->{cluster}{$id}{ricci_pw} if not $password;
-		   $node1           =~ s/^\s+//;
-		   $node1           =~ s/\s+$//;
-		   $node2           =~ s/^\s+//;
-		   $node2           =~ s/\s+$//;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-			name1 => "company",     value1 => $company, 
-			name2 => "description", value2 => $description, 
-			name3 => "name",        value3 => $name, 
-			name4 => "node1",       value4 => $node1, 
-			name5 => "node2",       value5 => $node2, 
+		my $this_node_name       = $node_data->{host_name};
+		my $this_node_anvil_uuid = $node_data->{node_anvil_uuid};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "this_node_name",       value1 => $this_node_name,
+			name2 => "this_node_anvil_uuid", value2 => $this_node_anvil_uuid,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-			name1 => "password", value1 => $password, 
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($node =~ /$node1/)
+		if ($this_node_name eq $node_name)
 		{
-			$return->{'local'}  = $node1;
-			$return->{peer}     = $node2;
-			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "local",    value1 => $return->{'local'}, 
-				name2 => "peer",     value2 => $return->{peer}, 
-				name3 => "anvil_id", value3 => $return->{anvil_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		elsif ($node =~ /$node2/)
-		{
-			$return->{'local'}  = $node2;
-			$return->{peer}     = $node1;
-			$return->{anvil_id} = $id;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "local",    value1 => $return->{'local'}, 
-				name2 => "peer",     value2 => $return->{peer}, 
-				name3 => "anvil_id", value3 => $return->{anvil_id}, 
-			}, file => $THIS_FILE, line => __LINE__});
-		}
-		
-		if ($return->{anvil_id})
-		{
-			$return->{company}     = $company;
-			$return->{description} = $description;
-			$return->{anvil_name}  = $name;
-			$return->{password}    = $password;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-				name1 => "company",     value1 => $return->{company}, 
-				name2 => "description", value2 => $return->{description}, 
-				name3 => "anvil_name",  value3 => $return->{anvil_name}, 
+			# Found it.
+			my $anvil_uuid    = $this_node_anvil_uuid;
+			my $anvil_data    = $an->Striker->load_anvil({anvil_uuid => $anvil_uuid});
+			my $node_key      = $an->data->{sys}{node_name}{$node_name}{node_key};
+			my $peer_node_key = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+			
+			# store the values to return.
+			$return->{'local'}     = $an->data->{sys}{anvil}{$node_key}{name};
+			$return->{peer}        = $an->data->{sys}{anvil}{$peer_node_key}{name};
+			$return->{anvil_uuid}  = $anvil_uuid;
+			$return->{company}     = $an->data->{sys}{anvil}{owner}{name};
+			$return->{description} = $an->data->{sys}{anvil}{description};
+			$return->{anvil_name}  = $an->data->{sys}{anvil}{name};
+			$return->{use_ip}      = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_ip};
+			$return->{use_port}    = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};;
+			$return->{password}    = $an->data->{sys}{anvil}{$node_key}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+				name1 => "return->local",       value1 => $return->{'local'}, 
+				name2 => "return->peer",        value2 => $return->{peer}, 
+				name3 => "return->anvil_uuid",  value3 => $return->{anvil_uuid}, 
+				name4 => "return->company",     value4 => $return->{company}, 
+				name5 => "return->description", value5 => $return->{description}, 
+				name6 => "return->anvil_name",  value6 => $return->{anvil_name}, 
+				name7 => "return->use_ip",      value7 => $return->{use_ip}, 
+				name8 => "return->use_port",    value8 => $return->{use_port}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-				name1 => "password", value1 => $return->{password}, 
+				name1 => "return->password", value1 => $return->{password}, 
 			}, file => $THIS_FILE, line => __LINE__});
+			
+			
+			last;
 		}
-		
-		last if $return->{anvil_id};
 	}
 	
 	return($return);
@@ -2460,9 +2406,7 @@ sub remote_anvil_details
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
+	my $an        = $self->parent;
 	
 	# Clear any prior errors as I may set one here.
 	$an->Alert->_set_error;
@@ -2486,10 +2430,10 @@ sub remote_anvil_details
 		if ($an->data->{cluster}{$this_id}{name} eq $anvil)
 		{
 			# Got it.
-			($return->{node1}, $return->{node2}) = (split/,/, $an->data->{cluster}{$this_id}{nodes});
-			$return->{node1}          =~ s/\s+//g;
-			$return->{node2}          =~ s/\s+//g;
-			$return->{anvil_password} =  $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
+			($return->{node1}, $return->{node2}) =  (split/,/, $an->data->{cluster}{$this_id}{nodes});
+			 $return->{node1}                    =~ s/\s+//g;
+			 $return->{node2}                    =~ s/\s+//g;
+			 $return->{anvil_password}           =  $an->data->{cluster}{$this_id}{root_pw} ? $an->data->{cluster}{$this_id}{root_pw} : $an->data->{cluster}{$this_id}{ricci_pw};
 		}
 	}
 	
@@ -2646,14 +2590,14 @@ sub server_data
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $return = {};
-	my $server_name = $parameter->{server} ? $parameter->{server} : "";
-	my $server_uuid = $parameter->{uuid}   ? $parameter->{uuid}   : "";
-	my $anvil       = $parameter->{anvil}  ? $parameter->{anvil}  : "";
+	my $return      = {};
+	my $server_name = $parameter->{server}     ? $parameter->{server}     : "";
+	my $server_uuid = $parameter->{uuid}       ? $parameter->{uuid}       : "";
+	my $anvil_uuid  = $parameter->{anvil_uuid} ? $parameter->{anvil_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "server_name", value1 => $server_name, 
 		name2 => "server_uuid", value2 => $server_uuid, 
-		name3 => "anvil",       value3 => $anvil, 
+		name3 => "anvil_uuid",  value3 => $anvil_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
 	if ((not $server_name) && (not $server_uuid))
 	{
@@ -2987,9 +2931,9 @@ sub server_uuid
 		return("");
 	}
 	# If an anvil wasn't specified, see if one was set by cgi.
-	if ((not $anvil) && (($an->data->{cgi}{cluster}) or ($an->data->{cgi}{anvil})))
+	if ((not $anvil) && ($an->data->{cgi}{anvil_uuid}))
 	{
-		$anvil = $an->data->{cgi}{anvil} ? $an->data->{cgi}{anvil} : $an->data->{cgi}{cluster};
+		$anvil = $an->data->{cgi}{anvil_uuid};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "anvil", value1 => $anvil, 
 		}, file => $THIS_FILE, line => __LINE__});

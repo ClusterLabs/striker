@@ -25,8 +25,12 @@ my $THIS_FILE = "Striker.pm";
 # _check_lv
 # _check_node_daemons
 # _check_node_readiness
+# _confirm_delete_server
+# _confirm_force_off_server
+# _confirm_migrate_server
 # _confirm_start_server
 # _confirm_stop_server
+# _delete_server
 # _display_anvil_safe_start_notice
 # _display_details
 # _display_drbd_details
@@ -39,8 +43,10 @@ my $THIS_FILE = "Striker.pm";
 # _display_watchdog_panel
 # _error
 # _find_preferred_host
+# _force_off_server
 # _gather_node_details
 # _header
+# _migrate_server
 # _parse_anvil_safe_start
 # _parse_clustat
 # _parse_cluster_conf
@@ -269,10 +275,21 @@ sub load_anvil
 			name1 => "sys::anvil::${node_key}::password", value1 => $an->data->{sys}{anvil}{$node_key}{password}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		# Make the node UUID easy to get from the node name.
-		my $node_uuid                                 = $an->data->{sys}{anvil}{$node_key}{uuid};
-		my $node_name                                 = $an->data->{sys}{anvil}{$node_key}{name};
-		   $an->data->{sys}{name_to_uuid}{$node_name} = $node_uuid;
+		# Make the node UUID, node key and peer key easy to get from the node name. First, setup some
+		# variables.
+		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $peer_key  = $node_key eq "node1" ? "node2" : "node1";
+		
+		# Now store the data.
+		$an->data->{sys}{node_name}{$node_name}{uuid}          = $node_uuid;
+		$an->data->{sys}{node_name}{$node_name}{node_key}      = $node_key;
+		$an->data->{sys}{node_name}{$node_name}{peer_node_key} = $peer_key;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "sys::node_name::${node_name}::uuid",          value1 => $an->data->{sys}{node_name}{$node_name}{uuid}, 
+			name2 => "sys::node_name::${node_name}::node_key",      value2 => $an->data->{sys}{node_name}{$node_name}{node_key}, 
+			name3 => "sys::node_name::${node_name}::peer_node_key", value3 => $an->data->{sys}{node_name}{$node_name}{peer_node_key}, 
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	return(0);
@@ -844,9 +861,9 @@ sub scan_servers
 	
 	# Make it a little easier to print the name of each node
 	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
-	my $node1_uuid = $an->data->{sys}{name_to_uuid}{$node1_name};
+	my $node1_uuid = $an->data->{sys}{node_name}{$node1_name}{uuid};
 	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
-	my $node2_uuid = $an->data->{sys}{name_to_uuid}{$node2_name};
+	my $node2_uuid = $an->data->{sys}{node_name}{$node2_name}{uuid};
 	
 	$an->data->{node}{$node1_name}{info}{host_name}       = $node1_name;
 	$an->data->{node}{$node1_name}{info}{short_host_name} = $an->data->{sys}{anvil}{node1}{short_name};
@@ -945,10 +962,10 @@ sub scan_servers
 		}
 		
 		$an->data->{server}{$server}{host} = "" if not defined $an->data->{server}{$server}{host};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "server::${server}::host", value1 => $an->data->{server}{$server}{host},
-			name2 => "short_node1",     value2 => $short_node1,
-			name3 => "short_node2",     value3 => $short_node2,
+			name2 => "short_node1",             value2 => $short_node1,
+			name3 => "short_node2",             value3 => $short_node2,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{server}{$server}{host} =~ /$short_node1/)
 		{
@@ -1022,7 +1039,7 @@ sub scan_servers
 		{
 			# Get the current host's details
 			my $this_host     = $an->data->{server}{$server}{current_host};
-			my $target_uuid   = $an->data->{sys}{name_to_uuid}{$this_host};
+			my $target_uuid   = $an->data->{sys}{node_name}{$this_host}{uuid};
 			my $this_node_key = $an->data->{db}{nodes}{$target_uuid}{node_key};
 			my $this_target   = $an->data->{sys}{anvil}{$this_node_key}{use_ip};
 			my $this_port     = $an->data->{sys}{anvil}{$this_node_key}{use_port};
@@ -1489,6 +1506,115 @@ sub _check_node_readiness
 	return ($ready);
 }
 
+# Confirm that the user wants to delete the server.
+sub _confirm_delete_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_delete_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+
+	# Ask the user to confirm
+	my $say_title   = $an->String->get({key => "title_0045", variables => { server => $an->data->{cgi}{server} }});
+	my $say_message = $an->String->get({key => "message_0178", variables => { server => $an->data->{cgi}{server} }});
+	
+	my $expire_time =  time + $an->data->{sys}{actime_timeout};
+	if ($an->data->{sys}{cgi_string} =~ /expire=/)
+	{
+		$an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	}
+	else
+	{
+		$an->data->{sys}{cgi_string} .= "expire=$expire_time";
+	}
+	
+	print $an->Web->template({file => "server.html", template => "confirm-delete-server", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+	
+	return (0);
+}
+
+# Confirm that the user wants to force-off a VM.
+sub _confirm_force_off_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_force_off_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_title   = $an->String->get({key => "title_0044", variables => { server => $an->data->{cgi}{server} }});
+	my $say_message = $an->String->get({key => "message_0168", variables => { server => $an->data->{cgi}{server} }});
+	
+	my $expire_time =  time + $an->data->{sys}{actime_timeout};
+	if ($an->data->{sys}{cgi_string} =~ /expire=/)
+	{
+		$an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	}
+	else
+	{
+		$an->data->{sys}{cgi_string} .= "expire=$expire_time";
+	}
+
+	print $an->Web->template({file => "server.html", template => "confirm-force-off-server", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+	
+	return (0);
+}
+
+# Confirm that the user wants to migrate a VM.
+sub _confirm_migrate_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_migrate_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure the server name exists.
+	my $anvil_data  = $an->Get->anvil_data({uuid => $an->data->{cgi}{anvil_uuid});
+	my $anvil_uuid  = $anvil_uuid->{anvil_uuid};
+	my $server_uuid = $an->Get->server_uuid({
+			server => $an->data->{cgi}{server},
+			anvil  => $anvil_uuid,
+		});
+	
+	### TODO: Check the link speed of both nodes' BCN and use that in the calculate.
+	# Calculate roughly how long the migration will take.
+	my $server_data             =  $an->Get->server_data({server => $an->data->{cgi}{server}});
+	my $server_ram              =  $server_data->{current_ram};
+	my $migration_time_estimate =  $server_ram / 1073741824; # Get # of GB.
+	   $migration_time_estimate *= 10; # ~10s / GB
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server_ram",              value1 => $server_ram,
+		name2 => "migration_time_estimate", value2 => $migration_time_estimate,
+	}, file => $THIS_FILE, line => __LINE__});
+
+	# Ask the user to confirm
+	my $say_title = $an->String->get({key => "title_0047", variables => { 
+			server	=>	$an->data->{cgi}{server},
+			target	=>	$an->data->{cgi}{target},
+		}});
+	my $say_message = $an->String->get({key => "message_0177", variables => { 
+			server			=>	$an->data->{cgi}{server},
+			target			=>	$an->data->{cgi}{target},
+			ram			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{vm_ram} }),
+			migration_time_estimate	=>	$migration_time_estimate,
+		}});
+	print $an->Web->template({file => "server.html", template => "confirm-migrate-server", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+	
+	return (0);
+}
+
 # Confirm that the user wants to start a server.
 sub _confirm_start_server
 {
@@ -1539,6 +1665,368 @@ sub _confirm_stop_server
 	}});
 
 	return (0);
+}
+
+# This stops the VM, if it's running, edits the cluster.conf to remove the VM's entry, pushes the changed 
+# cluster out, deletes the VM's definition file and finally deletes the LV.
+sub _delete_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_delete_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure the server name exists.
+	my $server     = $an->data->{cgi}{server}     ? $an->data->{cgi}{server}     : "";
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid} ? $an->data->{cgi}{anvil_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $anvil_uuid)
+	{
+		# Hey user, don't be cheeky!
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0134", code => 134, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
+	### TODO: If this fails, check to see if the 'vm:' prefix needs to be added
+	my $server_host = $an->data->{server}{$server}{host};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_host", value1 => $server_host,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# If the server is on, we'll do our work through that node.
+	my $node_key    = "";
+	if (($server_host) && ($server_host ne "none"))
+	{
+		if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
+		{
+			$node_key = "node1";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_key", value1 => $node_key,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		elsif ($server_host eq $an->data->{sys}{anvil}{node2}{name})
+		{
+			$node_key = "node2";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node_key", value1 => $node_key,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	my $node_name = ""
+	my $target    = "";
+	my $port      = "";
+	my $password  = "";
+	if ($node_key)
+	{
+		# Use the given node.
+		$node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		$target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		$port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+		$password  = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "port",   value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	else
+	{
+		# Pick either node that is up.
+		($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "target",    value2 => $target,
+			name3 => "port",      value3 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	
+	# If I still don't have a target, then we're done.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $target)
+	{
+		# Couldn't log into either node.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0135", message_variables => { server => $server }, code => 135, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Has the timer expired?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "current time", value1 => time,
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (time > $an->data->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = $an->String->get({key => "warning_title_0010"});
+		my $say_message = $an->String->get({key => "message_0472", variables => { server => $an->data->{cgi}{server} }});
+		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			title		=>	$say_title,
+			message		=>	$say_message,
+		}});
+		return(1);
+	}
+	
+	# Get to work!
+	my $say_title = $an->String->get({key => "title_0057", variables => { server => $server }});
+	print $an->Web->template({file => "server.html", template => "delete-server-header", replace => { title => $say_title }});
+	print $an->Web->template({file => "server.html", template => "delete-server-start"});
+	
+	# Remove the server from the cluster.
+	my $proceed       = 1;
+	my $ccs_exit_code = 255;
+	my $shell_call    = $an->data->{path}{ccs}." -h localhost --activate --sync --password \"".$an->data->{sys}{anvil}{password}."\" --rmvm $server; ".$an->data->{path}{echo}." ccs:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",       value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		next if not $line;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /ccs:(\d+)/)
+		{
+			$ccs_exit_code = $1;
+		}
+		else
+		{
+			$line = $an->Web->parse_text_line({line => $line});
+			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+		}
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ccs exit code", value1 => $ccs_exit_code,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($ccs_exit_code eq "0")
+	{
+		print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => "#!string!message_0197!#" }});
+	}
+	else
+	{
+		my $say_error = $an->String->get({key => "message_0198", variables => { ccs_exit_code => $ccs_exit_code }});
+		print $an->Web->template({file => "server.html", template => "delete-server-bad-exit-code", replace => { error => $say_error }});
+		$proceed = 0;
+	}
+	print $an->Web->template({file => "server.html", template => "delete-server-start-footer"});
+	
+	my $stop_exit_code = 255;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "stop_server",   value1 => $stop_server,
+		name2 => "ccs_exit_code", value2 => $ccs_exit_code,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ((($server_host) && ($server_host ne "none")) && ($ccs_exit_code eq "0"))
+	{
+		# Server is still running, kill it.
+		print $an->Web->template({file => "server.html", template => "delete-server-force-off-header"});
+		
+		   $proceed         = 0;
+		my $virsh_exit_code = 255;;
+		my $shell_call      = $an->data->{path}{virsh}." destroy $server; ".$an->data->{path}{echo}." virsh:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",       value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /virsh:(\d+)/)
+			{
+				$virsh_exit_code = $1;
+			}
+			else
+			{
+				$line = $an->Web->parse_text_line({line => $line});
+				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+			}
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "virsh exit code", value1 => $virsh_exit_code,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($virsh_exit_code eq "0")
+		{
+			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => "#!string!message_0199!#" }});
+		}
+		else
+		{
+			# This is fatal
+			my $say_error = $an->String->get({key => "message_0200", variables => { virsh_exit_code => $virsh_exit_code }});
+			print $an->Web->template({file => "server.html", template => "delete-server-bad-exit-code", replace => { error => $say_error }});
+			$proceed = 0;
+		}
+		print $an->Web->template({file => "server.html", template => "delete-server-force-off-footer"});
+	}
+	
+	# Now delete the backing LVs
+	if ($proceed)
+	{
+		# Free up the storage
+		print $an->Web->template({file => "server.html", template => "delete-server-remove-lv-header"});
+		
+		foreach my $lv (keys %{$an->data->{server}{$server}{node}{$node_name}{lv}})
+		{
+			my $message = $an->String->get({key => "message_0201", variables => { lv => $lv }});
+			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
+			my $lvremove_exit_code = 255;
+			my $shell_call         = $an->data->{path}{lvremove}." -f $lv; ".$an->data->{path}{echo}." lvremove:\$?";
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",       value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /lvremove:(\d+)/)
+				{
+					$lvremove_exit_code = $1;
+				}
+				else
+				{
+					print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+				}
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "lvremove exit code", value1 => $lvremove_exit_code,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($lvremove_exit_code eq "0")
+			{
+				print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => "#!string!message_0202!#" }});
+			}
+			else
+			{
+				my $say_error = $an->String->get({key => "message_0204", variables => { lvremove_exit_code => $lvremove_exit_code }});
+				print $an->Web->template({file => "server.html", template => "delete-server-bad-exit-code", replace => { error => $say_error }});
+			}
+		}
+		
+		### NOTE: Yes, the actual path is in '$an->data->{server}{$server}{definition_file}', but 
+		###       we're doing an 'rm -f' so we're going to be paranoid.
+		# Regardless of whether the LV removal(s) succeeded, delete the definition file.
+		my $file         = $an->data->{server}{$server}{definition_file};
+		my $ls_exit_code = 255;
+		my $shell_call   = "
+if [ '/shared/definitions/${server}.xml' ];
+then
+    ".$an->data->{path}{rm}." -f /shared/definitions/${server}.xml;
+    ".$an->data->{path}{ls}." /shared/definitions/${server}.xml;
+    ".$an->data->{path}{echo}." ls:\$?
+fi;
+";
+		my $password   = $an->data->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			next if not $line;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /ls:(\d+)/)
+			{
+				$ls_exit_code = $1;
+			}
+			else
+			{
+				### There will be output, I don't care about it.
+				#$line = $an->Web->parse_text_line({line => $line});
+				#print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+			}
+		}
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ls exit code", value1 => $ls_exit_code,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ls_exit_code eq "2")
+		{
+			# File deleted successfully.
+			my $message = $an->String->get({key => "message_0209", variables => { file => $file }});
+			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $message }});
+		}
+		else
+		{
+			# Delete seems to have failed
+			my $message = $an->String->get({key => "message_0210", variables => { 
+				file		=>	$file,
+				ls_exit_code	=>	$ls_exit_code,
+			}});
+			print $an->Web->template({file => "server.html", template => "remove-vm-definition-failed", replace => { message => $message }});
+		}
+		
+		# Mark it as deleted.
+		my $return = $an->Get->server_data({
+			server => $say_vm, 
+			anvil  => $cluster, 
+		});
+		my $server_uuid = $return->{uuid};
+		my $query       = "
+UPDATE 
+    servers 
+SET 
+    server_note = 'DELETED' 
+WHERE 
+    server_uuid = ".$an->data->{sys}{use_db_fh}->quote($server_uuid)."
+;";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "query", value1 => $query
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+		
+		my $message = $an->String->get({key => "message_0205", variables => { server => $say_vm }});
+		print $an->Web->template({file => "server.html", template => "delete-server-success", replace => { message => $message }});
+	}
+	print $an->Web->template({file => "server.html", template => "delete-server-footer"});
+	
+	return(0);
 }
 
 # This shows a banner asking for patience in anvil-safe-start is running on either node.
@@ -3080,6 +3568,139 @@ sub _find_preferred_host
 	return ($prefered_host);
 }
 
+# This forcibly shuts down a VM on a target node. The cluster should restart it shortly after.
+sub _force_off_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_force_off_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Make sure the server name exists.
+	my $server     = $an->data->{cgi}{server}     ? $an->data->{cgi}{server}     : "";
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid} ? $an->data->{cgi}{anvil_uuid} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $anvil_uuid)
+	{
+		# Hey user, don't be cheeky!
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0132", code => 132, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
+	### TODO: If this fails, check to see if the 'vm:' prefix needs to be added
+	my $server_host = $an->data->{server}{$server}{host};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server_host", value1 => $server_host,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($server_host eq "none")
+	{
+		# It's already off.
+		my $say_message = $an->String->get({key => "message_0471", variables => { server => $an->data->{cgi}{server} }});
+		print $an->Web->template({file => "server.html", template => "force-off-server-aborted", replace => { message => $say_message }});
+		return("");
+	}
+	
+	my $node_key = "";
+	if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
+	{
+		$node_key = "node1";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_key", value1 => $node_key,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	elsif ($server_host eq $an->data->{sys}{anvil}{node2}{name})
+	{
+		$node_key = "node2";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_key", value1 => $node_key,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $node_key)
+	{
+		# What the deuce?!
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0133", message_variables => {
+			server => $server, 
+			host   => $server_host,
+		}, code => 133, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target", value1 => $target,
+		name2 => "port",   value2 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Has the timer expired?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "current time", value1 => time,
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (time > $an->data->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = $an->String->get({key => "title_0186"});
+		my $say_message = $an->String->get({key => "message_0445", variables => { server => $an->data->{cgi}{server} }});
+		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			title		=>	$say_title,
+			message		=>	$say_message,
+		}});
+		return(1);
+	}
+	
+	my $say_title = $an->String->get({key => "title_0056", variables => { server => $server }});
+	print $an->Web->template({file => "server.html", template => "force-off-server-header", replace => { title => $say_title }});
+	my $shell_call = $an->data->{path}{virsh}." destroy $server";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value2 => $target,
+		name2 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$line =~ s/\s+/ /g;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		   $line    = $an->Web->parse_text_line({line => $line});
+		my $message = ($line =~ /^(.*)\[/)[0];
+		my $status  = ($line =~ /(\[.*)$/)[0];
+		if (not $message)
+		{
+			$message = $line;
+			$status  = "";
+		}
+		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			status	=>	$status,
+			message	=>	$message,
+		}});
+	}
+	print $an->Web->template({file => "server.html", template => "force-off-server-footer"});
+	
+	return(0);
+}
+
 ### NOTE: This is ugly, but it's basically a port of the old function so ya, whatever.
 # This does the actual calls out to get the data and parse the returned data.
 sub _gather_node_details
@@ -3760,6 +4381,113 @@ sub _header
 	return (0);
 }
 
+# This migrates a server using 'anvil-migrate-server'
+sub _migrate_server
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_migrate_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $server = $an->data->{cgi}{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "server", value1 => $server,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# This simply calls '$an->Cman->boot_server()' and processes the output.
+	my $anvil_name = $an->data->{cgi}{anvil_uuid};
+	my $server     = $an->data->{cgi}{server};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "server",     value2 => $server,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $server)
+	{
+		# Error...
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0130", code => 130, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $say_title = $an->String->get({key => "title_0049", variables => { server =>	$server }});
+	print $an->Web->template({file => "server.html", template => "migrate-server-header", replace => { title => $say_title }});
+	
+	# Which node to use?
+	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "target", value1 => $target,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $target)
+	{
+		# Couldn't log into either node.
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Call 'anvil-boot-server'
+	my $shell_call = $an->data->{path}{'anvil-migrate-server'}." --server $server";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	if (@{$return} > 0)
+	{
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			   $line    = $an->Web->parse_text_line({line => $line});
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	$status,
+				message	=>	$message,
+			}});
+		}
+		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
+	}
+	print $an->Web->template({file => "server.html", template => "migrate-server-footer"});
+	
+	
+	my $output = $an->Cman->migrate_server({server => $server});
+	
+	foreach my $line (split/\n/, $output)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		$line = parse_text_line($an, $line);
+		my $message = ($line =~ /^(.*)\[/)[0];
+		my $status  = ($line =~ /(\[.*)$/)[0];
+		if (not $message)
+		{
+			$message = $line;
+			$status  = "";
+		}
+		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			status	=>	$status,
+			message	=>	$message,
+		}});
+		
+	}
+	
+	return(0);
+}
+
 # Parse the 'anvil-safe-start' status.
 sub _parse_anvil_safe_start
 {
@@ -4166,11 +4894,11 @@ sub _parse_cluster_conf
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make sure this works
-	if ($an->data->{sys}{name_to_uuid}{$node_name})
+	if ($an->data->{sys}{node_name}{$node_name}{uuid})
 	{
 		$an->ScanCore->insert_or_update_nodes_cache({
 			node_cache_host_uuid	=>	$an->data->{sys}{host_uuid},
-			node_cache_node_uuid	=>	$an->data->{sys}{name_to_uuid}{$node_name}, 
+			node_cache_node_uuid	=>	$an->data->{sys}{node_name}{$node_name}{uuid}, 
 			node_cache_name		=>	"power_check",
 			node_cache_data		=>	$an->data->{node}{$node_name}{info}{fence_methods},
 		});
@@ -4303,9 +5031,9 @@ sub _parse_clustat
 			{
 				my ($server, $host, $state) = split/ /, $line, 3;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-					name1 => "server",    value1 => $server,
-					name2 => "host",  value2 => $host,
-					name3 => "state", value3 => $state,
+					name1 => "server", value1 => $server,
+					name2 => "host",   value2 => $host,
+					name3 => "state",  value3 => $state,
 				}, file => $THIS_FILE, line => __LINE__});
 				if (($state eq "disabled") || ($state eq "stopped"))
 				{
@@ -4330,7 +5058,7 @@ sub _parse_clustat
 					name2 => "host", value2 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				$host                         = "none" if not $host;
+				$host                                 = "none" if not $host;
 				$an->data->{server}{$server}{host}    = $host;
 				$an->data->{server}{$server}{'state'} = $state;
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -6317,11 +7045,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			$an->Striker->_withdraw_node($an);
+#			$an->Striker->_withdraw_node();
 		}
 		else
 		{
-#			$an->Striker->_confirm_withdraw_node($an);
+#			$an->Striker->_confirm_withdraw_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "join_cluster")
@@ -6329,11 +7057,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			$an->Striker->_join_cluster($an);
+#			$an->Striker->_join_cluster();
 		}
 		else
 		{
-#			$an->Striker->_confirm_join_cluster($an);
+#			$an->Striker->_confirm_join_cluster();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_join")
@@ -6341,11 +7069,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_dual_join($an);
+# 			$an->Striker->_dual_join();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_dual_join($an);
+# 			$an->Striker->_confirm_dual_join();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "fence_node")
@@ -6353,11 +7081,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_fence_node($an);
+# 			$an->Striker->_fence_node();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_fence_node($an);
+# 			$an->Striker->_confirm_fence_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "poweroff_node")
@@ -6365,11 +7093,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_poweroff_node($an);
+# 			$an->Striker->_poweroff_node();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_poweroff_node($an);
+# 			$an->Striker->_confirm_poweroff_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "poweron_node")
@@ -6377,11 +7105,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_poweron_node($an);
+# 			$an->Striker->_poweron_node();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_poweron_node($an);
+# 			$an->Striker->_confirm_poweron_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_boot")
@@ -6389,11 +7117,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_dual_boot($an);
+# 			$an->Striker->_dual_boot();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_dual_boot($an);
+# 			$an->Striker->_confirm_dual_boot();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "cold_stop")
@@ -6406,7 +7134,7 @@ sub _process_task
 		}
 		else
 		{
-# 			$an->Striker->_confirm_cold_stop_anvil($an);
+# 			$an->Striker->_confirm_cold_stop_anvil();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "start_server")
@@ -6438,11 +7166,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_force_off_server($an);
+			$an->Striker->_force_off_server();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_force_off_server($an);
+			$an->Striker->_confirm_force_off_server();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "delete_server")
@@ -6450,22 +7178,22 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_delete_server($an);
+			$an->Striker->_delete_server();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_delete_server($an);
+			$an->Striker->_confirm_delete_server();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "migrate_server")
 	{
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_migrate_server($an);
+			$an->Striker->_migrate_server();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_migrate_server($an);
+			$an->Striker->_confirm_migrate_server();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "provision")
@@ -6475,22 +7203,22 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-			if (verify_server_config($an))
+			if (verify_server_config())
 			{
 				# We're golden
 				$an->Log->entry({log_level => 2, message_key => "log_0216", file => $THIS_FILE, line => __LINE__});
-# 				$an->Striker->_provision_server($an);
+# 				$an->Striker->_provision_server();
 			}
 			else
 			{
 				# Something wasn't sane.
 				$an->Log->entry({log_level => 2, message_key => "log_0217", file => $THIS_FILE, line => __LINE__});
-# 				$an->Striker->_confirm_provision_server($an);
+# 				$an->Striker->_confirm_provision_server();
 			}
 		}
 		else
 		{
-# 			$an->Striker->_confirm_provision_server($an);
+# 			$an->Striker->_confirm_provision_server();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "add_server")
@@ -6500,7 +7228,7 @@ sub _process_task
 	}
 	elsif ($an->data->{cgi}{task} eq "manage_server")
 	{
-# 		$an->Striker->_manage_server($an);
+# 		$an->Striker->_manage_server();
 	}
 	elsif ($an->data->{cgi}{task} eq "display_health")
 	{
@@ -6538,52 +7266,52 @@ sub _process_task
 				}
 				elsif ($an->data->{cgi}{'do'} eq "make_disk_good")
 				{
-# 					lsi_control_make_disk_good($an);
+# 					lsi_control_make_disk_good();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "add_disk_to_array")
 				{
-# 					lsi_control_add_disk_to_array($an);
+# 					lsi_control_add_disk_to_array();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "put_disk_online")
 				{
-# 					lsi_control_put_disk_online($an);
+# 					lsi_control_put_disk_online();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "put_disk_offline")
 				{
-# 					lsi_control_put_disk_offline($an);
+# 					lsi_control_put_disk_offline();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "mark_disk_missing")
 				{
-# 					lsi_control_mark_disk_missing($an);
+# 					lsi_control_mark_disk_missing();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "spin_disk_down")
 				{
-# 					lsi_control_spin_disk_down($an);
+# 					lsi_control_spin_disk_down();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "spin_disk_up")
 				{
-# 					lsi_control_spin_disk_up($an);
+# 					lsi_control_spin_disk_up();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "make_disk_hot_spare")
 				{
-# 					lsi_control_make_disk_hot_spare($an);
+# 					lsi_control_make_disk_hot_spare();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "unmake_disk_as_hot_spare")
 				{
-# 					lsi_control_unmake_disk_as_hot_spare($an);
+# 					lsi_control_unmake_disk_as_hot_spare();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				elsif ($an->data->{cgi}{'do'} eq "clear_foreign_state")
 				{
-# 					lsi_control_clear_foreign_state($an);
+# 					lsi_control_clear_foreign_state();
 # 					get_storage_data($an, $an->data->{cgi}{node});
 				}
 				### Prepare Unconfigured drives for removal
@@ -6591,7 +7319,7 @@ sub _process_task
 			}
 			if ($display_details)
 			{
-# 				display_node_health($an);
+# 				display_node_health();
 			}
 		}
 	}
@@ -6901,7 +7629,7 @@ sub _start_server
 	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
 	
 	# Which node to use?
-	my ($target, $port, $password) = $an->Cman->find_node_in_cluster();
+	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6987,7 +7715,7 @@ sub _stop_server
 	}
 	
 	# Which node to use?
-	my ($target, $port, $password) = $an->Cman->find_node_in_cluster();
+	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -6998,8 +7726,8 @@ sub _stop_server
 		return("");
 	}
 	
-	my $say_title = $an->String->get({key => "title_0046", variables => { server =>	$server }});
-	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
+	my $say_title = $an->String->get({key => "title_0051", variables => { server =>	$server }});
+	print $an->Web->template({file => "server.html", template => "stop-server-header", replace => { title => $say_title }});
 	
 	# Call 'clusvcadm -d ...'
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";

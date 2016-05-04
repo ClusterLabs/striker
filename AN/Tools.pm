@@ -540,6 +540,7 @@ sub _set_paths
 	$an->data->{path}{blkid}               = "/sbin/blkid";
 	$an->data->{path}{brctl}               = "/usr/sbin/brctl";
 	$an->data->{path}{cat}                 = "/bin/cat";
+	$an->data->{path}{ccs}                 = "/usr/sbin/ccs";		# TODO: Verify this path
 	$an->data->{path}{ccs_config_validate} = "/usr/sbin/ccs_config_validate";
 	$an->data->{path}{'chmod'}             = "/bin/chmod";
 	$an->data->{path}{chkconfig}           = "/sbin/chkconfig";
@@ -569,6 +570,7 @@ sub _set_paths
 	$an->data->{path}{lsblk}               = "/bin/lsblk";
 	$an->data->{path}{lsmod}               = "/sbin/lsmod";
 	$an->data->{path}{lvchange}            = "/sbin/lvchange";
+	$an->data->{path}{lvremove}            = "/sbin/lvremove";		# TODO: Verify this path
 	$an->data->{path}{lvs}                 = "/sbin/lvs";
 	$an->data->{path}{lvscan}              = "/sbin/lvscan";
 	$an->data->{path}{mailx}               = "/bin/mailx";

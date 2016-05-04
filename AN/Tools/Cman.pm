@@ -788,16 +788,17 @@ sub find_node_in_cluster
 	# Update our view of the Anvil! before we proceed.
 	$an->Striker->scan_anvil();
 	
-	my $target   = "";
-	my $port     = "";
-	my $password = "";
+	my $node_name = "";
+	my $target    = "";
+	my $port      = "";
+	my $password  = "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
 		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{node1}{online})
 	{
-		my $node_name = $an->data->{sys}{anvil}{node1}{name};
+		$node_name = $an->data->{sys}{anvil}{node1}{name};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -816,9 +817,10 @@ sub find_node_in_cluster
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
-	elsif ($an->data->{sys}{anvil}{node2}{online})
+	
+	if ((not $target) && ($an->data->{sys}{anvil}{node2}{online}))
 	{
-		my $node_name = $an->data->{sys}{anvil}{node2}{name};
+		$node_name = $an->data->{sys}{anvil}{node2}{name};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "node::${node_name}::daemon::rgmanager::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -838,7 +840,7 @@ sub find_node_in_cluster
 		}
 	}
 	
-	return($target, $port, $password);
+	return($target, $port, $password, $node_name);
 }
 
 # This returns a hash reference containing the cluster information from 'clustat'.
@@ -1103,6 +1105,7 @@ sub get_cluster_server_list
 	return($servers, $state);
 }
 
+### NOTE: This must be called from one of the nodes.
 # This migrates the server.
 sub migrate_server
 {

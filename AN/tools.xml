@@ -430,6 +430,7 @@ Variables:
 		<key name="warning_title_0007">Failed to add the target: [#!variable!target!#]'s RSA fingerprint to: [#!variable!user!#]'s list of known hosts.</key>
 		<key name="warning_title_0008">Dangerous</key>
 		<key name="warning_title_0009">AN::Tools::Check->access() called without a target being specified.</key>
+		<key name="warning_title_0010">Operation Aborted</key>
 		
 		<!-- Warning messages -->
 		<key name="warning_message_0001">The detected operating system: [#!variable!os!#] is not recognized by AN::Tools. Please send this error message and your operating system details to AN! (#!variable!an_brand_0001!#) so that we can add support for your OS. For now, I will proceed with Linux-type settings. This may not work.</key>
@@ -478,6 +479,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="notice_message_0012">Backed up: [#!variable!source!#] to: [#!variable!destination!#] on: [#!variable!host!#].</key>
 		<key name="notice_message_0013">Connected to: [#!variable!connections!#] database(s).</key>
 		<key name="notice_message_0014">SSH session opened without a password to: [#!variable!target!#].</key>
+		<key name="notice_message_0015">It appears that the node has already joined the #!string!brand_0003!#.</key>
 		
 		<!-- Error titles -->
 		<key name="error_title_0001">Invalid Argument</key>
@@ -650,6 +652,12 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0127"><![CDATA[The 'AN::Tools::Striker' module's '_start_server()' method was called without passing in an server name to boot.]]></key>
 		<key name="error_message_0128"><![CDATA[The 'AN::Tools::Striker' module's '_stop_server()' method was asked to gracefully shut down the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
 		<key name="error_message_0129"><![CDATA[The 'AN::Tools::Get' module's 'peer_network_details()' failed to find the Anvil! peer for the node.]]></key>
+		<key name="error_message_0130"><![CDATA[The 'AN::Tools::Striker' module's '_migrate_server()' method was called without passing in an server name to migrate.]]></key>
+		<key name="error_message_0131"><![CDATA[The 'AN::Tools::Striker' module's '_migrate_server()' method was asked to migrate the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
+		<key name="error_message_0132"><![CDATA[The 'AN::Tools::Striker' module's '_force_off_server()' method was called without passing in an #!string!an_brand_0003!# UUID.]]></key>
+		<key name="error_message_0133"><![CDATA[The 'AN::Tools::Striker' module's '_force_off_server()' method was asked to force off the server: [#!variable!server!#] which reports as being hosted on: [#!variable!host!#], but this does not match a node in the #!string!an_brand_0003!#.]]></key>
+		<key name="error_message_0134"><![CDATA[The 'AN::Tools::Striker' module's '_delete_server()' method was called without passing in an #!string!an_brand_0003!# UUID.]]></key>
+		<key name="error_message_0135"><![CDATA[The 'AN::Tools::Striker' module's '_delete_server()' method was asked to delete the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

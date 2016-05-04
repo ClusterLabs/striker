@@ -1579,7 +1579,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0165"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be shut down.]]></key>
 		<key name="message_0166"><![CDATA[If <span class="fixed_width">#!variable!server!#</span> is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />Make sure that Linux machines are running <span class="fixed_width">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be <span class="highlight_dangerous"><b>forced off</b></span>!]]></key>
 		<key name="message_0167"><![CDATA[Before proceeding, it is <b>strongly advised</b> that you connect to the server.<br />If there are updates pending, please <b>reboot</b> the server first.<br />This will ensure that server shuts down cleanly.]]></key>
-		<key name="message_0168"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span>, running on the #!string!brand_0003!# node <span class="fixed_width">#!variable!host!#</span>, is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
+		<key name="message_0168"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
 		<key name="message_0169">This action is the same as pulling the power on a hardware server!</key>
 		<key name="message_0170">The server will have no chance to react and will be instantly turned off. A moment later, the #!string!brand_0003!# will restart this server.</key>
 		<key name="message_0171">This should be done as a last resort, when all other attempts to gain control of the server have failed.</key>
@@ -1886,6 +1886,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0468"><![CDATA[I was asked to check the node readiness to run the: [#!variable!server!#] server, but was not passed a node name. This is likely a program error.]]></key>
 		<key name="message_0469"><![CDATA[I was asked to look at a server's definition file, but no server was specified. This is likely a program error.]]></key>
 		<key name="message_0470"><![CDATA[Are you certain that you want to delete the install manifest for: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
+		<key name="message_0471"><![CDATA[The request to force-off the: [<span class="highlight_detail">#!variable!server!#</span>] was aborted. The server appears to already be off now.]]></key>
+		<key name="message_0472"><![CDATA[The request to delete the: [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
