@@ -1386,7 +1386,6 @@ sub withdraw_node
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}

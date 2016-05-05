@@ -658,6 +658,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0133"><![CDATA[The 'AN::Tools::Striker' module's '_force_off_server()' method was asked to force off the server: [#!variable!server!#] which reports as being hosted on: [#!variable!host!#], but this does not match a node in the #!string!an_brand_0003!#.]]></key>
 		<key name="error_message_0134"><![CDATA[The 'AN::Tools::Striker' module's '_delete_server()' method was called without passing in an #!string!an_brand_0003!# UUID.]]></key>
 		<key name="error_message_0135"><![CDATA[The 'AN::Tools::Striker' module's '_delete_server()' method was asked to delete the server: [#!variable!server!#], but neither node was accessible or in the cluster stack.]]></key>
+		<key name="error_message_0136"><![CDATA[The 'AN::Tools::Striker' module's '_withdraw_node()' method was called without passing in an Anvil! UUID.]]></key>
+		<key name="error_message_0137"><![CDATA[The 'AN::Tools::Striker' module's '_withdraw_node()' method was called without passing in an Anvil! node name.]]></key>
+		<key name="error_message_0138"><![CDATA[The 'AN::Tools::Striker' module's '_withdraw_node()' method was called with the node name: [#!variable!node_name!#] that wasn't mapped to a node key for the active Anvil!.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

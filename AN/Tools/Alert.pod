@@ -780,6 +780,18 @@ The 'AN::Tools::Striker' module's '_delete_server()' method was called without p
 
 The 'AN::Tools::Striker' module's '_delete_server()' method was asked to delete a server, but neither node was accessible or in the cluster stack.
 
+=head2 C<136>
+
+The 'AN::Tools::Striker' module's '_withdraw_node()' method was called without passing in an Anvil! UUID.
+
+=head2 C<137>
+
+The 'AN::Tools::Striker' module's '_withdraw_node()' method was called without passing in an Anvil! node name.
+
+=head2 C<138>
+
+The 'AN::Tools::Striker' module's '_withdraw_node()' method was called with a node name that wasn't mapped to a node key for the active Anvil!.
+
 
 =head1 SEE ALSO
 

@@ -30,6 +30,7 @@ my $THIS_FILE = "Striker.pm";
 # _confirm_migrate_server
 # _confirm_start_server
 # _confirm_stop_server
+# _confirm_withdraw_node
 # _delete_server
 # _display_anvil_safe_start_notice
 # _display_details
@@ -68,6 +69,7 @@ my $THIS_FILE = "Striker.pm";
 # _read_server_definition
 # _start_server
 # _stop_server
+# _wothdraw_node
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -1664,6 +1666,29 @@ sub _confirm_stop_server
 		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true&expire=$expire_time",
 	}});
 
+	return (0);
+}
+
+# Confirm that the user wants to join both nodes to the cluster.
+sub _confirm_withdraw_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_title = $an->String->get({key => "title_0035", variables => { 
+			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+			anvil		=>	$an->data->{cgi}{cluster},
+		}});
+	my $say_message = $an->String->get({key => "message_0145", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	print $an->Web->template({file => "server.html", template => "confirm-withdrawl", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+	
 	return (0);
 }
 
@@ -7045,11 +7070,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			$an->Striker->_withdraw_node();
+			$an->Striker->_withdraw_node();
 		}
 		else
 		{
-#			$an->Striker->_confirm_withdraw_node();
+			$an->Striker->_confirm_withdraw_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "join_cluster")
@@ -7769,6 +7794,104 @@ sub _stop_server
 		}});
 	}
 	print $an->Web->template({file => "server.html", template => "stop-server-footer"});
+	
+	return(0);
+}
+
+### TODO: Switch this to '$an->Cman->withdraw_node()' and process the returned output in one go.
+# This does a final check of the target node then withdraws it from the cluster.
+sub _withdraw_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $node_name  = $an->data->{cgi}{node_name};
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0136", code => 136, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	if (not $node_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0137", code => 137, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
+	my $node_key = $an->data->{sys}{node_name}{$node_name}{node_key};
+	if (not $node_key)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0138", message_variables => { node_name => $node_name }, code => 138, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $proceed = $an->data->{node}{$node_name}{enable_withdraw};
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_name", value1 => $node_name,
+		name2 => "proceed",   value2 => $proceed,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($proceed)
+	{
+		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password = $an->data->{sys}{anvil}{$node_key}{password};
+		
+		# Stop rgmanager and then check it's status.
+		my $say_title = $an->String->get({key => "title_0070", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "withdraw-node-header", replace => { title => $say_title }});
+		
+		my ($return_code, $withdraw_output) = $an->Cman->withdraw_node({
+			target   => $target,
+			port     => $port,
+			password => $password, 
+		});
+		
+		foreach my $line (split/\n/, $withdraw_output)
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /failed/i)
+			{
+				$rgmanager_stop = 0;
+			}
+			   $line    = $an->Web->parse_text_line({line => $line});
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	$status,
+				message	=>	$message,
+			}});
+		}
+		print $an->Web->template({file => "server.html", template => "withdraw-node-footer"});
+	}
+	else
+	{
+		my $say_title   = $an->String->get({key => "title_0071", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0249", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "withdraw-node-aborted", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+	}
+	
+	$an->Striker->_footer();
 	
 	return(0);
 }
