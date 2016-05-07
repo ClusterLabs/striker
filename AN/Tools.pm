@@ -557,6 +557,7 @@ sub _set_paths
 	$an->data->{path}{echo}                = "/bin/echo";
 	$an->data->{path}{expect}              = "/usr/bin/expect";
 	$an->data->{path}{fence_check}         = "/usr/sbin/fence_check";
+	$an->data->{path}{fence_node}          = "/usr/sbin/fence_node";	# TODO: Verify this path
 	$an->data->{path}{'grep'}              = "/bin/grep";
 	$an->data->{path}{gethostip}           = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}           = "/usr/sbin/gfs2_tool";

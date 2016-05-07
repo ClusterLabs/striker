@@ -1230,12 +1230,12 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0032"><![CDATA[Manage: [<span class="highlight_detail">#!variable!server!#</span>].]]></key>
 		<key name="title_0033"><![CDATA[Adding the new: [<span class="highlight_detail">#!variable!server!#</span>] server to the #!string!brand_0003!#'s: [<span class="highlight_detail">#!variable!failover_domain!#</span>] failover domain.]]></key>
 		<key name="title_0034"><![CDATA[Creating your new: [<span class="highlight_detail">#!variable!server!#</span>] server now.]]></key>
-		<key name="title_0035"><![CDATA[About to withdraw: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] from the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
-		<key name="title_0036"><![CDATA[About to join: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] to the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
+		<key name="title_0035"><![CDATA[About to withdraw: [<span class="highlight_detail">#!variable!node_name!#</span>] from the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
+		<key name="title_0036"><![CDATA[About to join: [<span class="highlight_detail">#!variable!node_name!#</span>] to the #!string!brand_0003!#: [<span class="highlight_detail">#!variable!anvil!#</span>].]]></key>
 		<key name="title_0037"><![CDATA[About to join both nodes to the: [<span class="highlight_detail">#!variable!anvil!#</span>] #!string!brand_0003!#.]]></key>
-		<key name="title_0038"><![CDATA[About to forcefully power off the #!string!brand_0003!# node: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>]!]]></key>
-		<key name="title_0039"><![CDATA[About to power down the physical node: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>]!]]></key>
-		<key name="title_0040"><![CDATA[About to power on the node: <span class="highlight_detail">#!variable!node_anvil_name!#</span>].]]></key>
+		<key name="title_0038"><![CDATA[About to forcefully power off the #!string!brand_0003!# node: [<span class="highlight_detail">#!variable!node_name!#</span>]!]]></key>
+		<key name="title_0039"><![CDATA[About to power down the physical node: [<span class="highlight_detail">#!variable!node_name!#</span>]!]]></key>
+		<key name="title_0040"><![CDATA[About to power on the node: <span class="highlight_detail">#!variable!node_name!#</span>].]]></key>
 		<key name="title_0041">About to power on both nodes.</key>
 		<key name="title_0042"><![CDATA[About to boot up the server: [<span class="highlight_detail">#!variable!server!#</span>].]]></key>
 		<key name="title_0043"><![CDATA[About to shut down the server: [<span class="highlight_detail">#!variable!server!#</span>]!]]></key>
@@ -1247,8 +1247,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0049"><![CDATA[Migrating: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!target!#</span>] now...]]></key>
 		<key name="title_0050"><![CDATA[Migration of: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!migration_target!#</span>] aborted!]]></key>
 		<key name="title_0051"><![CDATA[Attempting graceful shut down of: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
-		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_anvil_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil!#</span>] now...]]></key>
-		<key name="title_0053"><![CDATA[Joining of <span class="fixed_width">#!variable!node_anvil_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> aborted!]]></key>
+		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil!#</span>] now...]]></key>
+		<key name="title_0053"><![CDATA[Joining of <span class="fixed_width">#!variable!node_name!#</span> to <span class="fixed_width">#!variable!anvil!#</span> aborted!]]></key>
 		<key name="title_0054"><![CDATA[Attempting to join both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# now...]]></key>
 		<key name="title_0055"><![CDATA[Joining of both nodes to the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>
 		<key name="title_0056"><![CDATA[Forcibly shutting down <span class="fixed_width">#!variable!server!#</span> now...]]></key>
@@ -1256,17 +1256,17 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0058">Removing the server from the #!string!brand_0003!#'s management:</key>
 		<key name="title_0059">The server appears to still be running. I will force it off now.</key>
 		<key name="title_0060">Freeing up the server's storage now.</key>
-		<key name="title_0061"><![CDATA[Shutting down <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
-		<key name="title_0062"><![CDATA[Withdrawl of <span class="fixed_width">#!variable!node_anvil_name!#</span> aborted!]]></key>
+		<key name="title_0061"><![CDATA[Shutting down <span class="fixed_width">#!variable!node_name!#</span> now...]]></key>
+		<key name="title_0062"><![CDATA[Withdrawl of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
 		<key name="title_0063">Powering on both nodes in the #!string!brand_0003!# now...</key>
 		<key name="title_0064"><![CDATA[Booting both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!# aborted!]]></key>
-		<key name="title_0065"><![CDATA[Powering on <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
-		<key name="title_0066"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_anvil_name!#</span> failed!]]></key>
-		<key name="title_0067"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_anvil_name!#</span> aborted!]]></key>
-		<key name="title_0068"><![CDATA[Fencing <span class="fixed_width">#!variable!node_anvil_name!#</span> now...]]></key>
-		<key name="title_0069"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_anvil_name!#</span> aborted!]]></key>
-		<key name="title_0070"><![CDATA[Withdrawing <span class="fixed_width">#!variable!node_anvil_name!#</span> from the #!string!brand_0003!# now...]]></key>
-		<key name="title_0071"><![CDATA[Withdrawl of <span class="fixed_width">#!variable!node_anvil_name!#</span> aborted!]]></key>
+		<key name="title_0065"><![CDATA[Powering on <span class="fixed_width">#!variable!node_name!#</span> now...]]></key>
+		<key name="title_0066"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> failed!]]></key>
+		<key name="title_0067"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
+		<key name="title_0068"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> now...]]></key>
+		<key name="title_0069"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
+		<key name="title_0070"><![CDATA[Withdrawing <span class="fixed_width">#!variable!node_name!#</span> from the #!string!brand_0003!# now...]]></key>
+		<key name="title_0071"><![CDATA[Withdrawl of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
 		<key name="title_0072">Attempting to recover the resource manager and, if necessary, the node's storage services...</key>
 		<key name="title_0073">#!string!brand_0003!# Offline</key>
 		<key name="title_0074">Available Resources</key>
@@ -1556,25 +1556,25 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0142"><![CDATA[Create a new server on the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#]]></key>
 		<key name="message_0143">You will need to answer some questions in order to create a new server.</key>
 		<key name="message_0144"><![CDATA[If you are unsure what a certain question means, please don't hesitate to <a href="#!string!brand_0012!#" target="_new">ask questions</a>.]]></key>
-		<key name="message_0145"><![CDATA[<span class="fixed_width">#!variable!node_anvil_name!#</span> will leave the #!string!brand_0003!#.]]></key>
+		<key name="message_0145"><![CDATA[<span class="fixed_width">#!variable!node_name!#</span> will leave the #!string!brand_0003!#.]]></key>
 		<key name="message_0146">Once withdrawn, it will no longer be able to run or recover any servers until it rejoins the #!string!brand_0003!#.</key>
-		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!variable!node_anvil_name!#</span> to the #!string!brand_0003!#.]]></key>
+		<key name="message_0147"><![CDATA[This will attempt to join the node <span class="fixed_width">#!variable!node_name!#</span> to the #!string!brand_0003!#.]]></key>
 		<key name="message_0148">This is usually a safe action.</key>
 		<key name="message_0149">If, for any reason, this node can't connect to it's peer, the peer node could be fenced (forcibly shut off).</key>
 		<key name="message_0150"><![CDATA[This will attempt to join both nodes of the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
-		<key name="message_0151"><![CDATA[The #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span> is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
+		<key name="message_0151"><![CDATA[The #!string!brand_0003!# node <span class="fixed_width">#!variable!node_name!#</span> is about to be <span class="highlight_dangerous">forcibly powered off</span>!]]></key>
 		<key name="message_0152">This will effectively press and hold your node's power button until the system is forced to power down.</key>
 		<key name="message_0153">Should that fail, the power to the node will be completely cut off.</key>
 		<key name="message_0154">This should be done as a last resort, when all other attempts to gracefully shut down the node have failed.</key>
 		<key name="message_0155"><![CDATA[<i>Every</i> operating system has a chance of corrupting when it is forcibly powered off.]]></key>
-		<key name="message_0156"><![CDATA[This will send a <span class="fixed_width">poweroff</span> command to the <span class="fixed_width">#!variable!node_anvil_name!#</span> node.]]></key>
+		<key name="message_0156"><![CDATA[This will send a <span class="fixed_width">poweroff</span> command to the <span class="fixed_width">#!variable!node_name!#</span> node.]]></key>
 		<key name="message_0157">If all is well, this node should gracefully power off.</key>
 		<key name="message_0158">If there is a problem with this node, like an incomplete withdrawl from the #!string!brand_0003!#, it may hang while trying to shut down.</key>
 		<key name="message_0159"><![CDATA[If this happens, return to the previous page and call a <span class="fixed_width">fence</span> action against this node.]]></key>
-		<key name="message_0160"><![CDATA[An attempt will be made to power on the <span class="fixed_width">#!variable!node_anvil_name!#</span> node.]]></key>
+		<key name="message_0160"><![CDATA[An attempt will be made to power on the <span class="fixed_width">#!variable!node_name!#</span> node.]]></key>
 		<key name="message_0161"><![CDATA[An attempt will be made to boot both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0162">Please be patient, it can take a few minutes for the nodes to become accessible.</key>
-		<key name="message_0163"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be booted on the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0163"><![CDATA[The server named <span class="fixed_width">#!variable!server!#</span> will be booted on the #!string!brand_0003!# node <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0164">The node was selected because it is either the preferred host or the only host ready to run this server.</key>
 		<key name="message_0165"><![CDATA[The server named: [<span class="highlight_detail">#!variable!server!#</span>] is about to be shut down.]]></key>
 		<key name="message_0166"><![CDATA[If <span class="fixed_width">#!variable!server!#</span> is not listening to <a href="https://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface" target="new">ACPI</a> calls, this attempt to shut down the node will fail!<br />Make sure that Linux machines are running <span class="fixed_width">acpid</span> and that <b>Windows</b> machines have <b>no pending updates</b>.<br />If <span class="fixed_width">#!variable!server!#</span> doesn't shut down within <u>120 seconds</u>, it will be <span class="highlight_dangerous"><b>forced off</b></span>!]]></key>
@@ -1624,8 +1624,8 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0210"><![CDATA[I tried to delete the file <span class="fixed_width">#!variable!file!#</span> and then verify that it was indeed removed.<br />This should have returned <span class="fixed_width">2</span>, but <span class="fixed_width">#!variable!ls_exit_code!#</span> was returned instead.]]></key>
 		<key name="message_0211"><![CDATA[The file: [<span class="fixed_width">#!variable!file!#</span>] has been archived as:<br />[<span class="fixed_width">#!variable!destination!#</span>].]]></key>
 		<key name="message_0212"><![CDATA[I tried to archive the file <span class="fixed_width">#!variable!file!#</span> as <span class="fixed_width">#!variable!destination!#</span>.<br />This should have returned <span class="fixed_width">0</span>, but <span class="fixed_width">#!variable!cp_exit_code!#</span> was returned instead.]]></key>
-		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_anvil_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
-		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
+		<key name="message_0213"><![CDATA[This will complete once <span class="fixed_width">#!variable!node_name!#</span> has closed the connection.<br />It may take a minute before the node shows as powered off on the dashboard.]]></key>
+		<key name="message_0214"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
 		<key name="message_0215"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but the command to do so was not found in the cache. Manual power up is required.]]></key>
 		<key name="message_0216"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but it appears to already be running. Start up aborted.]]></key>
 		<key name="message_0217"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I am not able to log into the taget node's out of band management interface <span class="fixed_width">#!variable!target_host!#</span>.<br />Please check to see if the address, user or password has changed. Unable to continue.]]></key>
@@ -1633,18 +1633,18 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0219"><![CDATA[I was asked to power on <span class="fixed_width">#!variable!node!#</span>, but I don't have a recorded method of checking or changing the power state for <span class="fixed_width">#!variable!target_host!#</span>.<br />Please restore access to the target subnet. Unable to continue.]]></key>
 		<key name="message_0220"><![CDATA[I will now try to power on both nodes in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0221">It may take a few minutes before the dashboard can log into either node.</key>
-		<key name="message_0222"><![CDATA[I will now try to power on <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0222"><![CDATA[I will now try to power on <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0223">It may take a few minutes before the dashboard can log into it.</key>
 		<key name="message_0224"><![CDATA[An unknown error has occured. Is <span class="fixed_width">#!variable!node!#</span>'s IPMI interface reachable?]]></key>
-		<key name="message_0225"><![CDATA[The node <span class="fixed_width">#!variable!node_anvil_name!#</span> is already reported as being powered up.]]></key>
-		<key name="message_0226"><![CDATA[The node <span class="fixed_width">#!variable!node_anvil_name!#</span>'s out of band management interface is currently unreachable.]]></key>
+		<key name="message_0225"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span> is already reported as being powered up.]]></key>
+		<key name="message_0226"><![CDATA[The node <span class="fixed_width">#!variable!node_name!#</span>'s out of band management interface is currently unreachable.]]></key>
 		<key name="message_0227"><![CDATA[I was asked to power on #!variable!node!# via it's peer #!variable!peer!#, but the power command is empty.<br />This is likely a program error.]]></key>
-		<key name="message_0228"><![CDATA[I wasn't able to find the command needed to power on <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0228"><![CDATA[I wasn't able to find the command needed to power on <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0229">Either this node has not been seen before or the cache for this node was deleted.</key>
 		<key name="message_0230">You can not power on the node from the dashboard at this time.</key>
 		<key name="message_0231">Unable to determine the commands needed to fence #!variable!node!#. One of the nodes need to be accessible or the cache file must exist with the correct command.</key>
 		<key name="message_0232"><![CDATA[Trying to fence <span class="fixed_width">#!variable!node!#</span>, but it's peer, <span class="fixed_width">#!variable!peer!#</span>, is also offline and the fence device at <span class="fixed_width">#!variable!address!#</span> is not accessible from this machine.<br />Unable to proceed with fence action.]]></key>
-		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_anvil_name!#</span>.]]></key>
+		<key name="message_0233"><![CDATA[I will now attempt to fence <span class="fixed_width">#!variable!node_name!#</span>.]]></key>
 		<key name="message_0234"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Proceeding with unfence action.]]></key>
 		<key name="message_0235"><![CDATA[Fencing using the <span class="fixed_width">#!variable!method_name!#</span> method failed. Will try next method, if available.]]></key>
 		<key name="message_0236"><![CDATA[Unfencing using the <span class="fixed_width">#!variable!method_name!#</span> method succeeded. Fence operation a complete success!]]></key>
@@ -1660,7 +1660,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0246">#!string!brand_0003!#'s communication layer started successfully!</key>
 		<key name="message_0247">Unable to start the #!string!brand_0003!#'s communication layer!</key>
 		<key name="message_0248">#!string!brand_0003!#'s resource manager failed to stop!</key>
-		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_anvil_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
+		<key name="message_0249"><![CDATA[It appears that node <span class="fixed_width">#!variable!node_name!#</span> is either already off, is now in use by a server or is replicating data to an inconsistent peer.]]></key>
 		<key name="message_0250">#!string!brand_0003!#'s resource manager recovered successfully!</key>
 		<key name="message_0251"><![CDATA[Checking the <span class="fixed_width">#!variable!storage_service!#</span> storage service now.]]></key>
 		<key name="message_0252"><![CDATA[This requires a rescan of the #!string!brand_0003!#, please be patient.]]></key>

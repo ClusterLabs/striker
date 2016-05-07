@@ -792,6 +792,30 @@ The 'AN::Tools::Striker' module's '_withdraw_node()' method was called without p
 
 The 'AN::Tools::Striker' module's '_withdraw_node()' method was called with a node name that wasn't mapped to a node key for the active Anvil!.
 
+=head2 C<139>
+
+The 'AN::Tools::Striker' module's '_join_anvil()' method was called without passing in an Anvil! UUID.
+
+=head2 C<140>
+
+The 'AN::Tools::Striker' module's '_join_anvil()' method was called without passing in an Anvil! node name.
+
+=head2 C<141>
+
+The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.
+
+=head2 C<142>
+
+The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! node name.
+
+=head2 C<143>
+
+The 'AN::Tools::Striker' module's '_fence_node()' method was called without passing in an Anvil! UUID.
+
+=head2 C<144>
+
+The 'AN::Tools::Striker' module's '_fence_node()' method was called without passing in an Anvil! node name.
+
 
 =head1 SEE ALSO
 

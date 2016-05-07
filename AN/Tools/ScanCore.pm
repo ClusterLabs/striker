@@ -4228,7 +4228,7 @@ sub target_power
 	
 	### TODO: Parse the methods
 	# ie: 
-	# - 0:kvm: fence_virsh -a 192.168.122.1 -l root -p "it's purple happy" -n an-a03n02 -o #!action!#;.
+	# - 0:kvm: fence_virsh -a 192.168.122.1 -l root -p "secret" -n an-a03n02 -o #!action!#;.
 	
 	# If I don't have a power_check, see if anyone else does.
 	if (not $power_check)

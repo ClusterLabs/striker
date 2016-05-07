@@ -26,7 +26,10 @@ my $THIS_FILE = "Striker.pm";
 # _check_node_daemons
 # _check_node_readiness
 # _confirm_delete_server
+# _confirm_dual_join
+# _confirm_fence_node
 # _confirm_force_off_server
+# _confirm_join_anvil
 # _confirm_migrate_server
 # _confirm_start_server
 # _confirm_stop_server
@@ -42,11 +45,14 @@ my $THIS_FILE = "Striker.pm";
 # _display_server_details
 # _display_server_state_and_controls
 # _display_watchdog_panel
+# _dual_join
 # _error
+# _fence_node
 # _find_preferred_host
 # _force_off_server
 # _gather_node_details
 # _header
+# _join_anvil
 # _migrate_server
 # _parse_anvil_safe_start
 # _parse_clustat
@@ -1539,6 +1545,50 @@ sub _confirm_delete_server
 	return (0);
 }
 
+# Confirm that the user wants to join both nodes to the cluster.
+sub _confirm_dual_join
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $anvil_uuid  = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name  = $an->data->{sys}{anvil}{name};
+	my $say_title   = $an->String->get({key => "title_0037", variables => { anvil => $anvil_name }});
+	my $say_message = $an->String->get({key => "message_0150", variables => { anvil => $a }});
+	print $an->Web->template({file => "server.html", template => "confirm-dual-join-anvil", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+	
+	return (0);
+}
+
+# Confirm that the user wants to fence a nodes.
+sub _confirm_fence_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_title               =  $an->String->get({key => "title_0038", variables => { node_name => $an->data->{cgi}{node_name} }});
+	my $say_message             =  $an->String->get({key => "message_0151", variables => { node_name => $an->data->{cgi}{node_name} }});
+	my $expire_time             =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	print $an->Web->template({file => "server.html", template => "confirm-fence-node", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+
+	return (0);
+}
+
 # Confirm that the user wants to force-off a VM.
 sub _confirm_force_off_server
 {
@@ -1567,6 +1617,31 @@ sub _confirm_force_off_server
 		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
 	}});
 	
+	return (0);
+}
+
+# Confirm that the user wants to join a node to the cluster.
+sub _confirm_join_anvil
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_join_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $anvil_uuid  = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name  = $an->data->{sys}{anvil}{name};
+	my $say_title = $an->String->get({key => "title_0036", variables => { 
+			node_name	=>	$an->data->{cgi}{node_name},
+			anvil		=>	$anvil_name,
+		}});
+	my $say_message = $an->String->get({key => "message_0147", variables => { node_name => $an->data->{cgi}{node_name} }});
+	print $an->Web->template({file => "server.html", template => "confirm-join-anvil", replace => { 
+		title		=>	$say_title,
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+
 	return (0);
 }
 
@@ -1628,11 +1703,11 @@ sub _confirm_start_server
 	# Ask the user to confirm
 	my $say_title = $an->String->get({key => "title_0042", variables => { 
 			server		=>	$an->data->{cgi}{server},
-			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+			node_name	=>	$an->data->{cgi}{node_name},
 		}});
 	my $say_message = $an->String->get({key => "message_0163", variables => { 
 			server		=>	$an->data->{cgi}{server},
-			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
+			node_name	=>	$an->data->{cgi}{node_name},
 		}});
 	print $an->Web->template({file => "server.html", template => "confirm-start-server", replace => { 
 		title		=>	$say_title,
@@ -1678,11 +1753,13 @@ sub _confirm_withdraw_node
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_withdraw_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Ask the user to confirm
+	my $anvil_uuid  = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name  = $an->data->{sys}{anvil}{name};
 	my $say_title = $an->String->get({key => "title_0035", variables => { 
-			node_anvil_name	=>	$an->data->{cgi}{node_cluster_name},
-			anvil		=>	$an->data->{cgi}{cluster},
+			node_name	=>	$an->data->{cgi}{node_name},
+			anvil		=>	$anvil_name,
 		}});
-	my $say_message = $an->String->get({key => "message_0145", variables => { node_anvil_name => $an->data->{cgi}{node_cluster_name} }});
+	my $say_message = $an->String->get({key => "message_0145", variables => { node_name => $an->data->{cgi}{node_name} }});
 	print $an->Web->template({file => "server.html", template => "confirm-withdrawl", replace => { 
 		title		=>	$say_title,
 		message		=>	$say_message,
@@ -2680,9 +2757,9 @@ sub _display_node_controls
 		### TODO: See if the peer is online already and, if so, add 'confirm=true' as the join is safe.
 		my $say_join_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?anvil_uuid=$anvil_uuid&task=join_cluster&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=join_anvil&node=$node",
 				button_text	=>	"#!string!button_0031!#",
-				id		=>	"join_cluster_$node",
+				id		=>	"join_anvil_$node",
 			}});
 		$say_join[$i] = $an->data->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
 		$say_join[$i] = $say_join_disabled_button if $disable_join;
@@ -3515,6 +3592,139 @@ fi
 	return($watchdog_panel);
 }
 
+# This sttempts to start the cluster stack on both nodes simultaneously.
+sub _dual_join
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_dual_join" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# grab the CGI data
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $node_name  = $an->data->{cgi}{node_name};
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0141", code => 141, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $node_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Pull out the rest of the data
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key   = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name  = $an->data->{sys}{anvil}{$peer_key}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "peer_key",   value3 => $peer_key,
+		name4 => "peer_name",  value4 => $peer_name,
+		name5 => "target",     value5 => $target,
+		name6 => "port",       value6 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Scan the Anvil!.
+	$an->Striker->scan_anvil();
+	
+	# Proceed only if all of the storage components, cman and rgmanager are off.
+	my @abort_reason;
+	foreach my $node ($node_name, $peer_name)
+	{
+		if (($an->data->{node}{$node}{daemon}{cman}{exit_code}      eq "0") or
+		    ($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} eq "0") or
+		    ($an->data->{node}{$node}{daemon}{drbd}{exit_code}      eq "0") or
+		    ($an->data->{node}{$node}{daemon}{clvmd}{exit_code}     eq "0") or
+		    ($an->data->{node}{$node}{daemon}{gfs2}{exit_code}      eq "0"))
+		{
+			# Already joined the Anvil!
+			   $proceed = 0;
+			my $reason  = $an->String->get({key => "message_0190", variables => { node => $node }});
+			push @abort_reason, $reason;
+		}
+	}
+	if ($proceed)
+	{
+		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $anvil_name }});
+		print $an->Web->template({file => "server.html", template => "dual-join-anvil-header", replace => { title => $say_title }});
+		
+		# Now call the command against both nodes using '$an->Remote->synchronous_command_run()'.
+		my $command         = $an->data->{path}{initd}."/cman start && ".$an->data->{path}{initd}."/rgmanager start";
+		my ($node1, $node2) = @{$an->data->{clusters}{$cluster}{nodes}};
+		my $password        = $an->data->{sys}{root_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "command", value1 => $command,
+			name2 => "node1",   value2 => $node1,
+			name3 => "node2",   value3 => $node2,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($output) = $an->Remote->synchronous_command_run({
+			command		=>	$command, 
+			node1		=>	$node1, 
+			node2		=>	$node2, 
+			delay		=>	0,
+			password	=>	$password, 
+		});
+		
+		foreach my $node ($node_name, $peer_name)
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "output->$node", value1 => $output->{$node},
+			}, file => $THIS_FILE, line => __LINE__});
+			foreach my $line (split/\n/, $output->{$node})
+			{
+				$line =~ s/^\s+//;
+				$line =~ s/\s+$//;
+				$line =~ s/\s+/ /g;
+				next if not $line;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				   $line    = $an->Web->parse_text_line({line => $line});
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print $an->Web->template({file => "server.html", template => "dual-join-anvil-output", replace => { 
+					node	=>	$node,
+					message	=>	$message,
+					status	=>	$status,
+				}});
+			}
+		}
+		
+		# We're done.
+		$an->Log->entry({log_level => 2, message_key => "log_0125", file => $THIS_FILE, line => __LINE__});
+		print $an->Web->template({file => "server.html", template => "dual-join-anvil-footer"});
+	}
+	else
+	{
+		my $say_title = $an->String->get({key => "title_0055", variables => { anvil => $anvil_name }});
+		print $an->Web->template({file => "server.html", template => "dual-join-anvil-aborted-header", replace => { title => $say_title }});
+		foreach my $reason (@abort_reason)
+		{
+			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $reason }});
+		}
+		print $an->Web->template({file => "server.html", template => "dual-join-anvil-aborted-footer"});
+	}
+	
+	return(0);
+}
+
 ### WARNING: This is legacy and should not be used anymore.
 # This prints an error and exits. We don't log this in case the error was trigger when parsing a log entry or
 # string.
@@ -3551,6 +3761,453 @@ sub _footer
 	$an->data->{sys}{footer_printed} = 1;
 	
 	return (0);
+}
+
+# This uses the fence methods, as defined in cluster.conf and in the proper order, to fence the target node.
+sub _fence_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_fence_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# grab the CGI data
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $node_name  = $an->data->{cgi}{node_name};
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0143", code => 143, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $node_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0144", code => 144, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Pull out the rest of the data
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key   = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name  = $an->data->{sys}{anvil}{$peer_key}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "peer_key",   value3 => $peer_key,
+		name4 => "peer_name",  value4 => $peer_name,
+		name5 => "target",     value5 => $target,
+		name6 => "port",       value6 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Has the timer expired?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "current time", value1 => time,
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (time > $an->data->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = $an->String->get({key => "title_0188"});
+		my $say_message = $an->String->get({key => "message_0447", variables => { node => $node_name} }});
+		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			title		=>	$say_title,
+			message		=>	$say_message,
+		}});
+		return(1);
+	}
+	
+	# Scan the cluster
+	$an->Striker->scan_anvil();
+	
+	# Now, if I can reach the peer node, use it to fence the target. Otherwise, we'll try to fence it 
+	# using cached 'power_check' data, if available.
+	if ($an->data->{sys}{anvil}{$peer_key}{online})
+	{
+		# Sweet, fence via the peer.
+		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "fence-node-header", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+		print $an->Web->template({file => "server.html", template => "fence-node-output-header"});
+		
+		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target", value1 => $target,
+			name2 => "port",   value2 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $shell_call = $an->data->{path}{fence_node}." $node_name";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value2 => $target,
+			name2 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			$line    = $an->Web->parse_text_line({line => $line});
+			my $message = ($line =~ /^(.*)\[/)[0];
+			my $status  = ($line =~ /(\[.*)$/)[0];
+			if (not $message)
+			{
+				$message = $line;
+				$status  = "";
+			}
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	$status,
+				message	=>	$message,
+			}});
+		}
+		print $an->Web->template({file => "server.html", template => "fence-node-output-footer"});
+		print $an->Web->template({file => "server.html", template => "fence-node-footer"});
+	}
+	else
+	{
+		# OK, use cache to try to call it locally
+		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "fence-node-header", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+		print $an->Web->template({file => "server.html", template => "fence-node-output-header"});
+		
+		# Turn it off...
+		my $state = $an->ScanCore->target_power({
+				task   => "off",
+				target => $node_uuid,
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($state eq "off")
+		{
+			# Success, turn it back on.
+			my $state = $an->ScanCore->target_power({
+					task   => "on",
+					target => $node_uuid,
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state", value1 => $state, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($state eq "on")
+			{
+				# Success!
+			}
+			else
+			{
+				# She's dead, Jim.
+			}
+		}
+		else
+		{
+			# Something went wrong.
+		}
+	}
+	
+	$an->Striker->_footer();
+	
+	
+	
+	
+	# See if I already have the fence string. If not, load it from cache.
+	if ($an->data->{node}{$node_name}{info}{fence_methods})
+	{
+		$fence_string = $an->data->{node}{$node_name}{info}{fence_methods};
+	}
+	else
+	{
+		
+		AN::Cluster::read_node_cache($an, $node);
+		if ($an->data->{node}{$node}{info}{fence_methods})
+		{
+			$fence_string = $an->data->{node}{$node}{info}{fence_methods};
+		}
+		else
+		{
+			   $proceed = 0;
+			my $reason  = $an->String->get({key => "message_0231", variables => { node => $node }});
+			push @abort_reason, "$reason\n";
+		}
+	}
+	
+	# If the peer node is up, use the fence command as compiled by it. 
+	# Otherwise, read the cache. If the fence command(s) are still not
+	# available, abort.
+	if ($proceed)
+	{
+		if (not $an->data->{node}{$peer}{up})
+		{
+			# See if this machine can reach each '-a ...' fence device
+			# address.
+			foreach my $address ($fence_string =~ /-a\s(.*?)\s/g)
+			{
+				my ($local_access, $target_ip) = AN::Cluster::on_same_network($an, $address, $node);
+				if (not $local_access)
+				{
+					   $proceed = 0;
+					my $reason  = $an->String->get({key => "message_0232", variables => { 
+							node	=>	$node,
+							peer	=>	$peer,
+							address	=>	$address,
+						}});
+					push @abort_reason, "$reason\n";
+				}
+			}
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node",    value1 => $node,
+		name2 => "proceed", value2 => $proceed,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($proceed)
+	{
+		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_message = $an->String->get({key => "message_0233", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "fence-node-header", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+
+		# This loops for each method, which may have multiple device calls. I parse each call into an
+		# 'off' and 'on' call. If the 'off' call fails, I go to the next method until there are no
+		# methods left. If the 'off' works, I call the 'on' call from the same method to (try to) 
+		# boot the node back up (or simply unfence it in the case of PDUs and the like).
+		my $fence_success   = 0;
+		my $unfence_success = 0;
+		foreach my $line ($fence_string =~ /\d+:.*?;\./g)
+		{
+			print $an->Web->template({file => "server.html", template => "fence-node-output-header"});
+			my ($method_num, $method_name, $command) = ($line =~ /(\d+):(.*?): (.*?;)\./);
+			my $off_command = $command;
+			my $on_command  = $command;
+			my $off_success = 1;
+			my $on_success  = 1;
+			
+			# If the peer is up, set the command to run through it.
+			if ($an->data->{node}{$peer}{up})
+			{
+				# When called remotely, I need to double-escape
+				# the $? to protect it inside the "".
+				$off_command =~ s/#!action!#;/off; echo fence:\$?;/g;
+				$on_command  =~ s/#!action!#;/on;  echo fence:\$?;/g;
+				$off_command = "ssh:$peer,$off_command";
+				$on_command  = "ssh:$peer,$on_command";
+			}
+			else
+			{
+				# When called locally, I only need to escape
+				# the $? once.
+				$off_command =~ s/#!action!#;/off; echo fence:\$?;/g;
+				$on_command  =~ s/#!action!#;/on;  echo fence:\$?;/g;
+			}
+			
+			# Make the off attempt.
+			my $output = [];
+			my $ssh_fh;
+			my $shell_call = "$off_command";
+			if ($shell_call =~ /ssh:(.*?),(.*)$/)
+			{
+				my $node       = $1;
+				my $shell_call = $2;
+				my $password   = $an->data->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$an->data->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					push @{$output}, $_;
+				}
+				$file_handle->close()
+			}
+			foreach my $line (@{$output})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "line", value2 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				# This is how I get the fence call's exit code.
+				if ($line =~ /fence:(\d+)/)
+				{
+					# Anything but '0' is a failure.
+					my $exit = $1;
+					if ($exit ne "0")
+					{
+						$off_success = 0;
+					}
+				}
+				else
+				{
+					print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+				}
+			}
+			print $an->Web->template({file => "server.html", template => "fence-node-output-footer"});
+			if ($off_success)
+			{
+				# Fence succeeded!
+				$an->Log->entry({log_level => 2, message_key => "log_0253", message_variables => {
+					method_name => $method_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $say_message = $an->String->get({key => "message_0234", variables => { method_name => $method_name }});
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { message => $say_message }});
+				$fence_success = 1;
+			}
+			else
+			{
+				# Fence failed!
+				$an->Log->entry({log_level => 2, message_key => "log_0254", message_variables => {
+					method_name => $method_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $say_message = $an->String->get({key => "message_0235", variables => { method_name => $method_name }});
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { message => $say_message }});
+				next;
+			}
+			
+			# If I'm here, I can try the unfence command.
+			print $an->Web->template({file => "server.html", template => "fence-node-unfence-header"});
+			$shell_call = "$on_command";
+			if ($shell_call =~ /ssh:(.*?),(.*)$/)
+			{
+				my $node       = $1;
+				my $shell_call = $2;
+				my $password   = $an->data->{sys}{root_password};
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+					name2 => "node",       value2 => $node,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$node,
+					port		=>	$an->data->{node}{$node}{port}, 
+					password	=>	$password,
+					ssh_fh		=>	"",
+					'close'		=>	0,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+				}
+			}
+			else
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_call", value1 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+				while(<$file_handle>)
+				{
+					chomp;
+					push @{$output}, $_;
+				}
+				$file_handle->close()
+			}
+			foreach my $line (@{$output})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node", value1 => $node,
+					name2 => "line", value2 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				# This is how I get the fence call's exit code.
+				if ($line =~ /fence:(\d+)/)
+				{
+					# Anything but '0' is a failure.
+					my $exit = $1;
+					if ($exit ne "0")
+					{
+						$on_success = 0;
+					}
+				}
+				else
+				{
+					print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
+				}
+			}
+			print $an->Web->template({file => "server.html", template => "fence-node-unfence-footer"});
+			if ($on_success)
+			{
+				# Unfence succeeded!
+				$an->Log->entry({log_level => 2, message_key => "log_0254", message_variables => {
+					method_name => $method_name, 
+				}, file => $THIS_FILE, line => __LINE__});
+				my $say_message = $an->String->get({key => "message_0236", variables => { method_name => $method_name }});
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { message => $say_message }});
+				$unfence_success = 1;
+				last;
+			}
+			else
+			{
+				# Unfence failed!
+				# This is allowed to go to the next fence method because some servers may 
+				# hang their IPMI interface after a fence call, requiring power to be cut in
+				# order to reset the BMC. HP, I'm looking at you and your DL1** G7 line...
+				my $say_message = $an->String->get({key => "message_0237", variables => { method_name => $method_name }});
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { message => $say_message }});
+			}
+		}
+	}
+	else
+	{
+		my $say_title = $an->String->get({key => "title_0069", variables => { node_anvil_name => $node_cluster_name }});
+		print $an->Web->template({file => "server.html", template => "fence-node-aborted-header", replace => { title => $say_title }});
+		foreach my $reason (@abort_reason)
+		{
+			print $an->Web->template({file => "server.html", template => "fence-node-abort-reason", replace => { reason => $reason }});
+		}
+	}
+	print $an->Web->template({file => "server.html", template => "fence-node-footer"});
+	AN::Cluster::footer($an);
+	
+	return(0);
 }
 
 # This looks through the failover domain for a server and returns the prefered host.
@@ -4404,6 +5061,181 @@ sub _header
 	
 	
 	return (0);
+}
+
+# This sttempts to shut down a VM on a target node.
+sub _join_anvil
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_join_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# grab the CGI data
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $node_name  = $an->data->{cgi}{node_name};
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0139", code => 139, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	if (not $node_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0140", code => 140, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Pull out the rest of the data
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key   = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name  = $an->data->{sys}{anvil}{$peer_key}{name};
+	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
+	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
+	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+		name2 => "node_key",   value2 => $node_key,
+		name3 => "peer_key",   value3 => $peer_key,
+		name4 => "peer_name",  value4 => $peer_name,
+		name5 => "target",     value5 => $target,
+		name6 => "port",       value6 => $port,
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
+	### TODO: Should we abort if cman is not running on the peer but the peer is otherwise accessible? 
+	###       One the one hand, it is not hosting any servers so the user's servers won't be impacted if
+	###       it gets fenced. On the otherhand, the peer will get fenced after a delay... Maybe just
+	###       print a warning that it will take a bit and that the peer will be fenced shortly if it's
+	###       cman isn't started separately?
+	# Proceed only if all of the storage components, cman and rgmanager are off.
+	if (($an->data->{node}{$node_name}{daemon}{cman}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{drbd}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{clvmd}{exit_code}     ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{gfs2}{exit_code}      ne "0") or
+	    ($an->data->{node}{$node_name}{daemon}{libvirtd}{exit_code}  ne "0"))
+	{
+		$proceed = 1;
+	}
+	if ($proceed)
+	{
+		my $say_title = $an->String->get({key => "title_0052", variables => { 
+				node_name => $node_name,
+				anvil           => $anvil_name,
+			}});
+		print $an->Web->template({file => "server.html", template => "join-anvil-header", replace => { title => $say_title }});
+		
+		# Start cman first.
+		my $cman_state = 255;
+		my $shell_call = $an->data->{path}{initd}."/cman start; ".$an->data->{path}{echo}." rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^rc:(\d+)/)
+			{
+				$cman_state = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cman_state", value1 => $cman_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				   $line    = $an->Web->parse_text_line({line => $line});
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	$status,
+					message	=>	$message,
+				}});
+			}
+		}
+		
+		### TODO: Verify that cman actually started...
+		my $rgmanager_state = 255;
+		my $shell_call      = $an->data->{path}{initd}."/rgmanager start; ".$an->data->{path}{echo}." rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$line =~ s/\s+/ /g;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^rc:(\d+)/)
+			{
+				$cman_state = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "cman_state", value1 => $cman_state, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				   $line    = $an->Web->parse_text_line({line => $line});
+				my $message = ($line =~ /^(.*)\[/)[0];
+				my $status  = ($line =~ /(\[.*)$/)[0];
+				if (not $message)
+				{
+					$message = $line;
+					$status  = "";
+				}
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	$status,
+					message	=>	$message,
+				}});
+			}
+		}
+		print $an->Web->template({file => "server.html", template => "join-anvil-footer"});
+	}
+	else
+	{
+		# Node is already in the Anvil!
+		my $say_title = $an->String->get({key => "title_0053", variables => { 
+				node_name	=>	$node_name,
+				anvil		=>	$anvil_name,
+			}});
+		print $an->Web->template({file => "server.html", template => "join-anvil-aborted", replace => { title => $say_title }});
+	}
+	
+	return(0);
 }
 
 # This migrates a server using 'anvil-migrate-server'
@@ -7065,6 +7897,9 @@ sub _process_task
 		name1 => "cgi::task",    value1 => $an->data->{cgi}{task}, 
 		name2 => "cgi::confirm", value2 => $an->data->{cgi}{confirm}, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
 	if ($an->data->{cgi}{task} eq "withdraw")
 	{
 		# Confirmed yet?
@@ -7077,16 +7912,16 @@ sub _process_task
 			$an->Striker->_confirm_withdraw_node();
 		}
 	}
-	elsif ($an->data->{cgi}{task} eq "join_cluster")
+	elsif ($an->data->{cgi}{task} eq "join_anvil")
 	{
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-#			$an->Striker->_join_cluster();
+			$an->Striker->_join_anvil();
 		}
 		else
 		{
-#			$an->Striker->_confirm_join_cluster();
+			$an->Striker->_confirm_join_anvil();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "dual_join")
@@ -7094,11 +7929,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_dual_join();
+			$an->Striker->_dual_join();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_dual_join();
+			$an->Striker->_confirm_dual_join();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "fence_node")
@@ -7106,11 +7941,11 @@ sub _process_task
 		# Confirmed yet?
 		if ($an->data->{cgi}{confirm})
 		{
-# 			$an->Striker->_fence_node();
+			$an->Striker->_fence_node();
 		}
 		else
 		{
-# 			$an->Striker->_confirm_fence_node();
+			$an->Striker->_confirm_fence_node();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "poweroff_node")
@@ -7258,7 +8093,7 @@ sub _process_task
 	elsif ($an->data->{cgi}{task} eq "display_health")
 	{
 		print $an->Web->template({file => "common.html", template => "scanning-message", replace => {
-			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $an->data->{cgi}{cluster} }}),
+			anvil_message	=>	$an->String->get({key => "message_0272", variables => { anvil => $anvil_name }}),
 		}});
 # 		$an->Striker->_get_storage_data($an, $an->data->{cgi}{node});
 		
@@ -7268,7 +8103,7 @@ sub _process_task
 		{
 			# No managers found
 			my $say_title = $an->String->get({key => "title_0016", variables => { node => $an->data->{cgi}{node} }});
-			my $say_message = $an->String->get({key => "message_0051", variables => { node_cluster_name => $an->data->{cgi}{node_cluster_name} }});
+			my $say_message = $an->String->get({key => "message_0051", variables => { node_name => $an->data->{cgi}{node_name} }});
 			print $an->Web->template({file => "lsi-storage.html", template => "no-managers-found", replace => { 
 				title	=>	$say_title,
 				message	=>	$say_message,
@@ -7798,7 +8633,6 @@ sub _stop_server
 	return(0);
 }
 
-### TODO: Switch this to '$an->Cman->withdraw_node()' and process the returned output in one go.
 # This does a final check of the target node then withdraws it from the cluster.
 sub _withdraw_node
 {
@@ -7844,7 +8678,7 @@ sub _withdraw_node
 		my $password = $an->data->{sys}{anvil}{$node_key}{password};
 		
 		# Stop rgmanager and then check it's status.
-		my $say_title = $an->String->get({key => "title_0070", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_title = $an->String->get({key => "title_0070", variables => { node_name => $node_name }});
 		print $an->Web->template({file => "server.html", template => "withdraw-node-header", replace => { title => $say_title }});
 		
 		my ($return_code, $withdraw_output) = $an->Cman->withdraw_node({
@@ -7883,8 +8717,8 @@ sub _withdraw_node
 	}
 	else
 	{
-		my $say_title   = $an->String->get({key => "title_0071", variables => { node_anvil_name => $node_cluster_name }});
-		my $say_message = $an->String->get({key => "message_0249", variables => { node_anvil_name => $node_cluster_name }});
+		my $say_title   = $an->String->get({key => "title_0071", variables => { node_name => $node_name }});
+		my $say_message = $an->String->get({key => "message_0249", variables => { node_name => $node_name }});
 		print $an->Web->template({file => "server.html", template => "withdraw-node-aborted", replace => { 
 			title	=>	$say_title,
 			message	=>	$say_message,

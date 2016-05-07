@@ -103,12 +103,12 @@ sub connect_to_databases
 	my $successful_connections = [];
 	foreach my $id (sort {$a cmp $b} keys %{$an->data->{scancore}{db}})
 	{
-		my $driver            = "DBI:Pg";
-		my $host              = $an->data->{scancore}{db}{$id}{host}              ? $an->data->{scancore}{db}{$id}{host}              : ""; # This should fail
-		my $port              = $an->data->{scancore}{db}{$id}{port}              ? $an->data->{scancore}{db}{$id}{port}              : 5432;
-		my $name              = $an->data->{scancore}{db}{$id}{name}              ? $an->data->{scancore}{db}{$id}{name}              : ""; # This should fail
-		my $user              = $an->data->{scancore}{db}{$id}{user}              ? $an->data->{scancore}{db}{$id}{user}              : ""; # This should fail
-		my $password          = $an->data->{scancore}{db}{$id}{password}          ? $an->data->{scancore}{db}{$id}{password}          : "";
+		my $driver   = "DBI:Pg";
+		my $host     = $an->data->{scancore}{db}{$id}{host}     ? $an->data->{scancore}{db}{$id}{host}     : ""; # This should fail
+		my $port     = $an->data->{scancore}{db}{$id}{port}     ? $an->data->{scancore}{db}{$id}{port}     : 5432;
+		my $name     = $an->data->{scancore}{db}{$id}{name}     ? $an->data->{scancore}{db}{$id}{name}     : ""; # This should fail
+		my $user     = $an->data->{scancore}{db}{$id}{user}     ? $an->data->{scancore}{db}{$id}{user}     : ""; # This should fail
+		my $password = $an->data->{scancore}{db}{$id}{password} ? $an->data->{scancore}{db}{$id}{password} : "";
 		
 		# These are not used yet.
 		my $postgres_password = $an->data->{scancore}{db}{$id}{postgres_password} ? $an->data->{scancore}{db}{$id}{postgres_password} : "";
@@ -299,10 +299,14 @@ sub connect_to_databases
 				name2 => "dbh::$id",        value2 => $an->data->{dbh}{$id}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			# Set the first ID to be the one I read from later.
-			if (not $an->data->{sys}{read_db_id})
+			# Set the first ID to be the one I read from later. Alternatively, if this host is 
+			# local, use it.
+			if (($host eq $an->hostname)       or 
+			    ($host eq $an->short_hostname) or 
+			    ($host eq "localhost")         or 
+			    ($host eq "127.0.0.1")         or 
+			    (not $an->data->{sys}{read_db_id}))
 			{
-				# TODO: Make this prefer the local DB instead of the first ID we see.
 				$an->data->{sys}{read_db_id} = $id;
 				$an->data->{sys}{use_db_fh}  = $an->data->{dbh}{$id};
 				
