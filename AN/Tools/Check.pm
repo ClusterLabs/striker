@@ -11,6 +11,7 @@ my $THIS_FILE = "Check.pm";
 
 ### Methods:
 # access
+# check_on_same_network
 # daemon
 # drbd_resource
 # kernel_module
@@ -102,6 +103,189 @@ sub access
 	return($access);
 }
 
+# This takes a host name (or IP) and sees if it's reachable from the machine running this program.
+sub on_same_network
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "on_same_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $remote = $parameter->{remote} ? $parameter->{remote} : "";
+	if (not $remote)
+	{
+		# I think we're alone now...
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0145", code => 145, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	if (not $an->Validate->is_ipv4({ip => $remote}))
+	{
+		# Try to translate the host name to an IP.
+		my $ip = $an->Get->ip({host => $remote});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "ip", value1 => $ip,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($ip)
+		{
+			if ($an->Validate->is_ipv4({ip => $ip}))
+			{
+				$remote = $ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "remote", value1 => $remote,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			else
+			{
+				# The returned value isn't an ip...
+				$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0147", message_variables => { 
+					remote => $remote,
+					ip     => $ip,
+				}, code => 147, file => "$THIS_FILE", line => __LINE__});
+				return("");
+			}
+		}
+		else
+		{
+			# No IP, can't compare
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0146", message_variables => { remote => $remote }, code => 146, file => "$THIS_FILE", line => __LINE__});
+			return("");
+		}
+	}
+	
+	### TODO: This should use 'ip addr' now.
+	# If I am still alive, our remote address is a valid IP.
+	my $local_access = 0;
+	my $in_dev       = "";
+	my $this_ip      = "";
+	my $this_nm      = "";
+	my $shell_call   = $an->data->{path}{ifconfig};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "shell_call", value1 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	while(<$file_handle>)
+	{
+		chomp;
+		my $line = $_;
+		if ($line =~ /^(.*?)\s+Link encap/)
+		{
+			$in_dev = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_dev", value1 => $in_dev,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		elsif ($line =~ /^(.*?): flags/)
+		{
+			$in_dev = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "in_dev", value1 => $in_dev,
+			}, file => $THIS_FILE, line => __LINE__});
+			next;
+		}
+		if (not $line)
+		{
+			# See if this network gives me access to the power check device.
+			my $target_ip_range = $remote;
+			my $this_ip_range   = $this_ip;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target_ip_range", value1 => $target_ip_range,
+				name2 => "this_ip",         value2 => $this_ip,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_nm eq "255.255.255.0")
+			{
+				# Match the first three octals.
+				$target_ip_range =~ s/.\d+$//;
+				$this_ip_range   =~ s/.\d+$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip_range", value1 => $target_ip_range,
+					name2 => "this_ip_range",   value2 => $this_ip_range,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($this_nm eq "255.255.0.0")
+			{
+				# Match the first three octals.
+				$target_ip_range =~ s/.\d+.\d+$//;
+				$this_ip_range   =~ s/.\d+.\d+$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip_range", value1 => $target_ip_range,
+					name2 => "this_ip_range",   value2 => $this_ip_range,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			if ($this_nm eq "255.0.0.0")
+			{
+				# Match the first three octals.
+				$target_ip_range =~ s/.\d+.\d+.\d+$//;
+				$this_ip_range   =~ s/.\d+.\d+.\d+$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target_ip_range", value1 => $target_ip_range,
+					name2 => "this_ip_range",   value2 => $this_ip_range,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target_ip_range", value1 => $target_ip_range,
+				name2 => "this_ip_range",   value2 => $this_ip_range,
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_ip_range eq $target_ip_range)
+			{
+				# Match! I can reach it directly.
+				$local_access = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "local_access", value1 => $local_access,
+				}, file => $THIS_FILE, line => __LINE__});
+				last;
+			}
+			
+			$in_dev = "";
+			$this_ip = "";
+			$this_nm = "";
+			next;
+		}
+		
+		if ($in_dev)
+		{
+			next if $line !~ /inet /;
+			if ($line =~ /inet addr:(\d+\.\d+\.\d+\.\d+) /)
+			{
+				$this_ip = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_ip", value1 => $this_ip,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($line =~ /inet (\d+\.\d+\.\d+\.\d+) /)
+			{
+				$this_ip = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_ip", value1 => $this_ip,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			
+			if ($line =~ /Mask:(\d+\.\d+\.\d+\.\d+)/i)
+			{
+				$this_nm = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nm", value1 => $this_nm,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($line =~ /netmask (\d+\.\d+\.\d+\.\d+) /)
+			{
+				$this_nm = $1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "this_nm", value1 => $this_nm,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	close $file_handle;
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "local_access", value1 => $local_access,
+		name2 => "remote",       value2 => $remote,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($local_access, $remote);
+}
+
 # This reports whether a given daemon is running (locally or remotely). It return '0' if the daemon is NOT
 # running, '1' if it is and '2' if it is not found. If the return code wasn't expected, the returned state 
 # will be set to the return code. The caller will have to decide what to do.
@@ -110,8 +294,6 @@ sub daemon
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	
-	$an->Alert->_set_error;
 	
 	my $state = 2;
 	if (not $parameter->{daemon})

@@ -1193,6 +1193,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="state_0126">Live</key>
 		<key name="state_0127">Cold</key>
 		<key name="state_0128"><![CDATA[<span class="highlight_warning">Unknown (was: [#!variable!host!#])</span>]]></key>
+		<key name="state_0129">Partial Success</key>
 		
 		
 		<!-- Titles used in tables (and options in <select> fields) -->
@@ -1263,7 +1264,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0065"><![CDATA[Powering on <span class="fixed_width">#!variable!node_name!#</span> now...]]></key>
 		<key name="title_0066"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> failed!]]></key>
 		<key name="title_0067"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
-		<key name="title_0068"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> now...]]></key>
+		<key name="title_0068"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node via the peer now...]]></key>
 		<key name="title_0069"><![CDATA[Powering on of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
 		<key name="title_0070"><![CDATA[Withdrawing <span class="fixed_width">#!variable!node_name!#</span> from the #!string!brand_0003!# now...]]></key>
 		<key name="title_0071"><![CDATA[Withdrawl of <span class="fixed_width">#!variable!node_name!#</span> aborted!]]></key>
@@ -1397,6 +1398,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0199">Add, edit or delete an outgoing (SMTP) mail server used to send #!string!brand_0003!# alerts.</key>
 		<key name="title_0200">Confirmation of potential conflict required</key>
 		<key name="title_0201">Edit Raw Install Manifest</key>
+		<key name="title_0202"><![CDATA[Fencing <span class="fixed_width">#!variable!node_name!#</span> node directly...]]></key>
 		
 		<!-- Messages are relatively short explanations about why something was displayed to the user. -->
 		<key name="message_0001"><![CDATA[No #!string!brand_0003!# yet configured.<br />Click "<span class="highlight_ready">#!string!row_0017!#</span>" below to add your first one!]]></key>
@@ -1888,6 +1890,10 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0470"><![CDATA[Are you certain that you want to delete the install manifest for: [<span class="highlight_detail">#!variable!anvil!#</span>]?]]></key>
 		<key name="message_0471"><![CDATA[The request to force-off the: [<span class="highlight_detail">#!variable!server!#</span>] was aborted. The server appears to already be off now.]]></key>
 		<key name="message_0472"><![CDATA[The request to delete the: [<span class="highlight_detail">#!variable!server!#</span>] has timed out.]]></key>
+		<key name="message_0473"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was successfully fenced.]]></key>
+		<key name="message_0474"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was confirmed to be off, but it appears to have failed to start back up.]]></key>
+		<key name="message_0475"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is on, and it appears that we were not able to force it off. This should not be possible and might indicate a problem with the program.]]></key>
+		<key name="message_0476"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown state. It is unlikely that the fence succeeded. Can this system talk to the node's fence device(s)?]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

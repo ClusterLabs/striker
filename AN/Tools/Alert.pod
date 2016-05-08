@@ -816,6 +816,18 @@ The 'AN::Tools::Striker' module's '_fence_node()' method was called without pass
 
 The 'AN::Tools::Striker' module's '_fence_node()' method was called without passing in an Anvil! node name.
 
+=head2 C<145>
+
+The 'AN::Tools::Check' module's 'on_same_network()' method was called without passing in a remote host name or IP address.
+
+=head2 C<146>
+
+The 'AN::Tools::Check' module's 'on_same_network()' method was given a host name that couldn't be translated to an IP address.
+
+=head2 C<147>
+
+The 'AN::Tools::Check' module's 'on_same_network()' method was given a host name that was translated to a string that isn't a valid IP address.
+
 
 =head1 SEE ALSO
 

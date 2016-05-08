@@ -135,9 +135,6 @@ sub is_ipv4
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
 	my $ip = $parameter->{ip} ? $parameter->{ip} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ip", value1 => $ip,

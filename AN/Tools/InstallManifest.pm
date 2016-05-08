@@ -14305,10 +14305,13 @@ sub start_cman
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->synchronous_command_run({
 			command		=>	$command, 
-			node1		=>	$an->data->{cgi}{anvil_node1_current_ip}, 
-			node2		=>	$an->data->{cgi}{anvil_node2_current_ip}, 
 			delay		=>	30,
-			password	=>	$password, 
+			node1_ip	=>	$an->data->{cgi}{anvil_node1_current_ip}, 
+			node1_port	=>	$an->data->{node}{$node1}{port}, 
+			node1_password	=>	$an->data->{cgi}{anvil_node1_current_password},
+			node2_ip	=>	$an->data->{cgi}{anvil_node2_current_ip}, 
+			node2_port	=>	$an->data->{node}{$node2}{port}, 
+			node2_password	=>	$an->data->{cgi}{anvil_node2_current_password}
 		});
 		
 		# Now see if that succeeded.

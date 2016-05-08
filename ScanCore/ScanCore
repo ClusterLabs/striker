@@ -3654,7 +3654,7 @@ sub update_db
 		$an->DB->update_time({file => $THIS_FILE});
 
 		# Re-enable triggers
-		my $query = "SET session_replication_role = DEFAULT;";
+		$query = "SET session_replication_role = DEFAULT;";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "query", value1 => $query, 
 		}, file => $THIS_FILE, line => __LINE__});

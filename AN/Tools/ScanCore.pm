@@ -4226,10 +4226,6 @@ sub target_power
 		name1 => "power_check", value1 => $power_check, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	### TODO: Parse the methods
-	# ie: 
-	# - 0:kvm: fence_virsh -a 192.168.122.1 -l root -p "secret" -n an-a03n02 -o #!action!#;.
-	
 	# If I don't have a power_check, see if anyone else does.
 	if (not $power_check)
 	{
@@ -4245,6 +4241,33 @@ sub target_power
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($power_check)
 	{
+		# Convert the '-a X' to an IP address, if needed.
+		my $target =  $power_check;
+		   $target =~ s/.*?-a\s//;
+		   $target =~ s/\s+//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "target", value1 => $target,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (not $an->Validate->is_ipv4({ip => $target}))
+		{
+			my $ip = $an->Get->ip({host => $target});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($ip)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => ">> power_check", value1 => $power_check,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				$power_check =~ s/$target/$ip/;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "<< power_check", value1 => $power_check,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+		
 		my $shell_call = $power_check." -o $task";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,

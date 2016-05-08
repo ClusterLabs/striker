@@ -1083,39 +1083,104 @@ sub ip
 {
 	my $self      = shift;
 	my $parameter = shift;
+	my $an        = $self->parent;
 	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# What PID?
-	my $host = $parameter->{host};
-	
-	# Error if not host given.
+	# Error if no host given.
+	my $ip        = "";
+	my $host      = $parameter->{host}      ? $parameter->{host}      : "";
+	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
 	if (not $host)
 	{
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0047", code => 47, file => "$THIS_FILE", line => __LINE__});
+		return("");
 	}
-	
-	my $ip         = "";
-	my $shell_call = $an->data->{path}{gethostip}." -d $host";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-		name1 => "shell_call", value1 => $shell_call, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "host",      value1 => $host, 
+		name2 => "node_uuid", value2 => $node_uuid, 
 	}, file => $THIS_FILE, line => __LINE__});
-	open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
-	while(<$file_handle>)
-	{
-		chomp;
-		$ip = $_;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "ip", value1 => $ip, 
-		}, file => $THIS_FILE, line => __LINE__});
-		last;
-	}
-	close $file_handle;
 	
+	if ($node_uuid)
+	{
+		# See if we can find the host in node's cache.
+		my $etc_hosts = $an->ScanCore->read_cache({
+				target => $node_uuid, 
+				type   => "etc_hosts",
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "etc_hosts", value1 => $etc_hosts, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($etc_hosts)
+		{
+			foreach my $line (split/\n/, $etc_hosts)
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line, 
+				}, file => $THIS_FILE, line => __LINE__});
+				if ($line =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(.*)$/)
+				{
+					my $this_ip   = $1;
+					my $this_host = $2;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+						name1 => "this_ip",   value1 => $this_ip, 
+						name2 => "this_host", value2 => $this_host, 
+					}, file => $THIS_FILE, line => __LINE__});
+					if ($this_host =~ /\s/)
+					{
+						foreach my $sub_host (split/\s/, $this_host)
+						{
+							next if not $sub_host;
+							$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+								name1 => "sub_host", value1 => $sub_host, 
+							}, file => $THIS_FILE, line => __LINE__});
+							if ($sub_host eq $host)
+							{
+								$ip = $this_ip;
+								$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+									name1 => "ip", value1 => $ip, 
+								}, file => $THIS_FILE, line => __LINE__});
+								last;
+							}
+						}
+					}
+					elsif ($this_host eq $host)
+					{
+						$ip = $this_ip;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "ip", value1 => $ip, 
+						}, file => $THIS_FILE, line => __LINE__});
+						last;
+					}
+				}
+			}
+		}
+	}
+	
+	# If I don't have an IP now, try to read it with gethostip.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if (not $ip)
+	{
+		my $shell_call = $an->data->{path}{gethostip}." -d $host";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call, 
+		}, file => $THIS_FILE, line => __LINE__});
+		open(my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			$ip = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "ip", value1 => $ip, 
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+		close $file_handle;
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ip", value1 => $ip, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return ($ip);
 }
 
@@ -2611,7 +2676,7 @@ sub server_data
 	{
 		$server_uuid = $an->Get->server_uuid({
 			server => $server_name, 
-			anvil  => $anvil, 
+			anvil  => $anvil_uuid, 
 		});
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "server_uuid", value1 => $server_uuid, 
@@ -2627,7 +2692,7 @@ sub server_data
 		# Call this anyway as it will ensure we've got the definition XML file.
 		$an->Get->server_uuid({
 			server => $server_name, 
-			anvil  => $anvil, 
+			anvil  => $anvil_uuid, 
 		});
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
