@@ -670,6 +670,12 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0145"><![CDATA[The 'AN::Tools::Check' module's 'on_same_network()' method was called without passing in a remote host name or IP address.]]></key>
 		<key name="error_message_0146"><![CDATA[The 'AN::Tools::Check' module's 'on_same_network()' method was called with the remote address: [#!variable!remote!#] which couldn't be translated to an IP address.]]></key>
 		<key name="error_message_0147"><![CDATA[The 'AN::Tools::Check' module's 'on_same_network()' method was called with the remote address: [#!variable!remote!#] which translated to the string: [#!variable!ip!#] which does not appear to be a valid IP address.]]></key>
+		<key name="error_message_0148"><![CDATA[The 'AN::Tools::Striker' module's '_poweroff_node()' method was called without passing in an Anvil! UUID.]]></key>
+		<key name="error_message_0149"><![CDATA[The 'AN::Tools::Striker' module's '_poweroff_node()' method was called without passing in an Anvil! node name.]]></key>
+		<key name="error_message_0150"><![CDATA[The 'AN::Tools::Striker' module's '_poweroff_node()' method was called with the node name: [#!variable!node_name!#] that wasn't mapped to a node key for the active Anvil!.]]></key>
+		<key name="error_message_0151"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! UUID.]]></key>
+		<key name="error_message_0152"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! node name.]]></key>
+		<key name="error_message_0153"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called with the node name: [#!variable!node_name!#] that wasn't mapped to a node key for the active Anvil!.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

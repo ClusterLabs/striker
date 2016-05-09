@@ -828,6 +828,30 @@ The 'AN::Tools::Check' module's 'on_same_network()' method was given a host name
 
 The 'AN::Tools::Check' module's 'on_same_network()' method was given a host name that was translated to a string that isn't a valid IP address.
 
+=head2 C<148>
+
+The 'AN::Tools::Striker' module's '_poweroff_node()' method was called without passing in an Anvil! UUID.
+
+=head2 C<149>
+
+The 'AN::Tools::Striker' module's '_poweroff_node()' method was called without passing in an Anvil! node name.
+
+=head2 C<150>
+
+The 'AN::Tools::Striker' module's '_poweroff_node()' method was called with a node name that wasn't mapped to a node key for the active Anvil!.
+
+=head2 C<151>
+
+The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! UUID.
+
+=head2 C<152>
+
+The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! node name.
+
+=head2 C<153>
+
+The 'AN::Tools::Striker' module's '_poweron_node()' method was called with a node name that wasn't mapped to a node key for the active Anvil!.
+
 
 =head1 SEE ALSO
 

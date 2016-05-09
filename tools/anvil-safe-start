@@ -1823,10 +1823,11 @@ sub start_daemons
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($output) = $an->Remote->synchronous_command_run({
 				command		=>	$command, 
-				node1		=>	"local", 
-				node2		=>	$an->data->{sys}{peer_node}, 
 				delay		=>	10,
-				password	=>	$an->data->{sys}{anvil_password}, 
+				node1_ip	=>	"local", 
+				node2_ip	=>	$an->data->{sys}{peer_node}, 
+				node2_port	=>	22,
+				node2_password	=>	$an->data->{sys}{anvil_password}, 
 			});
 			foreach my $node ("local", $an->data->{sys}{peer_node})
 			{

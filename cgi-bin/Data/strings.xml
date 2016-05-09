@@ -1894,6 +1894,11 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0474"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was confirmed to be off, but it appears to have failed to start back up.]]></key>
 		<key name="message_0475"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is on, and it appears that we were not able to force it off. This should not be possible and might indicate a problem with the program.]]></key>
 		<key name="message_0476"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown state. It is unlikely that the fence succeeded. Can this system talk to the node's fence device(s)?]]></key>
+		<key name="message_0477"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is now powering off.]]></key>
+		<key name="message_0478"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was asked to shut off, but an unexpected return code was received. Expected '<span class="fixed_width">0</span>' but got: [<span class="highlight_detail">#!variable!rc!#</span>]. The server may or may not be shutting down.]]></key>
+		<key name="message_0479"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] has been powered on.]]></key>
+		<key name="message_0480"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] appears to have failed to start. It is still reporting 'off' after asking it to start.]]></key>
+		<key name="message_0481"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It is unlikely that the boot request succeeded. Can this system talk to the node's fence device(s)?]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>
