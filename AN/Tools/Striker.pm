@@ -25,6 +25,8 @@ my $THIS_FILE = "Striker.pm";
 # _check_lv
 # _check_node_daemons
 # _check_node_readiness
+# _cold_stop_anvil
+# _confirm_cold_stop_anvil
 # _confirm_delete_server
 # _confirm_dual_boot
 # _confirm_dual_join
@@ -48,6 +50,7 @@ my $THIS_FILE = "Striker.pm";
 # _display_server_details
 # _display_server_state_and_controls
 # _display_watchdog_panel
+# _dual_boot
 # _dual_join
 # _error
 # _fence_node
@@ -150,7 +153,7 @@ sub configure_ssh_local
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "Calling", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1521,6 +1524,415 @@ sub _check_node_readiness
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	return ($ready);
+}
+
+# This sequentially stops all servers, withdraws both nodes and powers down the Anvil!.
+sub _cold_stop_anvil
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $cancel_ups = $parameter->{cancel_ups} ? $parameter->{cancel_ups} : 1;
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "cancel_ups", value1 => $cancel_ups,
+		name2 => "anvil_uuid", value2 => $anvil_uuid,
+		name3 => "anvil_name", value3 => $anvil_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $proceed = 1;
+	
+	# Has the timer expired?
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "current time", value1 => time,
+		name2 => "cgi::expire",  value2 => $an->data->{cgi}{expire},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (time > $an->data->{cgi}{expire})
+	{
+		# Abort!
+		my $say_title   = $an->String->get({key => "title_0184"});
+		my $say_message = $an->String->get({key => "message_0443", variables => { anvil => $an->data->{cgi}{cluster} }});
+		print $an->Web->template({file => "server.html", template => "request-expired", replace => { 
+			title		=>	$say_title,
+			message		=>	$say_message,
+		}});
+		return(1);
+	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
+	# Set the delay. This will set the hosts -> host_stop_reason to be time + sys::power_off_delay if we
+	# have a sub-task
+	my $delay = 0;
+	if (($an->data->{cgi}{subtask} eq "power_cycle") or ($an->data->{cgi}{subtask} eq "power_off"))
+	{
+		$delay = 1;
+	}
+	
+	# If the system is already down, the user may be asking to power cycle/ power off the rack anyway.
+	# So if the Anvil! is down, we'll instead perform the requested sub-task using our local copy of the
+	# kick script.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::node1::online", value1 => $an->data->{sys}{anvil}{node1}{online},
+		name2 => "sys::anvil::node2::online", value2 => $an->data->{sys}{anvil}{node2}{online},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{sys}{anvil}{node1}{online}) or ($an->data->{sys}{anvil}{node2}{online}))
+	{
+		my $say_title = $an->String->get({key => "title_0181", variables => { anvil => $anvil_name }});
+		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
+		
+		### TODO: Use the boot order in reverse for stopping.
+		# Find a node to use to stop the servers.
+		my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "target",    value2 => $target,
+			name3 => "port",      value3 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
+		{
+			my $host  = $an->data->{server}{$server}{host};
+			my $state = $an->data->{server}{$server}{'state'};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "server", value1 => $server,
+				name2 => "host",   value2 => $host,
+				name3 => "state",  value3 => $state,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# Shut it down if it was started.
+			if ($state =~ /start/)
+			{
+				my $say_message =  $an->String->get({key => "message_0420", variables => { server => $server }});
+				print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+					row_class	=>	"highlight_detail_bold",
+					row		=>	"#!string!row_0270!#",
+					message_class	=>	"td_hidden_white",
+					message		=>	"$say_message",
+				}});
+				
+				my $shell_output = "";
+				my $shell_call   = $an->data->{path}{'anvil-stop-server'}." --server $server --reason cold_stop";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line =~ s/^\s+//;
+					$line =~ s/\s+$//;
+					$line =~ s/\s+/ /g;
+					$line =~ s/Local machine/$node_name/;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "line", value1 => $line, 
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$line         =  $an->Web->parse_text_line({line => $line});
+					$shell_output .= "$line<br />\n";
+					if ($line =~ /success/i)
+					{
+						$an->data->{server}{$server}{'state'} = "disabled";
+					}
+				}
+				$shell_output =~ s/\n$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_output", value1 => $shell_output,
+				}, file => $THIS_FILE, line => __LINE__});
+				print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+					row_class	=>	"code",
+					row		=>	"#!string!row_0127!#",
+					message_class	=>	"quoted_text",
+					message		=>	$shell_output,
+				}});
+			}
+		}
+		
+		# Now, stop the nodes. If both nodes are up, we'll call '--load-shed' to invoke 
+		# 'anvil-safe-stop's logic to determine which node should die first. We'll look for 
+		# 'poweroff: X' to determine which node went down.
+		if (($an->data->{sys}{anvil}{node1}{online}) && ($an->data->{sys}{anvil}{node2}{online}))
+		{
+			# Both are up, so call the load-shed from node 1.
+			my $target   = $an->data->{sys}{anvil}{node1}{use_ip};
+			my $port     = $an->data->{sys}{anvil}{node1}{use_port};
+			my $password = $an->data->{sys}{anvil}{node1}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name4 => "target",    value4 => $target,
+				name5 => "port",      value5 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			# If 'cancel_ups' is set, we will stop the UPS timer. 
+			my $shell_output = "";
+			my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --shed-load --reason cold_stop";
+			if ($cancel_ups)
+			{
+				$shell_call = "
+if [ -e '".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}."' ]
+then
+    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel --force
+fi;
+".$an->data->{path}{'anvil-safe-stop'}." --shed-load --reason cold_stop";
+			}
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
+			}, file => $THIS_FILE, line => __LINE__});
+			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+				target		=>	$target,
+				port		=>	$port, 
+				password	=>	$password,
+				shell_call	=>	$shell_call,
+			});
+			foreach my $line (@{$return})
+			{
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "line", value1 => $line,
+				}, file => $THIS_FILE, line => __LINE__});
+				
+				if ($line =~ /poweroff: (.*?)/)
+				{
+					# This is the first node to die. Mark it as offline.
+					my $node_name = $1;
+					my $node_key  = $an->data->{sys}{node_name}{$node_name}{node_key};
+					my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "node_name", value1 => $node_name,
+						name2 => "node_key",  value2 => $node_key,
+						name3 => "node_uuid", value3 => $node_uuid,
+					}, file => $THIS_FILE, line => __LINE__});
+					
+					$an->data->{sys}{anvil}{$node_key}{online} = 0;
+					
+					$an->Log->entry({log_level => 2, message_key => "log_0250", message_variables => {
+						node  => $node_name, 
+						delay => $delay, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid, delay => $delay});
+				}
+				else
+				{
+					$line = $an->Web->parse_text_line({line => $line});
+					$shell_output .= "$line<br />\n";
+				}
+			}
+			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "shell_output", value1 => $shell_output,
+			}, file => $THIS_FILE, line => __LINE__});
+			print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+				row_class	=>	"code",
+				row		=>	"#!string!row_0127!#",
+				message_class	=>	"quoted_text",
+				message		=>	$shell_output,
+			}});
+		}
+		
+		# Now, only one node should be left up
+		foreach my $node_key ("node1", "node2")
+		{
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+			my $online    = $an->data->{sys}{anvil}{$node_key}{online};
+			my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+				name1 => "node_name", value1 => $node_name,
+				name2 => "node_uuid", value2 => $node_uuid,
+				name3 => "online",    value3 => $online,
+				name4 => "target",    value4 => $target,
+				name5 => "port",      value5 => $port,
+			}, file => $THIS_FILE, line => __LINE__});
+			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+				name1 => "password", value1 => $password,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($online)
+			{
+				# We'll shut down with 'anvil-safe-stop'. No servers should be running, but 
+				# just in case we oopsed and left one up, set the stop reason.
+				my $shell_output = "";
+				my $shell_call   = $an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop";
+				if ($cancel_ups)
+				{
+					$shell_call = "
+if [ -e '".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}."' ]
+then
+    ".$an->data->{path}{nodes}{'anvil-kick-apc-ups'}." --cancel --force
+fi;
+".$an->data->{path}{'anvil-safe-stop'}." --local --reason cold_stop";
+				}
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "target",     value1 => $target,
+					name2 => "shell_call", value2 => $shell_call,
+				}, file => $THIS_FILE, line => __LINE__});
+				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+					target		=>	$target,
+					port		=>	$port, 
+					password	=>	$password,
+					shell_call	=>	$shell_call,
+				});
+				foreach my $line (@{$return})
+				{
+					$line = $an->Web->parse_text_line({line => $line});
+					$shell_output .= "$line<br />\n";
+				}
+				$an->Striker->mark_node_as_clean_off({node_uuid => $node_uuid, delay => $delay});
+		
+				$shell_output =~ s/\n$//;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "shell_output", value1 => $shell_output,
+				}, file => $THIS_FILE, line => __LINE__});
+				print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+					row_class	=>	"code",
+					row		=>	"#!string!row_0127!#",
+					message_class	=>	"quoted_text",
+					message		=>	$shell_output,
+				}});
+			}
+		}
+		
+		# All done!
+		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+			row_class	=>	"highlight_good_bold",
+			row		=>	"#!string!row_0083!#",
+			message_class	=>	"td_hidden_white",
+			message		=>	"#!string!message_0429!#",
+		}});
+	}
+	elsif ($an->data->{cgi}{note} eq "no_abort")
+	{
+		# The user called this while the Anvil! was down, so don't throw a warning.
+		my $say_subtask = $an->data->{cgi}{subtask} eq "power_cycle" ? "#!string!button_0065!#" : "#!string!button_0066!#";
+		my $say_title   = $an->String->get({key => "title_0153", variables => { subtask => $say_subtask }});
+		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
+	}
+	else
+	{
+		# Already down, abort.
+		my $say_title   = $an->String->get({key => "title_0180", variables => { anvil => $anvil_name }});
+		my $say_message = $an->String->get({key => "message_0419", variables => { anvil => $anvil_name }});
+		print $an->Web->template({file => "server.html", template => "cold-stop-aborted", replace => { 
+			title	=>	$say_title,
+			message	=>	$say_message,
+		}});
+	}
+	
+	# If I have a sub-task, perform it now.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::subtask", value1 => $an->data->{cgi}{subtask},
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($an->data->{cgi}{subtask} eq "power_cycle")
+	{
+		# Tell the user
+		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+			row_class	=>	"highlight_warning_bold",
+			row		=>	"#!string!row_0044!#",
+			message_class	=>	"td_hidden_white",
+			message		=>	"#!string!explain_0154!#",
+		}});
+		
+		# Nighty night, see you in the morning!
+		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --reboot --force";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	elsif($an->data->{cgi}{subtask} eq "power_off")
+	{
+		# Tell the user
+		print $an->Web->template({file => "server.html", template => "cold-stop-entry", replace => { 
+			row_class	=>	"highlight_warning_bold",
+			row		=>	"#!string!row_0044!#",
+			message_class	=>	"td_hidden_white",
+			message		=>	"#!string!explain_0155!#",
+		}});
+		
+		# Do eet!
+		my $shell_call = $an->data->{path}{'call_anvil-kick-apc-ups'}." --shutdown --force";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "shell_call", value1 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
+		while(<$file_handle>)
+		{
+			chomp;
+			my $line = $_;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line,
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		close $file_handle;
+	}
+	
+	# All done.
+	print $an->Web->template({file => "server.html", template => "cold-stop-footer"});
+	$an->Striker->_footer();
+	
+	return(0);
+}
+
+# Confirm that the user wants to cold-stop the Anvil!.
+sub _confirm_cold_stop_anvil
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+		name2 => "anvil_name", value2 => $anvil_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Ask the user to confirm
+	my $say_message = $an->String->get({key => "message_0418", variables => { anvil => $anvil_name }});
+	
+	# If there is a subtype, use a different warning.
+	if ($an->data->{cgi}{subtask} eq "power_cycle")
+	{
+		$say_message = $an->String->get({key => "message_0439", variables => { anvil => $anvil_name }});
+	}
+	elsif($an->data->{cgi}{subtask} eq "power_off")
+	{
+		$say_message = $an->String->get({key => "message_0440", variables => { anvil => $anvil_name }});
+	}
+	
+	my $expire_time                 =  time + $an->data->{sys}{actime_timeout};
+	   $an->data->{sys}{cgi_string} =~ s/expire=(\d+)/expire=$expire_time/;
+	print $an->Web->template({file => "server.html", template => "confirm-cold-stop", replace => { 
+		message		=>	$say_message,
+		confirm_url	=>	$an->data->{sys}{cgi_string}."&confirm=true",
+	}});
+
+	return (0);
 }
 
 # Confirm that the user wants to delete the server.
@@ -3660,7 +4072,7 @@ fi
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
-		open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+		open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 		while(<$file_handle>)
 		{
 			chomp;
@@ -3696,6 +4108,117 @@ fi
 		name1 => "watchdog_panel", value1 => $watchdog_panel,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($watchdog_panel);
+}
+
+# This uses the local machine to call "power on" against both nodes in the cluster.
+sub _dual_boot
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_dual_boot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	# grab the CGI data
+	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_uuid", value1 => $anvil_uuid,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $anvil_uuid)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0154", code => 154, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	# Pull out the rest of the data
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "anvil_name", value1 => $anvil_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Scan the Anvil!.
+	$an->Striker->scan_anvil();
+	
+	my $say_message = $an->String->get({key => "message_0220", variables => { anvil => $anvil_name }});
+	print $an->Web->template({file => "server.html", template => "dual-boot-header", replace => { message => $say_message }});
+	
+	# Boot each node.
+	foreach my $node_key ("node1", "node2")
+	{
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		my $node_uuid = $an->data->{sys}{anvil}{$node_key}{uuid};
+		my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port      = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password  = $an->data->{sys}{anvil}{$node_key}{password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "node_uuid", value2 => $node_uuid,
+			name3 => "target",    value3 => $target,
+			name4 => "port",      value4 => $port,
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		my $state = $an->ScanCore->target_power({target => $node_uuid});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "state", value1 => $state,
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($state eq "off")
+		{
+			# Turn it on.
+			my $state = $an->ScanCore->target_power({
+					target => $node_uuid,
+					task   => "on",
+				});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "state", value1 => $state,
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($state eq "on")
+			{
+				# Success!
+				my $message = $an->String->get({key => "message_0479", variables => { node_name => $node_name }});
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"#!string!state_0005!#",
+					message	=>	$message,
+				}});
+				
+				$an->Striker->mark_node_as_clean_on({node_uuid => $node_uuid});
+			}
+			else
+			{
+				# Failed to turn on
+				my $message = $an->String->get({key => "message_0480", variables => { node_name => $node_name }});
+				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+					status	=>	"#!string!state_0001!#",
+					message	=>	$message,
+				}});
+			}
+		}
+		elsif ($state eq "on")
+		{
+			# It's already on
+			my $message = $an->String->get({key => "message_0482", variables => { node_name => $node_name }});
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	"#!string!state_0050!#",
+				message	=>	$message,
+			}});
+		}
+		elsif ($state eq "unknown")
+		{
+			# Failed to access the node.
+			my $message = $an->String->get({key => "message_0483", variables => { node_name => $node_name }});
+			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				status	=>	"#!string!state_0050!#",
+				message	=>	$message,
+			}});
+		}
+	}
+	
+	print $an->Web->template({file => "server.html", template => "dual-boot-footer"});
+	
+	return(0);
 }
 
 # This sttempts to start the cluster stack on both nodes simultaneously.
@@ -5782,8 +6305,8 @@ sub _parse_clustat
 				$host =~ s/^\((.*?)\)$/$1/g;
 				
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-					name1 => "server",   value1 => $server,
-					name2 => "host", value2 => $host,
+					name1 => "server", value1 => $server,
+					name2 => "host",   value2 => $host,
 				}, file => $THIS_FILE, line => __LINE__});
 				
 				$host                                 = "none" if not $host;
@@ -5803,7 +6326,7 @@ sub _parse_clustat
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{peer}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "node_name",       value1 => $node_name,
+						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -5811,7 +6334,7 @@ sub _parse_clustat
 				{
 					$an->data->{server}{$server}{peer} = $an->data->{node}{$node_name}{me}{name};
 					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-						name1 => "node_name",       value1 => $node_name,
+						name1 => "node_name",               value1 => $node_name,
 						name2 => "server::${server}::peer", value2 => $an->data->{server}{$server}{peer},
 					}, file => $THIS_FILE, line => __LINE__});
 				}
@@ -8199,11 +8722,11 @@ sub _process_task
 		if ($an->data->{cgi}{confirm})
 		{
 			# The '1' cancels the APC UPS watchdog timer, if used.
-# 			$an->Striker->_cold_stop_anvil($an, 1);
+			$an->Striker->_cold_stop_anvil({cancel_ups => 1});
 		}
 		else
 		{
-# 			$an->Striker->_confirm_cold_stop_anvil();
+			$an->Striker->_confirm_cold_stop_anvil();
 		}
 	}
 	elsif ($an->data->{cgi}{task} eq "start_server")

@@ -852,6 +852,10 @@ The 'AN::Tools::Striker' module's '_poweron_node()' method was called without pa
 
 The 'AN::Tools::Striker' module's '_poweron_node()' method was called with a node name that wasn't mapped to a node key for the active Anvil!.
 
+=head2 C<154>
+
+The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.
+
 
 =head1 SEE ALSO
 

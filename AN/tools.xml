@@ -676,6 +676,7 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0151"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! UUID.]]></key>
 		<key name="error_message_0152"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! node name.]]></key>
 		<key name="error_message_0153"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called with the node name: [#!variable!node_name!#] that wasn't mapped to a node key for the active Anvil!.]]></key>
+		<key name="error_message_0154"><![CDATA[The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

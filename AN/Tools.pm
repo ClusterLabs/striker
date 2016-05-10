@@ -670,6 +670,7 @@ sub _set_paths
 	$an->data->{path}{'anvil-report-memory'}  = "/sbin/striker/anvil-report-memory";
 	$an->data->{path}{'anvil-safe-start'}     = "/sbin/striker/anvil-safe-start";
 	$an->data->{path}{'anvil-safe-stop'}      = "/sbin/striker/anvil-safe-stop";
+	$an->data->{path}{'anvil-stop-server'}    = "/sbin/striker/anvil-stop-server";
 	$an->data->{path}{ScanCore}               = "/sbin/striker/ScanCore/ScanCore";
 	
 	# setuid tools
