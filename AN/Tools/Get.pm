@@ -13,6 +13,7 @@ my $THIS_FILE = "Get.pm";
 
 ### Methods;
 # anvil_data
+# bridge_name
 # current_directory
 # date_and_time
 # date_seperator
@@ -183,6 +184,52 @@ WHERE
 	}
 	
 	return($return);
+}
+
+# This gets the name of the bridge on the target node.
+sub bridge_name
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "bridge_name" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	
+	my $bridge     = "";
+	my $shell_call = $an->data->{path}{brctl}." show";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^(.*?)\s+\d/)
+		{
+			$bridge = $1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "bridge", value1 => $bridge,
+			}, file => $THIS_FILE, line => __LINE__});
+			last;
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "bridge", value1 => $bridge,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($bridge);
 }
 
 # This simply sorts out the current directory the program is running in.
@@ -3136,9 +3183,10 @@ sub server_xml
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	my $target   = $parameter->{remote};
 	my $server   = $parameter->{server};
-	my $password = $parameter->{password};
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 		name1 => "target", value1 => $target, 
 		name2 => "server", value2 => $server, 
@@ -3233,8 +3281,8 @@ sub server_xml
 		{
 			my $say_server       =  $server;
 			   $say_server       =~ s/^vm://;
-			my $definitions_file = $an->data->{path}{definitions}."/${say_server}.xml";
-			my $shell_call = "
+			my $definitions_file =  $an->data->{path}{shared_definitions}."/${say_server}.xml";
+			my $shell_call       =  "
 if [ -e $definitions_file ];
 then
     ".$an->data->{path}{cat}." $definitions_file;
@@ -3331,7 +3379,7 @@ fi
 		}
 		
 		# If I still don't have XML data, try to find the server's XML file in /shared/definitions.
-		my $definitions_file = $an->data->{path}{definitions}."/${server}.xml";
+		my $definitions_file = $an->data->{path}{shared_definitions}."/${server}.xml";
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "length(xml)",      value1 => length($xml), 
 			name2 => "definitions_file", value2 => $definitions_file, 
@@ -3367,10 +3415,7 @@ sub shared_files
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# Clear any prior errors.
-	my $an = $self->parent;
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
 	
 	# Pick up our parameters
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";

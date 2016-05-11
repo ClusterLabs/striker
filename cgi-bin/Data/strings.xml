@@ -1548,9 +1548,9 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0132"><![CDATA[The amount of RAM must only contain digits. It looks like you entered <span class="fixed_width">#!variable!ram!#</span>.]]></key>
 		<key name="message_0133"><![CDATA[The #!string!brand_0003!# reports a maximum of <span class="fixed_width">#!variable!free_ram!#</span> free RAM, but it looks like you asked for <span class="fixed_width">#!variable!requested_ram!#</span>. Did someone else just build a server?]]></key>
 		<key name="message_0134">It looks like you asked to use storage from both nodes. This is not safe. Please clear one of the node's storage.</key>
-		<key name="message_0135">The installation media you selected seems to have disappeared.</key>
+		<key name="message_0135">The installation media you selected seems to have disappeared (or it isn't marked as an ISO file).</key>
 		<key name="message_0136">You did not select installation media.</key>
-		<key name="message_0137">The driver media you selected seems to have disappeared.</key>
+		<key name="message_0137">The driver media you selected seems to have disappeared (or it isn't marked as an ISO file).</key>
 		<key name="message_0138">Somehow, an OS optimization type was specified that is not valid. This is probably a program error.</key>
 		<key name="message_0139">No operating system optimization type was specified. This is probably a program error.</key>
 		<key name="message_0140">or</key> <!-- used between two options, like selecting storage pool 1 or 2 -->

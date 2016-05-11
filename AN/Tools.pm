@@ -540,7 +540,7 @@ sub _set_paths
 	$an->data->{path}{blkid}               = "/sbin/blkid";
 	$an->data->{path}{brctl}               = "/usr/sbin/brctl";
 	$an->data->{path}{cat}                 = "/bin/cat";
-	$an->data->{path}{ccs}                 = "/usr/sbin/ccs";		# TODO: Verify this path
+	$an->data->{path}{ccs}                 = "/usr/sbin/ccs";
 	$an->data->{path}{ccs_config_validate} = "/usr/sbin/ccs_config_validate";
 	$an->data->{path}{'chmod'}             = "/bin/chmod";
 	$an->data->{path}{chkconfig}           = "/sbin/chkconfig";
@@ -557,7 +557,7 @@ sub _set_paths
 	$an->data->{path}{echo}                = "/bin/echo";
 	$an->data->{path}{expect}              = "/usr/bin/expect";
 	$an->data->{path}{fence_check}         = "/usr/sbin/fence_check";
-	$an->data->{path}{fence_node}          = "/usr/sbin/fence_node";	# TODO: Verify this path
+	$an->data->{path}{fence_node}          = "/usr/sbin/fence_node";
 	$an->data->{path}{'grep'}              = "/bin/grep";
 	$an->data->{path}{gethostip}           = "/usr/bin/gethostip";
 	$an->data->{path}{gfs2_tool}           = "/usr/sbin/gfs2_tool";
@@ -571,7 +571,8 @@ sub _set_paths
 	$an->data->{path}{lsblk}               = "/bin/lsblk";
 	$an->data->{path}{lsmod}               = "/sbin/lsmod";
 	$an->data->{path}{lvchange}            = "/sbin/lvchange";
-	$an->data->{path}{lvremove}            = "/sbin/lvremove";		# TODO: Verify this path
+	$an->data->{path}{lvcreate}            = "/sbin/lvcreate";
+	$an->data->{path}{lvremove}            = "/sbin/lvremove";
 	$an->data->{path}{lvs}                 = "/sbin/lvs";
 	$an->data->{path}{lvscan}              = "/sbin/lvscan";
 	$an->data->{path}{mailx}               = "/bin/mailx";
@@ -651,15 +652,15 @@ sub _set_paths
 	$an->data->{path}{proc_virbr0}  = "/proc/sys/net/ipv4/conf/virbr0";
 
 	# Directories
-	$an->data->{path}{alert_emails}    = "/var/log/alert_emails";
-	$an->data->{path}{definitions}     = "/shared/definitions";
-	$an->data->{path}{fence_agents}    = "/usr/sbin";
-	$an->data->{path}{initd}           = "/etc/init.d";
-	$an->data->{path}{shared}          = "/shared";
-	$an->data->{path}{shared_files}    = "/shared/files";
-	$an->data->{path}{skins}           = "/var/www/html/skins";
-	$an->data->{path}{striker_tools}   = "/sbin/striker";
-	$an->data->{path}{yum_repos}       = "/etc/yum.repos.d";
+	$an->data->{path}{alert_emails}       = "/var/log/alert_emails";
+	$an->data->{path}{fence_agents}       = "/usr/sbin";
+	$an->data->{path}{initd}              = "/etc/init.d";
+	$an->data->{path}{shared}             = "/shared";
+	$an->data->{path}{shared_definitions} = "/shared/definitions";
+	$an->data->{path}{shared_files}       = "/shared/files";
+	$an->data->{path}{skins}              = "/var/www/html/skins";
+	$an->data->{path}{striker_tools}      = "/sbin/striker";
+	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
 	
 	# Tools
 	$an->data->{path}{'anvil-boot-server'}    = "/sbin/striker/anvil-boot-server";
