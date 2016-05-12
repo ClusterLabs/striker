@@ -765,6 +765,7 @@ sub template
 	}, file => $THIS_FILE, line => __LINE__});
 	open (my $file_handle, "<$shell_call") or $an->Alert->error({fatal => 1, title_key => "an_0003", message_key => "error_title_0016", message_variables => { shell_call => $shell_call, error => $! }, code => 2, file => "$THIS_FILE", line => __LINE__});
 	#binmode $file_handle, ":utf8:";
+	### WARNING: DO NOT USE $an->Log->entry() below here, it will create an infinite loop!
 	while (<$file_handle>)
 	{
 		chomp;
@@ -797,18 +798,11 @@ sub template
 				template => $template, 
 				file     => $file,
 			}});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "comment", value1 => $comment,
-		}, file => $THIS_FILE, line => __LINE__});
 		$page .= "<!-- $comment -->\n";
 	}
 	foreach my $string (@contents)
 	{
 		# Replace the '#!replace!...!#' substitution keys.
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => ">> string", value1 => $string,
-		}, file => $THIS_FILE, line => __LINE__});
-		
 		$string = $an->String->_process_string_replace({
 			string   => $string,
 			replace  => $replace, 
@@ -832,9 +826,6 @@ sub template
 				template => $template, 
 				file     => $file,
 			}});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "comment", value1 => $comment,
-		}, file => $THIS_FILE, line => __LINE__});
 		$page .= "<!-- $comment -->\n";
 	}
 	

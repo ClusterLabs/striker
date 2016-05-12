@@ -2806,7 +2806,7 @@ WHERE
 				my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
 				my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
 				my $modified_date                   = $row->[13] ? $row->[13] : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
 					name1  => "server_name",                     value1  => $server_name, 
 					name2  => "server_stop_reason",              value2  => $server_stop_reason, 
 					name3  => "server_start_after",              value3  => $server_start_after, 
@@ -2861,11 +2861,7 @@ WHERE
 			# If there were no results, fall back to the XML we got earlier.
 			if (not $return->{modified_date})
 			{
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-					name1 => "server_name", value1 => $server_name,
-				}, file => $THIS_FILE, line => __LINE__});
-				$server_name =~ s/^vm://;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "server_name", value1 => $server_name,
 				}, file => $THIS_FILE, line => __LINE__});
 				
@@ -3160,7 +3156,6 @@ WHERE
 		}
 		
 		# Store the XML in a system variable.
-		$server =~ s/^vm://;
 		$an->data->{server}{$server}{uuid} = $uuid if not $an->data->{server}{$server}{uuid};
 		$an->data->{server}{$server}{xml}  = $xml  if not $an->data->{server}{$server}{xml};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -3279,10 +3274,8 @@ sub server_xml
 		}, file => $THIS_FILE, line => __LINE__});
 		if (not $xml)
 		{
-			my $say_server       =  $server;
-			   $say_server       =~ s/^vm://;
-			my $definitions_file =  $an->data->{path}{shared_definitions}."/${say_server}.xml";
-			my $shell_call       =  "
+			my $definitions_file = $an->data->{path}{shared_definitions}."/${server}.xml";
+			my $shell_call       = "
 if [ -e $definitions_file ];
 then
     ".$an->data->{path}{cat}." $definitions_file;
@@ -3350,9 +3343,7 @@ fi
 		if ($server_found)
 		{
 			# Found it here, read in it's XML.
-			my $say_server =  $server;
-			   $say_server =~ s/^vm://;
-			my $shell_call =  "virsh dumpxml $say_server";
+			my $shell_call =  $an->data->{path}{virsh}." dumpxml $server";
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "shell_call", value1 => $shell_call, 
 			}, file => $THIS_FILE, line => __LINE__});

@@ -1386,9 +1386,10 @@ sub confirm_action
 	elsif ($action eq "delete_manifest")
 	{
 		# Get the manifest target's name.
-		$an->Get->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-		my $prefix   = $an->data->{install_manifest}{$uuid}{common}{anvil}{prefix};
-		my $sequence = $an->data->{install_manifest}{$uuid}{common}{anvil}{sequence};
+		my $manifest_uuid = $an->data->{cgi}{manifest_uuid};
+		$an->Get->parse_install_manifest({uuid => $manifest_uuid});
+		my $prefix   = $an->data->{install_manifest}{$manifest_uuid}{common}{anvil}{prefix};
+		my $sequence = $an->data->{install_manifest}{$manifest_uuid}{common}{anvil}{sequence};
 		my $anvil    = $prefix."-anvil-".$sequence;
 		my $confirm_button = $an->Web->template({file => "web.html", template => "bold-link-button", replace => { 
 			name	=>	"confirm",

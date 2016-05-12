@@ -656,6 +656,7 @@ sub _set_paths
 	$an->data->{path}{fence_agents}       = "/usr/sbin";
 	$an->data->{path}{initd}              = "/etc/init.d";
 	$an->data->{path}{shared}             = "/shared";
+	$an->data->{path}{shared_archive}     = "/shared/archive";
 	$an->data->{path}{shared_definitions} = "/shared/definitions";
 	$an->data->{path}{shared_files}       = "/shared/files";
 	$an->data->{path}{skins}              = "/var/www/html/skins";

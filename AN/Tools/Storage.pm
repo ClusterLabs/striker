@@ -65,8 +65,6 @@ sub cleanup_gfs2
 	my $parameter = shift;
 	my $an        = $self->parent;
 	
-	$an->Alert->_set_error;
-	
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";

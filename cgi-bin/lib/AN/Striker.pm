@@ -10187,7 +10187,7 @@ sub read_vm_definition
 	if (not ref($an->data->{vm}{$vm}{raw_xml}) eq "ARRAY")
 	{
 		$an->data->{vm}{$vm}{raw_xml} = [];
-		$fill_raw_xml             = 1;
+		$fill_raw_xml                 = 1;
 	}
 	foreach my $line (@{$an->data->{vm}{$vm}{xml}})
 	{
