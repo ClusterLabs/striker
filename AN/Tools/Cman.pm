@@ -785,9 +785,6 @@ sub find_node_in_cluster
 		return("", "", "");
 	}
 	
-	# Update our view of the Anvil! before we proceed.
-	$an->Striker->scan_anvil();
-	
 	my $node_name = "";
 	my $target    = "";
 	my $port      = "";

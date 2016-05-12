@@ -3622,6 +3622,9 @@ sub _confirm_provision_server
 		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
+	
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "node_name", value1 => $node_name,
@@ -4594,7 +4597,6 @@ sub _display_free_resources
 	my $allocated_ram   = 0;
 	foreach my $server (sort {$a cmp $b} keys %{$an->data->{server}})
 	{
-		next if $server !~ /^vm/;
 		# I check GFS2 because, without it, I can't read the VM's details.
 		if ($an->data->{sys}{gfs2_down})
 		{
@@ -4614,7 +4616,8 @@ sub _display_free_resources
 	}
 	
 	# Always knock off some RAM for the host OS.
-	my $real_total_ram            =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{resources}{total_ram} });
+	my $real_total_ram = $an->Readable->bytes_to_hr({'bytes' => $an->data->{resources}{total_ram} });
+	
 	# Reserved RAM and BIOS memory holes rarely leave us with an even GiB of total RAM. So we modulous 
 	# off the difference, then subtract that plus the reserved RAM to get an even left-over amount of 
 	# memory for the user to allocate to their servers.
@@ -8191,6 +8194,9 @@ sub _migrate_server
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0130", code => 130, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
 	
 	my $say_title = $an->String->get({key => "title_0049", variables => { server =>	$server }});
 	print $an->Web->template({file => "server.html", template => "migrate-server-header", replace => { title => $say_title }});
@@ -12427,8 +12433,8 @@ sub _start_server
 		return("");
 	}
 	
-	my $say_title = $an->String->get({key => "title_0046", variables => { server =>	$server }});
-	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
 	
 	# Which node to use?
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
@@ -12441,6 +12447,9 @@ sub _start_server
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0126", message_variables => { server => $server }, code => 126, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
+	
+	my $say_title = $an->String->get({key => "title_0046", variables => { server =>	$server }});
+	print $an->Web->template({file => "server.html", template => "start-server-header", replace => { title => $say_title }});
 	
 	# Call 'anvil-boot-server'
 	my $shell_call = $an->data->{path}{'anvil-boot-server'}." --server $server";
@@ -12515,6 +12524,9 @@ sub _stop_server
 		}});
 		return(1);
 	}
+	
+	# Scan the Anvil!
+	$an->Striker->scan_anvil();
 	
 	# Which node to use?
 	my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
