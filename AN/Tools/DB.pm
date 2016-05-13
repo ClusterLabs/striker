@@ -591,7 +591,7 @@ sub do_db_write
 	my $source = $parameter->{source} ? $parameter->{source} : "";
 	my $line   = $parameter->{line}   ? $parameter->{line}   : "";
 	my $query  = $parameter->{query}  ? $parameter->{query}  : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 		name1 => "id",     value1 => $id, 
 		name2 => "source", value2 => $source, 
 		name3 => "line",   value3 => $line, 
@@ -674,14 +674,12 @@ sub do_db_write
 				}, code => 72, file => "$THIS_FILE", line => __LINE__});
 			}
 			
-			# Just one query.
-			#print "id: [$id], query:\n============\n$query\n============\n";
+			# Do the do.
 			$an->data->{dbh}{$id}->do($query) || $an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_title_0027", message_variables => { 
 								query    => $query, 
 								server   => $an->data->{scancore}{db}{$id}{host}.":".$an->data->{scancore}{db}{$id}{port}." -> ".$an->data->{scancore}{db}{$id}{name}, 
 								db_error => $DBI::errstr
 							}, code => 2, file => "$THIS_FILE", line => __LINE__});
-			#print "Done ===============\n\n";
 		}
 		
 		# Commit the changes.

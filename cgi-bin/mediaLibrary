@@ -28,7 +28,7 @@ my ($an) = initialize($THIS_FILE, 1);
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->default_log_language($an->data->{sys}{log_language});
 $an->Log->level          ($an->data->{sys}{log_level});
-$an->data->{handle}{an} = $an;
+$an->Log->db_transactions(1) if $an->data->{striker}{log_db_transactions};
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -349,6 +349,9 @@ sub _initialize_an
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+		},
+		striker			=>	{
+			log_db_transactions	=>	0,
 		},
 		sys			=>	{
 			# Some actions, like powering off servers and nodes, have a timeout set so that 

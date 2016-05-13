@@ -280,7 +280,8 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{use_port}       =  $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
+		$an->data->{sys}{anvil}{$node_key}{host_uuid}      =  $an->data->{anvils}{$anvil_uuid}{$node_key}{host_uuid};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -298,6 +299,7 @@ sub load_anvil
 			name15 => "sys::anvil::${node_key}::use_port",       value15 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
 			name16 => "sys::anvil::${node_key}::online",         value16 => $an->data->{sys}{anvil}{$node_key}{online}, 
 			name17 => "sys::anvil::${node_key}::power",          value17 => $an->data->{sys}{anvil}{$node_key}{power}, 
+			name18 => "sys::anvil::${node_key}::host_uuid",      value18 => $an->data->{sys}{anvil}{$node_key}{host_uuid}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# Password
@@ -462,7 +464,7 @@ SELECT
 FROM 
     hosts 
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{host_uuid})."
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
@@ -488,7 +490,7 @@ SET
 	$query .= "
     modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    host_name = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -626,7 +628,12 @@ sub scan_node
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::${node_key}::online", value1 => $an->data->{sys}{anvil}{$node_key}{online}, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $an->data->{sys}{anvil}{$node_key}{online})
+	if ($an->data->{sys}{anvil}{$node_key}{online})
+	{
+		# Make sure it's marked as up.
+		$an->Striker->mark_node_as_clean_on({node_uuid => $an->data->{sys}{anvil}{$node_key}{host_uuid}});
+	}
+	else
 	{
 		# BCN first.
 		my $bcn_access = $an->Check->access({
@@ -1866,7 +1873,7 @@ echo ccs:\$?";
 			else
 			{
 				# Show any output from the call.
-				$line = parse_text_line($an, $line);
+				$line = $an->Web->parse_text_line({line => $line});
 				print $an->Web->template({file => "server.html", template => "general-message", replace => { 
 					row	=>	"#!string!row_0127!#",
 					message	=>	"<span class=\"fixed_width\">$line</span>",
@@ -1931,7 +1938,7 @@ echo ccs:\$?";
 		}
 		else
 		{
-			$line = parse_text_line($an, $line);
+			$line = $an->Web->parse_text_line({line => $line});
 			print $an->Web->template({file => "server.html", template => "general-message", replace => { 
 				row	=>	"#!string!row_0127!#",
 				message	=>	"<span class=\"fixed_width\">$line</span>",
@@ -2047,7 +2054,7 @@ sub _archive_file
 				}
 				$header_printed = 1;
 			}
-			$line = parse_text_line($an, $line);
+			$line = $an->Web->parse_text_line({line => $line});
 			print $an->Web->template({file => "server.html", template => "one-line-message", replace => { message => $line }});
 		}
 	}
@@ -3360,7 +3367,7 @@ sub _confirm_delete_server
 	}
 	else
 	{
-		$an->data->{sys}{cgi_string} .= "expire=$expire_time";
+		$an->data->{sys}{cgi_string} .= "&expire=$expire_time";
 	}
 	
 	print $an->Web->template({file => "server.html", template => "confirm-delete-server", replace => { 
@@ -3938,7 +3945,7 @@ sub _delete_server
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the server is on, we'll do our work through that node.
-	my $node_key    = "";
+	my $node_key = "";
 	if (($server_host) && ($server_host ne "none"))
 	{
 		if ($server_host eq $an->data->{sys}{anvil}{node1}{name})
@@ -3970,9 +3977,10 @@ sub _delete_server
 		$target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 		$port      = $an->data->{sys}{anvil}{$node_key}{use_port};
 		$password  = $an->data->{sys}{anvil}{$node_key}{password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target", value1 => $target,
-			name2 => "port",   value2 => $port,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+			name2 => "target",    value2 => $target,
+			name3 => "port",      value3 => $port,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password,
@@ -4057,7 +4065,7 @@ sub _delete_server
 		}
 	}
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "ccs exit code", value1 => $ccs_exit_code,
+		name1 => "ccs_exit_code", value1 => $ccs_exit_code,
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($ccs_exit_code eq "0")
 	{
@@ -4081,7 +4089,6 @@ sub _delete_server
 		# Server is still running, kill it.
 		print $an->Web->template({file => "server.html", template => "delete-server-force-off-header"});
 		
-		   $proceed         = 0;
 		my $virsh_exit_code = 255;;
 		my $shell_call      = $an->data->{path}{virsh}." destroy $server; ".$an->data->{path}{echo}." virsh:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
@@ -4129,6 +4136,9 @@ sub _delete_server
 	}
 	
 	# Now delete the backing LVs
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed, 
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
 		# Free up the storage
@@ -8249,31 +8259,8 @@ sub _migrate_server
 		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
 	}
 	print $an->Web->template({file => "server.html", template => "migrate-server-footer"});
-	
-	
-	my $output = $an->Cman->migrate_server({server => $server});
-	
-	foreach my $line (split/\n/, $output)
-	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "line", value1 => $line,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		$line = parse_text_line($an, $line);
-		my $message = ($line =~ /^(.*)\[/)[0];
-		my $status  = ($line =~ /(\[.*)$/)[0];
-		if (not $message)
-		{
-			$message = $line;
-			$status  = "";
-		}
-		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
-			status	=>	$status,
-			message	=>	$message,
-		}});
-		
-	}
-	
+	$an->Striker->_footer();
+
 	return(0);
 }
 
@@ -11456,7 +11443,7 @@ sub _process_task
 		print "<pre>\n";
 		foreach my $var (sort {$a cmp $b} keys %{$an->data->{cgi}})
 		{
-			print "var: [$var] -> [$an->data->{cgi}{$var}]\n" if $an->data->{cgi}{$var};
+			print "var: [$var] -> [".$an->data->{cgi}{$var}."]\n" if $an->data->{cgi}{$var};
 		}
 		print "</pre>";
 	}

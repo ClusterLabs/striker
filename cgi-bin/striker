@@ -56,6 +56,7 @@ my ($an) = initialize($THIS_FILE, 1);
 $an->default_log_file    ($an->data->{path}{log_file});
 $an->default_log_language($an->data->{sys}{log_language});
 $an->Log->level          ($an->data->{sys}{log_level});
+$an->Log->db_transactions(1) if $an->data->{striker}{log_db_transactions};
 
 # Set some defaults
 $an->default_language    ($an->data->{scancore}{language});
@@ -119,29 +120,15 @@ if ($an->data->{cgi}{device_keys})
 	$an->Web->get_cgi({variables => \@more_vars});
 }
 
-# Print the header.
-$an->Striker->_header({'caller' => "striker"});
-
 # Do I have a cluster name?
-if ($an->data->{cgi}{logo})
+$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+}, file => $THIS_FILE, line => __LINE__});
+if ($an->data->{cgi}{anvil_uuid})
 {
-	if ($an->data->{cgi}{config})
-	{
-		$an->Striker->configure();
-		#AN::Cluster::configure_dashboard($an);
-	}
-	else
-	{
-		# This is also where we provide options for backup/restore, install manifests, etc.
-		#AN::Cluster::show_anvil_selection_and_striker_options($an);
-	}
-}
-elsif ($an->data->{cgi}{config})
-{
-	#AN::Cluster::configure_dashboard($an);
-}
-elsif ($an->data->{cgi}{anvil_uuid})
-{
+	# Print the header.
+	$an->Striker->_header({'caller' => "striker"});
+	
 	$an->Striker->load_anvil();
 	if ($an->data->{cgi}{task})
 	{
@@ -153,54 +140,15 @@ elsif ($an->data->{cgi}{anvil_uuid})
 		$an->Striker->scan_anvil();
 		$an->Striker->_display_details();
 	}
-}
-elsif ($an->data->{cgi}{cluster})
-{
-	my $cluster                                  = $an->data->{cgi}{cluster};
-	   $an->data->{sys}{root_password}           = $an->data->{clusters}{$cluster}{root_pw};
-	   $an->data->{clusters}{$cluster}{ricci_pw} = $an->data->{clusters}{$cluster}{root_pw} if not $an->data->{clusters}{$cluster}{ricci_pw};
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0004", message_variables => {
-		name1 => "cluster",                        value1 => $cluster,
-		name2 => "clusters::${cluster}::root_pw",  value2 => $an->data->{clusters}{$cluster}{root_pw},
-		name3 => "clusters::${cluster}::ricci_pw", value3 => $an->data->{clusters}{$cluster}{ricci_pw},
-		name4 => "sys::root_password",             value4 => $an->data->{sys}{root_password},
-	}, file => $THIS_FILE, line => __LINE__});
 	
-	# If the requested cluster isn't found in the config file, error out.
-	if (not $an->data->{clusters}{$cluster}{nodes})
-	{
-		# You can pass in 'anvil => $cluster' as the first hash reference in the 'template' call and 
-		# then use the string directly in the template, but I think that's too indirect for future
-		# devs to follow initially.
-		my $say_message = $an->String->get({key => "message_0003", variables => { anvil => $cluster }});
-		print $an->Web->template({file => "main-page.html", template => "no-anvil-found", replace => { message => $say_message }});
-	}
-	else
-	{
-		if ($an->data->{cgi}{task})
-		{
-			$an->data->{sys}{show_refresh} = 0;
-			$an->Striker->_process_task();
-		}
-		else
-		{
-			# Set the node list.
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-				name1 => "cluster", value1 => $cluster,
-				name2 => "ricci_pw", value2 => $an->data->{clusters}{$cluster}{ricci_pw},
-			}, file => $THIS_FILE, line => __LINE__});
-			$an->data->{nodes} = $an->data->{clusters}{$cluster}{nodes};
-			AN::Cluster::scan_cluster($an);
-			AN::Striker::display_details($an);
-		}
-	}
+	$an->Striker->_footer();
 }
 else
 {
 	# Ask the user which cluster they want to look at.
-	AN::Cluster::show_anvil_selection_and_striker_options($an);
+	print $an->Web->template({file => "configure.html", template => "redirect-to-configure"});
+
 }
-$an->Striker->_footer();
 
 exit (0);
 
@@ -408,6 +356,9 @@ sub _initialize_an
 			language		=>	"en_CA",
 			log_level		=>	2,
 			log_language		=>	"en_CA",
+		},
+		striker			=>	{
+			log_db_transactions	=>	0,
 		},
 		sys			=>	{
 			# Some actions, like powering off servers and nodes, have a timeout set so that 

@@ -831,11 +831,7 @@ sub host_state
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "target", value1 => $target, 
 	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->Validate->is_uuid({uuid => $target}))
-	{
-		# It's already a UUID
-	}
-	else
+	if (not $an->Validate->is_uuid({uuid => $target}))
 	{
 		# Translate the target to a host_uuid
 		$target = $an->Get->uuid({get => $target});
@@ -865,7 +861,7 @@ FROM
 WHERE 
     host_uuid = ".$an->data->{sys}{use_db_fh}->quote($target)." 
 ;";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
 	}, file => $THIS_FILE, line => __LINE__});
 	my $results = $an->DB->do_db_query({query => $query, source => $THIS_FILE, line => __LINE__});
@@ -885,7 +881,7 @@ WHERE
 	foreach my $row (@{$results})
 	{
 		$current_health = $row->[0] ? $row->[0] : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "current_health", value1 => $current_health, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -2177,6 +2173,7 @@ sub parse_anvil_data
 		$an->data->{db}{nodes}{$node_uuid}{bcn_ip}      = $hash_ref->{node_bcn};
 		$an->data->{db}{nodes}{$node_uuid}{sn_ip}       = $hash_ref->{node_sn};
 		$an->data->{db}{nodes}{$node_uuid}{ifn_ip}      = $hash_ref->{node_ifn};
+		$an->data->{db}{nodes}{$node_uuid}{host_uuid}   = $host_uuid;
 		$an->data->{db}{nodes}{$node_uuid}{password}    = $hash_ref->{node_password};
 		
 		# Push in the host data
@@ -2186,7 +2183,7 @@ sub parse_anvil_data
 		$an->data->{db}{nodes}{$node_uuid}{emergency_stop} = $an->data->{db}{hosts}{$host_uuid}{emergency_stop};
 		$an->data->{db}{nodes}{$node_uuid}{stop_reason}    = $an->data->{db}{hosts}{$host_uuid}{stop_reason};
 		
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0013", message_variables => {
 			name1  => "db::nodes::${node_uuid}::anvil_uuid",     value1  => $an->data->{db}{nodes}{$node_uuid}{anvil_uuid}, 
 			name2  => "db::nodes::${node_uuid}::remote_ip",      value2  => $an->data->{db}{nodes}{$node_uuid}{remote_ip}, 
 			name3  => "db::nodes::${node_uuid}::remote_port",    value3  => $an->data->{db}{nodes}{$node_uuid}{remote_port}, 
@@ -2194,11 +2191,12 @@ sub parse_anvil_data
 			name5  => "db::nodes::${node_uuid}::bcn_ip",         value5  => $an->data->{db}{nodes}{$node_uuid}{bcn_ip}, 
 			name6  => "db::nodes::${node_uuid}::sn_ip",          value6  => $an->data->{db}{nodes}{$node_uuid}{sn_ip}, 
 			name7  => "db::nodes::${node_uuid}::ifn_ip",         value7  => $an->data->{db}{nodes}{$node_uuid}{ifn_ip}, 
-			name8  => "db::nodes::${node_uuid}::name",           value8  => $an->data->{db}{nodes}{$node_uuid}{name}, 
-			name9  => "db::nodes::${node_uuid}::type",           value9  => $an->data->{db}{nodes}{$node_uuid}{type}, 
-			name10 => "db::nodes::${node_uuid}::health",         value10 => $an->data->{db}{nodes}{$node_uuid}{health}, 
-			name11 => "db::nodes::${node_uuid}::emergency_stop", value11 => $an->data->{db}{nodes}{$node_uuid}{emergency_stop}, 
-			name12 => "db::nodes::${node_uuid}::stop_reason",    value12 => $an->data->{db}{nodes}{$node_uuid}{stop_reason}, 
+			name8  => "db::nodes::${node_uuid}::host_uuid",      value8  => $an->data->{db}{nodes}{$node_uuid}{host_uuid}, 
+			name9  => "db::nodes::${node_uuid}::name",           value9  => $an->data->{db}{nodes}{$node_uuid}{name}, 
+			name10 => "db::nodes::${node_uuid}::type",           value10 => $an->data->{db}{nodes}{$node_uuid}{type}, 
+			name11 => "db::nodes::${node_uuid}::health",         value11 => $an->data->{db}{nodes}{$node_uuid}{health}, 
+			name12 => "db::nodes::${node_uuid}::emergency_stop", value12 => $an->data->{db}{nodes}{$node_uuid}{emergency_stop}, 
+			name13 => "db::nodes::${node_uuid}::stop_reason",    value13 => $an->data->{db}{nodes}{$node_uuid}{stop_reason}, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "db::nodes::${node_uuid}::password", value1 => $an->data->{db}{nodes}{$node_uuid}{password}, 
@@ -2348,9 +2346,10 @@ sub parse_anvil_data
 				use_port       => 22,        # This will switch to the remote_port if we use the remote_ip to access.
 				online         => 0,         # This will be set to '1' if we successfully access the node
 				power          => "unknown", # This will be set to 'on' or 'off' when we access it or based on the 'power check command' output
+				host_uuid      => $an->data->{db}{nodes}{$node_uuid}{host_uuid}, 
 				password       => $an->data->{db}{nodes}{$node_uuid}{password} ? $an->data->{db}{nodes}{$node_uuid}{password} : $an->data->{anvils}{$anvil_uuid}{password}, 
 			};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0016", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0017", message_variables => {
 				name1  => "anvils::${anvil_uuid}::${node_key}::uuid",           value1  => $an->data->{anvils}{$anvil_uuid}{$node_key}{uuid}, 
 				name2  => "anvils::${anvil_uuid}::${node_key}::name",           value2  => $an->data->{anvils}{$anvil_uuid}{$node_key}{name}, 
 				name3  => "anvils::${anvil_uuid}::${node_key}::remote_ip",      value3  => $an->data->{anvils}{$anvil_uuid}{$node_key}{remote_ip}, 
@@ -2367,6 +2366,7 @@ sub parse_anvil_data
 				name14 => "anvils::${anvil_uuid}::${node_key}::use_port",       value14 => $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port}, 
 				name15 => "anvils::${anvil_uuid}::${node_key}::online",         value15 => $an->data->{anvils}{$anvil_uuid}{$node_key}{online}, 
 				name16 => "anvils::${anvil_uuid}::${node_key}::power",          value16 => $an->data->{anvils}{$anvil_uuid}{$node_key}{power}, 
+				name17 => "anvils::${anvil_uuid}::${node_key}::host_uuid",      value17 => $an->data->{anvils}{$anvil_uuid}{$node_key}{host_uuid}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "anvils::${anvil_uuid}::${node_key}::password", value1 => $an->data->{anvils}{$anvil_uuid}{$node_key}{password}, 

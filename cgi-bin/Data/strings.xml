@@ -1245,7 +1245,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="title_0046"><![CDATA[Booting: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
 		<key name="title_0047"><![CDATA[About to <span class="highlight_dangerous">cold migrate</span> the server: [<span class="highlight_detail">#!variable!server!#</span>] to: [<b><span class="highlight_detail">#!variable!target!#</span></b>].]]></key>
 		<key name="title_0048"><![CDATA[Booting of: [<span class="highlight_detail">#!variable!server!#</span>] failed!]]></key>
-		<key name="title_0049"><![CDATA[Migrating: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!target!#</span>] now...]]></key>
+		<key name="title_0049"><![CDATA[Migrating: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
 		<key name="title_0050"><![CDATA[Migration of: [<span class="highlight_detail">#!variable!server!#</span>] to: [<span class="highlight_detail">#!variable!migration_target!#</span>] aborted!]]></key>
 		<key name="title_0051"><![CDATA[Attempting graceful shut down of: [<span class="highlight_detail">#!variable!server!#</span>] now...]]></key>
 		<key name="title_0052"><![CDATA[Attempting to join: [<span class="highlight_detail">#!variable!node_name!#</span>] to: [<span class="highlight_detail">#!variable!anvil!#</span>] now...]]></key>
@@ -1901,6 +1901,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0481"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It is unlikely that the boot request succeeded. Can this system talk to the node's fence device(s)?]]></key>
 		<key name="message_0482"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] was already on, no action taken.]]></key>
 		<key name="message_0483"><![CDATA[The node: [<span class="highlight_detail">#!variable!node_name!#</span>] is in an unknown power state. It can't be booted.]]></key>
+		<key name="message_0484"><![CDATA[No #!string!brand_0003!# selected, redirecting...]]></key>
 		
 		<!-- warnings -->
 		<key name="warning_0001"><![CDATA[The install target function failed to be enabled.<br />Please check: [<span class="highlight_detail">#!data!log::file!#</span>] on this dashboard for information.]]></key>

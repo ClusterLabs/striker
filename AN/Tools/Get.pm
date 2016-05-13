@@ -1237,18 +1237,14 @@ sub local_anvil_details
 {
 	my $self      = shift;
 	my $parameter = shift;
-	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "local_anvil_details" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If no host name is passed in, use this machine's host name.
 	my $hostname_full  = $parameter->{hostname_full}  ? $parameter->{hostname_full}  : $an->hostname;
 	my $hostname_short = $parameter->{hostname_short} ? $parameter->{hostname_short} : $an->short_hostname;
 	my $config_file    = $parameter->{config_file}    ? $parameter->{config_file}    : $an->data->{path}{cman_config};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "hostname_full",  value1 => $hostname_full, 
 		name2 => "hostname_short", value2 => $hostname_short, 
 		name3 => "config_file",    value3 => $config_file, 
@@ -1958,7 +1954,8 @@ sub node_info
 			$return->{description} = $an->data->{sys}{anvil}{description};
 			$return->{anvil_name}  = $an->data->{sys}{anvil}{name};
 			$return->{use_ip}      = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_ip};
-			$return->{use_port}    = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};;
+			$return->{use_port}    = $an->data->{anvils}{$anvil_uuid}{$node_key}{use_port};
+			$return->{node_host_uuid} = 
 			$return->{password}    = $an->data->{sys}{anvil}{$node_key}{password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 				name1 => "return->local",       value1 => $return->{'local'}, 

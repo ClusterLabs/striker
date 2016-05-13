@@ -338,7 +338,7 @@ sub boot_server
 	if ($nodes->{$preferred_node}{storage_ready})
 	{
 		# The preferred node's storage is healthy, so will boot here *if*:
-		# - Storage is healhy
+		# - Storage is healhy (or both nodes have the same health state)
 		# - Health is OK *or* both nodes are 'warning' and 'force' was used.
 		# Storage is good. Are we healthy?
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
@@ -347,7 +347,7 @@ sub boot_server
 			name3 => "nodes->{$secondary_node}{healthy}",       value3 => $nodes->{$secondary_node}{healthy}, 
 			name4 => "force",                                   value4 => $force, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($nodes->{$preferred_node}{healthy} eq "ok")
+		if (($nodes->{$preferred_node}{healthy} eq "ok") or ($nodes->{$preferred_node}{healthy} eq $nodes->{$secondary_node}{healthy}))
 		{
 			# wee!
 			$an->Log->entry({log_level => 1, message_key => "tools_log_0012", message_variables => {

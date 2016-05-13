@@ -36,6 +36,7 @@ use AN::Tools::HardwareLSI;
 use AN::Tools::InstallManifest;
 use AN::Tools::Log;
 use AN::Tools::Math;
+use AN::Tools::MediaLibrary;
 use AN::Tools::Readable;
 use AN::Tools::Remote;
 use AN::Tools::ScanCore;
@@ -63,6 +64,7 @@ sub new
 			INSTALLMANIFEST			=>	AN::Tools::InstallManifest->new(),
 			LOG				=>	AN::Tools::Log->new(),
 			MATH				=>	AN::Tools::Math->new(),
+			MEDIALIBRARY			=>	AN::Tools::MediaLibrary->new(),
 			READABLE			=>	AN::Tools::Readable->new(),
 			REMOTE				=>	AN::Tools::Remote->new(),
 			SCANCORE			=>	AN::Tools::ScanCore->new(),
@@ -115,6 +117,7 @@ sub new
 	$an->InstallManifest->parent($an);
 	$an->Log->parent($an);
 	$an->Math->parent($an);
+	$an->MediaLibrary->parent($an);
 	$an->Readable->parent($an);
 	$an->Remote->parent($an);
 	$an->ScanCore->parent($an);
@@ -434,6 +437,14 @@ sub Math
 	my $self = shift;
 	
 	return ($self->{HANDLE}{MATH});
+}
+
+# Makes my handle to AN::Tools::MediaLibrary clearer when using this module to access it's methods.
+sub MediaLibrary
+{
+	my $self = shift;
+	
+	return ($self->{HANDLE}{MEDIALIBRARY});
 }
 
 # Makes my handle to AN::Tools::Readable clearer when using this module to access it's methods.

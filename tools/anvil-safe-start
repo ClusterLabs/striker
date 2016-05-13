@@ -332,7 +332,7 @@ sub update_striker_conf
 sub start_servers
 {
 	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_servers" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# First, call clustat to get a list of VMs.
 	my ($servers, $state) = $an->Cman->get_cluster_server_list();
