@@ -930,19 +930,30 @@ sub rsync
 	
 	# Check my parameters.
 	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
+	my $port        = $parameter->{port}        ? $parameter->{port}        : "";
 	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
 		name1 => "target",      value1 => $target, 
-		name2 => "source",      value2 => $source, 
-		name3 => "destination", value3 => $destination, 
-		name4 => "switches",    value4 => $switches, 
+		name2 => "port",        value2 => $port, 
+		name3 => "source",      value3 => $source, 
+		name4 => "destination", value4 => $destination, 
+		name5 => "switches",    value5 => $switches, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Add an argument for the port if set
+	if (($port) && ($port ne "22"))
+	{
+		$switches .= " -e 'ssh -p $port'";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "switches", value1 => $switches, 
+		}, file => $THIS_FILE, line => __LINE__});
+	}
 	
 	# Make sure I have everything I need.
 	my $failed = 0;

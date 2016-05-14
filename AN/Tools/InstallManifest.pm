@@ -2,6 +2,16 @@ package AN::Tools::InstallManifest;
 # 
 # This package is used for things specific to RHEL 6's cman + rgmanager cluster stack.
 # 
+# TODO: 
+# - Migrate all of the;
+# target   => $an->data->{cgi}{anvil_node1_current_ip}, 
+# port     => $an->data->{node}{$node1}{port}, 
+# password => $an->data->{cgi}{anvil_node1_current_password},
+# - to;
+# target   => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
+# port     => $an->data->{sys}{anvil}{$node_key}{use_port}, 
+# password => $an->data->{sys}{anvil}{$node_key}{use_password}, 
+# - Update these as the password is changed and the node is rebooted.
 
 use strict;
 use warnings;
@@ -14297,21 +14307,12 @@ sub start_cman
 		# Start cman on both nodes at the same time. We use node1's password as it has to be the same
 		# on both at this point.
 		my $command  = $an->data->{path}{initd}."/cman start";
-		my $password = $an->data->{cgi}{anvil_node1_current_password};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "command",                     value1 => $command,
-			name2 => "cgi::anvil_node1_current_ip", value2 => $an->data->{cgi}{anvil_node1_current_ip},
-			name3 => "cgi::anvil_node2_current_ip", value2 => $an->data->{cgi}{anvil_node2_current_ip},
+			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->synchronous_command_run({
-			command		=>	$command, 
-			delay		=>	30,
-			node1_ip	=>	$an->data->{cgi}{anvil_node1_current_ip}, 
-			node1_port	=>	$an->data->{node}{$node1}{port}, 
-			node1_password	=>	$an->data->{cgi}{anvil_node1_current_password},
-			node2_ip	=>	$an->data->{cgi}{anvil_node2_current_ip}, 
-			node2_port	=>	$an->data->{node}{$node2}{port}, 
-			node2_password	=>	$an->data->{cgi}{anvil_node2_current_password}
+			command => $command, 
+			delay   => 30,
 		});
 		
 		# Now see if that succeeded.

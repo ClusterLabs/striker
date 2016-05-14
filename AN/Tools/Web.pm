@@ -351,6 +351,8 @@ sub check_all_cgi
 		"max_storage",
 		"name",
 		"node",
+		"node_name",
+		"node_uuid",
 		"node1_access",
 		"node1_bcn",
 		"node1_host_name",
@@ -733,7 +735,7 @@ sub template
 	my $file       = $parameter->{file};
 	my $template   = $parameter->{template};
 	my $replace    = $parameter->{replace}    ? $parameter->{replace}    : {};
-	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 1;
+	my $no_comment = $parameter->{no_comment} ? $parameter->{no_comment} : 0;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 		name1 => "file",       value1 => $file,
 		name2 => "template",   value2 => $template,

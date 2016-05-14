@@ -517,23 +517,54 @@ sub scan_anvil
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node1}{uuid}});
 	$an->Striker->scan_node({uuid => $an->data->{sys}{anvil}{node2}{uuid}});
 	
+	my $anvil_name   = $an->data->{sys}{anvil}{name};
 	my $node1_name   = $an->data->{sys}{anvil}{node1}{name};
 	my $node1_online = $an->data->{sys}{anvil}{node1}{online};
 	my $node2_name   = $an->data->{sys}{anvil}{node2}{name};
 	my $node2_online = $an->data->{sys}{anvil}{node2}{online};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
-		name1 => "node1_name",   value1 => $node1_name,
-		name2 => "node1_online", value2 => $node1_online,
-		name3 => "node2_name",   value3 => $node2_name,
-		name4 => "node2_online", value4 => $node2_online,
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+		name1 => "anvil_name",   value1 => $anvil_name,
+		name2 => "node1_name",   value2 => $node1_name,
+		name3 => "node1_online", value3 => $node1_online,
+		name4 => "node2_name",   value4 => $node2_name,
+		name5 => "node2_online", value5 => $node2_online,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "up nodes", value1 => $an->data->{sys}{up_nodes},
+	$an->data->{sys}{up_nodes}     = @{$an->data->{up_nodes}};
+	$an->data->{sys}{online_nodes} = @{$an->data->{online_nodes}};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "up nodes",          value1 => $an->data->{sys}{up_nodes},
+		name2 => "sys::online_nodes", value2 => $an->data->{sys}{online_nodes},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{up_nodes} > 0)
 	{
 		$an->Striker->scan_servers();
+		$an->Striker->_post_scan_calculations();
+	}
+	else
+	{
+		# Neither node is up. If I can power them on, then I will show the node section to enable 
+		# power up.
+		my $node1_power = $an->data->{sys}{anvil}{node1}{power};
+		my $node2_power = $an->data->{sys}{anvil}{node2}{power};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_power", value1 => $node1_power,
+			name2 => "node2_power", value2 => $node2_power,
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($node1_power eq "unknown") or ($node2_power eq "unknown"))
+		{
+			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
+				anvil	=>	$an->data->{sys}{anvil}{name},
+				message	=>	"#!string!message_0029!#",
+			}});
+		}
+		else
+		{
+			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
+				anvil	=>	$an->data->{sys}{anvil}{name},
+				message	=>	"#!string!message_0028!#",
+			}});
+		}
 	}
 
 	return(0);
@@ -850,42 +881,6 @@ sub scan_node
 	
 	push @{$an->data->{online_nodes}}, $node_name if $an->Striker->_check_node_daemons({node => $node_uuid});
 	
-	# If I have no nodes up, exit.
-	my $anvil_name                    = $an->data->{sys}{anvil}{name};
-	   $an->data->{sys}{up_nodes}     = @{$an->data->{up_nodes}};
-	   $an->data->{sys}{online_nodes} = @{$an->data->{online_nodes}};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-		name1 => "anvil_name",        value1 => $anvil_name,
-		name2 => "sys::up_nodes",     value2 => $an->data->{sys}{up_nodes},
-		name3 => "sys::online_nodes", value3 => $an->data->{sys}{online_nodes},
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($an->data->{sys}{up_nodes} < 1)
-	{
-		# Neither node is up. If I can power them on, then I will show the node section to enable 
-		# power up.
-		if (not $an->data->{sys}{online_nodes})
-		{
-			if ($an->data->{clusters}{$anvil_name}{cache_exists})
-			{
-				print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
-					anvil	=>	$an->data->{sys}{anvil}{name},
-					message	=>	"#!string!message_0028!#",
-				}});
-			}
-			else
-			{
-				print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
-					anvil	=>	$an->data->{sys}{anvil}{name},
-					message	=>	"#!string!message_0029!#",
-				}});
-			}
-		}
-	}
-	else
-	{
-		$an->Striker->_post_scan_calculations();
-	}
-	
 	return (0);
 }
 
@@ -982,7 +977,7 @@ sub scan_servers
 			$an->data->{server}{$server}{say_node2} = "--";
 			my $say_error = $an->String->get({key => "message_0271", variables => { 
 					server	=>	$server,
-					url	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=add_server&name=$server&node=$host_node&state=$server_state",
+					url	=>	"?anvil_uuid=".$an->data->{cgi}{anvil_uuid}."&task=add_server&name=$server&node_name=$host_node&state=$server_state",
 				}});
 			$an->Striker->_error({message => $say_error, fatal => 0});
 			next;
@@ -2767,7 +2762,7 @@ sub _check_lv
 		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state} = $an->data->{drbd}{$on_res}{node}{$node_name}{connection_state};
 		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role}             = $an->data->{drbd}{$on_res}{node}{$node_name}{role};
 		$an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state}       = $an->data->{drbd}{$on_res}{node}{$node_name}{disk_state};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 			name1 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::connection_state", value1 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{connection_state},
 			name2 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::role",             value2 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{role},
 			name3 => "server::${server}::node::${node_name}::lv::${lv}::drbd::${on_res}::disk_state",       value3 => $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$on_res}{disk_state},
@@ -2899,7 +2894,7 @@ sub _check_node_readiness
 					my $connection_state = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{connection_state};
 					my $role             = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{role};
 					my $disk_state       = $an->data->{server}{$server}{node}{$node_name}{lv}{$lv}{drbd}{$resource}{disk_state};
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 						name1 => "resource",         value1 => $resource,
 						name2 => "connection_state", value2 => $connection_state,
 						name3 => "role",             value3 => $role,
@@ -4892,9 +4887,9 @@ sub _display_node_controls
 		name4 => "cold_stop",     value4 => $cold_stop,
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	foreach my $node ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
+	foreach my $node_name ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
 	{
-		$an->data->{node}{$node}{enable_withdraw} = 0 if not defined $an->data->{node}{$node}{enable_withdraw};
+		$an->data->{node}{$node_name}{enable_withdraw} = 0 if not defined $an->data->{node}{$node_name}{enable_withdraw};
 		
 		# Join button.
 		my $say_join_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0031!#" }});
@@ -4902,40 +4897,40 @@ sub _display_node_controls
 		### TODO: See if the peer is online already and, if so, add 'confirm=true' as the join is safe.
 		my $say_join_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?anvil_uuid=$anvil_uuid&task=join_anvil&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=join_anvil&node_name=$node_name",
 				button_text	=>	"#!string!button_0031!#",
-				id		=>	"join_anvil_$node",
+				id		=>	"join_anvil_$node_name",
 			}});
-		$say_join[$i] = $an->data->{node}{$node}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
+		$say_join[$i] = $an->data->{node}{$node_name}{enable_join} ? $say_join_enabled_button : $say_join_disabled_button;
 		$say_join[$i] = $say_join_disabled_button if $disable_join;
 		   
 		# Withdraw button
 		my $say_withdraw_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0032!#" }});
 		my $say_withdraw_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?anvil_uuid=$anvil_uuid&task=withdraw&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=withdraw&node_name=$node_name",
 				button_text	=>	"#!string!button_0032!#",
-				id		=>	"withdraw_$node",
+				id		=>	"withdraw_$node_name",
 			}});
-		$say_withdraw[$i] = $an->data->{node}{$node}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
+		$say_withdraw[$i] = $an->data->{node}{$node_name}{enable_withdraw} ? $say_withdraw_enabled_button : $say_withdraw_disabled_button;
 		
 		# Shutdown button
 		my $say_shutdown_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0033!#" }});
 		my $say_shutdown_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=poweroff_node&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=poweroff_node&node_name=$node_name",
 				button_text	=>	"#!string!button_0033!#",
-				id		=>	"poweroff_node_$node",
+				id		=>	"poweroff_node_$node_name",
 			}});
-		$say_shutdown[$i] = $an->data->{node}{$node}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
+		$say_shutdown[$i] = $an->data->{node}{$node_name}{enable_poweroff} ? $say_shutdown_enabled_button : $say_shutdown_disabled_button;
 		
 		# Boot button
 		my $say_boot_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0034!#" }});
 		my $say_boot_enabled_button  = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"bold_button",
-				button_link	=>	"?anvil_uuid=$anvil_uuid&task=poweron_node&node=$node&confirm=true",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&task=poweron_node&node_name=$node_name&confirm=true",
 				button_text	=>	"#!string!button_0034!#",
-				id		=>	"poweron_node_$node",
+				id		=>	"poweron_node_$node_name",
 			}});
-		$say_boot[$i] = $an->data->{node}{$node}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
+		$say_boot[$i] = $an->data->{node}{$node_name}{enable_poweron} ? $say_boot_enabled_button : $say_boot_disabled_button;
 		
 		# Fence button
 		# If the node is already confirmed off, no need to fence.
@@ -4944,11 +4939,11 @@ sub _display_node_controls
 		# &expire=$expire_time
 		my $say_fence_node_enabled_button = $an->Web->template({file => "common.html", template => "enabled-button", replace => { 
 				button_class	=>	"highlight_dangerous",
-				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=fence_node&node=$node",
+				button_link	=>	"?anvil_uuid=$anvil_uuid&expire=$expire_time&task=fence_node&node_name=$node_name",
 				button_text	=>	"#!string!button_0037!#",
-				id		=>	"fence_node_$node",
+				id		=>	"fence_node_$node_name",
 			}});
-		$say_fence[$i] = $an->data->{node}{$node}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
+		$say_fence[$i] = $an->data->{node}{$node_name}{enable_poweron} ? $say_fence_node_disabled_button : $say_fence_node_enabled_button;
 		
 		# Dual-boot/Cold-Stop button.
 		if ($i == 0)
@@ -5018,19 +5013,19 @@ sub _display_node_controls
 		}
 		
 		# Make the node names click-able to show the hardware states.
-		$say_node_name[$i] = $an->data->{node}{$node}{info}{host_name};
+		$say_node_name[$i] = $an->data->{node}{$node_name}{info}{host_name};
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "i",                              value1 => $i,
-			name2 => "node::${node}::info::host_name", value2 => $an->data->{node}{$node}{info}{host_name},
-			name3 => "say_node_name",                  value3 => $say_node_name[$i],
+			name1 => "i",                                   value1 => $i,
+			name2 => "node::${node_name}::info::host_name", value2 => $an->data->{node}{$node_name}{info}{host_name},
+			name3 => "say_node_name",                       value3 => $say_node_name[$i],
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{node}{$node}{connected})
+		if ($an->data->{node}{$node_name}{connected})
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "enabled-button-new-tab", replace => { 
 					button_class	=>	"fixed_width_button",
-					button_link	=>	"?anvil_uuid=$anvil_uuid&task=display_health&node=$node",
-					button_text	=>	$an->data->{node}{$node}{info}{host_name},
-					id		=>	"display_health_$node",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&task=display_health&node_name=$node_name",
+					button_text	=>	$an->data->{node}{$node_name}{info}{host_name},
+					id		=>	"display_health_$node_name",
 				}});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "i",             value1 => $i,
@@ -5041,7 +5036,7 @@ sub _display_node_controls
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "disabled-button-with-class", replace => { 
 					button_class	=>	"highlight_offline_fixed_width_button",
-					button_text	=>	$an->data->{node}{$node}{info}{host_name},
+					button_text	=>	$an->data->{node}{$node_name}{info}{host_name},
 				}});
 		}
 		$rowspan = 0;
@@ -5852,10 +5847,10 @@ sub _dual_join
 	
 	# grab the CGI data
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
-	my $node_name  = $an->data->{cgi}{node_name};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "anvil_uuid", value1 => $anvil_uuid,
-		name2 => "node_name",  value2 => $node_name,
+		name2 => "anvil_name", value2 => $anvil_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	if (not $anvil_uuid)
@@ -5863,31 +5858,6 @@ sub _dual_join
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0141", code => 141, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
-	if (not $node_name)
-	{
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => "$THIS_FILE", line => __LINE__});
-		return("");
-	}
-	
-	# Pull out the rest of the data
-	my $anvil_name = $an->data->{sys}{anvil}{name};
-	my $node_key   = $an->data->{sys}{node_name}{$node_name}{node_key};
-	my $peer_key   = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
-	my $peer_name  = $an->data->{sys}{anvil}{$peer_key}{name};
-	my $target     = $an->data->{sys}{anvil}{$node_key}{use_ip};
-	my $port       = $an->data->{sys}{anvil}{$node_key}{use_port};
-	my $password   = $an->data->{sys}{anvil}{$node_key}{password};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
-		name1 => "anvil_name", value1 => $anvil_name,
-		name2 => "node_key",   value2 => $node_key,
-		name3 => "peer_key",   value3 => $peer_key,
-		name4 => "peer_name",  value4 => $peer_name,
-		name5 => "target",     value5 => $target,
-		name6 => "port",       value6 => $port,
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password,
-	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Scan the Anvil!.
 	$an->Striker->scan_anvil();
@@ -5895,20 +5865,35 @@ sub _dual_join
 	# Proceed only if all of the storage components, cman and rgmanager are off.
 	my @abort_reason;
 	my $proceed = 1;
-	foreach my $node ($node_name, $peer_name)
+	foreach my $node_key ("node1", "node2")
 	{
-		if (($an->data->{node}{$node}{daemon}{cman}{exit_code}      eq "0") or
-		    ($an->data->{node}{$node}{daemon}{rgmanager}{exit_code} eq "0") or
-		    ($an->data->{node}{$node}{daemon}{drbd}{exit_code}      eq "0") or
-		    ($an->data->{node}{$node}{daemon}{clvmd}{exit_code}     eq "0") or
-		    ($an->data->{node}{$node}{daemon}{gfs2}{exit_code}      eq "0"))
+		my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "node::${node_name}::daemon::cman::exit_code",      value1 => $an->data->{node}{$node_name}{daemon}{cman}{exit_code},
+			name2 => "node::${node_name}::daemon::rgmanager::exit_code", value2 => $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code},
+			name3 => "node::${node_name}::daemon::drbd::exit_code",      value3 => $an->data->{node}{$node_name}{daemon}{drbd}{exit_code},
+			name4 => "node::${node_name}::daemon::clvmd::exit_code",     value4 => $an->data->{node}{$node_name}{daemon}{clvmd}{exit_code},
+			name5 => "node::${node_name}::daemon::gfs2::exit_code",      value5 => $an->data->{node}{$node_name}{daemon}{gfs2}{exit_code},
+		}, file => $THIS_FILE, line => __LINE__});
+		if (($an->data->{node}{$node_name}{daemon}{cman}{exit_code}      eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{drbd}{exit_code}      eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{clvmd}{exit_code}     eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{gfs2}{exit_code}      eq "0"))
 		{
 			# Already joined the Anvil!
-			   $proceed = 0;
-			my $reason  = $an->String->get({key => "message_0190", variables => { node => $node }});
+			$proceed = 0;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "proceed", value1 => $proceed,
+			}, file => $THIS_FILE, line => __LINE__});
+			my $reason  = $an->String->get({key => "message_0190", variables => { node => $node_name }});
 			push @abort_reason, $reason;
 		}
 	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "proceed", value1 => $proceed,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($proceed)
 	{
 		my $say_title = $an->String->get({key => "title_0054", variables => { anvil => $anvil_name }});
@@ -5916,28 +5901,36 @@ sub _dual_join
 		
 		# Now call the command against both nodes using '$an->Remote->synchronous_command_run()'.
 		my $command  = $an->data->{path}{initd}."/cman start && ".$an->data->{path}{initd}."/rgmanager start";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "command",                         value1 => $command,
-			name2 => "sys::anvil::${node_key}::use_ip", value2 => $an->data->{sys}{anvil}{$node_key}{use_ip},
-			name3 => "sys::anvil::${peer_key}::use_ip", value2 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
+			name1 => "command",                     value1 => $command,
+			name2 => "sys::anvil::node1::use_ip",   value2 => $an->data->{sys}{anvil}{node1}{use_ip},
+			name3 => "sys::anvil::node1::use_port", value3 => $an->data->{sys}{anvil}{node1}{use_port},
+			name4 => "sys::anvil::node2::use_ip",   value4 => $an->data->{sys}{anvil}{node2}{use_ip},
+			name5 => "sys::anvil::node2::use_port", value5 => $an->data->{sys}{anvil}{node2}{use_port},
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+			name1 => "sys::anvil::node1::use_password", value1 => $an->data->{sys}{anvil}{node1}{use_password},
+			name2 => "sys::anvil::node2::use_password", value2 => $an->data->{sys}{anvil}{node2}{use_password},
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($output) = $an->Remote->synchronous_command_run({
 			command		=>	$command, 
 			delay		=>	30,
-			node1_ip	=>	$an->data->{sys}{anvil}{$node_key}{use_ip}, 
-			node1_port	=>	$an->data->{sys}{anvil}{$node_key}{use_port}, 
-			node1_password	=>	$an->data->{sys}{anvil}{$node_key}{use_password}, 
-			node2_ip	=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
-			node2_port	=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
-			node2_password	=>	$an->data->{sys}{anvil}{$peer_key}{use_password}, 
+			node1_ip	=>	$an->data->{sys}{anvil}{node1}{use_ip}, 
+			node1_port	=>	$an->data->{sys}{anvil}{node1}{use_port}, 
+			node1_password	=>	$an->data->{sys}{anvil}{node1}{use_password}, 
+			node2_ip	=>	$an->data->{sys}{anvil}{node2}{use_ip}, 
+			node2_port	=>	$an->data->{sys}{anvil}{node2}{use_port}, 
+			node2_password	=>	$an->data->{sys}{anvil}{node2}{use_password}, 
 		});
 		
-		foreach my $node ($node_name, $peer_name)
+		foreach my $node_key ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
 		{
+			my $node_name = $an->data->{sys}{anvil}{$node_key}{name};
+			my $target    = $an->data->{sys}{anvil}{$node_key}{use_ip};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-				name1 => "output->$node", value1 => $output->{$node},
+				name1 => "output->$target", value1 => $output->{$target},
 			}, file => $THIS_FILE, line => __LINE__});
-			foreach my $line (split/\n/, $output->{$node})
+			foreach my $line (split/\n/, $output->{$target})
 			{
 				$line =~ s/^\s+//;
 				$line =~ s/\s+$//;
@@ -5956,7 +5949,7 @@ sub _dual_join
 					$status  = "";
 				}
 				print $an->Web->template({file => "server.html", template => "dual-join-anvil-output", replace => { 
-					node	=>	$node,
+					node	=>	$node_name,
 					message	=>	$message,
 					status	=>	$status,
 				}});
@@ -6967,7 +6960,7 @@ sub _header
 		elsif ($an->data->{cgi}{task} eq "display_health")
 		{
 			$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-					button_link	=>	"?anvil_uuid=$anvil_uuid&node=".$an->data->{cgi}{node}."&task=display_health",
+					button_link	=>	"?anvil_uuid=$anvil_uuid&node_name".$an->data->{cgi}{node}."&task=display_health",
 					button_text	=>	"$refresh_image",
 					id		=>	"refresh",
 				}});
@@ -7035,7 +7028,7 @@ sub _header
 			# Do not use refresh
 			$an->Log->entry({log_level => 3, message_key => "log_0015", file => $THIS_FILE, line => __LINE__});
 		}
-		if ($an->data->{sys}{cgi_string} =~ /\?anvil_uuid.*?&task=display_health&node=.*?$/)
+		if ($an->data->{sys}{cgi_string} =~ /\?anvil_uuid.*?&task=display_health&node_name.*?$/)
 		{
 			my $final = $1;
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
@@ -9025,7 +9018,7 @@ sub _parse_daemons
 		$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = "";
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "node_name", value1 => $node_name,
 	}, file => $THIS_FILE, line => __LINE__});
 	foreach my $line (@{$data})
@@ -9038,49 +9031,42 @@ sub _parse_daemons
 		$line =~ s/\s+/ /g;
 		next if $line !~ /^striker:/;
 		my ($daemon, $exit_code) = ($line =~ /^.*?:(.*?):(.*?)$/);
-		$exit_code = "" if not defined $exit_code;
+		   $exit_code            = "" if not defined $exit_code;
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
 			name1 => "node_name", value1 => $node_name,
 			name2 => "daemon",    value2 => $daemon,
 			name3 => "exit_code", value3 => $exit_code,
 		}, file => $THIS_FILE, line => __LINE__});
+		
 		if ($exit_code eq "0")
 		{
 			# Running
 			$an->data->{node}{$node_name}{daemon}{$daemon}{status} = "<span class=\"highlight_good\">#!string!an_state_0003!#</span>";
 			$an->data->{node}{$node_name}{enable_poweroff}         = 0;
 		}
-		$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = defined $exit_code ? $exit_code : "";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		
+		$an->data->{node}{$node_name}{daemon}{$daemon}{exit_code} = $exit_code;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node::${node_name}::daemon::${daemon}::exit_code", value1 => $an->data->{node}{$node_name}{daemon}{$daemon}{exit_code},
 			name2 => "node::${node_name}::daemon::${daemon}::status",    value2 => $an->data->{node}{$node_name}{daemon}{$daemon}{status},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# If cman is running, enable withdrawl. If not, enable shut down.
-	my $cman_exit      = $an->data->{node}{$node_name}{daemon}{cman}{exit_code};
-	my $rgmanager_exit = $an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code};
-	my $drbd_exit      = $an->data->{node}{$node_name}{daemon}{drbd}{exit_code};
-	my $clvmd_exit     = $an->data->{node}{$node_name}{daemon}{clvmd}{exit_code};
-	my $gfs2_exit      = $an->data->{node}{$node_name}{daemon}{gfs2}{exit_code};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
-		name1 => "cman_exit",      value1 => $cman_exit,
-		name2 => "rgmanager_exit", value2 => $rgmanager_exit,
-		name3 => "drbd_exit",      value3 => $drbd_exit,
-		name4 => "clvmd_exit",     value4 => $clvmd_exit,
-		name5 => "gfs2_exit",      value5 => $gfs2_exit,
-	}, file => $THIS_FILE, line => __LINE__});
-	if ($cman_exit eq "0")
+	if ($an->data->{node}{$node_name}{daemon}{cman}{exit_code} eq "0")
 	{
 		$an->data->{node}{$node_name}{enable_withdraw} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node::${node_name}::enable_withdraw", value1 => $an->data->{node}{$node_name}{enable_withdraw},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	else
 	{
 		# If something went wrong, one of the storage resources might still be running.
-		if (($rgmanager_exit eq "0") ||
-		    ($drbd_exit      eq "0") ||
-		    ($clvmd_exit     eq "0") ||
-		    ($gfs2_exit      eq "0"))
+		if (($an->data->{node}{$node_name}{daemon}{rgmanager}{exit_code} eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{drbd}{exit_code}      eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{clvmd}{exit_code}     eq "0") or
+		    ($an->data->{node}{$node_name}{daemon}{gfs2}{exit_code}      eq "0"))
 		{
 			# This can happen if the user loads the page (or it auto-loads) while the storage is 
 			# coming online.
@@ -9090,14 +9076,20 @@ sub _parse_daemons
 		else
 		{
 			# Ready to power off the node, if I was actually able to connect to the node.
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node::${node_name}::connected", value1 => $an->data->{node}{$node_name}{connected},
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($an->data->{node}{$node_name}{connected})
 			{
 				$an->data->{node}{$node_name}{enable_poweroff} = 1;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "node::${node_name}::enable_poweroff", value1 => $an->data->{node}{$node_name}{enable_poweroff},
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "node::${node_name}::enable_poweroff", value1 => $an->data->{node}{$node_name}{enable_poweroff},
 		name2 => "node::${node_name}::enable_withdraw", value2 => $an->data->{node}{$node_name}{enable_withdraw},
 	}, file => $THIS_FILE, line => __LINE__});
@@ -9272,6 +9264,9 @@ sub _parse_drbdadm_dumpxml
 						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{minor_number}   = $minor_number;
 						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{drbd_device}    = $drbd_device;
 						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{backing_device} = $backing_device;
+						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state} = "--";
+						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{role}             = "--";
+						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{disk_state}       = "--";
 						
 						# These entries are per-host.
 						$an->data->{node}{$node_name}{drbd}{resource}{$resource}{hostname}{$hostname}{ip_address} = $ip_address;
@@ -10164,7 +10159,7 @@ sub _parse_proc_drbd
 				my $drbd_protocol    = $7;
 				my $io_flags         = $8;	# See: http://www.drbd.org/users-guide/ch-admin.html#s-io-flags
 				   $resource         = $an->data->{node}{$node_name}{drbd}{minor_number}{$minor_number}{resource};
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "node::${node_name}::drbd::resource::${resource}::minor_number",     value1 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{minor_number},
 					name2 => "node::${node_name}::drbd::resource::${resource}::connection_state", value2 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state},
 				}, file => $THIS_FILE, line => __LINE__});
@@ -10177,7 +10172,7 @@ sub _parse_proc_drbd
 				$an->data->{node}{$node_name}{drbd}{resource}{$resource}{peer_disk_state}  = $peer_disk_state;
 				$an->data->{node}{$node_name}{drbd}{resource}{$resource}{drbd_protocol}    = $drbd_protocol;
 				$an->data->{node}{$node_name}{drbd}{resource}{$resource}{io_flags}         = $io_flags;
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0008", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
 					name1 => "node::${node_name}::drbd::resource::${resource}::minor_number",     value1 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{minor_number},
 					name2 => "node::${node_name}::drbd::resource::${resource}::connection_state", value2 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state},
 					name3 => "node::${node_name}::drbd::resource::${resource}::my_role",          value3 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{my_role},
@@ -10311,7 +10306,7 @@ sub _parse_proc_drbd
 	foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node_name}{drbd}{resource}})
 	{
 		next if not $resource;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "node::${node_name}::drbd::resource::${resource}::minor_number",     value1 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{minor_number},
 			name2 => "node::${node_name}::drbd::resource::${resource}::connection_state", value2 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -10322,7 +10317,7 @@ sub _parse_proc_drbd
 		$an->data->{drbd}{$resource}{node}{$node_name}{disk_state}       = $an->data->{node}{$node_name}{drbd}{resource}{$resource}{my_disk_state}    ? $an->data->{node}{$node_name}{drbd}{resource}{$resource}{my_disk_state}    : "--";
 		$an->data->{drbd}{$resource}{node}{$node_name}{device}           = $an->data->{node}{$node_name}{drbd}{resource}{$resource}{drbd_device}      ? $an->data->{node}{$node_name}{drbd}{resource}{$resource}{drbd_device}      : "--";
 		$an->data->{drbd}{$resource}{node}{$node_name}{resync_percent}   = $an->data->{node}{$node_name}{drbd}{resource}{$resource}{percent_synced}   ? $an->data->{node}{$node_name}{drbd}{resource}{$resource}{percent_synced}   : "--";
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 			name1 => "drbd::${resource}::node::${node_name}::minor",            value1 => $an->data->{drbd}{$resource}{node}{$node_name}{minor},
 			name2 => "drbd::${resource}::node::${node_name}::connection_state", value2 => $an->data->{drbd}{$resource}{node}{$node_name}{connection_state},
 			name3 => "drbd::${resource}::node::${node_name}::role",             value3 => $an->data->{drbd}{$resource}{node}{$node_name}{role},
@@ -10747,45 +10742,95 @@ sub _post_scan_calculations
 	
 	# If both nodes have a given daemon down, then some data may be unavailable. This saves logic when 
 	# such checks are needed.
-	my $anvil_uuid                 = $an->data->{sys}{anvil}{uuid};
-	my $anvil_name                 = $an->data->{sys}{anvil}{name};
-	my $node1_name                 = $an->data->{sys}{anvil}{node1}{name};
-	my $node2_name                 = $an->data->{sys}{anvil}{node2}{name};
-	   $an->data->{sys}{gfs2_down} = 0;
+	my $anvil_uuid = $an->data->{sys}{anvil}{uuid};
+	my $anvil_name = $an->data->{sys}{anvil}{name};
+	my $node1_name = $an->data->{sys}{anvil}{node1}{name};
+	my $node2_name = $an->data->{sys}{anvil}{node2}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "anvil_uuid",  value1 => $anvil_uuid,
+		name2 => "anvil_name",  value2 => $anvil_name,
+		name3 => "node1_name",  value3 => $node1_name,
+		name4 => "node2_name",  value4 => $node2_name,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	$an->data->{sys}{gfs2_down} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::daemon::gfs2::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{gfs2}{exit_code},
+		name2 => "node::${node2_name}::daemon::gfs2::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{gfs2}{exit_code},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{gfs2}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{gfs2}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{gfs2_down} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::gfs2_down", value1 => $an->data->{sys}{gfs2_down},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
 	$an->data->{sys}{clvmd_down} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::daemon::clvmd::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{clvmd}{exit_code},
+		name2 => "node::${node2_name}::daemon::clvmd::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{clvmd}{exit_code},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{clvmd}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{clvmd}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{clvmd_down} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::clvmd_down", value1 => $an->data->{sys}{clvmd_down},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
 	$an->data->{sys}{drbd_down} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::daemon::drbd::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{drbd}{exit_code},
+		name2 => "node::${node2_name}::daemon::drbd::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{drbd}{exit_code},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{drbd}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{drbd}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{drbd_down} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::drbd_down", value1 => $an->data->{sys}{drbd_down},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
 	$an->data->{sys}{rgmanager_down} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::daemon::::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{rgmanager}{exit_code},
+		name2 => "node::${node2_name}::daemon::::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{rgmanager}{exit_code},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{rgmanager}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{rgmanager}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{rgmanager_down} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::rgmanager_down", value1 => $an->data->{sys}{rgmanager_down},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
 	$an->data->{sys}{cman_down} = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node::${node1_name}::daemon::cman::exit_code", value1 => $an->data->{node}{$node1_name}{daemon}{cman}{exit_code},
+		name2 => "node::${node2_name}::daemon::cman::exit_code", value2 => $an->data->{node}{$node2_name}{daemon}{cman}{exit_code},
+	}, file => $THIS_FILE, line => __LINE__});
 	if (($an->data->{node}{$node1_name}{daemon}{cman}{exit_code} ne "0") && ($an->data->{node}{$node2_name}{daemon}{cman}{exit_code} ne "0"))
 	{
 		$an->data->{sys}{cman_down} = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::cman_down", value1 => $an->data->{sys}{cman_down},
+		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
 	# Loop through the DRBD resources on each node and see if any resources are 'SyncSource', disable
 	# withdrawing that node. 
 	foreach my $node_name ($node1_name, $node2_name)
 	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node_name", value1 => $node_name,
+		}, file => $THIS_FILE, line => __LINE__});
 		foreach my $resource (sort {$a cmp $b} keys %{$an->data->{node}{$node_name}{drbd}{resource}})
 		{
 			my $connection_state = $an->data->{node}{$node_name}{drbd}{resource}{$resource}{connection_state};
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "connection_state", value1 => $an->data->{node}{$node_name}{drbd}{resource}{$resource}{io_flags},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "resource",         value1 => $resource,
+				name2 => "connection_state", value2 => $connection_state,
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			if ($connection_state =~ /SyncSource/)
@@ -13318,6 +13363,7 @@ sub _withdraw_node
 				message	=>	$message,
 			}});
 		}
+		print $an->Web->template({file => "server.html", template => "withdraw-node-close-output"});
 		print $an->Web->template({file => "server.html", template => "withdraw-node-footer"});
 	}
 	else

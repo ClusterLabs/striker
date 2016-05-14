@@ -7,19 +7,13 @@
 # 
 # This also manages pre and post migration scripts that the user can run before/after a server is migrated.
 # 
-# TODO: 
-# - Add a check-box on upload called 'This is a script' and chmod the file to 755 if selected.
-#       
 
 use strict;
 use warnings;
-
-use lib 'lib';
-use AN::Cluster;
-use AN::MediaLibrary;
 use AN::Tools;
 
 my $THIS_FILE = "mediaLibrary";
+
 # Turn off buffering so that the pinwheel will display while waiting
 # for the SSH call(s) to complete.
 $| = 1;
@@ -84,67 +78,37 @@ if (not $an->data->{cgi}{cluster})
 # Check for passed-in CGI variables.
 $an->Web->check_all_cgi();
 
-# Print the header.
-$an->Striker->_header({'caller' => "mediaLibrary"});
-
 # Do I have a cluster name?
 $an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-	name1 => "cgi::cluster", value1 => $an->data->{cgi}{cluster},
+	name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
 }, file => $THIS_FILE, line => __LINE__});
-if ($an->data->{cgi}{cluster})
+if ($an->data->{cgi}{anvil_uuid})
 {
-	my $cluster                 = $an->data->{cgi}{cluster};
-	$an->data->{sys}{root_password} = $an->data->{clusters}{$cluster}{root_pw};
-	$an->data->{nodes}              = $an->data->{clusters}{$cluster}{nodes};
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0003", message_variables => {
-		name1 => "nodes",              value1 => $an->data->{nodes},
-		name2 => "task",               value2 => $an->data->{cgi}{task},
-		name3 => "sys::root_password", value3 => $an->data->{sys}{root_password},
-	}, file => $THIS_FILE, line => __LINE__});
-	
-	$an->data->{sys}{use_node} = "";
-	foreach my $node (sort {$a cmp $b} @{$an->data->{clusters}{$cluster}{nodes}})
-	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "node", value1 => $node,
-		}, file => $THIS_FILE, line => __LINE__});
-		my $access = $an->Check->access({
-			target		=>	$node,
-			password	=>	$an->data->{sys}{root_password},
-			port		=>	$an->data->{node}{$node}{port},
-		});
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "access", value1 => $access,
-		}, file => $THIS_FILE, line => __LINE__});
-		if ($access)
-		{
-			$an->data->{sys}{use_node} = $node;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-				name1 => "sys::use_node", value1 => $an->data->{sys}{use_node},
-			}, file => $THIS_FILE, line => __LINE__});
-			last;
-		}
-	}
+	# Print the header.
+	$an->Striker->_header({'caller' => "mediaLibrary"});
 	
 	if ($an->data->{cgi}{task})
 	{
 		$an->data->{sys}{show_refresh} = 0;
-		AN::MediaLibrary::process_task($an);
+		$an->MediaLibrary->_process_task();
 	}
 	else
 	{
 		# Show the files.
-		AN::MediaLibrary::read_shared($an);
+		$an->MediaLibrary->_read_shared();
 	}
+	
+	$an->Striker->_footer();
 }
 else
 {
 	# Ask the user which cluster they want to look at.
-	AN::Cluster::ask_which_cluster($an);
+	print $an->Web->template({file => "configure.html", template => "redirect-to-configure"});
+
 }
-AN::Cluster::footer($an);
 
 exit (0);
+
 
 ### NOTE: These two functions are duplicated in 'striker' to allow Common.pm to be retired and will be phased
 ###       out.

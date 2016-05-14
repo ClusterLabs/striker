@@ -1745,7 +1745,7 @@ mail_data::sending_domain		=	#!variable!mail_data__sending_domain!#
 		<key name="message_0325"><![CDATA[If the server hosting this file is slow or if the file is big,<br />the download might take a long time to complete.]]></key>
 		<key name="message_0326">There is no confirmation for this action.</key>
 		<key name="message_0327">Uploading a big file over a slow link might take a long time.</key>
-		<key name="message_0328"><![CDATA[I am sorry, but I can not connect to either node in the <span class="fixed_width">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
+		<key name="message_0328"><![CDATA[I am sorry, but I can not connect to either node in the <span class="highlight_detail">#!variable!anvil!#</span> #!string!brand_0003!#.]]></key>
 		<key name="message_0329"><![CDATA[When on the remote machine, you can access an on-screen keyboard<br />by pressing the <b>left</b> '<span class="fixed_width">&lt;ctrl&gt; + &lt;alt&gt; + &lt;shift&gt;</span>' keys at the same time.<br /><br />If you are using a tablet or phone, <br />place your finger left of your screen and swipe towards the right.]]></key>
 		<key name="message_0330"><![CDATA[Failed to create the provision script: [#!variable!provision_script!#].<br />Has the <span class="fixed_width">/shared/provision</span>, <span class="fixed_width">/shared/archives</span>, <span class="fixed_width">/shared/files</span> and <span class="fixed_width">/shared/definitions</span>]]> directories been created?</key>
 		<key name="message_0331">No name was given for the disc image to be created.</key>

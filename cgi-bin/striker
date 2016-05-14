@@ -22,32 +22,15 @@
 # Madison Kelly     -  mkelly@alteeve.ca
 # 
 # TODO:
-# - Adding a VM that is running on the "wrong" node gets it added to the wrong failover domain.
-# - Check to see if a VM is running outside of clustat and, if so, auto-enable it on the appropriate node.
-# - Add a "Cancel" button to each "Confirm" box.
-# - Add an ability to trigger a status email. SIGUSR1 via script -> email Allow users to rename VMs.
-# - Add 'virsh undefine' when deleting VMs if 'virsh list --all' shows it still defined on one of the VMs.
-# - Build a VM outside of the cluster and sort out a way to have the dashboard insert it into the cluster.
-# - Make "Node -> Offline" be a "Warning!"
-# - Make "Bond -> Down" be a warning
 # - Enable an administrative LOCK OUT switch to prevent reboots during things like firmware updates.
 # - Add ability to "unplug" a server's network cable.
 # 
-# BUG:
-# - [root@rm-a01n01 ~]# virsh destroy vm07-newmas
-#   error: Failed to destroy domain vm07-newmas
-#   error: operation failed: failed to kill qemu process with SIGTERM
-#   ^- qemu fails to respond to virsh, possibly because of high load on host. No current known fix except to
-#      migrate other servers to peer and fence the node.
 
 use strict;
 use warnings;
-use lib 'lib';
+use AN::Tools;
 
 my $THIS_FILE = "striker";
-use AN::Cluster;
-use AN::Striker;
-use AN::Tools;
 
 # Turn off buffering so that the pinwheel will display while waiting for the SSH call(s) to complete.
 $| = 1;
