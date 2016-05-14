@@ -207,6 +207,20 @@ elsif ($an->data->{switches}{disable})
 	exit(0);
 }
 
+# Can I connect to a database?
+my $connections = $an->DB->connect_to_databases({file => $THIS_FILE});
+$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	name1 => "connections", value1 => $connections, 
+}, file => $THIS_FILE, line => __LINE__});
+if (not $connections)
+{
+	# Nope, warn the user.
+	print $an->String->get({key => "scv_warning_0003"})."\n";
+	$an->Log->entry({log_level => 1, message_key => "scv_warning_0003", file => $THIS_FILE, line => __LINE__});
+	
+	exit(0);
+}
+
 # Exit if virtual manager manager configuration disabled in striker.conf.
 if ($an->data->{tools}{'striker-configure-vmm'}{enabled})
 {

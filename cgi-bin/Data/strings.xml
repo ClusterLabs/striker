@@ -2552,6 +2552,7 @@ SUPPORT
 		<!-- warning messages -->
 		<key name="scv_warning_0001">Failed to disable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 0' manually.</key>
 		<key name="scv_warning_0002">Failed to enable #!variable!this_file!#! Please set 'tools::striker-configure-vmm::enabled = 1' manually.</key>
+		<key name="scv_warning_0003">Unable to connect to a #!string!brand_0019!# database.</key>
 		
 		
 		<!-- anvil-fio-tester; Configure Virtual Machine Manager -->
