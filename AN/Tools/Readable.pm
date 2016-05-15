@@ -61,24 +61,15 @@ sub base2
 	
 	if (defined $set)
 	{
-		if (($set == 0) || ($set == 1))
+		if (($set == 0) or ($set == 1))
 		{
 			$self->{USE_BASE_2} = $set;
 		}
 		else
 		{
 			my $an = $self->parent;
-			$an->Alert->error({
-				fatal			=>	1,
-				title_key		=>	"error_title_0009",
-				message_key		=>	"error_message_0013",
-				message_variables	=>	{
-					set			=>	$set,
-				},
-				code			=>	3,
-				file			=>	"$THIS_FILE",
-				line			=>	__LINE__
-			});
+			$an->Alert->error({fatal => 1, title_key => "error_title_0009", message_key => "error_message_0013", message_variables => { set => $set }, code => 3, file => $THIS_FILE, line => __LINE__});
+			return(undef);
 		}
 	}
 	
@@ -88,41 +79,20 @@ sub base2
 # Takes a raw number of bytes (whole integer).
 sub bytes_to_hr
 {
-	my $self  = shift;
-	my $param = shift;
-	return undef if not defined $param;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
 	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	my $size = 0;
-	my $unit = "";
-	if (ref($param) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$size = $param->{'bytes'} ? $param->{'bytes'} : 0;
-		
-		# This is the letter representing the desired units to user, rather than the most efficient
-		# unit.
-		$unit = uc($param->{unit}) if $param->{unit};
-	}
-	else
-	{
-		# Values passed directly.
-		$size = $param ? $param : 0;
-	}
+	# Now see if the user passed the values in a hash reference or directly.
+	my $size = $parameter->{'bytes'} ? $parameter->{'bytes'}  : 0;
+	my $unit = $parameter->{unit}    ? uc($parameter->{unit}) : "";
 	
 	# Expand exponential numbers.
 	if ($size =~ /(\d+)e\+(\d+)/)
 	{
 		my $base = $1;
 		my $exp  = $2;
-		$size    = $base;
+		   $size = $base;
 		for (1..$exp)
 		{
 			$size .= "0";
@@ -135,7 +105,7 @@ sub bytes_to_hr
 	
 	# Store and strip the sign
 	my $sign = "";
-	if ( $hr_size =~ /^-/ )
+	if ($hr_size =~ /^-/)
 	{
 		$sign    =  "-";
 		$hr_size =~ s/^-//;
@@ -146,22 +116,8 @@ sub bytes_to_hr
 	# Die if either the 'time' or 'float' has a non-digit character in it.	
 	if ($hr_size =~ /\D/)
 	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0011",
-			title_variables		=>	{
-				method			=>	"AN::Tools::Readable->bytes_to_hr()",
-			},
-			message_key		=>	"error_message_0016",
-			message_variables	=>	{
-				size			=>	$size,
-			},
-			code			=>	6,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->bytes_to_hr()", }, message_key => "error_message_0016", message_variables => { size => $size }, code => 6, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
@@ -425,9 +381,6 @@ sub comma
 	my $number = shift;
 	my $an     = $self->parent;
 	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
 	# Return if nothing passed.
 	return undef if not defined $number;
 	
@@ -443,20 +396,10 @@ sub comma
 	
 	# Now die if either number has a non-digit character in it.
 	#print "$THIS_FILE ".__LINE__."; whole: [$whole], decimal: [$decimal]\n";
-	if (($whole =~ /\D/) || ($decimal =~ /\D/))
+	if (($whole =~ /\D/) or ($decimal =~ /\D/))
 	{
 		my $an = $self->parent;
-		$an->Alert->error({
-			fatal		=>	1,
-			title_key	=>	"error_title_0010",
-			message_key	=>	"error_message_0014",
-			message_variables	=>	{
-				number		=>	$number,
-			},
-			code		=>	4,
-			file		=>	"$THIS_FILE",
-			line		=>	__LINE__
-		});
+		$an->Alert->error({fatal => 1, title_key => "error_title_0010", message_key => "error_message_0014", message_variables => { number => $number }, code => 4, file => $THIS_FILE, line => __LINE__});
 		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
@@ -475,31 +418,16 @@ sub comma
 # accurately as possible.
 sub hr_to_bytes
 {
-	my $self  = shift;
-	my $param = shift;
-	return undef if not defined $param;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	return undef if not defined $parameter;
 	
-	my $an = $self->parent;
-	$an->Alert->_set_error;
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	my $size = 0;
-	my $type = "";
-	if (ref($param) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$size = $param->{size} ? $param->{size} : 0;
-		$type = $param->{type} ? $param->{type} : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$size = $param ? $param : 0;
-		$type = $_[0]  ? shift  : "";
-	}
-	$size =~ s/ //g;
-	$type =~ s/ //g;
+	# Now see if the user passed the values in a hash reference or directly.
+	my $size =  $parameter->{size} ? $parameter->{size} : 0;
+	my $type =  $parameter->{type} ? $parameter->{type} : 0;
+	   $size =~ s/ //g;
+	   $type =~ s/ //g;
 	
 	# Store and strip the sign
 	my $sign = "";
@@ -511,8 +439,7 @@ sub hr_to_bytes
 	$size =~ s/,//g;
 	$size =~ s/^\+//g;
 	
-	# If I don't have a passed type, see if there is a letter or letters
-	# after the size to hack off.
+	# If I don't have a passed type, see if there is a letter or letters after the size to hack off.
 	if ((not $type) && ($size =~ /[a-zA-Z]$/))
 	{
 		($size, $type) = ($size =~ /^(.*\d)(\D+)/);
@@ -522,60 +449,28 @@ sub hr_to_bytes
 	# Make sure that 'size' is now an integer or float.
 	if ($size !~ /\d+[\.\d+]?/)
 	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0011",
-			title_variables		=>	{
-				method			=>	"AN::Tools::Readable->hr_to_bytes()",
-			},
-			message_key		=>	"error_message_0017",
-			message_variables	=>	{
-				size			=>	$size,
-				sign			=>	$sign,
-				type			=>	$type,
-			},
-			code			=>	7,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0017", message_variables => { size => $size, sign => $sign, type => $type }, code => 7, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
 	# If 'type' is still blank, set it to 'b'.
 	$type = "b" if not $type;
 	
-	# If the type is already bytes, make sure the size is an integer and
-	# return.
+	# If the type is already bytes, make sure the size is an integer and return.
 	if ($type eq "b")
 	{
 		if ($size =~ /\D/)
 		{
-			$an->Alert->error({
-				fatal			=>	1,
-				title_key		=>	"error_title_0011",
-				title_variables		=>	{
-					method			=>	"AN::Tools::Readable->hr_to_bytes()",
-				},
-				message_key		=>	"error_message_0018",
-				message_variables	=>	{
-					size			=>	$size,
-					sign			=>	$sign,
-					type			=>	$type,
-				},
-				code			=>	8,
-				file			=>	"$THIS_FILE",
-				line			=>	__LINE__
-			});
+			$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->hr_to_bytes()" }, message_key => "error_message_0018", message_variables => { size => $size, sign => $sign, type => $type }, code => 8, file => $THIS_FILE, line => __LINE__});
+			return(undef);
 		}
 		return ($sign.$size);
 	}
 	
-	# If the "type" is "Xib", make sure we're running in Base2 notation.
-	# Conversly, if the type is "Xb", make sure that we're running in
-	# Base10 notation. In either case, shorten the 'type' to just the first
-	# letter to make the next sanity check simpler.
+	# If the "type" is "Xib", make sure we're running in Base2 notation. Conversly, if the type is "Xb",
+	# make sure that we're running in Base10 notation. In either case, shorten the 'type' to just the 
+	# first letter to make the next sanity check simpler.
 	my $prior_base2 = $an->Readable->base2();
 	if ($type =~ /^(\w)ib$/)
 	{
@@ -590,12 +485,11 @@ sub hr_to_bytes
 		$an->Readable->base2(0);
 	}
 	
-	# Check if we have a valid '$type' and that 'Math::BigInt' is loaded,
-	# if the size is big enough to require it.
-	if (($type eq "p") || ($type eq "e") || ($type eq "z") || ($type eq "y"))
+	# Check if we have a valid '$type' and that 'Math::BigInt' is loaded, if the size is big enough to 
+	# require it.
+	if (($type eq "p") or ($type eq "e") or ($type eq "z") or ($type eq "y"))
 	{
-		# If this is a big size needing "Math::BigInt", check if it's loaded
-		# yet and load it, if not.
+		# If this is a big size needing "Math::BigInt", check if it's loaded yet and load it, if not.
 		if (not $an->_math_bigint_loaded)
 		{
 			$an->_load_math_bigint();
@@ -603,22 +497,9 @@ sub hr_to_bytes
 	}
 	elsif (($type ne "t") && ($type ne "g") && ($type ne "m") && ($type ne "k"))
 	{
-		# If we're here, we didn't match one of the large sizes or any
-		# of the other sizes, so die.
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0012",
-			message_key		=>	"",
-			message_variables	=>	{
-				size			=>	$size,
-				type			=>	$type,
-			},
-			code			=>	10,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		# If we're here, we didn't match one of the large sizes or any of the other sizes, so die.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0012", message_key => "", message_variables => { size => $size, type => $type }, code => 10, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
@@ -665,39 +546,23 @@ sub hr_to_bytes
 # Takes a number of seconds and turns it into d/h/m/s
 sub time
 {
-	my $self  = shift;
-	my $param = shift;
-	return undef if not defined $param;
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	return undef if not defined $parameter;
 	
-	# This just makes the code more consistent.
-	my $an = $self->parent;
-	
-	# Clear any prior errors as I may set one here.
-	$an->Alert->_set_error;
-	
-	# Now see if the user passed the values in a hash reference or
-	# directly.
-	my $time = 0;
-	if (ref($param) eq "HASH")
-	{
-		# Values passed in a hash, good.
-		$time = $param->{'time'} ? $param->{'time'} : 0;
-	}
-	else
-	{
-		# Values passed directly.
-		$time = $param ? $param : 0;
-	}
+	# Now see if the user passed the values in a hash reference or directly.
+	my $time = $parameter->{'time'} ? $parameter->{'time'} : 0;
 	
 	# Exit if 'time' is not defined or set as '--'.
-	$param->{'time'} = "--" if not defined $param->{'time'};
-	return('--') if $param->{'time'} eq "--";
+	$parameter->{'time'} = "--" if not defined $parameter->{'time'};
+	return('--') if $parameter->{'time'} eq "--";
 	
 	my $old_time =  $time;
 	my $float    =  0;
 	my $sign     =  $time =~ /^-/ ? "-" : "";
-	$time        =~ s/^-//;
-	$time        =~ s/,//g;
+	   $time     =~ s/^-//;
+	   $time     =~ s/,//g;
 	if ($time=~/\./)
 	{
 		($time, $float) = split/\./, $time, 2;
@@ -706,24 +571,10 @@ sub time
 	### TODO: Change the suffixes to 'tools_suffix_XXXX'.
 	
 	# Die if either the 'time' or 'float' has a non-digit character in it.
-	if (($time =~ /\D/) || ($float =~ /\D/))
+	if (($time =~ /\D/) or ($float =~ /\D/))
 	{
-		$an->Alert->error({
-			fatal			=>	1,
-			title_key		=>	"error_title_0011",
-			title_variables		=>	{
-				method			=>	"AN::Tools::Readable->time()",
-			},
-			message_key		=>	"error_message_0015",
-			message_variables	=>	{
-				old_time		=>	$old_time,
-			},
-			code			=>	5,
-			file			=>	"$THIS_FILE",
-			line			=>	__LINE__
-		});
-		# Return nothing in case the user is blocking fatal
-		# errors.
+		$an->Alert->error({fatal => 1, title_key => "error_title_0011", title_variables => { method => "AN::Tools::Readable->time()", }, message_key => "error_message_0015", message_variables => { old_time => $old_time }, code => 5, file => $THIS_FILE, line => __LINE__});
+		# Return nothing in case the user is blocking fatal errors.
 		return (undef);
 	}
 	
@@ -758,7 +609,7 @@ sub time
 		$hr_time =~ s/ sec.$/s/;
 		$hr_time =  sprintf("%01d", $rem_min)."m $hr_time";
 	}
-	elsif (($hours > 0) || ($days > 0) || ($weeks > 0))
+	elsif (($hours > 0) or ($days > 0) or ($weeks > 0))
 	{
 		$hr_time = "0m $hr_time";
 	}
@@ -766,7 +617,7 @@ sub time
 	{
 		$hr_time = sprintf("%01d", $rem_hours)."h $hr_time";
 	}
-	elsif (($days > 0) || ($weeks > 0))
+	elsif (($days > 0) or ($weeks > 0))
 	{
 		$hr_time = "0h $hr_time";
 	}

@@ -2267,7 +2267,7 @@ WHERE
 		{
 			# Confirm
 			$show_form = 0;
-			confirm_install_manifest_run($an);
+			$an->Striker->_confirm_install_manifest_run();
 		}
 	}
 	
@@ -2277,7 +2277,7 @@ WHERE
 	if ($show_form)
 	{
 		# Show the existing install manifest files.
-		show_existing_install_manifests($an);
+		$an->Striker->_show_existing_install_manifests();
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "cgi::anvil_domain", value1 => $an->data->{cgi}{anvil_domain},
 		}, file => $THIS_FILE, line => __LINE__});
@@ -2300,7 +2300,6 @@ WHERE
 		if ($an->data->{cgi}{load})
 		{
 			$an->ScanCore->parse_install_manifest({uuid => $an->data->{cgi}{manifest_uuid}});
-			#load_install_manifest($an, $an->data->{cgi}{load});
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 				name1  => "cgi::anvil_node1_bcn_link1_mac", value1  => $an->data->{cgi}{anvil_node1_bcn_link1_mac},
 				name2  => "cgi::anvil_node1_bcn_link2_mac", value2  => $an->data->{cgi}{anvil_node1_bcn_link2_mac},
@@ -2319,7 +2318,7 @@ WHERE
 		elsif (not $an->data->{cgi}{generate})
 		{
 			# This function uses sys::install_manifest::default::x if set.
-			my ($default_prefix, $default_domain) = get_striker_prefix_and_domain($an);
+			my ($default_prefix, $default_domain) = $an->Striker->_get_striker_prefix_and_domain();
 			
 			# Primary Config values
 			if (not $an->data->{cgi}{anvil_prefix})             { $an->data->{cgi}{anvil_prefix}             = $default_prefix; }
@@ -2447,7 +2446,7 @@ WHERE
 				id		=>	"anvil_prefix",
 				value		=>	$an->data->{cgi}{anvil_prefix},
 				star		=>	$an->data->{form}{anvil_prefix_star},
-				more_info	=>	"$anvil_prefix_more_info",
+				more_info	=>	$anvil_prefix_more_info,
 			}});
 		}
 		
@@ -2470,7 +2469,7 @@ WHERE
 				id		=>	"anvil_sequence",
 				value		=>	$an->data->{cgi}{anvil_sequence},
 				star		=>	$an->data->{form}{anvil_sequence_star},
-				more_info	=>	"$anvil_sequence_more_info",
+				more_info	=>	$anvil_sequence_more_info,
 			}});
 		}
 		
@@ -2496,7 +2495,7 @@ WHERE
 				id		=>	"anvil_domain",
 				value		=>	$an->data->{cgi}{anvil_domain},
 				star		=>	$an->data->{form}{anvil_domain_star},
-				more_info	=>	"$anvil_domain_more_info",
+				more_info	=>	$anvil_domain_more_info,
 			}});
 		}
 		
@@ -2519,13 +2518,13 @@ WHERE
 				id		=>	"anvil_password",
 				value		=>	$an->data->{cgi}{anvil_password},
 				star		=>	$an->data->{form}{anvil_password_star},
-				more_info	=>	"$anvil_password_more_info",
+				more_info	=>	$anvil_password_more_info,
 			}});
 		}
 		
 		# Anvil! BCN Network definition
 		if (($an->data->{sys}{install_manifest}{'default'}{bcn_network}) && 
-		    ($an->data->{sys}{install_manifest}{'default'}{bcn_subnet}) && 
+		    ($an->data->{sys}{install_manifest}{'default'}{bcn_subnet})  && 
 		    (not $an->data->{sys}{install_manifest}{show}{bcn_network_fields}))
 		{
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
@@ -2552,7 +2551,7 @@ WHERE
 				subnet_id	=>	"anvil_bcn_subnet",
 				subnet_value	=>	$an->data->{cgi}{anvil_bcn_subnet},
 				star		=>	$an->data->{form}{anvil_bcn_network_star},
-				more_info	=>	"$anvil_bcn_network_more_info",
+				more_info	=>	$anvil_bcn_network_more_info,
 			}});
 		}
 		# For now, ethtool_opts is always hidden.
@@ -2594,7 +2593,7 @@ WHERE
 				subnet_id	=>	"anvil_sn_subnet",
 				subnet_value	=>	$an->data->{cgi}{anvil_sn_subnet},
 				star		=>	$an->data->{form}{anvil_sn_network_star},
-				more_info	=>	"$anvil_sn_network_more_info",
+				more_info	=>	$anvil_sn_network_more_info,
 			}});
 		}
 		# For now, ethtool_opts is always hidden.
@@ -2636,7 +2635,7 @@ WHERE
 				subnet_id	=>	"anvil_ifn_subnet",
 				subnet_value	=>	$an->data->{cgi}{anvil_ifn_subnet},
 				star		=>	$an->data->{form}{anvil_ifn_network_star},
-				more_info	=>	"$anvil_ifn_network_more_info",
+				more_info	=>	$anvil_ifn_network_more_info,
 			}});
 		}
 		# For now, ethtool_opts is always hidden.
@@ -2667,6 +2666,13 @@ WHERE
 		}
 		else
 		{
+			my $select = $an->Web->build_select({
+					name     => "anvil_media_library_unit", 
+					options  => ["GiB", "TiB"], 
+					blank    => 0,
+					selected => $an->data->{cgi}{anvil_media_library_unit},
+					width    => 60,
+				});
 			my $anvil_media_library_more_info = "";
 			print $an->Web->template({file => "config.html", template => "install-manifest-form-text-and-select-entry", replace => { 
 				row		=>	"#!string!row_0191!#",
@@ -2674,9 +2680,9 @@ WHERE
 				name		=>	"anvil_media_library_size",
 				id		=>	"anvil_media_library_size",
 				value		=>	$an->data->{cgi}{anvil_media_library_size},
-				'select'	=>	build_select($an, "anvil_media_library_unit", 0, 0, 60, $an->data->{cgi}{anvil_media_library_unit}, ["GiB", "TiB"]),
+				'select'	=>	$select,
 				star		=>	$an->data->{form}{anvil_media_library_star},
-				more_info	=>	"$anvil_media_library_more_info",
+				more_info	=>	$anvil_media_library_more_info,
 			}});
 		}
 		
@@ -2701,6 +2707,13 @@ WHERE
 			}
 			else
 			{
+				my $select = $an->Web->build_select({
+						name     => "anvil_storage_pool1_unit", 
+						options  => ["%", "GiB", "TiB"], 
+						blank    => 0,
+						selected => $an->data->{cgi}{anvil_storage_pool1_unit},
+						width    => 60,
+					});
 				my $anvil_storage_pool1_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Node_Host_Names" }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-and-select-entry", replace => { 
 					row		=>	"#!string!row_0199!#",
@@ -2708,9 +2721,9 @@ WHERE
 					name		=>	"anvil_storage_pool1_size",
 					id		=>	"anvil_storage_pool1_size",
 					value		=>	$an->data->{cgi}{anvil_storage_pool1_size},
-					'select'	=>	build_select($an, "anvil_storage_pool1_unit", 0, 0, 60, $an->data->{cgi}{anvil_storage_pool1_unit}, ["%", "GiB", "TiB"]),
+					'select'	=>	$select, 
 					star		=>	$an->data->{form}{anvil_storage_pool1_star},
-					more_info	=>	"$anvil_storage_pool1_more_info",
+					more_info	=>	$anvil_storage_pool1_more_info,
 				}});
 			}
 		}
@@ -2902,7 +2915,7 @@ WHERE
 				id		=>	"anvil_name",
 				value		=>	$an->data->{cgi}{anvil_name},
 				star		=>	$an->data->{form}{anvil_name_star},
-				more_info	=>	"$anvil_name_more_info",
+				more_info	=>	$anvil_name_more_info,
 			}});
 		}
 		# The "anvil_name" is stored as a hidden field.
@@ -2931,7 +2944,7 @@ WHERE
 				id		=>	"anvil_ifn_gateway",
 				value		=>	$an->data->{cgi}{anvil_ifn_gateway},
 				star		=>	$an->data->{form}{anvil_ifn_gateway_star},
-				more_info	=>	"$anvil_ifn_gateway_more_info",
+				more_info	=>	$anvil_ifn_gateway_more_info,
 			}});
 		}
 		
@@ -2963,7 +2976,7 @@ WHERE
 				id		=>	"anvil_dns1",
 				value		=>	$an->data->{cgi}{anvil_dns1},
 				star		=>	$an->data->{form}{anvil_dns1_star},
-				more_info	=>	"$anvil_dns1_more_info",
+				more_info	=>	$anvil_dns1_more_info,
 			}});
 			
 			# Anvil! Secondary DNS
@@ -2975,7 +2988,7 @@ WHERE
 				id		=>	"anvil_dns2",
 				value		=>	$an->data->{cgi}{anvil_dns2},
 				star		=>	$an->data->{form}{anvil_dns2_star},
-				more_info	=>	"$anvil_dns2_more_info",
+				more_info	=>	$anvil_dns2_more_info,
 			}});
 		}
 		
@@ -3007,7 +3020,7 @@ WHERE
 				id		=>	"anvil_ntp1",
 				value		=>	$an->data->{cgi}{anvil_ntp1},
 				star		=>	$an->data->{form}{anvil_ntp1_star},
-				more_info	=>	"$anvil_ntp1_more_info",
+				more_info	=>	$anvil_ntp1_more_info,
 			}});
 			
 			# Anvil! Secondary NTP
@@ -3019,7 +3032,7 @@ WHERE
 				id		=>	"anvil_ntp2",
 				value		=>	$an->data->{cgi}{anvil_ntp2},
 				star		=>	$an->data->{form}{anvil_ntp2_star},
-				more_info	=>	"$anvil_ntp2_more_info",
+				more_info	=>	$anvil_ntp2_more_info,
 			}});
 		}
 		
@@ -3034,7 +3047,7 @@ WHERE
 				id		=>	"anvil_mtu_size",
 				value		=>	$an->data->{cgi}{anvil_mtu_size},
 				star		=>	$an->data->{form}{anvil_mtu_size_star},
-				more_info	=>	"$anvil_name_more_info",
+				more_info	=>	$anvil_name_more_info,
 			}});
 		}
 		else
@@ -3086,15 +3099,15 @@ WHERE
 			{
 				# Switch name
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 				}});
 				
 				# Switch IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 				}});
 			}
@@ -3103,25 +3116,25 @@ WHERE
 				# Switch name
 				my $network_switch_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_name_row",
-					explain		=>	"$say_name_explain",
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					row		=>	$say_name_row,
+					explain		=>	$say_name_explain,
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 					star		=>	$an->data->{form}{$name_star_key},
-					more_info	=>	"$network_switch_name_more_info",
+					more_info	=>	$network_switch_name_more_info,
 				}});
 				
 				# Switch IP
 				my $network_switch_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_ip_row",
-					explain		=>	"$say_ip_explain",
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					row		=>	$say_ip_row,
+					explain		=>	$say_ip_explain,
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 					star		=>	$an->data->{form}{$ip_star_key},
-					more_info	=>	"$network_switch_ip_more_info",
+					more_info	=>	$network_switch_ip_more_info,
 				}});
 			}
 		}
@@ -3163,15 +3176,15 @@ WHERE
 			{
 				# UPS name
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 				}});
 				
 				# UPS IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 				}});
 			}
@@ -3180,22 +3193,22 @@ WHERE
 				# UPS name
 				my $network_ups_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_name_row",
-					explain		=>	"$say_name_explain",
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					row		=>	$say_name_row,
+					explain		=>	$say_name_explain,
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 					star		=>	$an->data->{form}{$name_star_key},
-					more_info	=>	"$network_ups_name_more_info",
+					more_info	=>	$network_ups_name_more_info,
 				}});
 				
 				# UPS IP
 				my $network_ups_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_ip_row",
-					explain		=>	"$say_ip_explain",
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					row		=>	$say_ip_row,
+					explain		=>	$say_ip_explain,
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 					star		=>	$an->data->{form}{$ip_star_key},
 					more_info	=>	"$network_ups_ip_more_info",
@@ -3240,15 +3253,15 @@ WHERE
 			{
 				# PTS name
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 				}});
 				
 				# PTS IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 				}});
 			}
@@ -3257,25 +3270,25 @@ WHERE
 				# PTS name
 				my $network_pts_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_name_row",
-					explain		=>	"$say_name_explain",
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					row		=>	$say_name_row,
+					explain		=>	$say_name_explain,
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 					star		=>	$an->data->{form}{$name_star_key},
-					more_info	=>	"$network_pts_name_more_info",
+					more_info	=>	$network_pts_name_more_info,
 				}});
 				
 				# PTS IP
 				my $network_pts_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_ip_row",
-					explain		=>	"$say_ip_explain",
-					name		=>	"$ip_key",
-					id		=>	"$ip_key",
+					row		=>	$say_ip_row,
+					explain		=>	$say_ip_explain,
+					name		=>	$ip_key,
+					id		=>	$ip_key,
 					value		=>	$an->data->{cgi}{$ip_key},
 					star		=>	$an->data->{form}{$ip_star_key},
-					more_info	=>	"$network_pts_ip_more_info",
+					more_info	=>	$network_pts_ip_more_info,
 				}});
 			}
 		}
@@ -3306,8 +3319,13 @@ WHERE
 			$an->data->{cgi}{$pdu_agent_key} = $an->data->{sys}{install_manifest}{pdu_agent} if not $an->data->{cgi}{$pdu_agent_key};
 			
 			# Build the select.
-			my $pdu_list  = ["fence_apc_snmp#!#$say_apc", "fence_raritan_snmp#!#$say_raritan"];
-			my $pdu_model = build_select($an, "$pdu_agent_key", 0, 0, 220, $an->data->{cgi}{$pdu_agent_key}, $pdu_list);
+			my $pdu_model = $an->Web->build_select({
+					name     => $pdu_agent_key, 
+					options  => ["fence_apc_snmp#!#$say_apc", "fence_raritan_snmp#!#$say_raritan"], 
+					blank    => 0,
+					selected => $an->data->{cgi}{$pdu_agent_key},
+					width    => 220,
+				});
 			
 			if ($i == 1)
 			{
@@ -3347,27 +3365,27 @@ WHERE
 			my $default_pdu_name_key = "pdu${i}_name";
 			my $default_pdu_ip_key   = "pdu${i}_ip";
 			if (($an->data->{sys}{install_manifest}{'default'}{$default_pdu_name_key}) && 
-			    ($an->data->{sys}{install_manifest}{'default'}{$default_pdu_ip_key}) && 
+			    ($an->data->{sys}{install_manifest}{'default'}{$default_pdu_ip_key})   && 
 			    (not $an->data->{sys}{install_manifest}{show}{pdu_fields}))
 			{
 				# PDU name
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$pdu_name_key",
-					id		=>	"$pdu_name_key",
+					name		=>	$pdu_name_key,
+					id		=>	$pdu_name_key,
 					value		=>	$an->data->{cgi}{$pdu_name_key},
 				}});
 				
 				# PDU IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$pdu_ip_key",
-					id		=>	"$pdu_ip_key",
+					name		=>	$pdu_ip_key,
+					id		=>	$pdu_ip_key,
 					value		=>	$an->data->{cgi}{$pdu_ip_key},
 				}});
 				
 				# PDU Brand
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$pdu_agent_key",
-					id		=>	"$pdu_agent_key",
+					name		=>	$pdu_agent_key,
+					id		=>	$pdu_agent_key,
 					value		=>	$an->data->{cgi}{$pdu_agent_key},
 				}});
 			}
@@ -3376,35 +3394,35 @@ WHERE
 				# PDU Name
 				my $pdu_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_pdu_name",
-					explain		=>	"$say_name_explain",
-					name		=>	"$pdu_name_key",
-					id		=>	"$pdu_name_key",
+					row		=>	$say_pdu_name,
+					explain		=>	$say_name_explain,
+					name		=>	$pdu_name_key,
+					id		=>	$pdu_name_key,
 					value		=>	$an->data->{cgi}{$pdu_name_key},
 					star		=>	$an->data->{form}{$pdu_star_name_key},
-					more_info	=>	"$pdu_name_more_info",
+					more_info	=>	$pdu_name_more_info,
 				}});
 				
 				# PDU IP
 				my $pdu_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_pdu_ip",
-					explain		=>	"$say_ip_explain",
-					name		=>	"$pdu_ip_key",
-					id		=>	"$pdu_ip_key",
+					row		=>	$say_pdu_ip,
+					explain		=>	$say_ip_explain,
+					name		=>	$pdu_ip_key,
+					id		=>	$pdu_ip_key,
 					value		=>	$an->data->{cgi}{$pdu_ip_key},
 					star		=>	$an->data->{form}{$pdu_star_ip_key},
-					more_info	=>	"$pdu_ip_more_info",
+					more_info	=>	$pdu_ip_more_info,
 				}});
 				
 				# PDU Brand
 				my $pdu_agent_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_agent_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-select-entry", replace => { 
-					row		=>	"$say_pdu_agent",
-					explain		=>	"$say_agent_explain",
+					row		=>	$say_pdu_agent,
+					explain		=>	$say_agent_explain,
 					'select'	=>	$pdu_model,
 					star		=>	$an->data->{form}{$pdu_star_agent_key},
-					more_info	=>	"$pdu_agent_more_info",
+					more_info	=>	$pdu_agent_more_info,
 				}});
 			}
 		}
@@ -3457,22 +3475,22 @@ WHERE
 			{
 				# Striker name
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 				}});
 				
 				# Striker BCN IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$bcn_ip_key",
-					id		=>	"$bcn_ip_key",
+					name		=>	$bcn_ip_key,
+					id		=>	$bcn_ip_key,
 					value		=>	$an->data->{cgi}{$bcn_ip_key},
 				}});
 				
 				# Striker IFN IP
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
-					name		=>	"$ifn_ip_key",
-					id		=>	"$ifn_ip_key",
+					name		=>	$ifn_ip_key,
+					id		=>	$ifn_ip_key,
 					value		=>	$an->data->{cgi}{$ifn_ip_key},
 				}});
 			}
@@ -3481,37 +3499,37 @@ WHERE
 				# Striker name
 				my $striker_name_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_name_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_name_row",
-					explain		=>	"$say_name_explain",
-					name		=>	"$name_key",
-					id		=>	"$name_key",
+					row		=>	$say_name_row,
+					explain		=>	$say_name_explain,
+					name		=>	$name_key,
+					id		=>	$name_key,
 					value		=>	$an->data->{cgi}{$name_key},
 					star		=>	$an->data->{form}{$name_star_key},
-					more_info	=>	"$striker_name_more_info",
+					more_info	=>	$striker_name_more_info,
 				}});
 				
 				# Striker BCN IP
 				my $striker_bcn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_bcn_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_bcn_ip_row",
-					explain		=>	"$say_bcn_ip_explain",
-					name		=>	"$bcn_ip_key",
-					id		=>	"$bcn_ip_key",
+					row		=>	$say_bcn_ip_row,
+					explain		=>	$say_bcn_ip_explain,
+					name		=>	$bcn_ip_key,
+					id		=>	$bcn_ip_key,
 					value		=>	$an->data->{cgi}{$bcn_ip_key},
 					star		=>	$an->data->{form}{$bcn_ip_star_key},
-					more_info	=>	"$striker_bcn_ip_more_info",
+					more_info	=>	$striker_bcn_ip_more_info,
 				}});
 				
 				# Striker IFN IP
 				my $striker_ifn_ip_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => $say_ifn_ip_url }});
 				print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-					row		=>	"$say_ifn_ip_row",
-					explain		=>	"$say_ifn_ip_explain",
-					name		=>	"$ifn_ip_key",
-					id		=>	"$ifn_ip_key",
+					row		=>	$say_ifn_ip_row,
+					explain		=>	$say_ifn_ip_explain,
+					name		=>	$ifn_ip_key,
+					id		=>	$ifn_ip_key,
 					value		=>	$an->data->{cgi}{$ifn_ip_key},
 					star		=>	$an->data->{form}{$ifn_ip_star_key},
-					more_info	=>	"$striker_ifn_ip_more_info",
+					more_info	=>	$striker_ifn_ip_more_info,
 				}});
 			}
 		}
@@ -3519,8 +3537,8 @@ WHERE
 		# Spacer
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-spacer"});
 		
-		### Nodes are a little more complicated, too, as we might have
-		### two or four PDUs that each node might be plugged into.
+		### NOTE: Nodes are a little more complicated, too, as we might have two or four PDUs that 
+		###       each node might be plugged into.
 		foreach my $j (1, 2)
 		{
 			# Print the node header
@@ -3535,11 +3553,11 @@ WHERE
 			my $explain_ifn_ip  = $an->data->{sys}{expert_ui} ? "#!string!terse_0072!#" : "#!string!explain_0072!#";
 			if ($j == 1)
 			{
-				$explain_name    = $an->data->{sys}{expert_ui} ? "#!string!terse_0068!#" : "#!string!explain_0068!#";
+				$explain_name = $an->data->{sys}{expert_ui} ? "#!string!terse_0068!#" : "#!string!explain_0068!#";
 			}
 			elsif ($j == 2)
 			{
-				$explain_name    = $an->data->{sys}{expert_ui} ? "#!string!terse_0069!#" : "#!string!explain_0069!#";
+				$explain_name = $an->data->{sys}{expert_ui} ? "#!string!terse_0069!#" : "#!string!explain_0069!#";
 			}
 			
 			# Node's hostname
@@ -3565,7 +3583,7 @@ WHERE
 					id		=>	$anvil_node_name_key,
 					value		=>	$an->data->{cgi}{$anvil_node_name_key},
 					star		=>	$an->data->{form}{$anvil_node_name_star_key},
-					more_info	=>	"$anvil_node_name_more_info",
+					more_info	=>	$anvil_node_name_more_info,
 				}});
 			}
 			
@@ -3592,7 +3610,7 @@ WHERE
 					id		=>	$anvil_node_bcn_ip_key,
 					value		=>	$an->data->{cgi}{$anvil_node_bcn_ip_key},
 					star		=>	$an->data->{form}{$anvil_node_bcn_ip_star_key},
-					more_info	=>	"$anvil_node_bcn_ip_more_info",
+					more_info	=>	$anvil_node_bcn_ip_more_info,
 				}});
 			}
 			
@@ -3619,7 +3637,7 @@ WHERE
 					id		=>	$anvil_node_ipmi_ip_key,
 					value		=>	$an->data->{cgi}{$anvil_node_ipmi_ip_key},
 					star		=>	$an->data->{form}{$anvil_node_ipmi_ip_star_key},
-					more_info	=>	"$anvil_node_ipmi_ip_more_info",
+					more_info	=>	$anvil_node_ipmi_ip_more_info,
 				}});
 			}
 			
@@ -3646,7 +3664,7 @@ WHERE
 					id		=>	$anvil_node_sn_ip_key,
 					value		=>	$an->data->{cgi}{$anvil_node_sn_ip_key},
 					star		=>	$an->data->{form}{$anvil_node_sn_ip_star_key},
-					more_info	=>	"$anvil_node_sn_ip_more_info",
+					more_info	=>	$anvil_node_sn_ip_more_info,
 				}});
 			}
 			
@@ -3673,7 +3691,7 @@ WHERE
 					id		=>	$anvil_node_ifn_ip_key,
 					value		=>	$an->data->{cgi}{$anvil_node_ifn_ip_key},
 					star		=>	$an->data->{form}{$anvil_node_ifn_ip_star_key},
-					more_info	=>	"$anvil_node_ifn_ip_more_info",
+					more_info	=>	$anvil_node_ifn_ip_more_info,
 				}});
 			}
 			
@@ -3703,8 +3721,8 @@ WHERE
 				my $say_pdu_name = $an->String->get({key => "row_0176", variables => { say_pdu => $say_pdu }});
 				
 				# PDU entry.
-				my $pdu_outlet_key       = "anvil_node${j}_pdu${i}_outlet";
-				my $pdu_outlet_star_key  = "anvil_node${j}_pdu${i}_outlet_star";
+				my $pdu_outlet_key      = "anvil_node${j}_pdu${i}_outlet";
+				my $pdu_outlet_star_key = "anvil_node${j}_pdu${i}_outlet_star";
 				if (not $an->data->{sys}{install_manifest}{show}{nodes_ifn_field})
 				{
 					print $an->Web->template({file => "config.html", template => "install-manifest-form-hidden-entry", replace => { 
@@ -3717,13 +3735,13 @@ WHERE
 				{
 					my $pdu_outlet_more_info = $an->data->{sys}{disable_links} ? "" : $an->Web->template({file => "config.html", template => "install-manifest-more-info-url", replace => { url => "https://alteeve.ca/w/AN!Cluster_Tutorial_2#Why_Switched_PDUs.3F" }});
 					print $an->Web->template({file => "config.html", template => "install-manifest-form-text-entry", replace => { 
-						row		=>	"$say_pdu_name",
+						row		=>	$say_pdu_name,
 						explain		=>	$say_explain,
 						name		=>	$pdu_outlet_key,
 						id		=>	$pdu_outlet_key,
 						value		=>	$an->data->{cgi}{$pdu_outlet_key},
 						star		=>	$an->data->{form}{$pdu_outlet_star_key},
-						more_info	=>	"$pdu_outlet_more_info",
+						more_info	=>	$pdu_outlet_more_info,
 					}});
 				}
 			}
@@ -3753,7 +3771,8 @@ WHERE
 		# Footer.
 		print $an->Web->template({file => "config.html", template => "install-manifest-form-footer"});
 	}	
-	
+
+	### TODO: What the heck was this?
 # 	# Put the menu template together
 # 	my $menu = $an->Web->template({file => "web.html", template => "generic-4column-menu", replace => {
 # 			title		=>	"#!string!title_0198!#",

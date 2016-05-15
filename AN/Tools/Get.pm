@@ -2803,7 +2803,7 @@ WHERE
 				my $server_post_migration_script    = $row->[11] ? $row->[11] : "";
 				my $server_post_migration_arguments = $row->[12] ? $row->[12] : "";
 				my $modified_date                   = $row->[13] ? $row->[13] : "";
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0014", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0014", message_variables => {
 					name1  => "server_name",                     value1  => $server_name, 
 					name2  => "server_stop_reason",              value2  => $server_stop_reason, 
 					name3  => "server_start_after",              value3  => $server_start_after, 

@@ -565,7 +565,7 @@ The user name: [#!variable!user!#] on the host: [#!variable!host!#] is either no
 		<key name="error_message_0048"><![CDATA[The 'AN::Tools::DB->initialize_db()' method was called but 'path::scancore_sql' wasn't set. This is usually caused by running a ScanCore agent without ever having run ScanCore itself. Please be sure to run ScanCore (at least once) on all configured dashboards.]]></key>
 		<key name="error_message_0049"><![CDATA[The 'AN::Tools::Get->server_uuid()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0050"><![CDATA[The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' value wasn't set.]]></key>
-		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_node()' method was called but the 'server' value wasn't set.]]></key>
+		<key name="error_message_0051"><![CDATA[The 'AN::Tools::Get->server_data()' method was called but the 'server' value wasn't set.]]></key>
 		<key name="error_message_0052">Failed to create a symlink from: [#!variable!target!#] to: [#!variable!link!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0053">Failed to delete the file: [#!variable!file!#]. The error was: [#!variable!error!#].</key>
 		<key name="error_message_0054"><![CDATA[The 'AN::Tools::Check->daemon()' method was called but the 'daemon' value wasn't set.]]></key>
@@ -677,6 +677,8 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0152"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called without passing in an Anvil! node name.]]></key>
 		<key name="error_message_0153"><![CDATA[The 'AN::Tools::Striker' module's '_poweron_node()' method was called with the node name: [#!variable!node_name!#] that wasn't mapped to a node key for the active Anvil!.]]></key>
 		<key name="error_message_0154"><![CDATA[The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.]]></key>
+		<key name="error_message_0155"><![CDATA[The 'AN::Tools::Striker' module's '_get_storage_data()' method was called without an Anvil! UUID CGI variable set.]]></key>
+		<key name="error_message_0156"><![CDATA[The 'AN::Tools::Striker' module's '_get_storage_data()' method was called without Anvil! node name CGI variable set.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

@@ -442,7 +442,7 @@ The 'AN::Tools::Get->remote_anvil_details()' method was called but the 'anvil' v
 
 =head2 C<51>
 
-The 'AN::Tools::Get->server_node()' method was called but 'server' and 'uuid' values were not set. One of them must be passed.
+The 'AN::Tools::Get->server_data()' method was called but 'server' and 'uuid' values were not set. One of them must be passed.
 
 =head2 C<52>
 
@@ -855,6 +855,14 @@ The 'AN::Tools::Striker' module's '_poweron_node()' method was called with a nod
 =head2 C<154>
 
 The 'AN::Tools::Striker' module's '_dual_join()' method was called without passing in an Anvil! UUID.
+
+=head2 C<155>
+
+The 'AN::Tools::Striker' module's '_get_storage_data()' method was called without an Anvil! UUID CGI variable set.
+
+=head2 C<156>
+
+The 'AN::Tools::Striker' module's '_get_storage_data()' method was called without Anvil! node name CGI variable set.
 
 
 =head1 SEE ALSO

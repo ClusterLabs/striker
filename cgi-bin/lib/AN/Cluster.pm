@@ -4057,8 +4057,7 @@ WHERE
 	return(0);
 }
 
-# This parses this Striker dashboard's hostname and returns the prefix and
-# domain name.
+# This parses this Striker dashboard's hostname and returns the prefix and domain name.
 sub get_striker_prefix_and_domain
 {
 	my ($an) = @_;

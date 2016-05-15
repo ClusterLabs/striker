@@ -638,6 +638,7 @@ sub _set_paths
 	$an->data->{path}{virsh}               = "/usr/bin/virsh";
 	$an->data->{path}{wc}                  = "/usr/bin/wc";
 	$an->data->{path}{wget}                = "/usr/bin/wget";
+	$an->data->{path}{whereis}             = "/usr/bin/whereis";
 	$an->data->{path}{yum}                 = "/usr/bin/yum";
 	
 	# Text files
@@ -670,6 +671,7 @@ sub _set_paths
 	$an->data->{path}{shared_archive}     = "/shared/archive";
 	$an->data->{path}{shared_definitions} = "/shared/definitions";
 	$an->data->{path}{shared_files}       = "/shared/files";
+	$an->data->{path}{shared_privision}   = "/shared/provision";
 	$an->data->{path}{skins}              = "/var/www/html/skins";
 	$an->data->{path}{striker_tools}      = "/sbin/striker";
 	$an->data->{path}{yum_repos}          = "/etc/yum.repos.d";
