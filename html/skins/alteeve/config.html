@@ -749,21 +749,22 @@
 		</td>
 		<td>
 			<input type="submit" name="confirm" id="confirm" value="#!string!button_0052!#" class="bold_button" />
-			<input type="hidden" name="config" id="config" value="true" />
-			<input type="hidden" name="task" id="task" value="create-install-manifest" />
-			<input type="hidden" name="do" id="do" value="new" />
-			<input type="hidden" name="run" id="run" value="#!replace!run!#" />
 			
-			<input type="hidden" name="striker_user" value="#!replace!striker_user!#" />
-			<input type="hidden" name="striker_database" value="#!replace!striker_database!#" />
-			<input type="hidden" name="anvil_striker1_user" value="#!replace!anvil_striker1_user!#" />
-			<input type="hidden" name="anvil_striker1_password" value="#!replace!anvil_striker1_password!#" />
-			<input type="hidden" name="anvil_striker1_database" value="#!replace!anvil_striker1_database!#" />
-			<input type="hidden" name="anvil_striker2_user" value="#!replace!anvil_striker2_user!#" />
-			<input type="hidden" name="anvil_striker2_password" value="#!replace!anvil_striker2_password!#" />
-			<input type="hidden" name="anvil_striker2_database" value="#!replace!anvil_striker2_database!#" />
-			<input type="hidden" name="anvil_mtu_size" value="#!replace!anvil_mtu_size!#" />
-			
+			<!-- hidden stuff -->
+			<input type="hidden" name="config"                  id="config"                  value="true" />
+			<input type="hidden" name="task"                    id="task"                    value="manifests" />
+			<input type="hidden" name="do"                      id="do"                      value="new" />
+			<input type="hidden" name="run"                     id="run"                     value="#!replace!run!#" />
+			<input type="hidden" name="manifest_uuid"           id="manifest_uuid"           value="#!replace!manifest_uuid!#" />
+			<input type="hidden" name="striker_user"            id="striker_user"            value="#!replace!striker_user!#" />
+			<input type="hidden" name="striker_database"        id="striker_database"        value="#!replace!striker_database!#" />
+			<input type="hidden" name="anvil_striker1_user"     id="anvil_striker1_user"     value="#!replace!anvil_striker1_user!#" />
+			<input type="hidden" name="anvil_striker1_password" id="anvil_striker1_password" value="#!replace!anvil_striker1_password!#" />
+			<input type="hidden" name="anvil_striker1_database" id="anvil_striker1_database" value="#!replace!anvil_striker1_database!#" />
+			<input type="hidden" name="anvil_striker2_user"     id="anvil_striker2_user"     value="#!replace!anvil_striker2_user!#" />
+			<input type="hidden" name="anvil_striker2_password" id="anvil_striker2_password" value="#!replace!anvil_striker2_password!#" />
+			<input type="hidden" name="anvil_striker2_database" id="anvil_striker2_database" value="#!replace!anvil_striker2_database!#" />
+			<input type="hidden" name="anvil_mtu_size"          id="anvil_mtu_size"          value="#!replace!anvil_mtu_size!#" />
 			<input type="hidden" name="anvil_bcn_ethtool_opts"  id="anvil_bcn_ethtool_opts"  value="#!replace!anvil_bcn_ethtool_opts!#" />
 			<input type="hidden" name="anvil_bcn_network"       id="anvil_bcn_network"       value="#!replace!anvil_bcn_network!#" />
 			<input type="hidden" name="anvil_sn_ethtool_opts"   id="anvil_sn_ethtool_opts"   value="#!replace!anvil_sn_ethtool_opts!#" />
@@ -1175,7 +1176,7 @@
 			<textarea name="manifest_data" id="manifest_data" class="textarea_huge">#!replace!manifest_data!#</textarea>
 			<input type="hidden" name="manifest_uuid" id="manifest_uuid" value="#!replace!manifest_uuid!#">
 			<input type="hidden" name="raw" id="raw" value="true">
-			<input type="hidden" name="task" id="task" value="create-install-manifest">
+			<input type="hidden" name="task" id="task" value="manifests">
 			<input type="hidden" name="config" id="config" value="true">
 		</td>
 	</tr>

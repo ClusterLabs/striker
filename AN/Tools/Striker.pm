@@ -36,7 +36,6 @@ my $THIS_FILE = "Striker.pm";
 # _confirm_fence_node
 # _confirm_force_off_server
 # _confirm_join_anvil
-# _confirm_install_manifest_run
 # _confirm_migrate_server
 # _confirm_poweroff_node
 # _confirm_poweron_node
@@ -92,7 +91,6 @@ my $THIS_FILE = "Striker.pm";
 # _read_server_definition
 # _server_eject_media
 # _server_insert_media
-# _show_existing_install_manifests
 # _start_server
 # _stop_server
 # _update_network_driver
@@ -3499,149 +3497,6 @@ sub _confirm_join_anvil
 	}});
 
 	return (0);
-}
-
-# This shows a summary of the install manifest and asks the user to choose a node to run it against 
-# (verifying they want to do it in the process).
-sub _confirm_install_manifest_run
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_confirm_migrate_server" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	# Show the manifest form.
-	$an->data->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_bcn_link1_mac};
-	$an->data->{cgi}{anvil_node1_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_bcn_link2_mac};
-	$an->data->{cgi}{anvil_node1_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_sn_link1_mac};
-	$an->data->{cgi}{anvil_node1_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_sn_link2_mac};
-	$an->data->{cgi}{anvil_node1_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_ifn_link1_mac};
-	$an->data->{cgi}{anvil_node1_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_ifn_link2_mac};
-	$an->data->{cgi}{anvil_node2_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_bcn_link1_mac};
-	$an->data->{cgi}{anvil_node2_bcn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_bcn_link2_mac};
-	$an->data->{cgi}{anvil_node2_sn_link1_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_sn_link1_mac};
-	$an->data->{cgi}{anvil_node2_sn_link2_mac}  = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_sn_link2_mac};
-	$an->data->{cgi}{anvil_node2_ifn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_ifn_link1_mac};
-	$an->data->{cgi}{anvil_node2_ifn_link2_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node2_ifn_link2_mac};
-	
-	$an->data->{cgi}{anvil_node1_pdu1_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node1_pdu1_outlet};
-	$an->data->{cgi}{anvil_node1_pdu2_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node1_pdu2_outlet};
-	$an->data->{cgi}{anvil_node1_pdu3_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node1_pdu3_outlet};
-	$an->data->{cgi}{anvil_node1_pdu4_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node1_pdu4_outlet};
-	$an->data->{cgi}{anvil_node2_pdu1_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node2_pdu1_outlet};
-	$an->data->{cgi}{anvil_node2_pdu2_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node2_pdu2_outlet};
-	$an->data->{cgi}{anvil_node2_pdu3_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node2_pdu3_outlet};
-	$an->data->{cgi}{anvil_node2_pdu4_outlet}   = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_node2_pdu4_outlet};
-	$an->data->{cgi}{anvil_dns1}                = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_dns1};
-	$an->data->{cgi}{anvil_dns2}                = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_dns2};
-	$an->data->{cgi}{anvil_ntp1}                = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_ntp1};
-	$an->data->{cgi}{anvil_ntp2}                = "<span class=\"highlight_unavailable\">--</span>" if not $an->data->{cgi}{anvil_ntp2};
-	
-	# If the first storage pool is a percentage, calculate the percentage of the second. Otherwise, set
-	# storage pool 2 to just same 'remainder'.
-	my $say_storage_pool_1 = $an->data->{cgi}{anvil_storage_pool1_size}." ".$an->data->{cgi}{anvil_storage_pool1_unit};
-	my $say_storage_pool_2 = "<span class=\"highlight_unavailable\">#!string!message_0357!#</span>";
-	if ($an->data->{cgi}{anvil_storage_pool1_unit} eq "%")
-	{
-		$say_storage_pool_2 = (100 - $an->data->{cgi}{anvil_storage_pool1_size})." %";
-	}
-	
-	# If this is the first load, the use the current IP and password.
-	$an->data->{cgi}{anvil_node1_current_ip}       = $an->data->{cgi}{anvil_node1_bcn_ip} if not $an->data->{cgi}{anvil_node1_current_ip};;
-	$an->data->{cgi}{anvil_node1_current_password} = $an->data->{cgi}{anvil_password}     if not $an->data->{cgi}{anvil_node1_current_password};
-	$an->data->{cgi}{anvil_node2_current_ip}       = $an->data->{cgi}{anvil_node2_bcn_ip} if not $an->data->{cgi}{anvil_node2_current_ip};
-	$an->data->{cgi}{anvil_node2_current_password} = $an->data->{cgi}{anvil_password}     if not $an->data->{cgi}{anvil_node2_current_password};
-	
-	# I don't ask the user for the port range at this time, so it's possible the number of ports to open
-	# isn't in the manifest.
-	$an->data->{cgi}{anvil_open_vnc_ports} = $an->data->{sys}{install_manifest}{open_vnc_ports} if not $an->data->{cgi}{anvil_open_vnc_ports};
-	
-	# NOTE: Dropping support for repos.
-	my $say_repos = "<input type=\"hidden\" name=\"anvil_repositories\" id=\"anvil_repositories\" value=\"".$an->data->{cgi}{anvil_repositories}."\" />";
-	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_node1_name", value1 => $an->data->{cgi}{anvil_node1_name},
-		name2 => "cgi::anvil_node2_name", value2 => $an->data->{cgi}{anvil_node2_name},
-	}, file => $THIS_FILE, line => __LINE__});
-	print $an->Web->template({file => "config.html", template => "confirm-anvil-manifest-run", replace => { 
-		form_file			=>	"/cgi-bin/configure",
-		say_storage_pool_1		=>	$say_storage_pool_1,
-		say_storage_pool_2		=>	$say_storage_pool_2,
-		anvil_node1_current_ip		=>	$an->data->{cgi}{anvil_node1_current_ip},
-		anvil_node1_current_password	=>	$an->data->{cgi}{anvil_node1_current_password},
-		anvil_node1_uuid		=>	$an->data->{cgi}{anvil_node1_uuid},
-		anvil_node2_current_ip		=>	$an->data->{cgi}{anvil_node2_current_ip},
-		anvil_node2_current_password	=>	$an->data->{cgi}{anvil_node2_current_password},
-		anvil_node2_uuid		=>	$an->data->{cgi}{anvil_node2_uuid},
-		anvil_password			=>	$an->data->{cgi}{anvil_password},
-		anvil_bcn_ethtool_opts		=>	$an->data->{cgi}{anvil_bcn_ethtool_opts}, 
-		anvil_bcn_network		=>	$an->data->{cgi}{anvil_bcn_network},
-		anvil_bcn_subnet		=>	$an->data->{cgi}{anvil_bcn_subnet},
-		anvil_sn_ethtool_opts		=>	$an->data->{cgi}{anvil_sn_ethtool_opts}, 
-		anvil_sn_network		=>	$an->data->{cgi}{anvil_sn_network},
-		anvil_sn_subnet			=>	$an->data->{cgi}{anvil_sn_subnet},
-		anvil_ifn_ethtool_opts		=>	$an->data->{cgi}{anvil_ifn_ethtool_opts}, 
-		anvil_ifn_network		=>	$an->data->{cgi}{anvil_ifn_network},
-		anvil_ifn_subnet		=>	$an->data->{cgi}{anvil_ifn_subnet},
-		anvil_media_library_size	=>	$an->data->{cgi}{anvil_media_library_size},
-		anvil_media_library_unit	=>	$an->data->{cgi}{anvil_media_library_unit},
-		anvil_storage_pool1_size	=>	$an->data->{cgi}{anvil_storage_pool1_size},
-		anvil_storage_pool1_unit	=>	$an->data->{cgi}{anvil_storage_pool1_unit},
-		anvil_name			=>	$an->data->{cgi}{anvil_name},
-		anvil_node1_name		=>	$an->data->{cgi}{anvil_node1_name},
-		anvil_node1_bcn_ip		=>	$an->data->{cgi}{anvil_node1_bcn_ip},
-		anvil_node1_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link1_mac},
-		anvil_node1_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link2_mac},
-		anvil_node1_ipmi_ip		=>	$an->data->{cgi}{anvil_node1_ipmi_ip},
-		anvil_node1_sn_ip		=>	$an->data->{cgi}{anvil_node1_sn_ip},
-		anvil_node1_sn_link1_mac	=>	$an->data->{cgi}{anvil_node1_sn_link1_mac},
-		anvil_node1_sn_link2_mac	=>	$an->data->{cgi}{anvil_node1_sn_link2_mac},
-		anvil_node1_ifn_ip		=>	$an->data->{cgi}{anvil_node1_ifn_ip},
-		anvil_node1_ifn_link1_mac	=>	$an->data->{cgi}{anvil_node1_ifn_link1_mac},
-		anvil_node1_ifn_link2_mac	=>	$an->data->{cgi}{anvil_node1_ifn_link2_mac},
-		anvil_node1_pdu1_outlet		=>	$an->data->{cgi}{anvil_node1_pdu1_outlet},
-		anvil_node1_pdu2_outlet		=>	$an->data->{cgi}{anvil_node1_pdu2_outlet},
-		anvil_node1_pdu3_outlet		=>	$an->data->{cgi}{anvil_node1_pdu3_outlet},
-		anvil_node1_pdu4_outlet		=>	$an->data->{cgi}{anvil_node1_pdu4_outlet},
-		anvil_node2_name		=>	$an->data->{cgi}{anvil_node2_name},
-		anvil_node2_bcn_ip		=>	$an->data->{cgi}{anvil_node2_bcn_ip},
-		anvil_node2_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link1_mac},
-		anvil_node2_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link2_mac},
-		anvil_node2_ipmi_ip		=>	$an->data->{cgi}{anvil_node2_ipmi_ip},
-		anvil_node2_sn_ip		=>	$an->data->{cgi}{anvil_node2_sn_ip},
-		anvil_node2_sn_link1_mac	=>	$an->data->{cgi}{anvil_node2_sn_link1_mac},
-		anvil_node2_sn_link2_mac	=>	$an->data->{cgi}{anvil_node2_sn_link2_mac},
-		anvil_node2_ifn_ip		=>	$an->data->{cgi}{anvil_node2_ifn_ip},
-		anvil_node2_ifn_link1_mac	=>	$an->data->{cgi}{anvil_node2_ifn_link1_mac},
-		anvil_node2_ifn_link2_mac	=>	$an->data->{cgi}{anvil_node2_ifn_link2_mac},
-		anvil_node2_pdu1_outlet		=>	$an->data->{cgi}{anvil_node2_pdu1_outlet},
-		anvil_node2_pdu2_outlet		=>	$an->data->{cgi}{anvil_node2_pdu2_outlet},
-		anvil_node2_pdu3_outlet		=>	$an->data->{cgi}{anvil_node2_pdu3_outlet},
-		anvil_node2_pdu4_outlet		=>	$an->data->{cgi}{anvil_node2_pdu4_outlet},
-		anvil_ifn_gateway		=>	$an->data->{cgi}{anvil_ifn_gateway},
-		anvil_dns1			=>	$an->data->{cgi}{anvil_dns1},
-		anvil_dns2			=>	$an->data->{cgi}{anvil_dns2},
-		anvil_ntp1			=>	$an->data->{cgi}{anvil_ntp1},
-		anvil_ntp2			=>	$an->data->{cgi}{anvil_ntp2},
-		anvil_pdu1_name			=>	$an->data->{cgi}{anvil_pdu1_name},
-		anvil_pdu2_name			=>	$an->data->{cgi}{anvil_pdu2_name},
-		anvil_pdu3_name			=>	$an->data->{cgi}{anvil_pdu3_name},
-		anvil_pdu4_name			=>	$an->data->{cgi}{anvil_pdu4_name},
-		anvil_open_vnc_ports		=>	$an->data->{cgi}{anvil_open_vnc_ports},
-		say_anvil_repos			=>	$say_repos,
-		run				=>	$an->data->{cgi}{run},
-		striker_user			=>	$an->data->{cgi}{striker_user},
-		striker_database		=>	$an->data->{cgi}{striker_database},
-		anvil_striker1_user		=>	$an->data->{cgi}{anvil_striker1_user},
-		anvil_striker1_password		=>	$an->data->{cgi}{anvil_striker1_password},
-		anvil_striker1_database		=>	$an->data->{cgi}{anvil_striker1_database},
-		anvil_striker2_user		=>	$an->data->{cgi}{anvil_striker2_user},
-		anvil_striker2_password		=>	$an->data->{cgi}{anvil_striker2_password},
-		anvil_striker2_database		=>	$an->data->{cgi}{anvil_striker2_database},
-		anvil_mtu_size			=>	$an->data->{cgi}{anvil_mtu_size},
-	}});
-	
-	return(0);
 }
 
 # Confirm that the user wants to migrate a VM.
@@ -7107,8 +6962,9 @@ sub _header
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_header" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	# Who called us?
 	my $caller = $parameter->{'caller'} ? $parameter->{'caller'} : "striker";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "caller", value1 => $caller,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -7117,7 +6973,10 @@ sub _header
 	my $anvil_uuid = "";
 	my $node1_name = "";
 	my $node2_name = "";
-	if ($an->data->{cgi}{anvil_uuid})
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "cgi::anvil_uuid", value1 => $an->data->{cgi}{anvil_uuid},
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($an->data->{cgi}{anvil_uuid}) && ($caller ne "configure"))
 	{
 		$an->Striker->load_anvil();
 		$anvil_uuid = $an->data->{cgi}{anvil_uuid};
@@ -12943,71 +12802,6 @@ sub _server_insert_media
 		# Lastly, copy the new definition to the stored XML for this server.
 		  $an->data->{server}{$server}{xml}  = [];	# this is probably redundant
 		@{$an->data->{server}{$server}{xml}} = split/\n/, $new_definition;
-	}
-	
-	return(0);
-}
-
-# This looks for existing install manifest files and displays those it finds.
-sub _show_existing_install_manifests
-{
-	my $self      = shift;
-	my $parameter = shift;
-	my $an        = $self->parent;
-	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "_show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
-	
-	my $header_printed = 0;
-	my $return         = $an->ScanCore->get_manifests($an);
-	foreach my $hash_ref (@{$return})
-	{
-		my $manifest_uuid = $hash_ref->{manifest_uuid};
-		my $manifest_data = $hash_ref->{manifest_data};
-		my $manifest_note = $hash_ref->{manifest_note};
-		my $modified_date = $hash_ref->{modified_date};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
-			name1 => "manifest_uuid", value1 => $manifest_uuid,
-			name2 => "manifest_data", value2 => $manifest_data,
-			name3 => "manifest_note", value3 => $manifest_note,
-			name4 => "modified_date", value4 => $modified_date,
-		}, file => $THIS_FILE, line => __LINE__});
-		
-		# Parse this and pull out the details
-		$an->ScanCore->parse_install_manifest({uuid => $manifest_uuid});
-		
-		# This isn't actually passed by CGI, but 'parse_install_manifest' sets it as if it were, so 
-		# that is how we'll grab it.
-		my $anvil_name =  $an->data->{cgi}{anvil_name};
-		my $edit_date  =  $modified_date;
-		   $edit_date  =~ s/(:\d\d)\..*/$1/;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "anvil_name", value1 => $anvil_name,
-			name2 => "edit_date",  value2 => $edit_date,
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{manifest_file}{$manifest_uuid}{anvil} = $an->String->get({key => "message_0460", variables => { 
-				anvil	=>	$anvil_name,
-				date	=>	$edit_date,
-				raw	=>	"/cgi-bin/configure&task=manifest&raw=true&manifest_uuid=$manifest_uuid",
-			}});
-		
-		if (not $header_printed)
-		{
-			print $an->Web->template({file => "config.html", template => "install-manifest-header"});
-			$header_printed = 1;
-		}
-	}
-	
-	foreach my $manifest_uuid (sort {$b cmp $a} keys %{$an->data->{manifest_file}})
-	{
-		print $an->Web->template({file => "config.html", template => "install-manifest-entry", replace => { 
-			description	=>	$an->data->{manifest_file}{$manifest_uuid}{anvil},
-			load		=>	"/cgi-bin/configure&task=manifest&load=true&manifest_uuid=$manifest_uuid",
-			run		=>	"/cgi-bin/configure&task=manifest&run=true&manifest_uuid=$manifest_uuid",
-			'delete'	=>	"/cgi-bin/configure&task=manifest&delete=true&manifest_uuid=$manifest_uuid",
-		}});
-	}
-	if ($header_printed)
-	{
-		print $an->Web->template({file => "config.html", template => "install-manifest-footer"});
 	}
 	
 	return(0);

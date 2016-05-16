@@ -2626,9 +2626,9 @@ sub parse_install_manifest
 			}
 			elsif ($a eq "uuid")
 			{
-				my $uuid = $data->{node}{$node}{uuid};
-				$an->data->{install_manifest}{$uuid}{node}{$node}{uuid} = $uuid ? $uuid : "";
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				my $node_uuid = $data->{node}{$node}{uuid};
+				$an->data->{install_manifest}{$uuid}{node}{$node}{uuid} = $node_uuid ? $node_uuid : "";
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "install_manifest::${uuid}::node::${node}::uuid", value1 => $an->data->{install_manifest}{$uuid}{node}{$node}{uuid},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -3370,7 +3370,7 @@ sub parse_install_manifest
 	$i = 1;
 	foreach my $node (sort {$a cmp $b} keys %{$an->data->{install_manifest}{$uuid}{node}})
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "i",    value1 => $i,
 			name2 => "node", value2 => $node,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -3494,7 +3494,7 @@ sub parse_install_manifest
 		$an->data->{cgi}{$pdu3_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu3_reference}{port};
 		$an->data->{cgi}{$pdu4_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{pdu}{$pdu4_reference}{port};
 		$an->data->{cgi}{$uuid_key}          = $an->data->{install_manifest}{$uuid}{node}{$node}{uuid}                            ? $an->data->{install_manifest}{$uuid}{node}{$node}{uuid}                            : "";
-		$an->Log->entry({log_level => 4, message_key => "an_variables_0013", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0013", message_variables => {
 			name1  => "cgi::$name_key",          value1  => $an->data->{cgi}{$name_key},
 			name2  => "cgi::$bcn_ip_key",        value2  => $an->data->{cgi}{$bcn_ip_key},
 			name3  => "cgi::$ipmi_ip_key",       value3  => $an->data->{cgi}{$ipmi_ip_key},

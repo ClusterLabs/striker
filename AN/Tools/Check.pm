@@ -752,7 +752,7 @@ sub ping
 	}
 	
 	# If we were passed a target, try pinging from it instead of locally
-	my $ping     = $parameter->{ping};
+	my $ping     = $parameter->{ping}     ? $parameter->{ping}     : "";
 	my $count    = $parameter->{count}    ? $parameter->{count}    : 1;	# How many times to try to ping it? Will exit as soon as one succeeds
 	my $fragment = $parameter->{fragment} ? $parameter->{fragment} : 1;	# Allow fragmented packets? Set to '0' to check MTU.
 	my $payload  = $parameter->{payload}  ? $parameter->{payload}  : 0;	# The size of the ping payload. Use when checking MTU.
@@ -791,7 +791,7 @@ sub ping
 	my $pinged = 0;
 	foreach my $try (1..$count)
 	{
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "try",    value1 => $try,
 			name2 => "pinged", value2 => $pinged
 		}, file => $THIS_FILE, line => __LINE__});

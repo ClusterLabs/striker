@@ -576,7 +576,6 @@ sub remote_call
 	my $ssh_fh     = $parameter->{ssh_fh}           ? $parameter->{ssh_fh}   : $an->data->{target}{$target}{ssh_fh};
 	my $close      = defined $parameter->{'close'}  ? $parameter->{'close'}  : 0;
 	my $shell_call = $parameter->{shell_call};
-	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
 		name1 => "time",       value1 => time,
 		name2 => "target",     value2 => $target,
@@ -584,10 +583,11 @@ sub remote_call
 		name4 => "user",       value4 => $user,
 		name5 => "ssh_fh",     value5 => $ssh_fh,
 		name6 => "close",      value6 => $close,
- 		name7 => "shell_call", value7 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password,
+	# Shell calls can expose passwords, which is why it is down here.
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0002", message_variables => {
+		name1 => "password",   value1 => $password,
+ 		name2 => "shell_call", value2 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this a better looking error.
@@ -618,6 +618,8 @@ sub remote_call
 	}
 	else
 	{
+		### TODO: Determine if this is still worth having now that everything has been moved to the 
+		###       ScanCore database.
 		# In case the user is using ports in /etc/ssh/ssh_config, we'll want to check for an entry.
 		$an->Storage->read_ssh_config();
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
