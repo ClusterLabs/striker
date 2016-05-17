@@ -158,7 +158,7 @@ sub find_missing_devices
 			sleep 5;
 			
 			# now, make sure it's unmounted.
-			my $shell_call = "$conf->{path}{umount} -f /dev/mapper/$device";
+			my $shell_call = "$conf->{path}{umount} -lf /dev/mapper/$device";
 			logger($conf, $THIS_FILE, __LINE__, "[ Debug ] - shell_call: [$shell_call]");
 			open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call]; $!\n";
 			while (<$file_handle>)
@@ -381,7 +381,7 @@ sub unmount
 	}
 	
 	# Unmount
-	$shell_call = "$conf->{path}{sync}; $conf->{path}{umount} -f $mount_point";
+	$shell_call = "$conf->{path}{sync}; $conf->{path}{umount} -lf $mount_point";
 	logger($conf, $THIS_FILE, __LINE__, "shell_call: [$shell_call]");
 	open ($file_handle, "$shell_call 2>&1 |") or die "Failed to call: [$shell_call], error was: $!\n";
 	while (<$file_handle>)

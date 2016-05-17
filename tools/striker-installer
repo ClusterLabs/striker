@@ -221,6 +221,8 @@ my $conf = {
 			mod_ssl				=>	0,
 			mtr				=>	0,
 			'mtr-gtk'			=>	0,
+			'ntfs-3g'			=>	0, 
+			ntfsprogs			=>	0,
 			# NFS packages used for remote usb function.
 			'nfs-utils'			=>	0,
 			'nfs-utils-lib'			=>	0,

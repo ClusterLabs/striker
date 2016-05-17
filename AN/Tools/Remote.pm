@@ -403,28 +403,32 @@ sub dual_command_run
 	my $an        = $self->parent;
 	
 	# Get the target
-	my $command  = $parameter->{command};
-	my $node1    = $parameter->{node1};
-	my $node2    = $parameter->{node2};
-	my $delay    = $parameter->{delay} ? $parameter->{delay} : 30;
-	my $password = $parameter->{password};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	my $command = $parameter->{command} ? $parameter->{command} : "";
+	my $delay   = $parameter->{delay}   ? $parameter->{delay}   : 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
 		name1 => "command",        value1 => $command, 
-		name2 => "node1",          value2 => $node1, 
-		name3 => "node2",          value3 => $node2, 
-		name4 => "delay",          value4 => $delay, 
-		name5 => "hostname",       value5 => $an->hostname,
-		name6 => "short_hostname", value6 => $an->short_hostname, 
-	}, file => $THIS_FILE, line => __LINE__});
-	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
-		name1 => "password", value1 => $password,
+		name2 => "delay",          value2 => $delay, 
+		name3 => "hostname",       value3 => $an->hostname,
+		name4 => "short_hostname", value4 => $an->short_hostname, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Well store the output of both machines here.
 	my $output     = {};
 	my $shell_call = $command;
-	foreach my $node (sort {$a cmp $b} ($node1, $node2))
+	foreach my $node_key ("node1", "node2")
 	{
+		my $node     = $an->data->{sys}{anvil}{$node_key}{name};
+		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",   value1 => $node, 
+			name2 => "target", value2 => $target, 
+			name3 => "port",   value3 => $port, 
+		}, file => $THIS_FILE, line => __LINE__});
+		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+			name1 => "password", value1 => $password, 
+		}, file => $THIS_FILE, line => __LINE__});
 		# This will contain the output seen for both nodes
 		   $output->{$node} = "";
 		my $return          = [];
@@ -452,18 +456,14 @@ sub dual_command_run
 		else
 		{
 			# Remote call
-			my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "node",       value1 => $node,
-				name2 => "port",       value2 => $port,
-				name3 => "shell_call", value3 => $shell_call,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target",     value1 => $target,
+				name2 => "shell_call", value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$node,
+				target		=>	$target,
 				port		=>	$port, 
 				password	=>	$password,
-				ssh_fh		=>	"",
-				'close'		=>	0,
 				shell_call	=>	$shell_call,
 			});
 		}
@@ -935,12 +935,14 @@ sub synchronous_command_run
 	# (or time out).
 	foreach my $node_key ("node1", "node2")
 	{
-		my $target   = $an->data->{sys}{anvil}{node1}{use_ip};
-		my $port     = $an->data->{sys}{anvil}{node1}{use_port};
-		my $password = $an->data->{sys}{anvil}{node1}{use_password};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "target", value1 => $target, 
-			name2 => "port",   value2 => $port, 
+		my $node     = $an->data->{sys}{anvil}{$node_key}{name};
+		my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+		my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+		my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",   value1 => $node, 
+			name2 => "target", value2 => $target, 
+			name3 => "port",   value3 => $port, 
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 			name1 => "password", value1 => $password, 
@@ -958,33 +960,33 @@ sub synchronous_command_run
 			name1 => "token", value1 => $token, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		$output->{$target} = "";
+		$output->{$node} = "";
 		if ($token)
 		{
-			$an->data->{node}{$target}{token}  = $token;
-			$an->data->{node}{$target}{output} = $an->data->{path}{'anvil-jobs-output'};
-			$an->data->{node}{$target}{output} =~ s/#!token!#/$token/;
+			$an->data->{node}{$node}{token}  = $token;
+			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
+			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${target}::token",  value1 => $an->data->{node}{$target}{token}, 
-				name1 => "node::${target}::output", value1 => $an->data->{node}{$target}{output}, 
+				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
+				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		else
 		{
 			# This will contain the output seen for both nodes
-			$token                             = $an->Get->uuid();
-			$an->data->{node}{$target}{token}  = $token;
-			$an->data->{node}{$target}{output} = $an->data->{path}{'anvil-jobs-output'};
-			$an->data->{node}{$target}{output} =~ s/#!token!#/$token/;
+			$token                           = $an->Get->uuid();
+			$an->data->{node}{$node}{token}  = $token;
+			$an->data->{node}{$node}{output} = $an->data->{path}{'anvil-jobs-output'};
+			$an->data->{node}{$node}{output} =~ s/#!token!#/$token/;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "node::${target}::token",  value1 => $an->data->{node}{$target}{token}, 
-				name1 => "node::${target}::output", value1 => $an->data->{node}{$target}{output}, 
+				name1 => "node::${node}::token",  value1 => $an->data->{node}{$node}{token}, 
+				name1 => "node::${node}::output", value1 => $an->data->{node}{$node}{output}, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			# Setup the job line
 			my $time     =  time;
 			my $run_time =  $time + $delay;
-			my $job_line =  "$run_time:".$an->data->{node}{$target}{token}.":$command";
+			my $job_line =  "$run_time:".$an->data->{node}{$node}{token}.":$command";
 			   $job_line =~ s/'/\'/g;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 				name1 => "time",     value1 => $time, 
@@ -1020,7 +1022,7 @@ sub synchronous_command_run
 			else
 			{
 				# Remote call
-				my $port = $an->data->{node}{$target}{port} ? $an->data->{node}{$target}{port} : "";
+				my $port = $an->data->{node}{$node}{port} ? $an->data->{node}{$node}{port} : "";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 					name1 => "target",     value1 => $target,
 					name2 => "port",       value2 => $port,
@@ -1044,13 +1046,13 @@ sub synchronous_command_run
 	}
 	
 	# Make sure we didn't hit an error
-	my $node1_target = $an->data->{sys}{anvil}{node1}{use_ip};
-	my $node2_target = $an->data->{sys}{anvil}{node2}{use_ip};
+	my $node1 = $an->data->{sys}{anvil}{node1}{name};
+	my $node2 = $an->data->{sys}{anvil}{node2}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "node::${node1_target}::output", value1 => $an->data->{node}{$node1_target}{output},
-		name2 => "node::${node2_target}::output", value2 => $an->data->{node}{$node2_target}{output},
+		name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
+		name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
 	}, file => $THIS_FILE, line => __LINE__});
-	if ((not $an->data->{node}{$node1_target}{output}) or (not $an->data->{node}{$node2_target}{output}))
+	if ((not $an->data->{node}{$node1}{output}) or (not $an->data->{node}{$node2}{output}))
 	{
 		$waiting = 0;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1075,35 +1077,35 @@ sub synchronous_command_run
 		# This will get set back to '1' if we're still waiting on either node's output.
 		foreach my $node_key ("node1", "node2")
 		{
-			my $node_name = $an->data->{sys}{anvil}{node1}{name};
-			my $target    = $an->data->{sys}{anvil}{node1}{use_ip};
-			my $port      = $an->data->{sys}{anvil}{node1}{use_port};
-			my $password  = $an->data->{sys}{anvil}{node1}{use_password};
+			my $node     = $an->data->{sys}{anvil}{$node_key}{name};
+			my $target   = $an->data->{sys}{anvil}{$node_key}{use_ip};
+			my $port     = $an->data->{sys}{anvil}{$node_key}{use_port};
+			my $password = $an->data->{sys}{anvil}{$node_key}{use_password};
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-				name1 => "node_name", value1 => $node_name, 
-				name2 => "target",    value2 => $target, 
-				name3 => "port",      value3 => $port, 
+				name1 => "node",   value1 => $node, 
+				name2 => "target", value2 => $target, 
+				name3 => "port",   value3 => $port, 
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password, 
 			}, file => $THIS_FILE, line => __LINE__});
 
 			#next if not $an->data->{node}{$node}{token};
-			next if not $an->data->{node}{$target}{output};
+			next if not $an->data->{node}{$node}{output};
 			
 			my $call_output = "";
 			my $return      = [];
 			my $shell_call  = "
-if [ -e \"".$an->data->{node}{$target}{output}."\" ];
+if [ -e \"".$an->data->{node}{$node}{output}."\" ];
 then
-    ".$an->data->{path}{cat}." ".$an->data->{node}{$target}{output}."
+    ".$an->data->{path}{cat}." ".$an->data->{node}{$node}{output}."
 else
     ".$an->data->{path}{echo}." \"No output yet\"
 fi
 ";
 	
 			# If the node name is 'local', we'll run locally.
-			if (($node_name eq "local") or ($node_name eq $an->hostname) or ($node_name eq $an->short_hostname))
+			if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 			{
 				# Local call.
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1155,8 +1157,8 @@ fi
 				{
 					# We're done!
 					my $return_code = $1;
-					my $shell_call  = $an->data->{path}{rm}." -f ".$an->data->{node}{$target}{output};
-					if (($node_name eq "local") or ($node_name eq $an->hostname) or ($node_name eq $an->short_hostname))
+					my $shell_call  = $an->data->{path}{rm}." -f ".$an->data->{node}{$node}{output};
+					if (($node eq "local") or ($node eq $an->hostname) or ($node eq $an->short_hostname))
 					{
 						# Local call.
 						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1197,12 +1199,12 @@ fi
 					
 					# I don't bother examining the output. If it fails, the file will be
 					# wiped in the next reboot anyway.
-					$an->data->{node}{$target}{output} = "";
-					$an->data->{node}{$target}{token}  = "";
+					$an->data->{node}{$node}{output} = "";
+					$an->data->{node}{$node}{token}  = "";
 					
 					# Only record the last loop of output, otherwise partial output will
 					# stack on top of the final contents of the output file.
-					$output->{$target} = $call_output;
+					$output->{$node} = $call_output;
 				}
 				else
 				{
@@ -1214,11 +1216,11 @@ fi
 		
 		# See if I still have an output file. If not, we're done.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-			name1 => "node::${node1_target}::output", value1 => $an->data->{node}{$node1_target}{output},
-			name2 => "node::${node1_target}::output", value2 => $an->data->{node}{$node1_target}{output},
-			name3 => "waiting",                       value3 => $waiting,
+			name1 => "node::${node1}::output", value1 => $an->data->{node}{$node1}{output},
+			name2 => "node::${node2}::output", value2 => $an->data->{node}{$node2}{output},
+			name3 => "waiting",                value3 => $waiting,
 		}, file => $THIS_FILE, line => __LINE__});
-		if ((not $an->data->{node}{$node1_target}{output}) && (not $an->data->{node}{$node2_target}{output}))
+		if ((not $an->data->{node}{$node1}{output}) && (not $an->data->{node}{$node2}{output}))
 		{
 			$waiting = 0;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1265,10 +1267,10 @@ sub wait_on_peer
 		# Throw an error and exit.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0097", code => 97, file => "$THIS_FILE", line => __LINE__});
 	}
-	my $program  = $parameter->{program};
-	my $target   = $parameter->{target};
-	my $password = $parameter->{password} ? $parameter->{password} : "";
+	my $program  = $parameter->{program}  ? $parameter->{program}  : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
 
 	### TODO: Change this; Wait until we can reach node 1, sleep 30 seconds, then go into a loop that
 	###       waits while this program is running on the peer. Once it's done, we'll run as a precaution.
@@ -1400,7 +1402,7 @@ sub _avoid_duplicate_delayed_runs
 			{
 				# Steal this token!
 				$token = $this_token;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "token", value1 => $token, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}

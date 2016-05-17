@@ -2801,7 +2801,7 @@ SWITCHES
 	If set, the string passed in will be set in the stop reason column for
 	servers that are shut down. The reason can not contain spaces or 
 	non-alpha-numeric characters. The default stop reason is 'clean', or
-	'load_shed' if '--shed-load' was used.
+	'shed-load' if '--shed-load' was used.
 
  --shed-load
 

@@ -302,7 +302,7 @@ sub daemon
 		return("");
 	}
 	
-	my $daemon   = $parameter->{daemon};
+	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";
@@ -440,7 +440,7 @@ sub drbd_resource
 		synced_eta       => "",
 	};
 	my $drbd     = {};
-	my $resource = $parameter->{resource};
+	my $resource = $parameter->{resource} ? $parameter->{resource} : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
 	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
 	my $password = $parameter->{password} ? $parameter->{password} : "";

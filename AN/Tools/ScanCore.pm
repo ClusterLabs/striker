@@ -35,6 +35,7 @@ my $THIS_FILE = "ScanCore.pm";
 # read_cache
 # save_install_manifest
 # target_power
+# update_server_stop_reason
 
 #############################################################################################################
 # House keeping methods                                                                                     #
@@ -4313,6 +4314,65 @@ sub target_power
 	return($state);
 }
 
+# This updates the server's stop_reason (if it's changed)
+sub update_server_stop_reason
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	
+	my $server_name = $parameter->{server_name} ? $parameter->{server_name} : "";
+	my $stop_reason = $parameter->{stop_reason} ? $parameter->{stop_reason} : "NULL";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "server_name", value1 => $server_name,
+		name2 => "stop_reason", value2 => $stop_reason,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Die if I wasn't passed a server name or stop reason.
+	if (not $server_name)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0158", code => 159, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
+	
+	my $server_data = $an->ScanCore->get_servers();
+	foreach my $hash_ref (@{$server_data})
+	{
+		my $this_server_uuid        = $hash_ref->{server_uuid};
+		my $this_server_name        = $hash_ref->{server_name};
+		my $this_server_stop_reason = $hash_ref->{server_stop_reason};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "this_server_uuid",        value1 => $this_server_uuid,
+			name2 => "this_server_name",        value2 => $this_server_name,
+			name3 => "this_server_stop_reason", value3 => $this_server_stop_reason,
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($server_name eq $this_server_name)
+		{
+			# Found the server. Has the stop_reason changed?
+			if ($stop_reason ne $this_server_stop_reason)
+			{
+				# Yes, update.
+				my $query = "
+UPDATE 
+    servers 
+SET 
+    server_stop_reason = ".$an->data->{sys}{use_db_fh}->quote($stop_reason).", 
+    modified_date      = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})." 
+WHERE 
+    server_uuid        = ".$an->data->{sys}{use_db_fh}->quote($this_server_uuid)." 
+";
+				$query =~ s/'NULL'/NULL/g;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "query", value1 => $query
+				}, file => $THIS_FILE, line => __LINE__});
+				$an->DB->do_db_write({query => $query, source => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	return(0);
+}
 
 #############################################################################################################
 # Internal methods                                                                                          #

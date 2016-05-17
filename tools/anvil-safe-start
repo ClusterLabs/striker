@@ -851,21 +851,24 @@ sub check_shared
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $node_key = $an->data->{sys}{local_key};
+	my $peer_key = $an->data->{sys}{peer_key};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Call 'mount' on both nodes and make sure '/shared' is found.
 	my $mounted = 1;
 	my $command = $an->data->{path}{mount};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "command",        value1 => $command,
-		name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "command", value1 => $command,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($output) = $an->Remote->dual_command_run({
-		command		=>	$command, 
-		node1		=>	"local", 
-		node2		=>	$an->data->{sys}{peer_node}, 
-		delay		=>	10,
-		password	=>	$an->data->{sys}{anvil_password}, 
+		command => $command, 
+		delay   => 10,
 	});
-	foreach my $node ("local", $an->data->{sys}{peer_node})
+	foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
 	{
 		my $shared_mounted = 0;
 		foreach my $line (split/\n/, $output->{$node})
@@ -941,21 +944,31 @@ sub start_clvmd
 	# other's is active).
 	my $recheck = 0;
 	my $command = $an->data->{path}{lvscan};
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "command",        value1 => $command,
-		name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "command", value1 => $command,
 	}, file => $THIS_FILE, line => __LINE__});
 	my ($output) = $an->Remote->dual_command_run({
-		command		=>	$command, 
-		node1		=>	"local", 
-		node2		=>	$an->data->{sys}{peer_node}, 
-		delay		=>	10,
-		password	=>	$an->data->{sys}{anvil_password}, 
+		command => $command, 
+		delay   => 10,
 	});
+	
+	my $node_key = $an->data->{sys}{local_key};
+	my $peer_key = $an->data->{sys}{peer_key};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $node1 = $an->data->{sys}{anvil}{$node_key}{name};
+	my $node2 = $an->data->{sys}{anvil}{$peer_key}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1", value1 => $node1,
+		name2 => "node2", value2 => $node2,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	### Check each node separetly.
 	# Peer first.
-	my $peer = $an->data->{sys}{peer_node};
+	my $peer = $an->data->{sys}{anvil}{$peer_key}{name};
 	foreach my $line (split/\n/, $output->{$peer})
 	{
 		$line =~ s/^\s+//;
@@ -977,11 +990,9 @@ sub start_clvmd
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$an->data->{sys}{peer_node},
-				port		=>	"", 
-				password	=>	$an->data->{sys}{anvil_password},
-				ssh_fh		=>	"",
-				'close'		=>	0,
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -998,14 +1009,14 @@ sub start_clvmd
 	}
 	
 	# Now local
-	foreach my $line (split/\n/, $output->{'local'})
+	foreach my $line (split/\n/, $output->{$node1})
 	{
 		$line =~ s/^\s+//;
 		$line =~ s/\s+$//;
 		$line =~ s/\s+/ /g;
 		next if not $line;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "node", value1 => 'local',
+			name1 => "node", value1 => $node1,
 			name2 => "line", value2 => $line,
 		}, file => $THIS_FILE, line => __LINE__});
 		if ($line =~ /^inactive '(.*?)' /)
@@ -1014,7 +1025,7 @@ sub start_clvmd
 			my $logical_volume = $1;
 			$an->Log->entry({log_level => 1, message_key => "asst_log_0021", message_variables => {
 				logical_volume => $logical_volume, 
-				node           => "local", 
+				node           => $node1, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
 			my $shell_call = $an->data->{path}{lvchange}." -ay $logical_volume";
@@ -1048,18 +1059,14 @@ sub start_clvmd
 		# inactive is fatal.
 		my $inactive = 0;
 		my $command  = $an->data->{path}{lvscan};
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "command",        value1 => $command,
-			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($output) = $an->Remote->dual_command_run({
-			command		=>	$command, 
-			node1		=>	"local", 
-			node2		=>	$an->data->{sys}{peer_node}, 
-			delay		=>	10,
-			password	=>	$an->data->{sys}{anvil_password}, 
+			command => $command, 
+			delay   => 10,
 		});
-		foreach my $node ("local", $an->data->{sys}{peer_node})
+		foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
 		{
 			foreach my $line (split/\n/, $output->{$node})
 			{
@@ -1109,6 +1116,13 @@ sub start_drbd
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $node_key = $an->data->{sys}{local_key};
+	my $peer_key = $an->data->{sys}{peer_key};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Check to see if the daemon is running locally and remotely. States are:
 	# 0 = Not loaded or not found
 	# 1 = Loaded
@@ -1116,9 +1130,9 @@ sub start_drbd
 	my $local_state  = $an->Check->kernel_module({module => $module});
 	my $remote_state = $an->Check->kernel_module({
 		module		=>	$module,
-		target		=>	$an->data->{sys}{peer_node}, 
-		password	=>	$an->data->{sys}{anvil_password},
-		port		=>	"",
+		target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+		port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
 		name1 => "module",       value1 => $module, 
@@ -1136,18 +1150,14 @@ sub start_drbd
 	{
 		# We need to load DRBD on both nodes
 		my $command = $shell_call;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "command",        value1 => $command,
-			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "command", value1 => $command,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($output) = $an->Remote->dual_command_run({
-			command		=>	$command, 
-			node1		=>	"local", 
-			node2		=>	$an->data->{sys}{peer_node}, 
-			delay		=>	10,
-			password	=>	$an->data->{sys}{anvil_password}, 
+			command => $command, 
+			delay   => 10,
 		});
-		foreach my $node ("local", $an->data->{sys}{peer_node})
+		foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
 		{
 			foreach my $line (split/\n/, $output->{$node})
 			{
@@ -1178,15 +1188,13 @@ sub start_drbd
 	{
 		# Start it remotely, no need to sync.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call",     value1 => $shell_call,
-			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+			name2 => "shell_call",                      value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$an->data->{sys}{peer_node},
-			port		=>	"", 
-			password	=>	$an->data->{sys}{anvil_password},
-			ssh_fh		=>	"",
-			'close'		=>	0,
+			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			shell_call	=>	$shell_call,
 		});
 		foreach my $line (@{$return})
@@ -1217,9 +1225,9 @@ sub start_drbd
 	$local_state  = $an->Check->kernel_module({module => $module});
 	$remote_state = $an->Check->kernel_module({
 		module		=>	$module,
-		target		=>	$an->data->{sys}{peer_node}, 
-		password	=>	$an->data->{sys}{anvil_password},
-		port		=>	"",
+		target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+		port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "local_state",  value1 => $local_state, 
@@ -1273,8 +1281,9 @@ sub start_drbd
 		my $local_resource = $an->Check->drbd_resource({resource => $resource});
 		my $peer_resource  = $an->Check->drbd_resource({
 			resource	=>	$resource,
-			target		=>	$an->data->{sys}{peer_node},
-			password	=>	$an->data->{sys}{anvil_password},
+			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 		});
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "local_resource", value1 => $local_resource, 
@@ -1291,15 +1300,13 @@ sub start_drbd
 		if (not $peer_resource->{resource_is_up})
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call",     value1 => $shell_call,
-				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+				name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+				name2 => "shell_call",                      value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$an->data->{sys}{peer_node},
-				port		=>	"", 
-				password	=>	$an->data->{sys}{anvil_password},
-				ssh_fh		=>	"",
-				'close'		=>	0,
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -1315,8 +1322,9 @@ sub start_drbd
 				sleep 5;
 				$peer_resource = $an->Check->drbd_resource({
 					resource	=>	$resource,
-					target		=>	$an->data->{sys}{peer_node},
-					password	=>	$an->data->{sys}{anvil_password},
+					target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+					port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+					password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "peer_resource->{resource_is_up}", value1 => $peer_resource->{resource_is_up}, 
@@ -1332,15 +1340,13 @@ sub start_drbd
 				# Tell it to connect
 				my $shell_call = $an->data->{path}{drbdadm}." connect $resource";
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "shell_call",     value1 => $shell_call,
-					name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+					name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+					name2 => "shell_call",                      value2 => $shell_call,
 				}, file => $THIS_FILE, line => __LINE__});
 				my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-					target		=>	$an->data->{sys}{peer_node},
-					port		=>	"", 
-					password	=>	$an->data->{sys}{anvil_password},
-					ssh_fh		=>	"",
-					'close'		=>	0,
+					target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+					port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
+					password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 					shell_call	=>	$shell_call,
 				});
 				foreach my $line (@{$return})
@@ -1354,8 +1360,9 @@ sub start_drbd
 				sleep 5;
 				$peer_resource = $an->Check->drbd_resource({
 					resource	=>	$resource,
-					target		=>	$an->data->{sys}{peer_node},
-					password	=>	$an->data->{sys}{anvil_password},
+					target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+					port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+					password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "peer_resource->{connection_state}", value1 => $peer_resource->{connection_state}, 
@@ -1449,15 +1456,13 @@ sub start_drbd
 		if ($peer_resource->{this_role} !~ /Primary/)
 		{
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call",     value1 => $shell_call,
-				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+				name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+				name2 => "shell_call",                      value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$an->data->{sys}{peer_node},
-				port		=>	"", 
-				password	=>	$an->data->{sys}{anvil_password},
-				ssh_fh		=>	"",
-				'close'		=>	0,
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -1472,8 +1477,9 @@ sub start_drbd
 				sleep 5;
 				$peer_resource = $an->Check->drbd_resource({
 					resource	=>	$resource,
-					target		=>	$an->data->{sys}{peer_node},
-					password	=>	$an->data->{sys}{anvil_password},
+					target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+					port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+					password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "peer_resource->{this_role}", value1 => $peer_resource->{this_role}, 
@@ -1506,8 +1512,9 @@ sub start_drbd
 				sleep 5;
 				$local_resource = $an->Check->drbd_resource({
 					resource	=>	$resource,
-					target		=>	$an->data->{sys}{local_node},
-					password	=>	$an->data->{sys}{anvil_password},
+					target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+					port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+					password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "local_resource->{this_role}", value1 => $local_resource->{this_role}, 
@@ -1552,7 +1559,15 @@ sub start_drbd
 					name1 => "anvil-safe-start::drbd::boost_speed", value1 => $an->data->{'anvil-safe-start'}{drbd}{boost_speed}, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
-			if ($an->data->{'anvil-safe-start'}{drbd}{max_wait_time} !~ /^\d+$/)
+			if ($an->data->{'anvil-safe-start'}{drbd}{max_wait_time} eq "wait")
+			{
+				# Wait forever (or wait for at least one year).
+				$an->data->{'anvil-safe-start'}{drbd}{max_wait_time} = 31536000;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "anvil-safe-start::drbd::max_wait_time", value1 => $an->data->{'anvil-safe-start'}{drbd}{max_wait_time}, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			elsif ($an->data->{'anvil-safe-start'}{drbd}{max_wait_time} !~ /^\d+$/)
 			{
 				$an->data->{'anvil-safe-start'}{drbd}{max_wait_time} = $an->data->{sys}{resync_max_wait_time};
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
@@ -1739,10 +1754,15 @@ sub wait_if_node2
 	
 	if ($an->data->{sys}{i_am_node2})
 	{
+		my $peer_key = $an->data->{sys}{peer_key};
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_key", value1 => $peer_key,
+		}, file => $THIS_FILE, line => __LINE__});
 		$an->Remote->wait_on_peer({
-			program  => $an->data->{sys}{program_name}, 
-			target   => $an->data->{sys}{peer_node}, 
-			password => $an->data->{sys}{anvil_password}, 
+			program		=>	$an->data->{sys}{program_name}, 
+			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 		});
 	}
 	
@@ -1759,6 +1779,13 @@ sub start_daemons
 		name2 => "syncronous", value2 => $syncronous,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	my $node_key = $an->data->{sys}{local_key};
+	my $peer_key = $an->data->{sys}{peer_key};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Check to see if the daemon is running locally and remotely. States are:
 	# 0 = Stopped
 	# 1 = Running
@@ -1766,9 +1793,9 @@ sub start_daemons
 	my $local_state  = $an->Check->daemon({daemon => $daemon});
 	my $remote_state = $an->Check->daemon({
 		daemon		=>	$daemon,
-		target		=>	$an->data->{sys}{peer_node}, 
-		password	=>	$an->data->{sys}{anvil_password},
-		port		=>	"",
+		target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+		port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "local_state",  value1 => $local_state, 
@@ -1787,15 +1814,15 @@ sub start_daemons
 		if ($remote_state eq "2")
 		{
 			$an->Storage->cleanup_gfs2({
-				target		=>	$an->data->{sys}{peer_node}, 
-				password	=>	$an->data->{sys}{anvil_password},
-				port		=>	"",
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			});
 			$remote_state = $an->Check->daemon({
 				daemon		=>	$daemon,
-				target		=>	$an->data->{sys}{peer_node}, 
-				password	=>	$an->data->{sys}{anvil_password},
-				port		=>	"",
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			});
 		}
 	}
@@ -1817,15 +1844,14 @@ sub start_daemons
 		{
 			# We need to synchronize the start on both nodes.
 			my $command = $shell_call;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "command",        value1 => $command,
-				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "command", value1 => $command,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($output) = $an->Remote->synchronous_command_run({
 				command => $command, 
 				delay   => 10,
 			});
-			foreach my $node ("local", $an->data->{sys}{peer_node})
+			foreach my $node ($an->data->{sys}{anvil}{$node_key}{name}, $an->data->{sys}{anvil}{$peer_key}{name})
 			{
 				foreach my $line (split/\n/, $output->{$node})
 				{
@@ -1840,15 +1866,13 @@ sub start_daemons
 			### Start them sequentially.
 			# First on the peer, then locally.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-				name1 => "shell_call",     value1 => $shell_call,
-				name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+				name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+				name2 => "shell_call",                      value2 => $shell_call,
 			}, file => $THIS_FILE, line => __LINE__});
 			my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-				target		=>	$an->data->{sys}{peer_node},
-				port		=>	"", 
-				password	=>	$an->data->{sys}{anvil_password},
-				ssh_fh		=>	"",
-				'close'		=>	0,
+				target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 				shell_call	=>	$shell_call,
 			});
 			foreach my $line (@{$return})
@@ -1898,15 +1922,13 @@ sub start_daemons
 	{
 		# Start it remotely, no need to sync.
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call",     value1 => $shell_call,
-			name2 => "sys::peer_node", value2 => $an->data->{sys}{peer_node},
+			name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+			name2 => "shell_call",                      value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$an->data->{sys}{peer_node},
-			port		=>	"", 
-			password	=>	$an->data->{sys}{anvil_password},
-			ssh_fh		=>	"",
-			'close'		=>	0,
+			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			shell_call	=>	$shell_call,
 		});
 		foreach my $line (@{$return})
@@ -1954,9 +1976,9 @@ sub start_daemons
 	$local_state  = $an->Check->daemon({daemon => $daemon});
 	$remote_state = $an->Check->daemon({
 		daemon		=>	$daemon,
-		target		=>	$an->data->{sys}{peer_node}, 
-		password	=>	$an->data->{sys}{anvil_password},
-		port		=>	"",
+		target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+		port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
 	$shell_call = $an->data->{path}{initd}."/$daemon start";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2056,6 +2078,13 @@ sub wait_for_access
 	my ($an) = @_;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "wait_for_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
+	my $node_key = $an->data->{sys}{local_key};
+	my $peer_key = $an->data->{sys}{peer_key};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node_key", value1 => $node_key,
+		name2 => "peer_key", value2 => $peer_key,
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	# Get the node_key for my peer.
 	my ($peer_bcn, $peer_sn, $peer_ifn) = $an->Get->peer_network_details();
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2100,20 +2129,15 @@ sub wait_for_access
 	my $access = 0;
 	until ($access)
 	{
-		my $target     = $an->data->{sys}{peer_node};
-		my $password   = $an->data->{sys}{anvil_password};
-		my $port       = "";
 		my $shell_call = $an->data->{path}{echo}." 1";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "sys::anvil::${peer_key}::use_ip", value1 => $an->data->{sys}{anvil}{$peer_key}{use_ip},
+			name2 => "shell_call",                      value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
-			target		=>	$target,
-			port		=>	$port, 
-			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
+			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
+			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
+			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			shell_call	=>	$shell_call,
 		});
 		foreach my $line (@{$return})
@@ -2142,14 +2166,14 @@ sub wait_for_access
 			if ($error)
 			{
 				$an->Log->entry({log_level => 1, message_key => "asst_log_0010", message_variables => {
-					peer	=>	$target,
+					peer	=>	$an->data->{sys}{anvil}{$peer_key}{name},
 					error	=>	$error, 
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
 			{
 				$an->Log->entry({log_level => 1, message_key => "asst_log_0011", message_variables => {
-					peer	=>	$target,
+					peer	=>	$an->data->{sys}{anvil}{$peer_key}{name},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			# Sleep a bit.
@@ -2205,6 +2229,46 @@ sub find_myself
 			name1 => "sys::i_am_node2", value1 => $an->data->{sys}{i_am_node2}, 
 		}, file => $THIS_FILE, line => __LINE__});
 	}
+	
+	# I can't scan the Anvil! so instead I will need to setup some things manually.
+	my $node_name = $an->data->{sys}{local_node};
+	my $node_key  = $an->data->{sys}{node_name}{$node_name}{node_key};
+	my $peer_key  = $an->data->{sys}{node_name}{$node_name}{peer_node_key};
+	my $peer_name = $an->data->{sys}{anvil}{$node_key}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		name1 => "node_name", value1 => $node_name, 
+		name2 => "node_key",  value2 => $node_key, 
+		name3 => "peer_key",  value3 => $peer_key, 
+		name4 => "peer_name", value4 => $peer_name, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# Now setup my access info.
+	$an->data->{sys}{local_key}                  = $node_key;
+	$an->data->{sys}{peer_key}                   = $peer_key;
+	$an->data->{sys}{anvil}{$node_key}{name}     = $an->data->{sys}{local_node};
+	$an->data->{sys}{anvil}{$node_key}{use_ip}   = "local";
+	$an->data->{sys}{anvil}{$node_key}{use_port} = 22; 
+	$an->data->{sys}{anvil}{$node_key}{online}   = 1;
+	$an->data->{sys}{anvil}{$node_key}{password} = "";
+	$an->data->{sys}{anvil}{$peer_key}{name}     = $an->data->{sys}{peer_node};
+	$an->data->{sys}{anvil}{$peer_key}{use_ip}   = $an->data->{sys}{anvil}{$peer_key}{bcn_ip};
+	$an->data->{sys}{anvil}{$peer_key}{use_port} = 22; 
+	$an->data->{sys}{anvil}{$peer_key}{online}   = 1;
+	$an->data->{sys}{anvil}{$peer_key}{password} = $an->data->{sys}{anvil}{$peer_key}{password};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0008", message_variables => {
+		name1 => "sys::anvil::${node_key}::name",     value1 => $an->data->{sys}{anvil}{$node_key}{name}, 
+		name2 => "sys::anvil::${node_key}::use_ip",   value2 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
+		name3 => "sys::anvil::${node_key}::use_port", value3 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
+		name4 => "sys::anvil::${node_key}::online",   value4 => $an->data->{sys}{anvil}{$node_key}{online}, 
+		name5 => "sys::anvil::${peer_key}::name",     value5 => $an->data->{sys}{anvil}{$peer_key}{name}, 
+		name6 => "sys::anvil::${peer_key}::use_ip",   value6 => $an->data->{sys}{anvil}{$peer_key}{use_ip}, 
+		name7 => "sys::anvil::${peer_key}::use_port", value7 => $an->data->{sys}{anvil}{$peer_key}{use_port}, 
+		name8 => "sys::anvil::${peer_key}::online",   value8 => $an->data->{sys}{anvil}{$peer_key}{online}, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "sys::anvil::${node_key}::password", value1 => $an->data->{sys}{anvil}{$node_key}{password}, 
+		name2 => "sys::anvil::${peer_key}::password", value2 => $an->data->{sys}{anvil}{$peer_key}{password}, 
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Figure out what my peer's BCN, SN and IFN names are
 	$an->data->{peer}{short_name} =  $an->data->{sys}{peer_node};

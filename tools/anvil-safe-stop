@@ -13,6 +13,9 @@
 #
 # TODO:
 # - Make this work without DB access
+# - Check if the node has anvil-kick-apc-ups enabled and stop it unless overridden by a switch.
+# - Add a '--script' option that prints parsable output about server migrations/shutdowns and so on so that
+#   Striker's "Cold Stop" output can be cleaner.
 #
 
 use strict;
@@ -821,7 +824,7 @@ sub process_request
 	# Are we shutting down or shedding load?
 	if ($an->data->{switches}{'shed-load'})
 	{
-		$an->data->{sys}{stop_reason} = "load_shed";
+		$an->data->{sys}{stop_reason} = "shed-load";
 		shed_load($an);
 	}
 	elsif ($an->data->{switches}{'local'})

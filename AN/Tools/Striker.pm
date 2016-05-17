@@ -239,7 +239,7 @@ sub load_anvil
 	$an->data->{sys}{anvil}{smtp}{security}       = $an->data->{anvils}{$anvil_uuid}{smtp}{security};
 	$an->data->{sys}{anvil}{smtp}{authentication} = $an->data->{anvils}{$anvil_uuid}{smtp}{authentication};
 	$an->data->{sys}{anvil}{smtp}{helo_domain}    = $an->data->{anvils}{$anvil_uuid}{smtp}{helo_domain};
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0012", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0012", message_variables => {
 		name1  => "sys::anvil::uuid",                 value1  => $an->data->{sys}{anvil}{uuid}, 
 		name2  => "sys::anvil::name",                 value2  => $an->data->{sys}{anvil}{name}, 
 		name3  => "sys::anvil::description",          value3  => $an->data->{sys}{anvil}{description}, 
@@ -283,7 +283,7 @@ sub load_anvil
 		$an->data->{sys}{anvil}{$node_key}{online}         =  $an->data->{anvils}{$anvil_uuid}{$node_key}{online};
 		$an->data->{sys}{anvil}{$node_key}{power}          =  $an->data->{anvils}{$anvil_uuid}{$node_key}{power};
 		$an->data->{sys}{anvil}{$node_key}{host_uuid}      =  $an->data->{anvils}{$anvil_uuid}{$node_key}{host_uuid};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0018", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0018", message_variables => {
 			name1  => "sys::anvil::${node_key}::uuid",           value1  => $an->data->{sys}{anvil}{$node_key}{uuid}, 
 			name2  => "sys::anvil::${node_key}::name",           value2  => $an->data->{sys}{anvil}{$node_key}{name}, 
 			name3  => "sys::anvil::${node_key}::short_name",     value3  => $an->data->{sys}{anvil}{$node_key}{short_name}, 
@@ -2930,7 +2930,8 @@ sub _cold_stop_anvil
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "_cold_stop_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $cancel_ups = $parameter->{cancel_ups} ? $parameter->{cancel_ups} : 1;
+	# Canceling the UPS, unless specified, will depend on whether it is enabled locally or not.
+	my $cancel_ups = $parameter->{cancel_ups} ? $parameter->{cancel_ups} : $an->data->{sys}{install_manifest}{'use_anvil-kick-apc-ups'};
 	my $anvil_uuid = $an->data->{cgi}{anvil_uuid};
 	my $anvil_name = $an->data->{sys}{anvil}{name};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -2981,7 +2982,6 @@ sub _cold_stop_anvil
 		my $say_title = $an->String->get({key => "title_0181", variables => { anvil => $anvil_name }});
 		print $an->Web->template({file => "server.html", template => "cold-stop-header", replace => { title => $say_title }});
 		
-		### TODO: Use the boot order in reverse for stopping.
 		# Find a node to use to stop the servers.
 		my ($target, $port, $password, $node_name) = $an->Cman->find_node_in_cluster();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
@@ -3064,9 +3064,9 @@ sub _cold_stop_anvil
 			my $target   = $an->data->{sys}{anvil}{node1}{use_ip};
 			my $port     = $an->data->{sys}{anvil}{node1}{use_port};
 			my $password = $an->data->{sys}{anvil}{node1}{password};
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-				name4 => "target",    value4 => $target,
-				name5 => "port",      value5 => $port,
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "target", value1 => $target,
+				name2 => "port",   value2 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 				name1 => "password", value1 => $password,
@@ -3100,7 +3100,7 @@ fi;
 					name1 => "line", value1 => $line,
 				}, file => $THIS_FILE, line => __LINE__});
 				
-				if ($line =~ /poweroff: (.*?)/)
+				if ($line =~ /poweroff: (.*)$/)
 				{
 					# This is the first node to die. Mark it as offline.
 					my $node_name = $1;
@@ -3111,6 +3111,18 @@ fi;
 						name2 => "node_key",  value2 => $node_key,
 						name3 => "node_uuid", value3 => $node_uuid,
 					}, file => $THIS_FILE, line => __LINE__});
+					
+					# Error out if we failed to get the node name.
+					if (not $node_name)
+					{
+						$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0142", code => 142, file => "$THIS_FILE", line => __LINE__});
+						return("");
+					}
+					if (not $node_uuid)
+					{
+						$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0157", message_variables => { node_name => $node_name }, code => 157, file => "$THIS_FILE", line => __LINE__});
+						return("");
+					}
 					
 					$an->data->{sys}{anvil}{$node_key}{online} = 0;
 					
@@ -7691,43 +7703,6 @@ sub _manage_server
 			name3 => "server::${server}::details::bridge::${current_bridge}::type",   value3 => $an->data->{server}{$server}{details}{bridge}{$current_bridge}{type},
 		}, file => $THIS_FILE, line => __LINE__});
 	}
-	
-	### Data server_dataed from ->server_data().
-# 		$server_data->{network}{mac_address}{$mac_address}{bridge};
-# 		$server_data->{network}{mac_address}{$mac_address}{model};
-# 		$server_data->{network}{mac_address}{$mac_address}{vnet};
-# 		$server_data->{graphics}{port};
-# 		$server_data->{graphics}{type};
-# 		$server_data->{graphics}{address};
-# 		$server_data->{uuid};
-# 		$server_data->{name};
-# 		$server_data->{stop_reason};
-# 		$server_data->{start_after};
-# 		$server_data->{start_delay};
-# 		$server_data->{note};
-# 		$server_data->{host};
-# 		$server_data->{'state'};
-# 		$server_data->{definition};
-# 		$server_data->{migration_type};
-# 		$server_data->{pre_migration_script};
-# 		$server_data->{pre_migration_arguments};
-# 		$server_data->{post_migration_script};
-# 		$server_data->{post_migration_arguments};
-# 		$server_data->{modified_date};
-# 		$server_data->{definition};
-# 		$server_data->{boot_devices};	# Array
-# 		$server_data->{current_ram};
-# 		$server_data->{maximum_ram};
-# 		$server_data->{cpu}{total};
-# 		$server_data->{cpu}{cores};
-# 		$server_data->{cpu}{sockets};
-# 		$server_data->{cpu}{threads};
-# 		$server_data->{storage}{$device_type}{target_device}{$target_device}{backing_device};
-# 		$server_data->{storage}{$device_type}{target_device}{$target_device}{cache_policy};
-# 		$server_data->{storage}{$device_type}{target_device}{$target_device}{target_bus};
-# 		$server_data->{on_poweroff};
-# 		$server_data->{on_reboot};
-# 		$server_data->{on_crash};
 	
 	# Load the target info now that we have a node name.
 	my $node_key = $an->data->{sys}{node_name}{$node_name}{node_key};
@@ -12942,6 +12917,12 @@ sub _stop_server
 	my $say_title = $an->String->get({key => "title_0051", variables => { server =>	$server }});
 	print $an->Web->template({file => "server.html", template => "stop-server-header", replace => { title => $say_title }});
 	
+	# Mark the server as 'stopping'
+	$an->ScanCore->update_server_stop_reason({
+		server_name => $server, 
+		stop_reason => "stopping",
+	});
+	
 	# Call 'clusvcadm -d ...'
 	my $shell_call = $an->data->{path}{clusvcadm}." -d $server";
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -12981,6 +12962,11 @@ sub _stop_server
 			message	=>	$message,
 		}});
 	}
+	$an->ScanCore->update_server_stop_reason({
+		server_name => $server, 
+		stop_reason => "user_stopped",
+	});
+	
 	print $an->Web->template({file => "server.html", template => "stop-server-footer"});
 	
 	return(0);
