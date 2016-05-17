@@ -2233,15 +2233,13 @@ sub pids
 	{
 		# Remote call.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "shell_call", value1 => $shell_call,
-			name2 => "target",     value2 => $target,
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		(my $error, my $ssh_fh, $return) = $an->Remote->remote_call({
 			target		=>	$target,
 			port		=>	$port, 
 			password	=>	$password,
-			ssh_fh		=>	"",
-			'close'		=>	0,
 			shell_call	=>	$shell_call,
 		});
 	}
@@ -2292,7 +2290,7 @@ sub pids
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "command",      value1 => $command,
 				name2 => "program_name", value2 => $program_name, 
-			}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+			}, file => $THIS_FILE, line => __LINE__});
 			if ($command =~ /$program_name/)
 			{
 				# If we're calling locally and we see our own PID, skip it.
@@ -2300,7 +2298,7 @@ sub pids
 					name1 => "pid",    value1 => $pid,
 					name2 => "my_pid", value2 => $my_pid, 
 					name3 => "target", value3 => $target, 
-				}, file => $THIS_FILE, line => __LINE__, log_to => $an->data->{path}{log_file}});
+				}, file => $THIS_FILE, line => __LINE__});
 				if (($pid eq $my_pid) && (not $target))
 				{
 					# This is us! :D
@@ -2311,7 +2309,7 @@ sub pids
 				}
 				else
 				{
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+					$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 						name1 => "pid",          value1 => $pid,
 						name2 => "target",       value2 => $target, 
 						name3 => "command",      value3 => $command,

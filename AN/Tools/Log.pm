@@ -133,11 +133,25 @@ sub entry
 		
 		if ($title)
 		{
-			$string = "$now_date $now_time - $file $line; [ $title ] - $message";
+			if ($an->data->{sys}{'log'}{log_pid})
+			{
+				$string = "$now_date $now_time - ".$$." - $file $line; [ $title ] - $message";
+			}
+			else
+			{
+				$string = "$now_date $now_time - $file $line; [ $title ] - $message";
+			}
 		}
 		else
 		{
-			$string = "$now_date $now_time - $file $line; $message";
+			if ($an->data->{sys}{logging}{log_pid})
+			{
+				$string = "$now_date $now_time - ".$$." - $file $line; $message";
+			}
+			else
+			{
+				$string = "$now_date $now_time - $file $line; $message";
+			}
 		}
 	}
 

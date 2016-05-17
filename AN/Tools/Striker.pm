@@ -714,26 +714,38 @@ sub scan_node
 			}
 			else
 			{
-				# Try the remote IP/Port
-				my $remote_access = $an->Check->access({
-						target   => $an->data->{sys}{anvil}{$node_key}{remote_ip},
-						port     => $an->data->{sys}{anvil}{$node_key}{remote_port},
-						password => $an->data->{sys}{anvil}{$node_key}{password},
-					});
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-					name1 => "remote_access", value1 => $remote_access, 
-				}, file => $THIS_FILE, line => __LINE__});
-				if ($remote_access)
+				# Try the remote IP/Port, if set.
+				if ($an->data->{sys}{anvil}{$node_key}{remote_ip})
 				{
-					# Woot
-					$an->data->{sys}{anvil}{$node_key}{use_ip}   = $an->data->{sys}{anvil}{$node_key}{remote_ip};
-					$an->data->{sys}{anvil}{$node_key}{use_port} = $an->data->{sys}{anvil}{$node_key}{remote_port}; 
-					$an->data->{sys}{anvil}{$node_key}{online}   = 1;
-					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-						name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
-						name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
-						name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
+					my $remote_access = $an->Check->access({
+							target   => $an->data->{sys}{anvil}{$node_key}{remote_ip},
+							port     => $an->data->{sys}{anvil}{$node_key}{remote_port},
+							password => $an->data->{sys}{anvil}{$node_key}{password},
+						});
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "remote_access", value1 => $remote_access, 
 					}, file => $THIS_FILE, line => __LINE__});
+					if ($remote_access)
+					{
+						# Woot
+						$an->data->{sys}{anvil}{$node_key}{use_ip}   = $an->data->{sys}{anvil}{$node_key}{remote_ip};
+						$an->data->{sys}{anvil}{$node_key}{use_port} = $an->data->{sys}{anvil}{$node_key}{remote_port}; 
+						$an->data->{sys}{anvil}{$node_key}{online}   = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+							name1 => "sys::anvil::${node_key}::use_ip",   value1 => $an->data->{sys}{anvil}{$node_key}{use_ip}, 
+							name2 => "sys::anvil::${node_key}::use_port", value2 => $an->data->{sys}{anvil}{$node_key}{use_port}, 
+							name3 => "sys::anvil::${node_key}::online",   value3 => $an->data->{sys}{anvil}{$node_key}{online}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
+					else
+					{
+						# No luck.
+						$an->data->{sys}{anvil}{$node_key}{online} = 0;
+						$an->data->{sys}{anvil}{$node_key}{power}  = $an->ScanCore->target_power({target => $node_uuid});
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "sys::anvil::${node_key}::power", value1 => $an->data->{sys}{anvil}{$node_key}{power}, 
+						}, file => $THIS_FILE, line => __LINE__});
+					}
 				}
 				else
 				{
@@ -842,7 +854,7 @@ sub scan_node
 	# Gather details on the node.
 	$an->Log->entry({log_level => 3, message_key => "log_0018", message_variables => { node => $node_name }, file => $THIS_FILE, line => __LINE__});
 	
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "sys::anvil::${node_key}::online", value1 => $an->data->{sys}{anvil}{$node_key}{online},
 	}, file => $THIS_FILE, line => __LINE__});
 	if ($an->data->{sys}{anvil}{$node_key}{online})
@@ -852,8 +864,16 @@ sub scan_node
 		
 		push @{$an->data->{up_nodes}}, $node_name;
 		my $up_nodes_count = @{$an->data->{up_nodes}};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
-			name1 => "up_nodes_count", value1 => $up_nodes_count,
+		
+		# There has been trouble trying to access offline nodes, so this is additional logging to 
+		# help debug such cases.
+		my $node_key = $an->data->{sys}{node_name}{$node_name}{node_key};
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0005", message_variables => {
+			name1 => "sys::online_nodes",                 value1 => $an->data->{sys}{online_nodes},
+			name2 => "node::${node_name}::up",            value2 => $an->data->{node}{$node_name}{up},
+			name3 => "sys::anvil::${node_key}::use_ip",   value3 => $an->data->{sys}{anvil}{$node_key}{use_ip},
+			name4 => "sys::anvil::${node_key}::use_port", value4 => $an->data->{sys}{anvil}{$node_key}{use_port},
+			name5 => "up_nodes_count",                    value5 => $up_nodes_count,
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		$an->Striker->_gather_node_details({node => $node_uuid});
@@ -6188,9 +6208,11 @@ sub _fence_node
 	# Scan the Anvil!
 	$an->Striker->scan_anvil();
 	
+	### TODO: Fencing node 1 via node 2 on rapid reboot nodes hangs. So for now, directly fence it.
 	# Now, if I can reach the peer node, use it to fence the target. Otherwise, we'll try to fence it 
 	# using cached 'power_check' data, if available.
-	if ($an->data->{sys}{anvil}{$peer_key}{online})
+	#if ($an->data->{sys}{anvil}{$peer_key}{online})
+	if (0)
 	{
 		# Sweet, fence via the peer.
 		my $say_title   = $an->String->get({key => "title_0068", variables => { node_anvil_name => $node_name }});
@@ -6237,7 +6259,7 @@ sub _fence_node
 				$message = $line;
 				$status  = "";
 			}
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 				status	=>	$status,
 				message	=>	$message,
 			}});
@@ -6279,7 +6301,7 @@ sub _fence_node
 				# Success!
 				my $message = $an->String->get({key => "message_0473", variables => { node_name => $node_name }});
 				my $status  = $an->String->get({key => "state_0005"});
-				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 					status	=>	$status,
 					message	=>	$message,
 				}});
@@ -6289,7 +6311,7 @@ sub _fence_node
 				# She's dead, Jim.
 				my $message = $an->String->get({key => "message_0474", variables => { node_name => $node_name }});
 				my $status  = $an->String->get({key => "state_0129"});
-				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 					status	=>	$status,
 					message	=>	$message,
 				}});
@@ -6300,7 +6322,7 @@ sub _fence_node
 			# Something went wrong. We got it's state but it is on.
 			my $message = $an->String->get({key => "message_0475", variables => { node_name => $node_name }});
 			my $status  = $an->String->get({key => "state_0018"});
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 				status	=>	$status,
 				message	=>	$message,
 			}});
@@ -6309,7 +6331,7 @@ sub _fence_node
 		{
 			my $message = $an->String->get({key => "message_0476", variables => { node_name => $node_name }});
 			my $status  = $an->String->get({key => "state_0001"});
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 				status	=>	$status,
 				message	=>	$message,
 			}});
@@ -6486,7 +6508,7 @@ sub _force_off_server
 			$message = $line;
 			$status  = "";
 		}
-		print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+		print $an->Web->template({file => "server.html", template => "fence-node-message", replace => { 
 			status	=>	$status,
 			message	=>	$message,
 		}});

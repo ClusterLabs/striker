@@ -1279,15 +1279,18 @@ sub start_drbd
 		
 		# First, is the resource up yet?
 		my $local_resource = $an->Check->drbd_resource({resource => $resource});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "local_resource", value1 => $local_resource, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
 		my $peer_resource  = $an->Check->drbd_resource({
 			resource	=>	$resource,
 			target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip}, 
 			port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port},
 			password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 		});
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "local_resource", value1 => $local_resource, 
-			name2 => "peer_resource",  value2 => $peer_resource, 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "peer_resource", value1 => $peer_resource, 
 		}, file => $THIS_FILE, line => __LINE__});
 		
 		# I will call this if the resource needs to come up.
@@ -1786,20 +1789,25 @@ sub start_daemons
 		name2 => "peer_key", value2 => $peer_key,
 	}, file => $THIS_FILE, line => __LINE__});
 	
+	### TODO: It is hanging here 
+	
 	# Check to see if the daemon is running locally and remotely. States are:
 	# 0 = Stopped
 	# 1 = Running
 	# 2 = Daemin not found
 	my $local_state  = $an->Check->daemon({daemon => $daemon});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "local_state", value1 => $local_state, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
 	my $remote_state = $an->Check->daemon({
 		daemon		=>	$daemon,
 		target		=>	$an->data->{sys}{anvil}{$peer_key}{use_ip},
 		port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
 		password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 	});
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-		name1 => "local_state",  value1 => $local_state, 
-		name2 => "remote_state", value2 => $remote_state, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "remote_state", value1 => $remote_state, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If the daemon is 'gfs2' and the state is '2', there is a stale lock file. Delete it and check 
@@ -1824,6 +1832,26 @@ sub start_daemons
 				port		=>	$an->data->{sys}{anvil}{$peer_key}{use_port}, 
 				password	=>	$an->data->{sys}{anvil}{$peer_key}{password},
 			});
+		}
+	}
+	
+	# If the daemon is clvmd and the return code is 255, clvmd hung, so we'll call 'start' as this might
+	# be because clvmd is running on one node but not the other while cman is running on both.
+	if ($daemon eq "clvmd")
+	{
+		if ($local_state eq "124")
+		{
+			$local_state = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "local_state", value1 => $local_state, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		if ($remote_state eq "124")
+		{
+			$remote_state = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "remote_state", value1 => $remote_state, 
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	

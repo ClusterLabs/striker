@@ -1326,7 +1326,7 @@ sub insert_or_update_nodes_cache
 	my $node_cache_name      = $parameter->{node_cache_name}      ? $parameter->{node_cache_name}      : "";
 	my $node_cache_data      = $parameter->{node_cache_data}      ? $parameter->{node_cache_data}      : "NULL";
 	my $node_cache_note      = $parameter->{node_cache_note}      ? $parameter->{node_cache_note}      : "NULL";
-	$an->Log->entry({log_level => 3, message_key => "an_variables_0006", message_variables => {
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
 		name1 => "node_cache_uuid",      value1 => $node_cache_uuid, 
 		name2 => "node_cache_host_uuid", value2 => $node_cache_host_uuid, 
 		name3 => "node_cache_node_uuid", value3 => $node_cache_node_uuid, 
@@ -4243,9 +4243,7 @@ sub target_power
 	if ($power_check)
 	{
 		# Convert the '-a X' to an IP address, if needed.
-		my $target =  $power_check;
-		   $target =~ s/.*?-a\s//;
-		   $target =~ s/\s+//;
+		my $target = ($power_check =~ /-a\s(.*?)\s/)[0];
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "target", value1 => $target,
 		}, file => $THIS_FILE, line => __LINE__});
@@ -4269,7 +4267,10 @@ sub target_power
 			}
 		}
 		
-		my $shell_call = $power_check." -o $task";
+		$power_check =~ s/#!action!#/$task/;
+		$power_check =~ s/^.*fence_/fence_/;
+		
+		my $shell_call = $power_check;
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 			name1 => "shell_call", value1 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});

@@ -533,6 +533,9 @@ sub _initialize_an
 				use_scancore		=>	1,
 			},
 			language		=>	"en_CA",
+			'log'			=>	{
+				log_pid			=>	0,
+			},
 			log_language		=>	"en_CA",
 			log_level		=>	2,
 			lvm_conf		=>	"",
