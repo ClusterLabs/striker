@@ -412,37 +412,41 @@ sub mark_node_as_clean_on
 	my $an        = $self->parent;
 	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "mark_node_as_clean_on" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	my $node_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
+	### TODO: Fix this mess...
+	### NOTE: I made this confusing by calling this 'node_uuid' when it's really the 'host_uuid'. So 
+	###       we'll check the UUID against both nodes and hosts for now.
+	my $host_uuid = $parameter->{node_uuid} ? $parameter->{node_uuid} : "";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-		name1 => "node_uuid", value1 => $node_uuid,
+		name1 => "host_uuid", value1 => $host_uuid,
 	}, file => $THIS_FILE, line => __LINE__});
-	if (not $node_uuid)
+	if (not $host_uuid)
 	{
 		# Nothing passed in or set in CGI
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0117", code => 117, file => "$THIS_FILE", line => __LINE__});
 		return(1);
 	}
-	elsif (not $an->Validate->is_uuid({uuid => $node_uuid}))
+	elsif (not $an->Validate->is_uuid({uuid => $host_uuid}))
 	{
 		# Value read, but it isn't a UUID.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0118", message_variables => { uuid => $node_uuid }, code => 118, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0118", message_variables => { uuid => $host_uuid }, code => 118, file => "$THIS_FILE", line => __LINE__});
 		return(1);
 	}
 	
+	my $node_data = $an->ScanCore->get_nodes();
 	my $host_data = $an->ScanCore->get_hosts();
 	my $node_name = "";
 	foreach my $hash_ref (@{$host_data})
 	{
-		my $host_uuid = $hash_ref->{host_uuid};
-		my $host_name = $hash_ref->{host_name};
+		my $this_host_uuid = $hash_ref->{host_uuid};
+		my $this_host_name = $hash_ref->{host_name};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-			name1 => "host_uuid", value1 => $host_uuid, 
-			name2 => "host_name", value2 => $host_name, 
+			name1 => "this_host_uuid", value1 => $this_host_uuid, 
+			name2 => "this_host_name", value2 => $this_host_name, 
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($host_uuid eq $node_uuid)
+		if ($this_host_uuid eq $host_uuid)
 		{
 			# We're good.
-			$node_name = $host_name;
+			$node_name = $this_host_name;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "node_name", value1 => $node_name, 
 			}, file => $THIS_FILE, line => __LINE__});
@@ -454,8 +458,35 @@ sub mark_node_as_clean_on
 	}, file => $THIS_FILE, line => __LINE__});
 	if (not $node_name)
 	{
+		# See if this is a node_uuid instead of a host_uuid.
+		foreach my $hash_ref (@{$node_data})
+		{
+			my $this_node_name      = $hash_ref->{host_name};
+			my $this_node_uuid      = $hash_ref->{node_uuid};
+			my $this_node_host_uuid = $hash_ref->{node_host_uuid}; 
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "this_node_name",      value1 => $this_node_name, 
+				name2 => "this_node_uuid",      value2 => $this_node_uuid, 
+				name3 => "this_node_host_uuid", value3 => $this_node_host_uuid, 
+			}, file => $THIS_FILE, line => __LINE__});
+			if ($this_node_uuid eq $host_uuid)
+			{
+				# Found it. Switch the active node UUID out.
+				$node_name = $this_node_name;
+				$host_uuid = $this_node_host_uuid;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+					name1 => "node_name", value1 => $node_name, 
+					name2 => "host_uuid", value2 => $host_uuid, 
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+		}
+	}
+	
+	# If I still don't have a node name, well, crap.
+	if (not $node_name)
+	{
 		# Valid UUID, but it doesn't match a known Anvil!.
-		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0119", message_variables => { uuid => $node_uuid }, code => 119, file => "$THIS_FILE", line => __LINE__});
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0119", message_variables => { uuid => $host_uuid }, code => 119, file => "$THIS_FILE", line => __LINE__});
 		return(1);
 	}
 	
@@ -466,7 +497,7 @@ SELECT
 FROM 
     hosts 
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query, 
@@ -487,12 +518,12 @@ SET
 	# Update the health to 'ok' if it was 'shutdown' before.
 	if ($old_health eq "shutdown")
 	{
-		$query .= "    host_health         = 'ok', ";
+		$query .= "    host_health         = 'ok', 
+";
 	}
-	$query .= "
-    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
+	$query .= "    modified_date       = ".$an->data->{sys}{use_db_fh}->quote($an->data->{sys}{db_timestamp})."
 WHERE 
-    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($node_uuid)."
+    host_uuid = ".$an->data->{sys}{use_db_fh}->quote($host_uuid)."
 ;";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "query", value1 => $query
@@ -560,13 +591,14 @@ sub scan_anvil
 				message	=>	"#!string!message_0029!#",
 			}});
 		}
-		else
-		{
-			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
-				anvil	=>	$an->data->{sys}{anvil}{name},
-				message	=>	"#!string!message_0028!#",
-			}});
-		}
+		### NOTE: I think we can remove this safely now.
+# 		else
+# 		{
+# 			print $an->Web->template({file => "main-page.html", template => "no-access-message", replace => { 
+# 				anvil	=>	$an->data->{sys}{anvil}{name},
+# 				message	=>	"#!string!message_0028!#",
+# 			}});
+# 		}
 	}
 
 	return(0);
@@ -788,12 +820,16 @@ sub scan_node
 	else
 	{
 		# Failed to connect, set some values.
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "sys::anvil::${node_key}::power", value1 => $an->data->{sys}{anvil}{$node_key}{power}, 
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{sys}{anvil}{$node_key}{power} eq "off")
 		{
 			$an->data->{sys}{online_nodes}                 = 1;
 			$an->data->{node}{$node_name}{enable_poweron}  = 1;
 			$an->data->{node}{$node_name}{enable_poweroff} = 0;
 			$an->data->{node}{$node_name}{enable_fence}    = 0;
+			$an->data->{node}{$node_name}{info}{note}      = "";
 		}
 		elsif ($an->data->{sys}{anvil}{$node_key}{power} eq "on")
 		{
@@ -882,17 +918,23 @@ sub scan_node
 	{
 		# Mark it as offline.
 		$an->data->{node}{$node_name}{connected}      = 0;
-		$an->data->{node}{$node_name}{info}{'state'}  = "<span class=\"highlight_unavailable\">#!string!row_0003!#</span>";
-		$an->data->{node}{$node_name}{info}{note}     = "";
+		$an->data->{node}{$node_name}{info}{'state'}  = "<span class=\"highlight_unavailable\">#!string!state_0001!#</span>";
 		$an->data->{node}{$node_name}{up}             = 0;
 		$an->data->{node}{$node_name}{enable_poweron} = 0;
+		
+		# If the server is known off, enable the power on button
+		if ($an->data->{sys}{anvil}{$node_key}{power} eq "off")
+		{
+			$an->data->{node}{$node_name}{enable_poweron} = 1;
+			$an->data->{node}{$node_name}{info}{'state'}  = "<span class=\"highlight_detail\">#!string!state_0004!#</span>";
+		}
 		
 		# If I have confirmed the node is powered off, don't display this.
 		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 			name1 => "sys::anvil::${node_key}::power", value1 => $an->data->{sys}{anvil}{$node_key}{power},
 			name2 => "cgi::task",                      value2 => $an->data->{cgi}{task},
 		}, file => $THIS_FILE, line => __LINE__});
-		if (($an->data->{sys}{anvil}{$node_key}{power} eq "off") && (not $an->data->{cgi}{task}))
+		if (($an->data->{sys}{anvil}{$node_key}{power} eq "off") && (not $an->data->{cgi}{task}) && ($an->data->{node}{$node_name}{info}{note}))
 		{
 			print $an->Web->template({file => "main-page.html", template => "node-state-table", replace => { 
 				'state'	=>	$an->data->{node}{$node_name}{info}{'state'},
@@ -4492,8 +4534,21 @@ sub _display_details
 		}
 		else
 		{
-			# Was able to confirm the nodes are off.
-			$no_access_panel = $an->Web->template({file => "server.html", template => "display-details-nodes-unreachable", replace => { message => "#!string!message_0268!#" }});
+			# Generic "I can't reach the nodes, wtf?" message
+			my $message = $an->String->get({key => "message_0269"});
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+				name1 => "message",                  value1 => $message,
+				name2 => "sys::anvil::node1::power", value2 => $an->data->{sys}{anvil}{node1}{power},
+				name3 => "sys::anvil::node2::power", value3 => $an->data->{sys}{anvil}{node2}{power},
+			}, file => $THIS_FILE, line => __LINE__});
+			if (($an->data->{sys}{anvil}{node1}{power} eq "off") && ($an->data->{sys}{anvil}{node2}{power} eq "off"))
+			{
+				$message = $an->String->get({key => "message_0268"});
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "message", value1 => $message,
+				}, file => $THIS_FILE, line => __LINE__});
+			}
+			$no_access_panel = $an->Web->template({file => "server.html", template => "display-details-nodes-unreachable", replace => { message => $message }});
 			
 			# This generates a panel below 'Available Resources' *if* the user has enabled 
 			# 'tools::anvil-kick-apc-ups::enabled'
@@ -5016,7 +5071,8 @@ sub _display_node_controls
 	
 	foreach my $node_name ($an->data->{sys}{anvil}{node1}{name}, $an->data->{sys}{anvil}{node2}{name})
 	{
-		$an->data->{node}{$node_name}{enable_withdraw} = 0 if not defined $an->data->{node}{$node_name}{enable_withdraw};
+		my $node_key                                      = $an->data->{sys}{node_name}{$node_name}{node_key};
+		   $an->data->{node}{$node_name}{enable_withdraw} = 0 if not defined $an->data->{node}{$node_name}{enable_withdraw};
 		
 		# Join button.
 		my $say_join_disabled_button = $an->Web->template({file => "common.html", template => "disabled-button", replace => { button_text => "#!string!button_0031!#" }});
@@ -5140,18 +5196,18 @@ sub _display_node_controls
 		}
 		
 		# Make the node names click-able to show the hardware states.
-		$say_node_name[$i] = $an->data->{node}{$node_name}{info}{host_name};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
-			name1 => "i",                                   value1 => $i,
-			name2 => "node::${node_name}::info::host_name", value2 => $an->data->{node}{$node_name}{info}{host_name},
-			name3 => "say_node_name",                       value3 => $say_node_name[$i],
+		$say_node_name[$i] = $node_name;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "i",             value1 => $i,
+			name2 => "node_name",     value2 => $node_name,
+			name3 => "say_node_name", value3 => $say_node_name[$i],
 		}, file => $THIS_FILE, line => __LINE__});
-		if ($an->data->{node}{$node_name}{connected})
+		if ($an->data->{sys}{anvil}{$node_key}{online})
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "enabled-button-new-tab", replace => { 
 					button_class	=>	"fixed_width_button",
 					button_link	=>	"?anvil_uuid=$anvil_uuid&task=display_health&node_name=$node_name",
-					button_text	=>	$an->data->{node}{$node_name}{info}{host_name},
+					button_text	=>	$node_name,
 					id		=>	"display_health_$node_name",
 				}});
 			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
@@ -5163,7 +5219,7 @@ sub _display_node_controls
 		{
 			$say_node_name[$i] = $an->Web->template({file => "common.html", template => "disabled-button-with-class", replace => { 
 					button_class	=>	"highlight_offline_fixed_width_button",
-					button_text	=>	$an->data->{node}{$node_name}{info}{host_name},
+					button_text	=>	$node_name,
 				}});
 		}
 		$rowspan = 0;
@@ -5922,7 +5978,7 @@ sub _dual_boot
 			{
 				# Success!
 				my $message = $an->String->get({key => "message_0479", variables => { node_name => $node_name }});
-				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				print $an->Web->template({file => "server.html", template => "dual-boot-shell-output", replace => { 
 					status	=>	"#!string!state_0005!#",
 					message	=>	$message,
 				}});
@@ -5933,7 +5989,7 @@ sub _dual_boot
 			{
 				# Failed to turn on
 				my $message = $an->String->get({key => "message_0480", variables => { node_name => $node_name }});
-				print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+				print $an->Web->template({file => "server.html", template => "dual-boot-shell-output", replace => { 
 					status	=>	"#!string!state_0001!#",
 					message	=>	$message,
 				}});
@@ -5943,7 +5999,7 @@ sub _dual_boot
 		{
 			# It's already on
 			my $message = $an->String->get({key => "message_0482", variables => { node_name => $node_name }});
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			print $an->Web->template({file => "server.html", template => "dual-boot-shell-output", replace => { 
 				status	=>	"#!string!state_0050!#",
 				message	=>	$message,
 			}});
@@ -5952,7 +6008,7 @@ sub _dual_boot
 		{
 			# Failed to access the node.
 			my $message = $an->String->get({key => "message_0483", variables => { node_name => $node_name }});
-			print $an->Web->template({file => "server.html", template => "start-server-shell-output", replace => { 
+			print $an->Web->template({file => "server.html", template => "dual-boot-shell-output", replace => { 
 				status	=>	"#!string!state_0050!#",
 				message	=>	$message,
 			}});
@@ -12883,6 +12939,11 @@ sub _start_server
 		print $an->Web->template({file => "server.html", template => "start-server-output-footer"});
 	}
 	print $an->Web->template({file => "server.html", template => "start-server-footer"});
+	
+	$an->ScanCore->update_server_stop_reason({
+		server_name => $server, 
+		stop_reason => "NULL",
+	});
 	
 	return(0);
 }

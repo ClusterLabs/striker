@@ -369,7 +369,6 @@ sub _initialize_an
 					"ipmi",		# NOT LSB compliant! 0 == running, 6 == stopped
 					"iptables",	# LSB compliant
 					"irqbalance",	# LSB compliant
-					#"ksmtuned",	# LSB compliant
 					"ktune",	# LSB compliant
 					"modclusterd",	# LSB compliant
 					"network",	# Does NOT appear to be LSB compliant; returns '0' for 'stopped'
@@ -387,6 +386,7 @@ sub _initialize_an
 					"gfs2",		# 
 					"ip6tables",	# 
 					"ipmidetectd",	# Not needed on the Anvil!
+					"libvirt-guests", 
 					"numad",	# LSB compliant
 					"rgmanager",	# 
 					"snmptrapd",	# 

@@ -502,8 +502,8 @@ FROM
 			# Nothing to do if the server has already been processed.
 			next if $processed;
 			
-			# If it was 'clean' off, leave it off.
-			if ($stop_reason =~ /clean/)
+			# If it was 'clean' or 'user_stopped' off, leave it off.
+			if (($stop_reason =~ /clean/) or ($stop_reason =~ /user_stopped/))
 			{
 				# Leave it off. Set the 'processed' to '1' instead of the time so that we can
 				# tell that the server wasn't booted.
