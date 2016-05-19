@@ -2265,6 +2265,7 @@ WHERE
 						anvil_node2_sn_link2_mac	=>	$an->data->{cgi}{anvil_node2_sn_link2_mac},
 						rhn_user			=>	$an->data->{cgi}{rhn_user},
 						rhn_password			=>	$an->data->{cgi}{rhn_password},
+						manifest_uuid			=>	$an->data->{cgi}{manifest_uuid},
 					}});
 				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "restart_html", value1 => $restart_html,

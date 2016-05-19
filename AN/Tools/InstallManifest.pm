@@ -1408,6 +1408,55 @@ sub check_fencing_on_node
 	}
 	$message =~ s/<br \/>\n$//;
 	
+	# If it failed, sleep 15 seconds and try again.
+	if (not $ok)
+	{
+		sleep 15;
+		$message = "";
+		$ok      = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /rc:(\d+)/)
+			{
+				# 0 == OK
+				# 5 == Failed
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					# Passed
+					$an->Log->entry({log_level => 2, message_key => "log_0118", file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# Failed
+					$an->Log->entry({log_level => 1, message_key => "log_0119", message_variables => {
+						return_code => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$ok = 0;
+				}
+			}
+			else
+			{
+				$message .= "$line<br />\n";
+			}
+		}
+		$message =~ s/<br \/>\n$//;
+	}
+	
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "ok", value1 => $ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -3759,9 +3808,6 @@ sub configure_network_on_node
 -A FORWARD -j REJECT --reject-with icmp-host-prohibited
 
 COMMIT";
-	### NOTE: Make sure this is the right number for the lines above or else the nodes will be rebooted 
-	###       every time.
-	my $iptables_lines = 47;
 	
 	### Generate the hosts file
 	# Break up hostsnames
@@ -3785,13 +3831,13 @@ COMMIT";
 	   $hosts .= "127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4\n";
 	   $hosts .= "::1         localhost localhost.localdomain localhost6 localhost6.localdomain6\n";
 	   $hosts .= "\n";
-	   $hosts .= "# Anvil! $an->data->{cgi}{anvil_sequence}, Node 01\n";
+	   $hosts .= "# Anvil! ".$an->data->{cgi}{anvil_sequence}.", Node 01\n";
 	   $hosts .= $an->data->{cgi}{anvil_node1_bcn_ip}."	$node1_short_name.bcn $node1_short_name ".$an->data->{sys}{anvil}{node1}{name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_node1_ipmi_ip}."	$node1_short_name.ipmi\n";
 	   $hosts .= $an->data->{cgi}{anvil_node1_sn_ip}."	$node1_short_name.sn\n";
 	   $hosts .= $an->data->{cgi}{anvil_node1_ifn_ip}."	$node1_short_name.ifn\n";
 	   $hosts .= "\n";
-	   $hosts .= "# Anvil! $an->data->{cgi}{anvil_sequence}, Node 02\n";
+	   $hosts .= "# Anvil! ".$an->data->{cgi}{anvil_sequence}.", Node 02\n";
 	   $hosts .= $an->data->{cgi}{anvil_node2_bcn_ip}."	$node2_short_name.bcn $node2_short_name ".$an->data->{sys}{anvil}{node2}{name}."\n";
 	   $hosts .= $an->data->{cgi}{anvil_node2_ipmi_ip}."	$node2_short_name.ipmi\n";
 	   $hosts .= $an->data->{cgi}{anvil_node2_sn_ip}."	$node2_short_name.sn\n";
@@ -4159,7 +4205,7 @@ COMMIT";
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$shell_call = "hostname $an->data->{cgi}{$name_key}";
+	$shell_call = $an->data->{path}{hostname}." ".$an->data->{cgi}{$name_key};
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -4202,7 +4248,7 @@ COMMIT";
 		if ($line =~ /^lines:(\d+)$/)
 		{
 			my $lines = $1;
-			if ($lines < $iptables_lines)
+			if ($lines < 15)
 			{
 				# Reboot needed
 				$an->Log->entry({log_level => 1, message_key => "log_0180", message_variables => {
@@ -6598,7 +6644,7 @@ sub create_lvm_vgs
 	# PV for pool 1
 	if ($create_vg0)
 	{
-		my $shell_call = $an->data->{path}{vgcreate}." ".$an->data->{sys}{vg_pool1_name}/" /dev/drbd0; ".$an->data->{path}{echo}." rc:\$?";
+		my $shell_call = $an->data->{path}{vgcreate}." ".$an->data->{sys}{vg_pool1_name}." /dev/drbd0; ".$an->data->{path}{echo}." rc:\$?";
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -10159,7 +10205,7 @@ if [ -e '/root/.ssh/id_rsa.pub' ];
 then 
     ".$an->data->{path}{cat}." /root/.ssh/id_rsa.pub; 
 else 
-    ".$an->data->{path}{'ssh-keygen'}." -t rsa -N \"\" -b ".$an->data->{cgi}{anvil_ssh_keysize}/" -f ~/.ssh/id_rsa;
+    ".$an->data->{path}{'ssh-keygen'}." -t rsa -N \"\" -b ".$an->data->{cgi}{anvil_ssh_keysize}." -f ~/.ssh/id_rsa;
     if [ -e '/root/.ssh/id_rsa.pub' ];
     then 
         ".$an->data->{path}{cat}." /root/.ssh/id_rsa.pub; 
@@ -12606,8 +12652,10 @@ sub reboot_nodes
 	}
 	elsif ($node1_rc == 5)
 	{
+		# Manual reboot needed, exit.
 		$node1_class   = "highlight_warning_bold";
 		$node1_message = "#!string!state_0097!#",
+		$ok            = 0;
 	}
 	# Node 2
 	if ($node2_rc == 255)
@@ -12646,8 +12694,10 @@ sub reboot_nodes
 	}
 	elsif ($node1_rc == 5)
 	{
+		# Manual reboot needed, exit.
 		$node2_class   = "highlight_warning_bold";
 		$node2_message = "#!string!state_0097!#",
+		$ok            = 0;
 	}
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0247!#",
@@ -12741,7 +12791,7 @@ fi";
 		if ((not $filter_injected) && ($line =~ /filter = \[/))
 		{
 			#$an->data->{node}{$node}{lvm_conf} .= "$line\n";
-			$an->data->{node}{$node}{lvm_conf} .= "    $an->data->{node}{$node}{lvm_filter}\n";
+			$an->data->{node}{$node}{lvm_conf} .= "    ".$an->data->{node}{$node}{lvm_filter}."\n";
 			$filter_injected               =  1;
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "Filter injected", value1 => $an->data->{node}{$node}{lvm_filter},
