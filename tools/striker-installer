@@ -567,6 +567,13 @@ my $conf = {
 			mode			=>	"6755",
 			recursive		=>	0,
 		},
+		'z_call_striker-manage-install-target' =>	{
+			path			=>	"/sbin/striker/call_striker-manage-install-target",
+			owner			=>	"root",
+			group			=>	"root",
+			mode			=>	"6755",
+			recursive		=>	0,
+		},
 		'z_call_striker-merge-dashboards' =>	{
 			path			=>	"/sbin/striker/call_striker-merge-dashboards",
 			owner			=>	"root",

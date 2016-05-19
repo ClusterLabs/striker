@@ -4045,7 +4045,7 @@ Striker Version: ".$an->data->{sys}{version}."
 		<repository urls=\"".$an->data->{cgi}{anvil_repositories}."\" />
 		<media_library size=\"".$an->data->{cgi}{anvil_media_library_size}."\" units=\"".$an->data->{cgi}{anvil_media_library_unit}."\" />
 		<storage_pool_1 size=\"".$an->data->{cgi}{anvil_storage_pool1_size}."\" units=\"".$an->data->{cgi}{anvil_storage_pool1_unit}."\" />
-		<anvil prefix=\"".$an->data->{cgi}{anvil_prefix}."\" sequence=\"".$an->data->{cgi}{anvil_sequence}."\" domain=\"".$an->data->{cgi}{anvil_domain}."\" password=\"".$an->data->{cgi}{anvil_password}."\" striker_user=\"".$an->data->{cgi}{striker_user}."\" striker_databas=\"".$an->data->{cgi}{striker_database}."\" />
+		<anvil prefix=\"".$an->data->{cgi}{anvil_prefix}."\" sequence=\"".$an->data->{cgi}{anvil_sequence}."\" domain=\"".$an->data->{cgi}{anvil_domain}."\" password=\"".$an->data->{cgi}{anvil_password}."\" striker_user=\"".$an->data->{cgi}{striker_user}."\" striker_database=\"".$an->data->{cgi}{striker_database}."\" />
 		<ssh keysize=\"8191\" />
 		<cluster name=\"".$an->data->{cgi}{anvil_name}."\">
 			<!-- Set the order to 'kvm' if building on KVM-backed VMs -->

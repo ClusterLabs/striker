@@ -1913,7 +1913,8 @@ sub manifests_menu
 	my ($an) = @_;
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "manifests_menu" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
-	# This isn't using the one-page display yet.
+	# This isn't using the one-page display yet. Before we call this, we want to setup the refresh and 
+	# back links.
 	$an->Striker->_header({'caller' => "configure"});
 	
 	# Is the user asking to save changes?
@@ -2150,13 +2151,13 @@ WHERE
 	if ($an->data->{cgi}{generate})
 	{
 		# Sanity check the user's answers and, if OK, returns 0. Any problem detected returns 1.
-		my $check = $an->InstallManifest->sanity_check_manifest_answers();
+		my $errors = $an->InstallManifest->sanity_check_manifest_answers();
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
-			name1 => "check", value1 => $check,
+			name1 => "errors", value1 => $errors,
 		}, file => $THIS_FILE, line => __LINE__});
-		if (not $check)
+		if (not $errors)
 		{
-			# No errors, write out the manifest and create the download link.
+			# No errors, save the manifest and create the download link.
 			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "cgi::confirm", value1 => $an->data->{cgi}{confirm},
 			}, file => $THIS_FILE, line => __LINE__});
@@ -2180,6 +2181,11 @@ WHERE
 				my $message = $an->String->get({key => "explain_0124", variables => { uuid => $manifest_uuid }});
 				print $an->Web->template({file => "config.html", template => "manifest-created", replace => { message => $message }});
 			}
+		}
+		else
+		{
+			# There was a problem with the form. We'll not do anything more, errors will be 
+			# printed and shown to the user and the form will reload.
 		}
 	}
 	elsif ($an->data->{cgi}{run})
@@ -2231,7 +2237,7 @@ WHERE
 					name11 => "cgi::anvil_node2_ifn_link1_mac", value11 => $an->data->{cgi}{anvil_node2_ifn_link1_mac},
 					name12 => "cgi::anvil_node2_ifn_link2_mac", value12 => $an->data->{cgi}{anvil_node2_ifn_link2_mac},
 				}, file => $THIS_FILE, line => __LINE__});
-				my $restart_html = $an->Web->template({file => "config.html", template => "new-anvil-install-failed-footer", replace => { 
+				my $restart_html = $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-failed-footer", replace => { 
 						form_file			=>	"/cgi-bin/configure",
 						button_class			=>	"bold_button", 
 						button_name			=>	"confirm",
@@ -2285,7 +2291,7 @@ WHERE
 			name1 => "cgi::manifest_uuid", value1 => $an->data->{cgi}{manifest_uuid},
 		}, file => $THIS_FILE, line => __LINE__});
 		
-		if (not $an->data->{cgi}{manifest_uuid})
+		if ((not $an->data->{cgi}{manifest_uuid}) && (not $an->data->{cgi}{generate}))
 		{
 			# Blank out all anvil CGI variables that might have been set when we parsed the 
 			# existing manifests.
@@ -5597,25 +5603,29 @@ sub show_main_menu
 			url		=>	"",
 		}})."\n";
 	
+	### NOTE: Not implemented yet.
 	# Advanced Configuration
-	my $task_advanced_options_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
-			name	=>	"task_advanced_options",
-			id	=>	"task_advanced_options",
-			alt	=>	"#!string!button_0073!#",
-			value	=>	"#!string!button_0073!#",
-			url	=>	"?task=advanced_options",
-		}, no_comment => 1});
-	$menu_items .= $an->Web->template({file => "configure.html", template => "optionsure-menu-entry", replace => {
-			button		=>	$task_advanced_options_anchor,
-			description	=>	"#!string!explain_0172!#",
-			url		=>	"",
-		}})."\n";
+# 	my $task_advanced_options_anchor = $an->Web->template({file => "web.html", template => "link-button", replace => { 
+# 			name	=>	"task_advanced_options",
+# 			id	=>	"task_advanced_options",
+# 			alt	=>	"#!string!button_0073!#",
+# 			value	=>	"#!string!button_0073!#",
+# 			url	=>	"?task=advanced_options",
+# 		}, no_comment => 1});
+# 	$menu_items .= $an->Web->template({file => "configure.html", template => "configure-menu-entry", replace => {
+# 			button		=>	$task_advanced_options_anchor,
+# 			description	=>	"#!string!explain_0172!#",
+# 			url		=>	"",
+# 		}})."\n";
 	
 	# For the Enable/Disable install target, I need to know the current state.
 	# 0 == Stopped
 	# 1 == Running
 	# 2 == Unknown (if this is returned, the meny entry simply won't exist)
 	my $install_target_state = $an->Get->install_target_state();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "install_target_state", value1 => $install_target_state,
+	}, file => $THIS_FILE, line => __LINE__});
 	if ($install_target_state eq "0")
 	{
 		# Option to enable

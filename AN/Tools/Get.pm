@@ -1785,7 +1785,7 @@ sub manifest_data
 		$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0121", code => 121, file => "$THIS_FILE", line => __LINE__});
 		return("");
 	}
-	elsif (not $an->Validate->is_uuid($manifest_uuid))
+	elsif (not $an->Validate->is_uuid({uuid => $manifest_uuid}))
 	{
 		# Not a valid UUID.
 		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0122", message_variables => { uuid => $manifest_uuid }, code => 122, file => "$THIS_FILE", line => __LINE__});

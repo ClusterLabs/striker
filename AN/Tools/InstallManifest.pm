@@ -56,9 +56,11 @@ my $THIS_FILE = "InstallManifest.pm";
 # configure_storage_stage3
 # configure_striker_tools
 # confirm_install_manifest_run
+# connect_to_node
 # create_lvm_vgs
 # create_lvm_pvs
 # create_partition_on_node
+# create_shared_lv
 # do_drbd_attach_on_node
 # do_drbd_connect_on_node
 # do_drbd_primary_on_node
@@ -164,7 +166,7 @@ sub backup_files
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "backup_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -204,7 +206,7 @@ sub backup_files_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "backup_files_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "backup_files_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -429,7 +431,7 @@ sub calculate_storage_pool_sizes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "calculate_storage_pool_sizes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "calculate_storage_pool_sizes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# These will be set to the lower of the two nodes.
 	my $node1      = $an->data->{sys}{anvil}{node1}{name};
@@ -1000,7 +1002,7 @@ sub check_blkid_partition
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_blkid_partition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_blkid_partition" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $device   = $parameter->{device}   ? $parameter->{device}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -1059,7 +1061,7 @@ sub check_config_for_anvil
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_config_for_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_config_for_anvil" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $anvil_configured = 0;
 	my $anvil_data       = $an->ScanCore->get_anvils();
@@ -1093,7 +1095,7 @@ sub check_connection
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my ($node1_access) = $an->Check->access({
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
@@ -1151,7 +1153,7 @@ sub check_drbd_if_force_primary_is_needed
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_drbd_if_force_primary_is_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_drbd_if_force_primary_is_needed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -1277,7 +1279,7 @@ sub check_device_for_drbd_metadata
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_device_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_device_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $device   = $parameter->{device}   ? $parameter->{device}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -1346,7 +1348,7 @@ sub check_fencing_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_fencing_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_fencing_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -1418,7 +1420,7 @@ sub check_for_drbd_metadata
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_for_drbd_metadata" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $device   = $parameter->{device}   ? $parameter->{device}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -1592,7 +1594,7 @@ sub check_if_in_cluster
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_if_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_if_in_cluster" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $shell_call = "
 if [ -e '".$an->data->{path}{initd}."/cman' ];
@@ -1706,14 +1708,14 @@ sub check_local_repo
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_local_repo" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Call the gather system info tool to get the BCN and IFN IPs.
 	my $shell_call = $an->data->{path}{'call_gather-system-info'};
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "shell_call", value1 => $shell_call,
 	}, file => $THIS_FILE, line => __LINE__});
-	open (my $file_handle, "$shell_call 2>&1 |") or die "$THIS_FILE ".__LINE__."; Failed to call: [$shell_call], error was: $!\n";
+	open (my $file_handle, "$shell_call 2>&1 |") or $an->Alert->error({fatal => 1, title_key => "error_title_0020", message_key => "error_message_0022", message_variables => { shell_call => $shell_call, error => $! }, code => 30, file => "$THIS_FILE", line => __LINE__});
 	while(<$file_handle>)
 	{
 		chomp;
@@ -1805,7 +1807,7 @@ sub check_storage
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "check_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "check_storage" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -1918,7 +1920,7 @@ sub configure_clvmd
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_clvmd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_clvmd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This will read in the existing lvm.conf on both nodes and, if either has a custom filter, preserve
 	# it and use it on the peer. If this '1', then a custom filter was found on both nodes and the do not
@@ -2002,14 +2004,21 @@ sub configure_cman
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Generate a new cluster.conf, then check to see if one already exists.
 	$an->InstallManifest->generate_cluster_conf();
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "sys::cluster_conf", value1 => $an->data->{sys}{cluster_conf},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1", value1 => $node1,
+		name2 => "node2", value2 => $node2,
+	}, file => $THIS_FILE, line => __LINE__});
 	my ($node1_cluster_conf_version) = $an->InstallManifest->read_cluster_conf({
 			node     => $node1, 
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
@@ -2053,6 +2062,10 @@ sub configure_cman
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{node}{$node2}{cluster_conf} = $an->data->{node}{$node1}{cluster_conf};
 			$write_node2                            = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node2}::cluster_conf", value1 => $an->data->{node}{$node2}{cluster_conf},
+				name2 => "write_node2",                  value2 => $write_node2,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($node1_cluster_conf_version < $node2_cluster_conf_version)
 		{
@@ -2063,6 +2076,10 @@ sub configure_cman
 			}, file => $THIS_FILE, line => __LINE__});
 			$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
 			$write_node1                            = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+				name1 => "node::${node1}::cluster_conf", value1 => $an->data->{node}{$node1}{cluster_conf},
+				name2 => "write_node1",                  value2 => $write_node1,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	elsif ($node2_cluster_conf_version > 1)
@@ -2076,8 +2093,12 @@ sub configure_cman
 		}, file => $THIS_FILE, line => __LINE__});
 		$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
 		$write_node1                            = 1;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node::${node1}::cluster_conf", value1 => $an->data->{node}{$node1}{cluster_conf},
+			name2 => "write_node1",                  value2 => $write_node1,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
-	elsif ((not $an->data->{node}{$node1}{cluster_conf}) && (not $an->data->{node}{$node2}{cluster_conf}))
+	else
 	{
 		# Neither node has an existing cluster.conf, using the default generated one.
 		$an->Log->entry({log_level => 2, message_key => "log_0210", file => $THIS_FILE, line => __LINE__});
@@ -2085,35 +2106,12 @@ sub configure_cman
 		$an->data->{node}{$node2}{cluster_conf} = $an->data->{sys}{cluster_conf};
 		$write_node1                            = 1;
 		$write_node2                            = 1;
-	}
-	elsif ($an->data->{node}{$node1}{cluster_conf})
-	{
-		# Node 1 has a cluster.conf, node 2 doesn't.
-		$an->Log->entry({log_level => 2, message_key => "log_0211", message_variables => {
-			newer => "1", 
-			older => "2", 
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+			name1 => "node::${node1}::cluster_conf", value1 => $an->data->{node}{$node1}{cluster_conf},
+			name2 => "node::${node2}::cluster_conf", value2 => $an->data->{node}{$node2}{cluster_conf},
+			name3 => "write_node1",                  value3 => $write_node1,
+			name4 => "write_node2",                  value4 => $write_node2,
 		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{node}{$node2}{cluster_conf} = $an->data->{node}{$node1}{cluster_conf};
-		$write_node2                            = 1;
-	}
-	elsif ($an->data->{node}{$node2}{cluster_conf})
-	{
-		# Node 2 has a cluster.conf, node 1 doesn't.
-		$an->Log->entry({log_level => 2, message_key => "log_0211", message_variables => {
-			newer => "2", 
-			older => "1", 
-		}, file => $THIS_FILE, line => __LINE__});
-		$an->data->{node}{$node1}{cluster_conf} = $an->data->{node}{$node2}{cluster_conf};
-		$write_node1                            = 1;
-	}
-	else
-	{
-		# wat
-		$an->Log->entry({log_level => 2, message_key => "log_0212", message_variables => {
-			newer => "2", 
-			older => "1", 
-		}, file => $THIS_FILE, line => __LINE__});
-		$ok = 2;
 	}
 	
 	# Write them out now.
@@ -2121,65 +2119,64 @@ sub configure_cman
 	my $node1_return_message = "";
 	my $node2_rc             = "";
 	my $node2_return_message = "";
-	if ($ok eq "1")
+	if ($write_node1)
 	{
-		if ($write_node1)
-		{
-			($node1_rc, $node1_return_message) = $an->InstallManifest->write_cluster_conf({
-					node1    => $node1, 
-					target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
-					port     => $an->data->{sys}{anvil}{node1}{use_port}, 
-					password => $an->data->{sys}{anvil}{node1}{password},
-				});
-			
-		}
-		if ($write_node2)
-		{
-			($node2_rc, $node2_return_message) = $an->InstallManifest->write_cluster_conf({
-					node1    => $node2, 
-					target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
-					port     => $an->data->{sys}{anvil}{node2}{use_port}, 
-					password => $an->data->{sys}{anvil}{node2}{password},
-				});
-		}
-		# 0 = Written and validated
-		# 1 = ccs_config_validate failed
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node1", value1 => $node1,
+		}, file => $THIS_FILE, line => __LINE__});
+		($node1_rc, $node1_return_message) = $an->InstallManifest->write_cluster_conf({
+				node     => $node1, 
+				target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
+				port     => $an->data->{sys}{anvil}{node1}{use_port}, 
+				password => $an->data->{sys}{anvil}{node1}{password},
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node1_rc",             value1 => $node1_rc,
+			name2 => "node1_return_message", value2 => $node1_return_message,
+		}, file => $THIS_FILE, line => __LINE__});
 	}
+	if ($write_node2)
+	{
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "node2", value1 => $node2,
+		}, file => $THIS_FILE, line => __LINE__});
+		($node2_rc, $node2_return_message) = $an->InstallManifest->write_cluster_conf({
+				node     => $node2, 
+				target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
+				port     => $an->data->{sys}{anvil}{node2}{use_port}, 
+				password => $an->data->{sys}{anvil}{node2}{password},
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "node2_rc",             value1 => $node2_rc,
+			name2 => "node2_return_message", value2 => $node2_return_message,
+		}, file => $THIS_FILE, line => __LINE__});
+	}
+	# 0 = Written and validated
+	# 1 = ccs_config_validate failed
 	
 	my $node1_class   = "highlight_good_bold";
 	my $node1_message = "#!string!state_0028!#";
 	my $node2_class   = "highlight_good_bold";
 	my $node2_message = "#!string!state_0028!#";
-	if ($ok eq "2")
+	if ($node1_rc eq "1")
 	{
 		$node1_class   = "highlight_warning_bold";
-		$node1_message = "#!string!state_0098!#";
-		$node2_class   = "highlight_warning_bold";
-		$node2_message = "#!string!state_0098!#";
+		$node1_message = $an->String->get({key => "state_0076", variables => { message => $node1_return_message }});
 		$ok            = 0;
 	}
-	else
+	elsif ($write_node1)
 	{
-		if ($node1_rc eq "1")
-		{
-			$node1_class   = "highlight_warning_bold";
-			$node1_message = $an->String->get({key => "state_0076", variables => { message => $node1_return_message }});
-			$ok            = 0;
-		}
-		elsif ($write_node1)
-		{
-			$node1_message = "#!string!state_0029!#";
-		}
-		if ($node2_rc eq "1")
-		{
-			$node2_class   = "highlight_warning_bold";
-			$node2_message = $an->String->get({key => "state_0076", variables => { message => $node2_return_message }});
-			$ok            = 0;
-		}
-		elsif ($write_node2)
-		{
-			$node2_message = "#!string!state_0029!#";
-		}
+		$node1_message = "#!string!state_0029!#";
+	}
+	if ($node2_rc eq "1")
+	{
+		$node2_class   = "highlight_warning_bold";
+		$node2_message = $an->String->get({key => "state_0076", variables => { message => $node2_return_message }});
+		$ok            = 0;
+	}
+	elsif ($write_node2)
+	{
+		$node2_message = "#!string!state_0029!#";
 	}
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message", replace => { 
 		row		=>	"#!string!row_0221!#",
@@ -2206,7 +2203,7 @@ sub configure_daemons
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_daemons" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -2309,7 +2306,7 @@ sub configure_daemons_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_daemons_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_daemons_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -2622,7 +2619,7 @@ sub configure_gfs2
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -2756,7 +2753,7 @@ sub configure_ipmi
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok         = 1;
 	my $node1      = $an->data->{sys}{anvil}{node1}{name};
@@ -2915,7 +2912,7 @@ sub configure_ipmi_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ipmi_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ipmi_ip       = $parameter->{ipmi_ip}       ? $parameter->{ipmi_ip}       : "";
 	my $ipmi_netmask  = $parameter->{ipmi_netmask}  ? $parameter->{ipmi_netmask}  : "";
@@ -2952,7 +2949,8 @@ sub configure_ipmi_on_node
 	
 	# Is there an IPMI device?
 	my ($state) = $an->InstallManifest->get_daemon_state({
-			target   => $node, 
+			node     => $node, 
+			target   => $target, 
 			port     => $port, 
 			password => $password,
 			daemon   => "ipmi", 
@@ -3372,7 +3370,7 @@ sub configure_network
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# The 'ethtool' options can include variables, so we'll need to escape '$' if found.
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0003", message_variables => {
@@ -3462,7 +3460,7 @@ sub configure_network_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_network_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_network_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node_number = $parameter->{node_number} ? $parameter->{node_number} : "";
 	my $node        = $parameter->{node}        ? $parameter->{node}     : "";
@@ -3693,7 +3691,7 @@ sub configure_network_on_node
 	   $ifcfg_ifn_bridge1 .= "BOOTPROTO=\"static\"\n";
 	   $ifcfg_ifn_bridge1 .= "IPADDR=\"".$an->data->{cgi}{$ifn_ip_key}."\"\n";
 	   $ifcfg_ifn_bridge1 .= "NETMASK=\"".$an->data->{cgi}{anvil_ifn_subnet}."\"\n";
-	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"".$an->data->{cgi}{anvil_ifn_gateway}."\n";
+	   $ifcfg_ifn_bridge1 .= "GATEWAY=\"".$an->data->{cgi}{anvil_ifn_gateway}."\"\n";
 	   $ifcfg_ifn_bridge1 .= "DNS1=\"".$an->data->{cgi}{anvil_dns1}."\"\n" if $an->data->{cgi}{anvil_dns1};
 	   $ifcfg_ifn_bridge1 .= "DNS2=\"".$an->data->{cgi}{anvil_dns2}."\"\n" if $an->data->{cgi}{anvil_dns2};
 	   $ifcfg_ifn_bridge1 .= "DEFROUTE=\"yes\"";
@@ -3845,7 +3843,7 @@ COMMIT";
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Make this smarter so that it deletes everything ***EXCEPT*** ifcfg-lo
-	my $shell_call = $an->data->{path}{rm}." -f $an->data->{path}{nodes}{ifcfg_directory}/ifcfg-eth*";
+	my $shell_call = $an->data->{path}{rm}." -f ".$an->data->{path}{nodes}{ifcfg_directory}."/ifcfg-eth*";
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 		name1 => "target",     value1 => $target,
 		name2 => "shell_call", value2 => $shell_call,
@@ -4294,7 +4292,7 @@ sub configure_ntp
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ntp" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -4370,7 +4368,7 @@ sub configure_ntp_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ntp_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ntp_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -4450,7 +4448,7 @@ sub configure_scancore
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_scancore" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -4627,7 +4625,7 @@ sub configure_scancore_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_scancore_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_scancore_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -4859,7 +4857,7 @@ fi
 			my $striker_1_bcn_ip = $an->data->{cgi}{anvil_striker1_bcn_ip};
 			my $striker_1_db_id  = 0;
 			my $add_striker_1    = 0;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "used_db_host::$striker_1_bcn_ip", value1 => $an->data->{used_db_host}{$striker_1_bcn_ip},
 			}, file => $THIS_FILE, line => __LINE__});
 			if (not $an->data->{used_db_host}{$striker_1_bcn_ip})
@@ -4878,7 +4876,7 @@ fi
 						$add_striker_1                               = 1;
 						$an->data->{used_db_id}{$striker_1_db_id}    = $striker_1_bcn_ip;
 						$an->data->{used_db_host}{$striker_1_bcn_ip} = $striker_1_db_id; 
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "used_db_id::$striker_1_db_id",    value1 => $an->data->{used_db_id}{$striker_1_db_id},
 							name2 => "used_db_host::$striker_1_bcn_ip", value2 => $an->data->{used_db_host}{$striker_1_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
@@ -4910,13 +4908,13 @@ fi
 						$add_striker_2                               = 1;
 						$an->data->{used_db_id}{$striker_2_db_id}    = $striker_2_bcn_ip;
 						$an->data->{used_db_host}{$striker_2_bcn_ip} = $striker_2_db_id;
-						$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 							name1 => "used_db_id::$striker_2_db_id",    value1 => $an->data->{used_db_id}{$striker_2_db_id},
 							name2 => "used_db_host::$striker_2_bcn_ip", value2 => $an->data->{used_db_host}{$striker_2_bcn_ip},
 						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
-				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 					name1 => "striker_2_db_id", value1 => $striker_2_db_id,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -4995,14 +4993,19 @@ fi
 				node => $node, 
 			}, file => $THIS_FILE, line => __LINE__});
 			
-			$an->Storage->rsync({
-				source		=>	$temp_file,
-				target		=>	$node,
-				password	=>	$password,
-				destination	=>	"root\@$node:".$an->data->{path}{striker_config},
-				switches	=>	$an->data->{args}{rsync},
+			$return_code = $an->Storage->rsync({
+				node        => $node,
+				target      => $target,
+				port        => $port, 
+				password    => $password,
+				source      => $temp_file,
+				destination => "root\@$target:".$an->data->{path}{striker_config},
+				switches    => $an->data->{args}{rsync},
 			});
 			
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
 			if (not $return_code)
 			{
 				# Write out the striker.conf file now.
@@ -5034,6 +5037,9 @@ fi
 					if ($line =~ /config exists/)
 					{
 						$generated_ok = 1;
+						$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+							name1 => "generated_ok", value1 => $generated_ok,
+						}, file => $THIS_FILE, line => __LINE__});
 					}
 				}
 				if ($generated_ok)
@@ -5046,6 +5052,9 @@ fi
 				{
 					# Failed 
 					$return_code = 4;
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+						name1 => "return_code", value1 => $return_code,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 			}
 		}
@@ -5053,6 +5062,9 @@ fi
 		{
 			# Template striker.conf doesn't exist. Oops.
 			$return_code = 3;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "return_code", value1 => $return_code,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	else
@@ -5063,6 +5075,9 @@ fi
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "return_code", value1 => $return_code,
+	}, file => $THIS_FILE, line => __LINE__});
 	if (not $return_code)
 	{
 		# Add it to root's crontab.
@@ -5154,7 +5169,7 @@ sub configure_selinux
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_selinux" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# For now, this always returns "success".
 	my $ok    = 1;
@@ -5216,7 +5231,7 @@ sub configure_selinux_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_selinux_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_selinux_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -5284,7 +5299,7 @@ sub configure_ssh
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_ssh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_ssh" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Three steps; 
 	# 1. Get/generate RSA keys
@@ -5417,7 +5432,7 @@ sub configure_storage_stage1
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage1" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage1" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -5837,7 +5852,7 @@ sub configure_storage_stage2
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -6010,7 +6025,7 @@ sub configure_storage_stage3
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage3" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_storage_stage3" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -6246,7 +6261,7 @@ sub configure_striker_tools
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "configure_striker_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "configure_striker_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Configure Striker tools and Scancore.
 	my ($ok) = $an->InstallManifest->configure_scancore();
@@ -6261,7 +6276,7 @@ sub confirm_install_manifest_run
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "confirm_install_manifest_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "confirm_install_manifest_run" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Show the manifest form.
 	$an->data->{cgi}{anvil_node1_bcn_link1_mac} = "<span class=\"highlight_unavailable\">#!string!message_0352!#</span>" if not $an->data->{cgi}{anvil_node1_bcn_link1_mac};
@@ -6313,21 +6328,21 @@ sub confirm_install_manifest_run
 	my $say_repos = "<input type=\"hidden\" name=\"anvil_repositories\" id=\"anvil_repositories\" value=\"".$an->data->{cgi}{anvil_repositories}."\" />";
 	
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_node1_name", value1 => $an->data->{sys}{anvil}{node1}{name},
-		name2 => "cgi::anvil_node2_name", value2 => $an->data->{sys}{anvil}{node2}{name},
+		name1 => "cgi::anvil_node1_name", value1 => $an->data->{cgi}{anvil_node1_name},
+		name2 => "cgi::anvil_node2_name", value2 => $an->data->{cgi}{anvil_node2_name},
 	}, file => $THIS_FILE, line => __LINE__});
 	print $an->Web->template({file => "config.html", template => "confirm-anvil-manifest-run", replace => { 
 		form_file			=>	"/cgi-bin/configure",
 		manifest_uuid			=>	$an->data->{cgi}{manifest_uuid},
 		say_storage_pool_1		=>	$say_storage_pool_1,
 		say_storage_pool_2		=>	$say_storage_pool_2,
-		anvil_node1_current_ip		=>	$an->data->{sys}{anvil}{node1}{use_ip},
-		anvil_node1_current_password	=>	$an->data->{sys}{anvil}{node1}{password},
+		anvil_node1_current_ip		=>	$an->data->{cgi}{anvil_node1_bcn_ip},
+		anvil_node1_current_password	=>	$an->data->{cgi}{anvil_password},
 		anvil_node1_uuid		=>	$an->data->{cgi}{anvil_node1_uuid},
-		anvil_node2_current_ip		=>	$an->data->{sys}{anvil}{node2}{use_ip},
-		anvil_node2_current_password	=>	$an->data->{sys}{anvil}{node2}{password},
+		anvil_node2_current_ip		=>	$an->data->{cgi}{anvil_node2_bcn_ip},
+		anvil_node2_current_password	=>	$an->data->{cgi}{anvil_password},
 		anvil_node2_uuid		=>	$an->data->{cgi}{anvil_node2_uuid},
-		anvil_password			=>	$an->data->{sys}{anvil}{password},
+		anvil_password			=>	$an->data->{cgi}{anvil_password},
 		anvil_bcn_ethtool_opts		=>	$an->data->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$an->data->{cgi}{anvil_bcn_network},
 		anvil_bcn_subnet		=>	$an->data->{cgi}{anvil_bcn_subnet},
@@ -6342,7 +6357,7 @@ sub confirm_install_manifest_run
 		anvil_storage_pool1_size	=>	$an->data->{cgi}{anvil_storage_pool1_size},
 		anvil_storage_pool1_unit	=>	$an->data->{cgi}{anvil_storage_pool1_unit},
 		anvil_name			=>	$an->data->{cgi}{anvil_name},
-		anvil_node1_name		=>	$an->data->{sys}{anvil}{node1}{name},
+		anvil_node1_name		=>	$an->data->{cgi}{anvil_node1_name},
 		anvil_node1_bcn_ip		=>	$an->data->{cgi}{anvil_node1_bcn_ip},
 		anvil_node1_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link1_mac},
 		anvil_node1_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link2_mac},
@@ -6357,7 +6372,7 @@ sub confirm_install_manifest_run
 		anvil_node1_pdu2_outlet		=>	$an->data->{cgi}{anvil_node1_pdu2_outlet},
 		anvil_node1_pdu3_outlet		=>	$an->data->{cgi}{anvil_node1_pdu3_outlet},
 		anvil_node1_pdu4_outlet		=>	$an->data->{cgi}{anvil_node1_pdu4_outlet},
-		anvil_node2_name		=>	$an->data->{sys}{anvil}{node2}{name},
+		anvil_node2_name		=>	$an->data->{cgi}{anvil_node2_name},
 		anvil_node2_bcn_ip		=>	$an->data->{cgi}{anvil_node2_bcn_ip},
 		anvil_node2_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link1_mac},
 		anvil_node2_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link2_mac},
@@ -6398,13 +6413,83 @@ sub confirm_install_manifest_run
 	return(0);
 }
 
+# This function first tries to ping a node. If the ping is successful, it will try to log into the node..
+sub connect_to_node
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "connect_to_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",   value1 => $node, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	# 0 = Successfully logged in
+	# 1 = Could ping, but couldn't log in
+	# 2 = Couldn't ping.
+	my $rc = 2;
+	
+	# 0 == pinged, 1 == failed.
+	my $ping_rc = $an->Check->ping({ping => $target, count => 3});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ping_rc", value1 => $ping_rc, 
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($ping_rc eq "0")
+	{
+		# Pingable! Can we log in?
+		$an->Log->entry({log_level => 2, message_key => "log_0162", message_variables => {
+			node => "$node ($target)", 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		   $rc     = 1;
+		my ($access) = $an->Check->access({
+				target   => $target, 
+				port     => $port,
+				password => $password,
+			});
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "access", value1 => $access, 
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($access)
+		{
+			# We're in!
+			$rc = 0;
+			$an->Log->entry({log_level => 2, message_key => "log_0163", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+		else
+		{
+			# Pingable, but not accessible yet.
+			$an->Log->entry({log_level => 1, message_key => "log_0164", message_variables => {
+				node => $node, 
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "rc", value1 => $rc,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($rc);
+}
+
 # This creates the VGs if needed
 sub create_lvm_vgs
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_lvm_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -6625,7 +6710,7 @@ sub create_lvm_pvs
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_lvm_pvs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_lvm_pvs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -6819,7 +6904,7 @@ sub create_partition_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_partition_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $disk           = $parameter->{disk}           ? $parameter->{disk}           : "";
 	my $type           = $parameter->{type}           ? $parameter->{type}           : "";
@@ -7054,13 +7139,156 @@ sub create_partition_on_node
 	return($ok);
 }
 
+# The checks and, if needed, creates the LV for the GFS2 /shared partition
+sub create_shared_lv
+{
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "create_shared_lv" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	
+	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
+	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
+	my $port     = $parameter->{port}     ? $parameter->{port}     : "";
+	my $password = $parameter->{password} ? $parameter->{password} : "";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+		name1 => "node",   value1 => $node, 
+		name2 => "target", value2 => $target, 
+		name3 => "port",   value3 => $port, 
+	}, file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
+		name1 => "password", value1 => $password, 
+	}, file => $THIS_FILE, line => __LINE__});
+	
+	my $return_code = 0;
+	my $create_lv   = 1;
+	my $shell_call  = $an->data->{path}{lvs}." --noheadings --separator ,; ".$an->data->{path}{echo}." rc:\$?";
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "target",     value1 => $target,
+		name2 => "shell_call", value2 => $shell_call,
+	}, file => $THIS_FILE, line => __LINE__});
+	my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+		target		=>	$target,
+		port		=>	$port, 
+		password	=>	$password,
+		shell_call	=>	$shell_call,
+	});
+	foreach my $line (@{$return})
+	{
+		$line =~ s/^\s+//;
+		$line =~ s/\s+$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			name1 => "line", value1 => $line, 
+		}, file => $THIS_FILE, line => __LINE__});
+		
+		if ($line =~ /^rc:(\d+)/)
+		{
+			my $rc = $1;
+			if ($rc ne "0")
+			{
+				# pvs failed...
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "Unable to check LVs. The 'lvs' call exited with return code", value1 => $rc,
+				}, file => $THIS_FILE, line => __LINE__});
+				$create_lv   = 0;
+				$return_code = 2;
+			}
+		}
+		if ($line =~ /^shared,/)
+		{
+			# Found the LV, pull out the VG
+			$an->data->{sys}{vg_pool1_name} = ($line =~ /^shared,(.*?),/)[0];
+			$create_lv                      = 0;
+			$return_code                    = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "sys::vg_pool1_name", value1 => $an->data->{sys}{vg_pool1_name},
+			}, file => $THIS_FILE, line => __LINE__});
+		}
+	}
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "return_code", value1 => $return_code,
+		name2 => "create_lv",   value2 => $create_lv,
+	}, file => $THIS_FILE, line => __LINE__});
+	if (($return_code ne "2") && ($create_lv))
+	{
+		# Create the LV
+		my $lv_size    =  $an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_media_library_byte_size} });
+		   $lv_size    =~ s/ //;
+		my $shell_call = $an->data->{path}{lvcreate}." -L $lv_size -n shared ".$an->data->{sys}{vg_pool1_name}."; ".$an->data->{path}{echo}." rc:\$?";
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "target",     value1 => $target,
+			name2 => "shell_call", value2 => $shell_call,
+		}, file => $THIS_FILE, line => __LINE__});
+		my ($error, $ssh_fh, $return) = $an->Remote->remote_call({
+			target		=>	$target,
+			port		=>	$port, 
+			password	=>	$password,
+			shell_call	=>	$shell_call,
+		});
+		foreach my $line (@{$return})
+		{
+			$line =~ s/^\s+//;
+			$line =~ s/\s+$//;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "line", value1 => $line, 
+			}, file => $THIS_FILE, line => __LINE__});
+			
+			if ($line =~ /^rc:(\d+)/)
+			{
+				my $rc = $1;
+				if ($rc eq "0")
+				{
+					# lvcreate succeeded
+					$an->Log->entry({log_level => 2, message_key => "log_0062", file => $THIS_FILE, line => __LINE__});
+				}
+				else
+				{
+					# lvcreate failed
+					$an->Log->entry({log_level => 1, message_key => "log_0063", message_variables => {
+						return_code => $rc, 
+					}, file => $THIS_FILE, line => __LINE__});
+					$return_code = 2;
+				}
+			}
+		}
+	}
+	
+	# Report
+	my $ok = 1;
+	my $class   = "highlight_good_bold";
+	my $message = "#!string!state_0045!#";
+	if ($return_code == "1")
+	{
+		# Already existed
+		$message = "#!string!state_0020!#";
+	}
+	elsif ($return_code == "2")
+	{
+		# Failed to create the LV
+		$class   = "highlight_warning_bold";
+		$message = "#!string!state_0018!#";
+		$ok      = 0;
+	}
+	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-message-wide", replace => { 
+		row	=>	"#!string!row_0262!#",
+		class	=>	$class,
+		message	=>	$message,
+	}});
+	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "ok", value1 => $ok,
+	}, file => $THIS_FILE, line => __LINE__});
+	return($ok);
+}
+
 # This attaches the backing devices on each node, modprobe'ing drbd if needed.
 sub do_drbd_attach_on_node
 {
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_attach_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_drbd_attach_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -7304,7 +7532,7 @@ sub do_drbd_connect_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_connect_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_drbd_connect_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -7570,7 +7798,7 @@ sub do_drbd_primary_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_drbd_primary_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_drbd_primary_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $force_r0 = $parameter->{force_r0} ? $parameter->{force_r0} : "";
 	my $force_r1 = $parameter->{force_r1} ? $parameter->{force_r1} : "";
@@ -7732,7 +7960,7 @@ sub do_node_reboot
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "do_node_reboot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "do_node_reboot" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $new_bcn_ip = $parameter->{new_bcn_ip} ? $parameter->{new_bcn_ip} : "";
 	my $node       = $parameter->{node}       ? $parameter->{node}       : "";
@@ -7770,11 +7998,12 @@ sub do_node_reboot
 	}
 	else
 	{
+		### NOTE: We can't use 'anvil-safe-stop' here because a new node won't be in the database yet.
 		# Reboot... Close the SSH FH as well.
 		$an->Log->entry({log_level => 1, message_key => "log_0159", message_variables => {
 			node => $node, 
 		}, file => $THIS_FILE, line => __LINE__});
-		my $shell_call = $an->data->{path}{'anvil-safe-stop'}." --local";
+		my $shell_call = $an->data->{path}{reboot};
 		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "target",     value1 => $target,
 			name2 => "shell_call", value2 => $shell_call,
@@ -7784,6 +8013,7 @@ sub do_node_reboot
 			port		=>	$port, 
 			password	=>	$password,
 			shell_call	=>	$shell_call,
+			'close'		=>	1,
 		});
 		foreach my $line (@{$return})
 		{
@@ -7809,9 +8039,12 @@ sub do_node_reboot
 			my $ping_rc = $an->Check->ping({ping => $node, count => 3});
 			if ($ping_rc eq "1")
 			{
+				# Switch the target
 				$has_shutdown = 1;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$target       = $new_bcn_ip;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "has_shutdown", value1 => $has_shutdown,
+					name2 => "target",       value2 => $target,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			else
@@ -7893,7 +8126,12 @@ sub do_node_reboot
 				{
 					last;
 				}
-				($rc) = connect_to_node($an, $new_bcn_ip, $password);
+				($rc) = $an->InstallManifest->connect_to_node({
+						node     => $node,
+						target   => $target, 
+						port     => $port, 
+						password => $password,
+					});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 					name1 => "new_bcn_ip", value1 => $new_bcn_ip,
 					name2 => "rc",         value2 => $rc,
@@ -7906,15 +8144,16 @@ sub do_node_reboot
 				{
 					# Woot!
 					$wait = 0;
-					if ($node ne $new_bcn_ip)
-					{
-						# Copy the hash reference to the new IP.
-						$an->data->{node}{$new_bcn_ip} = $an->data->{node}{$node};
-						$an->Log->entry({log_level => 2, message_key => "log_0160", message_variables => {
-							node   => $node, 
-							bcn_ip => $new_bcn_ip, 
-						}, file => $THIS_FILE, line => __LINE__});
-					}
+					
+					# Update the 'use_ip'.
+					my $node_key                                  = $an->data->{sys}{node_name}{$node}{node_key};
+					   $an->data->{sys}{anvil}{$node_key}{use_ip} = $new_bcn_ip;
+					   $target                                    = $an->data->{sys}{anvil}{$node_key}{use_ip};
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+						name1 => "node_key",                        value1 => $node_key,
+						name2 => "sys::anvil::${node_key}::use_ip", value2 => $an->data->{sys}{anvil}{$node_key}{use_ip},
+						name3 => "target",                          value3 => $target,
+					}, file => $THIS_FILE, line => __LINE__});
 				}
 				sleep 1;
 			}
@@ -7931,22 +8170,28 @@ sub do_node_reboot
 				# Rescan it's (new) partition data.
 				my ($node_disk) = $an->InstallManifest->get_partition_data({
 						node     => $node, 
-						target   => $new_bcn_ip, 
+						target   => $target, 
 						port     => $port, 
 						password => $password,
 					});
 				$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
-					name1 => "node", value1 => $new_bcn_ip,
+					name1 => "node", value1 => $node,
 					name2 => "disk", value2 => $node_disk,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc == 1)
 			{
 				$return_code = 2;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 			elsif ($rc == 2)
 			{
 				$return_code = 3;
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "return_code", value1 => $return_code,
+				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
@@ -7963,7 +8208,7 @@ sub drbd_first_start
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "drbd_first_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "drbd_first_start" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $return_code = 255;
 	my $node1       = $an->data->{sys}{anvil}{node1}{name};
@@ -8360,7 +8605,7 @@ sub enable_tools
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "enable_tools" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -8629,7 +8874,7 @@ sub enable_tools_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "enable_tools_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -8877,7 +9122,7 @@ sub generate_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1_short_name = $an->data->{sys}{anvil}{node1}{short_name};
 	my $node1_full_name  = $an->data->{sys}{anvil}{node1}{name};
@@ -8902,8 +9147,8 @@ sub generate_cluster_conf
 	#       
 	# NOTE: RRP can't be used because SCTP is not compatible/reliable with DLM.
 	# 
-	$an->data->{sys}{cluster_conf} = "
-<?xml version=\"1.0\"?>
+	### NOTE: To future me; <?xml...> MUST start at the top of the file, don't move it down (again...)
+	$an->data->{sys}{cluster_conf} = "<?xml version=\"1.0\"?>
 <cluster name=\"".$an->data->{cgi}{anvil_name}."\" config_version=\"1\">
 	<cman expected_votes=\"1\" two_node=\"1\" transport=\"udpu\" />
 	<clusternodes>
@@ -9078,7 +9323,7 @@ sub generate_drbd_config_files
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_drbd_config_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_drbd_config_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -9387,8 +9632,10 @@ resource r1 {
 # This reads in node 1's lvm.conf, makes sure it's configured for clvmd and stores in.
 sub generate_lvm_conf
 {
-	my ($an) = @_;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "generate_lvm_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	my $self      = shift;
+	my $parameter = shift;
+	my $an        = $self->parent;
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "generate_lvm_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Read the /etc/lvm/lvm.conf file on both nodes and look for a custom filter line. The rest of the 
 	# config will be loaded into memory and, if one node is found to have a custom filter, it will be 
@@ -9496,7 +9743,7 @@ sub get_chkconfig_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_chkconfig_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_chkconfig_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -9574,7 +9821,7 @@ sub get_daemon_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -9683,7 +9930,7 @@ sub get_installed_package_list
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_installed_package_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_installed_package_list" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -9788,7 +10035,7 @@ sub get_node_os_version
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_os_version" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_node_os_version" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -9888,7 +10135,7 @@ sub get_node_rsa_public_key
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_node_rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_node_rsa_public_key" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -9965,7 +10212,7 @@ sub get_partition_data
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_partition_data" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -10200,7 +10447,7 @@ sub get_partition_data_from_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_partition_data_from_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $disk     = $parameter->{disk}     ? $parameter->{disk}     : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -10312,7 +10559,7 @@ sub get_storage_pool_partitions
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "get_storage_pool_partitions" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "get_storage_pool_partitions" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### TODO: Determine if I still need this function at all...
 	# First up, check for /etc/drbd.d/r{0,1}.res on both nodes.
@@ -10341,7 +10588,7 @@ sub get_storage_pool_partitions
 	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Next, decide what devices I will use if DRBD doesn't exist.
-	foreach my $node ($node1, $node1)
+	foreach my $node ($node1, $node2)
 	{
 		# If the disk to use is 'Xda', skip the first three partitions as they will be for the OS.
 		my $disk = $an->data->{node}{$node}{biggest_disk};
@@ -10499,7 +10746,7 @@ sub install_programs
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_programs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "install_programs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0129!#" }});
@@ -10577,7 +10824,7 @@ sub install_programs_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "install_programs_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "install_programs_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -10932,7 +11179,7 @@ sub map_network
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "map_network" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
 	my $node2 = $an->data->{sys}{anvil}{node2}{name};
@@ -10941,7 +11188,7 @@ sub map_network
 			target   => $an->data->{sys}{anvil}{node1}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node1}{use_port}, 
 			password => $an->data->{sys}{anvil}{node1}{password},
-			remap    => 1, 
+			remap    => 0, 
 			say_node => "#!string!device_0005!#",
 		});
 	my ($node2_rc) = $an->InstallManifest->map_network_on_node({
@@ -10949,7 +11196,7 @@ sub map_network
 			target   => $an->data->{sys}{anvil}{node2}{use_ip}, 
 			port     => $an->data->{sys}{anvil}{node2}{use_port}, 
 			password => $an->data->{sys}{anvil}{node2}{password},
-			remap    => 1, 
+			remap    => 0, 
 			say_node => "#!string!device_0006!#",
 		});
 	
@@ -10959,26 +11206,40 @@ sub map_network
 	# * The MACs seen on each node match MACs passed in from CGI (or 
 	# * Loaded from manifest
 	# * If the existing network appears complete already.
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1  => "conf::node::${node1}::set_nic::bcn_link1", value1  => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
+		name2  => "conf::node::${node1}::set_nic::bcn_link2", value2  => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
+		name3  => "conf::node::${node1}::set_nic::sn_link1",  value3  => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
+		name4  => "conf::node::${node1}::set_nic::sn_link2",  value4  => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
+		name5  => "conf::node::${node1}::set_nic::ifn_link1", value5  => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
+		name6  => "conf::node::${node1}::set_nic::ifn_link2", value6  => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
+		name7  => "conf::node::${node2}::set_nic::bcn_link1", value7  => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
+		name8  => "conf::node::${node2}::set_nic::bcn_link2", value8  => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
+		name9  => "conf::node::${node2}::set_nic::sn_link1",  value9  => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
+		name10 => "conf::node::${node2}::set_nic::sn_link2",  value10 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
+		name11 => "conf::node::${node2}::set_nic::ifn_link1", value11 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
+		name12 => "conf::node::${node2}::set_nic::ifn_link2", value12 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# If any are missing, a remap will be needed.
 	# Node 1
-	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1} = "";
-	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2} = "";
-	$an->data->{conf}{node}{$node1}{set_nic}{sn_link1}  = "";
-	$an->data->{conf}{node}{$node1}{set_nic}{sn_link2}  = "";
-	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1} = "";
-	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2} = "";
+	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1} = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1};
+	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2} = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2};
+	$an->data->{conf}{node}{$node1}{set_nic}{sn_link1}  = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{sn_link1};
+	$an->data->{conf}{node}{$node1}{set_nic}{sn_link2}  = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{sn_link2};
+	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1} = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1};
+	$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2} = "" if not defined $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2};
 	# Node 2
-	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1} = "";
-	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2} = "";
-	$an->data->{conf}{node}{$node2}{set_nic}{sn_link1}  = "";
-	$an->data->{conf}{node}{$node2}{set_nic}{sn_link2}  = "";
-	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1} = "";
-	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2} = "";
+	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1} = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1};
+	$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2} = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2};
+	$an->data->{conf}{node}{$node2}{set_nic}{sn_link1}  = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{sn_link1};
+	$an->data->{conf}{node}{$node2}{set_nic}{sn_link2}  = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{sn_link2};
+	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1} = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1};
+	$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2} = "" if not defined $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2};
 	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node1}{current_nic}})
 	{
 		my $mac = $an->data->{conf}{node}{$node1}{current_nic}{$nic};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "node",                           value1 => $node1,
 			name2 => "nic",                            value2 => $nic,
 			name3 => "mac",                            value3 => $mac,
@@ -10992,42 +11253,42 @@ sub map_network
 		if ($mac eq $an->data->{cgi}{anvil_node1_bcn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node1_bcn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{bcn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::bcn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node1_sn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{sn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::sn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node1_sn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{sn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::sn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node1_ifn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{ifn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::ifn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node1_ifn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node1}{set_nic}{ifn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node1}::set_nic::ifn_link2", value1 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -11045,7 +11306,7 @@ sub map_network
 	foreach my $nic (sort {$a cmp $b} keys %{$an->data->{conf}{node}{$node2}{current_nic}})
 	{
 		my $mac = $an->data->{conf}{node}{$node2}{current_nic}{$nic};
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0009", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0009", message_variables => {
 			name1 => "node",                           value1 => $node2,
 			name2 => "nic",                            value2 => $nic,
 			name3 => "mac",                            value3 => $mac,
@@ -11059,42 +11320,42 @@ sub map_network
 		if ($mac eq $an->data->{cgi}{anvil_node2_bcn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{bcn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node2_bcn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{bcn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::bcn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node2_sn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{sn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::sn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node2_sn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{sn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::sn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node2_ifn_link1_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{ifn_link1} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::ifn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($mac eq $an->data->{cgi}{anvil_node2_ifn_link2_mac})
 		{
 			$an->data->{conf}{node}{$node2}{set_nic}{ifn_link2} = $mac;
-			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 				name1 => "conf::node::${node2}::set_nic::ifn_link2", value1 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -11113,6 +11374,10 @@ sub map_network
 	# Now determine if a remap is needed. If ifn_bridge1 exists, assume it's configured and skip.
 	my $node1_remap_needed = 0;
 	my $node2_remap_needed = 0;
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_remap_needed", value1 => $node1_remap_needed,
+		name2 => "node2_remap_needed", value2 => $node2_remap_needed,
+	}, file => $THIS_FILE, line => __LINE__});
 	
 	# Check node1
 	if ((exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}) && (exists $an->data->{conf}{node}{$node1}{current_nic}{ifn_bridge1}))
@@ -11137,14 +11402,13 @@ sub map_network
 	}
 	else
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "node1",     value1 => $node1,
-			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
-			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
-			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
-			name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
-			name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
-			name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "conf::node::${node1}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
+			name2 => "conf::node::${node1}::set_nic::bcn_link2", value2 => $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2},
+			name3 => "conf::node::${node1}::set_nic::sn_link1",  value3 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link1},
+			name4 => "conf::node::${node1}::set_nic::sn_link2",  value4 => $an->data->{conf}{node}{$node1}{set_nic}{sn_link2},
+			name5 => "conf::node::${node1}::set_nic::ifn_link1", value5 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link1},
+			name6 => "conf::node::${node1}::set_nic::ifn_link2", value6 => $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1}) or 
 		    (not $an->data->{conf}{node}{$node1}{set_nic}{bcn_link2}) or
@@ -11154,6 +11418,9 @@ sub map_network
 		    (not $an->data->{conf}{node}{$node1}{set_nic}{ifn_link2}))
 		{
 			$node1_remap_needed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node1_remap_needed", value1 => $node1_remap_needed,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	# Check node 2
@@ -11171,22 +11438,21 @@ sub map_network
 			{
 				my $mac = $an->data->{conf}{node}{$node}{unknown_nic}{$nic};
 				$an->data->{conf}{node}{$node}{set_nic}{$nic} = $mac;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
-					name3 => "conf::node::${node}::set_nic::${nic}",  value3 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
+				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+					name1 => "conf::node::${node}::set_nic::${nic}", value1 => $an->data->{conf}{node}{$node}{set_nic}{$nic},
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
 	}
 	else
 	{
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0007", message_variables => {
-			name1 => "node2",     value1 => $node2,
-			name2 => "bcn_link1", value2 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
-			name3 => "bcn_link2", value3 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
-			name4 => "sn_link1",  value4 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
-			name5 => "sn_link2",  value5 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
-			name6 => "ifn_link1", value6 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
-			name7 => "ifn_link2", value7 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+			name1 => "conf::node::${node2}::set_nic::bcn_link1", value1 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1},
+			name2 => "conf::node::${node2}::set_nic::bcn_link2", value2 => $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2},
+			name3 => "conf::node::${node2}::set_nic::sn_link1",  value3 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link1},
+			name4 => "conf::node::${node2}::set_nic::sn_link2",  value4 => $an->data->{conf}{node}{$node2}{set_nic}{sn_link2},
+			name5 => "conf::node::${node2}::set_nic::ifn_link1", value5 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link1},
+			name6 => "conf::node::${node2}::set_nic::ifn_link2", value6 => $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2},
 		}, file => $THIS_FILE, line => __LINE__});
 		if ((not $an->data->{conf}{node}{$node2}{set_nic}{bcn_link1}) or 
 		    (not $an->data->{conf}{node}{$node2}{set_nic}{bcn_link2}) or
@@ -11196,6 +11462,9 @@ sub map_network
 		    (not $an->data->{conf}{node}{$node2}{set_nic}{ifn_link2}))
 		{
 			$node2_remap_needed = 1;
+			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				name1 => "node2_remap_needed", value1 => $node2_remap_needed,
+			}, file => $THIS_FILE, line => __LINE__});
 		}
 	}
 	
@@ -11236,6 +11505,10 @@ sub map_network
 		node2_message	=>	$node2_message,
 	}});
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+		name1 => "node1_remap_needed", value1 => $node1_remap_needed,
+		name2 => "node2_remap_needed", value2 => $node2_remap_needed,
+	}, file => $THIS_FILE, line => __LINE__});
 	return($node1_remap_needed, $node2_remap_needed);
 }
 
@@ -11245,7 +11518,7 @@ sub map_network_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "map_network_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "map_network_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $remap    = $parameter->{remap}    ? $parameter->{remap}    : "";
 	my $say_node = $parameter->{say_node} ? $parameter->{say_node} : "";
@@ -11365,12 +11638,17 @@ fi";
 		### Build the shell call
 		# Figure out the hash keys to use
 		my $i;
-		if ($node eq $an->data->{sys}{anvil}{node1}{use_ip})
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "node",                    value1 => $node,
+			name2 => "sys::anvil::node1::name", value2 => $an->data->{sys}{anvil}{node1}{name},
+			name3 => "sys::anvil::node2::name", value3 => $an->data->{sys}{anvil}{node2}{name},
+		}, file => $THIS_FILE, line => __LINE__});
+		if ($node eq $an->data->{sys}{anvil}{node1}{name})
 		{
 			# Node is 1
 			$i = 1;
 		}
-		elsif ($node eq $an->data->{sys}{anvil}{node2}{use_ip})
+		elsif ($node eq $an->data->{sys}{anvil}{node2}{name})
 		{
 			# Node is 2
 			$i = 2;
@@ -11379,6 +11657,8 @@ fi";
 		{
 			# wat?
 			$return_code = 7;
+			$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0159", code => 159, file => "$THIS_FILE", line => __LINE__});
+			return("");
 		}
 		
 		my $shell_call = $an->data->{path}{'anvil-map-network'}." --script --summary";
@@ -11406,9 +11686,10 @@ fi";
 		$ssh_fh->blocking(0);
 		
 		# Make the shell call
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-			name1 => "channel",    value1 => $channel,
-			name2 => "shell_call", value2 => $shell_call,
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0003", message_variables => {
+			name1 => "channel",              value1 => $channel,
+			name2 => "cgi::update_manifest", value2 => $an->data->{cgi}{update_manifest},
+			name3 => "shell_call",           value3 => $shell_call,
 		}, file => $THIS_FILE, line => __LINE__});
 		$channel->exec("$shell_call");
 		
@@ -11444,7 +11725,7 @@ fi";
 					my $mac                                              = $2;
 					   $an->data->{conf}{node}{$node}{current_nic}{$nic} = $mac;
 					$nics_seen++;
-					$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+					$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 						name1 => "nics_seen",                               value1 => $nics_seen,
 						name2 => "conf::node::${node}::current_nics::$nic", value2 => $an->data->{conf}{node}{$node}{current_nic}{$nic},
 					}, file => $THIS_FILE, line => __LINE__});
@@ -11534,7 +11815,7 @@ sub parse_script_line
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "parse_script_line" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "parse_script_line" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $source = $parameter->{source} ? $parameter->{source} : "";
 	my $node   = $parameter->{node}   ? $parameter->{node}   : "";
@@ -11586,7 +11867,11 @@ sub parse_script_line
 				$vars->{$variable} = $value;
 			}
 		}
-		$line = $an->String->get({key => $key, variables => $vars});
+		$line = "
+<!-- start AN::Tools::InstallManifest->parse_script_line() output -->
+".$an->String->get({key => $key, variables => $vars})."
+<!--end AN::Tools::InstallManifest->parse_script_line() output -->
+";
 	}
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "line", value1 => $line,
@@ -11601,7 +11886,7 @@ sub populate_authorized_keys_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_authorized_keys_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "populate_authorized_keys_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1_rsa = $parameter->{node1_rsa} ? $parameter->{node1_rsa} : "";
 	my $node2_rsa = $parameter->{node2_rsa} ? $parameter->{node2_rsa} : "";
@@ -11778,7 +12063,7 @@ sub populate_known_hosts_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "populate_known_hosts_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "populate_known_hosts_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -11931,7 +12216,7 @@ sub read_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -11945,6 +12230,12 @@ sub read_cluster_conf
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $node)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0160", code => 160, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
 	
 	# Later, this will use XML::Simple to parse the contents. For now, I only care if the file exists at 
 	# all.
@@ -11999,7 +12290,7 @@ sub read_drbd_config_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_config_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_drbd_config_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -12118,7 +12409,7 @@ sub read_drbd_resource_files
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_drbd_resource_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_drbd_resource_files" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $hostname = $parameter->{hostname} ? $parameter->{hostname} : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -12236,7 +12527,7 @@ sub reboot_nodes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "reboot_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "reboot_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If neither node needs a reboot, don't print the lengthy message.
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -12245,7 +12536,7 @@ sub reboot_nodes
 	    (($an->data->{node}{$node2}{reboot_needed}) && (not $an->data->{node}{$node2}{in_cluster})))
 	{
 		# This could take a while
-		my $message = $an->String->get({key => "explain_0141", variables => { url => "?config=true&do=new&run=".$an->data->{cgi}{run}."&task=create-install-manifest" }});
+		my $message = $an->String->get({key => "explain_0141", variables => { url => "?task=manifests&do=new&run=".$an->data->{cgi}{run} }});
 		print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => $message }});
 	}
 	
@@ -12259,6 +12550,9 @@ sub reboot_nodes
 			password   => $an->data->{sys}{anvil}{node1}{password},
 			new_bcn_ip => $an->data->{cgi}{anvil_node1_bcn_ip},
 		});
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "node1_rc", value1 => $node1_rc,
+	}, file => $THIS_FILE, line => __LINE__});
 	my $node2_rc = 255;
 	if ((not $node1_rc) or ($node1_rc eq "1") or ($node1_rc eq "5"))
 	{
@@ -12373,7 +12667,7 @@ sub read_lvm_conf_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "read_lvm_conf_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "read_lvm_conf_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -12508,7 +12802,7 @@ sub register_with_rhn
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "register_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	if (not $an->data->{sys}{install_manifest}{show}{rhn_checks})
 	{
@@ -12684,7 +12978,7 @@ sub register_node_with_rhn
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "register_node_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "register_node_with_rhn" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $name     = $parameter->{name}     ? $parameter->{name}     : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -12760,7 +13054,7 @@ sub remove_priority_from_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "remove_priority_from_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "remove_priority_from_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -12808,7 +13102,7 @@ sub restart_rgmanager_service
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "restart_rgmanager_service" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "restart_rgmanager_service" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $service  = $parameter->{service}  ? $parameter->{service}  : "";
 	my $do       = $parameter->{'do'}     ? $parameter->{'do'}     : "";
@@ -13328,7 +13622,7 @@ sub sanity_check_manifest_answers
 	}
 	
 	# The password can not be blank, that's all we check for though.
-	if (not $an->data->{sys}{anvil}{password})
+	if (not $an->data->{cgi}{anvil_password})
 	{
 		# Not allowed to be blank.
 		$an->data->{form}{anvil_password_star} = "#!string!symbol_0012!#";
@@ -14116,7 +14410,7 @@ sub sanity_check_manifest_answers
 	### Node specific values.
 	# Node 1
 	# Host name
-	if (not $an->data->{sys}{anvil}{node1}{name})
+	if (not $an->data->{cgi}{anvil_node1_name})
 	{
 		# Not allowed to be blank.
 		$an->data->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
@@ -14127,7 +14421,7 @@ sub sanity_check_manifest_answers
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not $an->Validate->is_domain_name({name => $an->data->{sys}{anvil}{node1}{name}}))
+	elsif (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_node1_name}}))
 	{
 		$an->data->{form}{anvil_node1_name_star} = "#!string!symbol_0012!#";
 		my $message = $an->String->get({key => "explain_0107", variables => { 
@@ -14137,7 +14431,7 @@ sub sanity_check_manifest_answers
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif ($an->data->{sys}{anvil}{node2}{name} !~ /\./)
+	elsif ($an->data->{cgi}{anvil_node2_name} !~ /\./)
 	{
 		# Must be a FQDN
 		$an->data->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
@@ -14236,7 +14530,7 @@ sub sanity_check_manifest_answers
 	
 	# Node 2
 	# Host name
-	if (not $an->data->{sys}{anvil}{node2}{name})
+	if (not $an->data->{cgi}{anvil_node2_name})
 	{
 		# Not allowed to be blank.
 		$an->data->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
@@ -14247,7 +14541,7 @@ sub sanity_check_manifest_answers
 		print $an->Web->template({file => "config.html", template => "form-error", replace => { message => $message }});
 		$problem = 1;
 	}
-	elsif (not $an->Validate->is_domain_name({name => $an->data->{sys}{anvil}{node2}{name}}))
+	elsif (not $an->Validate->is_domain_name({name => $an->data->{cgi}{anvil_node2_name}}))
 	{
 		$an->data->{form}{anvil_node2_name_star} = "#!string!symbol_0012!#";
 		my $message = $an->String->get({key => "explain_0107", variables => { 
@@ -14346,6 +14640,9 @@ sub sanity_check_manifest_answers
 		$problem = 1;
 	}
 	
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "problem", value1 => $problem, 
+	}, file => $THIS_FILE, line => __LINE__});
 	return($problem);
 }
 
@@ -14355,7 +14652,7 @@ sub set_chkconfig
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_chkconfig" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_chkconfig" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $state    = $parameter->{'state'}  ? $parameter->{'state'}  : "";
@@ -14401,7 +14698,7 @@ sub set_daemon_state
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_daemon_state" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $daemon   = $parameter->{daemon}   ? $parameter->{daemon}   : "";
 	my $state    = $parameter->{'state'}  ? $parameter->{'state'}  : "";
@@ -14460,7 +14757,7 @@ sub set_password_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_password_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_password_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $user         = $parameter->{user}         ? $parameter->{user}         : "";
 	my $node         = $parameter->{node}         ? $parameter->{node}         : "";
@@ -14510,7 +14807,7 @@ sub set_ricci_password
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_ricci_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_ricci_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing. This might change later, so 
 	###       this method is designed to support different passwords.
@@ -14593,7 +14890,7 @@ sub set_root_password
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "set_root_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "set_root_password" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	### NOTE: For now, ricci and root passwords are set to the same thing. This might change later, so 
 	###       this function is designed to support different passwords.
@@ -14684,7 +14981,7 @@ sub setup_drbd_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -14824,7 +15121,7 @@ sub setup_gfs2
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -14839,7 +15136,12 @@ sub setup_gfs2
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
 	
-	my ($lv_ok) = create_shared_lv($an, $an->data->{sys}{anvil}{node1}{use_ip}, $an->data->{sys}{anvil}{node1}{password});
+	my ($lv_ok) = $an->InstallManifest->create_shared_lv({
+			node     => $node, 
+			target   => $target, 
+			port     => $port, 
+			password => $password, 
+		});
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "lv_ok", value1 => $lv_ok,
 	}, file => $THIS_FILE, line => __LINE__});
@@ -14996,7 +15298,7 @@ sub setup_gfs2_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_gfs2_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -15302,7 +15604,7 @@ sub setup_lvm_pv_and_vgs
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "setup_lvm_pv_and_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "setup_lvm_pv_and_vgs" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# Start 'clvmd' on both nodes.
 	my $return_code = 0;
@@ -15459,7 +15761,7 @@ sub show_existing_install_manifests
 	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "show_existing_install_manifests" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $header_printed = 0;
-	my $return         = $an->ScanCore->get_manifests($an);
+	my $return         = $an->ScanCore->get_manifests();
 	foreach my $hash_ref (@{$return})
 	{
 		my $manifest_uuid = $hash_ref->{manifest_uuid};
@@ -15528,12 +15830,12 @@ sub show_summary_manifest
 	   $say_repos =~ s/,/<br \/>/;
 	   $say_repos = "#!string!symbol_0011!#" if not $say_repos;
 	$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
-		name1 => "cgi::anvil_node1_name", value1 => $an->data->{sys}{anvil}{node1}{name},
-		name2 => "cgi::anvil_node2_name", value2 => $an->data->{sys}{anvil}{node2}{name},
+		name1 => "cgi::anvil_node1_name", value1 => $an->data->{cgi}{anvil_node1_name},
+		name2 => "cgi::anvil_node2_name", value2 => $an->data->{cgi}{anvil_node2_name},
 	}, file => $THIS_FILE, line => __LINE__});
 
 	# Open the table.
-	print $an->Web->template({file => "config.html", template => "install-manifest-summay-header", replace => { form_file => "/cgi-bin/striker" }});
+	print $an->Web->template({file => "config.html", template => "install-manifest-summay-header", replace => { form_file => "/cgi-bin/configure" }});
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-title", replace => { title => "#!string!title_0159!#" }});
 	
 	# Node colum header.
@@ -15545,8 +15847,8 @@ sub show_summary_manifest
 	# Node names
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0165!#",
-		column1		=>	$an->data->{sys}{anvil}{node1}{name},
-		column2		=>	$an->data->{sys}{anvil}{node2}{name},
+		column1		=>	$an->data->{cgi}{anvil_node1_name},
+		column2		=>	$an->data->{cgi}{anvil_node2_name},
 	}});
 	
 	# Node BCN IPs
@@ -15745,7 +16047,7 @@ sub show_summary_manifest
 	# Anvil! Password
 	print $an->Web->template({file => "config.html", template => "install-manifest-summay-entry", replace => { 
 		row		=>	"#!string!row_0194!#",
-		column1		=>	$an->data->{sys}{anvil}{password},
+		column1		=>	$an->data->{cgi}{anvil_password},
 		column2		=>	"&nbsp;",
 	}});
 	
@@ -15835,7 +16137,7 @@ sub show_summary_manifest
 		anvil_prefix			=>	$an->data->{cgi}{anvil_prefix},
 		anvil_sequence			=>	$an->data->{cgi}{anvil_sequence},
 		anvil_domain			=>	$an->data->{cgi}{anvil_domain},
-		anvil_password			=>	$an->data->{sys}{anvil}{password},
+		anvil_password			=>	$an->data->{cgi}{anvil_password},
 		anvil_bcn_ethtool_opts		=>	$an->data->{cgi}{anvil_bcn_ethtool_opts}, 
 		anvil_bcn_network		=>	$an->data->{cgi}{anvil_bcn_network},
 		anvil_bcn_subnet		=>	$an->data->{cgi}{anvil_bcn_subnet},
@@ -15850,7 +16152,7 @@ sub show_summary_manifest
 		anvil_storage_pool1_size	=>	$an->data->{cgi}{anvil_storage_pool1_size},
 		anvil_storage_pool1_unit	=>	$an->data->{cgi}{anvil_storage_pool1_unit},
 		anvil_name			=>	$an->data->{cgi}{anvil_name},
-		anvil_node1_name		=>	$an->data->{sys}{anvil}{node1}{name},
+		anvil_node1_name		=>	$an->data->{cgi}{anvil_node1_name},
 		anvil_node1_bcn_ip		=>	$an->data->{cgi}{anvil_node1_bcn_ip},
 		anvil_node1_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link1_mac},
 		anvil_node1_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node1_bcn_link2_mac},
@@ -15865,7 +16167,7 @@ sub show_summary_manifest
 		anvil_node1_pdu2_outlet		=>	$an->data->{cgi}{anvil_node1_pdu2_outlet},
 		anvil_node1_pdu3_outlet		=>	$an->data->{cgi}{anvil_node1_pdu3_outlet},
 		anvil_node1_pdu4_outlet		=>	$an->data->{cgi}{anvil_node1_pdu4_outlet},
-		anvil_node2_name		=>	$an->data->{sys}{anvil}{node2}{name},
+		anvil_node2_name		=>	$an->data->{cgi}{anvil_node2_name},
 		anvil_node2_bcn_ip		=>	$an->data->{cgi}{anvil_node2_bcn_ip},
 		anvil_node2_bcn_link1_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link1_mac},
 		anvil_node2_bcn_link2_mac	=>	$an->data->{cgi}{anvil_node2_bcn_link2_mac},
@@ -15937,7 +16239,7 @@ sub summarize_build_plan
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "summarize_build_plan" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1                = $an->data->{sys}{anvil}{node1}{name};
 	my $node2                = $an->data->{sys}{anvil}{node2}{name};
@@ -16076,7 +16378,7 @@ sub summarize_build_plan
 		$an->data->{cgi}{anvil_storage_partition_2_byte_size} = $an->data->{cgi}{anvil_storage_pool2_byte_size};
 	}
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-summary-and-confirm", replace => { 
-		form_file			=>	"/cgi-bin/striker",
+		form_file			=>	"/cgi-bin/configure",
 		title				=>	"#!string!title_0177!#",
 		bcn_link1_name			=>	$an->String->get({key => "script_0059", variables => { number => "1" }}),
 		bcn_link1_node1_mac		=>	$an->data->{conf}{node}{$node1}{set_nic}{bcn_link1},
@@ -16101,7 +16403,7 @@ sub summarize_build_plan
 		pool2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_pool2_byte_size} }),
 		partition1_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_1_byte_size} }),
 		partition2_size			=>	$an->Readable->bytes_to_hr({'bytes' => $an->data->{cgi}{anvil_storage_partition_2_byte_size} }),
-		edit_manifest_url		=>	"?config=true&task=create-install-manifest&load=".$an->data->{cgi}{run},
+		edit_manifest_url		=>	"?task=manifests&manifest_uuid=".$an->data->{cgi}{manifest_uuid},
 		remap_network_url		=>	$an->data->{sys}{cgi_string}."&remap_network=true",
 		anvil_node1_current_ip		=>	$an->data->{sys}{anvil}{node1}{use_ip},
 		anvil_node1_current_ip		=>	$an->data->{sys}{anvil}{node1}{use_ip},
@@ -16113,6 +16415,7 @@ sub summarize_build_plan
 		'do'				=>	$an->data->{cgi}{'do'},
 		run				=>	$an->data->{cgi}{run},
 		task				=>	$an->data->{cgi}{task},
+		manifest_uuid			=>	$an->data->{cgi}{manifest_uuid}, 
 		node1_os_name			=>	$say_node1_os,
 		node2_os_name			=>	$say_node2_os,
 		node1_os_registered		=>	$say_node1_registered,
@@ -16140,7 +16443,7 @@ sub start_clvmd_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_clvmd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_clvmd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -16226,7 +16529,7 @@ sub start_cman
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_cman" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1    = $an->data->{sys}{anvil}{node1}{name};
 	my $node2    = $an->data->{sys}{anvil}{node2}{name};
@@ -16553,7 +16856,7 @@ sub start_cman_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_cman_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -16596,7 +16899,7 @@ sub stop_drbd
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "stop_drbd" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# get the current disk states from node 1's perspective. We'll need to stop the Inconsistent node 
 	# first, if a sync is underway.
@@ -16704,7 +17007,7 @@ sub stop_drbd_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "start_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "start_drbd_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -16858,7 +17161,7 @@ sub stop_service_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "stop_service_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "stop_service_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $service  = $parameter->{service}  ? $parameter->{service}  : "";
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
@@ -16915,7 +17218,7 @@ sub test_internet_connection
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "test_internet_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "test_internet_connection" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -17100,7 +17403,7 @@ sub update_install_manifest
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_install_manifest" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1           = $an->data->{sys}{anvil}{node1}{name};
 	my $node1_bcn_link1 = $an->data->{conf}{node}{$node1}{set_nic}{bcn_link1};
@@ -17451,7 +17754,7 @@ sub update_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -17515,7 +17818,7 @@ sub update_nodes
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "update_nodes" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# This could take a while
 	print $an->Web->template({file => "install-manifest.html", template => "new-anvil-install-be-patient-message", replace => { message => "#!string!explain_0130!#" }});
@@ -17594,7 +17897,7 @@ sub verify_drbd_resources_are_connected
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_drbd_resources_are_connected" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "verify_drbd_resources_are_connected" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -17701,7 +18004,7 @@ sub verify_internet_access
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_internet_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "verify_internet_access" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	# If the user knows they will never be online, they may have set to hide the Internet check. In this
 	# case, don't waste time checking.
@@ -17788,7 +18091,7 @@ sub verify_os
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_os" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "verify_os" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $ok    = 1;
 	my $node1 = $an->data->{sys}{anvil}{node1}{name};
@@ -17863,7 +18166,7 @@ sub verify_perl_is_installed
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node1      = $an->data->{sys}{anvil}{node1}{name};
 	my $node2      = $an->data->{sys}{anvil}{node2}{name};
@@ -17935,7 +18238,7 @@ sub verify_perl_is_installed_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "verify_perl_is_installed_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -18009,7 +18312,7 @@ sub watch_clustat
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "watch_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "watch_clustat" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -18362,7 +18665,7 @@ sub write_cluster_conf
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "write_cluster_conf" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";
@@ -18376,6 +18679,12 @@ sub write_cluster_conf
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
 	}, file => $THIS_FILE, line => __LINE__});
+	
+	if (not $node)
+	{
+		$an->Alert->error({fatal => 1, title_key => "tools_title_0003", message_key => "error_message_0161", code => 161, file => "$THIS_FILE", line => __LINE__});
+		return("");
+	}
 	
 	my $message     = "";
 	my $return_code = 255;
@@ -18452,7 +18761,7 @@ sub write_lvm_conf_on_node
 	my $self      = shift;
 	my $parameter = shift;
 	my $an        = $self->parent;
-	$an->Log->entry({log_level => 3, title_key => "tools_log_0001", title_variables => { function => "write_lvm_conf_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
+	$an->Log->entry({log_level => 2, title_key => "tools_log_0001", title_variables => { function => "write_lvm_conf_on_node" }, message_key => "tools_log_0002", file => $THIS_FILE, line => __LINE__});
 	
 	my $node     = $parameter->{node}     ? $parameter->{node}     : "";
 	my $target   = $parameter->{target}   ? $parameter->{target}   : "";

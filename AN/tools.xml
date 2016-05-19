@@ -756,7 +756,9 @@ Failed to send an alert because this host is not yet in the database. This can h
 		<key name="error_message_0156"><![CDATA[The 'AN::Tools::Striker' module's '_get_storage_data()' method was called without Anvil! node name CGI variable set.]]></key>
 		<key name="error_message_0157"><![CDATA[The 'AN::Tools::Striker' module's '_cold_stop_anvil()' saw the node: [#!variable!node_name!#] power off but failed to find the node's UUID. This is likely a program error.]]></key>
 		<key name="error_message_0158"><![CDATA[The 'AN::Tools::ScanCore' module's 'update_server_stop_reason()' was called without a server name being passed in.]]></key>
-		<key name="error_message_0159"><![CDATA[...free...]]></key>
+		<key name="error_message_0159"><![CDATA[The 'AN::Tools::InstallManifest' module's 'map_network_on_node()' method failed to match the node name being processed.]]></key>
+		<key name="error_message_0160"><![CDATA[The 'AN::Tools::InstallManifest' module's 'read_cluster_conf()' was called without a node name.]]></key>
+		<key name="error_message_0161"><![CDATA[The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.]]></key>
 		
 		<!-- Cleared warning/error messages -->
 		<key name="cleared_message_0001">Connection to the database: [#!variable!name!#] on host: [#!variable!host!#:#!variable!port!#] has been re-established.</key>

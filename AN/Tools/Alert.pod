@@ -874,7 +874,15 @@ The 'AN::Tools::ScanCore' module's 'update_server_stop_reason()' was called with
 
 =head2 C<159>
 
+The 'AN::Tools::InstallManifest' module's 'map_network_on_node()' method failed to match the node name being processed.
 
+=head2 C<160>
+
+The 'AN::Tools::InstallManifest' module's 'read_cluster_conf()' was called without a node name.
+
+=head2 C<161>
+
+The 'AN::Tools::InstallManifest' module's 'write_cluster_conf()' was called without a node name.
 
 
 =head1 SEE ALSO

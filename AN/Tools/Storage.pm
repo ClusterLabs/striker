@@ -929,18 +929,20 @@ sub rsync
 	$an->Alert->_set_error;
 	
 	# Check my parameters.
+	my $node        = $parameter->{node}        ? $parameter->{node}        : "";
 	my $target      = $parameter->{target}      ? $parameter->{target}      : "";
 	my $port        = $parameter->{port}        ? $parameter->{port}        : "";
 	my $password    = $parameter->{password}    ? $parameter->{password}    : "";
 	my $source      = $parameter->{source}      ? $parameter->{source}      : "";
 	my $destination = $parameter->{destination} ? $parameter->{destination} : "";
 	my $switches    = $parameter->{switches}    ? $parameter->{switches}    : "-av";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0005", message_variables => {
-		name1 => "target",      value1 => $target, 
-		name2 => "port",        value2 => $port, 
-		name3 => "source",      value3 => $source, 
-		name4 => "destination", value4 => $destination, 
-		name5 => "switches",    value5 => $switches, 
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0006", message_variables => {
+		name1 => "node",        value1 => $node, 
+		name2 => "target",      value2 => $target, 
+		name3 => "port",        value3 => $port, 
+		name4 => "source",      value4 => $source, 
+		name5 => "destination", value5 => $destination, 
+		name6 => "switches",    value6 => $switches, 
 	}, file => $THIS_FILE, line => __LINE__});
 	$an->Log->entry({log_level => 4, message_key => "an_variables_0001", message_variables => {
 		name1 => "password", value1 => $password, 
@@ -978,7 +980,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -987,7 +989,7 @@ sub rsync
 	{
 		$remote_user    = $1;
 		$remote_machine = $2;
-		$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
 			name1 => "remote_user",    value1 => $remote_user, 
 			name2 => "remote_machine", value2 => $remote_machine, 
 		}, file => $THIS_FILE, line => __LINE__});
@@ -1008,6 +1010,7 @@ sub rsync
 			#$an->Alert->error({fatal => 1, title_key => "error_title_0005", message_key => "error_message_0035", code => 22, file => "$THIS_FILE", line => __LINE__});
 			$failed = 1;
 		}
+		# TODO: Make sure this works with passwordless SSH
 		if (not $password)
 		{
 			# No password

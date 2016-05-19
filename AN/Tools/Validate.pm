@@ -62,7 +62,7 @@ sub is_domain_name
 	$an->Alert->_set_error;
 	
 	my $name = $parameter->{name} ? $parameter->{name} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "name", value1 => $name,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -70,7 +70,7 @@ sub is_domain_name
 	if (not $name)
 	{
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -78,12 +78,12 @@ sub is_domain_name
 	{
 		# Doesn't appear to be valid.
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);
@@ -100,7 +100,7 @@ sub is_integer_or_unsigned_float
 	$an->Alert->_set_error;
 	
 	my $number = $parameter->{number} ? $parameter->{number} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "number", value1 => $number,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -109,7 +109,7 @@ sub is_integer_or_unsigned_float
 	{
 		# Non-digit could mean it's signed or just garbage.
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -117,12 +117,12 @@ sub is_integer_or_unsigned_float
 	{
 		# Not an integer or float
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);
@@ -136,7 +136,7 @@ sub is_ipv4
 	my $an        = $self->parent;
 	
 	my $ip = $parameter->{ip} ? $parameter->{ip} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "ip", value1 => $ip,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -148,7 +148,7 @@ sub is_ipv4
 		my $second_octal = $2;
 		my $third_octal  = $3;
 		my $fourth_octal = $4;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "first_octal",  value1 => $first_octal,
 			name2 => "second_octal", value2 => $second_octal,
 			name3 => "third_octal",  value3 => $third_octal,
@@ -162,7 +162,7 @@ sub is_ipv4
 		{
 			# One of the octals is out of range.
 			$valid = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "valid", value1 => $valid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -171,12 +171,12 @@ sub is_ipv4
 	{
 		# Not in the right format.
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);
@@ -193,7 +193,7 @@ sub is_url
 	$an->Alert->_set_error;
 	
 	my $url = $parameter->{url} ? $parameter->{url} : "";
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "url", value1 => $url,
 	}, file => $THIS_FILE, line => __LINE__});
 	
@@ -201,7 +201,7 @@ sub is_url
 	if (not $url)
 	{
 		$valid = 0;
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 			name1 => "valid", value1 => $valid,
 		}, file => $THIS_FILE, line => __LINE__});
 	}
@@ -211,7 +211,7 @@ sub is_url
 		my $host     = $2;
 		my $path     = $3;
 		my $port     = "";
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "protocol", value1 => $protocol,
 			name2 => "host",     value2 => $host,
 			name3 => "path",     value3 => $path,
@@ -220,21 +220,21 @@ sub is_url
 		if ($protocol eq "http")
 		{
 			$port = 80;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "port", value1 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($protocol eq "https")
 		{
 			$port = 443;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "port", value1 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
 		elsif ($protocol eq "ftp")
 		{
 			$port = 21;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "port", value1 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -242,7 +242,7 @@ sub is_url
 		{
 			# Invalid protocol
 			$valid = 0;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 				name1 => "valid", value1 => $valid,
 			}, file => $THIS_FILE, line => __LINE__});
 		}
@@ -250,7 +250,7 @@ sub is_url
 		{
 			$host = $1;
 			$port = $2;
-			$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			$an->Log->entry({log_level => 3, message_key => "an_variables_0002", message_variables => {
 				name1 => "host", value1 => $host,
 				name2 => "port", value2 => $port,
 			}, file => $THIS_FILE, line => __LINE__});
@@ -260,7 +260,7 @@ sub is_url
 			if (not $an->Validate->is_ipv4({ip => $host}))
 			{
 				$valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "valid", value1 => $valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
@@ -270,12 +270,12 @@ sub is_url
 			if (not $an->Validate->is_domain_name({name => $host}))
 			{
 				$valid = 0;
-				$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+				$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 					name1 => "valid", value1 => $valid,
 				}, file => $THIS_FILE, line => __LINE__});
 			}
 		}
-		$an->Log->entry({log_level => 2, message_key => "an_variables_0004", message_variables => {
+		$an->Log->entry({log_level => 3, message_key => "an_variables_0004", message_variables => {
 			name1 => "protocol", value1 => $protocol,
 			name2 => "host",     value2 => $host,
 			name3 => "path",     value3 => $path,
@@ -290,7 +290,7 @@ sub is_url
 		}, file => $THIS_FILE, line => __LINE__});
 	}
 	
-	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+	$an->Log->entry({log_level => 3, message_key => "an_variables_0001", message_variables => {
 		name1 => "valid", value1 => $valid,
 	}, file => $THIS_FILE, line => __LINE__});
 	return($valid);

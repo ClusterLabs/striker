@@ -7097,10 +7097,17 @@ sub _header
 		id		=>	"refresh_icon",
 	}});
 	
-	if ($an->data->{cgi}{config})
+	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
+		name1 => "caller", value1 => $caller,
+	}, file => $THIS_FILE, line => __LINE__});
+	if ($caller eq "configure")
 	{
 		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*?)&//;
 		$an->data->{sys}{cgi_string} =~ s/anvil_uuid=(.*)$//;
+		$an->Log->entry({log_level => 2, message_key => "an_variables_0002", message_variables => {
+			name1 => "cgi::save", value1 => $an->data->{cgi}{save},
+			name2 => "cgi::task", value2 => $an->data->{cgi}{task},
+		}, file => $THIS_FILE, line => __LINE__});
 		if ($an->data->{cgi}{save})
 		{
 			$say_refresh = "";
@@ -7166,7 +7173,7 @@ sub _header
 						id		=>	"back",
 					}});
 			}
-			elsif ($an->data->{cgi}{task} eq "create-install-manifest")
+			elsif ($an->data->{cgi}{task} eq "manifests")
 			{
 				my $link =  $an->data->{sys}{cgi_string};
 				   $link =~ s/generate=true//;
@@ -7219,7 +7226,7 @@ sub _header
 							}});
 					}
 					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-							button_link	=>	"?config=true&task=create-install-manifest",
+							button_link	=>	"?task=manifests",
 							button_text	=>	"$refresh_image",
 							id		=>	"refresh",
 						}});
@@ -7240,7 +7247,33 @@ sub _header
 				elsif ($an->data->{cgi}{run})
 				{
 					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-							button_link	=>	"?config=true&task=create-install-manifest",
+							button_link	=>	"?task=manifests",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}});
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	$an->data->{sys}{cgi_string},
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
+				}
+				elsif ($an->data->{cgi}{load})
+				{
+					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"?task=manifests",
+							button_text	=>	"$back_image",
+							id		=>	"back",
+						}});
+					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	$an->data->{sys}{cgi_string},
+							button_text	=>	"$refresh_image",
+							id		=>	"refresh",
+						}});
+				}
+				elsif ($an->data->{cgi}{raw})
+				{
+					$say_back = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
+							button_link	=>	"?task=manifests",
 							button_text	=>	"$back_image",
 							id		=>	"back",
 						}});
@@ -7258,7 +7291,7 @@ sub _header
 							id		=>	"back",
 						}});
 					$say_refresh = $an->Web->template({file => "common.html", template => "enabled-button-no-class", replace => { 
-							button_link	=>	"?config=true&task=create-install-manifest",
+							button_link	=>	"?task=manifests",
 							button_text	=>	"$refresh_image",
 							id		=>	"refresh",
 						}});
@@ -7750,7 +7783,6 @@ sub _manage_server
 	$an->Log->entry({log_level => 2, message_key => "an_variables_0001", message_variables => {
 		name1 => "server::${server}::definition", value1 => $an->data->{server}{$server}{definition},
 	}, file => $THIS_FILE, line => __LINE__});
-	die "$THIS_FILE ".__LINE__." no definition for: [$server]\n" if not $an->data->{server}{$server}{definition};
 	
 	$an->data->{server}{$server}{details}{ram}       = $server_data->{current_ram};
 	$an->data->{server}{$server}{details}{cpu_count} = $server_data->{cpu}{total};
